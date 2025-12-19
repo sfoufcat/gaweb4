@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { isAdmin } from '@/lib/admin-utils-shared';
-import type { UserRole, ClerkPublicMetadata } from '@/types';
+import type { ClerkPublicMetadata } from '@/types';
 
 // Step order for calculating funnel progression
 const STEP_ORDER = [

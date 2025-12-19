@@ -2,7 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { isAdmin } from '@/lib/admin-utils-shared';
-import type { CoachingIntakeForm, UserRole, ClerkPublicMetadata } from '@/types';
+import type { CoachingIntakeForm, ClerkPublicMetadata } from '@/types';
 
 /**
  * GET /api/admin/coaching-intake-forms

@@ -9,7 +9,7 @@ import { AdminDiscoverTab } from '@/components/admin/discover';
 import { AdminTracksAndProgramsTab } from '@/components/admin/tracks-programs';
 import { AdminQuizzesTab } from '@/components/admin/quizzes';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import type { UserRole, ClerkPublicMetadata } from '@/types';
+import type { ClerkPublicMetadata } from '@/types';
 
 export default function EditorPage() {
   const router = useRouter();

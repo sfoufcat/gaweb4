@@ -4,7 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { getStreamServerClient, ensureSystemBotUser, SYSTEM_BOT_USER_ID } from '@/lib/stream-server';
 import { scheduleSquadCallJobs, cancelSquadCallJobs } from '@/lib/squad-call-notifications';
-import type { UserRole, Squad, ClerkPublicMetadata } from '@/types';
+import type { Squad, ClerkPublicMetadata } from '@/types';
 
 /**
  * PUT /api/coach/squads/[squadId]/call

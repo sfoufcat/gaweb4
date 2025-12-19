@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import Image from 'next/image';
-import type { Squad, UserRole, ClerkPublicMetadata } from '@/types';
+import type { Squad, ClerkPublicMetadata } from '@/types';
 
 // Admin components for expanded coach dashboard
 import { AdminUsersTab } from '@/components/admin/AdminUsersTab';

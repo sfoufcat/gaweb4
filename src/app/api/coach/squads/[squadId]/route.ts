@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { getSquadStatsWithCache, getStatsTabData } from '@/lib/squad-alignment';
-import type { Squad, SquadMember, SquadStats, UserRole, ClerkPublicMetadata } from '@/types';
+import type { Squad, SquadMember, SquadStats, ClerkPublicMetadata } from '@/types';
 
 /**
  * GET /api/coach/squads/[squadId]

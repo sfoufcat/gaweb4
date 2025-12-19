@@ -387,7 +387,7 @@ export default function GoalSettingPage() {
                     Tip:
                   </h3>
                   <p className="font-sans text-[14px] text-text-secondary leading-[1.4]">
-                    Keep your goal simple and measurable. Don't set vague goals like "grow my audience". Instead, be specific: "Reach 10,000 Instagram followers" or "Get 500 newsletter subscribers".
+                    Keep your goal simple and measurable. Don&apos;t set vague goals like &quot;grow my audience&quot;. Instead, be specific: &quot;Reach 10,000 Instagram followers&quot; or &quot;Get 500 newsletter subscribers&quot;.
                   </p>
                 </motion.div>
               )}

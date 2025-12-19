@@ -404,7 +404,7 @@ export default function GoalPage() {
                     Tip:
                   </h3>
                   <p className="font-sans text-[14px] text-text-secondary leading-[1.4]">
-                    Keep your goal simple and measurable. Don't set vague goals like "I want to make money". Rather, set "I want to grow to $50k MRR" for example.
+                    Keep your goal simple and measurable. Don&apos;t set vague goals like &quot;I want to make money&quot;. Rather, set &quot;I want to grow to $50k MRR&quot; for example.
                   </p>
                 </motion.div>
               )}

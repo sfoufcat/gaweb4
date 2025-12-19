@@ -15,7 +15,7 @@ import { AdminCoachingClientsTab } from '@/components/admin/AdminCoachingClients
 import { AdminStartFlowTab } from '@/components/admin/AdminStartFlowTab';
 import { AdminTracksAndProgramsTab } from '@/components/admin/tracks-programs';
 import { AdminQuizzesTab } from '@/components/admin/quizzes';
-import type { UserRole, ClerkPublicMetadata } from '@/types';
+import type { ClerkPublicMetadata } from '@/types';
 
 export default function AdminPage() {
   const router = useRouter();

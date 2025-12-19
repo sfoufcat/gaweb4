@@ -294,14 +294,14 @@ export default function PlanPage() {
                     </div>
                     <div className="flex-1">
                       <h3 className="font-albert text-[18px] font-bold text-[#92400e] tracking-[-0.5px] mb-1">
-                        Join {pendingInvite.inviterName}'s Premium Squad
+                        Join {pendingInvite.inviterName}&apos;s Premium Squad
                       </h3>
                       <p className="font-sans text-[14px] text-[#a16207] leading-relaxed mb-3">
                         <span className="font-semibold">{pendingInvite.payload?.squadName}</span> is a Premium-only squad.
-                        To join your friend's squad, select the Premium plan below.
+                        To join your friend&apos;s squad, select the Premium plan below.
                       </p>
                       <p className="font-sans text-[12px] text-[#b45309]">
-                        💡 If you select Standard, you'll skip the squad join and continue with the normal experience.
+                        💡 If you select Standard, you&apos;ll skip the squad join and continue with the normal experience.
                       </p>
                     </div>
                   </div>
@@ -456,12 +456,12 @@ export default function PlanPage() {
               <p className="font-sans text-[12px] text-text-tertiary text-center leading-relaxed">
                 {selectedPlan === 'trial' ? (
                   <>
-                    By clicking "Start your transformation", you will be charged <span className="font-semibold text-text-secondary">$9.99</span> for your first week. 
+                    By clicking &quot;Start your transformation&quot;, you will be charged <span className="font-semibold text-text-secondary">$9.99</span> for your first week. 
                     After 7 days, your subscription will automatically convert to <span className="font-semibold text-text-secondary">$39.99/month</span> until you cancel.
                   </>
                 ) : (
                   <>
-                    By clicking "Start your transformation", I agree that the plan I have selected will automatically renew until I cancel. 
+                    By clicking &quot;Start your transformation&quot;, I agree that the plan I have selected will automatically renew until I cancel. 
                     GrowthAddicts will automatically charge my payment method <span className="font-semibold text-text-secondary">{selectedPlanData?.price}</span> every{' '}
                     <span className="font-semibold text-text-secondary">{selectedPlan === 'premium' ? 'month' : 'month'}</span>.
                   </>
@@ -651,7 +651,7 @@ export default function PlanPage() {
             >
               <div className="text-center mb-8">
                 <h2 className="font-albert text-[28px] lg:text-[32px] text-text-primary tracking-[-1.5px] mb-3">
-                  Vincent's experience
+                  Vincent&apos;s experience
                 </h2>
                 <p className="font-sans text-[15px] text-text-secondary max-w-lg mx-auto">
                   Hear how Growth Addicts helped Vincent stay consistent and transform his daily habits.

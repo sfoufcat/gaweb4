@@ -50,7 +50,7 @@ export default function PrivacyPage() {
                 1. Introduction
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed mb-4">
-                GrowthAddicts, operated by Influencee Agency OÜ ("we", "our", or "us"), is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our service.
+                GrowthAddicts, operated by Influencee Agency OÜ (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;), is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our service.
               </p>
               <div className="bg-[#faf8f6] rounded-xl p-4 border border-[#e1ddd8]">
                 <p className="font-sans text-[14px] text-text-secondary">
@@ -181,7 +181,7 @@ export default function PrivacyPage() {
 
             <section className="mb-10">
               <h2 className="font-albert text-[24px] text-text-primary tracking-[-1px] mb-4">
-                9. Children's Privacy
+                9. Children&apos;s Privacy
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed">
                 Our Service is not intended for children under 16. We do not knowingly collect personal information from children under 16. If we learn we have collected such information, we will delete it promptly.

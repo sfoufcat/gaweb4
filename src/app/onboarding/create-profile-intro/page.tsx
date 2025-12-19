@@ -86,7 +86,7 @@ export default function CreateProfileIntroPage() {
               disabled={isNavigating}
               className="w-full bg-white border border-[rgba(215,210,204,0.5)] text-[#2c2520] font-sans font-bold text-[16px] tracking-[-0.5px] leading-[1.4] py-4 px-6 rounded-[32px] hover:bg-[#faf8f6] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              I'll do it later in settings
+              I&apos;ll do it later in settings
             </button>
           </div>
         </div>

@@ -2,7 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { isAdmin } from '@/lib/admin-utils-shared';
-import type { PremiumUpgradeForm, UserRole, ClerkPublicMetadata } from '@/types';
+import type { PremiumUpgradeForm, ClerkPublicMetadata } from '@/types';
 
 /**
  * GET /api/admin/premium-upgrade-forms

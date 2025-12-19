@@ -197,7 +197,7 @@ export default function CoachingIntakeFormPage() {
             Welcome to coaching!
           </h1>
           <p className="font-albert text-[18px] text-text-secondary leading-relaxed mb-8">
-            Your coaching journey starts now. We'll reach out shortly to match you with your coach!
+            Your coaching journey starts now. We&apos;ll reach out shortly to match you with your coach!
           </p>
           <div className="animate-pulse font-albert text-[14px] text-text-secondary">
             Redirecting...
@@ -273,10 +273,10 @@ export default function CoachingIntakeFormPage() {
               {!hasExistingPhone && (
                 <div className="space-y-3">
                   <label className="block font-albert text-[16px] font-medium text-text-primary">
-                    What's your phone number? <span className="text-red-500">*</span>
+                    What&apos;s your phone number? <span className="text-red-500">*</span>
                   </label>
                   <p className="font-albert text-[14px] text-text-secondary">
-                    We'll use this to coordinate your coaching sessions.
+                    We&apos;ll use this to coordinate your coaching sessions.
                   </p>
                   <input
                     type="tel"

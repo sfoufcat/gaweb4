@@ -611,7 +611,7 @@ export default function MyCoachPage() {
                 </ul>
               ) : (
                 <p className="font-albert text-[15px] text-[#8c8c8c] dark:text-[#7d8190] text-center py-4">
-                  Your coach hasn't assigned any actions yet.
+                  Your coach hasn&apos;t assigned any actions yet.
                 </p>
               )}
             </div>
@@ -699,7 +699,7 @@ export default function MyCoachPage() {
                 </ul>
               ) : (
                 <p className="font-albert text-[15px] text-[#8c8c8c] text-center py-4">
-                  Your coach hasn't shared any resources yet.
+                  Your coach hasn&apos;t shared any resources yet.
                 </p>
               )}
             </div>
@@ -731,7 +731,7 @@ export default function MyCoachPage() {
                 <li className="flex items-start gap-2">
                   <span className="text-[#a07855] dark:text-[#b8896a] mt-0.5">–</span>
                   <span className="font-albert text-[15px] text-[#5f5a55] dark:text-[#b2b6c2]">
-                    You'll receive new focus areas and action items regularly
+                    You&apos;ll receive new focus areas and action items regularly
                   </span>
                 </li>
                 <li className="flex items-start gap-2">

@@ -118,7 +118,7 @@ export default function CommitmentPage() {
 
           {/* Subtitle */}
           <p className="font-sans text-[18px] lg:text-[20px] text-text-secondary tracking-[-0.5px] leading-[1.4] mb-12">
-            You've set your goal and your path. Now, it's time to commit!
+            You&apos;ve set your goal and your path. Now, it&apos;s time to commit!
           </p>
 
           {/* Action Button */}

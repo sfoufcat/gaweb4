@@ -2,7 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
-import type { Squad, UserRole, ClerkPublicMetadata } from '@/types';
+import type { Squad, ClerkPublicMetadata } from '@/types';
 
 /**
  * GET /api/coach/squads

@@ -127,7 +127,7 @@ export default function UserProfilePage() {
             Profile not found
           </h1>
           <p className="font-sans text-[16px] text-text-secondary leading-[1.4] mb-6">
-            We couldn't find the user you're looking for.
+            We couldn&apos;t find the user you&apos;re looking for.
           </p>
           <button
             onClick={() => router.back()}

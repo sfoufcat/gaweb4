@@ -368,7 +368,7 @@ export default function OnboardingPage() {
                     Tip:
                   </h3>
                   <p className="font-sans text-[14px] text-text-secondary leading-[1.4]">
-                    Your mission defines WHO you are, not WHAT you want to achieve. For example: "I am a guide to people with anxiety" rather than "I want to help people with anxiety".
+                    Your mission defines WHO you are, not WHAT you want to achieve. For example: &quot;I am a guide to people with anxiety&quot; rather than &quot;I want to help people with anxiety&quot;.
                   </p>
                 </motion.div>
               )}

@@ -499,8 +499,8 @@ export default function EditGoalPage() {
                   </Dialog.Title>
                   
                   <p className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2] text-center leading-[1.4] mb-6">
-                    You're marking this goal as <span className="font-semibold text-text-primary dark:text-[#f5f5f8]">100% complete</span>. 
-                    This will move your goal to "Accomplished Goals".
+                    You&apos;re marking this goal as <span className="font-semibold text-text-primary dark:text-[#f5f5f8]">100% complete</span>. 
+                    This will move your goal to &quot;Accomplished Goals&quot;.
                   </p>
 
                   <div className="space-y-3">

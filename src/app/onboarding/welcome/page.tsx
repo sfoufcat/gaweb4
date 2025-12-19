@@ -174,7 +174,7 @@ export default function OnboardingWelcomePage() {
               transition={{ duration: 0.5, delay: 0.3 }}
             >
               Join thousands of achievers designing a sustainable path to growth. 
-              In under 3 minutes, we'll create a personalized plan based on your goals, habits, and where you're at right now.
+              In under 3 minutes, we&apos;ll create a personalized plan based on your goals, habits, and where you&apos;re at right now.
             </motion.p>
           </motion.div>
 

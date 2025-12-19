@@ -404,7 +404,7 @@ export default function GuestCreateAccountPage() {
                     disabled={isLoading}
                     className="w-full text-center font-sans text-[14px] text-text-secondary hover:text-[#a07855] transition-colors disabled:opacity-50"
                   >
-                    Didn't receive the code? <span className="underline">Resend</span>
+                    Didn&apos;t receive the code? <span className="underline">Resend</span>
                   </button>
 
                   {/* Back to change email/password */}

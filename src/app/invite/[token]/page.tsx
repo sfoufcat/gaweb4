@@ -385,7 +385,7 @@ export default function InvitePage() {
                     Switch Squads?
                   </h1>
                   <p className="font-sans text-[16px] text-text-secondary mb-6">
-                    You're currently a member of <span className="font-semibold text-text-primary">{switchInfo.currentSquadName}</span>.
+                    You&apos;re currently a member of <span className="font-semibold text-text-primary">{switchInfo.currentSquadName}</span>.
                   </p>
                   
                   {/* Warning Card */}
@@ -428,7 +428,7 @@ export default function InvitePage() {
                   </div>
 
                   <h1 className="font-albert text-[28px] text-text-primary tracking-[-1px] mb-3">
-                    Join {inviterName}'s Premium Squad
+                    Join {inviterName}&apos;s Premium Squad
                   </h1>
                   <p className="font-sans text-[16px] text-text-secondary mb-6">
                     To join this squad, you need a Premium membership.
@@ -481,10 +481,10 @@ export default function InvitePage() {
                     <Users className="w-8 h-8 text-green-600" />
                   </div>
                   <h1 className="font-albert text-[28px] text-text-primary tracking-[-1px] mb-3">
-                    You're already a member!
+                    You&apos;re already a member!
                   </h1>
                   <p className="font-sans text-[16px] text-text-secondary mb-2">
-                    You're already part of <span className="font-semibold text-text-primary">{tokenPayload.squadName}</span>
+                    You&apos;re already part of <span className="font-semibold text-text-primary">{tokenPayload.squadName}</span>
                   </p>
                   <p className="font-sans text-[14px] text-text-secondary">
                     Redirecting to your squad...
@@ -528,7 +528,7 @@ export default function InvitePage() {
                     Welcome to the Squad! 🎉
                   </h1>
                   <p className="font-sans text-[16px] text-text-secondary mb-2">
-                    You've joined <span className="font-semibold text-text-primary">{tokenPayload.squadName}</span>
+                    You&apos;ve joined <span className="font-semibold text-text-primary">{tokenPayload.squadName}</span>
                   </p>
                   <p className="font-sans text-[14px] text-text-secondary">
                     Redirecting to your squad...

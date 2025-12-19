@@ -115,7 +115,7 @@ export default function CreateHabitPage() {
             </p>
             {error.includes('index') && (
               <p className="text-xs text-red-500 font-sans mt-2">
-                Note: Your habit was created but we can't fetch it yet. Please create the Firestore index (check the console).
+                Note: Your habit was created but we can&apos;t fetch it yet. Please create the Firestore index (check the console).
               </p>
             )}
           </div>

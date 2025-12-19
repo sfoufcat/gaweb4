@@ -510,7 +510,7 @@ export default function GoalPage() {
             <p className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2] tracking-[-0.3px] leading-[1.4] text-center">
               Your reflections will appear here
               <br />
-              as soon as they're ready to be completed.
+              as soon as they&apos;re ready to be completed.
               <br /><br />
               Check back when the app asks you to reflect —
               <br />

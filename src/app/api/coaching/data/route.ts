@@ -72,11 +72,9 @@ export async function GET(request: Request) {
     }
 
     // Remove private notes from client-facing response (unless super admin)
-    let responseCoachingData: ClientCoachingData = coachingData;
-    if (!isSuperAdminUser) {
-      const { privateNotes: _clientNotes, ...cleanData } = coachingData as ClientCoachingData & { privateNotes?: string };
-      responseCoachingData = cleanData as ClientCoachingData;
-    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { privateNotes: _clientNotes, ...cleanCoachingData } = coachingData;
+    const responseCoachingData = isSuperAdminUser ? coachingData : cleanCoachingData;
 
     return NextResponse.json({
       exists: true,
