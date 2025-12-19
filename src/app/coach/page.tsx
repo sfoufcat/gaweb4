@@ -17,6 +17,15 @@ import {
 import Image from 'next/image';
 import type { Squad, UserRole, ClerkPublicMetadata } from '@/types';
 
+// Admin components for expanded coach dashboard
+import { AdminUsersTab } from '@/components/admin/AdminUsersTab';
+import { AdminSquadsTab } from '@/components/admin/AdminSquadsTab';
+import { AdminDiscoverTab } from '@/components/admin/discover';
+import { AdminPremiumUpgradeFormsTab } from '@/components/admin/AdminPremiumUpgradeFormsTab';
+import { AdminCoachingIntakeFormsTab } from '@/components/admin/AdminCoachingIntakeFormsTab';
+import { AdminQuizzesTab } from '@/components/admin/quizzes';
+import { AdminTracksAndProgramsTab } from '@/components/admin/tracks-programs';
+
 /**
  * Coach Dashboard Page
  * 
@@ -42,7 +51,7 @@ export default function CoachPage() {
   
   // Coaching clients state
   const [selectedCoachingClientId, setSelectedCoachingClientId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'squads' | 'coaching'>('squads');
+  const [activeTab, setActiveTab] = useState<'squads' | 'coaching' | 'users' | 'all-squads' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'quizzes' | 'tracks-programs'>('squads');
 
   // Get role from Clerk session
   const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
@@ -128,19 +137,61 @@ export default function CoachPage() {
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'squads' | 'coaching')} className="w-full">
-          <TabsList className="mb-6 bg-white/60 dark:bg-[#11141b]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 p-1">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
+          <TabsList className="mb-6 w-full flex-nowrap overflow-x-auto justify-start bg-white/60 dark:bg-[#11141b]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 p-1 scrollbar-hide">
             <TabsTrigger 
               value="squads"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
             >
-              Squads
+              My Squads
             </TabsTrigger>
             <TabsTrigger 
               value="coaching"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
             >
               Coaching Clients
+            </TabsTrigger>
+            <TabsTrigger 
+              value="users"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+            >
+              Users
+            </TabsTrigger>
+            <TabsTrigger 
+              value="all-squads"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+            >
+              All Squads
+            </TabsTrigger>
+            <TabsTrigger 
+              value="discover"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+            >
+              Discover Content
+            </TabsTrigger>
+            <TabsTrigger 
+              value="upgrade-forms"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+            >
+              Upgrade Forms
+            </TabsTrigger>
+            <TabsTrigger 
+              value="coaching-forms"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+            >
+              Coaching Intake Forms
+            </TabsTrigger>
+            <TabsTrigger 
+              value="quizzes"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+            >
+              Quizzes
+            </TabsTrigger>
+            <TabsTrigger 
+              value="tracks-programs"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+            >
+              Tracks & Programs
             </TabsTrigger>
           </TabsList>
 
@@ -312,6 +363,43 @@ export default function CoachPage() {
                 onSelectClient={(clientId) => setSelectedCoachingClientId(clientId)}
               />
             )}
+          </TabsContent>
+
+          {/* Users Tab */}
+          <TabsContent value="users">
+            <AdminUsersTab currentUserRole={role || 'user'} />
+          </TabsContent>
+
+          {/* All Squads Tab */}
+          <TabsContent value="all-squads">
+            <AdminSquadsTab currentUserRole={role || 'user'} />
+          </TabsContent>
+
+          {/* Discover Content Tab */}
+          <TabsContent value="discover">
+            <AdminDiscoverTab />
+          </TabsContent>
+
+          {/* Upgrade Forms Tab */}
+          <TabsContent value="upgrade-forms">
+            <AdminPremiumUpgradeFormsTab />
+          </TabsContent>
+
+          {/* Coaching Intake Forms Tab */}
+          <TabsContent value="coaching-forms">
+            <AdminCoachingIntakeFormsTab />
+          </TabsContent>
+
+          {/* Quizzes Tab */}
+          <TabsContent value="quizzes">
+            <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
+              <AdminQuizzesTab />
+            </div>
+          </TabsContent>
+
+          {/* Tracks & Programs Tab */}
+          <TabsContent value="tracks-programs">
+            <AdminTracksAndProgramsTab />
           </TabsContent>
         </Tabs>
       </div>
