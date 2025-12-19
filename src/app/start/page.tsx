@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useGuestSession } from '@/hooks/useGuestSession';
 import type { UserTrack } from '@/types';
 
@@ -251,9 +252,9 @@ export default function StartPage() {
             </div>
             <p className="font-sans text-[13px] text-text-muted mt-3">
               Already a member?{' '}
-              <a href="/sign-in" className="text-[#a07855] hover:text-[#8c6245] underline underline-offset-2">
+              <Link href="/sign-in" className="text-[#a07855] hover:text-[#8c6245] underline underline-offset-2">
                 Sign in
-              </a>
+              </Link>
             </p>
           </motion.div>
 
