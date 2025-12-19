@@ -28,7 +28,7 @@ export function getCurrentHourInTimezone(timezone: string): number {
     const parts = formatter.formatToParts(new Date());
     const hourPart = parts.find(p => p.type === 'hour');
     return parseInt(hourPart?.value || '0', 10);
-  } catch (error) {
+  } catch (_error) {
     console.warn(`[TIMEZONE] Invalid timezone "${timezone}", falling back to UTC`);
     return new Date().getUTCHours();
   }
@@ -51,7 +51,7 @@ export function getCurrentDayInTimezone(timezone: string): number {
       'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6
     };
     return dayMap[weekday] ?? new Date().getDay();
-  } catch (error) {
+  } catch (_error) {
     console.warn(`[TIMEZONE] Invalid timezone "${timezone}", falling back to UTC`);
     return new Date().getUTCDay();
   }
@@ -74,7 +74,7 @@ export function getTodayInTimezone(timezone: string): string {
     });
     
     return formatter.format(new Date());
-  } catch (error) {
+  } catch (_error) {
     console.warn(`[TIMEZONE] Invalid timezone "${timezone}", falling back to UTC`);
     return new Date().toISOString().split('T')[0];
   }

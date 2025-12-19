@@ -15,13 +15,6 @@ const EMAIL_FROM = 'Growth Addicts <hi@updates.growthaddicts.com>';
 const APP_URL = process.env.APP_BASE_URL || 'https://pro.growthaddicts.com';
 
 /**
- * Get a friendly name for the user (first name or "there" as fallback)
- */
-function getFriendlyName(user: FirebaseUser): string {
-  return user.firstName || user.name?.split(' ')[0] || 'there';
-}
-
-/**
  * Send welcome email when a user successfully pays and becomes a member
  */
 export async function sendWelcomeEmail({
@@ -48,7 +41,6 @@ export async function sendWelcomeEmail({
   const dashboardUrl = `${APP_URL}/`;
 
   const subject = 'Welcome to Growth Addicts: Your Transformation Starts Today 🚀';
-  const previewText = "You've just joined a community built to help you become unstoppable.";
 
   const htmlBody = `
 <!DOCTYPE html>
@@ -200,8 +192,6 @@ export async function sendAbandonedEmail({
   const planUrl = resumeUrl || `${APP_URL}/onboarding/plan`;
 
   const subject = 'Your Growth Addicts plan is ready: complete your signup ⚡';
-  const previewText = 'Your personalized Growth Addicts plan is ready and waiting.';
-
   const htmlBody = `
 <!DOCTYPE html>
 <html>

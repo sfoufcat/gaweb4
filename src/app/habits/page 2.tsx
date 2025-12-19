@@ -19,9 +19,9 @@ export default function HabitsPage() {
   const formatTime = (time: string) => {
     const [hours, minutes] = time.split(':');
     const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
     const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes}`;
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    return `${displayHour}:${minutes} ${ampm}`;
   };
 
   // Check if habit is completed today

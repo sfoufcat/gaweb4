@@ -269,7 +269,7 @@ const CATEGORIES = [
   { id: 'cat-6', name: 'Wellness' },
 ];
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     // In development, allow seeding without auth
     const isDev = process.env.NODE_ENV === 'development';

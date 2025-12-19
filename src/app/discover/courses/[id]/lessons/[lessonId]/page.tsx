@@ -147,7 +147,7 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
     );
   }
 
-  const { lesson, module, moduleIndex, lessonIndex, prevLesson, nextLesson } = lessonContext;
+  const { lesson, module, moduleIndex, prevLesson, nextLesson } = lessonContext;
 
   // Check if lesson is locked
   if (lesson.isLocked) {

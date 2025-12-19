@@ -2,11 +2,10 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useUser } from '@clerk/nextjs';
 import {
   useMessageContext,
-  useChannelActionContext,
-  useChatContext,
   useChannelStateContext,
   Attachment,
 } from 'stream-chat-react';
@@ -34,12 +33,10 @@ export function CustomMessage() {
     isMyMessage,
     handleOpenThread,
     handleDelete,
-    handleReaction,
     threadList,
     readBy,
   } = useMessageContext();
   
-  const { openThread } = useChannelActionContext();
   const { channel } = useChannelStateContext();
   const router = useRouter();
   const { user: clerkUser } = useUser();
@@ -75,7 +72,6 @@ export function CustomMessage() {
   // Get sender info
   const sender = message.user;
   const senderName = sender?.name || sender?.id || 'Unknown';
-  const senderInitial = senderName.charAt(0).toUpperCase();
   const senderAvatar = sender?.image;
   
   // Thread participants (for comments row)
@@ -392,7 +388,7 @@ export function CustomMessage() {
             aria-label={`View ${senderName}'s profile`}
           >
             {senderAvatar ? (
-              <img src={senderAvatar} alt={senderName} className="w-full h-full object-cover" />
+              <Image src={senderAvatar} alt={senderName} width={32} height={32} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e] flex items-center justify-center text-white font-albert font-semibold text-xs">
                 {senderName?.charAt(0)?.toUpperCase() || '?'}
@@ -631,9 +627,11 @@ export function CustomMessage() {
                     className={`w-4 h-4 rounded-full overflow-hidden ${isMine ? 'border border-[#7e6c5b]' : 'border border-white'}`}
                   >
                     {user.image ? (
-                      <img
+                      <Image
                         src={user.image}
                         alt={user.name || ''}
+                        width={16}
+                        height={16}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -678,9 +676,11 @@ export function CustomMessage() {
                     className="w-4 h-4 rounded-full overflow-hidden border border-[#faf8f6] flex-shrink-0"
                   >
                     {user.image ? (
-                      <img
+                      <Image
                         src={user.image}
                         alt={user.name || ''}
+                        width={16}
+                        height={16}
                         className="w-full h-full object-cover"
                       />
                     ) : (

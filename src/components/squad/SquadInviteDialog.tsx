@@ -62,7 +62,8 @@ export function SquadInviteDialog({
     if (open && !inviteUrl) {
       generateInviteLink();
     }
-  }, [open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, inviteUrl]);
 
   const generateInviteLink = async () => {
     setLoading(true);

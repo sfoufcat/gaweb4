@@ -32,17 +32,6 @@ export default function EditGoalPage() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const lastTickValue = useRef(50);
   
-  // Format date for display
-  const formatDateForDisplay = (dateStr: string) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { 
-      month: 'long', 
-      day: 'numeric', 
-      year: 'numeric' 
-    });
-  };
-
   // Play tick sound
   const playTickSound = useCallback(() => {
     try {
@@ -65,7 +54,7 @@ export default function EditGoalPage() {
       
       oscillator.start(ctx.currentTime);
       oscillator.stop(ctx.currentTime + 0.025);
-    } catch (e) {
+    } catch (_e) {
       // Audio not supported
     }
   }, []);

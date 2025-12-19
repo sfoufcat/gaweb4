@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { canAccessCoachDashboard, isSuperAdmin } from '@/lib/admin-utils-shared';
+import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import type { 
   ClientCoachingData, 
   UserRole, 

@@ -28,11 +28,11 @@ export default function BeginManifestPage() {
             {/* Content */}
             <div className="space-y-6">
               <p className="font-sans text-[18px] md:text-[20px] text-[#1a1a1a] tracking-[-0.4px] leading-[1.5]">
-                You're about to see your identity and your goal.
+                You&apos;re about to see your identity and your goal.
               </p>
 
               <p className="font-sans text-[18px] md:text-[20px] text-[#1a1a1a] tracking-[-0.4px] leading-[1.5]">
-                Close your eyes and visualize them as if they're already your reality.
+                Close your eyes and visualize them as if they&apos;re already your reality.
               </p>
 
               <p className="font-albert text-[22px] md:text-[26px] font-semibold text-[#1a1a1a] tracking-[-1px] leading-[1.3] mt-8">

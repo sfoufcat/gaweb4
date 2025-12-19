@@ -84,8 +84,9 @@ export function BreathingAnimation({ onComplete, isActive }: BreathingAnimationP
             return (
               <div
                 key={i}
-                className={`absolute w-[200px] h-[200px] rounded-full bg-black/80 transition-all duration-[5000ms] ease-in-out ${getScale()}`}
+                className={`absolute w-[200px] h-[200px] rounded-full bg-black/80 transition-all ease-in-out ${getScale()}`}
                 style={{
+                  transitionDuration: '5000ms',
                   transform: phase === 'inhale' 
                     ? `translate(${offsetX}px, ${offsetY}px) scale(1)` 
                     : `translate(0px, 0px) scale(0.75)`,

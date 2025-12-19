@@ -70,15 +70,15 @@ export default function AcceptPage() {
             {/* Content */}
             <div className="space-y-6">
               <p className="font-sans text-[18px] md:text-[20px] text-[#1a1a1a] tracking-[-0.4px] leading-[1.4]">
-                It's okay. Doubt is part of the journey, even for the most driven.
+                It&apos;s okay. Doubt is part of the journey, even for the most driven.
               </p>
 
               <p className="font-sans text-[18px] md:text-[20px] text-[#1a1a1a] tracking-[-0.4px] leading-[1.4]">
-                You don't need to push the feeling away. Just notice it, let it be, and remember:
+                You don&apos;t need to push the feeling away. Just notice it, let it be, and remember:
               </p>
 
               <p className="font-albert text-[22px] md:text-[26px] font-semibold text-[#1a1a1a] tracking-[-1px] leading-[1.3] mt-8">
-                This moment doesn't define you or your potential.
+                This moment doesn&apos;t define you or your potential.
               </p>
             </div>
 
@@ -91,7 +91,7 @@ export default function AcceptPage() {
                 onClick={handleContinue}
                 className="w-full max-w-[400px] mx-auto block bg-[#2c2520] text-white py-4 md:py-5 rounded-full font-sans text-[16px] md:text-[18px] font-bold tracking-[-0.5px] shadow-[0px_8px_30px_0px_rgba(0,0,0,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
-                Let's breathe
+                Let&apos;s breathe
               </button>
             </div>
           </div>

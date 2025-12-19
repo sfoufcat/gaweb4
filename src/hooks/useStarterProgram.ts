@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useTrack } from './useTrack';
-import type { UserTrack, StarterProgramEnrollment, StarterProgram } from '@/types';
+import type { UserTrack, StarterProgramEnrollment } from '@/types';
 import { getProgramBadgeForTrack, getHabitLabelForTrack } from '@/lib/starter-program-config';
 import { getTrackDisplayName } from '@/lib/track-prompts';
 
@@ -112,9 +112,6 @@ export function useStarterProgram(): UseStarterProgramReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Track if we've already synced this session to avoid duplicate syncs
-  const hasSyncedRef = useRef(false);
-
   // Fetch enrollment data
   const fetchEnrollment = useCallback(async () => {
     if (!user) {

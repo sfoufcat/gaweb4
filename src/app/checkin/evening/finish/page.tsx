@@ -39,7 +39,7 @@ function ConfettiPiece({ index }: { index: number }) {
 
 export default function EveningFinishPage() {
   const router = useRouter();
-  const { user, isLoaded } = useUser();
+  const { isLoaded } = useUser();
   const [showConfetti, setShowConfetti] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const { completeCheckIn } = useEveningCheckIn();

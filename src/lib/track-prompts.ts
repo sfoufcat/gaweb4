@@ -130,8 +130,8 @@ function getDailyIndex(date: Date = new Date()): number {
  */
 export function getTrackPrompt(
   track: UserTrack | null,
-  tasks?: Task[],
-  starterProgram?: StarterProgramContext | null
+  _tasks?: Task[],
+  _starterProgram?: StarterProgramContext | null
 ): TrackPrompt {
   // Default to general track if no track is set
   const effectiveTrack: UserTrack = track || 'general';

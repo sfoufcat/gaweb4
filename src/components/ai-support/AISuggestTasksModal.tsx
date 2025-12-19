@@ -23,7 +23,6 @@ export function AISuggestTasksModal({
   const [isAdding, setIsAdding] = useState(false);
   
   const slotsAvailable = 3 - currentTaskCount;
-  const canAddMore = selectedTasks.size <= slotsAvailable;
   
   function toggleTask(index: number) {
     const newSelected = new Set(selectedTasks);

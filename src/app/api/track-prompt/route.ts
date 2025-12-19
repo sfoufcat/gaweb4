@@ -32,7 +32,7 @@ const VALID_TYPES: DynamicPromptType[] = ['morning', 'evening', 'weekly'];
 export async function GET(request: NextRequest) {
   try {
     // Authentication is optional - public endpoint
-    const { userId } = await auth();
+    await auth();
     
     // Get params from query
     const { searchParams } = new URL(request.url);

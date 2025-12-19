@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import type { EmotionalState } from '@/types';
 
 interface EmotionalSliderProps {
@@ -44,7 +44,7 @@ export function EmotionalSlider({ value, onChange }: EmotionalSliderProps) {
   const sliderRef = useRef<HTMLDivElement>(null);
   const currentIndex = EMOTIONAL_STATES.indexOf(value);
 
-  const handlePositionChange = (clientX: number) => {
+  const handlePositionChange = useCallback((clientX: number) => {
     if (!sliderRef.current) return;
     
     const rect = sliderRef.current.getBoundingClientRect();
@@ -53,22 +53,22 @@ export function EmotionalSlider({ value, onChange }: EmotionalSliderProps) {
     const index = Math.round(percentage * (EMOTIONAL_STATES.length - 1));
     
     onChange(EMOTIONAL_STATES[index]);
-  };
+  }, [onChange]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
     handlePositionChange(e.clientX);
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
+  const handleMouseMove = useCallback((e: MouseEvent) => {
     if (isDragging) {
       handlePositionChange(e.clientX);
     }
-  };
+  }, [isDragging, handlePositionChange]);
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     setIsDragging(false);
-  };
+  }, []);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setIsDragging(true);
@@ -90,7 +90,7 @@ export function EmotionalSlider({ value, onChange }: EmotionalSliderProps) {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging]);
+  }, [isDragging, handleMouseMove, handleMouseUp]);
 
   const thumbPosition = (currentIndex / (EMOTIONAL_STATES.length - 1)) * 100;
 

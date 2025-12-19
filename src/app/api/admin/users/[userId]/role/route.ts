@@ -1,6 +1,6 @@
 import { clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import { requireAdmin, canModifyUserRole, getCurrentUserRole } from '@/lib/admin-utils-clerk';
+import { requireAdmin, canModifyUserRole } from '@/lib/admin-utils-clerk';
 import type { UserRole } from '@/types';
 
 /**

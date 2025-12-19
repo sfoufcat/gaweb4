@@ -38,7 +38,7 @@ const STATE_BACKGROUNDS: Record<EmotionalState, string> = {
 
 export default function MorningCheckInStartPage() {
   const router = useRouter();
-  const { user, isLoaded } = useUser();
+  const { isLoaded } = useUser();
   const [emotionalState, setEmotionalState] = useState<EmotionalState>('neutral');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);

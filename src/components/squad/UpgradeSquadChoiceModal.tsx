@@ -6,7 +6,6 @@ import { Star, Users, ArrowRight, Loader2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogContent,
-  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogDescription,
 } from '@/components/ui/alert-dialog';

@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import type { ClientCoachingData, UserRole, CoachingActionItem } from '@/types';
+import type { ClientCoachingData, UserRole } from '@/types';
 
 /**
  * PATCH /api/coaching/action-items/[itemId]

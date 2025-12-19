@@ -43,7 +43,6 @@ export async function GET(request: NextRequest) {
 
     // Try to migrate pending tasks from previous days
     // This is wrapped in try/catch so it doesn't break the API if index is missing
-    let migrationAttempted = false;
     try {
       const previousTasksSnapshot = await adminDb
         .collection('tasks')
@@ -52,7 +51,7 @@ export async function GET(request: NextRequest) {
         .where('date', '<', date)
         .get();
 
-      migrationAttempted = true;
+      // Migration attempted
       const tasksToMigrate: Task[] = [];
       previousTasksSnapshot.forEach((doc) => {
         tasksToMigrate.push({ id: doc.id, ...doc.data() } as Task);
@@ -141,10 +140,11 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ tasks });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching tasks:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to fetch tasks', message: error.message },
+      { error: 'Failed to fetch tasks', message },
       { status: 500 }
     );
   }

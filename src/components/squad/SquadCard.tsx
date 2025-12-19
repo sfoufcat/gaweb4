@@ -1,6 +1,6 @@
 'use client';
 
-import { Globe, Clock, Users, Star } from 'lucide-react';
+import { Clock, Users, Star } from 'lucide-react';
 import type { Squad } from '@/types';
 
 /**

@@ -83,7 +83,7 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
   // Data states
   const [coachingData, setCoachingData] = useState<ClientCoachingData | null>(null);
   const [user, setUser] = useState<Partial<FirebaseUser> | null>(null);
-  const [coach, setCoach] = useState<Coach | null>(null);
+  const [_coach, setCoach] = useState<Coach | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Globe, Lock, Copy, RefreshCw } from 'lucide-react';
 import type { Squad, FirebaseUser, SquadMember, SquadVisibility, UserTrack } from '@/types';
 
@@ -131,14 +131,7 @@ export function SquadFormDialog({ squad, open, onClose, onSave }: SquadFormDialo
     fetchCoaches();
   }, []);
 
-  // Fetch members when editing a squad
-  useEffect(() => {
-    if (squad && open) {
-      fetchMembers();
-    }
-  }, [squad, open]);
-
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     if (!squad) return;
     
     try {
@@ -153,7 +146,14 @@ export function SquadFormDialog({ squad, open, onClose, onSave }: SquadFormDialo
     } finally {
       setMembersLoading(false);
     }
-  };
+  }, [squad]);
+
+  // Fetch members when editing a squad
+  useEffect(() => {
+    if (squad && open) {
+      fetchMembers();
+    }
+  }, [squad, open, fetchMembers]);
 
   // Search for available users
   useEffect(() => {

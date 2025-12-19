@@ -237,16 +237,16 @@ export default function FinishPage() {
             {/* Description */}
             <div className="font-albert text-[20px] md:text-[24px] font-medium text-[#1a1a1a] tracking-[-1px] md:tracking-[-1.5px] leading-[1.4] space-y-4">
               <p>
-                You reached your goal — that's a milestone worth celebrating.
+                You reached your goal — that&apos;s a milestone worth celebrating.
               </p>
               <p>
                 Your effort and consistency are really paying off.
               </p>
               <p className="mt-6">
-                If you're ready, set a new goal to keep your momentum going.
+                If you&apos;re ready, set a new goal to keep your momentum going.
               </p>
               <p>
-                Or skip for now and enjoy the win — you've earned it.
+                Or skip for now and enjoy the win — you&apos;ve earned it.
               </p>
             </div>
           </div>

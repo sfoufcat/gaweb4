@@ -142,7 +142,7 @@ export async function PATCH(req: Request) {
  * POST /api/goal/update
  * Archives the current goal (not completed, just abandoned/archived)
  */
-export async function POST(req: Request) {
+export async function POST(_req: Request) {
   try {
     const { userId } = await auth();
     if (!userId) {

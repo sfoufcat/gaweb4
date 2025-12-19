@@ -108,12 +108,12 @@ export default function ReframePage() {
       >
         {/* Title */}
         <h1 className="font-albert text-[32px] md:text-[44px] text-[#1a1a1a] tracking-[-2px] leading-[1.15] mb-6 md:mb-8">
-          Let's gently reframe this
+          Let&apos;s gently reframe this
         </h1>
 
         {/* Subtitle */}
         <h2 className="font-albert text-[22px] md:text-[28px] font-semibold text-[#1a1a1a] tracking-[-1px] leading-[1.3] mb-3">
-          What's coming up for you right now?
+          What&apos;s coming up for you right now?
         </h2>
         
         {/* Text input */}

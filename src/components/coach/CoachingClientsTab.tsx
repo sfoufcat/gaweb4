@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Calendar, MessageCircle, ChevronRight, Clock } from 'lucide-react';
+import { Calendar, ChevronRight } from 'lucide-react';
 import type { ClientCoachingData, FirebaseUser, CoachingPlanType } from '@/types';
 
 interface CoachingClientWithUser extends ClientCoachingData {

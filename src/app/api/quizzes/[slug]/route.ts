@@ -13,7 +13,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import type { Quiz, QuizStep, QuizOption, QuizWithSteps, QuizStepWithOptions } from '@/types';
+import type { Quiz, QuizStep, QuizOption, QuizWithSteps } from '@/types';
 
 // Cache duration: 5 minutes for CDN, 1 minute stale-while-revalidate
 const CACHE_CONTROL = 'public, s-maxage=300, stale-while-revalidate=60';

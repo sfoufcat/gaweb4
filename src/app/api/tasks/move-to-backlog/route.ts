@@ -8,7 +8,7 @@ import type { Task } from '@/types';
  * Moves all focus tasks from today to backlog
  * Called when user completes their evening check-in
  */
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     const { userId } = await auth();
     if (!userId) {

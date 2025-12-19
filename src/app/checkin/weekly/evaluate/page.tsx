@@ -89,7 +89,7 @@ export default function WeeklyEvaluatePage() {
       
       oscillator.start(ctx.currentTime);
       oscillator.stop(ctx.currentTime + 0.025);
-    } catch (e) {
+    } catch (_e) {
       // Audio not supported
     }
   }, []);

@@ -66,7 +66,7 @@ function NeutralizeContent() {
             {/* Header */}
             <div className="mb-8 md:mb-12 text-center">
               <h1 className="font-albert text-[32px] md:text-[42px] text-[#1a1a1a] tracking-[-2px] leading-[1.2]">
-                Thoughts aren't facts. They're stories we can rewrite.
+                Thoughts aren&apos;t facts. They&apos;re stories we can rewrite.
               </h1>
             </div>
 
@@ -104,7 +104,7 @@ function NeutralizeContent() {
                   {/* Content */}
                   <div className="flex-1 p-6">
                     <p className="font-albert text-[20px] md:text-[24px] font-semibold text-[#5f5a55] tracking-[-1px] leading-[1.3] mb-4">
-                      Here's a more supportive way to see this:
+                      Here&apos;s a more supportive way to see this:
                     </p>
                     <p className="font-sans text-[22px] md:text-[26px] text-[#1a1a1a] tracking-[-0.5px] leading-[1.3]">
                       {reframe}

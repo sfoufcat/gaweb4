@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
@@ -10,7 +10,7 @@ import { Check, X } from 'lucide-react';
 
 export default function EveningStartPage() {
   const router = useRouter();
-  const { user, isLoaded } = useUser();
+  const { isLoaded } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Get today's date

@@ -186,7 +186,7 @@ Return ONLY this JSON:
  */
 async function getCompletedTaskHistory(
   userId: string,
-  track: UserTrack
+  _track: UserTrack
 ): Promise<string[]> {
   try {
     // Calculate 30 days ago

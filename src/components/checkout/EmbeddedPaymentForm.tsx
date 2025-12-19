@@ -21,7 +21,7 @@ interface CheckoutFormProps {
   price: string;
 }
 
-function CheckoutForm({ onSuccess, onCancel, planName, price }: CheckoutFormProps) {
+function CheckoutForm({ onSuccess: _onSuccess, onCancel, planName, price }: CheckoutFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);

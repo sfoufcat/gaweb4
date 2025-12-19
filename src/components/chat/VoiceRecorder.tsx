@@ -463,7 +463,6 @@ export function VoiceMessageAttachment({ audioUrl, duration, isMine = false }: V
   const iconColor = isMine ? 'text-white/90' : 'text-[#7e6c5b] dark:text-[#d4b896]';
   const barActiveColor = isMine ? 'rgba(255,255,255,0.9)' : '#7e6c5b';
   const barInactiveColor = isMine ? 'rgba(255,255,255,0.4)' : 'rgba(126,108,91,0.3)';
-  const textColor = isMine ? 'text-white/70' : 'text-[#7e6c5b]/70 dark:text-[#d4b896]/80';
 
   return (
     <div className="flex items-center gap-3 w-full min-w-[180px]">

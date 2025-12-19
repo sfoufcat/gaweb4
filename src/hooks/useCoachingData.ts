@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import type { ClientCoachingData, Coach, UserRole } from '@/types';
 
@@ -38,7 +38,7 @@ export function useCoachingData(): UseCoachingDataReturn {
   // Check both new coachingStatus and legacy coaching flag for backward compatibility
   const hasCoaching = publicMetadata?.coachingStatus === 'active' || publicMetadata?.coaching === true;
 
-  const fetchCoachingData = async () => {
+  const fetchCoachingData = useCallback(async () => {
     if (!isLoaded || !hasCoaching) {
       setIsLoading(false);
       return;
@@ -68,11 +68,11 @@ export function useCoachingData(): UseCoachingDataReturn {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isLoaded, hasCoaching]);
 
   useEffect(() => {
     fetchCoachingData();
-  }, [isLoaded, hasCoaching]);
+  }, [fetchCoachingData]);
 
   return {
     coachingData,

@@ -262,10 +262,6 @@ export default clerkMiddleware(async (auth, request) => {
 
   // Redirect authenticated users from homepage to dashboard or plan page based on billing
   if (userId && request.nextUrl.pathname === '/') {
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const billingStatus = publicMetadata?.billingStatus;
-    const billingPeriodEnd = publicMetadata?.billingPeriodEnd;
-    
     // If they have billing, let them through to the dashboard (page.tsx handles further checks)
     // If no billing, the dashboard will redirect them appropriately
     const response = NextResponse.next();

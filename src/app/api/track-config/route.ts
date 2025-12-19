@@ -24,7 +24,7 @@ const VALID_TRACKS: UserTrack[] = [
 export async function GET(request: NextRequest) {
   try {
     // Authentication is optional - public endpoint with user-specific track
-    const { userId } = await auth();
+    await auth();
     
     // Get track from query params
     const { searchParams } = new URL(request.url);

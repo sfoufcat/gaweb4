@@ -32,7 +32,7 @@ export async function POST() {
     try {
       const announcementsChannel = streamClient.channel('messaging', ANNOUNCEMENTS_CHANNEL_ID);
       await announcementsChannel.addMembers([userId]);
-    } catch (error) {
+    } catch (_error) {
       // Channel might not exist yet - that's okay
       console.log('Announcements channel not found or user already member');
     }
@@ -41,7 +41,7 @@ export async function POST() {
     try {
       const socialChannel = streamClient.channel('messaging', SOCIAL_CORNER_CHANNEL_ID);
       await socialChannel.addMembers([userId]);
-    } catch (error) {
+    } catch (_error) {
       // Channel might not exist yet - that's okay
       console.log('Social Corner channel not found or user already member');
     }

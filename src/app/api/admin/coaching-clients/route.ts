@@ -2,7 +2,7 @@ import { clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAdmin } from '@/lib/admin-utils-clerk';
-import type { ClientCoachingData, UserRole, FirebaseUser, Coach, CoachingPlanType, CoachingStatus } from '@/types';
+import type { ClientCoachingData, FirebaseUser, Coach, CoachingPlanType, CoachingStatus } from '@/types';
 import { StreamChat } from 'stream-chat';
 
 const streamApiKey = process.env.NEXT_PUBLIC_STREAM_API_KEY!;

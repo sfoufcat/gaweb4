@@ -150,7 +150,7 @@ ${bullets}`;
 /**
  * Gets the illustration key based on creator type
  */
-function getIllustrationForCreatorType(creatorType: string | undefined): string {
+function getIllustrationForCreatorType(_creatorType: string | undefined): string {
   // Always use prompt1 image for the dynamic info step
   return 'prompt1';
 }
@@ -1724,7 +1724,6 @@ function SwipeCardStepContent({
   const [isAnimating, setIsAnimating] = useState(false);
   
   const currentCard = step.cards[currentCardIndex];
-  const remainingCards = step.cards.length - currentCardIndex;
   const isLastCard = currentCardIndex === step.cards.length - 1;
   
   const handleRate = (rating: SwipeRating) => {

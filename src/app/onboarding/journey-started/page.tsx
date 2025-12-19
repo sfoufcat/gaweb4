@@ -11,7 +11,7 @@ import { motion } from 'framer-motion';
 /**
  * Rocket Piece Component - flies upward
  */
-function RocketPiece({ index }: { index: number }) {
+function RocketPiece({ index: _index }: { index: number }) {
   const left = 5 + Math.random() * 90; // Keep rockets within visible area
   const animationDelay = Math.random() * 1.5;
   const animationDuration = 2 + Math.random() * 1.5;
@@ -39,7 +39,7 @@ function RocketPiece({ index }: { index: number }) {
 /**
  * Star Sparkle Component
  */
-function StarSparkle({ index }: { index: number }) {
+function StarSparkle({ index: _index }: { index: number }) {
   const left = Math.random() * 100;
   const top = Math.random() * 100;
   const animationDelay = Math.random() * 2;

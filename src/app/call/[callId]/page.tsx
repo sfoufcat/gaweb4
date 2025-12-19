@@ -77,7 +77,7 @@ async function cleanupCallMedia(call: Call | null): Promise<void> {
           }
         });
       }
-    } catch (e) { /* ignore */ }
+    } catch (_e) { /* ignore */ }
     
     try {
       const micStream = call.microphone?.state?.mediaStream;
@@ -89,7 +89,7 @@ async function cleanupCallMedia(call: Call | null): Promise<void> {
           }
         });
       }
-    } catch (e) { /* ignore */ }
+    } catch (_e) { /* ignore */ }
     
     // 3. Leave the call
     try {

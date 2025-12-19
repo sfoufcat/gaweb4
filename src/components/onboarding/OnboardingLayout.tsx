@@ -55,7 +55,6 @@ export function OnboardingLayout({
                 {Array.from({ length: totalSteps }, (_, i) => i + 1).map((step) => {
                   const isActive = step === currentStep;
                   const isCompleted = step < currentStep;
-                  const isFuture = step > currentStep;
                   
                   return (
                     <div 
@@ -103,7 +102,7 @@ export function QuizOption({
   selected,
   disabled,
   onClick,
-  index = 0  // Kept for backwards compat but not used
+  index: _index = 0  // Kept for backwards compat but not used
 }: { 
   children: ReactNode;
   selected: boolean;

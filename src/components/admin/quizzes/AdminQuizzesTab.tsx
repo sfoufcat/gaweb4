@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Quiz, QuizWithSteps, UserTrack } from '@/types';
+import { Quiz, UserTrack } from '@/types';
 import { TRACKS } from '@/lib/track-constants';
 import { QuizEditorDialog } from './QuizEditorDialog';
 import { QuizStepsEditor } from './QuizStepsEditor';

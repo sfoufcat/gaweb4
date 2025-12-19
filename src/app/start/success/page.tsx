@@ -10,7 +10,7 @@ import { useGuestSession } from '@/hooks/useGuestSession';
 function SuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { refreshData, saveData, data, sessionId } = useGuestSession();
+  const { refreshData, saveData, sessionId } = useGuestSession();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
@@ -242,7 +242,7 @@ function SuccessContent() {
         `}
       </Script>
       <noscript>
-        <img height="1" width="1" style={{ display: 'none' }}
+        <img height="1" width="1" style={{ display: 'none' }} alt=""
           src="https://www.facebook.com/tr?id=1347713597075016&ev=PageView&noscript=1"
         />
       </noscript>

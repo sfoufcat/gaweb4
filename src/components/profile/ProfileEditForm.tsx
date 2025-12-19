@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useClerk, useUser } from '@clerk/nextjs';
+import { useUser } from '@clerk/nextjs';
 import type { FirebaseUser } from '@/types';
 import { compressImage } from '@/lib/uploadProfilePicture';
 
@@ -20,8 +20,7 @@ interface ProfileEditFormProps {
   fromOnboarding?: boolean; // Special onboarding mode
 }
 
-export function ProfileEditForm({ initialData, clerkUser, onSave, onCancel, fromOnboarding = false }: ProfileEditFormProps) {
-  const { openUserProfile } = useClerk();
+export function ProfileEditForm({ initialData, clerkUser, onSave, onCancel, fromOnboarding: _fromOnboarding = false }: ProfileEditFormProps) {
   const { user } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);

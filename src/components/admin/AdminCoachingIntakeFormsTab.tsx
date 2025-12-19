@@ -74,10 +74,6 @@ export function AdminCoachingIntakeFormsTab() {
     );
   }, [forms, searchQuery]);
 
-  const formatPlanLabel = (plan: string) => {
-    return plan === 'monthly' ? 'Monthly ($396/mo)' : 'Quarterly ($948)';
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
   };

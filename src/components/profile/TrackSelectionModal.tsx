@@ -67,7 +67,7 @@ export function TrackSelectionModal({
   isOpen, 
   onClose, 
   onSelect,
-  isLoading = false,
+  isLoading: _isLoading = false,
 }: TrackSelectionModalProps) {
   const [selected, setSelected] = useState<UserTrack | null>(null);
   const [hoveredTrack, setHoveredTrack] = useState<UserTrack | null>(null);

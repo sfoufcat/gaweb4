@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Search, Filter, Plus, Key, Globe, Users, Clock, ChevronDown, Star, ArrowRight } from 'lucide-react';
+import { Search, Filter, Plus, Key, Users, ChevronDown, Star, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -59,7 +59,7 @@ export function SquadDiscovery() {
   const [joiningSquadId, setJoiningSquadId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinPrivateModal, setShowJoinPrivateModal] = useState(false);
-  const [userTier, setUserTier] = useState<UserTier>('standard');
+  const [_userTier, setUserTier] = useState<UserTier>('standard');
   const [isPremiumUser, setIsPremiumUser] = useState(false);
   const [userTrack, setUserTrack] = useState<UserTrack | null>(null);
 

@@ -27,7 +27,7 @@ export function GoalInput({
   onDateChange,
   error,
 }: GoalInputProps) {
-  const [isFocused, setIsFocused] = useState(false);
+  const [_isFocused, setIsFocused] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const prefixRef = useRef<HTMLSpanElement>(null);
   const [indent, setIndent] = useState(0);
@@ -54,15 +54,6 @@ export function GoalInput({
     }
   }, []);
 
-  // Format date for display
-  const formatDateDisplay = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
-  };
 
   return (
     <div className="px-6 py-3">

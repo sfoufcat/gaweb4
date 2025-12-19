@@ -9,7 +9,7 @@ import { useEveningCheckIn } from '@/hooks/useEveningCheckIn';
 
 export default function EveningReflectPage() {
   const router = useRouter();
-  const { user, isLoaded } = useUser();
+  const { isLoaded } = useUser();
   const [reflection, setReflection] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -150,7 +150,7 @@ export default function EveningReflectPage() {
         <div className="w-full max-w-[550px] mx-auto flex-1 md:flex-initial flex flex-col">
           {/* Title */}
           <h1 className="font-albert text-[32px] md:text-[44px] text-[#1a1a1a] tracking-[-2px] leading-[1.15] mb-2">
-            Anything you'd like to reflect on?
+            Anything you&apos;d like to reflect on?
           </h1>
           
           {/* Subtitle */}

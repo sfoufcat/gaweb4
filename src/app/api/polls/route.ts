@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
-import type { ChatPollState, ChatPollSettings } from '@/types/poll';
+import type { ChatPollState } from '@/types/poll';
 
 /**
  * POST /api/polls

@@ -32,7 +32,6 @@ export function QuizStepsEditor({ quizId, onBack }: QuizStepsEditorProps) {
   const [error, setError] = useState<string | null>(null);
   const [editingStep, setEditingStep] = useState<QuizStepWithOptions | null>(null);
   const [showAddStep, setShowAddStep] = useState(false);
-  const [savingStepId, setSavingStepId] = useState<string | null>(null);
   // Batch reordering state
   const [localSteps, setLocalSteps] = useState<QuizStepWithOptions[]>([]);
   const [hasOrderChanges, setHasOrderChanges] = useState(false);
@@ -114,7 +113,7 @@ export function QuizStepsEditor({ quizId, onBack }: QuizStepsEditorProps) {
       setHasOrderChanges(false);
       // Refresh to ensure sync with server
       await fetchQuiz();
-    } catch (err) {
+    } catch (_err) {
       alert('Failed to save order changes');
     } finally {
       setIsSavingOrder(false);
@@ -452,7 +451,6 @@ function StepEditorModal({ quizId, step, nextOrder, onClose, onSaved }: StepEdit
   );
 
   const isInfoPrompt = formData.type === 'info_prompt';
-  const isSwipeCards = formData.type === 'swipe_cards' || formData.type === 'like_dislike_neutral';
   const isStatementCards = formData.type === 'statement_cards';
   const needsOptions = !isInfoPrompt;
 

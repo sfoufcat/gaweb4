@@ -26,7 +26,7 @@ export function IdentityInput({
   isValidating = false,
   error,
 }: IdentityInputProps) {
-  const [isFocused, setIsFocused] = useState(false);
+  const [_isFocused, setIsFocused] = useState(false);
   const prefixRef = useRef<HTMLSpanElement>(null);
   const [indent, setIndent] = useState(0);
   

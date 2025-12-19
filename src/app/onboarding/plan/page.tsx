@@ -780,7 +780,7 @@ export default function PlanPage() {
           `}
         </Script>
         <noscript>
-          <img height="1" width="1" style={{ display: 'none' }}
+          <img height="1" width="1" style={{ display: 'none' }} alt=""
             src="https://www.facebook.com/tr?id=1347713597075016&ev=PageView&noscript=1"
           />
         </noscript>

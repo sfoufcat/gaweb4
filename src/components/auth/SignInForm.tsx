@@ -302,7 +302,7 @@ export function SignInForm({ redirectUrl = '/' }: SignInFormProps) {
               disabled={verifyLoading}
               className="font-sans text-sm text-[#a07855] hover:text-[#8a6649] font-medium transition-colors disabled:opacity-50"
             >
-              Didn't receive the code? Resend
+              Didn&apos;t receive the code? Resend
             </button>
             <button
               type="button"
@@ -356,7 +356,7 @@ export function SignInForm({ redirectUrl = '/' }: SignInFormProps) {
                   Reset your password
                 </h2>
                 <p className="font-sans text-sm text-text-secondary">
-                  Enter your email and we'll send you a reset link
+                  Enter your email and we&apos;ll send you a reset link
                 </p>
               </div>
 

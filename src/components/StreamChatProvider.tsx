@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { StreamChat, Channel as StreamChannel } from 'stream-chat';
-import { Chat, Channel, ChannelHeader, MessageInput, MessageList, Thread, Window } from 'stream-chat-react';
+import { StreamChat } from 'stream-chat';
+import { Chat } from 'stream-chat-react';
 import 'stream-chat-react/dist/css/v2/index.css';
 
 interface StreamChatProviderProps {
@@ -13,7 +13,6 @@ interface StreamChatProviderProps {
 export function StreamChatProvider({ children }: StreamChatProviderProps) {
   const { user, isLoaded } = useUser();
   const [client, setClient] = useState<StreamChat | null>(null);
-  const [channel, setChannel] = useState<StreamChannel | null>(null);
   const clientRef = useRef<StreamChat | null>(null);
 
   useEffect(() => {

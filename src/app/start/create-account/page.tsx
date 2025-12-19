@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSignUp, useAuth } from '@clerk/nextjs';
@@ -36,30 +36,7 @@ export default function GuestCreateAccountPage() {
     }
   }, [data.email]);
 
-  // If already signed in, try to link account
-  useEffect(() => {
-    if (isSignedIn && sessionId) {
-      linkAccountAndRedirect();
-    }
-  }, [isSignedIn, sessionId]);
-
-  // Redirect if no payment completed
-  useEffect(() => {
-    if (!sessionLoading && (!data.paymentStatus || data.paymentStatus !== 'completed') && !data.selectedPlan) {
-      // If user hasn't paid, refresh to check for updated payment status
-      refreshData();
-    }
-  }, [sessionLoading, data.paymentStatus, data.selectedPlan, refreshData]);
-
-  // Self-correct: Ensure currentStep is set to create-account if payment was completed
-  // This fixes the issue where users who paid are redirected to /start/plan
-  useEffect(() => {
-    if (!sessionLoading && data.paymentStatus === 'completed') {
-      saveData({ currentStep: 'create-account' });
-    }
-  }, [sessionLoading, data.paymentStatus, saveData]);
-
-  const linkAccountAndRedirect = async () => {
+  const linkAccountAndRedirect = useCallback(async () => {
     if (!sessionId) return;
     
     setStep('linking');
@@ -94,7 +71,30 @@ export default function GuestCreateAccountPage() {
       setStep('create');
       setIsLoading(false);
     }
-  };
+  }, [sessionId, clearSession, router]);
+
+  // If already signed in, try to link account
+  useEffect(() => {
+    if (isSignedIn && sessionId) {
+      linkAccountAndRedirect();
+    }
+  }, [isSignedIn, sessionId, linkAccountAndRedirect]);
+
+  // Redirect if no payment completed
+  useEffect(() => {
+    if (!sessionLoading && (!data.paymentStatus || data.paymentStatus !== 'completed') && !data.selectedPlan) {
+      // If user hasn't paid, refresh to check for updated payment status
+      refreshData();
+    }
+  }, [sessionLoading, data.paymentStatus, data.selectedPlan, refreshData]);
+
+  // Self-correct: Ensure currentStep is set to create-account if payment was completed
+  // This fixes the issue where users who paid are redirected to /start/plan
+  useEffect(() => {
+    if (!sessionLoading && data.paymentStatus === 'completed') {
+      saveData({ currentStep: 'create-account' });
+    }
+  }, [sessionLoading, data.paymentStatus, saveData]);
 
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();

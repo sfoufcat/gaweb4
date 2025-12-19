@@ -23,7 +23,7 @@ function CheckoutSuccessContent() {
   const [hasVerified, setHasVerified] = useState(false);
   const [joinedSquadName, setJoinedSquadName] = useState<string | null>(null);
 
-  const { pendingInvite, clearPendingInvite, getToken } = usePendingInvite();
+  const { clearPendingInvite, getToken } = usePendingInvite();
 
   const sessionId = searchParams.get('session_id');
   const MAX_POLLS = 10; // Reduced since we verify first
@@ -158,7 +158,7 @@ function CheckoutSuccessContent() {
     try {
       // This API call will help sync Clerk if the webhook updated it
       await fetch('/api/billing/sync', { method: 'POST' });
-    } catch (error) {
+    } catch (_error) {
       // Ignore errors - this is just a best-effort sync
     }
     
@@ -370,7 +370,7 @@ function CheckoutSuccessContent() {
         `}
       </Script>
       <noscript>
-        <img height="1" width="1" style={{ display: 'none' }}
+        <img height="1" width="1" style={{ display: 'none' }} alt=""
           src="https://www.facebook.com/tr?id=1347713597075016&ev=PageView&noscript=1"
         />
       </noscript>

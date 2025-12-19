@@ -38,7 +38,7 @@ const SLIDER_GRADIENT = 'linear-gradient(90deg, #C0392B 0%, #F39C12 25%, #95A5A6
 
 export default function EveningEvaluatePage() {
   const router = useRouter();
-  const { user, isLoaded } = useUser();
+  const { isLoaded } = useUser();
   const [emotionalState, setEmotionalState] = useState<EveningEmotionalState>('steady');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);

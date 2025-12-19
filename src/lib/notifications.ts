@@ -336,7 +336,6 @@ export function getWeekIdentifier(date: Date = new Date()): string {
 export async function hasWeeklyReflectionNotificationForThisWeek(
   userId: string
 ): Promise<boolean> {
-  const weekId = getWeekIdentifier();
   
   // Get start and end of current week
   const now = new Date();

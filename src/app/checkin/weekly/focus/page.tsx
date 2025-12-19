@@ -124,7 +124,7 @@ export default function FocusPage() {
         <div className="max-w-[550px] w-full flex-1 md:flex-initial flex flex-col">
           {/* Header */}
           <h1 className="font-albert text-[28px] md:text-[42px] text-[#1a1a1a] tracking-[-2px] leading-[1.2] mb-1">
-            What's your focus for the next week?
+            What&apos;s your focus for the next week?
           </h1>
           
           {/* Public badge */}

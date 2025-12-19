@@ -39,12 +39,12 @@ function CheckCircleIcon({ fill = '#a07855', stroke = '#faf8f6' }: { fill?: stri
 
 export function PollMessageCard({
   poll,
-  currentUserId,
+  currentUserId: _currentUserId,
   onVote,
   onAddOption,
   onViewResults,
   timestamp,
-  senderName,
+  senderName: _senderName,
   isOwnMessage = false,
 }: PollMessageCardProps) {
   // Color scheme based on message ownership
@@ -184,7 +184,6 @@ export function PollMessageCard({
     const isSelected = selectedOptions.includes(option.id);
     const isUserVote = poll.userVotes?.includes(option.id);
     const percentage = getPercentage(option.id);
-    const votes = poll.votesByOption[option.id] || 0;
 
     // Results view (already voted or closed)
     if (hasVoted || isClosed) {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { summarizeWeeklyFocus } from '@/lib/anthropic';
-import type { WeeklyReflectionCheckIn, OnTrackStatus } from '@/types';
+import type { WeeklyReflectionCheckIn } from '@/types';
 
 // Get the week identifier (Monday of the current week)
 function getWeekId(): string {
@@ -32,14 +32,15 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ checkIn: { id: checkInDoc.id, ...checkInDoc.data() } });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching weekly reflection:', error);
-    return NextResponse.json({ error: error.message || 'Failed to fetch weekly reflection' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Failed to fetch weekly reflection';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 // POST - Start a new weekly reflection
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     const { userId } = await auth();
     if (!userId) {
@@ -75,9 +76,10 @@ export async function POST(request: NextRequest) {
     await checkInRef.set(newCheckIn);
 
     return NextResponse.json({ checkIn: { id: weekId, ...newCheckIn } }, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error creating weekly reflection:', error);
-    return NextResponse.json({ error: error.message || 'Failed to create weekly reflection' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Failed to create weekly reflection';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -176,9 +178,10 @@ export async function PATCH(request: NextRequest) {
     const updatedDoc = await checkInRef.get();
 
     return NextResponse.json({ checkIn: { id: updatedDoc.id, ...updatedDoc.data() } });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error updating weekly reflection:', error);
-    return NextResponse.json({ error: error.message || 'Failed to update weekly reflection' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Failed to update weekly reflection';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

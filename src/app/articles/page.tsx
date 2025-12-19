@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useDiscover } from '@/hooks/useDiscover';
-import { ArticleCard, BackButton } from '@/components/discover';
+import { ArticleCard } from '@/components/discover';
 import type { ArticleType } from '@/types/discover';
 
 export default function ArticlesPage() {

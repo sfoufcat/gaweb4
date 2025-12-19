@@ -213,7 +213,7 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome' }: SignUpFormPr
               onClick={handleResendCode}
               className="font-sans text-sm text-[#a07855] hover:text-[#8a6649] font-medium transition-colors"
             >
-              Didn't receive the code? Resend
+              Didn&apos;t receive the code? Resend
             </button>
           </div>
 

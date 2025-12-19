@@ -35,7 +35,7 @@ export function SquadMemberStoryAvatar({
 }: SquadMemberStoryAvatarProps) {
   const router = useRouter();
   const { user: currentUser } = useUser();
-  const { hasStory, showRing, showCheck, contentHash, data, isLoading } = useUserStoryAvailability(userId);
+  const { hasStory, showRing, showCheck, contentHash, data } = useUserStoryAvailability(userId);
   const { markStoryAsViewed } = useStoryViewTracking();
   
   // Use reactive hook for cross-component sync

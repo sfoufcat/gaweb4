@@ -40,7 +40,6 @@ export function SettingsDrawer({
   initialEmailPreferences 
 }: SettingsDrawerProps) {
   const { openUserProfile } = useClerk();
-  const router = useRouter();
   const { track, hasTrack, isLoading: trackLoading, setTrack, refreshTrack } = useTrack();
   
   const [emailPreferences, setEmailPreferences] = useState<EmailPreferences>(

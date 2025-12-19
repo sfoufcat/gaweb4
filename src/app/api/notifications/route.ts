@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { 
-  getUserNotifications, 
   markAllNotificationsAsRead,
   markNotificationAsRead,
 } from '@/lib/notifications';

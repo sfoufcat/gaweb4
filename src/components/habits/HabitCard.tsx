@@ -13,15 +13,14 @@ export function HabitCard({ habit, onClick }: HabitCardProps) {
   // Calculate progress
   const current = progress.currentCount;
   const target = targetRepetitions || 30; // Default to 30 if no limit
-  const percentage = Math.min(Math.round((current / target) * 100), 100);
 
   // Format reminder time
   const formatTime = (time: string) => {
     const [hours, minutes] = time.split(':');
     const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
     const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes}`;
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    return `${displayHour}:${minutes} ${ampm}`;
   };
 
   // Check if completed today

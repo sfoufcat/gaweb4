@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   Table,
   TableBody,
@@ -89,7 +89,7 @@ export function AdminStartFlowTab() {
   const [sortBy, setSortBy] = useState<'date' | 'step'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -111,11 +111,11 @@ export function AdminStartFlowTab() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [timeRange, quizFilter]);
 
   useEffect(() => {
     fetchAnalytics();
-  }, [timeRange, quizFilter]);
+  }, [fetchAnalytics]);
 
   // Filter and sort sessions
   const filteredSessions = useMemo(() => {

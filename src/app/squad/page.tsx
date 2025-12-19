@@ -61,9 +61,7 @@ export default function SquadPage() {
     stats,
     // Both squads for dual membership
     premiumSquad,
-    premiumMembers,
     standardSquad,
-    standardMembers,
     // Squad type switching
     activeSquadType,
     setActiveSquadType,

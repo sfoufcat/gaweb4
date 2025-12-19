@@ -16,7 +16,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { SquadInviteDialog } from './SquadInviteDialog';
 import { MAX_SQUAD_MEMBERS } from '@/lib/squad-constants';
-import type { SquadType } from '@/types';
 
 type InviteSquadType = 'private' | 'public' | 'premium';
 
@@ -51,7 +50,7 @@ export function SquadInviteCards({
   memberCount = 0,
   onLeaveSquad,
   hasPremiumSquad = false,
-  hasStandardSquad = false,
+  hasStandardSquad: _hasStandardSquad = false,
 }: SquadInviteCardsProps) {
   const { sessionClaims } = useAuth();
   

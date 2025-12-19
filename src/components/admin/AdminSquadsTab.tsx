@@ -19,7 +19,7 @@ interface SquadWithDetails extends Squad {
   coachImageUrl?: string;
   memberCount: number;
 }
-import { canManageSquads } from '@/lib/admin-utils-shared';
+// canManageSquads import removed - using role directly
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -45,7 +45,7 @@ interface AdminSquadsTabProps {
   currentUserRole: UserRole;
 }
 
-export function AdminSquadsTab({ currentUserRole }: AdminSquadsTabProps) {
+export function AdminSquadsTab({ currentUserRole: _currentUserRole }: AdminSquadsTabProps) {
   const [squads, setSquads] = useState<SquadWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

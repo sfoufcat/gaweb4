@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import type { UserRole, UserTier, Squad } from '@/types';
 import {
   formatRoleName,
@@ -44,7 +44,7 @@ interface AdminUsersWithoutSquadTabProps {
   currentUserRole: UserRole;
 }
 
-export function AdminUsersWithoutSquadTab({ currentUserRole }: AdminUsersWithoutSquadTabProps) {
+export function AdminUsersWithoutSquadTab({ currentUserRole: _currentUserRole }: AdminUsersWithoutSquadTabProps) {
   const [users, setUsers] = useState<UserWithoutSquad[]>([]);
   const [squads, setSquads] = useState<Squad[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +59,7 @@ export function AdminUsersWithoutSquadTab({ currentUserRole }: AdminUsersWithout
   // Assignment state
   const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -88,11 +88,11 @@ export function AdminUsersWithoutSquadTab({ currentUserRole }: AdminUsersWithout
     } finally {
       setLoading(false);
     }
-  };
+  }, [tierFilter]);
 
   useEffect(() => {
     fetchData();
-  }, [tierFilter]);
+  }, [fetchData]);
 
   // Sort and filter users
   const sortedAndFilteredUsers = useMemo(() => {

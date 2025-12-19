@@ -73,7 +73,6 @@ export function AlignmentGauge({
   const config = sizeConfig[size];
   const streak = summary?.currentStreak ?? 0;
   const score = alignment?.alignmentScore ?? 0;
-  const fullyAligned = alignment?.fullyAligned ?? false;
 
   // Calculate arc progress (0-100 maps to 0-1 for the arc)
   // The arc covers a half circle (180 degrees)
@@ -86,7 +85,6 @@ export function AlignmentGauge({
   // Start angle is -90 (top), end angle depends on progress
   // For a half circle gauge going from left to right at the top
   const startAngle = -180; // Start from left
-  const endAngle = startAngle + (180 * progress); // Go right based on progress
   
   // Convert angle to radians and calculate position
   const angleToRadians = (angle: number) => (angle * Math.PI) / 180;

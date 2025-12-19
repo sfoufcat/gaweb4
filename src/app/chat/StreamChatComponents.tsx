@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import {
@@ -111,9 +112,11 @@ function ChannelPreviewWithMobile(props: ChannelPreviewUIComponentProps) {
       {/* Avatar */}
       <div className="flex-shrink-0">
         {avatarUrl ? (
-          <img 
+          <Image 
             src={avatarUrl} 
             alt={channelName}
+            width={48}
+            height={48}
             className="w-12 h-12 rounded-full object-cover"
           />
         ) : (
@@ -213,7 +216,7 @@ function SpecialChannelItem({
       }`}
     >
       {avatarUrl ? (
-        <img src={avatarUrl} alt={name} className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
+        <Image src={avatarUrl} alt={name} width={48} height={48} className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
       ) : (
         <div className="w-12 h-12 rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/15 flex items-center justify-center flex-shrink-0">
           {icon}
@@ -253,9 +256,11 @@ function CoachPromoItem() {
       href="/get-coach"
       className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[#ffffff]/60 dark:hover:bg-[#171b22]/60 transition-colors"
     >
-      <img 
+      <Image 
         src="https://images.unsplash.com/photo-1580518324671-c2f0833a3af3?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
         alt="Personal Coach"
+        width={48}
+        height={48}
         className="w-12 h-12 rounded-full object-cover flex-shrink-0"
       />
       <div className="flex-1 min-w-0">
@@ -425,9 +430,11 @@ function SquadChannelHeader({ onBack }: { onBack?: () => void }) {
           <Link href="/squad" className="flex items-center gap-2.5 min-w-0 hover:opacity-80 transition-opacity">
             {/* Squad Avatar */}
             {channelImage ? (
-              <img 
+              <Image 
                 src={channelImage} 
                 alt={channelName}
+                width={36}
+                height={36}
                 className="w-9 h-9 rounded-full object-cover flex-shrink-0"
               />
             ) : (
@@ -1248,7 +1255,7 @@ function ChatContent({
                       No direct messages yet
                     </p>
                     <p className="font-albert text-[12px] text-[#b3b3b3] dark:text-[#5f5a66] mt-1">
-                      Start a conversation from someone's profile
+                      Start a conversation from someone&apos;s profile
                     </p>
                   </div>
                 )}

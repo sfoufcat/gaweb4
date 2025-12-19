@@ -1,4 +1,4 @@
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { getUserTrack, setUserTrack, isValidTrack } from '@/lib/track';
 import { enrollUserInDefaultProgram, getActiveEnrollment } from '@/lib/program-engine';

@@ -32,7 +32,7 @@ export default function SignInPage() {
 
           {/* Sign Up Link */}
           <p className="text-center mt-8 lg:mt-10 font-sans text-[15px] text-text-secondary">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link href="/begin" className="text-[#a07855] hover:text-[#8a6649] font-medium">
               Start your journey
             </Link>

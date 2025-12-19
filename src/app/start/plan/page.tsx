@@ -228,13 +228,6 @@ const PUBLISHING_VOLUME_LABELS: Record<string, string> = {
   '4-plus': '4+ per week',
 };
 
-const TIME_AVAILABLE_LABELS: Record<string, string> = {
-  'less-than-1': '< 1 hour/day',
-  '1-2-hours': '1-2 hours/day',
-  '2-4-hours': '2-4 hours/day',
-  '4-plus': '4+ hours/day',
-};
-
 const CONTENT_TYPE_LABELS: Record<string, string> = {
   'short-form': 'Short-form video',
   'long-form': 'Long-form video',
@@ -1368,7 +1361,7 @@ export default function GuestPlanPage() {
           `}
         </Script>
         <noscript>
-          <img height="1" width="1" style={{ display: 'none' }}
+          <img height="1" width="1" style={{ display: 'none' }} alt=""
             src="https://www.facebook.com/tr?id=1347713597075016&ev=PageView&noscript=1"
           />
         </noscript>

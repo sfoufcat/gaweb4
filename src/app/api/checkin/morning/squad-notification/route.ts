@@ -9,7 +9,7 @@ import { getStreamServerClient, ensureSystemBotUser, SYSTEM_BOT_USER_ID } from '
  * Sends a notification to the user's squad chat when they complete
  * their morning check-in. Only sends once per day per user.
  */
-export async function POST(request: Request) {
+export async function POST(_request: Request) {
   try {
     const { userId } = await auth();
     

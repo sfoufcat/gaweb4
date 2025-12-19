@@ -1,7 +1,7 @@
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireAdmin, canDeleteUser, getCurrentUserRole } from '@/lib/admin-utils-clerk';
+import { requireAdmin, canDeleteUser } from '@/lib/admin-utils-clerk';
 import type { UserRole } from '@/types';
 
 /**

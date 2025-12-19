@@ -84,7 +84,7 @@ export default function GoalSettingPage() {
     }
   };
 
-  const saveGoal = async (goalText: string, isAISuggested: boolean) => {
+  const saveGoal = async (goalText: string, _isAISuggested: boolean) => {
     setIsSaving(true);
     setError('');
 

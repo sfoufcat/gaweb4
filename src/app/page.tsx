@@ -67,7 +67,7 @@ export default function Dashboard() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
   const [mounted, setMounted] = useState(false);
-  const [userMission, setUserMission] = useState<string | null>(null);
+  const [_userMission, setUserMission] = useState<string | null>(null);
   const [userGoal, setUserGoal] = useState<any>(null);
   const [recentlyAchievedGoal, setRecentlyAchievedGoal] = useState<GoalHistoryEntry | null>(null);
   const [loading, setLoading] = useState(true);
@@ -163,9 +163,7 @@ export default function Dashboard() {
     hasEnrollment,
     enrollment: programEnrollment,
     program, 
-    progress, 
     isCompleted: programIsCompleted,
-    isLastDay: programIsLastDay,
     trackDisplayName,
     syncTasks: syncProgramTasks,
     refresh: refreshProgram,
@@ -359,9 +357,6 @@ export default function Dashboard() {
   
   // Check if any prompt is active (morning, evening, or weekly)
   const hasActivePrompt = shouldShowMorningCheckInCTA || shouldShowEveningCheckInCTA || shouldShowWeeklyReflectionCTA;
-  
-  // For backward compatibility
-  const isCheckInCompleted = isMorningCheckInCompleted;
   
   // Dynamic headline based on time of day and check-in/task state
   const dynamicHeadline = useMemo(() => {
@@ -914,9 +909,9 @@ export default function Dashboard() {
   const formatTime = (time: string) => {
     const [hours, minutes] = time.split(':');
     const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
     const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes}`;
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    return `${displayHour}:${minutes} ${ampm}`;
   };
 
   // Capitalize first letter helper
@@ -1264,7 +1259,7 @@ export default function Dashboard() {
         <div className="absolute inset-0 bg-black/10" />
         <div className="relative z-10 px-6">
           <p className={`font-albert ${isMobile ? 'text-[18px]' : 'text-[20px]'} text-white leading-[1.35] tracking-[-1px] text-center italic mb-2`}>
-            "{quote.text}"
+            &quot;{quote.text}&quot;
           </p>
           <p className={`font-sans ${isMobile ? 'text-[12px]' : 'text-[14px]'} text-white/70 leading-[1.2] text-center`}>
             — {quote.author}
@@ -1401,7 +1396,7 @@ export default function Dashboard() {
                 Welcome to GrowthAddicts! 🚀
               </p>
               <p className={`font-sans ${isMobile ? 'text-[14px]' : 'text-[15px]'} text-white/90 leading-[1.3]`}>
-                Let's crush your goals.
+                Let&apos;s crush your goals.
               </p>
             </>
           )}
@@ -1552,7 +1547,7 @@ export default function Dashboard() {
         {/* Weekly Focus - shown under headline if user has one */}
         {!weeklyFocusLoading && weeklyFocusSummary && (
           <p className="font-sans text-[14px] text-text-secondary leading-[1.4] mt-2">
-            <span className="font-medium text-text-primary">This week's focus:</span>{' '}
+            <span className="font-medium text-text-primary">This week&apos;s focus:</span>{' '}
             {weeklyFocusSummary}
           </p>
         )}
@@ -1681,13 +1676,13 @@ export default function Dashboard() {
               /* First day + missed morning check-in: Special encouraging copy */
               <>
                 <p className="font-sans text-[15px] text-text-primary font-medium mb-2">
-                  You've taken your first step. Great job!
+                  You&apos;ve taken your first step. Great job!
                 </p>
                 <p className="font-sans text-[14px] text-text-secondary leading-[1.5] mb-2">
                   The day is almost over, so enjoy the rest of it and recharge.
                 </p>
                 <p className="font-sans text-[14px] text-text-secondary leading-[1.5] mb-3">
-                  Tomorrow your journey begins with the morning check-in, and I'll remind you when it's time.
+                  Tomorrow your journey begins with the morning check-in, and I&apos;ll remind you when it&apos;s time.
                 </p>
                 <p className="font-sans text-[13px] text-text-muted leading-[1.5] mb-4">
                   In the meantime, you can add your first habit to start building momentum today.

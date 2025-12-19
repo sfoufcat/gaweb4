@@ -30,7 +30,6 @@ import type { PollFormData, ChatPollState } from '@/types/poll';
 
 export function CustomMessageInput() {
   const { 
-    handleSubmit, 
     textareaRef,
   } = useMessageInputContext();
   

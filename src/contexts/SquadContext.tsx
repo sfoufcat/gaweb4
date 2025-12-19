@@ -4,13 +4,6 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import { useUser } from '@clerk/nextjs';
 import type { Squad, SquadMember, SquadStats, SquadType, ContributionDay } from '@/types';
 
-// Squad data for a single squad
-interface SingleSquadData {
-  squad: Squad | null;
-  members: SquadMember[];
-  stats: SquadStats | null;
-}
-
 interface SquadContextValue {
   // Active squad (the one currently being viewed)
   squad: Squad | null;

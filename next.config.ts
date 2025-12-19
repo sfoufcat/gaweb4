@@ -52,6 +52,16 @@ const nextConfig: NextConfig = {
         hostname: 'images.clerk.dev',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: '**.stream-io-cdn.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'getstream.io',
+        pathname: '/**',
+      },
     ],
   },
   

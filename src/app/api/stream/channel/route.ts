@@ -13,7 +13,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { channelId, channelName, members } = await req.json();
+    const { channelId, members } = await req.json();
 
     // Initialize Stream Chat server-side client
     const apiKey = process.env.NEXT_PUBLIC_STREAM_KEY;

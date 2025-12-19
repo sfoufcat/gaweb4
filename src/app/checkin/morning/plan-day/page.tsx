@@ -143,7 +143,7 @@ const RocketLaunchAnimation = ({ onComplete }: { onComplete: () => void }) => {
             transition={{ delay: 0.5, duration: 0.4 }}
           >
             <h2 className="font-albert text-[32px] md:text-[48px] font-medium text-[#1a1a1a] dark:text-white tracking-[-2px]">
-              Let's go! 🔥
+              Let&apos;s go! 🔥
             </h2>
           </motion.div>
         </div>

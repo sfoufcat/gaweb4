@@ -65,14 +65,6 @@ export function AdminPremiumUpgradeFormsTab() {
     );
   }, [forms, searchQuery]);
 
-  const formatPlanLabel = (plan: string) => {
-    return plan === 'monthly' ? 'Monthly ($99/mo)' : '6-Month ($399)';
-  };
-
-  const formatBenefits = (benefits: string[]) => {
-    return benefits.map(id => BENEFITS_LABELS[id] || id).join(', ');
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
   };

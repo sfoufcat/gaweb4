@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import type { DailyReflection, WeeklyReflection } from '@/types';
+// Types DailyReflection, WeeklyReflection are documented but not directly referenced
 
 /**
  * GET /api/goal/reflections

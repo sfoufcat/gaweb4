@@ -220,7 +220,6 @@ export async function DELETE(
     }
 
     const memberDoc = membershipSnapshot.docs[0];
-    const memberData = memberDoc.data();
 
     // Check if this user is the squad's coach
     const squadDoc = await adminDb.collection('squads').doc(squadId).get();

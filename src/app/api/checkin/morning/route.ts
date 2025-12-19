@@ -23,9 +23,10 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ checkIn: { id: checkInDoc.id, ...checkInDoc.data() } });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching check-in:', error);
-    return NextResponse.json({ error: error.message || 'Failed to fetch check-in' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Failed to fetch check-in';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
