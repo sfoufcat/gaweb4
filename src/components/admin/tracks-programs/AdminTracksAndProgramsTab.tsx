@@ -7,7 +7,20 @@ import { AdminDynamicPromptsTab } from './AdminDynamicPromptsTab';
 
 type SubTab = 'tracks' | 'programs' | 'prompts';
 
-export function AdminTracksAndProgramsTab() {
+interface AdminTracksAndProgramsTabProps {
+  /** Base path for tracks API calls */
+  tracksApiBasePath?: string;
+  /** Base path for starter programs API calls */
+  programsApiBasePath?: string;
+  /** Base path for dynamic prompts API calls */
+  promptsApiBasePath?: string;
+}
+
+export function AdminTracksAndProgramsTab({
+  tracksApiBasePath = '/api/admin/tracks',
+  programsApiBasePath = '/api/admin/starter-programs',
+  promptsApiBasePath = '/api/admin/dynamic-prompts',
+}: AdminTracksAndProgramsTabProps) {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('tracks');
 
   return (
@@ -60,9 +73,9 @@ export function AdminTracksAndProgramsTab() {
 
       {/* Content */}
       <div className="p-6">
-        {activeSubTab === 'tracks' && <AdminTracksTab />}
-        {activeSubTab === 'programs' && <AdminStarterProgramsTab />}
-        {activeSubTab === 'prompts' && <AdminDynamicPromptsTab />}
+        {activeSubTab === 'tracks' && <AdminTracksTab apiBasePath={tracksApiBasePath} />}
+        {activeSubTab === 'programs' && <AdminStarterProgramsTab apiBasePath={programsApiBasePath} />}
+        {activeSubTab === 'prompts' && <AdminDynamicPromptsTab apiBasePath={promptsApiBasePath} />}
       </div>
     </div>
   );

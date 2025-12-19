@@ -7,6 +7,7 @@ import { QuizWithSteps, QuizStepWithOptions, QuizStepType, QuizOptionCreateReque
 interface QuizStepsEditorProps {
   quizId: string;
   onBack: () => void;
+  apiBasePath?: string;
 }
 
 const STEP_TYPE_LABELS: Record<QuizStepType, string> = {
@@ -26,7 +27,7 @@ const STEP_TYPE_LABELS: Record<QuizStepType, string> = {
 
 const STEP_TYPES = Object.keys(STEP_TYPE_LABELS) as QuizStepType[];
 
-export function QuizStepsEditor({ quizId, onBack }: QuizStepsEditorProps) {
+export function QuizStepsEditor({ quizId, onBack, apiBasePath = '/api/admin/quizzes' }: QuizStepsEditorProps) {
   const [quiz, setQuiz] = useState<QuizWithSteps | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +41,7 @@ export function QuizStepsEditor({ quizId, onBack }: QuizStepsEditorProps) {
   const fetchQuiz = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/admin/quizzes/${quizId}`);
+      const response = await fetch(`${apiBasePath}/${quizId}`);
       if (!response.ok) throw new Error('Failed to fetch quiz');
       const data = await response.json();
       setQuiz(data);
@@ -52,7 +53,7 @@ export function QuizStepsEditor({ quizId, onBack }: QuizStepsEditorProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [quizId]);
+  }, [quizId, apiBasePath]);
 
   useEffect(() => {
     fetchQuiz();
@@ -62,7 +63,7 @@ export function QuizStepsEditor({ quizId, onBack }: QuizStepsEditorProps) {
     if (!confirm('Are you sure you want to delete this step?')) return;
     
     try {
-      const response = await fetch(`/api/admin/quizzes/${quizId}/steps/${stepId}`, {
+      const response = await fetch(`${apiBasePath}/${quizId}/steps/${stepId}`, {
         method: 'DELETE',
       });
       if (!response.ok) throw new Error('Failed to delete step');
@@ -103,7 +104,7 @@ export function QuizStepsEditor({ quizId, onBack }: QuizStepsEditorProps) {
       // Update all steps with their new order values
       await Promise.all(
         localSteps.map((step, index) =>
-          fetch(`/api/admin/quizzes/${quizId}/steps/${step.id}`, {
+          fetch(`${apiBasePath}/${quizId}/steps/${step.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ order: index + 1 }),
@@ -329,6 +330,7 @@ export function QuizStepsEditor({ quizId, onBack }: QuizStepsEditorProps) {
             setShowAddStep(false);
             fetchQuiz();
           }}
+          apiBasePath={apiBasePath}
         />
       )}
     </div>
@@ -345,9 +347,10 @@ interface StepEditorModalProps {
   nextOrder: number;
   onClose: () => void;
   onSaved: () => void;
+  apiBasePath?: string;
 }
 
-function StepEditorModal({ quizId, step, nextOrder, onClose, onSaved }: StepEditorModalProps) {
+function StepEditorModal({ quizId, step, nextOrder, onClose, onSaved, apiBasePath = '/api/admin/quizzes' }: StepEditorModalProps) {
   const [mounted, setMounted] = useState(false);
   const isEditing = !!step;
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -495,8 +498,8 @@ function StepEditorModal({ quizId, step, nextOrder, onClose, onSaved }: StepEdit
       };
 
       const url = isEditing
-        ? `/api/admin/quizzes/${quizId}/steps/${step.id}`
-        : `/api/admin/quizzes/${quizId}/steps`;
+        ? `${apiBasePath}/${quizId}/steps/${step.id}`
+        : `${apiBasePath}/${quizId}/steps`;
 
       const response = await fetch(url, {
         method: isEditing ? 'PUT' : 'POST',

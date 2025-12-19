@@ -5,6 +5,35 @@ import type { OrgBranding, OrgBrandingColors } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL } from '@/types';
 
 /**
+ * Calculate relative luminance of a hex color
+ * Returns value between 0 (darkest) and 1 (lightest)
+ */
+function getLuminance(hex: string): number {
+  // Remove # if present
+  const cleanHex = hex.replace('#', '');
+  
+  // Parse RGB values
+  const r = parseInt(cleanHex.substring(0, 2), 16) / 255;
+  const g = parseInt(cleanHex.substring(2, 4), 16) / 255;
+  const b = parseInt(cleanHex.substring(4, 6), 16) / 255;
+  
+  // Apply sRGB gamma correction
+  const rLinear = r <= 0.03928 ? r / 12.92 : Math.pow((r + 0.055) / 1.055, 2.4);
+  const gLinear = g <= 0.03928 ? g / 12.92 : Math.pow((g + 0.055) / 1.055, 2.4);
+  const bLinear = b <= 0.03928 ? b / 12.92 : Math.pow((b + 0.055) / 1.055, 2.4);
+  
+  // Calculate luminance
+  return 0.2126 * rLinear + 0.7152 * gLinear + 0.0722 * bLinear;
+}
+
+/**
+ * Determine if a color is "dark" (needs light text) or "light" (needs dark text)
+ */
+function isColorDark(hex: string): boolean {
+  return getLuminance(hex) < 0.5;
+}
+
+/**
  * BrandingContext
  * 
  * Provides organization branding (colors, logo, title) throughout the app.
@@ -123,10 +152,9 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
   // Initialize on mount
   useEffect(() => {
     setMounted(true);
-    // For now, we always use default branding
-    // In the future, this will resolve based on hostname/subdomain
-    // fetchBranding();
-  }, []);
+    // Load saved branding from server
+    fetchBranding();
+  }, [fetchBranding]);
 
   // Apply CSS when effective branding changes
   useEffect(() => {
@@ -211,11 +239,20 @@ export function useBranding() {
  * Hook to get just the effective branding values (for components that only need to read)
  */
 export function useBrandingValues() {
-  const { effectiveBranding, isPreviewMode } = useBranding();
+  const { effectiveBranding, isPreviewMode, isDefault } = useBranding();
+  
+  // Calculate if accent colors are dark (need light text) or light (need dark text)
+  const accentLightIsDark = isColorDark(effectiveBranding.colors.accentLight);
+  const accentDarkIsDark = isColorDark(effectiveBranding.colors.accentDark);
+  
   return {
     logoUrl: effectiveBranding.logoUrl || DEFAULT_LOGO_URL,
     appTitle: effectiveBranding.appTitle || DEFAULT_APP_TITLE,
     colors: effectiveBranding.colors,
     isPreviewMode,
+    isDefault,
+    // Smart contrast helpers
+    accentLightIsDark,
+    accentDarkIsDark,
   };
 }

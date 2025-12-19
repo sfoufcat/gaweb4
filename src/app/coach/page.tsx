@@ -411,13 +411,19 @@ export default function CoachPage() {
           {/* Quizzes Tab */}
           <TabsContent value="quizzes">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
-              <AdminQuizzesTab />
+              <AdminQuizzesTab 
+                apiBasePath={role === 'coach' ? '/api/coach/org-quizzes' : '/api/admin/quizzes'}
+              />
             </div>
           </TabsContent>
 
           {/* Tracks & Programs Tab */}
           <TabsContent value="tracks-programs">
-            <AdminTracksAndProgramsTab />
+            <AdminTracksAndProgramsTab 
+              tracksApiBasePath={role === 'coach' ? '/api/coach/org-tracks' : '/api/admin/tracks'}
+              programsApiBasePath={role === 'coach' ? '/api/coach/org-starter-programs' : '/api/admin/starter-programs'}
+              promptsApiBasePath={role === 'coach' ? '/api/coach/org-dynamic-prompts' : '/api/admin/dynamic-prompts'}
+            />
           </TabsContent>
 
           {/* Customize Branding Tab */}

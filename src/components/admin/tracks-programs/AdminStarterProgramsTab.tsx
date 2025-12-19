@@ -26,7 +26,11 @@ const VALID_TRACKS: UserTrack[] = [
   'general',
 ];
 
-export function AdminStarterProgramsTab() {
+interface AdminStarterProgramsTabProps {
+  apiBasePath?: string;
+}
+
+export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-programs' }: AdminStarterProgramsTabProps) {
   const [programs, setPrograms] = useState<StarterProgram[]>([]);
   const [selectedProgram, setSelectedProgram] = useState<StarterProgram | null>(null);
   const [programDays, setProgramDays] = useState<StarterProgramDay[]>([]);
@@ -81,7 +85,7 @@ export function AdminStarterProgramsTab() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/admin/starter-programs');
+      const response = await fetch(apiBasePath);
       if (!response.ok) {
         throw new Error('Failed to fetch programs');
       }
@@ -94,7 +98,7 @@ export function AdminStarterProgramsTab() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiBasePath]);
 
   const fetchProgramDetails = useCallback(async (programId: string) => {
     try {

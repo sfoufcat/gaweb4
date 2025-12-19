@@ -8,7 +8,12 @@ import { QuizStepsEditor } from './QuizStepsEditor';
 
 type ViewMode = 'list' | 'editing';
 
-export function AdminQuizzesTab() {
+interface AdminQuizzesTabProps {
+  /** Base path for API calls (e.g., '/api/admin' or '/api/coach/org-quizzes') */
+  apiBasePath?: string;
+}
+
+export function AdminQuizzesTab({ apiBasePath = '/api/admin/quizzes' }: AdminQuizzesTabProps) {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +30,7 @@ export function AdminQuizzesTab() {
   const fetchQuizzes = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/admin/quizzes');
+      const response = await fetch(apiBasePath);
       if (!response.ok) throw new Error('Failed to fetch quizzes');
       const data = await response.json();
       setQuizzes(data.quizzes || []);
@@ -35,7 +40,7 @@ export function AdminQuizzesTab() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [apiBasePath]);
 
   useEffect(() => {
     fetchQuizzes();
@@ -43,7 +48,7 @@ export function AdminQuizzesTab() {
 
   const handleToggleActive = async (quiz: Quiz) => {
     try {
-      const response = await fetch(`/api/admin/quizzes/${quiz.id}`, {
+      const response = await fetch(`${apiBasePath}/${quiz.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: !quiz.isActive }),
@@ -60,7 +65,7 @@ export function AdminQuizzesTab() {
       return;
     }
     try {
-      const response = await fetch(`/api/admin/quizzes/${quiz.id}`, {
+      const response = await fetch(`${apiBasePath}/${quiz.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) throw new Error('Failed to delete quiz');
@@ -102,6 +107,7 @@ export function AdminQuizzesTab() {
       <QuizStepsEditor
         quizId={editingQuizId}
         onBack={handleBackToList}
+        apiBasePath={apiBasePath}
       />
     );
   }
@@ -231,6 +237,7 @@ export function AdminQuizzesTab() {
             setShowCreateDialog(false);
             fetchQuizzes();
           }}
+          apiBasePath={apiBasePath}
         />
       )}
 
@@ -248,6 +255,7 @@ export function AdminQuizzesTab() {
             setQuizToClone(null);
             fetchQuizzes();
           }}
+          apiBasePath={apiBasePath}
         />
       )}
 
@@ -265,6 +273,7 @@ export function AdminQuizzesTab() {
             setQuizToEdit(null);
             fetchQuizzes();
           }}
+          apiBasePath={apiBasePath}
         />
       )}
     </div>

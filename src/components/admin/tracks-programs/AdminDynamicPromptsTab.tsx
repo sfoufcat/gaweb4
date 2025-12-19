@@ -49,7 +49,11 @@ const DEFAULT_FORM_DATA: PromptFormData = {
   isActive: true,
 };
 
-export function AdminDynamicPromptsTab() {
+interface AdminDynamicPromptsTabProps {
+  apiBasePath?: string;
+}
+
+export function AdminDynamicPromptsTab({ apiBasePath = '/api/admin/dynamic-prompts' }: AdminDynamicPromptsTabProps) {
   const [prompts, setPrompts] = useState<DynamicPrompt[]>([]);
   const [tracks, setTracks] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -73,7 +77,7 @@ export function AdminDynamicPromptsTab() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/admin/dynamic-prompts');
+      const response = await fetch(apiBasePath);
       if (!response.ok) {
         throw new Error('Failed to fetch prompts');
       }
@@ -87,7 +91,7 @@ export function AdminDynamicPromptsTab() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiBasePath]);
 
   const fetchTracks = useCallback(async () => {
     try {

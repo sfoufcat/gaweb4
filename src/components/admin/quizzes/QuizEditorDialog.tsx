@@ -10,9 +10,10 @@ interface QuizEditorDialogProps {
   sourceQuiz?: Quiz;
   onClose: () => void;
   onSaved: () => void;
+  apiBasePath?: string;
 }
 
-export function QuizEditorDialog({ mode, sourceQuiz, onClose, onSaved }: QuizEditorDialogProps) {
+export function QuizEditorDialog({ mode, sourceQuiz, onClose, onSaved, apiBasePath = '/api/admin/quizzes' }: QuizEditorDialogProps) {
   const [mounted, setMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +53,7 @@ export function QuizEditorDialog({ mode, sourceQuiz, onClose, onSaved }: QuizEdi
       
       if (mode === 'clone' && sourceQuiz) {
         // Clone existing quiz
-        response = await fetch(`/api/admin/quizzes/${sourceQuiz.id}/clone`, {
+        response = await fetch(`${apiBasePath}/${sourceQuiz.id}/clone`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -63,7 +64,7 @@ export function QuizEditorDialog({ mode, sourceQuiz, onClose, onSaved }: QuizEdi
         });
       } else if (mode === 'edit' && sourceQuiz) {
         // Update existing quiz
-        response = await fetch(`/api/admin/quizzes/${sourceQuiz.id}`, {
+        response = await fetch(`${apiBasePath}/${sourceQuiz.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -75,7 +76,7 @@ export function QuizEditorDialog({ mode, sourceQuiz, onClose, onSaved }: QuizEdi
         });
       } else {
         // Create new quiz
-        response = await fetch('/api/admin/quizzes', {
+        response = await fetch(apiBasePath, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

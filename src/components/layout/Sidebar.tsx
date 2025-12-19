@@ -45,7 +45,7 @@ export function Sidebar() {
   const { sessionClaims } = useAuth();
   const { totalUnread } = useChatUnreadCounts();
   const { scrollDirection, isAtTop } = useScrollDirection();
-  const { logoUrl, appTitle } = useBrandingValues();
+  const { logoUrl, appTitle, colors, isDefault, accentLightIsDark, accentDarkIsDark } = useBrandingValues();
   
   const isActive = (path: string) => pathname === path;
   
@@ -213,7 +213,7 @@ export function Sidebar() {
           </div>
         </Link>
 
-        {/* Nav - More rounded, glass-like with brown accent */}
+        {/* Nav - More rounded, glass-like with accent color */}
         <nav className="flex-1 space-y-1.5">
           {navItems.map((item) => (
             <Link 
@@ -224,18 +224,32 @@ export function Sidebar() {
               className={`
                 flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 relative
                 ${isActive(item.path) 
-                  ? 'bg-gradient-to-r from-[#a07855]/10 to-[#8c6245]/5 dark:from-[#a07855]/20 dark:to-[#8c6245]/10 backdrop-blur-sm text-[#1a1a1a] dark:text-[#faf8f6] font-semibold shadow-sm' 
+                  ? 'sidebar-active-item backdrop-blur-sm font-semibold shadow-sm' 
                   : 'text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#faf8f6]/60 dark:hover:bg-[#181d28]/60 hover:backdrop-blur-sm hover:text-[#1a1a1a] dark:hover:text-[#faf8f6]'
                 }
               `}
+              style={isActive(item.path) ? {
+                color: accentLightIsDark ? '#1a1a1a' : '#1a1a1a',
+              } : undefined}
             >
-              <span className={`transition-colors ${isActive(item.path) ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-[#a7a39e] dark:text-[#787470]'}`}>
+              <span 
+                className={`transition-colors ${isActive(item.path) ? 'sidebar-active-icon' : 'text-[#a7a39e] dark:text-[#787470]'}`}
+                style={isActive(item.path) && !isDefault ? {
+                  color: colors.accentLight,
+                } : undefined}
+              >
                 {item.icon}
               </span>
               <span className="font-albert text-[15px]">{item.name}</span>
               {/* Unread badge for Chat */}
               {item.path === '/chat' && totalUnread > 0 && (
-                <span className="ml-auto flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[#a07855] dark:bg-[#b8896a] text-white text-[11px] font-albert font-semibold">
+                <span 
+                  className="ml-auto flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-albert font-semibold"
+                  style={{
+                    backgroundColor: !isDefault ? colors.accentLight : '#a07855',
+                    color: accentLightIsDark ? '#ffffff' : '#1a1a1a',
+                  }}
+                >
                   {totalUnread > 9 ? '9+' : totalUnread}
                 </span>
               )}
@@ -292,18 +306,38 @@ export function Sidebar() {
                 data-tour={(item as { dataTour?: string }).dataTour}
                 className={`
                   relative flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-full transition-all
-                  ${isActive(item.path) ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-[#5f5a55] dark:text-[#b5b0ab]'}
+                  ${isActive(item.path) ? '' : 'text-[#5f5a55] dark:text-[#b5b0ab]'}
                 `}
+                style={isActive(item.path) && !isDefault ? {
+                  color: colors.accentLight,
+                } : isActive(item.path) ? {
+                  color: '#a07855',
+                } : undefined}
               >
                 {/* Active Tab Background */}
                 {isActive(item.path) && (
-                  <div className="absolute inset-0 bg-[#a07855]/15 dark:bg-[#b8896a]/20 rounded-full" />
+                  <div 
+                    className="absolute inset-0 mobile-nav-active rounded-full" 
+                  />
                 )}
-                <span className={`relative z-10 ${isActive(item.path) ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-[#5f5a55] dark:text-[#b5b0ab]'}`}>
+                <span 
+                  className="relative z-10"
+                  style={isActive(item.path) && !isDefault ? {
+                    color: colors.accentLight,
+                  } : isActive(item.path) ? {
+                    color: '#a07855',
+                  } : undefined}
+                >
                   {item.icon}
                   {/* Unread badge for Chat - Mobile */}
                   {item.path === '/chat' && totalUnread > 0 && (
-                    <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-[#a07855] dark:bg-[#b8896a] text-white text-[9px] font-albert font-semibold">
+                    <span 
+                      className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-albert font-semibold"
+                      style={{
+                        backgroundColor: !isDefault ? colors.accentLight : '#a07855',
+                        color: accentLightIsDark ? '#ffffff' : '#1a1a1a',
+                      }}
+                    >
                       {totalUnread > 9 ? '9+' : totalUnread}
                     </span>
                   )}

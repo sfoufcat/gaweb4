@@ -59,7 +59,11 @@ const DEFAULT_FORM_DATA: TrackFormData = {
   },
 };
 
-export function AdminTracksTab() {
+interface AdminTracksTabProps {
+  apiBasePath?: string;
+}
+
+export function AdminTracksTab({ apiBasePath = '/api/admin/tracks' }: AdminTracksTabProps) {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +78,7 @@ export function AdminTracksTab() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/admin/tracks');
+      const response = await fetch(apiBasePath);
       if (!response.ok) {
         throw new Error('Failed to fetch tracks');
       }
@@ -87,7 +91,7 @@ export function AdminTracksTab() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiBasePath]);
 
   useEffect(() => {
     fetchTracks();
@@ -126,8 +130,8 @@ export function AdminTracksTab() {
       setSaveError(null);
 
       const url = editingTrack 
-        ? `/api/admin/tracks/${editingTrack.id}`
-        : '/api/admin/tracks';
+        ? `${apiBasePath}/${editingTrack.id}`
+        : apiBasePath;
       
       const response = await fetch(url, {
         method: editingTrack ? 'PUT' : 'POST',
