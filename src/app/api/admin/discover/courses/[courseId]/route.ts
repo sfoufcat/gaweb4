@@ -10,8 +10,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { canManageDiscoverContent } from '@/lib/admin-utils-shared';
+import { getCurrentUserRole } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { ClerkPublicMetadata } from '@/types';
 
 // Types for course modules and lessons
 interface CourseLesson {
@@ -67,11 +67,14 @@ export async function GET(
   { params }: { params: Promise<{ courseId: string }> }
 ) {
   try {
-    const { sessionClaims } = await auth();
-    const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     
+    const role = await getCurrentUserRole();
     if (!canManageDiscoverContent(role)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { courseId } = await params;
@@ -104,11 +107,14 @@ export async function PATCH(
   { params }: { params: Promise<{ courseId: string }> }
 ) {
   try {
-    const { sessionClaims } = await auth();
-    const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     
+    const role = await getCurrentUserRole();
     if (!canManageDiscoverContent(role)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { courseId } = await params;
@@ -177,11 +183,14 @@ export async function DELETE(
   { params }: { params: Promise<{ courseId: string }> }
 ) {
   try {
-    const { sessionClaims } = await auth();
-    const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     
+    const role = await getCurrentUserRole();
     if (!canManageDiscoverContent(role)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { courseId } = await params;

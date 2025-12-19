@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { canManageDiscoverContent } from '@/lib/admin-utils-shared';
+import { getCurrentUserRole } from '@/lib/admin-utils-clerk';
 import sharp from 'sharp';
-import type { UserRole } from '@/types';
 
 /**
  * POST /api/admin/upload-media
@@ -24,26 +24,14 @@ export async function POST(req: Request) {
   // Wrap everything in try-catch to ensure JSON responses
   try {
     // Step 1: Authenticate user
-    let userId: string | null = null;
-    let sessionClaims: Record<string, unknown> | null = null;
-    
-    try {
-      const authResult = await auth();
-      userId = authResult.userId;
-      sessionClaims = authResult.sessionClaims as Record<string, unknown> | null;
-    } catch (authError) {
-      console.error('[ADMIN_UPLOAD] Auth error:', authError);
-      return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
-    }
+    const { userId } = await auth();
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized - not logged in' }, { status: 401 });
     }
 
-    // Step 2: Check permissions
-    const publicMetadata = sessionClaims?.publicMetadata as { role?: UserRole } | undefined;
-    const role = publicMetadata?.role;
-    
+    // Step 2: Check permissions using consistent helper
+    const role = await getCurrentUserRole();
     console.log('[ADMIN_UPLOAD] User:', userId, 'Role:', role);
     
     if (!canManageDiscoverContent(role)) {
