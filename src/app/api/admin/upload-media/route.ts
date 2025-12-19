@@ -50,7 +50,7 @@ export async function POST(req: Request) {
       console.log('[ADMIN_UPLOAD] Permission denied for role:', role);
       return NextResponse.json({ 
         error: 'Insufficient permissions',
-        details: `Role '${role || 'undefined'}' cannot upload media. Required: editor, admin, or super_admin`
+        details: `Role '${role || 'undefined'}' cannot upload media. Required: coach, editor, admin, or super_admin`
       }, { status: 403 });
     }
 

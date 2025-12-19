@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { SquadView } from '@/components/squad/SquadView';
@@ -38,8 +38,13 @@ import { AdminTracksAndProgramsTab } from '@/components/admin/tracks-programs';
  * - Placeholder for squad chat (coming soon)
  */
 
+// Valid tab values
+type CoachTab = 'squads' | 'coaching' | 'users' | 'all-squads' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'quizzes' | 'tracks-programs' | 'channels' | 'customize';
+const VALID_TABS: CoachTab[] = ['squads', 'coaching', 'users', 'all-squads', 'discover', 'upgrade-forms', 'coaching-forms', 'quizzes', 'tracks-programs', 'channels', 'customize'];
+
 export default function CoachPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { sessionClaims, isLoaded } = useAuth();
   const [mounted, setMounted] = useState(false);
   
@@ -51,7 +56,11 @@ export default function CoachPage() {
   
   // Coaching clients state
   const [selectedCoachingClientId, setSelectedCoachingClientId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'squads' | 'coaching' | 'users' | 'all-squads' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'quizzes' | 'tracks-programs' | 'channels' | 'customize'>('squads');
+  
+  // Get initial tab from URL query param, default to 'squads'
+  const tabFromUrl = searchParams.get('tab') as CoachTab | null;
+  const initialTab = tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'squads';
+  const [activeTab, setActiveTab] = useState<CoachTab>(initialTab);
 
   // Get role from Clerk session
   const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
@@ -60,6 +69,14 @@ export default function CoachPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Update active tab when URL query param changes
+  useEffect(() => {
+    const tabParam = searchParams.get('tab') as CoachTab | null;
+    if (tabParam && VALID_TABS.includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   // Check authorization
   useEffect(() => {
