@@ -1,6 +1,7 @@
 import { clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { requireAdmin, canModifyUserRole } from '@/lib/admin-utils-clerk';
+import { createOrganizationForCoach } from '@/lib/clerk-organizations';
 import type { UserRole } from '@/types';
 
 /**
@@ -54,6 +55,21 @@ export async function PATCH(
         role: newRole,
       },
     });
+
+    // If assigning coach role, create an organization for them
+    if (newRole === 'coach') {
+      try {
+        const coachName = targetUser.firstName 
+          ? `${targetUser.firstName}${targetUser.lastName ? ' ' + targetUser.lastName : ''}`
+          : targetUser.emailAddresses[0]?.emailAddress?.split('@')[0] || 'Coach';
+        
+        const orgId = await createOrganizationForCoach(targetUserId, coachName);
+        console.log(`[ADMIN_USER_ROLE] Created organization ${orgId} for new coach ${targetUserId}`);
+      } catch (orgError) {
+        // Log but don't fail the role update - org can be created later
+        console.error(`[ADMIN_USER_ROLE] Failed to create organization for coach ${targetUserId}:`, orgError);
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

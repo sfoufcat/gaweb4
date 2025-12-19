@@ -664,3 +664,126 @@ div[class*="LoadingIndicator"],
 .dark .mobile-nav-active {
   background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 20%, transparent);
 }
+
+/* ===========================================
+   Global Accent Color Overrides
+   Applies brand accent to buttons, text, borders, etc.
+   (Sidebar excluded - has its own subtle styling above)
+   =========================================== */
+
+/* Solid background colors - Light mode */
+.bg-\[\#a07855\] {
+  background-color: var(--brand-accent-light, #a07855);
+}
+
+/* Solid background colors - Dark mode */
+.dark .dark\:bg-\[\#b8896a\] {
+  background-color: var(--brand-accent-dark, #b8896a);
+}
+
+/* Text colors - Light mode */
+.text-\[\#a07855\] {
+  color: var(--brand-accent-light, #a07855);
+}
+
+/* Text colors - Dark mode */
+.dark .dark\:text-\[\#b8896a\] {
+  color: var(--brand-accent-dark, #b8896a);
+}
+
+/* Hover background states - Light mode */
+.hover\:bg-\[\#a07855\]:hover {
+  background-color: var(--brand-accent-light, #a07855);
+}
+
+.hover\:bg-\[\#8c6245\]:hover {
+  background-color: var(--brand-accent-light, #8c6245);
+}
+
+/* Hover background states - Dark mode */
+.dark .dark\:hover\:bg-\[\#b8896a\]:hover {
+  background-color: var(--brand-accent-dark, #b8896a);
+}
+
+/* Hover text states */
+.hover\:text-\[\#a07855\]:hover {
+  color: var(--brand-accent-light, #a07855);
+}
+
+.dark .dark\:hover\:text-\[\#b8896a\]:hover {
+  color: var(--brand-accent-dark, #b8896a);
+}
+
+/* Border colors - Light mode */
+.border-\[\#a07855\] {
+  border-color: var(--brand-accent-light, #a07855);
+}
+
+/* Border colors - Dark mode */
+.dark .dark\:border-\[\#b8896a\] {
+  border-color: var(--brand-accent-dark, #b8896a);
+}
+
+/* Border with opacity */
+.border-\[\#a07855\]\/20 {
+  border-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 20%, transparent);
+}
+
+.border-\[\#a07855\]\/30 {
+  border-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 30%, transparent);
+}
+
+.dark .dark\:border-\[\#b8896a\]\/20 {
+  border-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 20%, transparent);
+}
+
+.dark .dark\:border-\[\#b8896a\]\/30 {
+  border-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent);
+}
+
+/* Ring/outline colors */
+.ring-\[\#a07855\] {
+  --tw-ring-color: var(--brand-accent-light, #a07855);
+}
+
+.ring-\[\#a07855\]\/20 {
+  --tw-ring-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 20%, transparent);
+}
+
+.dark .dark\:ring-\[\#b8896a\] {
+  --tw-ring-color: var(--brand-accent-dark, #b8896a);
+}
+
+/* Focus ring states */
+.focus\:ring-\[\#a07855\]:focus {
+  --tw-ring-color: var(--brand-accent-light, #a07855);
+}
+
+.dark .dark\:focus\:ring-\[\#b8896a\]:focus {
+  --tw-ring-color: var(--brand-accent-dark, #b8896a);
+}
+
+/* Border-t/b/l colors for accents */
+.border-t-\[\#a07855\] {
+  border-top-color: var(--brand-accent-light, #a07855);
+}
+
+.border-b-\[\#a07855\] {
+  border-bottom-color: var(--brand-accent-light, #a07855);
+}
+
+.border-l-\[\#a07855\] {
+  border-left-color: var(--brand-accent-light, #a07855);
+}
+
+.dark .dark\:border-t-\[\#b8896a\] {
+  border-top-color: var(--brand-accent-dark, #b8896a);
+}
+
+.dark .dark\:border-b-\[\#b8896a\] {
+  border-bottom-color: var(--brand-accent-dark, #b8896a);
+}
+
+.dark .dark\:border-l-\[\#b8896a\] {
+  border-left-color: var(--brand-accent-dark, #b8896a);
+}
