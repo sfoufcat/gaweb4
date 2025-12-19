@@ -877,7 +877,7 @@ export default function Dashboard() {
       <div className="min-h-[80vh] flex flex-col items-center justify-center text-center space-y-8 px-4">
         <div className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-xl overflow-hidden relative">
           <Image 
-            src="https://scontent-ams2-1.cdninstagram.com/v/t51.2885-19/573066509_18392788999124263_1130570279047307055_n.jpg?efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLmRqYW5nby42MTQuYzIifQ&_nc_ht=scontent-ams2-1.cdninstagram.com&_nc_cat=107&_nc_oc=Q6cZ2QEWluhxmwPv4a2vtjnZ6geiJfMkYk1TdPVrm9ZC2rLrpZgZRb9UoutBId5Mu83ldqCm9gZxMPDh_xv4Y_l6OoBM&_nc_ohc=gdm77pWgUJcQ7kNvwHQuSo9&_nc_gid=fu58Ez-l9iO066FsyDwIBg&edm=ALGbJPMBAAAA&ccb=7-5&oh=00_Afin_dYIlnbdrQ45gkKVGHRDLzhtCQSjK7sv_WGfkcOIag&oe=692AAAF6&_nc_sid=7d3ac5"
+            src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af"
             alt="Growth Addicts Logo"
             fill
             className="object-cover"
