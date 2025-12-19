@@ -1161,7 +1161,7 @@ export default function Dashboard() {
                 My goal
               </p>
               <p className={`font-albert ${isMobile ? 'text-[20px]' : 'text-[24px]'} text-white leading-[1.25] tracking-[-1.2px] mb-1.5`}>
-                {capitalizeFirstLetter(userGoal.goal)}
+                {capitalizeFirstLetter(userGoal.goal || '')}
               </p>
               <p className={`font-sans ${isMobile ? 'text-[12px]' : 'text-[14px]'} text-white/60 leading-[1.2]`}>
                 {goalDaysLeft !== null && goalDaysLeft >= 0 ? `${goalDaysLeft} days left` : 'Goal date passed'}
