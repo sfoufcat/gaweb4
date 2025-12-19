@@ -95,6 +95,7 @@ export async function GET(
       completedTasks = tasks.filter((task): task is typeof task & { status: 'completed' } => 
         (task as { status?: string }).status === 'completed'
       );
+    }
 
     // Build response
     const response = {
