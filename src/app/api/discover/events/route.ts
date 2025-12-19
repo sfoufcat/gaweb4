@@ -33,6 +33,7 @@ export async function GET() {
       id: doc.id,
       ...doc.data(),
       // Convert Firestore Timestamps to ISO strings
+      date: doc.data().date?.toDate?.()?.toISOString?.() || doc.data().date,
       createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
       updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
     }));
