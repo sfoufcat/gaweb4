@@ -119,7 +119,7 @@ export function AISuggestTasksModal({
         {response.notes && (
           <div className="px-6 pb-4">
             <p className="font-sans text-[13px] text-text-secondary dark:text-[#b2b6c2] italic leading-[1.5]">
-              "{response.notes}"
+              &quot;{response.notes}&quot;
             </p>
           </div>
         )}

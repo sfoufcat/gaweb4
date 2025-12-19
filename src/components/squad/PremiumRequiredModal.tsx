@@ -39,7 +39,7 @@ export function PremiumRequiredModal({
           </div>
           
           <AlertDialogTitle className="font-albert text-[24px] tracking-[-0.5px]">
-            Join {inviterName}'s Premium Squad
+            Join {inviterName}&apos;s Premium Squad
           </AlertDialogTitle>
         </AlertDialogHeader>
 

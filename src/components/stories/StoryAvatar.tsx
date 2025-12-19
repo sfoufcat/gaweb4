@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { StoryPlayer, type StorySlide } from './StoryPlayer';
 import type { Task } from '@/types';
 
@@ -225,10 +226,11 @@ export function StoryAvatar({
         {/* Avatar */}
         <div className={`${config.avatar} rounded-full overflow-hidden bg-earth-200`}>
           {user.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img 
+            <Image 
               src={user.imageUrl} 
               alt={userName} 
+              width={64}
+              height={64}
               className="w-full h-full object-cover"
             />
           ) : (

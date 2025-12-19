@@ -109,9 +109,9 @@ export default function PersonalCoachPage() {
                 ))}
               </div>
               <p className="font-albert text-[15px] text-text-secondary leading-[1.6] italic mb-4">
-                "The coaching sessions have been transformative. My coach helped me identify 
-                patterns I couldn't see myself and gave me practical tools to make real changes. 
-                I've achieved more in 3 months than I did in the past year."
+                &quot;The coaching sessions have been transformative. My coach helped me identify 
+                patterns I couldn&apos;t see myself and gave me practical tools to make real changes. 
+                I&apos;ve achieved more in 3 months than I did in the past year.&quot;
               </p>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e] flex items-center justify-center text-white font-albert font-semibold">

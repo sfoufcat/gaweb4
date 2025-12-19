@@ -57,10 +57,11 @@ export async function GET(request: NextRequest) {
       notifications,
       unreadCount: unreadSnapshot.size,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching notifications:', error);
+    const message = error instanceof Error ? error.message : 'Failed to fetch notifications';
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch notifications' },
+      { error: message },
       { status: 500 }
     );
   }
@@ -112,10 +113,11 @@ export async function PATCH(request: NextRequest) {
       { error: 'Either markAllRead or notificationId is required' },
       { status: 400 }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error updating notifications:', error);
+    const message = error instanceof Error ? error.message : 'Failed to update notifications';
     return NextResponse.json(
-      { error: error.message || 'Failed to update notifications' },
+      { error: message },
       { status: 500 }
     );
   }
@@ -163,10 +165,11 @@ export async function DELETE(request: NextRequest) {
     await adminDb.collection('notifications').doc(notificationId).delete();
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error deleting notification:', error);
+    const message = error instanceof Error ? error.message : 'Failed to delete notification';
     return NextResponse.json(
-      { error: error.message || 'Failed to delete notification' },
+      { error: message },
       { status: 500 }
     );
   }

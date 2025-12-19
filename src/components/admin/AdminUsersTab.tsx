@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import Image from 'next/image';
 import type { UserRole, UserTier, CoachingStatus } from '@/types';
 import { 
   canModifyUserRole, 
@@ -321,9 +322,11 @@ export function AdminUsersTab({ currentUserRole }: AdminUsersTabProps) {
                     {/* Avatar */}
                     <TableCell>
                       {user.imageUrl ? (
-                        <img
+                        <Image
                           src={user.imageUrl}
                           alt={user.name}
+                          width={40}
+                          height={40}
                           className="w-10 h-10 rounded-full object-cover"
                         />
                       ) : (

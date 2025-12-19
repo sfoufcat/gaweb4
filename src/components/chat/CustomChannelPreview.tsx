@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { ChannelPreviewUIComponentProps } from 'stream-chat-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -69,9 +70,11 @@ export function CustomChannelPreview(props: CustomChannelPreviewProps) {
       {/* Avatar */}
       <div className="relative flex-shrink-0">
         {avatarUrl ? (
-          <img 
+          <Image 
             src={avatarUrl} 
             alt={channelName}
+            width={48}
+            height={48}
             className="w-12 h-12 rounded-full object-cover"
           />
         ) : (

@@ -73,10 +73,11 @@ export async function POST(_request: NextRequest) {
       message: `Moved ${movedCount} tasks to backlog`,
       movedCount 
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error moving tasks to backlog:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to move tasks to backlog', message: error.message },
+      { error: 'Failed to move tasks to backlog', message: errorMessage },
       { status: 500 }
     );
   }

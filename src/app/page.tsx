@@ -1814,7 +1814,7 @@ export default function Dashboard() {
               {/* Squad Avatar */}
               <div className="w-14 h-14 rounded-full overflow-hidden bg-gradient-to-br from-[#F5E6A8] to-[#EDD96C] flex items-center justify-center flex-shrink-0">
                 {squad.avatarUrl ? (
-                  <img src={squad.avatarUrl} alt={squad.name} className="w-full h-full object-cover" />
+                  <Image src={squad.avatarUrl} alt={squad.name} width={56} height={56} className="w-full h-full object-cover" />
                 ) : (
                   <span className="font-albert font-bold text-xl text-[#4A5D54]">
                     {squad.name[0]}

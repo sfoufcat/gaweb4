@@ -116,10 +116,11 @@ export async function GET() {
       trackName: trackName || null,
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching weekly focus suggestion:', error);
+    const message = error instanceof Error ? error.message : 'Failed to fetch weekly focus suggestion';
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch weekly focus suggestion' },
+      { error: message },
       { status: 500 }
     );
   }

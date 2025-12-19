@@ -56,7 +56,7 @@ export function SquadStreakSheet({ isOpen, onClose }: SquadStreakSheetProps) {
 
           {/* Main Explanation */}
           <p className="font-sans text-[16px] text-text-primary leading-[1.5] tracking-[-0.3px]">
-            Your squad's alignment compass shows how well your squad is following their growth routine today.
+            Your squad&apos;s alignment compass shows how well your squad is following their growth routine today.
           </p>
 
           <p className="font-sans text-[16px] text-text-primary leading-[1.5] tracking-[-0.3px]">

@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import Image from 'next/image';
 import type { Squad, UserRole } from '@/types';
 
 /**
@@ -206,9 +207,11 @@ export default function CoachPage() {
                           <>
                             {/* Squad Avatar */}
                             {selectedSquad.avatarUrl ? (
-                              <img 
+                              <Image 
                                 src={selectedSquad.avatarUrl} 
                                 alt={selectedSquad.name}
+                                width={32}
+                                height={32}
                                 className="w-8 h-8 rounded-full object-cover"
                               />
                             ) : (
@@ -241,9 +244,11 @@ export default function CoachPage() {
                         >
                           <div className="flex items-center gap-3">
                             {squad.avatarUrl ? (
-                              <img 
+                              <Image 
                                 src={squad.avatarUrl} 
                                 alt={squad.name}
+                                width={32}
+                                height={32}
                                 className="w-8 h-8 rounded-full object-cover"
                               />
                             ) : (

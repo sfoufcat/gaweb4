@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useChannelStateContext } from 'stream-chat-react';
 
 /**
@@ -79,9 +80,11 @@ export function SquadChatHeader({ onBack, showBackButton = false }: SquadChatHea
                   {/* Avatar */}
                   <div className="relative">
                     {avatar ? (
-                      <img 
+                      <Image 
                         src={avatar} 
                         alt={name}
+                        width={48}
+                        height={48}
                         className="w-12 h-12 rounded-full object-cover"
                       />
                     ) : (

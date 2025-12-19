@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { Clock, Users, Star } from 'lucide-react';
 import type { Squad } from '@/types';
 
@@ -48,9 +49,11 @@ export function SquadCard({ squad, onJoin, isJoining, trackLabel }: SquadCardPro
       <div className="flex items-start gap-4 mb-4">
         {/* Squad Avatar */}
         {squad.avatarUrl ? (
-          <img 
+          <Image 
             src={squad.avatarUrl} 
             alt={squad.name}
+            width={56}
+            height={56}
             className="w-14 h-14 rounded-full object-cover flex-shrink-0"
           />
         ) : (
@@ -100,9 +103,11 @@ export function SquadCard({ squad, onJoin, isJoining, trackLabel }: SquadCardPro
               {squad.coach.name}
             </span>
             {squad.coach.imageUrl ? (
-              <img 
+              <Image 
                 src={squad.coach.imageUrl} 
                 alt={squad.coach.name}
+                width={24}
+                height={24}
                 className="w-6 h-6 rounded-full object-cover border border-[#FF6B6B]/30"
               />
             ) : (
@@ -126,9 +131,11 @@ export function SquadCard({ squad, onJoin, isJoining, trackLabel }: SquadCardPro
                 className="w-8 h-8 rounded-full border-2 border-white overflow-hidden bg-[#e1ddd8]"
               >
                 {avatar ? (
-                  <img 
+                  <Image 
                     src={avatar} 
                     alt="" 
+                    width={32}
+                    height={32}
                     className="w-full h-full object-cover"
                   />
                 ) : (

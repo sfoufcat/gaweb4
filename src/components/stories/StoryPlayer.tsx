@@ -9,6 +9,7 @@ import { TaskStorySlide } from './TaskStorySlide';
 import { GoalStorySlide } from './GoalStorySlide';
 import { DayClosedStorySlide } from './DayClosedStorySlide';
 import { WeekClosedStorySlide } from './WeekClosedStorySlide';
+import Image from 'next/image';
 import { getProfileUrl } from '@/lib/utils';
 import type { Task } from '@/types';
 
@@ -428,10 +429,11 @@ export function StoryPlayer({ isOpen, onClose, slides, user }: StoryPlayerProps)
             >
               <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-600 ring-2 ring-white/30">
                 {user.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img 
+                  <Image 
                     src={user.imageUrl} 
                     alt={userName} 
+                    width={36}
+                    height={36}
                     className="w-full h-full object-cover"
                   />
                 ) : (

@@ -12,6 +12,7 @@ import {
 import { AttachmentMenu } from './AttachmentMenu';
 import { PollComposer } from './PollComposer';
 import { trackSquadInteraction } from '@/hooks/useAlignment';
+import Image from 'next/image';
 import type { MessageResponse } from 'stream-chat';
 import type { PollFormData, ChatPollState } from '@/types/poll';
 
@@ -388,9 +389,11 @@ export function CustomMessageInput() {
           {attachments.map((attachment, index) => (
             <div key={index} className="relative">
               {attachment.type === 'image' && attachment.image_url ? (
-                <img
+                <Image
                   src={attachment.image_url}
                   alt={attachment.title || 'Attachment'}
+                  width={64}
+                  height={64}
                   className="w-16 h-16 object-cover rounded-lg"
                 />
               ) : (

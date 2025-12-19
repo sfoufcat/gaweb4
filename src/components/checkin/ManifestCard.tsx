@@ -52,16 +52,17 @@ export function ManifestCard({
     }, 100);
 
     // Play audio if provided
-    if (audioSrc && audioRef.current) {
-      audioRef.current.play().catch(console.error);
+    const audioElement = audioRef.current;
+    if (audioSrc && audioElement) {
+      audioElement.play().catch(console.error);
     }
 
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
-      if (audioRef.current) {
-        audioRef.current.pause();
+      if (audioElement) {
+        audioElement.pause();
       }
     };
   }, [duration, audioSrc]);

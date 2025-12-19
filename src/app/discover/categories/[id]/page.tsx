@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useDiscover } from '@/hooks/useDiscover';
 import { BackButton, CourseCard, CategoryPills, SectionHeader } from '@/components/discover';
 
@@ -88,9 +89,11 @@ export default function CategoryDetailPage() {
                       {/* Cover Image */}
                       {article.coverImageUrl && (
                         <div className="w-20 h-20 flex-shrink-0 rounded-xl overflow-hidden bg-earth-100">
-                          <img 
+                          <Image 
                             src={article.coverImageUrl} 
                             alt={article.title}
+                            width={80}
+                            height={80}
                             className="w-full h-full object-cover"
                           />
                         </div>

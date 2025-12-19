@@ -112,10 +112,11 @@ export async function POST(req: Request) {
       message: 'Email updated successfully',
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('[UPDATE_EMAIL_ERROR]', error);
+    const message = error instanceof Error ? error.message : 'Failed to update email';
     return NextResponse.json(
-      { error: error.message || 'Failed to update email' },
+      { error: message },
       { status: 500 }
     );
   }

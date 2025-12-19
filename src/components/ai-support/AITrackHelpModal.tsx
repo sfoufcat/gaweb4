@@ -83,7 +83,7 @@ export function AITrackHelpModal({
             <div className="flex items-start gap-2">
               <div className="w-1 h-full bg-accent-secondary/40 dark:bg-[#b8896a]/40 rounded-full flex-shrink-0" />
               <p className="font-sans text-[14px] text-text-secondary dark:text-[#b2b6c2] leading-[1.5] italic">
-                "{response.reason}"
+                &quot;{response.reason}&quot;
               </p>
             </div>
           </div>

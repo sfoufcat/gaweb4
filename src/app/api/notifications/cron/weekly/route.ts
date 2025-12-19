@@ -150,10 +150,11 @@ async function handleCronRequest(request: NextRequest) {
       message: 'Weekly notifications cron completed',
       stats,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[CRON_WEEKLY] Error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to process weekly notifications';
     return NextResponse.json(
-      { error: error.message || 'Failed to process weekly notifications' },
+      { error: message },
       { status: 500 }
     );
   }

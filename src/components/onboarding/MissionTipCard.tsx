@@ -26,7 +26,7 @@ export function MissionTipCard() {
               Your mission is your essence
             </p>
             <p className="text-sm text-gray-600 leading-relaxed">
-              Not your job title—what you're here to do in this phase of your life.
+              Not your job title—what you&apos;re here to do in this phase of your life.
             </p>
             
             <div className="pt-2 space-y-2">

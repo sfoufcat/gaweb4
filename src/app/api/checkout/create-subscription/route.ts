@@ -188,10 +188,11 @@ export async function POST(req: Request) {
       customerId: customer.id,
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('[CREATE_SUBSCRIPTION_ERROR]', error);
+    const message = error instanceof Error ? error.message : 'Failed to create subscription';
     return NextResponse.json(
-      { error: error.message || 'Failed to create subscription' },
+      { error: message },
       { status: 500 }
     );
   }

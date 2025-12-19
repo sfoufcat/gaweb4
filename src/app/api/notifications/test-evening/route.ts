@@ -103,10 +103,11 @@ async function handleRequest(request: NextRequest) {
         },
       });
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('[TEST_EVENING] Error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to send notification';
     return NextResponse.json(
-      { error: error.message || 'Failed to send notification' },
+      { error: message },
       { status: 500 }
     );
   }

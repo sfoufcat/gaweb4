@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import Image from 'next/image';
 import { isPast, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns';
 import type { ChatPollState, ChatPollOption } from '@/types/poll';
 
@@ -266,7 +267,7 @@ export function PollMessageCard({
                   className="w-3.5 h-3.5 rounded-full overflow-hidden border border-white"
                 >
                   {vote.userImage ? (
-                    <img src={vote.userImage} alt="" className="w-full h-full object-cover" />
+                    <Image src={vote.userImage} alt="" width={14} height={14} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e]" />
                   )}

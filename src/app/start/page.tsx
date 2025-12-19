@@ -238,10 +238,12 @@ export default function StartPage() {
                   'https://randomuser.me/api/portraits/women/68.jpg',
                   'https://randomuser.me/api/portraits/men/75.jpg',
                 ].map((src, i) => (
-                  <img 
+                  <Image 
                     key={i}
                     src={src}
                     alt=""
+                    width={28}
+                    height={28}
                     className="w-7 h-7 rounded-full border-2 border-white object-cover shadow-sm"
                   />
                 ))}

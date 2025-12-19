@@ -618,7 +618,7 @@ function ChatContent({
   const { squads: coachSquads, isLoading: isCoachSquadsLoading, isCoach } = useCoachSquads();
   
   // Get user's coaching data for coaching chat
-  const { coachingData, coach, hasCoaching, isLoading: isCoachingLoading } = useCoachingData();
+  const { coachingData, coach, hasCoaching, isLoading: _isCoachingLoading } = useCoachingData();
   const coachingChannelId = coachingData?.chatChannelId;
   
   // Track unread counts and last messages for all coach squads

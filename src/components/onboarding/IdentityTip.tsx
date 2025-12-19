@@ -10,7 +10,7 @@ export function IdentityTip() {
         
         <div className="font-sans text-[14px] text-text-secondary leading-[1.4] space-y-4">
           <p className="mb-0">
-            Your mission is not your job title. It's your essence. What are you sent to do on this planet in this phase of your life?
+            Your mission is not your job title. It&apos;s your essence. What are you sent to do on this planet in this phase of your life?
           </p>
           
           <div>

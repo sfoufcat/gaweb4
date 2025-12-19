@@ -59,7 +59,7 @@ export function AISuggestionModal({
                         as="h3"
                         className="font-albert text-3xl sm:text-4xl text-text-primary tracking-[-2px] leading-[1.2] mb-2"
                       >
-                        Let's refine this
+                        Let&apos;s refine this
                       </Dialog.Title>
                       <p className="font-sans text-sm text-text-secondary leading-[1.4]">
                         Our AI noticed something about your statement
@@ -115,7 +115,7 @@ export function AISuggestionModal({
                           Try this instead:
                         </p>
                         <p className="font-sans text-base font-medium text-[#a07855] leading-[1.4]">
-                          "I am {aiSuggestion}"
+                          &quot;I am {aiSuggestion}&quot;
                         </p>
                       </div>
                     )}

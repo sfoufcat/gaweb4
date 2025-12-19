@@ -3,7 +3,6 @@
 import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { useClerk } from '@clerk/nextjs';
-import { useRouter } from 'next/navigation';
 import type { EmailPreferences, UserTrack } from '@/types';
 import { useTrack } from '@/hooks/useTrack';
 import { TrackSelectionModal } from './TrackSelectionModal';

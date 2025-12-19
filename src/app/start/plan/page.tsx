@@ -485,10 +485,11 @@ export default function GuestPlanPage() {
                   <div className="relative grid grid-cols-2">
                     {/* Now Side */}
                     <div className="relative bg-gradient-to-b from-[#e8ddd0] to-[#f5ebe0] pt-6 px-4 flex flex-col items-center justify-end min-h-[200px] md:min-h-[280px]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img 
+                      <Image 
                         src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/images%2Fnow.png?alt=media&token=cb306ed9-f12d-460f-abd0-b0952af905d2" 
                         alt="" 
+                        width={192}
+                        height={240}
                         className="w-36 h-44 md:w-48 md:h-60 object-contain object-bottom"
                       />
                     </div>
@@ -504,10 +505,11 @@ export default function GuestPlanPage() {
                     
                     {/* 3 Months Side */}
                     <div className="relative bg-gradient-to-b from-[#faf8f6] to-[#f5ebe0] pt-6 px-4 flex flex-col items-center justify-end min-h-[200px] md:min-h-[280px]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img 
+                      <Image 
                         src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/images%2F3months.png?alt=media&token=09900df7-1a57-43a6-84db-94a2cdd476aa" 
                         alt="" 
+                        width={192}
+                        height={240}
                         className="w-36 h-44 md:w-48 md:h-60 object-contain object-bottom"
                       />
                     </div>

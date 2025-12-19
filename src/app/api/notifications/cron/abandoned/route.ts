@@ -45,10 +45,11 @@ async function handleCronRequest(request: NextRequest) {
       message: 'Abandoned email cron completed',
       stats,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[CRON_ABANDONED] Error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to process abandoned emails';
     return NextResponse.json(
-      { error: error.message || 'Failed to process abandoned emails' },
+      { error: message },
       { status: 500 }
     );
   }

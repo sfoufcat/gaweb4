@@ -50,10 +50,11 @@ Guidelines:
       : 'Every challenge is an opportunity for growth.';
 
     return NextResponse.json({ reframe });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error reframing thought:', error);
+    const message = error instanceof Error ? error.message : 'Failed to reframe thought';
     return NextResponse.json(
-      { error: error.message || 'Failed to reframe thought' },
+      { error: message },
       { status: 500 }
     );
   }

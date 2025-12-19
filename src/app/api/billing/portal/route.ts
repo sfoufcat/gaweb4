@@ -84,10 +84,11 @@ export async function POST() {
     console.log(`[BILLING_PORTAL] Created portal session for user ${userId}, customer ${stripeCustomerId}`);
 
     return NextResponse.json({ url: session.url });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[BILLING_PORTAL] Error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to create billing portal session';
     return NextResponse.json(
-      { error: error.message || 'Failed to create billing portal session' },
+      { error: message },
       { status: 500 }
     );
   }

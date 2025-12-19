@@ -136,10 +136,11 @@ export async function PATCH(
     }
 
     return NextResponse.json({ task: updatedTask });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error updating task:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to update task', message: error.message },
+      { error: 'Failed to update task', message: errorMessage },
       { status: 500 }
     );
   }

@@ -161,10 +161,11 @@ export async function GET() {
       isAutoInitialized: true,
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching weekly focus:', error);
+    const message = error instanceof Error ? error.message : 'Failed to fetch weekly focus';
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch weekly focus' },
+      { error: message },
       { status: 500 }
     );
   }

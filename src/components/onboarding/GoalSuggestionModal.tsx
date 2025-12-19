@@ -68,7 +68,7 @@ export function GoalSuggestionModal({
                         as="h3"
                         className="font-albert text-3xl sm:text-4xl text-text-primary tracking-[-2px] leading-[1.2] mb-2"
                       >
-                        Let's refine your goal
+                        Let&apos;s refine your goal
                       </Dialog.Title>
                       <p className="font-sans text-sm text-text-secondary leading-[1.4]">
                         Our AI has a suggestion to make your goal more achievable
@@ -127,7 +127,7 @@ export function GoalSuggestionModal({
                           Try this instead:
                         </p>
                         <p className="font-sans text-base font-medium text-[#a07855] leading-[1.4]">
-                          "I want to {aiSuggestion}"
+                          &quot;I want to {aiSuggestion}&quot;
                         </p>
                       </div>
                     )}

@@ -60,7 +60,7 @@ export default function RefundPolicyPage() {
                   Our 30-Day Satisfaction Guarantee
                 </h2>
                 <p className="font-sans text-[15px] text-[#15803d] leading-relaxed mb-3">
-                  We believe in our system. If you commit to GrowthAddicts for 30 days, complete your daily tasks every day, and don't see any progress towards your goals, we'll give you a full refund. No questions asked.
+                  We believe in our system. If you commit to GrowthAddicts for 30 days, complete your daily tasks every day, and don&apos;t see any progress towards your goals, we&apos;ll give you a full refund. No questions asked.
                 </p>
                 <p className="font-sans text-[12px] text-[#166534]/70">
                   Influencee Agency OÜ · Ahtri 12, Tallinn 10151, Estonia
@@ -113,9 +113,9 @@ export default function RefundPolicyPage() {
                 To request a refund under our 30-day guarantee:
               </p>
               <ol className="list-decimal pl-6 space-y-2 font-sans text-[15px] text-text-secondary">
-                <li>Email us at <a href="mailto:support@growthaddicts.com" className="text-[#a07855] hover:underline">support@growthaddicts.com</a> with the subject line "30-Day Guarantee Refund Request"</li>
+                <li>Email us at <a href="mailto:support@growthaddicts.com" className="text-[#a07855] hover:underline">support@growthaddicts.com</a> with the subject line &quot;30-Day Guarantee Refund Request&quot;</li>
                 <li>Include your account email address and the date of your subscription</li>
-                <li>Briefly explain why you feel you haven't made progress despite completing the program</li>
+                <li>Briefly explain why you feel you haven&apos;t made progress despite completing the program</li>
                 <li>Our team will review your account activity and respond within 3-5 business days</li>
                 <li>If approved, refunds are processed within 5-10 business days to your original payment method</li>
               </ol>
@@ -129,7 +129,7 @@ export default function RefundPolicyPage() {
                 You can cancel your subscription at any time:
               </p>
               <ul className="list-disc pl-6 space-y-2 font-sans text-[15px] text-text-secondary">
-                <li><strong>How to cancel:</strong> Visit your account settings and click "Cancel Subscription", or email us at support@growthaddicts.com</li>
+                <li><strong>How to cancel:</strong> Visit your account settings and click &quot;Cancel Subscription&quot;, or email us at support@growthaddicts.com</li>
                 <li><strong>Effective date:</strong> Cancellation takes effect at the end of your current billing period</li>
                 <li><strong>Access after cancellation:</strong> You'll retain full access to all features until your subscription period ends</li>
                 <li><strong>No partial refunds:</strong> We do not provide refunds for partial months of service after the 30-day guarantee period</li>
@@ -167,7 +167,7 @@ export default function RefundPolicyPage() {
                 6. Premium Plan Downgrades
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed">
-                If you downgrade from Premium to Standard, the change takes effect at the end of your current billing period. You won't receive a refund for the price difference, but you'll maintain premium access until the period ends.
+                If you downgrade from Premium to Standard, the change takes effect at the end of your current billing period. You won&apos;t receive a refund for the price difference, but you&apos;ll maintain premium access until the period ends.
               </p>
             </section>
 
@@ -191,7 +191,7 @@ export default function RefundPolicyPage() {
                 </a>
               </p>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed mt-4 mb-4">
-                We're here to help and will do our best to resolve any concerns.
+                We&apos;re here to help and will do our best to resolve any concerns.
               </p>
               <div className="bg-[#faf8f6] rounded-xl p-4 border border-[#e1ddd8]">
                 <p className="font-sans text-[14px] text-text-secondary">

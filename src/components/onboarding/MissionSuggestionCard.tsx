@@ -45,7 +45,7 @@ export function MissionSuggestionCard({
           <div className="bg-nature-50/50 backdrop-blur-sm rounded-2xl p-6 border border-nature-100 mb-6 shadow-sm">
             <p className="text-xs font-bold text-nature-900 uppercase tracking-wide mb-3">Refined version:</p>
             <p className="text-xl font-serif font-medium text-earth-900 leading-relaxed italic">
-              "{suggestion}"
+              &quot;{suggestion}&quot;
             </p>
           </div>
         )}

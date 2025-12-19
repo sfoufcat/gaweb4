@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
+import Image from 'next/image';
 import type { UserRole, UserTier, Squad } from '@/types';
 import {
   formatRoleName,
@@ -312,9 +313,11 @@ export function AdminUsersWithoutSquadTab({ currentUserRole: _currentUserRole }:
                   {/* Avatar */}
                   <TableCell>
                     {user.imageUrl ? (
-                      <img
+                      <Image
                         src={user.imageUrl}
                         alt={user.name}
+                        width={40}
+                        height={40}
                         className="w-10 h-10 rounded-full object-cover"
                       />
                     ) : (
@@ -376,9 +379,11 @@ export function AdminUsersWithoutSquadTab({ currentUserRole: _currentUserRole }:
                             <SelectItem key={squad.id} value={squad.id} className="font-albert">
                               <div className="flex items-center gap-2">
                                 {squad.avatarUrl ? (
-                                  <img
+                                  <Image
                                     src={squad.avatarUrl}
                                     alt={squad.name}
+                                    width={20}
+                                    height={20}
                                     className="w-5 h-5 rounded-full object-cover"
                                   />
                                 ) : (

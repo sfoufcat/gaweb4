@@ -118,7 +118,7 @@ export function NotificationSheet({
                 No notifications yet
               </p>
               <p className="font-sans text-[13px] text-text-muted mt-1">
-                We'll let you know when something important happens
+                We&apos;ll let you know when something important happens
               </p>
             </div>
           ) : (

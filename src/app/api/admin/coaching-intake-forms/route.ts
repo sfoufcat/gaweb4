@@ -41,10 +41,11 @@ export async function GET() {
       total: forms.length,
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('[ADMIN_COACHING_FORMS] Error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to fetch coaching intake forms.';
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch coaching intake forms.' }, 
+      { error: message }, 
       { status: 500 }
     );
   }

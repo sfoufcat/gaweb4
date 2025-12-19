@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useDiscover } from '@/hooks/useDiscover';
 import { useTrack } from '@/hooks/useTrack';
 import { 
@@ -327,9 +328,11 @@ export default function DiscoverPage() {
                       {/* Cover Image */}
                       {article.coverImageUrl && (
                         <div className="w-20 h-20 flex-shrink-0 rounded-xl overflow-hidden bg-earth-100">
-                          <img 
+                          <Image 
                             src={article.coverImageUrl} 
                             alt={article.title}
+                            width={80}
+                            height={80}
                             className="w-full h-full object-cover"
                           />
                         </div>

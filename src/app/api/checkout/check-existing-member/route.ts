@@ -69,10 +69,11 @@ export async function POST(req: Request) {
       isExistingMember: false 
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('[CHECK_EXISTING_MEMBER_ERROR]', error);
+    const message = error instanceof Error ? error.message : 'Failed to check membership status';
     return NextResponse.json(
-      { error: error.message || 'Failed to check membership status' },
+      { error: message },
       { status: 500 }
     );
   }

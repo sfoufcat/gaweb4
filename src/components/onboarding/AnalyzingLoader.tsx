@@ -216,7 +216,7 @@ export function AnalyzingLoader({ onComplete, duration = 4000 }: AnalyzingLoader
               
               {/* Quote */}
               <p className="font-sans text-[15px] text-text-primary leading-relaxed mb-4">
-                "{testimonial.text}"
+                &quot;{testimonial.text}&quot;
               </p>
               
               {/* Author */}

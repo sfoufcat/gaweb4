@@ -244,10 +244,11 @@ export async function POST(req: Request) {
       message: 'Account linked successfully',
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('[LINK_ACCOUNT_ERROR]', error);
+    const message = error instanceof Error ? error.message : 'Failed to link account';
     return NextResponse.json(
-      { error: error.message || 'Failed to link account' },
+      { error: message },
       { status: 500 }
     );
   }

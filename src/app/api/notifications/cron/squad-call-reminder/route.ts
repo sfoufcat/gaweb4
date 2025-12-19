@@ -183,10 +183,11 @@ async function handleCronRequest(request: NextRequest) {
       message: 'Squad call reminders cron completed',
       stats,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[CRON_SQUAD_REMINDER] Error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to process squad call reminders';
     return NextResponse.json(
-      { error: error.message || 'Failed to process squad call reminders' },
+      { error: message },
       { status: 500 }
     );
   }

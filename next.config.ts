@@ -62,6 +62,11 @@ const nextConfig: NextConfig = {
         hostname: 'getstream.io',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'randomuser.me',
+        pathname: '/**',
+      },
     ],
   },
   

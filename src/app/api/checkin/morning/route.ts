@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST - Start a new check-in
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     const { userId } = await auth();
     if (!userId) {

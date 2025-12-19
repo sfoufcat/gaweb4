@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useUser } from '@clerk/nextjs';
 import { SignUpForm } from '@/components/auth';
 
@@ -119,9 +120,11 @@ export default function BeginPage() {
           {/* Marketing Header */}
           <div className="text-center mb-10 lg:mb-12">
             {/* Logo */}
-            <img 
+            <Image 
               src="/logo.jpg" 
               alt="Growth Architecture" 
+              width={80}
+              height={80}
               className="w-16 h-16 lg:w-20 lg:h-20 rounded-full mx-auto mb-6 shadow-lg"
             />
             <h1 className="font-albert text-[38px] sm:text-[46px] lg:text-[56px] text-text-primary tracking-[-2px] leading-[1.1] mb-5 lg:mb-6 lg:whitespace-nowrap">

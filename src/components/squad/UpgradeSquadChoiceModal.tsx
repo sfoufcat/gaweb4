@@ -107,7 +107,7 @@ export function UpgradeSquadChoiceModal({
             </div>
           </div>
           <AlertDialogDescription className="font-albert text-[15px] text-text-secondary dark:text-[#b2b6c2] leading-[1.5]">
-            You're already in <span className="font-semibold text-text-primary dark:text-[#f5f5f8]">{currentSquad.name}</span>. 
+            You&apos;re already in <span className="font-semibold text-text-primary dark:text-[#f5f5f8]">{currentSquad.name}</span>. 
             As a premium member, you can now also join a premium squad with coaching!
           </AlertDialogDescription>
         </div>
@@ -173,7 +173,7 @@ export function UpgradeSquadChoiceModal({
             disabled={isLoading}
             className="w-full py-2 text-center font-albert text-[14px] text-text-secondary dark:text-[#7d8190] hover:text-text-primary dark:hover:text-[#f5f5f8] transition-colors disabled:opacity-50"
           >
-            I'll decide later
+            I&apos;ll decide later
           </button>
         </div>
       </AlertDialogContent>

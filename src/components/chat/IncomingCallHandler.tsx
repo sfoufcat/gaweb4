@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useStreamVideoClient } from '@/contexts/StreamVideoContext';
 import { Phone, PhoneOff, Video, Users } from 'lucide-react';
 
@@ -100,9 +101,11 @@ export function IncomingCallHandler() {
         {/* Caller/Squad avatar or call type indicator */}
         <div className="flex justify-center mb-6">
           {displayImage ? (
-            <img 
+            <Image 
               src={displayImage} 
               alt={displayName}
+              width={80}
+              height={80}
               className="w-20 h-20 rounded-full object-cover"
             />
           ) : (

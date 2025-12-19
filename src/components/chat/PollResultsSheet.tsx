@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useMemo } from 'react';
+import Image from 'next/image';
 import type { ChatPollState } from '@/types/poll';
 
 /**
@@ -161,9 +162,11 @@ export function PollResultsSheet({ isOpen, onClose, poll }: PollResultsSheetProp
                           {/* Avatar */}
                           <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
                             {voter.userImage ? (
-                              <img
+                              <Image
                                 src={voter.userImage}
                                 alt=""
+                                width={24}
+                                height={24}
                                 className="w-full h-full object-cover"
                               />
                             ) : (

@@ -389,7 +389,7 @@ export default function CoachingIntakeFormPage() {
                       )}
                     </div>
                     <span className="font-albert text-[15px] text-text-primary">
-                      I commit, let's go 🚀
+                      I commit, let&apos;s go 🚀
                     </span>
                   </button>
 
@@ -412,7 +412,7 @@ export default function CoachingIntakeFormPage() {
                       )}
                     </div>
                     <span className="font-albert text-[15px] text-text-primary">
-                      I'm not ready 🫤
+                      I&apos;m not ready 🫤
                     </span>
                   </button>
                 </div>
@@ -565,7 +565,7 @@ export default function CoachingIntakeFormPage() {
           </div>
           
           <p className="font-albert text-[11px] sm:text-[12px] text-text-secondary text-center leading-relaxed mt-3 lg:mt-2">
-            By clicking "Secure my spot", you'll start your coaching subscription at{' '}
+            By clicking &quot;Secure my spot&quot;, you&apos;ll start your coaching subscription at{' '}
             <strong>{plan === 'monthly' ? '$396/month' : '$948/3 months'}</strong> ({pricing.perWeek}).
           </p>
         </div>

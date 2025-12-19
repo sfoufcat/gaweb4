@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import type { Squad, UserRole, UserTrack } from '@/types';
 
 // Track labels for display
@@ -188,9 +189,11 @@ export function AdminSquadsTab({ currentUserRole: _currentUserRole }: AdminSquad
                   <TableCell className="font-albert font-medium">
                     <div className="flex items-center gap-3">
                       {squad.avatarUrl ? (
-                        <img 
+                        <Image 
                           src={squad.avatarUrl} 
                           alt={squad.name}
+                          width={32}
+                          height={32}
                           className="w-8 h-8 rounded-full object-cover"
                         />
                       ) : (
@@ -246,9 +249,11 @@ export function AdminSquadsTab({ currentUserRole: _currentUserRole }: AdminSquad
                     {squad.coachId ? (
                       <div className="flex items-center gap-2">
                         {squad.coachImageUrl ? (
-                          <img 
+                          <Image 
                             src={squad.coachImageUrl} 
                             alt={squad.coachName || 'Coach'}
+                            width={24}
+                            height={24}
                             className="w-6 h-6 rounded-full object-cover"
                           />
                         ) : (

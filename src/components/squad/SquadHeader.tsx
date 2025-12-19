@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Pencil, Camera, X } from 'lucide-react';
 import type { Squad, UserAlignment, UserAlignmentSummary } from '@/types';
 import { AlignmentGauge } from '@/components/alignment';
@@ -172,7 +173,7 @@ export function SquadHeader({ squad, onSquadUpdated }: SquadHeaderProps) {
         {/* Squad Avatar */}
         <div className="w-[62px] h-[62px] rounded-full overflow-hidden bg-gradient-to-br from-[#F5E6A8] to-[#EDD96C] flex items-center justify-center shadow-sm">
           {squad.avatarUrl ? (
-            <img src={squad.avatarUrl} alt={squad.name} className="w-full h-full object-cover" />
+            <Image src={squad.avatarUrl} alt={squad.name} width={62} height={62} className="w-full h-full object-cover" />
           ) : (
             <span className="font-albert font-bold text-xl text-[#4A5D54]">
               {squad.name[0]}
@@ -279,7 +280,7 @@ export function SquadHeader({ squad, onSquadUpdated }: SquadHeaderProps) {
                 className="relative w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-[#F5E6A8] to-[#EDD96C] flex items-center justify-center cursor-pointer group"
               >
                 {displayAvatarUrl ? (
-                  <img src={displayAvatarUrl} alt="Squad avatar" className="w-full h-full object-cover" />
+                  <Image src={displayAvatarUrl} alt="Squad avatar" width={96} height={96} className="w-full h-full object-cover" />
                 ) : (
                   <span className="font-albert font-bold text-3xl text-[#4A5D54]">
                     {editName[0] || 'S'}

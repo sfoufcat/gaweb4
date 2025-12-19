@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { Star, Users } from 'lucide-react';
 import type { Squad, SquadType } from '@/types';
 
@@ -40,9 +41,11 @@ export function SquadSwitcher({
         {/* Squad Avatar */}
         <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-[#FF8A65] to-[#FF6B6B] flex items-center justify-center flex-shrink-0">
           {premiumSquad.avatarUrl ? (
-            <img 
+            <Image 
               src={premiumSquad.avatarUrl} 
               alt={premiumSquad.name} 
+              width={32}
+              height={32}
               className="w-full h-full object-cover"
             />
           ) : (
@@ -79,9 +82,11 @@ export function SquadSwitcher({
         {/* Squad Avatar */}
         <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-[#F5E6A8] to-[#EDD96C] flex items-center justify-center flex-shrink-0">
           {standardSquad.avatarUrl ? (
-            <img 
+            <Image 
               src={standardSquad.avatarUrl} 
               alt={standardSquad.name} 
+              width={32}
+              height={32}
               className="w-full h-full object-cover"
             />
           ) : (

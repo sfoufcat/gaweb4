@@ -154,10 +154,11 @@ async function handleCronRequest(request: NextRequest) {
       message: 'Morning notifications cron completed',
       stats,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[CRON_MORNING] Error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to process morning notifications';
     return NextResponse.json(
-      { error: error.message || 'Failed to process morning notifications' },
+      { error: message },
       { status: 500 }
     );
   }

@@ -190,10 +190,11 @@ export async function GET() {
 
     return NextResponse.json(diagnosis);
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('[DIAGNOSE_NOTIFICATION] Error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to diagnose notifications';
     return NextResponse.json(
-      { error: error.message || 'Failed to diagnose notifications' },
+      { error: message },
       { status: 500 }
     );
   }

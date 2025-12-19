@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -125,7 +125,7 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
   const [plannedTopics, setPlannedTopics] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
 
-  const fetchClientData = async () => {
+  const fetchClientData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -191,11 +191,11 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId]);
 
   useEffect(() => {
     fetchClientData();
-  }, [clientId]);
+  }, [fetchClientData]);
 
   // Save focus areas and action items
   const handleSaveChanges = async () => {

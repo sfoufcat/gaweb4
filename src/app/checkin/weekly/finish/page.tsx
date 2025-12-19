@@ -328,7 +328,7 @@ export default function FinishPage() {
 
             {/* Description */}
             <p className="font-albert text-[20px] md:text-[24px] font-medium text-[#1a1a1a] tracking-[-1px] md:tracking-[-1.5px] leading-[1.4] mb-8 md:mb-10">
-              Small steps lead to big wins—let's make next week even better.
+              Small steps lead to big wins—let&apos;s make next week even better.
             </p>
 
             {/* Button - inline on desktop, fixed on mobile */}

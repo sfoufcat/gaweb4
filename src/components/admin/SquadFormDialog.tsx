@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { Globe, Lock, Copy, RefreshCw } from 'lucide-react';
 import type { Squad, FirebaseUser, SquadMember, SquadVisibility, UserTrack } from '@/types';
 
@@ -641,7 +642,7 @@ export function SquadFormDialog({ squad, open, onClose, onSave }: SquadFormDialo
                             }`}
                           >
                             {user.imageUrl ? (
-                              <img src={user.imageUrl} alt="" className="w-6 h-6 rounded-full object-cover" />
+                              <Image src={user.imageUrl} alt="" width={24} height={24} className="w-6 h-6 rounded-full object-cover" />
                             ) : (
                               <div className="w-6 h-6 rounded-full bg-[#a07855] flex items-center justify-center text-white text-xs font-bold">
                                 {user.name.charAt(0).toUpperCase()}
@@ -682,7 +683,7 @@ export function SquadFormDialog({ squad, open, onClose, onSave }: SquadFormDialo
                       className="flex items-center gap-3 p-2 bg-[#faf8f6] rounded-lg"
                     >
                       {member.imageUrl ? (
-                        <img src={member.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                        <Image src={member.imageUrl} alt="" width={32} height={32} className="w-8 h-8 rounded-full object-cover" />
                       ) : (
                         <div className="w-8 h-8 rounded-full bg-[#a07855] flex items-center justify-center text-white text-sm font-bold">
                           {member.firstName?.charAt(0) || member.lastName?.charAt(0) || '?'}

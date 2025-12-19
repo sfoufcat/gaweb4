@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useUser } from '@clerk/nextjs';
 import type { FirebaseUser } from '@/types';
 import { compressImage } from '@/lib/uploadProfilePicture';
@@ -145,9 +146,11 @@ export function ProfileEditForm({ initialData, clerkUser, onSave, onCancel, from
         <div className="relative">
           <div className="w-40 h-40 rounded-full bg-[#f3f1ef] overflow-hidden flex items-center justify-center">
             {displayAvatarUrl ? (
-              <img 
+              <Image 
                 src={displayAvatarUrl} 
                 alt="Profile" 
+                width={160}
+                height={160}
                 className="w-full h-full object-cover" 
               />
             ) : (

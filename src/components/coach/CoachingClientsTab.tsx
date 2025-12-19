@@ -100,7 +100,7 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
           No coaching clients yet
         </h2>
         <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert max-w-md mx-auto">
-          When you're assigned 1:1 coaching clients, they'll appear here.
+          When you&apos;re assigned 1:1 coaching clients, they&apos;ll appear here.
         </p>
       </div>
     );

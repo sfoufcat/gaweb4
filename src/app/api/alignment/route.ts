@@ -102,10 +102,11 @@ export async function POST(request: NextRequest) {
       alignment,
       summary,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[ALIGNMENT_POST_ERROR]', error);
+    const message = error instanceof Error ? error.message : 'Failed to update alignment';
     return NextResponse.json(
-      { error: error.message || 'Failed to update alignment' },
+      { error: message },
       { status: 500 }
     );
   }

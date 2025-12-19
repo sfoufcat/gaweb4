@@ -58,7 +58,7 @@ export function AIHelpCompleteModal({
               Your task
             </p>
             <p className="font-albert text-[18px] text-text-primary dark:text-[#f5f5f8] font-semibold tracking-[-0.5px]">
-              "{task.title}"
+              &quot;{task.title}&quot;
             </p>
           </div>
         </div>
@@ -98,7 +98,7 @@ export function AIHelpCompleteModal({
                   Suggested clearer title:
                 </p>
                 <p className="font-albert text-[16px] text-emerald-800 dark:text-emerald-300 font-medium tracking-[-0.5px]">
-                  "{response.suggestedTaskTitle}"
+                  &quot;{response.suggestedTaskTitle}&quot;
                 </p>
               </div>
             </div>
