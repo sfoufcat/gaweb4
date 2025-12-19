@@ -21,7 +21,12 @@ const BENEFITS_LABELS: Record<string, string> = {
   limits: 'Break my limits',
 };
 
-export function AdminPremiumUpgradeFormsTab() {
+interface AdminPremiumUpgradeFormsTabProps {
+  /** Override API endpoint for multi-tenancy (e.g., '/api/coach/org-forms/premium-upgrade' for coaches) */
+  apiEndpoint?: string;
+}
+
+export function AdminPremiumUpgradeFormsTab({ apiEndpoint = '/api/admin/premium-upgrade-forms' }: AdminPremiumUpgradeFormsTabProps) {
   const [forms, setForms] = useState<PremiumUpgradeForm[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,9 +38,10 @@ export function AdminPremiumUpgradeFormsTab() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/admin/premium-upgrade-forms');
+      const response = await fetch(apiEndpoint);
       if (!response.ok) {
-        throw new Error('Failed to fetch forms');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch forms');
       }
 
       const data = await response.json();

@@ -46,7 +46,14 @@ export async function createOrganizationForCoach(
   
   // Create new organization
   const orgName = `${coachName}'s Organization`;
-  const orgSlug = `coach-${coachUserId.substring(0, 8).toLowerCase()}`;
+  // Generate a valid slug: alphanumeric and hyphens only
+  // Remove 'user_' prefix and any non-alphanumeric characters
+  const slugBase = coachUserId.replace(/[^a-zA-Z0-9]/g, '').substring(0, 12).toLowerCase();
+  const orgSlug = `coach-${slugBase}`;
+  
+  console.log(`[CLERK_ORGS] Creating organization for coach ${coachUserId}:`);
+  console.log(`[CLERK_ORGS]   - Name: ${orgName}`);
+  console.log(`[CLERK_ORGS]   - Slug: ${orgSlug}`);
   
   try {
     const organization = await client.organizations.createOrganization({
@@ -68,8 +75,27 @@ export async function createOrganizationForCoach(
     console.log(`[CLERK_ORGS] Updated coach ${coachUserId} metadata with organizationId ${organization.id}`);
     
     return organization.id;
-  } catch (error) {
-    console.error(`[CLERK_ORGS] Failed to create organization for coach ${coachUserId}:`, error);
+  } catch (error: unknown) {
+    // Log detailed error information
+    const clerkError = error as { 
+      errors?: Array<{ code?: string; message?: string; longMessage?: string }>;
+      status?: number;
+      message?: string;
+    };
+    
+    console.error(`[CLERK_ORGS] Failed to create organization for coach ${coachUserId}`);
+    console.error(`[CLERK_ORGS]   - Error status: ${clerkError.status || 'unknown'}`);
+    console.error(`[CLERK_ORGS]   - Error message: ${clerkError.message || 'unknown'}`);
+    
+    if (clerkError.errors && clerkError.errors.length > 0) {
+      clerkError.errors.forEach((err, i) => {
+        console.error(`[CLERK_ORGS]   - Error ${i + 1}: ${err.code} - ${err.message}`);
+        if (err.longMessage) {
+          console.error(`[CLERK_ORGS]     Long message: ${err.longMessage}`);
+        }
+      });
+    }
+    
     throw error;
   }
 }

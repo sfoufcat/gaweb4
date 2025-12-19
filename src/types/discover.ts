@@ -27,6 +27,7 @@ export type DiscoverEvent = {
   featured?: boolean;    // if true, shown in "Upcoming events" section
   category?: string;     // optional category tag
   track?: UserTrack | null;  // Track-specific content (e.g., content_creator, saas)
+  organizationId?: string;   // Clerk Organization ID for multi-tenancy
   // Participants
   attendeeIds: string[]; // user IDs who RSVPed
   maxAttendees?: number;
@@ -60,6 +61,7 @@ export type DiscoverArticle = {
   category?: string;
   articleType?: ArticleType; // playbook, trend, or caseStudy
   track?: UserTrack | null;  // Track-specific content (e.g., content_creator, saas)
+  organizationId?: string;   // Clerk Organization ID for multi-tenancy
   featured?: boolean;    // for Recommended section
   trending?: boolean;    // for Trending section
   createdAt?: string;
@@ -97,6 +99,7 @@ export type DiscoverCourse = {
   totalLessons?: number;
   totalModules?: number;
   track?: UserTrack | null;  // Track-specific content (e.g., content_creator, saas)
+  organizationId?: string;   // Clerk Organization ID for multi-tenancy
   featured?: boolean;    // for Recommended or main Courses section
   trending?: boolean;    // for Trending section
   modules: CourseModule[];

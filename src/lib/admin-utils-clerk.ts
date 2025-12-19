@@ -245,6 +245,41 @@ export async function requireSuperAdmin(): Promise<void> {
   }
 }
 
+/**
+ * Server-side: Check if current user is a coach and get their organizationId
+ * Throws error if not coach/admin or if no organization exists
+ * 
+ * @returns { userId, role, organizationId }
+ */
+export async function requireCoachWithOrg(): Promise<{ 
+  userId: string; 
+  role: UserRole; 
+  organizationId: string;
+}> {
+  const { userId, sessionClaims } = await auth();
+  
+  if (!userId) {
+    throw new Error('Unauthorized');
+  }
+
+  const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+  const role = publicMetadata?.role || 'user';
+  
+  // Must be coach, admin, or super_admin
+  if (role !== 'coach' && role !== 'admin' && role !== 'super_admin') {
+    throw new Error('Forbidden: Coach access required');
+  }
+  
+  // Get organizationId from metadata
+  const organizationId = (publicMetadata as ClerkPublicMetadata & { organizationId?: string })?.organizationId;
+  
+  if (!organizationId) {
+    throw new Error('Organization not found: Coach must have an organization');
+  }
+  
+  return { userId, role, organizationId };
+}
+
 // Re-export shared utilities for convenience in server-side code
 export * from './admin-utils-shared';
 

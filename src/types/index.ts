@@ -409,6 +409,7 @@ export interface StarterProgram {
   isDefaultForTrack: boolean; // Whether to auto-enroll new users of that track (deprecated - use programOrder: 1)
   defaultHabits?: ProgramHabitTemplate[]; // Default habits for users enrolled in this program
   isActive?: boolean; // Whether program is active/visible (default true)
+  organizationId?: string; // Clerk Organization ID for multi-tenancy
   createdAt: string;
   updatedAt: string;
 }
@@ -455,6 +456,7 @@ export interface Track {
   defaultHabits?: Array<{ title: string; description?: string }>; // Default habits for the track
   weeklyFocusDefaults?: WeeklyFocusDefaults; // Week-based default focus strings
   isActive: boolean;
+  organizationId?: string; // Clerk Organization ID for multi-tenancy
   createdAt: string;
   updatedAt: string;
 }
@@ -525,6 +527,7 @@ export interface Squad {
   inviteCode?: string; // e.g. "GA-XY29Q8" - required for private squads
   isPremium: boolean;
   coachId: string | null; // Required if premium
+  organizationId?: string; // Clerk Organization ID for multi-tenancy (coach's organization)
   createdAt: string;
   updatedAt: string;
   streak?: number | null; // Squad streak (consecutive days with >=50% members fully aligned)
@@ -825,6 +828,7 @@ export interface PremiumUpgradeForm {
   friendsNames: string | null;
   commitment: 'commit' | 'not_ready';
   stripeUpgradeSuccessful: boolean;
+  organizationId?: string; // Clerk Organization ID for multi-tenancy (user's organization)
   createdAt: string;
 }
 
@@ -843,6 +847,7 @@ export interface CoachingIntakeForm {
   coachPreference: string; // Selected coach or "no_preference"
   commitment: 'commit' | 'not_ready';
   stripeSubscriptionSuccessful: boolean;
+  organizationId?: string; // Clerk Organization ID for multi-tenancy (user's organization)
   createdAt: string;
 }
 
@@ -1054,6 +1059,7 @@ export interface Quiz {
   trackId: UserTrack | null;    // Associated track (null = general/unassigned)
   isActive: boolean;            // Whether quiz is live
   stepCount?: number;           // Cached count of steps
+  organizationId?: string;      // Clerk Organization ID for multi-tenancy
   createdAt: string;
   updatedAt: string;
 }

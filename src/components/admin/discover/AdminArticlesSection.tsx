@@ -342,7 +342,11 @@ function ArticleFormDialog({
   );
 }
 
-export function AdminArticlesSection() {
+interface AdminArticlesSectionProps {
+  apiEndpoint?: string;
+}
+
+export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articles' }: AdminArticlesSectionProps) {
   const [articles, setArticles] = useState<DiscoverArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -358,8 +362,11 @@ export function AdminArticlesSection() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('/api/admin/discover/articles');
-      if (!response.ok) throw new Error('Failed to fetch articles');
+      const response = await fetch(apiEndpoint);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch articles');
+      }
       const data = await response.json();
       setArticles(data.articles || []);
     } catch (err) {

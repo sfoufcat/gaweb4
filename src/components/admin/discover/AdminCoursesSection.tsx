@@ -745,7 +745,11 @@ function CourseFormDialog({
   );
 }
 
-export function AdminCoursesSection() {
+interface AdminCoursesSectionProps {
+  apiEndpoint?: string;
+}
+
+export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses' }: AdminCoursesSectionProps) {
   const [courses, setCourses] = useState<DiscoverCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -762,8 +766,11 @@ export function AdminCoursesSection() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('/api/admin/discover/courses');
-      if (!response.ok) throw new Error('Failed to fetch courses');
+      const response = await fetch(apiEndpoint);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch courses');
+      }
       const data = await response.json();
       setCourses(data.courses || []);
     } catch (err) {

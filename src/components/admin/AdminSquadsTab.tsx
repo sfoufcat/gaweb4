@@ -44,9 +44,11 @@ import { SquadFormDialog } from './SquadFormDialog';
 
 interface AdminSquadsTabProps {
   currentUserRole: UserRole;
+  /** Override API endpoint for multi-tenancy (e.g., '/api/coach/org-squads' for coaches) */
+  apiEndpoint?: string;
 }
 
-export function AdminSquadsTab({ currentUserRole: _currentUserRole }: AdminSquadsTabProps) {
+export function AdminSquadsTab({ currentUserRole: _currentUserRole, apiEndpoint = '/api/admin/squads' }: AdminSquadsTabProps) {
   const [squads, setSquads] = useState<SquadWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,9 +62,10 @@ export function AdminSquadsTab({ currentUserRole: _currentUserRole }: AdminSquad
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/admin/squads');
+      const response = await fetch(apiEndpoint);
       if (!response.ok) {
-        throw new Error('Failed to fetch squads');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch squads');
       }
 
       const data = await response.json();

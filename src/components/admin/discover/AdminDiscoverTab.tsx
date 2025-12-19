@@ -7,7 +7,12 @@ import { AdminCoursesSection } from './AdminCoursesSection';
 
 type DiscoverSubTab = 'events' | 'articles' | 'courses';
 
-export function AdminDiscoverTab() {
+interface AdminDiscoverTabProps {
+  /** Base API path for multi-tenancy (e.g., '/api/coach/org-discover' for coaches) */
+  apiBasePath?: string;
+}
+
+export function AdminDiscoverTab({ apiBasePath = '/api/admin/discover' }: AdminDiscoverTabProps) {
   const [activeSubTab, setActiveSubTab] = useState<DiscoverSubTab>('events');
 
   const tabs: { id: DiscoverSubTab; label: string; icon: React.ReactNode }[] = [
@@ -72,9 +77,9 @@ export function AdminDiscoverTab() {
 
       {/* Content */}
       <div>
-        {activeSubTab === 'events' && <AdminEventsSection />}
-        {activeSubTab === 'articles' && <AdminArticlesSection />}
-        {activeSubTab === 'courses' && <AdminCoursesSection />}
+        {activeSubTab === 'events' && <AdminEventsSection apiEndpoint={`${apiBasePath}/events`} />}
+        {activeSubTab === 'articles' && <AdminArticlesSection apiEndpoint={`${apiBasePath}/articles`} />}
+        {activeSubTab === 'courses' && <AdminCoursesSection apiEndpoint={`${apiBasePath}/courses`} />}
       </div>
     </div>
   );

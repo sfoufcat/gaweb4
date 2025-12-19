@@ -631,3 +631,125 @@ div[class*="LoadingIndicator"],
 .dark .bg-accent-branded {
   background-color: var(--brand-accent-dark, #b8896a);
 }
+
+/* ===========================================
+   Global Accent Color Overrides
+   These apply EVERYWHERE when brand variables are set
+   =========================================== */
+
+/* Text colors - Light mode */
+.text-\[\#a07855\] {
+  color: var(--brand-accent-light, #a07855);
+}
+
+/* Text colors - Dark mode */
+.dark .dark\:text-\[\#b8896a\] {
+  color: var(--brand-accent-dark, #b8896a);
+}
+
+/* Background colors - Light mode */
+.bg-\[\#a07855\] {
+  background-color: var(--brand-accent-light, #a07855);
+}
+
+/* Background colors - Dark mode */
+.dark .dark\:bg-\[\#b8896a\] {
+  background-color: var(--brand-accent-dark, #b8896a);
+}
+
+/* Gradient from colors - Light mode */
+.from-\[\#a07855\],
+.from-\[\#a07855\]\/5,
+.from-\[\#a07855\]\/10,
+.from-\[\#a07855\]\/15,
+.from-\[\#a07855\]\/20 {
+  --tw-gradient-from: var(--brand-accent-light, #a07855);
+}
+
+/* Gradient from colors - Dark mode */
+.dark .dark\:from-\[\#a07855\]\/5,
+.dark .dark\:from-\[\#a07855\]\/10,
+.dark .dark\:from-\[\#a07855\]\/15,
+.dark .dark\:from-\[\#a07855\]\/20,
+.dark .dark\:from-\[\#b8896a\]\/5,
+.dark .dark\:from-\[\#b8896a\]\/10,
+.dark .dark\:from-\[\#b8896a\]\/15,
+.dark .dark\:from-\[\#b8896a\]\/20 {
+  --tw-gradient-from: var(--brand-accent-dark, #b8896a);
+}
+
+/* Gradient to colors - Light mode */
+.to-\[\#8c6245\],
+.to-\[\#8c6245\]\/5,
+.to-\[\#8c6245\]\/10 {
+  --tw-gradient-to: var(--brand-accent-light, #8c6245);
+}
+
+/* Border colors - Light mode */
+.border-\[\#a07855\],
+.border-\[\#a07855\]\/20,
+.border-\[\#a07855\]\/30,
+.border-\[\#a07855\]\/50 {
+  border-color: var(--brand-accent-light, #a07855);
+}
+
+/* Border colors - Dark mode */
+.dark .dark\:border-\[\#b8896a\],
+.dark .dark\:border-\[\#b8896a\]\/20,
+.dark .dark\:border-\[\#b8896a\]\/30,
+.dark .dark\:border-\[\#b8896a\]\/50 {
+  border-color: var(--brand-accent-dark, #b8896a);
+}
+
+/* Ring/outline colors */
+.ring-\[\#a07855\],
+.ring-\[\#a07855\]\/20,
+.ring-\[\#a07855\]\/50 {
+  --tw-ring-color: var(--brand-accent-light, #a07855);
+}
+
+.dark .dark\:ring-\[\#b8896a\],
+.dark .dark\:ring-\[\#b8896a\]\/20,
+.dark .dark\:ring-\[\#b8896a\]\/50 {
+  --tw-ring-color: var(--brand-accent-dark, #b8896a);
+}
+
+/* Background with opacity - Light mode */
+.bg-\[\#a07855\]\/5 { background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 5%, transparent); }
+.bg-\[\#a07855\]\/10 { background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 10%, transparent); }
+.bg-\[\#a07855\]\/15 { background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 15%, transparent); }
+.bg-\[\#a07855\]\/20 { background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 20%, transparent); }
+.bg-\[\#a07855\]\/30 { background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 30%, transparent); }
+.bg-\[\#a07855\]\/50 { background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 50%, transparent); }
+
+/* Background with opacity - Dark mode */
+.dark .dark\:bg-\[\#b8896a\]\/5 { background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 5%, transparent); }
+.dark .dark\:bg-\[\#b8896a\]\/10 { background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 10%, transparent); }
+.dark .dark\:bg-\[\#b8896a\]\/15 { background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 15%, transparent); }
+.dark .dark\:bg-\[\#b8896a\]\/20 { background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 20%, transparent); }
+.dark .dark\:bg-\[\#b8896a\]\/30 { background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent); }
+.dark .dark\:bg-\[\#b8896a\]\/50 { background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 50%, transparent); }
+
+/* Hover states - Light mode */
+.hover\:bg-\[\#a07855\]:hover { background-color: var(--brand-accent-light, #a07855); }
+.hover\:bg-\[\#8c6245\]:hover { background-color: var(--brand-accent-light, #8c6245); }
+.hover\:text-\[\#a07855\]:hover { color: var(--brand-accent-light, #a07855); }
+.hover\:border-\[\#a07855\]:hover { border-color: var(--brand-accent-light, #a07855); }
+
+/* Hover states - Dark mode */
+.dark .dark\:hover\:bg-\[\#b8896a\]:hover { background-color: var(--brand-accent-dark, #b8896a); }
+.dark .dark\:hover\:text-\[\#b8896a\]:hover { color: var(--brand-accent-dark, #b8896a); }
+.dark .dark\:hover\:border-\[\#b8896a\]:hover { border-color: var(--brand-accent-dark, #b8896a); }
+
+/* Focus states */
+.focus\:ring-\[\#a07855\]:focus { --tw-ring-color: var(--brand-accent-light, #a07855); }
+.dark .dark\:focus\:ring-\[\#b8896a\]:focus { --tw-ring-color: var(--brand-accent-dark, #b8896a); }
+
+/* Border-t/b/l/r specific */
+.border-t-\[\#a07855\] { border-top-color: var(--brand-accent-light, #a07855); }
+.border-b-\[\#a07855\] { border-bottom-color: var(--brand-accent-light, #a07855); }
+.border-l-\[\#a07855\] { border-left-color: var(--brand-accent-light, #a07855); }
+
+.dark .dark\:border-t-\[\#b8896a\] { border-top-color: var(--brand-accent-dark, #b8896a); }
+.dark .dark\:border-b-\[\#b8896a\] { border-bottom-color: var(--brand-accent-dark, #b8896a); }
+.dark .dark\:border-l-\[\#b8896a\] { border-left-color: var(--brand-accent-dark, #b8896a); }

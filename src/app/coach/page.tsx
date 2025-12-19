@@ -371,29 +371,41 @@ export default function CoachPage() {
             )}
           </TabsContent>
 
-          {/* Users Tab */}
+          {/* Users Tab - Uses org-scoped API for coaches */}
           <TabsContent value="users">
-            <AdminUsersTab currentUserRole={role || 'user'} />
+            <AdminUsersTab 
+              currentUserRole={role || 'user'} 
+              apiEndpoint={role === 'coach' ? '/api/coach/org-users' : '/api/admin/users'}
+            />
           </TabsContent>
 
-          {/* All Squads Tab */}
+          {/* All Squads Tab - Uses org-scoped API for coaches */}
           <TabsContent value="all-squads">
-            <AdminSquadsTab currentUserRole={role || 'user'} />
+            <AdminSquadsTab 
+              currentUserRole={role || 'user'} 
+              apiEndpoint={role === 'coach' ? '/api/coach/org-squads' : '/api/admin/squads'}
+            />
           </TabsContent>
 
-          {/* Discover Content Tab */}
+          {/* Discover Content Tab - Uses org-scoped API for coaches */}
           <TabsContent value="discover">
-            <AdminDiscoverTab />
+            <AdminDiscoverTab 
+              apiBasePath={role === 'coach' ? '/api/coach/org-discover' : '/api/admin/discover'}
+            />
           </TabsContent>
 
-          {/* Upgrade Forms Tab */}
+          {/* Upgrade Forms Tab - Uses org-scoped API for coaches */}
           <TabsContent value="upgrade-forms">
-            <AdminPremiumUpgradeFormsTab />
+            <AdminPremiumUpgradeFormsTab 
+              apiEndpoint={role === 'coach' ? '/api/coach/org-forms/premium-upgrade' : '/api/admin/premium-upgrade-forms'}
+            />
           </TabsContent>
 
-          {/* Coaching Intake Forms Tab */}
+          {/* Coaching Intake Forms Tab - Uses org-scoped API for coaches */}
           <TabsContent value="coaching-forms">
-            <AdminCoachingIntakeFormsTab />
+            <AdminCoachingIntakeFormsTab 
+              apiEndpoint={role === 'coach' ? '/api/coach/org-forms/coaching-intake' : '/api/admin/coaching-intake-forms'}
+            />
           </TabsContent>
 
           {/* Quizzes Tab */}

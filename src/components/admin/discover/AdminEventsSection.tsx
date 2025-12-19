@@ -509,7 +509,11 @@ function EventFormDialog({
   );
 }
 
-export function AdminEventsSection() {
+interface AdminEventsSectionProps {
+  apiEndpoint?: string;
+}
+
+export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' }: AdminEventsSectionProps) {
   const [events, setEvents] = useState<DiscoverEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -524,8 +528,11 @@ export function AdminEventsSection() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('/api/admin/discover/events');
-      if (!response.ok) throw new Error('Failed to fetch events');
+      const response = await fetch(apiEndpoint);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch events');
+      }
       const data = await response.json();
       setEvents(data.events || []);
     } catch (err) {

@@ -276,7 +276,7 @@ export function Sidebar() {
           ${isCompact ? 'translate-y-[12px] scale-[0.92] opacity-90' : 'translate-y-0 scale-100 opacity-100'}
         `}
       >
-        <nav className="relative w-full max-w-md overflow-hidden rounded-[50px] shadow-lg shadow-black/5 dark:shadow-black/20">
+        <nav className="mobile-nav-branded relative w-full max-w-md overflow-hidden rounded-[50px] shadow-lg shadow-black/5 dark:shadow-black/20">
           {/* Liquid Glass Background Layers */}
           <div className="absolute inset-0 bg-white/50 dark:bg-[#101520]/80 backdrop-blur-[24px] backdrop-saturate-150" />
           <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-white/10 dark:from-white/5 dark:to-transparent" />

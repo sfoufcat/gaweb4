@@ -64,9 +64,11 @@ interface ClerkAdminUser {
 
 interface AdminUsersTabProps {
   currentUserRole: UserRole;
+  /** Override API endpoint for multi-tenancy (e.g., '/api/coach/org-users' for coaches) */
+  apiEndpoint?: string;
 }
 
-export function AdminUsersTab({ currentUserRole }: AdminUsersTabProps) {
+export function AdminUsersTab({ currentUserRole, apiEndpoint = '/api/admin/users' }: AdminUsersTabProps) {
   const [users, setUsers] = useState<ClerkAdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,9 +82,10 @@ export function AdminUsersTab({ currentUserRole }: AdminUsersTabProps) {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/admin/users');
+      const response = await fetch(apiEndpoint);
       if (!response.ok) {
-        throw new Error('Failed to fetch users');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch users');
       }
 
       const data = await response.json();

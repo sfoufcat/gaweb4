@@ -29,7 +29,12 @@ const COACH_LABELS: Record<string, string> = {
   matthew: 'Matthew Hood, CMPC',
 };
 
-export function AdminCoachingIntakeFormsTab() {
+interface AdminCoachingIntakeFormsTabProps {
+  /** Override API endpoint for multi-tenancy (e.g., '/api/coach/org-forms/coaching-intake' for coaches) */
+  apiEndpoint?: string;
+}
+
+export function AdminCoachingIntakeFormsTab({ apiEndpoint = '/api/admin/coaching-intake-forms' }: AdminCoachingIntakeFormsTabProps) {
   const [forms, setForms] = useState<CoachingIntakeForm[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,9 +46,10 @@ export function AdminCoachingIntakeFormsTab() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/admin/coaching-intake-forms');
+      const response = await fetch(apiEndpoint);
       if (!response.ok) {
-        throw new Error('Failed to fetch forms');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch forms');
       }
 
       const data = await response.json();

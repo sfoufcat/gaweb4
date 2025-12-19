@@ -160,6 +160,11 @@ export async function POST(req: Request) {
       }
     }
 
+    // Get the creator's organizationId for multi-tenancy
+    const clerk = await clerkClient();
+    const adminClerkUser = await clerk.users.getUser(adminUserId);
+    const organizationId = (adminClerkUser.publicMetadata as { organizationId?: string })?.organizationId || null;
+
     // Create squad in Firestore first to get the ID
     const now = new Date().toISOString();
     const squadRef = await adminDb.collection('squads').add({
@@ -173,6 +178,7 @@ export async function POST(req: Request) {
       isPremium: !!isPremium,
       coachId: coachId || null,
       trackId: trackId || null, // null means visible to all tracks
+      organizationId, // Multi-tenancy: scope to creator's organization
       createdAt: now,
       updatedAt: now,
     });
@@ -181,9 +187,7 @@ export async function POST(req: Request) {
     const streamClient = await getStreamServerClient();
     const channelId = `squad-${squadRef.id}`;
 
-    // Create the admin user in Stream if they don't exist
-    const clerk = await clerkClient();
-    const adminClerkUser = await clerk.users.getUser(adminUserId);
+    // Create the admin user in Stream if they don't exist (adminClerkUser already fetched above)
     await streamClient.upsertUser({
       id: adminUserId,
       name: `${adminClerkUser.firstName || ''} ${adminClerkUser.lastName || ''}`.trim() || 'Admin',
