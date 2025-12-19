@@ -1,0 +1,146 @@
+/**
+ * Admin API: Discover Courses Management
+ * 
+ * GET /api/admin/discover/courses - List all courses
+ * POST /api/admin/discover/courses - Create new course
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { adminDb } from '@/lib/firebase-admin';
+import { canManageDiscoverContent } from '@/lib/admin-utils-shared';
+import { FieldValue } from 'firebase-admin/firestore';
+
+export async function GET() {
+  try {
+    const { sessionClaims } = await auth();
+    const role = (sessionClaims?.publicMetadata as any)?.role;
+    
+    if (!canManageDiscoverContent(role)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const coursesSnapshot = await adminDb
+      .collection('courses')
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    const courses = coursesSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
+      updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
+    }));
+
+    return NextResponse.json({ courses });
+  } catch (error) {
+    console.error('[ADMIN_COURSES_GET] Error:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch courses' },
+      { status: 500 }
+    );
+  }
+}
+
+// Helper to compute course totals
+function computeCourseTotals(modules: any[]) {
+  const totalModules = modules.length;
+  let totalLessons = 0;
+  let totalDurationMinutes = 0;
+
+  modules.forEach(module => {
+    if (module.lessons && Array.isArray(module.lessons)) {
+      totalLessons += module.lessons.length;
+      module.lessons.forEach((lesson: any) => {
+        if (lesson.durationMinutes) {
+          totalDurationMinutes += lesson.durationMinutes;
+        }
+      });
+    }
+  });
+
+  return { totalModules, totalLessons, totalDurationMinutes };
+}
+
+// Helper to normalize module/lesson orders
+function normalizeOrders(modules: any[]) {
+  return modules.map((module, moduleIndex) => ({
+    ...module,
+    order: moduleIndex + 1,
+    lessons: (module.lessons || []).map((lesson: any, lessonIndex: number) => ({
+      ...lesson,
+      order: lessonIndex + 1,
+    })),
+  }));
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { sessionClaims } = await auth();
+    const role = (sessionClaims?.publicMetadata as any)?.role;
+    
+    if (!canManageDiscoverContent(role)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    
+    // Validate required fields
+    const requiredFields = ['title', 'coverImageUrl', 'shortDescription', 'category', 'level'];
+    for (const field of requiredFields) {
+      if (!body[field]) {
+        return NextResponse.json(
+          { error: `Missing required field: ${field}` },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate track if provided
+    const validTracks = ['content_creator', 'saas', 'coach_consultant', 'ecom', 'agency', 'community_builder', 'general'];
+    if (body.track && !validTracks.includes(body.track)) {
+      return NextResponse.json(
+        { error: `Invalid track. Must be one of: ${validTracks.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
+    // Normalize modules and compute totals
+    const modules = normalizeOrders(body.modules || []);
+    const { totalModules, totalLessons, totalDurationMinutes } = computeCourseTotals(modules);
+
+    const courseData = {
+      title: body.title,
+      coverImageUrl: body.coverImageUrl,
+      shortDescription: body.shortDescription,
+      category: body.category,
+      level: body.level,
+      track: body.track || null, // Track-specific content
+      featured: body.featured || false,
+      trending: body.trending || false,
+      modules,
+      totalModules,
+      totalLessons,
+      totalDurationMinutes,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    const docRef = await adminDb.collection('courses').add(courseData);
+
+    return NextResponse.json({ 
+      success: true, 
+      id: docRef.id,
+      message: 'Course created successfully' 
+    });
+  } catch (error) {
+    console.error('[ADMIN_COURSES_POST] Error:', error);
+    return NextResponse.json(
+      { error: 'Failed to create course' },
+      { status: 500 }
+    );
+  }
+}
+
+
+

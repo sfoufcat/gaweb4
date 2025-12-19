@@ -1,0 +1,4 @@
+# Doppler configuration file
+setup:
+  project: growthaddicts
+  config: dev

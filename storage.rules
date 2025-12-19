@@ -1,0 +1,37 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Discover content - authenticated uploads with validation
+    match /discover/{allPaths=**} {
+      // Anyone can read (public content for the app)
+      allow read: if true;
+      
+      // Only authenticated users can upload (Clerk users synced via custom token)
+      // With file type and size validation
+      allow write: if request.auth != null
+                   && request.resource.size < 500 * 1024 * 1024  // Max 500MB
+                   && (request.resource.contentType.matches('image/.*') 
+                       || request.resource.contentType.matches('video/.*'));
+    }
+    
+    // Squad avatars - public read, server-side upload only
+    match /squad-avatars/{allPaths=**} {
+      // Anyone can read squad avatars
+      allow read: if true;
+      // Uploads are handled server-side via Firebase Admin SDK
+      allow write: if false;
+    }
+    
+    // Public images for the app (quiz images, etc.)
+    match /images/{allPaths=**} {
+      allow read: if true;
+      allow write: if false; // Only manual uploads via console
+    }
+    
+    // Default: deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

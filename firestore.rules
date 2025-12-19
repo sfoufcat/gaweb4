@@ -1,0 +1,172 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Helper function to check if user is the coach for a given squad
+    function isCoachOfSquad(squadId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/squads/$(squadId)) &&
+        get(/databases/$(database)/documents/squads/$(squadId)).data.coachId == request.auth.uid;
+    }
+    
+    // Helper function to check if user is the coach of another user
+    function isCoachOfUser(targetUserId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(targetUserId)) &&
+        get(/databases/$(database)/documents/users/$(targetUserId)).data.squadId != null &&
+        isCoachOfSquad(get(/databases/$(database)/documents/users/$(targetUserId)).data.squadId);
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Anyone can read public user data
+      allow read: if true;
+      
+      // Only the user can create/update their own profile
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      
+      // Only the user can delete their profile
+      allow delete: if isOwner(userId);
+      
+      // Morning Check-ins subcollection
+      match /checkins/{checkInId} {
+        // User can read/write their own check-ins
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Evening Check-ins subcollection
+      match /eveningCheckins/{checkInId} {
+        // User can read/write their own evening check-ins
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Reflections subcollection
+      match /reflections/{reflectionId} {
+        // User can read/write their own reflections
+        // Coach can read their squad members' reflections
+        allow read: if isOwner(userId) || isCoachOfUser(userId);
+        allow create, update, delete: if isOwner(userId);
+      }
+    }
+    
+    // Goals collection
+    match /goals/{goalId} {
+      // Users can read their own goals or public goals
+      allow read: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || resource.data.isPublic == true);
+      
+      // Users can create their own goals
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      
+      // Users can update their own goals
+      allow update: if isOwner(resource.data.userId);
+      
+      // Users can delete their own goals
+      allow delete: if isOwner(resource.data.userId);
+    }
+    
+    // Habits collection
+    match /habits/{habitId} {
+      // Users can read their own habits or public habits
+      allow read: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || resource.data.isPublic == true);
+      
+      // Users can create their own habits
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      
+      // Users can update their own habits
+      allow update: if isOwner(resource.data.userId);
+      
+      // Users can delete their own habits
+      allow delete: if isOwner(resource.data.userId);
+    }
+    
+    // Tasks collection (Daily Focus)
+    match /tasks/{taskId} {
+      // Users can read their own tasks (private or public)
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Users can create their own tasks
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      
+      // Users can update their own tasks
+      allow update: if isOwner(resource.data.userId);
+      
+      // Users can delete their own tasks
+      allow delete: if isOwner(resource.data.userId);
+    }
+    
+    // ============================================================================
+    // STARTER PROGRAM SYSTEM
+    // ============================================================================
+    
+    // Starter Programs collection (read-only for authenticated users)
+    // Programs are created/updated via admin or seed scripts
+    match /starter_programs/{programId} {
+      // Anyone authenticated can read programs
+      allow read: if isAuthenticated();
+      
+      // Only server/admin can write (handled via Firebase Admin SDK)
+      allow write: if false;
+    }
+    
+    // Starter Program Days collection (read-only for authenticated users)
+    // Program days are created/updated via admin or seed scripts
+    match /starter_program_days/{dayId} {
+      // Anyone authenticated can read program days
+      allow read: if isAuthenticated();
+      
+      // Only server/admin can write (handled via Firebase Admin SDK)
+      allow write: if false;
+    }
+    
+    // Starter Program Enrollments collection
+    // Users can only read their own enrollments
+    match /starter_program_enrollments/{enrollmentId} {
+      // Users can read their own enrollments
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Enrollments are created/updated via server-side APIs
+      allow write: if false;
+    }
+    
+    // Squads collection
+    match /squads/{squadId} {
+      // Anyone can read squad data
+      allow read: if isAuthenticated();
+      
+      // Only admins can create/update/delete squads
+      // (handled server-side)
+    }
+    
+    // Notifications collection
+    match /notifications/{notificationId} {
+      // Users can read their own notifications
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Notifications are created server-side only
+      // Users can update (mark as read) their own notifications
+      allow update: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid &&
+        // Only allow updating the 'read' field
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      
+      // Users cannot delete notifications (server manages this)
+      allow delete: if false;
+    }
+  }
+}

@@ -1,0 +1,584 @@
+@layer base {
+  :root {
+    /* App color scheme - light warm beige theme */
+    --background: 36 25% 97%; /* #faf8f6 */
+    --foreground: 0 0% 10%; /* #1a1a1a */
+    --card: 36 25% 97%;
+    --card-foreground: 0 0% 10%;
+    --popover: 36 25% 97%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 0 0% 10%; /* #1a1a1a */
+    --primary-foreground: 0 0% 98%;
+    --secondary: 30 10% 36%; /* #5f5a55 */
+    --secondary-foreground: 0 0% 98%;
+    --muted: 30 10% 65%; /* #a7a39e */
+    --muted-foreground: 30 10% 36%;
+    --accent: 28 31% 48%; /* #a07855 */
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 30 15% 85%; /* #e1ddd8 */
+    --input: 30 15% 85%;
+    --ring: 0 0% 10%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+    
+    /* Extended color tokens for theming */
+    --app-bg: 36 25% 97%; /* #faf8f6 */
+    --surface: 0 0% 100%; /* white */
+    --surface-elevated: 30 20% 96%; /* #f3f1ef */
+    --text-primary: 0 0% 10%; /* #1a1a1a */
+    --text-secondary: 30 5% 36%; /* #5f5a55 */
+    --text-muted: 30 5% 65%; /* #a7a39e */
+    --border-subtle: 30 15% 85%; /* #e1ddd8 */
+    --border-muted: 30 15% 90%; /* lighter border */
+  }
+
+  .dark {
+    /* Dark mode color scheme - refined for better contrast */
+    --background: 225 33% 3%; /* #05070b - deep dark */
+    --foreground: 240 9% 97%; /* #f5f5f8 */
+    --card: 222 20% 11%; /* #171b22 */
+    --card-foreground: 240 9% 97%;
+    --popover: 222 20% 11%; /* #171b22 */
+    --popover-foreground: 240 9% 97%;
+    --primary: 240 9% 97%; /* #f5f5f8 */
+    --primary-foreground: 225 33% 3%;
+    --secondary: 227 9% 73%; /* #b2b6c2 */
+    --secondary-foreground: 225 33% 3%;
+    --muted: 228 6% 53%; /* #7d8190 */
+    --muted-foreground: 227 9% 73%;
+    --accent: 28 31% 55%; /* #b8896a - slightly brighter accent for dark */
+    --accent-foreground: 240 9% 97%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 14% 18%; /* #262b35 */
+    --input: 221 16% 15%; /* #181d26 */
+    --ring: 240 9% 97%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 50%;
+    --chart-3: 197 37% 45%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    
+    /* Extended color tokens for dark theming - GA Design System */
+    --app-bg: 225 33% 3%; /* #05070b */
+    --surface: 222 20% 11%; /* #171b22 - cards */
+    --surface-elevated: 222 18% 9%; /* #11141b - elevated bg */
+    --text-primary: 240 9% 97%; /* #f5f5f8 */
+    --text-secondary: 227 9% 73%; /* #b2b6c2 */
+    --text-muted: 228 6% 53%; /* #7d8190 */
+    --border-subtle: 220 14% 18%; /* #262b35 */
+    --border-muted: 221 16% 15%; /* #181d26 */
+    
+    /* GA Dark Mode Specific Tokens (hex for direct use) */
+    --ga-bg-page: #05070b;
+    --ga-bg-elevated: #11141b;
+    --ga-bg-card: #171b22;
+    --ga-bg-card-soft: #1d222b;
+    --ga-border-subtle: #262b35;
+    --ga-text-primary: #f5f5f8;
+    --ga-text-secondary: #b2b6c2;
+    --ga-text-muted: #7d8190;
+    --ga-input-bg: #181d26;
+    --ga-input-border: #313746;
+    --ga-chip-bg: #222631;
+  }
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  /* Hide scrollbar utility */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Animation delays */
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+
+  /* Smooth scroll behavior */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom animations */
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+
+  /* Fade up animation for page transitions */
+  @keyframes fadeUp {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-up {
+    animation: fadeUp 0.4s ease-out forwards;
+  }
+
+  /* Page fade-in animation - CSS only, no hydration delay */
+  @keyframes pageFadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-page-fade-in {
+    animation: pageFadeIn 0.5s ease-out forwards;
+    will-change: opacity;
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite linear;
+    background: linear-gradient(
+      to right,
+      transparent 0%,
+      rgba(255, 255, 255, 0.3) 50%,
+      transparent 100%
+    );
+    background-size: 1000px 100%;
+  }
+
+  /* Backdrop blur support */
+  @supports (backdrop-filter: blur(0)) or (-webkit-backdrop-filter: blur(0)) {
+    .backdrop-blur-xl {
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+    }
+  }
+}
+
+/* Prevent layout shift from scrollbars */
+html {
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+
+body {
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Dark mode skeleton / loading state styles */
+html.dark .animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes darkShimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+html.dark .skeleton-shimmer,
+html.dark [class*="skeleton"] {
+  background: linear-gradient(
+    90deg,
+    #131722 0%,
+    #1b2130 50%,
+    #131722 100%
+  ) !important;
+  background-size: 1000px 100%;
+  animation: darkShimmer 2s infinite linear;
+}
+
+/* Stream Chat Custom Styling */
+.str-chat {
+  --str-chat__primary-color: #a07855;
+  --str-chat__active-primary-color: #8c6245;
+  --str-chat__surface-color: #faf8f6;
+  --str-chat__secondary-surface-color: #f3f1ef;
+  --str-chat__primary-surface-color: #faf8f6;
+  --str-chat__border-color: #e1ddd8;
+  --str-chat__text-color: #1a1a1a;
+  --str-chat__text-low-emphasis-color: #5f5a55;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Dark mode Stream Chat overrides */
+.dark .str-chat {
+  --str-chat__primary-color: #b8896a;
+  --str-chat__active-primary-color: #a07855;
+  --str-chat__surface-color: #101520;
+  --str-chat__secondary-surface-color: #181d28;
+  --str-chat__primary-surface-color: #101520;
+  --str-chat__border-color: #272d38;
+  --str-chat__text-color: #faf8f6;
+  --str-chat__text-low-emphasis-color: #b5b0ab;
+  --str-chat__message-textarea-background-color: #181d28;
+  --str-chat__message-textarea-color: #faf8f6;
+}
+
+.str-chat__channel-list {
+  background: #faf8f6;
+}
+
+.dark .str-chat__channel-list {
+  background: #101520;
+}
+
+.str-chat__channel-preview-messenger {
+  border-radius: 12px;
+  margin: 4px 8px;
+}
+
+.str-chat__channel-preview-messenger--active {
+  background: #f3f1ef;
+}
+
+.dark .str-chat__channel-preview-messenger--active {
+  background: #181d28;
+}
+
+.str-chat__message-simple {
+  border-radius: 16px;
+}
+
+.str-chat__message-input {
+  border-radius: 16px;
+  border: 1px solid #e1ddd8;
+  background: white;
+}
+
+.dark .str-chat__message-input {
+  border: 1px solid #272d38;
+  background: #181d28;
+}
+
+.dark .str-chat__message-textarea-container {
+  background: #181d28;
+}
+
+.dark .str-chat__message-textarea {
+  background: #181d28;
+  color: #faf8f6;
+}
+
+/* ===========================================
+   Dark mode for Admin/Editor Form Dialogs
+   =========================================== */
+
+/* Form dialog modals */
+html.dark [class*="bg-white"][class*="rounded"] {
+  --tw-bg-opacity: 1;
+  background-color: #171b22;
+}
+
+/* Admin form inputs, selects, textareas */
+html.dark input[type="text"],
+html.dark input[type="email"],
+html.dark input[type="password"],
+html.dark input[type="number"],
+html.dark input[type="date"],
+html.dark input[type="time"],
+html.dark input[type="url"],
+html.dark select,
+html.dark textarea {
+  background-color: #1e222a !important;
+  border-color: #313746 !important;
+  color: #f5f5f8 !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #7d8190 !important;
+}
+
+/* Admin form labels */
+html.dark label {
+  color: #f5f5f8;
+}
+
+/* Admin checkbox and radio */
+html.dark input[type="checkbox"],
+html.dark input[type="radio"] {
+  background-color: #1e222a;
+  border-color: #313746;
+}
+
+/* Admin borders for form sections */
+html.dark .border-\[\#e1ddd8\] {
+  border-color: #262b35 !important;
+}
+
+/* Aggressively hide ALL Stream Chat loading indicators and spinners */
+.str-chat__loading-indicator,
+.str-chat__loading-channels,
+.str-chat__channel-list-loading,
+.str-chat-channel-list .str-chat__loading-indicator,
+.str-chat__loading-indicator-container,
+.str-chat__load-more-button__spinner,
+.str-chat__channel-list-messenger .str-chat__loading-indicator,
+.str-chat__channel-list-react .str-chat__loading-indicator,
+.str-chat .str-chat__loading-channels,
+.str-chat-angular__loading-indicator,
+div[class*="loading-indicator"],
+div[class*="LoadingIndicator"],
+.str-chat__message-list-scroll .str-chat__loading-indicator {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  width: 0 !important;
+}
+
+/* Hide Stream's "Loading conversations..." text */
+.str-chat__channel-list-empty,
+.str-chat__empty-channel {
+  display: none !important;
+}
+
+/* Ensure our content shows immediately when loaded */
+.str-chat__channel-list-messenger,
+.str-chat__channel-list-messenger__main {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* ===========================================
+   TipTap Rich Text Editor Styles
+   =========================================== */
+
+/* Editor placeholder */
+.tiptap p.is-editor-empty:first-child::before {
+  color: #8c8c8c;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.dark .tiptap p.is-editor-empty:first-child::before {
+  color: #7d8190;
+}
+
+/* Base editor styles */
+.tiptap {
+  min-height: 100%;
+  outline: none;
+  font-family: var(--font-albert-sans), sans-serif;
+}
+
+.tiptap:focus {
+  outline: none;
+}
+
+/* Headings */
+.tiptap h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 1.5rem 0 0.75rem 0;
+  line-height: 1.2;
+  color: #1a1a1a;
+}
+
+.tiptap h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 1.25rem 0 0.5rem 0;
+  line-height: 1.3;
+  color: #1a1a1a;
+}
+
+.tiptap h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem 0;
+  line-height: 1.4;
+  color: #1a1a1a;
+}
+
+.dark .tiptap h1,
+.dark .tiptap h2,
+.dark .tiptap h3 {
+  color: #f5f5f8;
+}
+
+/* Paragraphs */
+.tiptap p {
+  margin: 0.5rem 0;
+  line-height: 1.6;
+  color: #1a1a1a;
+}
+
+.dark .tiptap p {
+  color: #f5f5f8;
+}
+
+/* Bold and Italic */
+.tiptap strong {
+  font-weight: 700;
+}
+
+.tiptap em {
+  font-style: italic;
+}
+
+/* Strikethrough */
+.tiptap s {
+  text-decoration: line-through;
+}
+
+/* Lists */
+.tiptap ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.tiptap ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.tiptap li {
+  margin: 0.25rem 0;
+  line-height: 1.6;
+}
+
+.tiptap li p {
+  margin: 0;
+}
+
+/* Nested lists */
+.tiptap ul ul,
+.tiptap ol ol,
+.tiptap ul ol,
+.tiptap ol ul {
+  margin: 0.25rem 0;
+}
+
+/* Blockquotes */
+.tiptap blockquote {
+  border-left: 4px solid #a07855;
+  padding-left: 1rem;
+  margin: 1rem 0;
+  font-style: italic;
+  color: #5f5a55;
+}
+
+.dark .tiptap blockquote {
+  border-left-color: #b8896a;
+  color: #b2b6c2;
+}
+
+/* Links */
+.tiptap a {
+  color: #a07855;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.tiptap a:hover {
+  color: #8c6245;
+}
+
+.dark .tiptap a {
+  color: #b8896a;
+}
+
+.dark .tiptap a:hover {
+  color: #a07855;
+}
+
+/* Images */
+.tiptap img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+}
+
+/* Videos */
+.tiptap video {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+}
+
+/* Code blocks */
+.tiptap pre {
+  background: #f5f2ed;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.875rem;
+}
+
+.dark .tiptap pre {
+  background: #11141b;
+}
+
+.tiptap code {
+  background: #f5f2ed;
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.25rem;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.875em;
+}
+
+.dark .tiptap code {
+  background: #11141b;
+}
+
+/* Horizontal rule */
+.tiptap hr {
+  border: none;
+  border-top: 1px solid #e1ddd8;
+  margin: 1.5rem 0;
+}
+
+.dark .tiptap hr {
+  border-top-color: #262b35;
+}
+
+/* Selection highlight */
+.tiptap ::selection {
+  background: rgba(160, 120, 85, 0.3);
+}
+
+.dark .tiptap ::selection {
+  background: rgba(184, 137, 106, 0.3);
+}
+
+/* Focus state for editable content */
+.tiptap.ProseMirror-focused {
+  outline: none;
+}

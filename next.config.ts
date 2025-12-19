@@ -1,0 +1,117 @@
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+  
+  // Optimize for Vercel deployment
+  output: 'standalone',
+  
+  // Skip static generation errors - app requires auth
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
+  
+  // Configure external images
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'scontent-ams2-1.cdninstagram.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.cdninstagram.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'storage.googleapis.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'img.clerk.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.clerk.dev',
+        pathname: '/**',
+      },
+    ],
+  },
+  
+  // Optimize bundle splitting for faster initial load
+  experimental: {
+    optimizePackageImports: ['stream-chat', 'stream-chat-react', 'lucide-react', '@clerk/nextjs', 'framer-motion'],
+  },
+  
+  // Enable compression for faster loading
+  compress: true,
+  
+  webpack: (config, { isServer, dev }) => {
+    // Only apply optimizations in development for faster rebuilds
+    if (!isServer && dev) {
+      config.optimization = {
+        ...config.optimization,
+        removeAvailableModules: false,
+        removeEmptyChunks: false,
+        splitChunks: false, // Disable code splitting in dev for faster builds
+      };
+    }
+    
+    // Production optimizations
+    if (!isServer && !dev) {
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          ...config.optimization?.splitChunks,
+          chunks: 'all',
+          cacheGroups: {
+            ...config.optimization?.splitChunks?.cacheGroups,
+            // Stream Chat - largest dependency
+            streamChat: {
+              test: /[\\/]node_modules[\\/](stream-chat|stream-chat-react)[\\/]/,
+              name: 'stream-chat',
+              chunks: 'async',
+              priority: 20,
+              enforce: true,
+            },
+            // React components
+            react: {
+              test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
+              name: 'react',
+              chunks: 'all',
+              priority: 15,
+            },
+            // Common vendor code
+            vendors: {
+              test: /[\\/]node_modules[\\/]/,
+              name: 'vendors',
+              chunks: 'all',
+              priority: 10,
+            },
+          },
+        },
+      };
+    }
+    
+    return config;
+  },
+};
+
+export default nextConfig;

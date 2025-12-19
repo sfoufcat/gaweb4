@@ -1,0 +1,72 @@
+'use client';
+
+import React, { useState } from 'react';
+import { AdminTracksTab } from './AdminTracksTab';
+import { AdminStarterProgramsTab } from './AdminStarterProgramsTab';
+import { AdminDynamicPromptsTab } from './AdminDynamicPromptsTab';
+
+type SubTab = 'tracks' | 'programs' | 'prompts';
+
+export function AdminTracksAndProgramsTab() {
+  const [activeSubTab, setActiveSubTab] = useState<SubTab>('tracks');
+
+  return (
+    <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
+      {/* Header */}
+      <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]/50">
+        <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+          Tracks & Programs CMS
+        </h2>
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+          Manage tracks, starter programs, and dynamic prompts
+        </p>
+      </div>
+
+      {/* Sub-tabs */}
+      <div className="border-b border-[#e1ddd8] dark:border-[#262b35]/50">
+        <div className="flex px-6">
+          <button
+            onClick={() => setActiveSubTab('tracks')}
+            className={`px-4 py-3 font-albert text-sm font-medium border-b-2 transition-colors ${
+              activeSubTab === 'tracks'
+                ? 'border-[#a07855] text-[#a07855]'
+                : 'border-transparent text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+            }`}
+          >
+            Tracks
+          </button>
+          <button
+            onClick={() => setActiveSubTab('programs')}
+            className={`px-4 py-3 font-albert text-sm font-medium border-b-2 transition-colors ${
+              activeSubTab === 'programs'
+                ? 'border-[#a07855] text-[#a07855]'
+                : 'border-transparent text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+            }`}
+          >
+            Starter Programs
+          </button>
+          <button
+            onClick={() => setActiveSubTab('prompts')}
+            className={`px-4 py-3 font-albert text-sm font-medium border-b-2 transition-colors ${
+              activeSubTab === 'prompts'
+                ? 'border-[#a07855] text-[#a07855]'
+                : 'border-transparent text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+            }`}
+          >
+            Dynamic Prompts
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-6">
+        {activeSubTab === 'tracks' && <AdminTracksTab />}
+        {activeSubTab === 'programs' && <AdminStarterProgramsTab />}
+        {activeSubTab === 'prompts' && <AdminDynamicPromptsTab />}
+      </div>
+    </div>
+  );
+}
+
+
+

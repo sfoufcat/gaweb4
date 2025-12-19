@@ -1,0 +1,1097 @@
+/* Growth Addicts Chat - Instagram/iMessage Style */
+
+/* ============================================
+   CSS Variables (Design Tokens from Figma)
+   ============================================ */
+:root {
+  /* Message bubbles */
+  --ga-sent-bubble: #7e6c5b;
+  --ga-sent-text: #f1ece6;
+  --ga-received-bubble: #ffffff;
+  --ga-received-text: #1a1a1a;
+  
+  /* Text colors from Figma */
+  --ga-text-primary: #1a1a1a;
+  --ga-text-secondary: #5f5a55;
+  --ga-text-muted: #a7a39e;
+  --ga-timestamp: #a7a39e;
+  
+  /* Backgrounds from Figma */
+  --ga-background-primary: #faf8f6;
+  --ga-background-secondary: #ffffff;
+  --ga-background-elevated: #f3f1ef;
+  --ga-border: #e1ddd8;
+  
+  /* Accent colors */
+  --ga-accent-primary: #a07855;
+  --ga-accent-tertiary: #7e6c5b;
+  --ga-accent-light: rgba(160, 120, 85, 0.12);
+  
+  /* Interactive states */
+  --ga-hover: rgba(0, 0, 0, 0.04);
+  
+  /* Semantic */
+  --ga-button-primary-bg: #2c2520;
+}
+
+/* ============================================
+   Hide Stream's Default Unread Count Badge & Elements
+   ============================================ */
+.str-chat__channel-preview-unread-badge,
+.str-chat__channel-preview-messenger--unread-count,
+.str-chat__channel-preview__unread-count,
+.str-chat__channel-preview-messenger__unread-count,
+.str-chat__channel-preview-unread,
+.str-chat__channel-list-messenger__channel-preview-unread-count,
+.str-chat__channel-preview-count-wrapper,
+/* More aggressive selectors */
+[class*="unread-count"],
+[class*="unread-badge"],
+[class*="UnreadCount"],
+[class*="unreadCount"],
+/* Stream's internal badge styles */
+.str-chat__badge,
+.str-chat__channel-preview-title + span,
+.str-chat__channel-preview-messenger .str-chat__badge,
+/* Hide any floating badge that might appear */
+.str-chat__channel-list .str-chat__badge,
+/* Hide channel preview end elements that might contain unread count */
+.str-chat__channel-preview-end,
+.str-chat__channel-preview-end-first-row,
+.str-chat__channel-preview-end-second-row,
+/* Hide unread counts in various positions */
+.str-chat__channel-list-react .str-chat__channel-preview-unread-count,
+.str-chat__channel-list button > span:last-child:not(:first-child) {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  font-size: 0 !important;
+}
+
+/* ============================================
+   General Container Overrides
+   ============================================ */
+.str-chat {
+  --str-chat__font-family: 'Geist', 'Albert Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --str-chat__primary-color: var(--ga-accent-primary);
+  --str-chat__active-primary-color: #8c6245;
+  --str-chat__surface-color: var(--ga-background-elevated);
+  --str-chat__secondary-surface-color: var(--ga-background-primary);
+  --str-chat__primary-surface-color: var(--ga-background-primary);
+  --str-chat__primary-surface-color-low-emphasis: var(--ga-background-primary);
+  --str-chat__border-radius-circle: 50%;
+  --str-chat__message-bubble-border-radius: 16px;
+  --str-chat__avatar-border-radius: 50%;
+  font-family: 'Geist', 'Albert Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  height: 100%;
+}
+
+.str-chat__theme-light {
+  --str-chat__text-color: var(--ga-text-primary);
+  --str-chat__text-low-emphasis-color: var(--ga-text-secondary);
+  --str-chat__disabled-color: #8c8c8c;
+  --str-chat__cta-button-border-radius: 32px;
+}
+
+/* ============================================
+   Main Chat Container
+   ============================================ */
+.str-chat__main-panel,
+.str-chat__channel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.str-chat__container {
+  height: 100%;
+}
+
+/* ============================================
+   Channel List Styles
+   ============================================ */
+.str-chat__channel-list {
+  background: var(--ga-background-primary);
+}
+
+.str-chat__channel-list-messenger {
+  background: transparent;
+}
+
+.str-chat__channel-preview-messenger {
+  padding: 10px 12px;
+  margin: 2px 8px;
+  border-radius: 12px;
+  background: transparent;
+  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.str-chat__channel-preview-messenger:hover {
+  background: var(--ga-hover);
+}
+
+.str-chat__channel-preview-messenger--active {
+  background: var(--ga-accent-light);
+}
+
+.str-chat__channel-preview-messenger--unread .str-chat__channel-preview-messenger--name {
+  font-weight: 600;
+}
+
+.str-chat__channel-preview-messenger--name {
+  font-family: 'Albert Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ga-text-primary);
+}
+
+.str-chat__channel-preview-messenger--last-message {
+  font-family: 'Geist', sans-serif;
+  font-size: 13px;
+  color: var(--ga-text-secondary);
+}
+
+/* ============================================
+   Message List Styles
+   ============================================ */
+.str-chat__list {
+  background: var(--ga-background-primary);
+  padding: 12px 16px;
+  flex: 1;
+  overflow-y: auto;
+  border-top: 1px solid var(--ga-border);
+}
+
+.str-chat__main-panel {
+  background: var(--ga-background-primary);
+}
+
+.str-chat__ul {
+  padding: 0;
+}
+
+.str-chat__li {
+  margin-bottom: 12px;
+}
+
+/* ============================================
+   MESSAGE ALIGNMENT
+   Now handled by CustomMessage component
+   These are fallbacks for any Stream default messages
+   ============================================ */
+
+/* Base message container */
+.str-chat__message,
+.str-chat__message-simple {
+  padding: 2px 0;
+}
+
+/* ============================================
+   AVATAR STYLES
+   Now handled by CustomMessage component
+   ============================================ */
+
+/* Avatar base styles (fallback) */
+.str-chat__avatar {
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.str-chat__avatar-image {
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* ============================================
+   MESSAGE BUBBLE STYLES
+   Now handled by CustomMessage component
+   These are fallbacks for any Stream defaults
+   ============================================ */
+.str-chat__message-simple {
+  font-family: 'Geist', sans-serif;
+}
+
+/* Message text font */
+.str-chat__message-text {
+  font-family: 'Geist', sans-serif;
+  font-size: 16px;
+  line-height: 1.4;
+  letter-spacing: -0.3px;
+}
+
+.str-chat__message-text p {
+  margin: 0;
+}
+
+/* ============================================
+   TIMESTAMP
+   Now handled by CustomMessage component
+   ============================================ */
+
+/* Message status (read receipts) */
+.str-chat__message-status {
+  font-size: 12px;
+  color: var(--ga-text-muted);
+}
+
+/* ============================================
+   Message Actions
+   Now handled by CustomMessage component
+   Hide Stream's default actions UI
+   ============================================ */
+.str-chat__message-options,
+.str-chat__message-actions-box {
+  display: none !important;
+}
+
+/* ============================================
+   Reactions
+   Now handled by CustomMessage component
+   Hide Stream's default reactions UI
+   ============================================ */
+.str-chat__message-reactions-list,
+.str-chat__reaction-list {
+  display: none !important;
+}
+
+/* ============================================
+   Reaction Selector
+   Now handled by CustomMessage component
+   Hide Stream's default selector
+   ============================================ */
+.str-chat__reaction-selector {
+  display: none !important;
+}
+
+/* ============================================
+   Thread / Reply Styles - FLEXBOX LAYOUT
+   ============================================ */
+/* Main thread container - fixed position panel with flexbox */
+.str-chat__thread {
+  background: var(--ga-background-primary) !important;
+  border-left: 1px solid var(--ga-border);
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  max-width: 420px !important;
+  z-index: 100 !important;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  height: 100% !important;
+}
+
+@media (max-width: 1023px) {
+  .str-chat__thread {
+    max-width: 100% !important;
+    left: 0 !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Force all direct children of thread to be flex column */
+.str-chat__thread > * {
+  background: var(--ga-background-primary) !important;
+}
+
+/* Thread inner containers - ensure they fill and flex properly */
+.str-chat__thread .str-chat__container,
+.str-chat__thread .str-chat__main-panel,
+.str-chat__thread .str-chat__main-panel-inner,
+.str-chat__thread .str-chat__channel,
+.str-chat__thread .str-chat__window {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  background: var(--ga-background-primary) !important;
+}
+
+/* Thread Header - Transparent background */
+.str-chat__thread-header {
+  background: var(--ga-background-primary) !important;
+  border-bottom: 1px solid var(--ga-border);
+  padding: 0.5rem 1rem !important;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0 !important;
+}
+
+.str-chat__thread-header-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.str-chat__thread-header-title {
+  font-family: 'Albert Sans', sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--ga-text-primary);
+  margin: 0;
+}
+
+/* Thread close button */
+.str-chat__close-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ga-text-secondary);
+  transition: all 0.15s ease;
+}
+
+.str-chat__close-button:hover {
+  background: var(--ga-background-elevated);
+  color: var(--ga-text-primary);
+}
+
+/* Thread parent message (the original message being replied to) */
+.str-chat__thread-start {
+  padding: 12px 20px;
+  background: var(--ga-background-primary) !important;
+  border-bottom: 1px solid var(--ga-border);
+  flex-shrink: 0 !important;
+}
+
+/* Thread message list - FLEX GROW to fill space */
+.str-chat__thread-list {
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  background: var(--ga-background-primary) !important;
+  padding: 16px 20px;
+  min-height: 0 !important;
+}
+
+/* Thread message input - FLEX SHRINK 0 to stay at bottom */
+.str-chat__thread .str-chat__message-input {
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  background: var(--ga-background-primary) !important;
+  border-top: 1px solid var(--ga-border);
+  margin-top: auto !important;
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+/* Ensure the thread input form has proper background */
+.str-chat__thread .str-chat__message-input form {
+  background: var(--ga-background-primary) !important;
+}
+
+/* ============================================
+   Reply Count Button (Comments Row)
+   Now handled by CustomMessage component
+   ============================================ */
+.str-chat__message-replies-count-button {
+  display: none !important;
+}
+
+/* ============================================
+   Date Separator - Figma style with lines
+   ============================================ */
+.str-chat__date-separator {
+  display: flex !important;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  width: 100%;
+}
+
+.str-chat__date-separator-line {
+  flex: 1;
+  height: 1px;
+  background: var(--ga-border);
+  display: block !important;
+}
+
+.str-chat__date-separator-date {
+  font-family: 'Albert Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ga-text-muted);
+  background: transparent !important;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+/* ============================================
+   MESSAGE INPUT / COMPOSER
+   Now handled by CustomMessageInput component
+   Just minimal wrapper styles
+   ============================================ */
+.str-chat__message-input {
+  flex-shrink: 0;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+}
+
+/* Hide Stream's default input elements */
+.str-chat__input-flat,
+.str-chat__fileupload-wrapper,
+.str-chat__send-button,
+.str-chat__audio-recorder,
+.str-chat__record-audio-button,
+.str-chat__input-flat-emojiselect {
+  /* Let CustomMessageInput handle all rendering */
+}
+
+/* ============================================
+   Channel Header Styles
+   ============================================ */
+.str-chat__header-livestream {
+  background: var(--ga-background-primary);
+  border-bottom: none;
+  padding: 10px 16px;
+  flex-shrink: 0;
+}
+
+.str-chat__header-livestream-left--title {
+  font-family: 'Albert Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ga-text-primary);
+}
+
+.str-chat__header-livestream-left--subtitle {
+  font-family: 'Geist', sans-serif;
+  font-size: 12px;
+  color: var(--ga-text-secondary);
+}
+
+/* ============================================
+   Quoted/Reply Message Styles
+   ============================================ */
+.str-chat__quoted-message-preview,
+.str-chat__quoted-message-bubble {
+  background: var(--ga-background-elevated);
+  border-left: 4px solid var(--ga-accent-tertiary);
+  border-radius: 0 4px 4px 0;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.str-chat__quoted-message-preview .str-chat__quoted-message-text,
+.str-chat__quoted-message-bubble .str-chat__quoted-message-text {
+  font-family: 'Geist', sans-serif;
+  font-size: 16px;
+  color: var(--ga-text-secondary);
+  line-height: 1.4;
+  letter-spacing: -0.3px;
+}
+
+.str-chat__quoted-message-bubble .str-chat__message-sender-name {
+  font-family: 'Albert Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ga-text-secondary);
+  letter-spacing: -1px;
+  display: block !important;
+}
+
+/* ============================================
+   Image Attachment Styles
+   ============================================ */
+.str-chat__message-attachment--image {
+  border-radius: 4px;
+  overflow: hidden;
+  max-width: 320px;
+  margin-bottom: 8px;
+}
+
+.str-chat__message-attachment--image img {
+  border-radius: 4px;
+}
+
+/* ============================================
+   Emoji Picker
+   ============================================ */
+.str-chat__emoji-picker-container {
+  background: var(--ga-background-secondary);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.16);
+}
+
+/* ============================================
+   Loading & Empty States
+   ============================================ */
+.str-chat__loading-channel {
+  background: var(--ga-background-primary);
+}
+
+.str-chat__channel-list-empty {
+  font-family: 'Albert Sans', sans-serif;
+  color: var(--ga-text-secondary);
+  padding: 24px;
+  text-align: center;
+}
+
+/* ============================================
+   Scrollbar Styling
+   ============================================ */
+.str-chat__list::-webkit-scrollbar,
+.str-chat__channel-list-messenger::-webkit-scrollbar,
+.str-chat__thread-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.str-chat__list::-webkit-scrollbar-track,
+.str-chat__channel-list-messenger::-webkit-scrollbar-track,
+.str-chat__thread-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.str-chat__list::-webkit-scrollbar-thumb,
+.str-chat__channel-list-messenger::-webkit-scrollbar-thumb,
+.str-chat__thread-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+}
+
+/* ============================================
+   Mobile Responsive
+   ============================================ */
+@media (max-width: 1023px) {
+  .str-chat__channel-preview-messenger {
+    padding: 10px 12px;
+    margin: 2px 4px;
+  }
+  
+  .str-chat__list {
+    padding: 8px 12px;
+  }
+  
+  /* Thread on mobile */
+  .str-chat__thread-header {
+    padding: 0.5rem 1rem !important;
+  }
+  
+  .str-chat__thread-list {
+    padding: 12px 16px;
+  }
+  
+  .str-chat__main-panel-inner {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .str-chat__window {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* ============================================
+   Window Layout
+   ============================================ */
+.str-chat__window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.str-chat__main-panel-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* ============================================
+   Voice Message Attachment
+   ============================================ */
+.str-chat__message-attachment--audio {
+  background: var(--ga-sent-bubble);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+/* ============================================
+   Typing Indicator
+   ============================================ */
+.str-chat__typing-indicator {
+  font-family: 'Geist', sans-serif;
+  font-size: 12px;
+  color: var(--ga-text-secondary);
+  padding: 6px 16px;
+}
+
+/* ============================================
+   Unread Message Indicator
+   ============================================ */
+.str-chat__unread-messages-notification {
+  background: var(--ga-accent-primary);
+  color: white;
+  font-family: 'Albert Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 20px;
+  box-shadow: 0 2px 12px rgba(160, 120, 85, 0.3);
+}
+
+/* ============================================
+   Thread checkbox
+   ============================================ */
+.str-chat__thread .str-chat__send-button-send-message-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 0 0;
+  font-family: 'Geist', sans-serif;
+  font-size: 13px;
+  color: var(--ga-text-secondary);
+}
+
+.str-chat__thread .str-chat__send-button-send-message-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--ga-accent-primary);
+}
+
+/* ============================================
+   Reaction Animation
+   ============================================ */
+@keyframes reactionPop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.4);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes reactionBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-6px);
+  }
+  60% {
+    transform: translateY(-3px);
+  }
+}
+
+.reaction-pop {
+  animation: reactionPop 0.3s ease-out;
+}
+
+.reaction-bounce {
+  animation: reactionBounce 0.4s ease-out;
+}
+
+/* ============================================
+   Poll Message Card Styles
+   ============================================ */
+
+/* Poll container styles */
+.poll-card {
+  width: 100%;
+}
+
+/* Poll option styles */
+.poll-option {
+  transition: background-color 0.15s ease;
+}
+
+.poll-option:hover {
+  background-color: rgba(243, 241, 239, 0.5);
+}
+
+/* Poll progress bar animation */
+@keyframes pollBarFill {
+  from {
+    width: 0;
+  }
+}
+
+.poll-progress-bar {
+  animation: pollBarFill 0.5s ease-out;
+}
+
+/* Poll vote button */
+.poll-vote-btn {
+  transition: all 0.2s ease;
+}
+
+.poll-vote-btn:not(:disabled):hover {
+  color: #a07855;
+  font-weight: 500;
+}
+
+/* Toggle switch for poll settings */
+.poll-toggle {
+  transition: background-color 0.2s ease;
+}
+
+.poll-toggle-knob {
+  transition: transform 0.2s ease;
+}
+
+/* Poll composer input focus */
+.poll-input:focus {
+  outline: none;
+}
+
+/* Attachment menu animations */
+@keyframes slideInFromBottom {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Poll message in message list */
+.str-chat__message--poll {
+  max-width: 320px;
+}
+
+/* Poll result sheet animations */
+@keyframes slideUpModal {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@media (min-width: 1024px) {
+  @keyframes slideUpModal {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+}
+
+/* ================================
+   Stream Video SDK Overrides
+   ================================ */
+
+/* Force participant name labels to be white/visible on dark backgrounds */
+.str-video__participant-details__name {
+  color: #ffffff !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+/* Speaker layout should fill container */
+.str-video__speaker-layout {
+  height: 100% !important;
+}
+
+.str-video__speaker-layout__wrapper {
+  height: 100% !important;
+}
+
+/* Video elements should cover their containers */
+.str-video__video {
+  object-fit: cover !important;
+}
+
+/* ============================================
+   DARK MODE OVERRIDES
+   Scoped to html.dark - preserves light mode
+   ============================================ */
+
+/* Dark mode CSS variables override */
+html.dark {
+  --ga-sent-bubble: #8c7a6d;
+  --ga-sent-text: #f1ece6;
+  --ga-received-bubble: #171b22;
+  --ga-received-text: #f5f5f8;
+  
+  --ga-text-primary: #f5f5f8;
+  --ga-text-secondary: #b2b6c2;
+  --ga-text-muted: #7d8190;
+  --ga-timestamp: #7d8190;
+  
+  --ga-background-primary: #05070b;
+  --ga-background-secondary: #171b22;
+  --ga-background-elevated: #11141b;
+  --ga-border: #262b35;
+  
+  --ga-accent-primary: #b8896a;
+  --ga-accent-tertiary: #8c7a6d;
+  --ga-accent-light: rgba(184, 137, 106, 0.15);
+  
+  --ga-hover: rgba(255, 255, 255, 0.04);
+  
+  --ga-button-primary-bg: #f5f5f8;
+}
+
+/* Dark mode Stream Chat CSS vars */
+html.dark .str-chat {
+  --str-chat__primary-color: #b8896a;
+  --str-chat__active-primary-color: #a07855;
+  --str-chat__surface-color: #11141b;
+  --str-chat__secondary-surface-color: #05070b;
+  --str-chat__primary-surface-color: #05070b;
+  --str-chat__primary-surface-color-low-emphasis: #05070b;
+  --str-chat__text-color: #f5f5f8;
+  --str-chat__text-low-emphasis-color: #b2b6c2;
+  --str-chat__border-color: #262b35;
+  --str-chat__message-textarea-background-color: #181d26;
+  --str-chat__message-textarea-color: #f5f5f8;
+}
+
+/* Dark mode container backgrounds */
+html.dark .str-chat__container,
+html.dark .str-chat__main-panel,
+html.dark .str-chat__channel {
+  background: #05070b;
+}
+
+/* Dark mode channel list */
+html.dark .str-chat__channel-list,
+html.dark .str-chat__channel-list-messenger {
+  background: #05070b;
+}
+
+html.dark .str-chat__channel-preview-messenger {
+  background: transparent;
+}
+
+html.dark .str-chat__channel-preview-messenger:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+html.dark .str-chat__channel-preview-messenger--active {
+  background: rgba(184, 137, 106, 0.15);
+}
+
+html.dark .str-chat__channel-preview-messenger--name {
+  color: #f5f5f8;
+}
+
+html.dark .str-chat__channel-preview-messenger--last-message {
+  color: #b2b6c2;
+}
+
+/* Fix: Ensure no default background on channel list items in dark mode */
+html.dark .str-chat__channel-list button,
+html.dark .str-chat__channel-preview,
+html.dark .str-chat__channel-preview-messenger {
+  background: transparent;
+}
+
+/* Dark mode message list */
+html.dark .str-chat__list {
+  background: #05070b;
+  border-top-color: #262b35;
+}
+
+/* Dark mode thread */
+html.dark .str-chat__thread,
+html.dark .str-chat__thread > *,
+html.dark .str-chat__thread .str-chat__container,
+html.dark .str-chat__thread .str-chat__main-panel,
+html.dark .str-chat__thread .str-chat__main-panel-inner,
+html.dark .str-chat__thread .str-chat__channel,
+html.dark .str-chat__thread .str-chat__window,
+html.dark .str-chat__thread-list {
+  background: #05070b !important;
+}
+
+html.dark .str-chat__thread {
+  border-left-color: #262b35;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.3);
+}
+
+html.dark .str-chat__thread-header {
+  background: #05070b !important;
+  border-bottom-color: #262b35;
+}
+
+html.dark .str-chat__thread-header-title {
+  color: #f5f5f8;
+}
+
+html.dark .str-chat__close-button {
+  color: #b2b6c2;
+}
+
+html.dark .str-chat__close-button:hover {
+  background: #171b22;
+  color: #f5f5f8;
+}
+
+html.dark .str-chat__thread-start {
+  background: #05070b !important;
+  border-bottom-color: #262b35;
+}
+
+html.dark .str-chat__thread .str-chat__message-input {
+  background: #05070b !important;
+  border-top-color: #262b35;
+}
+
+html.dark .str-chat__thread .str-chat__message-input form {
+  background: #05070b !important;
+}
+
+/* Dark mode date separator */
+html.dark .str-chat__date-separator-line {
+  background: #262b35;
+}
+
+html.dark .str-chat__date-separator-date {
+  color: #7d8190;
+}
+
+/* Dark mode channel header */
+html.dark .str-chat__header-livestream {
+  background: #05070b;
+}
+
+html.dark .str-chat__header-livestream-left--title {
+  color: #f5f5f8;
+}
+
+html.dark .str-chat__header-livestream-left--subtitle {
+  color: #b2b6c2;
+}
+
+/* Dark mode quoted messages */
+html.dark .str-chat__quoted-message-preview,
+html.dark .str-chat__quoted-message-bubble {
+  background: #171b22;
+  border-left-color: #8c7a6d;
+}
+
+html.dark .str-chat__quoted-message-preview .str-chat__quoted-message-text,
+html.dark .str-chat__quoted-message-bubble .str-chat__quoted-message-text {
+  color: #b2b6c2;
+}
+
+html.dark .str-chat__quoted-message-bubble .str-chat__message-sender-name {
+  color: #b2b6c2;
+}
+
+/* Dark mode emoji picker */
+html.dark .str-chat__emoji-picker-container {
+  background: #171b22;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Dark mode loading & empty states */
+html.dark .str-chat__loading-channel {
+  background: #05070b;
+}
+
+html.dark .str-chat__channel-list-empty {
+  color: #b2b6c2;
+}
+
+/* Dark mode skeleton loading states */
+html.dark .str-chat__channel-preview-loading,
+html.dark .str-chat__loading-channels,
+html.dark .str-chat__loading-indicator-container,
+html.dark .str-chat__channel-list-loading {
+  background: #0a0c10;
+}
+
+html.dark .str-chat__channel-preview-loading__avatar,
+html.dark .str-chat__loading-indicator,
+html.dark [class*="skeleton"],
+html.dark [class*="Skeleton"] {
+  background: linear-gradient(90deg, #131722 25%, #1e222a 50%, #131722 75%);
+  background-size: 400% 100%;
+  animation: darkSkeletonPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes darkSkeletonPulse {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+html.dark .str-chat__channel-preview-loading__text {
+  background: #1e222a;
+}
+
+html.dark .str-chat__message-list-loading {
+  background: #05070b;
+}
+
+/* Dark mode scrollbar */
+html.dark .str-chat__list::-webkit-scrollbar-thumb,
+html.dark .str-chat__channel-list-messenger::-webkit-scrollbar-thumb,
+html.dark .str-chat__thread-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Dark mode typing indicator */
+html.dark .str-chat__typing-indicator {
+  color: #b2b6c2;
+}
+
+/* Dark mode message input */
+html.dark .str-chat__message-input {
+  background: transparent;
+}
+
+/* Dark mode message status */
+html.dark .str-chat__message-status {
+  color: #7d8190;
+}
+
+/* Dark mode thread checkbox */
+html.dark .str-chat__thread .str-chat__send-button-send-message-checkbox {
+  color: #b2b6c2;
+}
+
+/* Dark mode poll styles */
+html.dark .poll-option:hover {
+  background-color: rgba(23, 27, 34, 0.5);
+}
+
+html.dark .poll-vote-btn:not(:disabled):hover {
+  color: #b8896a;
+}
+
+/* Dark mode voice message */
+html.dark .str-chat__message-attachment--audio {
+  background: #8c7a6d;
+}
