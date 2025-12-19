@@ -13,8 +13,25 @@ import { canManageDiscoverContent } from '@/lib/admin-utils-shared';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { ClerkPublicMetadata } from '@/types';
 
+// Types for course modules and lessons
+interface CourseLesson {
+  id?: string;
+  title: string;
+  durationMinutes?: number;
+  order?: number;
+  [key: string]: unknown;
+}
+
+interface CourseModule {
+  id?: string;
+  title: string;
+  order?: number;
+  lessons?: CourseLesson[];
+  [key: string]: unknown;
+}
+
 // Helper to compute course totals
-function computeCourseTotals(modules: any[]) {
+function computeCourseTotals(modules: CourseModule[]) {
   const totalModules = modules.length;
   let totalLessons = 0;
   let totalDurationMinutes = 0;
@@ -22,7 +39,7 @@ function computeCourseTotals(modules: any[]) {
   modules.forEach(module => {
     if (module.lessons && Array.isArray(module.lessons)) {
       totalLessons += module.lessons.length;
-      module.lessons.forEach((lesson: any) => {
+      module.lessons.forEach((lesson: CourseLesson) => {
         if (lesson.durationMinutes) {
           totalDurationMinutes += lesson.durationMinutes;
         }
@@ -34,11 +51,11 @@ function computeCourseTotals(modules: any[]) {
 }
 
 // Helper to normalize module/lesson orders
-function normalizeOrders(modules: any[]) {
+function normalizeOrders(modules: CourseModule[]) {
   return modules.map((module, moduleIndex) => ({
     ...module,
     order: moduleIndex + 1,
-    lessons: (module.lessons || []).map((lesson: any, lessonIndex: number) => ({
+    lessons: (module.lessons || []).map((lesson: CourseLesson, lessonIndex: number) => ({
       ...lesson,
       order: lessonIndex + 1,
     })),
@@ -113,7 +130,7 @@ export async function PATCH(
     }
 
     // Build update data
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       updatedAt: FieldValue.serverTimestamp(),
     };
 

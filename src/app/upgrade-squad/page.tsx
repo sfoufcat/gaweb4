@@ -116,9 +116,9 @@ export default function UpgradeSquadPage() {
                   ))}
                 </div>
                 <p className="font-albert text-[15px] text-text-secondary leading-[1.6] italic mb-4">
-                  "Our squad was doing okay on our own, but adding a mentor changed everything. 
+                  &quot;Our squad was doing okay on our own, but adding a mentor changed everything. 
                   The weekly calls keep us focused, and having someone in our chat who understands 
-                  our goals makes a huge difference. We've all grown faster together."
+                  our goals makes a huge difference. We&apos;ve all grown faster together.&quot;
                 </p>
                 <div className="flex items-center gap-3">
                   <div className="flex -space-x-2">

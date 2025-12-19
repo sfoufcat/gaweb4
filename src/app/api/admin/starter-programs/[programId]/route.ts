@@ -154,7 +154,7 @@ export async function PUT(
     }
 
     // Build update object
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       updatedAt: FieldValue.serverTimestamp(),
     };
 

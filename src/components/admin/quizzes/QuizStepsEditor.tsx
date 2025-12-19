@@ -475,7 +475,7 @@ function StepEditorModal({ quizId, step, nextOrder, onClose, onSaved }: StepEdit
     setOptions(prev => prev.filter((_, i) => i !== index).map((o, i) => ({ ...o, order: i + 1 })));
   };
 
-  const handleOptionChange = (index: number, field: keyof QuizOptionCreateRequest, value: any) => {
+  const handleOptionChange = (index: number, field: keyof QuizOptionCreateRequest, value: string | number | boolean | string[] | null) => {
     setOptions(prev => prev.map((o, i) => i === index ? { ...o, [field]: value } : o));
   };
 

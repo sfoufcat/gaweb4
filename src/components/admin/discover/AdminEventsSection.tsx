@@ -469,7 +469,7 @@ function EventFormDialog({
                 </select>
               </div>
             </div>
-            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Track-specific events appear in "For you" sections for users on that track</p>
+            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Track-specific events appear in &quot;For you&quot; sections for users on that track</p>
 
             {/* Featured */}
             <div className="flex items-center">
@@ -775,7 +775,7 @@ export function AdminEventsSection() {
           <AlertDialogHeader>
             <AlertDialogTitle className="font-albert">Delete Event</AlertDialogTitle>
             <AlertDialogDescription className="font-albert">
-              Are you sure you want to delete "<strong>{eventToDelete?.title}</strong>"? This action cannot be undone.
+              Are you sure you want to delete &quot;<strong>{eventToDelete?.title}</strong>&quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

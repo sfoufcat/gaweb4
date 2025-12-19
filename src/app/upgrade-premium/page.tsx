@@ -118,9 +118,9 @@ export default function UpgradePremiumPage() {
                   ))}
                 </div>
                 <p className="font-albert text-[15px] text-text-secondary leading-[1.6] italic mb-4">
-                  "Going premium was the best decision I made for my growth. The weekly calls with my 
+                  &quot;Going premium was the best decision I made for my growth. The weekly calls with my 
                   coach keep me accountable, and being matched with motivated squad members who are 
-                  just as committed has pushed me to achieve more than I thought possible."
+                  just as committed has pushed me to achieve more than I thought possible.&quot;
                 </p>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e] flex items-center justify-center text-white font-albert font-semibold text-[14px] border-2 border-white">

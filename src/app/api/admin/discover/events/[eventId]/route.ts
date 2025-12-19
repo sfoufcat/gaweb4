@@ -81,7 +81,7 @@ export async function PATCH(
     }
 
     // Build update data (preserve attendeeIds and createdAt)
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       updatedAt: FieldValue.serverTimestamp(),
     };
 

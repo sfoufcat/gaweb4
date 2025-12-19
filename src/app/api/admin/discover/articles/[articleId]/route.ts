@@ -73,7 +73,7 @@ export async function PATCH(
     }
 
     // Build update data
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       updatedAt: FieldValue.serverTimestamp(),
     };
 

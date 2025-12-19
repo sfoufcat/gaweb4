@@ -149,7 +149,7 @@ export default function GuestTransformationPage() {
                 Your {monthsUntilGoal || '—'}-month Growth Plan is ready!
               </h1>
               <p className="font-sans text-[15px] lg:text-[16px] text-text-secondary">
-                We predict you'll reach your goal by{' '}
+                We predict you&apos;ll reach your goal by{' '}
                 <span className="font-semibold text-[#a07855]">{formattedDate || 'your target date'}</span>
               </p>
             </motion.div>

@@ -41,7 +41,7 @@ export default function ObstaclesPage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
   const [selected, setSelected] = useState<PeerAccountability | null>(null);
-  const [existingData, setExistingData] = useState<any>(null);
+  const [existingData, setExistingData] = useState<Record<string, unknown> | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
 
   // Fetch existing onboarding data to merge

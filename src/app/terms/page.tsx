@@ -50,7 +50,7 @@ export default function TermsPage() {
                 1. Acceptance of Terms
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed mb-4">
-                By accessing or using GrowthAddicts ("the Service"), operated by Influencee Agency OÜ, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use the Service.
+                By accessing or using GrowthAddicts (&quot;the Service&quot;), operated by Influencee Agency OÜ, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use the Service.
               </p>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed mb-4">
                 GrowthAddicts is a personal development and accountability platform designed to help users achieve their goals through structured daily practices, community support, and progress tracking.
@@ -130,7 +130,7 @@ export default function TermsPage() {
                 6. Disclaimers
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed mb-4">
-                GrowthAddicts is a personal development tool and is not a substitute for professional medical, psychological, or financial advice. The Service is provided "as is" without warranties of any kind.
+                GrowthAddicts is a personal development tool and is not a substitute for professional medical, psychological, or financial advice. The Service is provided &quot;as is&quot; without warranties of any kind.
               </p>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed">
                 Results may vary. While we provide tools and support for goal achievement, success depends on individual effort, circumstances, and consistency.

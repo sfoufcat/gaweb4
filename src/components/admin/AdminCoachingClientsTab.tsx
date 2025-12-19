@@ -388,7 +388,7 @@ export function AdminCoachingClientsTab() {
               </div>
               <p className="text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2] font-albert text-lg mb-2">No clients found</p>
               <p className="text-[#5f5a55] dark:text-[#b2b6c2]/70 dark:text-[#7d8190] font-albert text-sm">
-                No clients match "{searchQuery}"
+                No clients match &quot;{searchQuery}&quot;
               </p>
               <Button
                 variant="outline"

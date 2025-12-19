@@ -311,6 +311,7 @@ export function CustomMessageInput() {
       const { poll } = await response.json() as { poll: ChatPollState };
 
       // Send message with poll reference (using custom field names to avoid Stream's native polls)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await channel.sendMessage({
         text: `📊 ${pollData.question}`,
         ga_poll_id: poll.id,

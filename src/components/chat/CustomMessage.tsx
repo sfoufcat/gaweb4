@@ -50,14 +50,16 @@ export function CustomMessage() {
   const messageRef = useRef<HTMLDivElement>(null);
   
   // Check if this is a poll message (using ga_ prefix to avoid Stream's native polls)
+  // Using type assertion for custom poll fields not in Stream's type definitions
+  const messageWithPoll = message as typeof message & { ga_poll_id?: string; ga_poll_data?: unknown; extraData?: { ga_poll_id?: string } };
   const isPollMessage = !!(
-    (message as any).ga_poll_id || 
-    (message as any).ga_poll_data ||
-    (message as any).extraData?.ga_poll_id
+    messageWithPoll.ga_poll_id || 
+    messageWithPoll.ga_poll_data ||
+    messageWithPoll.extraData?.ga_poll_id
   );
   
   // Get poll ID
-  const pollId = (message as any).ga_poll_id || (message as any).extraData?.ga_poll_id;
+  const pollId = messageWithPoll.ga_poll_id || messageWithPoll.extraData?.ga_poll_id;
   
   const isMine = isMyMessage();
   const hasReplies = (message.reply_count || 0) > 0;
@@ -213,7 +215,7 @@ export function CustomMessage() {
       .catch(err => {
         console.error('Failed to fetch poll:', err);
         // Fall back to embedded data if API fails
-        const embeddedPollData = (message as any).ga_poll_data;
+        const embeddedPollData = messageWithPoll.ga_poll_data;
         if (embeddedPollData) {
           setPollData(embeddedPollData);
         }
@@ -296,7 +298,7 @@ export function CustomMessage() {
 
   // Check-in notification messages (from GrowthAddicts Bot)
   // These are special messages posted when users complete their morning check-in
-  const isCheckinNotification = !!(message as any).checkin_notification || sender?.id === 'growthaddicts-bot';
+  const isCheckinNotification = !!(message as typeof message & { checkin_notification?: boolean }).checkin_notification || sender?.id === 'growthaddicts-bot';
   
   if (isCheckinNotification) {
     return (
@@ -331,10 +333,11 @@ export function CustomMessage() {
   }
 
   // Call ended messages - Display a nice indicator when a call happened
-  const isCallMessage = !!(message as any).call_ended;
+  const messageWithCall = message as typeof message & { call_ended?: boolean; call_timestamp?: string };
+  const isCallMessage = !!messageWithCall.call_ended;
   
   if (isCallMessage) {
-    const callTimestamp = (message as any).call_timestamp as string | undefined;
+    const callTimestamp = messageWithCall.call_timestamp;
     
     // Format the call timestamp
     const callTime = callTimestamp 
@@ -547,7 +550,7 @@ export function CustomMessage() {
                         {audioAttachments.map((att, index) => (
                           <VoiceMessageAttachment
                             key={`audio-${index}`}
-                            audioUrl={(att as any).asset_url || (att as any).image_url || (att as any).file_url || ''}
+                            audioUrl={(att as typeof att & { asset_url?: string; image_url?: string; file_url?: string }).asset_url || (att as typeof att & { image_url?: string }).image_url || (att as typeof att & { file_url?: string }).file_url || ''}
                             isMine={isMine}
                           />
                         ))}

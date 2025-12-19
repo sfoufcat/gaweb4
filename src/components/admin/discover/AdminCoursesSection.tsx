@@ -662,7 +662,7 @@ function CourseFormDialog({
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
-                  <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Track-specific courses appear in "For you" sections for users on that track</p>
+                  <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Track-specific courses appear in &quot;For you&quot; sections for users on that track</p>
                 </div>
               </div>
               
@@ -1054,7 +1054,7 @@ export function AdminCoursesSection() {
           <AlertDialogHeader>
             <AlertDialogTitle className="font-albert">Delete Course</AlertDialogTitle>
             <AlertDialogDescription className="font-albert">
-              Are you sure you want to delete "<strong>{courseToDelete?.title}</strong>"? This will also delete all modules and lessons. This action cannot be undone.
+              Are you sure you want to delete &quot;<strong>{courseToDelete?.title}</strong>&quot;? This will also delete all modules and lessons. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

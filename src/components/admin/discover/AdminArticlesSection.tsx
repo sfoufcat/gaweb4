@@ -281,7 +281,7 @@ function ArticleFormDialog({
                 </select>
               </div>
             </div>
-            <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#7d8190] font-albert">Track-specific articles appear in "For you" sections for users on that track</p>
+            <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#7d8190] font-albert">Track-specific articles appear in &quot;For you&quot; sections for users on that track</p>
 
             {/* Content with Rich Text Editor */}
             <RichTextEditor
@@ -651,7 +651,7 @@ export function AdminArticlesSection() {
           <AlertDialogHeader>
             <AlertDialogTitle className="font-albert">Delete Article</AlertDialogTitle>
             <AlertDialogDescription className="font-albert">
-              Are you sure you want to delete "<strong>{articleToDelete?.title}</strong>"? This action cannot be undone.
+              Are you sure you want to delete &quot;<strong>{articleToDelete?.title}</strong>&quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

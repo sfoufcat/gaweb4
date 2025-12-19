@@ -344,7 +344,7 @@ export function AdminCoachingIntakeFormsTab() {
               </div>
               <p className="text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2] font-albert text-lg mb-2">No forms found</p>
               <p className="text-[#5f5a55] dark:text-[#b2b6c2]/70 dark:text-[#7d8190] font-albert text-sm">
-                No submissions match "{searchQuery}"
+                No submissions match &quot;{searchQuery}&quot;
               </p>
               <Button
                 variant="outline"
@@ -373,7 +373,7 @@ export function AdminCoachingIntakeFormsTab() {
               </div>
               <p className="text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2] font-albert text-lg mb-2">No coaching intake forms yet</p>
               <p className="text-[#5f5a55] dark:text-[#b2b6c2]/70 dark:text-[#7d8190] font-albert text-sm">
-                When users submit the coaching intake form, they'll appear here.
+                When users submit the coaching intake form, they&apos;ll appear here.
               </p>
             </>
           )}

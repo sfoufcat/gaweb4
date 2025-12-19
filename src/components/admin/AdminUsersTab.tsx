@@ -487,7 +487,7 @@ export function AdminUsersTab({ currentUserRole }: AdminUsersTabProps) {
                 </div>
                 <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-lg mb-2">No users found</p>
                 <p className="text-[#5f5a55] dark:text-[#b2b6c2]/70 font-albert text-sm">
-                  No users match "{searchQuery}"
+                  No users match &quot;{searchQuery}&quot;
                 </p>
                 <Button
                   variant="outline"

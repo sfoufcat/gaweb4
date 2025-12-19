@@ -166,7 +166,7 @@ export async function PUT(
     }
 
     // Build update data - only include provided fields
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       updatedAt: FieldValue.serverTimestamp(),
     };
 

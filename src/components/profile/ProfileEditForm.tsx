@@ -105,7 +105,7 @@ export function ProfileEditForm({ initialData, clerkUser, onSave, onCancel, from
       }
 
       // Build request body - no need to include avatarUrl as Clerk handles it
-      const requestBody: any = { 
+      const requestBody: Record<string, unknown> = { 
         ...formData,
       };
 

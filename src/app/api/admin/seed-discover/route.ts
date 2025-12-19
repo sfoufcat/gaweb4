@@ -283,7 +283,7 @@ export async function POST(_request: NextRequest) {
       }
 
       // Check if user is super_admin
-      const role = (sessionClaims as any)?.metadata?.role || (sessionClaims as any)?.publicMetadata?.role;
+      const role = (sessionClaims as { metadata?: { role?: string }; publicMetadata?: { role?: string } })?.metadata?.role || (sessionClaims as { publicMetadata?: { role?: string } })?.publicMetadata?.role;
       if (role !== 'super_admin') {
         return NextResponse.json(
           { error: 'Forbidden - Super admin access required' },

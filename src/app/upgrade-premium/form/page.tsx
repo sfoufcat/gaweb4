@@ -238,7 +238,7 @@ export default function PremiumUpgradeFormPage() {
             <span className="text-4xl">🎉</span>
           </div>
           <h1 className="font-albert text-[32px] font-semibold text-text-primary tracking-[-1.5px] mb-4">
-            You're in!
+            You&apos;re in!
           </h1>
           <p className="font-albert text-[18px] text-text-secondary leading-relaxed mb-8">
             Your Premium Squad access is now active. Get ready to accelerate your growth!
@@ -319,10 +319,10 @@ export default function PremiumUpgradeFormPage() {
               {!hasExistingPhone && (
                 <div className="space-y-3">
                   <label className="block font-albert text-[16px] font-medium text-text-primary">
-                    What's your phone number? <span className="text-red-500">*</span>
+                    What&apos;s your phone number? <span className="text-red-500">*</span>
                   </label>
                   <p className="font-albert text-[14px] text-text-secondary">
-                    We'll use this to coordinate with you about your premium squad.
+                    We&apos;ll use this to coordinate with you about your premium squad.
                   </p>
                   <input
                     type="tel"
@@ -670,14 +670,14 @@ export default function PremiumUpgradeFormPage() {
           <p className="font-albert text-[11px] sm:text-[12px] text-text-secondary text-center leading-relaxed mt-3 lg:mt-2">
             {prorationPreview && !isLoadingProration ? (
               <>
-                You'll be charged <strong>{formatCurrency(prorationPreview.dueToday)}</strong> today{' '}
+                You&apos;ll be charged <strong>{formatCurrency(prorationPreview.dueToday)}</strong> today{' '}
                 <span className="text-text-muted">(prorated)</span>.
                 Then <strong>{plan === 'monthly' ? '$99/month' : '$399/6 months'}</strong> starting{' '}
                 {new Date(prorationPreview.nextBillingDate).toLocaleDateString()}.
               </>
             ) : (
               <>
-                By clicking "Secure my spot", you'll be upgraded to the Premium Squad at{' '}
+                By clicking &quot;Secure my spot&quot;, you&apos;ll be upgraded to the Premium Squad at{' '}
                 <strong>{plan === 'monthly' ? '$99/month' : '$399/6 months'}</strong> ({pricing.perDay}).
                 Your current subscription will be automatically prorated.
               </>

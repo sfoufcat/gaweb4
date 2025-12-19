@@ -122,7 +122,7 @@ export default function SubscriptionPolicyPage() {
                 4. Price Changes
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed">
-                We reserve the right to change subscription prices. If we change prices, we will provide at least 30 days' notice before the change takes effect. You may cancel your subscription before the new price applies.
+                We reserve the right to change subscription prices. If we change prices, we will provide at least 30 days&apos; notice before the change takes effect. You may cancel your subscription before the new price applies.
               </p>
             </section>
 

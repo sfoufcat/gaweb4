@@ -651,7 +651,7 @@ export default function PlanPage() {
             >
               <div className="text-center mb-8">
                 <h2 className="font-albert text-[28px] lg:text-[32px] text-text-primary tracking-[-1.5px] mb-3">
-                  Vincent&apos;s experience
+                  Vincent's experience
                 </h2>
                 <p className="font-sans text-[15px] text-text-secondary max-w-lg mx-auto">
                   Hear how Growth Addicts helped Vincent stay consistent and transform his daily habits.

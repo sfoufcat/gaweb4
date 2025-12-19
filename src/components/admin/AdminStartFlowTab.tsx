@@ -620,7 +620,7 @@ export function AdminStartFlowTab() {
                   <>
                     <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-lg mb-2">No sessions found</p>
                     <p className="text-[#5f5a55]/70 dark:text-[#b2b6c2]/70 font-albert text-sm">
-                      No sessions match "{searchQuery}"
+                      No sessions match &quot;{searchQuery}&quot;
                     </p>
                     <Button
                       variant="outline"

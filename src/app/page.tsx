@@ -68,7 +68,7 @@ export default function Dashboard() {
   const { user, isLoaded } = useUser();
   const [mounted, setMounted] = useState(false);
   const [_userMission, setUserMission] = useState<string | null>(null);
-  const [userGoal, setUserGoal] = useState<any>(null);
+  const [userGoal, setUserGoal] = useState<{ goal?: string; targetDate?: string; progress?: number } | null>(null);
   const [recentlyAchievedGoal, setRecentlyAchievedGoal] = useState<GoalHistoryEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [greeting, setGreeting] = useState('Good evening');

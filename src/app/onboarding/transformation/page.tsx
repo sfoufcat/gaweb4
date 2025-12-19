@@ -50,7 +50,7 @@ export default function TransformationPage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
   const [isNavigating, setIsNavigating] = useState(false);
-  const [userData, setUserData] = useState<any>(null);
+  const [userData, setUserData] = useState<{ user?: { goal?: string; goalTargetDate?: string; onboarding?: { businessStage?: string[] } }; goal?: { goal?: string; targetDate?: string } } | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAnalyzing, setShowAnalyzing] = useState(true);
   const [transformationText, setTransformationText] = useState<string | null>(null);

@@ -74,9 +74,9 @@ export function SquadView({ squadId, showCoachBadge = false }: SquadViewProps) {
         stats: data.stats,
       });
 
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error fetching squad:', err);
-      setError(err.message || 'Failed to fetch squad');
+      setError(err instanceof Error ? err.message : 'Failed to fetch squad');
       setSquadData({
         squad: null,
         members: [],

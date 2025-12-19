@@ -345,7 +345,7 @@ export function AdminPremiumUpgradeFormsTab() {
               </div>
               <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-lg mb-2">No forms found</p>
               <p className="text-[#5f5a55] dark:text-[#b2b6c2]/70 font-albert text-sm">
-                No submissions match "{searchQuery}"
+                No submissions match &quot;{searchQuery}&quot;
               </p>
               <Button
                 variant="outline"
@@ -374,7 +374,7 @@ export function AdminPremiumUpgradeFormsTab() {
               </div>
               <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-lg mb-2">No premium upgrade forms yet</p>
               <p className="text-[#5f5a55] dark:text-[#b2b6c2]/70 font-albert text-sm">
-                When users submit the premium upgrade form, they'll appear here.
+                When users submit the premium upgrade form, they&apos;ll appear here.
               </p>
             </>
           )}
