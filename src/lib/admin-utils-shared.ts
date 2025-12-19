@@ -46,10 +46,10 @@ export function isStaffRole(role?: UserRole): boolean {
 
 /**
  * Check if a user can manage discover content (articles, events, courses)
- * Editors, admins, and super_admins can manage discover content
+ * Coaches, editors, admins, and super_admins can manage discover content
  */
 export function canManageDiscoverContent(role?: UserRole): boolean {
-  return role === 'editor' || role === 'admin' || role === 'super_admin';
+  return role === 'coach' || role === 'editor' || role === 'admin' || role === 'super_admin';
 }
 
 /**

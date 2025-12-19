@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getStreamServerClient } from '@/lib/stream-server';
 import { MAX_SQUAD_MEMBERS } from '@/lib/squad-constants';
+import { addUserToOrganization } from '@/lib/clerk-organizations';
 import type { Squad } from '@/types';
 
 /**
@@ -176,6 +177,18 @@ export async function POST(req: Request) {
       } catch (streamError) {
         console.error('[STREAM_ADD_MEMBER_ERROR]', streamError);
         // Don't fail the join if Stream fails
+      }
+    }
+
+    // Auto-assign user to squad's organization (if squad has one)
+    // This makes them an actual Clerk Organization member for multi-tenancy
+    if (squad.organizationId) {
+      try {
+        await addUserToOrganization(userId, squad.organizationId, 'org:member');
+        console.log(`[SQUAD_JOIN] Added user ${userId} to organization ${squad.organizationId}`);
+      } catch (orgError) {
+        console.error('[SQUAD_JOIN_ORG_ERROR]', orgError);
+        // Don't fail the join if org assignment fails
       }
     }
 

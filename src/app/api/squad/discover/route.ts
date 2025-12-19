@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { MAX_SQUAD_MEMBERS } from '@/lib/squad-constants';
+import { getCurrentUserOrganizationId } from '@/lib/clerk-organizations';
 import type { Squad, UserTrack } from '@/types';
 
 interface CoachInfo {
@@ -51,6 +52,9 @@ export async function GET(req: Request) {
     const userTier = publicMetadata?.tier || 'standard';
     const userTrack = publicMetadata?.track || null;
     const isPremiumUser = userTier === 'premium';
+
+    // Multi-tenancy: Get user's organization (null if no org = default GA experience)
+    const organizationId = await getCurrentUserOrganizationId();
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search')?.toLowerCase() || '';
@@ -173,15 +177,22 @@ export async function GET(req: Request) {
 
     if (isPremiumUser) {
       // Premium users see BOTH premium and standard squads
+      // Build queries - filter by org if user has one
+      let premiumQuery: FirebaseFirestore.Query = adminDb.collection('squads')
+        .where('visibility', '==', 'public')
+        .where('isPremium', '==', true);
+      let standardQuery: FirebaseFirestore.Query = adminDb.collection('squads')
+        .where('visibility', '==', 'public')
+        .where('isPremium', '==', false);
+      
+      if (organizationId) {
+        premiumQuery = premiumQuery.where('organizationId', '==', organizationId);
+        standardQuery = standardQuery.where('organizationId', '==', organizationId);
+      }
+      
       const [premiumSnapshot, standardSnapshot] = await Promise.all([
-        adminDb.collection('squads')
-          .where('visibility', '==', 'public')
-          .where('isPremium', '==', true)
-          .get(),
-        adminDb.collection('squads')
-          .where('visibility', '==', 'public')
-          .where('isPremium', '==', false)
-          .get(),
+        premiumQuery.get(),
+        standardQuery.get(),
       ]);
 
       const [premiumSquadsList, standardSquadsList] = await Promise.all([
@@ -215,10 +226,15 @@ export async function GET(req: Request) {
       });
     } else {
       // Standard users see only standard squads
-      const squadsSnapshot = await adminDb.collection('squads')
+      let query: FirebaseFirestore.Query = adminDb.collection('squads')
         .where('visibility', '==', 'public')
-        .where('isPremium', '==', false)
-        .get();
+        .where('isPremium', '==', false);
+      
+      if (organizationId) {
+        query = query.where('organizationId', '==', organizationId);
+      }
+      
+      const squadsSnapshot = await query.get();
 
       const squads = await processSquads(squadsSnapshot);
       const grouped = groupByTrack(squads);

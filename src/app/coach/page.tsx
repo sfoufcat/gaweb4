@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { SquadView } from '@/components/squad/SquadView';
-import { CoachingClientsTab, CoachingClientView, CustomizeBrandingTab } from '@/components/coach';
+import { CoachingClientsTab, CoachingClientView, CustomizeBrandingTab, ChannelManagementTab } from '@/components/coach';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -51,7 +51,7 @@ export default function CoachPage() {
   
   // Coaching clients state
   const [selectedCoachingClientId, setSelectedCoachingClientId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'squads' | 'coaching' | 'users' | 'all-squads' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'quizzes' | 'tracks-programs' | 'customize'>('squads');
+  const [activeTab, setActiveTab] = useState<'squads' | 'coaching' | 'users' | 'all-squads' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'quizzes' | 'tracks-programs' | 'channels' | 'customize'>('squads');
 
   // Get role from Clerk session
   const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
@@ -192,6 +192,12 @@ export default function CoachPage() {
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
             >
               Tracks & Programs
+            </TabsTrigger>
+            <TabsTrigger 
+              value="channels"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+            >
+              Channels
             </TabsTrigger>
             <TabsTrigger 
               value="customize"
@@ -424,6 +430,11 @@ export default function CoachPage() {
               programsApiBasePath={role === 'coach' ? '/api/coach/org-starter-programs' : '/api/admin/starter-programs'}
               promptsApiBasePath={role === 'coach' ? '/api/coach/org-dynamic-prompts' : '/api/admin/dynamic-prompts'}
             />
+          </TabsContent>
+
+          {/* Channels Tab */}
+          <TabsContent value="channels">
+            <ChannelManagementTab />
           </TabsContent>
 
           {/* Customize Branding Tab */}

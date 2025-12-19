@@ -249,6 +249,10 @@ export async function requireSuperAdmin(): Promise<void> {
  * Server-side: Check if current user is a coach and get their organizationId
  * Throws error if not coach/admin or if no organization exists
  * 
+ * Priority for organizationId:
+ * 1. Clerk's native org session (auth().orgId) - preferred for full Clerk Orgs
+ * 2. publicMetadata.organizationId - backward compatibility
+ * 
  * @returns { userId, role, organizationId }
  */
 export async function requireCoachWithOrg(): Promise<{ 
@@ -256,7 +260,7 @@ export async function requireCoachWithOrg(): Promise<{
   role: UserRole; 
   organizationId: string;
 }> {
-  const { userId, sessionClaims } = await auth();
+  const { userId, orgId, sessionClaims } = await auth();
   
   if (!userId) {
     throw new Error('Unauthorized');
@@ -270,8 +274,8 @@ export async function requireCoachWithOrg(): Promise<{
     throw new Error('Forbidden: Coach access required');
   }
   
-  // Get organizationId from metadata
-  const organizationId = (publicMetadata as ClerkPublicMetadata & { organizationId?: string })?.organizationId;
+  // Get organizationId - prefer native Clerk org session, fallback to metadata
+  const organizationId = orgId || (publicMetadata as ClerkPublicMetadata & { organizationId?: string })?.organizationId;
   
   if (!organizationId) {
     throw new Error('Organization not found: Coach must have an organization');

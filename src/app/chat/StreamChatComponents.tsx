@@ -29,6 +29,7 @@ import { useCoachingData } from '@/hooks/useCoachingData';
 import { useCoachSquads } from '@/hooks/useCoachSquads';
 import { isAdmin } from '@/lib/admin-utils-shared';
 import type { UserRole } from '@/types';
+import type { OrgChannel } from '@/lib/org-channels';
 import { formatDistanceToNow, format } from 'date-fns';
 
 // Import Stream Chat default CSS
@@ -286,7 +287,12 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
 
   // Check for special channels first
   const channelId = channel?.id;
-  const isSpecialChannel = channelId === ANNOUNCEMENTS_CHANNEL_ID || channelId === SOCIAL_CORNER_CHANNEL_ID || channelId === SHARE_WINS_CHANNEL_ID;
+  const isGlobalChannel = channelId === ANNOUNCEMENTS_CHANNEL_ID || channelId === SOCIAL_CORNER_CHANNEL_ID || channelId === SHARE_WINS_CHANNEL_ID;
+  const isOrgChannel = Boolean(channelData?.isOrgChannel);
+  const isSpecialChannel = isGlobalChannel || isOrgChannel;
+  
+  // Get channel type for org channels (for icon display)
+  const orgChannelType = channelData?.channelType as string | undefined;
   
   // Get channel name - prioritize special channel names, then explicit name, then other member's name
   const getChannelName = () => {
@@ -338,22 +344,28 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
                 size="sm"
                 showName={false}
               />
-              ) : channelId === ANNOUNCEMENTS_CHANNEL_ID ? (
+              ) : (channelId === ANNOUNCEMENTS_CHANNEL_ID || orgChannelType === 'announcements') ? (
               <div className="w-9 h-9 rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/15 flex items-center justify-center flex-shrink-0">
                 <svg className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
                 </svg>
               </div>
-              ) : channelId === SOCIAL_CORNER_CHANNEL_ID ? (
+              ) : (channelId === SOCIAL_CORNER_CHANNEL_ID || orgChannelType === 'social') ? (
                 <div className="w-9 h-9 rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/15 flex items-center justify-center flex-shrink-0">
                   <svg className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                 </div>
-              ) : channelId === SHARE_WINS_CHANNEL_ID ? (
+              ) : (channelId === SHARE_WINS_CHANNEL_ID || orgChannelType === 'wins') ? (
                 <div className="w-9 h-9 rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/15 flex items-center justify-center flex-shrink-0">
                   <svg className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
+                </div>
+              ) : isOrgChannel ? (
+                <div className="w-9 h-9 rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/15 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5l-3.9 19.5m-2.1-19.5l-3.9 19.5" />
                   </svg>
                 </div>
               ) : (
@@ -629,6 +641,41 @@ function ChatContent({
   const [orphanSquadChannels, setOrphanSquadChannels] = useState<StreamChannel[]>([]);
   const [orphanCoachingChannels, setOrphanCoachingChannels] = useState<StreamChannel[]>([]);
   
+  // Organization channels (replaces hardcoded global channels for org members)
+  const [orgChannels, setOrgChannels] = useState<OrgChannel[]>([]);
+  const [orgChannelsLoading, setOrgChannelsLoading] = useState(false);
+  const [hasOrgChannels, setHasOrgChannels] = useState(false);
+  const [orgChannelUnreads, setOrgChannelUnreads] = useState<Record<string, number>>({});
+  const [orgChannelLastMessages, setOrgChannelLastMessages] = useState<Record<string, Date | null>>({});
+  
+  // Fetch org channels for users in organizations
+  useEffect(() => {
+    const fetchOrgChannels = async () => {
+      try {
+        setOrgChannelsLoading(true);
+        const response = await fetch('/api/user/org-channels');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.channels && data.channels.length > 0) {
+            setOrgChannels(data.channels);
+            setHasOrgChannels(true);
+          } else {
+            setHasOrgChannels(false);
+          }
+        } else {
+          setHasOrgChannels(false);
+        }
+      } catch (error) {
+        console.warn('Failed to fetch org channels:', error);
+        setHasOrgChannels(false);
+      } finally {
+        setOrgChannelsLoading(false);
+      }
+    };
+
+    fetchOrgChannels();
+  }, []);
+
   // Calculate unread counts and last message times from active channels
   const calculateUnreadCounts = useCallback(() => {
     if (!client) return;
@@ -657,6 +704,11 @@ function ChatContent({
     // Track orphan channels (channels with unreads not shown in normal list)
     const orphanSquads: StreamChannel[] = [];
     const orphanCoaching: StreamChannel[] = [];
+    
+    // Track org channel unreads
+    const orgChannelUnreadMap: Record<string, number> = {};
+    const orgChannelLastMessageMap: Record<string, Date | null> = {};
+    const orgChannelStreamIds = new Set(orgChannels.map(c => c.streamChannelId));
     
     // Build a set of coach squad channel IDs for quick lookup
     const coachSquadChannelIds = new Set(
@@ -687,6 +739,10 @@ function ChatContent({
       if (channelId === SHARE_WINS_CHANNEL_ID && lastMessageAt) {
         shareWinsTime = new Date(lastMessageAt);
       }
+      // Track org channel last messages
+      if (channelId && orgChannelStreamIds.has(channelId) && lastMessageAt) {
+        orgChannelLastMessageMap[channelId] = new Date(lastMessageAt);
+      }
       if (channelId?.startsWith('squad-') && lastMessageAt) {
         squadTime = new Date(lastMessageAt);
         // Track specific squad times for dual membership
@@ -710,6 +766,11 @@ function ChatContent({
         if (channelId === ANNOUNCEMENTS_CHANNEL_ID) announcements = unread;
         if (channelId === SOCIAL_CORNER_CHANNEL_ID) social = unread;
         if (channelId === SHARE_WINS_CHANNEL_ID) shareWins = unread;
+        
+        // Track org channel unreads
+        if (channelId && orgChannelStreamIds.has(channelId)) {
+          orgChannelUnreadMap[channelId] = unread;
+        }
         
         if (channelId?.startsWith('squad-')) {
           squad += unread;
@@ -738,13 +799,14 @@ function ChatContent({
           }
         }
 
-        // Main: squad, coaching, announcements, social corner, share wins
+        // Main: squad, coaching, announcements, social corner, share wins, org channels
         if (
           channelId === ANNOUNCEMENTS_CHANNEL_ID ||
           channelId === SOCIAL_CORNER_CHANNEL_ID ||
           channelId === SHARE_WINS_CHANNEL_ID ||
           channelId?.startsWith('squad-') ||
-          channelId?.startsWith('coaching-')
+          channelId?.startsWith('coaching-') ||
+          (channelId && orgChannelStreamIds.has(channelId))
         ) {
           main += unread;
         } else {
@@ -774,7 +836,9 @@ function ChatContent({
     setCoachSquadLastMessages(coachSquadLastMessageMap);
     setOrphanSquadChannels(orphanSquads);
     setOrphanCoachingChannels(orphanCoaching);
-  }, [client, coachSquads, squadChannelId, premiumSquadChannelId, standardSquadChannelId, coachingChannelId]);
+    setOrgChannelUnreads(orgChannelUnreadMap);
+    setOrgChannelLastMessages(orgChannelLastMessageMap);
+  }, [client, coachSquads, squadChannelId, premiumSquadChannelId, standardSquadChannelId, coachingChannelId, orgChannels]);
 
   // Watch global channels to ensure we get updates/counts even if not in active list
   useEffect(() => {
@@ -792,6 +856,13 @@ function ChatContent({
         }
       }
       
+      // Add org channels
+      for (const orgChannel of orgChannels) {
+        if (orgChannel.streamChannelId && !channelsToWatch.includes(orgChannel.streamChannelId)) {
+          channelsToWatch.push(orgChannel.streamChannelId);
+        }
+      }
+      
       for (const channelId of channelsToWatch) {
         try {
           const channel = client.channel('messaging', channelId);
@@ -805,7 +876,7 @@ function ChatContent({
     };
     
     watchGlobalChannels();
-  }, [client, squadChannelId, coachingChannelId, coachSquads, calculateUnreadCounts]);
+  }, [client, squadChannelId, coachingChannelId, coachSquads, orgChannels, calculateUnreadCounts]);
   
   // Listen for message events to update unread counts
   useEffect(() => {
@@ -937,6 +1008,7 @@ function ChatContent({
 
   // Custom channel preview filter - exclude special channels from list
   const customChannelFilter = useCallback((channels: StreamChannel[]) => {
+    const orgChannelIds = new Set(orgChannels.map(c => c.streamChannelId));
     return channels.filter(ch => {
       const channelId = ch.id;
       // Exclude special channels (they're shown separately)
@@ -945,6 +1017,10 @@ function ChatContent({
         channelId === SOCIAL_CORNER_CHANNEL_ID ||
         channelId === SHARE_WINS_CHANNEL_ID
       ) {
+        return false;
+      }
+      // Exclude org channels (shown in main section)
+      if (channelId && orgChannelIds.has(channelId)) {
         return false;
       }
       // Exclude squad channels (shown in pinned section)
@@ -957,7 +1033,7 @@ function ChatContent({
       }
       return true;
     });
-  }, []);
+  }, [orgChannels]);
 
   // Determine whether to show message input
   const showMessageInput = !isAnnouncementsChannel || canPostInAnnouncements;
@@ -1133,56 +1209,118 @@ function ChatContent({
               );
             })}
             
-            {/* Announcements */}
-            <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
-              <SpecialChannelItem
-                icon={
-                  <svg className="w-6 h-6 text-[#a07855]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-                  </svg>
-                }
-                name="Announcements"
-                description="Updates from the team"
-                onClick={() => handleChannelSelect(ANNOUNCEMENTS_CHANNEL_ID)}
-                isActive={activeChannel?.id === ANNOUNCEMENTS_CHANNEL_ID}
-                unreadCount={announcementsUnread}
-                lastMessageTime={announcementsLastMessage}
-              />
-            </div>
-            
-            {/* Social Corner */}
-            <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
-              <SpecialChannelItem
-                icon={
-                  <svg className="w-6 h-6 text-[#a07855]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                }
-                name="Social Corner"
-                description="Chat with the community"
-                onClick={() => handleChannelSelect(SOCIAL_CORNER_CHANNEL_ID)}
-                isActive={activeChannel?.id === SOCIAL_CORNER_CHANNEL_ID}
-                unreadCount={socialCornerUnread}
-                lastMessageTime={socialCornerLastMessage}
-              />
-            </div>
+            {/* Organization Channels OR Global Channels */}
+            {hasOrgChannels ? (
+              <>
+                {/* Org Channels - Loading state */}
+                {orgChannelsLoading && (
+                  <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                    <div className="flex items-center gap-3 p-2 rounded-lg">
+                      <div className="w-10 h-10 rounded-full bg-[#e1ddd8] dark:bg-[#262b35] animate-pulse flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="h-4 w-24 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse mb-1.5" />
+                        <div className="h-3 w-16 bg-[#e1ddd8] dark:bg-[#262b35] rounded animate-pulse" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Render org channels dynamically */}
+                {!orgChannelsLoading && orgChannels.map((orgChannel) => {
+                  const iconMap: Record<string, React.ReactNode> = {
+                    megaphone: (
+                      <svg className="w-6 h-6 text-[#a07855]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                      </svg>
+                    ),
+                    chat: (
+                      <svg className="w-6 h-6 text-[#a07855]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                    ),
+                    sparkles: (
+                      <svg className="w-6 h-6 text-[#a07855]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                      </svg>
+                    ),
+                    hash: (
+                      <svg className="w-6 h-6 text-[#a07855]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5l-3.9 19.5m-2.1-19.5l-3.9 19.5" />
+                      </svg>
+                    ),
+                  };
+                  
+                  return (
+                    <div key={orgChannel.id} className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                      <SpecialChannelItem
+                        icon={iconMap[orgChannel.icon || 'hash'] || iconMap.hash}
+                        name={orgChannel.title}
+                        description={orgChannel.subtitle}
+                        onClick={() => handleChannelSelect(orgChannel.streamChannelId)}
+                        isActive={activeChannel?.id === orgChannel.streamChannelId}
+                        isPinned={orgChannel.isPinned}
+                        unreadCount={orgChannelUnreads[orgChannel.streamChannelId] || 0}
+                        lastMessageTime={orgChannelLastMessages[orgChannel.streamChannelId] || null}
+                      />
+                    </div>
+                  );
+                })}
+              </>
+            ) : (
+              <>
+                {/* Global Channels (fallback for users without org) */}
+                {/* Announcements */}
+                <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                  <SpecialChannelItem
+                    icon={
+                      <svg className="w-6 h-6 text-[#a07855]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                      </svg>
+                    }
+                    name="Announcements"
+                    description="Updates from the team"
+                    onClick={() => handleChannelSelect(ANNOUNCEMENTS_CHANNEL_ID)}
+                    isActive={activeChannel?.id === ANNOUNCEMENTS_CHANNEL_ID}
+                    unreadCount={announcementsUnread}
+                    lastMessageTime={announcementsLastMessage}
+                  />
+                </div>
+                
+                {/* Social Corner */}
+                <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                  <SpecialChannelItem
+                    icon={
+                      <svg className="w-6 h-6 text-[#a07855]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                    }
+                    name="Social Corner"
+                    description="Chat with the community"
+                    onClick={() => handleChannelSelect(SOCIAL_CORNER_CHANNEL_ID)}
+                    isActive={activeChannel?.id === SOCIAL_CORNER_CHANNEL_ID}
+                    unreadCount={socialCornerUnread}
+                    lastMessageTime={socialCornerLastMessage}
+                  />
+                </div>
 
-            {/* Share Your Wins */}
-            <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
-              <SpecialChannelItem
-                icon={
-                  <svg className="w-6 h-6 text-[#a07855]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                  </svg>
-                }
-                name="Share your wins"
-                description="Celebrate with the community"
-                onClick={() => handleChannelSelect(SHARE_WINS_CHANNEL_ID)}
-                isActive={activeChannel?.id === SHARE_WINS_CHANNEL_ID}
-                unreadCount={shareWinsUnread}
-                lastMessageTime={shareWinsLastMessage}
-              />
-            </div>
+                {/* Share Your Wins */}
+                <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                  <SpecialChannelItem
+                    icon={
+                      <svg className="w-6 h-6 text-[#a07855]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                      </svg>
+                    }
+                    name="Share your wins"
+                    description="Celebrate with the community"
+                    onClick={() => handleChannelSelect(SHARE_WINS_CHANNEL_ID)}
+                    isActive={activeChannel?.id === SHARE_WINS_CHANNEL_ID}
+                    unreadCount={shareWinsUnread}
+                    lastMessageTime={shareWinsLastMessage}
+                  />
+                </div>
+              </>
+            )}
 
             {/* Coaching Chat - Only show when user has coaching and coach is assigned */}
             {hasCoaching && coachingChannelId && (

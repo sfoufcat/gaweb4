@@ -1,5 +1,6 @@
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import type { UserRole } from '@/types';
+import { setupDefaultOrgChannels } from '@/lib/org-channels';
 
 /**
  * Clerk Organizations Utilities
@@ -74,6 +75,15 @@ export async function createOrganizationForCoach(
     
     console.log(`[CLERK_ORGS] Updated coach ${coachUserId} metadata with organizationId ${organization.id}`);
     
+    // Setup default org channels (Announcements, Social Corner, Share Wins)
+    try {
+      await setupDefaultOrgChannels(organization.id);
+      console.log(`[CLERK_ORGS] Set up default channels for organization ${organization.id}`);
+    } catch (channelError) {
+      // Log but don't fail - channels can be set up later
+      console.error(`[CLERK_ORGS] Failed to setup default channels for ${organization.id}:`, channelError);
+    }
+    
     return organization.id;
   } catch (error: unknown) {
     // Log detailed error information
@@ -116,20 +126,30 @@ export async function getUserOrganizationId(userId: string): Promise<string | nu
 
 /**
  * Get the current user's organization ID from the session
- * This reads from the JWT token (no additional API call if already in session)
+ * 
+ * Priority order:
+ * 1. Clerk's native org session (auth().orgId) - preferred for full Clerk Orgs
+ * 2. publicMetadata.organizationId from JWT - backward compatibility
+ * 3. API call to fetch user's org - fallback
  * 
  * @returns The organization ID or null if not found
  */
 export async function getCurrentUserOrganizationId(): Promise<string | null> {
-  const { sessionClaims, userId } = await auth();
+  const { orgId, sessionClaims, userId } = await auth();
   
-  // First try to get from session claims (faster, no API call)
+  // Preferred: Clerk's native organization session
+  // This is set when user is an actual org member and has active org context
+  if (orgId) {
+    return orgId;
+  }
+  
+  // Fallback 1: Get from session claims publicMetadata (backward compatibility)
   const metadata = sessionClaims?.publicMetadata as ClerkPublicMetadataWithOrg | undefined;
   if (metadata?.organizationId) {
     return metadata.organizationId;
   }
   
-  // Fall back to fetching from Clerk API
+  // Fallback 2: Fetch from Clerk API
   if (userId) {
     return getUserOrganizationId(userId);
   }
@@ -221,5 +241,154 @@ export async function updateOrganization(
   } catch (error) {
     console.error(`[CLERK_ORGS] Error updating organization ${organizationId}:`, error);
     throw error;
+  }
+}
+
+// ============================================================================
+// ORGANIZATION MEMBERSHIP MANAGEMENT
+// ============================================================================
+
+/**
+ * Add a user to an organization as a member
+ * This makes them an actual Clerk Organization member (not just metadata)
+ * 
+ * @param userId - The Clerk user ID to add
+ * @param organizationId - The organization ID to add them to
+ * @param role - The role to assign (default: 'org:member')
+ */
+export async function addUserToOrganization(
+  userId: string,
+  organizationId: string,
+  role: 'org:member' | 'org:admin' = 'org:member'
+): Promise<void> {
+  const client = await clerkClient();
+  
+  try {
+    // Check if already a member
+    const memberships = await client.organizations.getOrganizationMembershipList({
+      organizationId,
+    });
+    const existing = memberships.data.find(m => m.publicUserData?.userId === userId);
+    
+    if (existing) {
+      console.log(`[CLERK_ORGS] User ${userId} is already a member of org ${organizationId}`);
+      return;
+    }
+    
+    // Add as organization member
+    await client.organizations.createOrganizationMembership({
+      organizationId,
+      userId,
+      role,
+    });
+    
+    console.log(`[CLERK_ORGS] Added user ${userId} to org ${organizationId} as ${role}`);
+    
+    // Also set in publicMetadata for backward compatibility
+    const user = await client.users.getUser(userId);
+    await client.users.updateUserMetadata(userId, {
+      publicMetadata: {
+        ...user.publicMetadata,
+        organizationId,
+      },
+    });
+    
+    console.log(`[CLERK_ORGS] Updated user ${userId} publicMetadata with organizationId`);
+  } catch (error) {
+    console.error(`[CLERK_ORGS] Error adding user ${userId} to org ${organizationId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Remove a user from an organization
+ * 
+ * @param userId - The Clerk user ID to remove
+ * @param organizationId - The organization ID to remove them from
+ */
+export async function removeUserFromOrganization(
+  userId: string,
+  organizationId: string
+): Promise<void> {
+  const client = await clerkClient();
+  
+  try {
+    // Find the membership
+    const memberships = await client.organizations.getOrganizationMembershipList({
+      organizationId,
+    });
+    const membership = memberships.data.find(m => m.publicUserData?.userId === userId);
+    
+    if (!membership) {
+      console.log(`[CLERK_ORGS] User ${userId} is not a member of org ${organizationId}`);
+      return;
+    }
+    
+    // Delete the membership
+    await client.organizations.deleteOrganizationMembership({
+      organizationId,
+      userId,
+    });
+    
+    console.log(`[CLERK_ORGS] Removed user ${userId} from org ${organizationId}`);
+    
+    // Also clear from publicMetadata
+    const user = await client.users.getUser(userId);
+    const metadata = user.publicMetadata as ClerkPublicMetadataWithOrg;
+    
+    // Only clear if it matches the org being removed
+    if (metadata?.organizationId === organizationId) {
+      const { organizationId: _, ...restMetadata } = metadata;
+      await client.users.updateUserMetadata(userId, {
+        publicMetadata: restMetadata,
+      });
+      console.log(`[CLERK_ORGS] Cleared organizationId from user ${userId} publicMetadata`);
+    }
+  } catch (error) {
+    console.error(`[CLERK_ORGS] Error removing user ${userId} from org ${organizationId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Get all members of an organization
+ * 
+ * @param organizationId - The organization ID
+ * @returns Array of organization members with user data
+ */
+export async function getOrganizationMembers(organizationId: string) {
+  const client = await clerkClient();
+  
+  try {
+    const memberships = await client.organizations.getOrganizationMembershipList({
+      organizationId,
+      limit: 500, // Adjust as needed
+    });
+    
+    return memberships.data;
+  } catch (error) {
+    console.error(`[CLERK_ORGS] Error fetching org members for ${organizationId}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Check if a user is a member of an organization (any role)
+ * 
+ * @param userId - The Clerk user ID
+ * @param organizationId - The organization ID
+ * @returns True if user is a member
+ */
+export async function isUserOrgMember(userId: string, organizationId: string): Promise<boolean> {
+  try {
+    const client = await clerkClient();
+    const memberships = await client.organizations.getOrganizationMembershipList({
+      organizationId,
+    });
+    
+    return memberships.data.some(m => m.publicUserData?.userId === userId);
+  } catch (error) {
+    console.error(`[CLERK_ORGS] Error checking org membership:`, error);
+    return false;
   }
 }

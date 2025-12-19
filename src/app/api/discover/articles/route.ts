@@ -2,17 +2,32 @@
  * API Route: Get Discover Articles
  * 
  * GET /api/discover/articles - Get all articles
+ * 
+ * Multi-tenancy: If user belongs to an organization, only show org's articles.
+ * Otherwise, show all articles (default GA experience).
  */
 
 import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getCurrentUserOrganizationId } from '@/lib/clerk-organizations';
 
 export async function GET() {
   try {
-    const articlesSnapshot = await adminDb
-      .collection('articles')
-      .orderBy('publishedAt', 'desc')
-      .get();
+    const { userId } = await auth();
+    
+    // Get user's organization (null if no org = default GA experience)
+    const organizationId = userId ? await getCurrentUserOrganizationId() : null;
+    
+    let query: FirebaseFirestore.Query = adminDb.collection('articles');
+    
+    if (organizationId) {
+      // User belongs to an org - show only their org's content
+      query = query.where('organizationId', '==', organizationId);
+    }
+    // else: no org = show all content (global GA experience)
+    
+    const articlesSnapshot = await query.get();
 
     const articles = articlesSnapshot.docs.map(doc => ({
       id: doc.id,
@@ -21,6 +36,9 @@ export async function GET() {
       createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
       updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
     }));
+
+    // Sort in memory by publishedAt descending
+    articles.sort((a, b) => new Date(b.publishedAt as string).getTime() - new Date(a.publishedAt as string).getTime());
 
     return NextResponse.json({ articles });
   } catch (error) {
