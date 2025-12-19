@@ -62,9 +62,8 @@ export async function GET() {
     });
 
     clientsSnapshot.forEach((doc) => {
-      const data = { id: doc.id, ...doc.data() } as ClientCoachingData & { privateNotes?: string };
-      // Remove private notes from response
-      delete data.privateNotes;
+      // Use destructuring to exclude privateNotes from the response
+      const { privateNotes: _notes, ...data } = { id: doc.id, ...doc.data() } as ClientCoachingData & { privateNotes?: string };
       
       clients.push({
         ...data,

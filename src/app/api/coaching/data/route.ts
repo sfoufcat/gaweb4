@@ -61,25 +61,26 @@ export async function GET(request: Request) {
     const coachingData = { id: coachingDoc.id, ...coachingDoc.data() } as ClientCoachingData;
 
     // Fetch coach info if assigned
-    let coach: (Coach & { privateNotes?: string }) | null = null;
+    let coach: Coach | null = null;
     if (coachingData.coachId) {
       const coachDoc = await adminDb.collection('coaches').doc(coachingData.coachId).get();
       if (coachDoc.exists) {
-        coach = { id: coachDoc.id, ...coachDoc.data() } as Coach & { privateNotes?: string };
-        // Remove sensitive fields from coach data
-        delete coach.privateNotes;
+        // Use destructuring to exclude privateNotes from coach data
+        const { privateNotes: _coachNotes, ...coachData } = { id: coachDoc.id, ...coachDoc.data() } as Coach & { privateNotes?: string };
+        coach = coachData as Coach;
       }
     }
 
     // Remove private notes from client-facing response (unless super admin)
-    const coachingDataWithPrivate = coachingData as ClientCoachingData & { privateNotes?: string };
+    let responseCoachingData: ClientCoachingData = coachingData;
     if (!isSuperAdminUser) {
-      delete coachingDataWithPrivate.privateNotes;
+      const { privateNotes: _clientNotes, ...cleanData } = coachingData as ClientCoachingData & { privateNotes?: string };
+      responseCoachingData = cleanData as ClientCoachingData;
     }
 
     return NextResponse.json({
       exists: true,
-      data: coachingData,
+      data: responseCoachingData,
       coach,
     });
   } catch (error) {

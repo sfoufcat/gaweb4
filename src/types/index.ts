@@ -1233,3 +1233,52 @@ export interface TrackSpecificHelpResponse {
 
 export type AIResponse = SuggestTasksResponse | HelpCompleteTaskResponse | TrackSpecificHelpResponse;
 
+// =============================================================================
+// ORGANIZATION BRANDING TYPES
+// =============================================================================
+
+/**
+ * Branding colors for an organization
+ * Supports both light and dark mode variants
+ */
+export interface OrgBrandingColors {
+  menuLight: string;           // Menu/sidebar background in light mode (default: "#ffffff")
+  menuDark: string;            // Menu/sidebar background in dark mode (default: "#101520")
+  bgLight: string;             // Page background in light mode (default: "#faf8f6")
+  bgDark: string;              // Page background in dark mode (default: "#05070b")
+  accentLight: string;         // Accent/primary color in light mode (default: "#a07855")
+  accentDark: string;          // Accent/primary color in dark mode (default: "#b8896a")
+}
+
+/**
+ * Organization branding settings
+ * Stored in Firestore: org_branding/{organizationId}
+ * 
+ * This is keyed by Clerk Organization ID to support future multi-tenant
+ * subdomain/custom domain scenarios where each coach has their own instance.
+ */
+export interface OrgBranding {
+  id: string;                    // Same as organizationId
+  organizationId: string;        // Clerk Organization ID
+  logoUrl: string | null;        // Custom logo URL (null = use default)
+  appTitle: string;              // App title shown in sidebar (default: "Growth Addicts")
+  colors: OrgBrandingColors;
+  createdAt: string;             // ISO timestamp
+  updatedAt: string;             // ISO timestamp
+}
+
+/**
+ * Default branding values (matches current hardcoded theme)
+ */
+export const DEFAULT_BRANDING_COLORS: OrgBrandingColors = {
+  menuLight: '#ffffff',
+  menuDark: '#101520',
+  bgLight: '#faf8f6',
+  bgDark: '#05070b',
+  accentLight: '#a07855',
+  accentDark: '#b8896a',
+};
+
+export const DEFAULT_APP_TITLE = 'GrowthAddicts';
+export const DEFAULT_LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af';
+
