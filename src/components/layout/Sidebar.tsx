@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { isAdmin, canAccessCoachDashboard, canAccessEditorSection, isSuperAdmin } from '@/lib/admin-utils-shared';
 import type { UserRole } from '@/types';
 import { useChatUnreadCounts } from '@/hooks/useChatUnreadCounts';
+import { useBrandingValues } from '@/contexts/BrandingContext';
 
 // Custom hook for scroll direction detection
 function useScrollDirection() {
@@ -44,6 +45,7 @@ export function Sidebar() {
   const { sessionClaims } = useAuth();
   const { totalUnread } = useChatUnreadCounts();
   const { scrollDirection, isAtTop } = useScrollDirection();
+  const { logoUrl, appTitle } = useBrandingValues();
   
   const isActive = (path: string) => pathname === path;
   
@@ -194,19 +196,20 @@ export function Sidebar() {
   return (
     <>
       {/* Desktop Sidebar - Apple Liquid Glass Style */}
-      <aside className="hidden lg:flex flex-col w-64 fixed left-0 top-0 bottom-0 z-40 bg-white/80 dark:bg-[#101520]/90 backdrop-blur-xl border-r border-[#e1ddd8]/50 dark:border-[#272d38]/50 px-6 py-8">
-        {/* Logo - Instagram Image */}
+      {/* Uses CSS variables for branding colors when preview mode or custom branding is active */}
+      <aside className="hidden lg:flex flex-col w-64 fixed left-0 top-0 bottom-0 z-40 sidebar-branded backdrop-blur-xl border-r border-[#e1ddd8]/50 dark:border-[#272d38]/50 px-6 py-8">
+        {/* Logo */}
         <Link href="/">
           <div className="flex items-center gap-2.5 mb-12 cursor-pointer group">
             <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-all overflow-hidden relative bg-white dark:bg-white/10">
               <Image 
-                src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af"
-                alt="Growth Addicts Logo"
+                src={logoUrl}
+                alt={`${appTitle} Logo`}
                 fill
                 className="object-cover rounded-2xl"
               />
             </div>
-            <span className="font-albert font-semibold text-xl text-[#1a1a1a] dark:text-[#faf8f6]">GrowthAddicts</span>
+            <span className="font-albert font-semibold text-xl text-[#1a1a1a] dark:text-[#faf8f6]">{appTitle}</span>
           </div>
         </Link>
 

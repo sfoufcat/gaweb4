@@ -38,7 +38,7 @@ export async function GET() {
     }
 
     const clientsSnapshot = await clientsQuery.get();
-    const clients: (ClientCoachingData & { user?: Partial<FirebaseUser> })[] = [];
+    const clients: (Omit<ClientCoachingData, 'privateNotes'> & { user?: Partial<FirebaseUser> })[] = [];
 
     // Fetch user details for each client
     const userIds = clientsSnapshot.docs.map(doc => doc.data().userId);
@@ -63,12 +63,13 @@ export async function GET() {
 
     clientsSnapshot.forEach((doc) => {
       // Use destructuring to exclude privateNotes from the response
-      const { privateNotes: _notes, ...data } = { id: doc.id, ...doc.data() } as ClientCoachingData & { privateNotes?: string };
+      const rawData = { id: doc.id, ...doc.data() } as ClientCoachingData;
+      const { privateNotes: _notes, ...data } = rawData;
       
       clients.push({
         ...data,
         user: userMap.get(data.userId),
-      });
+      } as Omit<ClientCoachingData, 'privateNotes'> & { user?: Partial<FirebaseUser> });
     });
 
     // Sort by start date (newest first)

@@ -9,6 +9,7 @@ import { StreamChatProvider } from "@/contexts/StreamChatContext";
 import { StreamVideoProvider } from "@/contexts/StreamVideoContext";
 import { SquadProvider } from "@/contexts/SquadContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { BrandingProvider } from "@/contexts/BrandingContext";
 import { IncomingCallHandler } from "@/components/chat/IncomingCallHandler";
 import { ClerkThemeProvider } from "@/components/auth/ClerkThemeProvider";
 import { TimezoneSync } from "@/components/TimezoneSync";
@@ -68,6 +69,7 @@ export default function RootLayout({
           suppressHydrationWarning
         >
           <ThemeProvider>
+          <BrandingProvider>
           <SquadProvider>
             <StreamChatProvider>
               <StreamVideoProvider>
@@ -92,6 +94,7 @@ export default function RootLayout({
               </StreamVideoProvider>
             </StreamChatProvider>
           </SquadProvider>
+          </BrandingProvider>
           </ThemeProvider>
         </body>
       </html>

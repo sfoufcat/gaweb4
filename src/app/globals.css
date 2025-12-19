@@ -36,6 +36,15 @@
     --text-muted: 30 5% 65%; /* #a7a39e */
     --border-subtle: 30 15% 85%; /* #e1ddd8 */
     --border-muted: 30 15% 90%; /* lighter border */
+    
+    /* Organization Branding CSS Variables (light mode defaults) */
+    /* These can be overridden by BrandingContext for custom branding */
+    --brand-menu-light: #ffffff;
+    --brand-bg-light: #faf8f6;
+    --brand-accent-light: #a07855;
+    --brand-menu-dark: #101520;
+    --brand-bg-dark: #05070b;
+    --brand-accent-dark: #b8896a;
   }
 
   .dark {
@@ -581,4 +590,44 @@ div[class*="LoadingIndicator"],
 /* Focus state for editable content */
 .tiptap.ProseMirror-focused {
   outline: none;
+}
+
+/* ===========================================
+   Organization Branding Styles
+   =========================================== */
+
+/* Sidebar branded background with CSS variable support */
+/* Uses brand variables when set by BrandingContext, falls back to defaults */
+.sidebar-branded {
+  background-color: var(--brand-menu-light, rgba(255, 255, 255, 0.8));
+}
+
+.dark .sidebar-branded {
+  background-color: var(--brand-menu-dark, rgba(16, 21, 32, 0.9));
+}
+
+/* Mobile nav branded background */
+.mobile-nav-branded {
+  background-color: var(--brand-menu-light, rgba(255, 255, 255, 0.5));
+}
+
+.dark .mobile-nav-branded {
+  background-color: var(--brand-menu-dark, rgba(16, 21, 32, 0.8));
+}
+
+/* Branded accent colors for active states */
+.accent-branded {
+  color: var(--brand-accent-light, #a07855);
+}
+
+.dark .accent-branded {
+  color: var(--brand-accent-dark, #b8896a);
+}
+
+.bg-accent-branded {
+  background-color: var(--brand-accent-light, #a07855);
+}
+
+.dark .bg-accent-branded {
+  background-color: var(--brand-accent-dark, #b8896a);
 }
