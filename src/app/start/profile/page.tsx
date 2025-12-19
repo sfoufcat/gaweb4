@@ -91,7 +91,7 @@ export default function GuestProfilePage() {
             >
               <h1 className="font-albert text-[36px] lg:text-[48px] text-text-primary tracking-[-2px] leading-[1.15] mb-4">
                 <span className="bg-gradient-to-r from-[#a07855] via-[#d4a574] to-[#a07855] bg-clip-text text-transparent">
-                  You're all set!
+                  You&apos;re all set!
                 </span>
               </h1>
             </motion.div>
@@ -151,7 +151,7 @@ export default function GuestProfilePage() {
               disabled={isNavigating}
               className="w-full bg-white border border-[rgba(215,210,204,0.5)] text-[#2c2520] font-sans font-bold text-[16px] tracking-[-0.5px] leading-[1.4] py-4 px-6 rounded-[32px] hover:bg-[#faf8f6] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              I'll do it later
+              I&apos;ll do it later
             </button>
           </div>
         </motion.div>

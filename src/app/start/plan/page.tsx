@@ -1032,7 +1032,7 @@ export default function GuestPlanPage() {
                       30-day satisfaction guarantee
                     </h3>
                     <p className="font-sans text-[14px] text-[#15803d] leading-relaxed">
-                      If you don't see noticeable progress in the GrowthAddicts system despite completing your daily required tasks, you can request a full refund within 30 days.
+                      If you don&apos;t see noticeable progress in the GrowthAddicts system despite completing your daily required tasks, you can request a full refund within 30 days.
                     </p>
                   </div>
                 </div>
@@ -1079,7 +1079,7 @@ export default function GuestPlanPage() {
             >
               <div className="text-center mb-8">
                 <h2 className="font-albert text-[28px] lg:text-[32px] text-text-primary tracking-[-1.5px] mb-3">
-                  Vincent's experience
+                  Vincent&apos;s experience
                 </h2>
                 <p className="font-sans text-[15px] text-text-secondary max-w-lg mx-auto">
                   Hear how Growth Addicts helped Vincent stay consistent and transform his daily habits.
@@ -1202,7 +1202,7 @@ export default function GuestPlanPage() {
                           </h4>
                         </div>
                         <p className="font-sans text-[12px] md:text-[13px] text-text-secondary leading-relaxed mt-1 md:mt-0">
-                          You'll choose the three actions that move you forward each day.
+                          You&apos;ll choose the three actions that move you forward each day.
                         </p>
                       </div>
                     </motion.div>
@@ -1251,7 +1251,7 @@ export default function GuestPlanPage() {
                   Your transformation starts today
                 </h3>
                 <p className="font-sans text-[15px] text-text-secondary leading-relaxed max-w-xl mx-auto mb-6">
-                  You've already taken the first step by getting this far. Thousands of people just like you have used GrowthAddicts to build lasting habits, achieve their goals, and become the best version of themselves.
+                  You&apos;ve already taken the first step by getting this far. Thousands of people just like you have used GrowthAddicts to build lasting habits, achieve their goals, and become the best version of themselves.
                 </p>
                 <p className="font-sans text-[14px] font-semibold text-[#a07855]">
                   The best time to start was yesterday. The second best time is now.
@@ -1283,7 +1283,7 @@ export default function GuestPlanPage() {
                         <span key={i} className="text-amber-400 text-[14px]">★</span>
                       ))}
                     </div>
-                    <p className="font-sans text-[14px] text-text-secondary mb-2">"{testimonial.text}"</p>
+                    <p className="font-sans text-[14px] text-text-secondary mb-2">&quot;{testimonial.text}&quot;</p>
                     <p className="font-sans text-[13px] font-semibold text-text-primary">{testimonial.name}</p>
                   </motion.div>
                 ))}

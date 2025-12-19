@@ -165,7 +165,7 @@ function SuccessContent() {
                 
                 <p className="font-sans text-[17px] lg:text-[19px] text-text-secondary tracking-[-0.3px] leading-[1.4] mb-8">
                   Welcome to GrowthAddicts{plan === 'premium' ? ' Premium' : ''}!<br />
-                  Now let's create your account.
+                  Now let&apos;s create your account.
                 </p>
 
                 {email && (

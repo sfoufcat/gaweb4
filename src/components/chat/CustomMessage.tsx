@@ -220,7 +220,8 @@ export function CustomMessage() {
           setPollData(embeddedPollData);
         }
       });
-  }, [isPollMessage, pollId, message]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPollMessage, pollId, message]); // messageWithPoll.ga_poll_data is derived from message
 
   // Handle poll vote
   const handlePollVote = useCallback(async (pollId: string, optionIds: string[]) => {
