@@ -122,8 +122,9 @@ export default function GuestCreateAccountPage() {
       console.error('Sign up error:', err);
       
       // Handle specific Clerk errors
-      const errorCode = err.errors?.[0]?.code;
-      const errorMessage = err.errors?.[0]?.message;
+      const clerkError = err as { errors?: Array<{ code?: string; message?: string }> };
+      const errorCode = clerkError.errors?.[0]?.code;
+      const errorMessage = clerkError.errors?.[0]?.message;
       
       // Handle "email already exists" error
       if (errorCode === 'form_identifier_exists' || errorMessage?.toLowerCase().includes('email address is taken')) {
@@ -171,8 +172,9 @@ export default function GuestCreateAccountPage() {
     } catch (err) {
       console.error('Verification error:', err);
       
-      if (err.errors?.[0]?.message) {
-        setError(err.errors[0].message);
+      const clerkError = err as { errors?: Array<{ message?: string }> };
+      if (clerkError.errors?.[0]?.message) {
+        setError(clerkError.errors[0].message);
       } else {
         setError('Invalid verification code. Please try again.');
       }

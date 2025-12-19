@@ -215,7 +215,7 @@ export function CustomMessage() {
       .catch(err => {
         console.error('Failed to fetch poll:', err);
         // Fall back to embedded data if API fails
-        const embeddedPollData = messageWithPoll.ga_poll_data;
+        const embeddedPollData = messageWithPoll.ga_poll_data as ChatPollState | undefined;
         if (embeddedPollData) {
           setPollData(embeddedPollData);
         }
