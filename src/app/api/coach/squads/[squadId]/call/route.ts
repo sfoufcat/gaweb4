@@ -4,7 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { getStreamServerClient, ensureSystemBotUser, SYSTEM_BOT_USER_ID } from '@/lib/stream-server';
 import { scheduleSquadCallJobs, cancelSquadCallJobs } from '@/lib/squad-call-notifications';
-import type { UserRole, Squad } from '@/types';
+import type { UserRole, Squad, ClerkPublicMetadata } from '@/types';
 
 /**
  * PUT /api/coach/squads/[squadId]/call
@@ -38,7 +38,7 @@ export async function PUT(
     }
 
     // Get role from session claims
-    const role = (sessionClaims?.publicMetadata as any)?.role as UserRole;
+    const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
 
     // Check if user can access coach dashboard
     if (!canAccessCoachDashboard(role)) {
@@ -224,7 +224,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const role = (sessionClaims?.publicMetadata as any)?.role as UserRole;
+    const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
 
     if (!canAccessCoachDashboard(role)) {
       return NextResponse.json(

@@ -1,3 +1,9 @@
+// Clerk Public Metadata Type (for type assertions with sessionClaims)
+export interface ClerkPublicMetadata {
+  role?: UserRole;
+  track?: UserTrack;
+}
+
 // Clerk User Types
 export interface ClerkUser {
   id: string;
@@ -7,10 +13,7 @@ export interface ClerkUser {
   imageUrl: string;
   createdAt: string;
   updatedAt: string;
-  publicMetadata?: {
-    role?: UserRole;
-    track?: UserTrack;
-  };
+  publicMetadata?: ClerkPublicMetadata;
 }
 
 // User Role Types

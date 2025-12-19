@@ -79,7 +79,7 @@ export default function ChangeEmailPage() {
       
       // Redirect back to create-account
       router.push('/start/create-account');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error updating email:', err);
       setError('Failed to update email. Please try again.');
       setIsLoading(false);

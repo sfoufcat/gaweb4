@@ -180,10 +180,11 @@ export async function DELETE(
     await taskRef.delete();
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error deleting task:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to delete task', message: error.message },
+      { error: 'Failed to delete task', message },
       { status: 500 }
     );
   }

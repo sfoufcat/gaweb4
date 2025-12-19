@@ -158,12 +158,13 @@ export async function POST(_request: Request) {
       message: 'Squad notification sent successfully' 
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('[SQUAD_NOTIFICATION_ERROR]', error);
     // Don't fail the check-in if notification fails - just log and return success
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ 
       success: true, 
-      error: error.message,
+      error: errorMessage,
       message: 'Failed to send notification but check-in succeeded' 
     });
   }

@@ -9,7 +9,7 @@
  */
 
 import { adminDb } from './firebase-admin';
-import type { Track, DynamicPrompt, UserTrack, DynamicPromptType, DynamicPromptSlot } from '@/types';
+import type { Track, DynamicPrompt, UserTrack, DynamicPromptType, DynamicPromptSlot, ProgramHabitTemplate } from '@/types';
 import { TRACK_HABIT_LABELS, TRACK_PROGRAM_BADGES, TRACK_DEFAULT_HABITS } from './starter-program-config';
 import type { TrackPrompt } from './track-prompts';
 
@@ -300,7 +300,7 @@ export async function getDefaultHabitsForTrackFromDB(trackSlug: UserTrack): Prom
       
       // If program has defaultHabits defined, use those
       if (program.defaultHabits && Array.isArray(program.defaultHabits) && program.defaultHabits.length > 0) {
-        return program.defaultHabits.map((habit: any, index: number) => ({
+        return program.defaultHabits.map((habit: ProgramHabitTemplate, index: number) => ({
           id: `${trackSlug}_program_habit_${index}`,
           title: habit.title,
           description: habit.description || '',
@@ -319,7 +319,7 @@ export async function getDefaultHabitsForTrackFromDB(trackSlug: UserTrack): Prom
       if (!day1Snapshot.empty) {
         const day1 = day1Snapshot.docs[0].data();
         if (day1.habits && Array.isArray(day1.habits) && day1.habits.length > 0) {
-          return day1.habits.map((habit: any, index: number) => ({
+          return day1.habits.map((habit: ProgramHabitTemplate, index: number) => ({
             id: `${trackSlug}_day1_habit_${index}`,
             title: habit.title,
             description: habit.description || '',

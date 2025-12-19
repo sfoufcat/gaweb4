@@ -93,9 +93,10 @@ export default function OnboardingPage() {
       }
 
       router.push('/onboarding/goal');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Save error:', error);
-      setErrorMessage(error.message || 'Failed to save your mission. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to save your mission. Please try again.';
+      setErrorMessage(message);
       setValidationState('error');
     }
   };

@@ -62,9 +62,10 @@ export async function POST(_request: NextRequest) {
     await checkInRef.set(newCheckIn);
 
     return NextResponse.json({ checkIn: { id: today, ...newCheckIn } }, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error creating check-in:', error);
-    return NextResponse.json({ error: error.message || 'Failed to create check-in' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Failed to create check-in';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -110,9 +111,10 @@ export async function PATCH(request: NextRequest) {
     }
 
     return NextResponse.json({ checkIn: { id: updatedDoc.id, ...updatedDoc.data() } });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error updating check-in:', error);
-    return NextResponse.json({ error: error.message || 'Failed to update check-in' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Failed to update check-in';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

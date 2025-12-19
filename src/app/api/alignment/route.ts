@@ -40,10 +40,11 @@ export async function GET(request: NextRequest) {
       alignment,
       summary,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[ALIGNMENT_GET_ERROR]', error);
+    const message = error instanceof Error ? error.message : 'Failed to fetch alignment';
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch alignment' },
+      { error: message },
       { status: 500 }
     );
   }

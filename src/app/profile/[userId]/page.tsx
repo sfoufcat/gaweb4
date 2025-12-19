@@ -156,7 +156,7 @@ export default function UserProfilePage() {
       console.log('Created/found channel:', channelId);
       // Navigate to chat with the specific channel
       router.push(`/chat?channel=${channelId}`);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to open chat:', error);
       // Show error to user instead of silent redirect
       alert(`Failed to start chat: ${error?.message || 'Unknown error'}`);

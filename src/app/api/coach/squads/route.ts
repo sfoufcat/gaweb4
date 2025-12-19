@@ -2,7 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
-import type { Squad, UserRole } from '@/types';
+import type { Squad, UserRole, ClerkPublicMetadata } from '@/types';
 
 /**
  * GET /api/coach/squads
@@ -20,7 +20,7 @@ export async function GET() {
     }
 
     // Get role from session claims
-    const role = (sessionClaims?.publicMetadata as any)?.role as UserRole;
+    const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
 
     // Check if user can access coach dashboard
     if (!canAccessCoachDashboard(role)) {

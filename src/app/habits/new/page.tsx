@@ -62,8 +62,8 @@ export default function CreateHabitPage() {
       
       // Redirect to homepage
       router.push('/');
-    } catch (err: any) {
-      const errorMessage = err?.message || 'Failed to create habit. Please try again.';
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create habit. Please try again.';
       setError(errorMessage);
       console.error('Create habit error:', err);
       setIsSubmitting(false);

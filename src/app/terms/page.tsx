@@ -106,7 +106,7 @@ export default function TermsPage() {
               <ul className="list-disc pl-6 space-y-2 font-sans text-[15px] text-text-secondary">
                 <li>Use the Service for any unlawful purpose</li>
                 <li>Harass, abuse, or harm other users</li>
-                <li>Post content that is offensive, defamatory, or violates others' rights</li>
+                <li>Post content that is offensive, defamatory, or violates others&apos; rights</li>
                 <li>Attempt to gain unauthorized access to the Service or its systems</li>
                 <li>Use the Service to distribute spam or malicious content</li>
                 <li>Impersonate any person or entity</li>

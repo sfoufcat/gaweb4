@@ -65,9 +65,10 @@ export default function GuestCreateAccountPage() {
 
       // Redirect to identity setup (moved to after payment)
       router.push('/start/identity');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Link account error:', err);
-      setError(err.message || 'Failed to complete account setup. Please try again.');
+      const message = err instanceof Error ? err.message : 'Failed to complete account setup. Please try again.';
+      setError(message);
       setStep('create');
       setIsLoading(false);
     }
@@ -117,7 +118,7 @@ export default function GuestCreateAccountPage() {
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       
       setStep('verify');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Sign up error:', err);
       
       // Handle specific Clerk errors
@@ -167,7 +168,7 @@ export default function GuestCreateAccountPage() {
         setError('Verification incomplete. Please try again.');
         setIsLoading(false);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Verification error:', err);
       
       if (err.errors?.[0]?.message) {
@@ -185,7 +186,7 @@ export default function GuestCreateAccountPage() {
     try {
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       setError(null);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Resend error:', err);
       setError('Failed to resend code. Please try again.');
     }

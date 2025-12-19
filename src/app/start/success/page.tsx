@@ -88,7 +88,7 @@ function SuccessContent() {
           router.push('/start/welcome');
         }, 3000);
 
-      } catch (err: any) {
+      } catch (err) {
         console.error('Verification error:', err);
         setStatus('error');
         setError('Failed to verify payment. Please contact support.');
@@ -242,6 +242,7 @@ function SuccessContent() {
         `}
       </Script>
       <noscript>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img height="1" width="1" style={{ display: 'none' }} alt=""
           src="https://www.facebook.com/tr?id=1347713597075016&ev=PageView&noscript=1"
         />

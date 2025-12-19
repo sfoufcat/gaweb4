@@ -13,7 +13,7 @@ import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { canAccessEditorSection } from '@/lib/admin-utils-shared';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { DynamicPrompt, DynamicPromptType, DynamicPromptSlot } from '@/types';
+import type { DynamicPrompt, DynamicPromptType, DynamicPromptSlot, ClerkPublicMetadata } from '@/types';
 
 // Valid types and slots
 const VALID_TYPES: DynamicPromptType[] = ['morning', 'evening', 'weekly'];
@@ -25,7 +25,7 @@ export async function GET(
 ) {
   try {
     const { sessionClaims } = await auth();
-    const role = (sessionClaims?.publicMetadata as any)?.role;
+    const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
     
     if (!canAccessEditorSection(role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -61,7 +61,7 @@ export async function PUT(
 ) {
   try {
     const { sessionClaims } = await auth();
-    const role = (sessionClaims?.publicMetadata as any)?.role;
+    const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
     
     if (!canAccessEditorSection(role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -152,7 +152,7 @@ export async function DELETE(
 ) {
   try {
     const { sessionClaims } = await auth();
-    const role = (sessionClaims?.publicMetadata as any)?.role;
+    const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
     
     if (!canAccessEditorSection(role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });

@@ -9,7 +9,7 @@ import { AdminDiscoverTab } from '@/components/admin/discover';
 import { AdminTracksAndProgramsTab } from '@/components/admin/tracks-programs';
 import { AdminQuizzesTab } from '@/components/admin/quizzes';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import type { UserRole } from '@/types';
+import type { UserRole, ClerkPublicMetadata } from '@/types';
 
 export default function EditorPage() {
   const router = useRouter();
@@ -21,7 +21,7 @@ export default function EditorPage() {
   }, []);
 
   // Get role from Clerk session (from JWT)
-  const role = (sessionClaims?.publicMetadata as any)?.role as UserRole;
+  const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
   const hasEditorAccess = canAccessEditorSection(role);
 
   // Check authorization

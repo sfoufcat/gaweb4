@@ -97,8 +97,8 @@ export default function SubscriptionPolicyPage() {
               </p>
               <ul className="list-disc pl-6 space-y-2 font-sans text-[15px] text-text-secondary">
                 <li>Your subscription begins immediately upon successful payment</li>
-                <li>You will be charged on the same date each month (e.g., if you subscribe on the 15th, you'll be billed on the 15th of each month)</li>
-                <li>If your billing date falls on a day that doesn't exist in a given month, you'll be billed on the last day of that month</li>
+                <li>You will be charged on the same date each month (e.g., if you subscribe on the 15th, you&apos;ll be billed on the 15th of each month)</li>
+                <li>If your billing date falls on a day that doesn&apos;t exist in a given month, you&apos;ll be billed on the last day of that month</li>
               </ul>
             </section>
 
@@ -157,8 +157,8 @@ export default function SubscriptionPolicyPage() {
                 You can change your plan at any time:
               </p>
               <ul className="list-disc pl-6 space-y-2 font-sans text-[15px] text-text-secondary">
-                <li><strong>Upgrading:</strong> When you upgrade, you'll be charged the prorated difference immediately and gain instant access to premium features</li>
-                <li><strong>Downgrading:</strong> When you downgrade, the change will take effect at the end of your current billing period. You'll retain premium access until then</li>
+                <li><strong>Upgrading:</strong> When you upgrade, you&apos;ll be charged the prorated difference immediately and gain instant access to premium features</li>
+                <li><strong>Downgrading:</strong> When you downgrade, the change will take effect at the end of your current billing period. You&apos;ll retain premium access until then</li>
               </ul>
             </section>
 

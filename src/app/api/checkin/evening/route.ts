@@ -3,7 +3,15 @@ import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { sendWeeklyReflectionNotification } from '@/lib/notifications';
 import { isFridayInTimezone, DEFAULT_TIMEZONE } from '@/lib/timezone';
-// Types are defined inline since we use 'any' for flexibility
+import type { Task, EveningCheckIn, EveningEmotionalState } from '@/types';
+
+// Task snapshot stored in evening check-in
+interface TaskSnapshot {
+  id: string;
+  title: string;
+  status: string;
+  completedAt?: string;
+}
 
 // GET - Fetch today's evening check-in
 export async function GET(request: NextRequest) {
@@ -52,7 +60,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Snapshot the current Daily Focus tasks RIGHT NOW before they can move to backlog
-    const completedTasksSnapshot: any[] = [];
+    const completedTasksSnapshot: TaskSnapshot[] = [];
     try {
       const tasksSnapshot = await adminDb
         .collection('tasks')
@@ -61,10 +69,10 @@ export async function POST(request: NextRequest) {
         .where('listType', '==', 'focus')
         .get();
       
-      const focusTasks: any[] = [];
+      const focusTasks: Task[] = [];
       
       tasksSnapshot.forEach((doc) => {
-        const task: any = { id: doc.id, ...doc.data() };
+        const task = { id: doc.id, ...doc.data() } as Task;
         focusTasks.push(task);
         if (task.status === 'completed') {
           completedTasksSnapshot.push({
@@ -85,10 +93,10 @@ export async function POST(request: NextRequest) {
     }
 
     const now = new Date().toISOString();
-    const newCheckIn: any = {
+    const newCheckIn: Omit<EveningCheckIn, 'id'> & { completedTasksSnapshot: TaskSnapshot[] } = {
       date: today,
       userId,
-      emotionalState: 'steady',
+      emotionalState: 'steady' as EveningEmotionalState,
       tasksCompleted,
       tasksTotal,
       completedTasksSnapshot, // Store the snapshot of completed focus tasks
@@ -99,9 +107,10 @@ export async function POST(request: NextRequest) {
     await checkInRef.set(newCheckIn);
 
     return NextResponse.json({ checkIn: { id: today, ...newCheckIn } }, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error creating evening check-in:', error);
-    return NextResponse.json({ error: error.message || 'Failed to create evening check-in' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Failed to create evening check-in';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -122,7 +131,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Evening check-in not found' }, { status: 404 });
     }
 
-    const updatedData: any = {
+    const updatedData: Partial<EveningCheckIn> & { completedTasksSnapshot?: TaskSnapshot[] } = {
       ...updates,
       updatedAt: new Date().toISOString(),
     };
@@ -140,11 +149,11 @@ export async function PATCH(request: NextRequest) {
           .where('listType', '==', 'focus')
           .get();
         
-        const focusTasks: any[] = [];
-        const completedTasksSnapshot: any[] = [];
+        const focusTasks: Task[] = [];
+        const completedTasksSnapshot: TaskSnapshot[] = [];
         
         tasksSnapshot.forEach((doc) => {
-          const task: any = { id: doc.id, ...doc.data() };
+          const task = { id: doc.id, ...doc.data() } as Task;
           focusTasks.push(task);
           if (task.status === 'completed') {
             completedTasksSnapshot.push({
@@ -187,9 +196,10 @@ export async function PATCH(request: NextRequest) {
     }
 
     return NextResponse.json({ checkIn: { id: updatedDoc.id, ...updatedDoc.data() } });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error updating evening check-in:', error);
-    return NextResponse.json({ error: error.message || 'Failed to update evening check-in' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Failed to update evening check-in';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

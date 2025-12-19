@@ -424,12 +424,12 @@ Identity: "${normalizedStatement}"`,
       reasoning: 'Could not validate your identity. Please try rephrasing it.',
       suggestion: 'I am a leader who inspires others',
     };
-  } catch (error: any) {
+  } catch (error) {
     // -------------------------------------------------------------------------
     // ERROR: Reject on any error (fail-safe)
     // -------------------------------------------------------------------------
-    const errorMessage = error?.message || error?.toString() || 'Unknown error';
-    const errorStatus = error?.status || error?.statusCode || 'N/A';
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStatus = (error as { status?: number; statusCode?: number })?.status || (error as { status?: number; statusCode?: number })?.statusCode || 'N/A';
     console.error(`[Identity Validation] ERROR: ${errorMessage}`);
     console.error(`[Identity Validation] Status: ${errorStatus}`);
     console.error(`[Identity Validation] Full error:`, JSON.stringify(error, null, 2));
@@ -545,12 +545,12 @@ Target Date: ${targetDate}`,
       feedback: 'Could not validate your goal. Please try rephrasing it.',
       suggestedGoal: 'Reach 1,000 subscribers',
     };
-  } catch (error: any) {
+  } catch (error) {
     // -------------------------------------------------------------------------
     // ERROR: Reject on any error (fail-safe)
     // -------------------------------------------------------------------------
-    const errorMessage = error?.message || error?.toString() || 'Unknown error';
-    const errorStatus = error?.status || error?.statusCode || 'N/A';
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStatus = (error as { status?: number; statusCode?: number })?.status || (error as { status?: number; statusCode?: number })?.statusCode || 'N/A';
     console.error(`[Goal Validation] ERROR: ${errorMessage}`);
     console.error(`[Goal Validation] Status: ${errorStatus}`);
     console.error(`[Goal Validation] Full error:`, JSON.stringify(error, null, 2));
@@ -657,8 +657,8 @@ Write the 2-sentence transformation paragraph:`,
       text: 'With the right system, you\'ll finally break through what\'s been holding you back.',
       error: 'Failed to parse AI response'
     };
-  } catch (error: any) {
-    const errorMessage = error?.message || 'Unknown error';
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[Transformation Text] ERROR: ${errorMessage}`);
     
     // Return a decent fallback
@@ -741,8 +741,8 @@ Summary:`,
     }
 
     return { summary: 'Your Goal', error: 'Failed to parse AI response' };
-  } catch (error: any) {
-    const errorMessage = error?.message || 'Unknown error';
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[Goal Summary] ERROR: ${errorMessage}`);
     return { summary: 'Your Goal', error: errorMessage };
   }
@@ -830,8 +830,8 @@ Summary:`,
     }
 
     return { summary: 'Starting Point', error: 'Failed to parse AI response' };
-  } catch (error: any) {
-    const errorMessage = error?.message || 'Unknown error';
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[Accountability Summary] ERROR: ${errorMessage}`);
     return { summary: 'Starting Point', error: errorMessage };
   }
@@ -910,8 +910,8 @@ Summary:`,
     }
 
     return { summary: focusText.trim(), error: 'Failed to parse AI response' };
-  } catch (error: any) {
-    const errorMessage = error?.message || 'Unknown error';
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[Weekly Focus Summary] ERROR: ${errorMessage}`);
     // Return the original text as fallback (truncated if too long)
     const fallback = focusText.trim().split(/\s+/).slice(0, 5).join(' ');
@@ -989,8 +989,8 @@ Return ONLY the goal, nothing else.`
     }
 
     return { goal: 'Grow my audience', error: 'Failed to parse AI response' };
-  } catch (error: any) {
-    const errorMessage = error?.message || 'Unknown error';
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[Quiz Goal] ERROR: ${errorMessage}`);
     // Return a sensible fallback
     if (cleanLabel.toLowerCase().includes('engagement') || cleanLabel.toLowerCase().includes('leads')) {
@@ -1081,8 +1081,8 @@ Summary:`,
     }
 
     return { summary: 'Starting Point', error: 'Failed to parse AI response' };
-  } catch (error: any) {
-    const errorMessage = error?.message || 'Unknown error';
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[Starting Point Summary] ERROR: ${errorMessage}`);
     return { summary: 'Starting Point', error: errorMessage };
   }

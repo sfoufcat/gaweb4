@@ -12,7 +12,7 @@ import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { canAccessEditorSection } from '@/lib/admin-utils-shared';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { UserTrack } from '@/types';
+import type { UserTrack, ClerkPublicMetadata } from '@/types';
 
 interface CloneRequest {
   slug: string;
@@ -26,7 +26,7 @@ export async function POST(
 ) {
   try {
     const { sessionClaims } = await auth();
-    const role = (sessionClaims?.publicMetadata as any)?.role;
+    const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
     
     if (!canAccessEditorSection(role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });

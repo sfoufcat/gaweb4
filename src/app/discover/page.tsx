@@ -206,10 +206,10 @@ export default function DiscoverPage() {
       {/* Tab Toggle - For you / All - Only show when user has a track */}
       {hasTrack && (
         <section className="px-4 pb-4">
-          <div className="bg-[#f3f1ef] dark:bg-[#11141b] rounded-[40px] p-1.5 flex gap-1 w-fit">
+          <div className="bg-[#f3f1ef] dark:bg-[#11141b] rounded-[40px] p-1.5 flex gap-1">
             <button
               onClick={() => setActiveTab('for-you')}
-              className={`px-5 py-2 rounded-full text-sm font-medium font-sans transition-all ${
+              className={`flex-1 px-5 py-2 rounded-full text-sm font-medium font-sans transition-all ${
                 activeTab === 'for-you'
                   ? 'bg-white dark:bg-[#1e222a] text-text-primary dark:text-[#f5f5f8] shadow-sm'
                   : 'text-text-secondary dark:text-[#7d8190] hover:text-text-primary dark:hover:text-[#b2b6c2]'
@@ -219,7 +219,7 @@ export default function DiscoverPage() {
             </button>
             <button
               onClick={() => setActiveTab('all')}
-              className={`px-5 py-2 rounded-full text-sm font-medium font-sans transition-all ${
+              className={`flex-1 px-5 py-2 rounded-full text-sm font-medium font-sans transition-all ${
                 activeTab === 'all'
                   ? 'bg-white dark:bg-[#1e222a] text-text-primary dark:text-[#f5f5f8] shadow-sm'
                   : 'text-text-secondary dark:text-[#7d8190] hover:text-text-primary dark:hover:text-[#b2b6c2]'

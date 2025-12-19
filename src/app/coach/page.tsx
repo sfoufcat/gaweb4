@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import Image from 'next/image';
-import type { Squad, UserRole } from '@/types';
+import type { Squad, UserRole, ClerkPublicMetadata } from '@/types';
 
 /**
  * Coach Dashboard Page
@@ -45,7 +45,7 @@ export default function CoachPage() {
   const [activeTab, setActiveTab] = useState<'squads' | 'coaching'>('squads');
 
   // Get role from Clerk session
-  const role = (sessionClaims?.publicMetadata as any)?.role as UserRole;
+  const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
   const hasAccess = canAccessCoachDashboard(role);
 
   useEffect(() => {

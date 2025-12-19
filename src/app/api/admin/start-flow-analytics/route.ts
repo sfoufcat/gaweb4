@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { isAdmin } from '@/lib/admin-utils-shared';
-import type { UserRole } from '@/types';
+import type { UserRole, ClerkPublicMetadata } from '@/types';
 
 // Step order for calculating funnel progression
 const STEP_ORDER = [
@@ -141,7 +141,7 @@ export async function GET(req: Request) {
   try {
     // Auth check
     const { sessionClaims } = await auth();
-    const role = (sessionClaims?.publicMetadata as any)?.role as UserRole;
+    const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
     
     if (!isAdmin(role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });

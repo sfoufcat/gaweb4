@@ -42,9 +42,10 @@ function NeutralizeContent() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ aiReframe: data.reframe }),
         });
-      } catch (err: any) {
+      } catch (err) {
         console.error('Error reframing:', err);
-        setError(err.message);
+        const message = err instanceof Error ? err.message : 'Failed to reframe thought';
+        setError(message);
       } finally {
         setIsLoading(false);
       }

@@ -82,10 +82,11 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json({ poll }, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error creating poll:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to create poll', message: error.message },
+      { error: 'Failed to create poll', message },
       { status: 500 }
     );
   }
@@ -137,10 +138,11 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json({ poll });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching poll:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to fetch poll', message: error.message },
+      { error: 'Failed to fetch poll', message },
       { status: 500 }
     );
   }

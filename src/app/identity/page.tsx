@@ -124,9 +124,10 @@ export default function IdentityEditPage() {
 
       // Navigate back to profile
       router.push('/profile');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Save error:', error);
-      setErrorMessage(error.message || 'Failed to save your identity. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to save your identity. Please try again.';
+      setErrorMessage(message);
       setValidationState('error');
     }
   };

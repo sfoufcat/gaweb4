@@ -15,7 +15,7 @@ import { AdminCoachingClientsTab } from '@/components/admin/AdminCoachingClients
 import { AdminStartFlowTab } from '@/components/admin/AdminStartFlowTab';
 import { AdminTracksAndProgramsTab } from '@/components/admin/tracks-programs';
 import { AdminQuizzesTab } from '@/components/admin/quizzes';
-import type { UserRole } from '@/types';
+import type { UserRole, ClerkPublicMetadata } from '@/types';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -27,7 +27,7 @@ export default function AdminPage() {
   }, []);
 
   // Get role from Clerk session (from JWT)
-  const role = (sessionClaims?.publicMetadata as any)?.role as UserRole;
+  const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
   const hasAdminAccess = isAdmin(role);
   const hasSuperAdminAccess = isSuperAdmin(role);
 

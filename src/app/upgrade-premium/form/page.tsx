@@ -465,7 +465,7 @@ export default function PremiumUpgradeFormPage() {
                       )}
                     </div>
                     <span className="font-albert text-[15px] text-text-primary">
-                      I commit, let's go 🚀
+                      I commit, let&apos;s go 🚀
                     </span>
                   </button>
 
@@ -488,7 +488,7 @@ export default function PremiumUpgradeFormPage() {
                       )}
                     </div>
                     <span className="font-albert text-[15px] text-text-primary">
-                      I'm not ready 🫤
+                      I&apos;m not ready 🫤
                     </span>
                   </button>
                 </div>

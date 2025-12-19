@@ -98,9 +98,10 @@ export default function OnboardingIdentityPage() {
 
       // Navigate to profile intro
       router.push('/onboarding/create-profile-intro');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Save error:', error);
-      setErrorMessage(error.message || 'Failed to save your identity. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to save your identity. Please try again.';
+      setErrorMessage(message);
       setValidationState('error');
     }
   };

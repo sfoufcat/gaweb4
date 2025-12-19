@@ -2,7 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { isAdmin } from '@/lib/admin-utils-shared';
-import type { CoachingIntakeForm, UserRole } from '@/types';
+import type { CoachingIntakeForm, UserRole, ClerkPublicMetadata } from '@/types';
 
 /**
  * GET /api/admin/coaching-intake-forms
@@ -19,7 +19,7 @@ export async function GET() {
     }
 
     // Check admin permissions
-    const role = (sessionClaims?.publicMetadata as any)?.role as UserRole;
+    const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
     if (!isAdmin(role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }

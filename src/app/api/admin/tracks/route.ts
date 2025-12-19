@@ -12,7 +12,7 @@ import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { canAccessEditorSection } from '@/lib/admin-utils-shared';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { Track, UserTrack } from '@/types';
+import type { Track, UserTrack, ClerkPublicMetadata } from '@/types';
 
 // Valid track slugs
 const VALID_TRACK_SLUGS: UserTrack[] = [
@@ -27,7 +27,7 @@ const VALID_TRACK_SLUGS: UserTrack[] = [
 export async function GET() {
   try {
     const { sessionClaims } = await auth();
-    const role = (sessionClaims?.publicMetadata as any)?.role;
+    const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
     
     if (!canAccessEditorSection(role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -58,7 +58,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const { sessionClaims } = await auth();
-    const role = (sessionClaims?.publicMetadata as any)?.role;
+    const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
     
     if (!canAccessEditorSection(role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });

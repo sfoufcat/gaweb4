@@ -402,9 +402,10 @@ export default function GuestPlanPage() {
       } else {
         throw new Error('No client secret received');
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Checkout error:', err);
-      setError(err.message || 'Something went wrong. Please try again.');
+      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      setError(message);
       setIsLoading(false);
     }
   };
@@ -1363,6 +1364,7 @@ export default function GuestPlanPage() {
           `}
         </Script>
         <noscript>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img height="1" width="1" style={{ display: 'none' }} alt=""
             src="https://www.facebook.com/tr?id=1347713597075016&ev=PageView&noscript=1"
           />

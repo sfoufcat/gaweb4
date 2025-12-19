@@ -131,7 +131,7 @@ export default function RefundPolicyPage() {
               <ul className="list-disc pl-6 space-y-2 font-sans text-[15px] text-text-secondary">
                 <li><strong>How to cancel:</strong> Visit your account settings and click &quot;Cancel Subscription&quot;, or email us at support@growthaddicts.com</li>
                 <li><strong>Effective date:</strong> Cancellation takes effect at the end of your current billing period</li>
-                <li><strong>Access after cancellation:</strong> You'll retain full access to all features until your subscription period ends</li>
+                <li><strong>Access after cancellation:</strong> You&apos;ll retain full access to all features until your subscription period ends</li>
                 <li><strong>No partial refunds:</strong> We do not provide refunds for partial months of service after the 30-day guarantee period</li>
               </ul>
             </section>
