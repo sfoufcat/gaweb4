@@ -117,11 +117,12 @@ export async function POST(req: Request) {
       stripeSubscriptionId: subscriptionId,
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('[VERIFY_PAYMENT_INTENT_ERROR]', error);
     
     // Handle specific Stripe errors
-    if (error.type === 'StripeInvalidRequestError') {
+    const errorType = (error as { type?: string })?.type;
+    if (errorType === 'StripeInvalidRequestError') {
       return NextResponse.json({
         success: false,
         error: 'Invalid payment intent',

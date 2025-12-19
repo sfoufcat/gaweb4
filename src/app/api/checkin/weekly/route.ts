@@ -101,7 +101,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const existingData = existingDoc.data() as WeeklyReflectionCheckIn;
-    const updatedData: Record<string, any> = {
+    const updatedData: Record<string, unknown> = {
       ...updates,
       updatedAt: new Date().toISOString(),
     };

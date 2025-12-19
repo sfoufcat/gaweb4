@@ -98,7 +98,7 @@ export async function PATCH(req: Request) {
     }
 
     const now = new Date().toISOString();
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       updatedAt: now,
     };
 

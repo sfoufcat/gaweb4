@@ -206,9 +206,10 @@ export async function POST(req: Request) {
             stripeUpgradeSuccessful = true;
             console.log(`[UPGRADE_PREMIUM] No charge needed for user ${userId}, upgrade successful`);
           }
-        } catch (invoiceError: any) {
+        } catch (invoiceError) {
           // Payment failed - revert the subscription and notify user
-          console.error('[UPGRADE_PREMIUM] Invoice payment error:', invoiceError.message, invoiceError.code, invoiceError.type);
+          const invErr = invoiceError as { message?: string; code?: string; type?: string };
+          console.error('[UPGRADE_PREMIUM] Invoice payment error:', invErr.message, invErr.code, invErr.type);
           
           // Revert the subscription back to original plan
           try {
@@ -222,9 +223,9 @@ export async function POST(req: Request) {
           }
           
           // Return appropriate error based on failure type
-          const errorMessage = invoiceError.code === 'card_declined' 
+          const errorMessage = invErr.code === 'card_declined' 
             ? 'Your card was declined. Please update your payment method and try again.'
-            : invoiceError.type === 'StripeCardError'
+            : invErr.type === 'StripeCardError'
             ? 'There was an issue with your card. Please update your payment method and try again.'
             : 'Payment failed. Please check your payment method and try again.';
           
@@ -267,10 +268,11 @@ export async function POST(req: Request) {
         );
       }
 
-    } catch (stripeError: any) {
+    } catch (stripeError) {
       console.error('[UPGRADE_PREMIUM] Stripe error:', stripeError);
+      const message = stripeError instanceof Error ? stripeError.message : 'Failed to upgrade subscription. Please try again.';
       return NextResponse.json(
-        { error: stripeError.message || 'Failed to upgrade subscription. Please try again.' }, 
+        { error: message }, 
         { status: 500 }
       );
     }
@@ -304,10 +306,11 @@ export async function POST(req: Request) {
       plan: planLabel,
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('[UPGRADE_PREMIUM] Error:', error);
+    const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
     return NextResponse.json(
-      { error: error.message || 'An unexpected error occurred.' }, 
+      { error: message }, 
       { status: 500 }
     );
   }

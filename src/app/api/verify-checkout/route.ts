@@ -155,11 +155,12 @@ export async function POST(req: Request) {
       message: 'Subscription verified and activated' 
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('[VERIFY_CHECKOUT_ERROR]', error);
     
     // Handle specific Stripe errors
-    if (error.type === 'StripeInvalidRequestError') {
+    const errorType = (error as { type?: string })?.type;
+    if (errorType === 'StripeInvalidRequestError') {
       return NextResponse.json({ 
         success: false, 
         status: 'invalid_session',
@@ -167,8 +168,9 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
+    const message = error instanceof Error ? error.message : 'Failed to verify checkout';
     return NextResponse.json(
-      { error: error.message || 'Failed to verify checkout' }, 
+      { error: message }, 
       { status: 500 }
     );
   }

@@ -92,12 +92,12 @@ export async function POST(request: NextRequest) {
       }
       
       // Decrement counts for old votes
-      const decrements: Record<string, any> = {};
+      const decrements: Record<string, ReturnType<typeof FieldValue.increment>> = {};
       existingVoteOptionIds.forEach((optId) => {
         decrements[`votesByOption.${optId}`] = FieldValue.increment(-1);
       });
       if (existingVoteOptionIds.length > 0) {
-        decrements.totalVotes = FieldValue.increment(-existingVoteOptionIds.length);
+        (decrements as Record<string, ReturnType<typeof FieldValue.increment>>).totalVotes = FieldValue.increment(-existingVoteOptionIds.length);
         batch.update(pollRef, decrements);
       }
     } else {
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (optionsToRemove.length > 0) {
-        const decrements: Record<string, any> = { totalVotes: FieldValue.increment(-optionsToRemove.length) };
+        const decrements: Record<string, ReturnType<typeof FieldValue.increment>> = { totalVotes: FieldValue.increment(-optionsToRemove.length) };
         optionsToRemove.forEach((optId) => {
           decrements[`votesByOption.${optId}`] = FieldValue.increment(-1);
         });
@@ -122,9 +122,9 @@ export async function POST(request: NextRequest) {
       }
 
       // Add new votes
-      const increments: Record<string, any> = {};
+      const increments: Record<string, ReturnType<typeof FieldValue.increment>> = {};
       for (const optionId of optionsToAdd) {
-        const voteData: Record<string, any> = {
+        const voteData: Record<string, string> = {
           optionId,
           userId,
           createdAt: now,
@@ -149,9 +149,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Add new votes (single answer mode)
-    const increments: Record<string, any> = { totalVotes: FieldValue.increment(validOptionIds.length) };
+    const singleIncrements: Record<string, ReturnType<typeof FieldValue.increment>> = { totalVotes: FieldValue.increment(validOptionIds.length) };
     for (const optionId of validOptionIds) {
-      const voteData: Record<string, any> = {
+      const voteData: Record<string, string> = {
         optionId,
         userId,
         createdAt: now,
@@ -163,10 +163,10 @@ export async function POST(request: NextRequest) {
       
       const voteRef = pollRef.collection('votes').doc();
       batch.set(voteRef, voteData);
-      increments[`votesByOption.${optionId}`] = FieldValue.increment(1);
+      singleIncrements[`votesByOption.${optionId}`] = FieldValue.increment(1);
     }
 
-    batch.update(pollRef, increments);
+    batch.update(pollRef, singleIncrements);
 
     // Also update the votes array in the main document for real-time display
     if (!pollData.settings.anonymous) {
@@ -184,10 +184,11 @@ export async function POST(request: NextRequest) {
     await batch.commit();
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error voting on poll:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to vote', message: error.message },
+      { error: 'Failed to vote', message },
       { status: 500 }
     );
   }

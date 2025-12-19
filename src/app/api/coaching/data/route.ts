@@ -61,19 +61,20 @@ export async function GET(request: Request) {
     const coachingData = { id: coachingDoc.id, ...coachingDoc.data() } as ClientCoachingData;
 
     // Fetch coach info if assigned
-    let coach: Coach | null = null;
+    let coach: (Coach & { privateNotes?: string }) | null = null;
     if (coachingData.coachId) {
       const coachDoc = await adminDb.collection('coaches').doc(coachingData.coachId).get();
       if (coachDoc.exists) {
-        coach = { id: coachDoc.id, ...coachDoc.data() } as Coach;
+        coach = { id: coachDoc.id, ...coachDoc.data() } as Coach & { privateNotes?: string };
         // Remove sensitive fields from coach data
-        delete (coach as any).privateNotes;
+        delete coach.privateNotes;
       }
     }
 
     // Remove private notes from client-facing response (unless super admin)
+    const coachingDataWithPrivate = coachingData as ClientCoachingData & { privateNotes?: string };
     if (!isSuperAdminUser) {
-      delete (coachingData as any).privateNotes;
+      delete coachingDataWithPrivate.privateNotes;
     }
 
     return NextResponse.json({

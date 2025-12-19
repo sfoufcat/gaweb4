@@ -62,9 +62,9 @@ export async function GET() {
     });
 
     clientsSnapshot.forEach((doc) => {
-      const data = { id: doc.id, ...doc.data() } as ClientCoachingData;
+      const data = { id: doc.id, ...doc.data() } as ClientCoachingData & { privateNotes?: string };
       // Remove private notes from response
-      delete (data as any).privateNotes;
+      delete data.privateNotes;
       
       clients.push({
         ...data,

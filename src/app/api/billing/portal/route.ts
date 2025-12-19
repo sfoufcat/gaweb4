@@ -61,8 +61,9 @@ export async function POST() {
     // Verify the customer exists in Stripe
     try {
       await stripe.customers.retrieve(stripeCustomerId);
-    } catch (stripeError: any) {
-      if (stripeError.code === 'resource_missing') {
+    } catch (stripeError) {
+      const errorCode = (stripeError as { code?: string })?.code;
+      if (errorCode === 'resource_missing') {
         return NextResponse.json(
           { error: 'Subscription record not found. Please contact support.' },
           { status: 400 }

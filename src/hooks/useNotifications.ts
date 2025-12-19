@@ -57,9 +57,10 @@ export function useNotifications(): UseNotificationsReturn {
       setNotifications(data.notifications || []);
       setUnreadCount(data.unreadCount || 0);
       setError(null);
-    } catch (err: any) {
+    } catch (err) {
       // Gracefully handle network/fetch errors - don't crash the UI
-      console.warn('[useNotifications] Fetch error (non-critical):', err.message);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.warn('[useNotifications] Fetch error (non-critical):', errorMessage);
       // Keep existing state, just clear loading
       setError(null); // Don't show error to user for background fetches
     } finally {
@@ -146,7 +147,7 @@ export function useNotifications(): UseNotificationsReturn {
         prev.map((n) => ({ ...n, read: true }))
       );
       setUnreadCount(0);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error marking all as read:', err);
       // Refetch to sync state
       await fetchNotifications();
@@ -178,7 +179,7 @@ export function useNotifications(): UseNotificationsReturn {
         )
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error marking notification as read:', err);
     }
   }, [user?.id, notifications]);
@@ -207,7 +208,7 @@ export function useNotifications(): UseNotificationsReturn {
       if (!response.ok) {
         throw new Error('Failed to delete notification');
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error deleting notification:', err);
       // Revert optimistic update on error
       setNotifications((prev) => [...prev, notification].sort(

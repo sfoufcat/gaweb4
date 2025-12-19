@@ -250,19 +250,20 @@ export async function POST(req: Request) {
         );
       }
 
-    } catch (stripeError: any) {
+    } catch (stripeError) {
       console.error('[COACHING_SUBSCRIBE] Stripe error:', stripeError);
       
       // Return appropriate error based on failure type
-      const errorMessage = stripeError.code === 'card_declined' 
+      const strErr = stripeError as { code?: string; type?: string; message?: string; statusCode?: number };
+      const errorMessage = strErr.code === 'card_declined' 
         ? 'Your card was declined. Please update your payment method and try again.'
-        : stripeError.type === 'StripeCardError'
+        : strErr.type === 'StripeCardError'
         ? 'There was an issue with your card. Please update your payment method and try again.'
-        : stripeError.message || 'Failed to create coaching subscription. Please try again.';
+        : strErr.message || 'Failed to create coaching subscription. Please try again.';
       
       return NextResponse.json(
         { error: errorMessage }, 
-        { status: stripeError.statusCode || 500 }
+        { status: strErr.statusCode || 500 }
       );
     }
 
@@ -295,10 +296,11 @@ export async function POST(req: Request) {
       subscriptionId: coachingSubscriptionId,
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('[COACHING_SUBSCRIBE] Error:', error);
+    const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
     return NextResponse.json(
-      { error: error.message || 'An unexpected error occurred.' }, 
+      { error: message }, 
       { status: 500 }
     );
   }

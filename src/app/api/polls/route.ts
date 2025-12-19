@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate options have text
-    const validOptions = options.filter((opt: any) => opt.text && opt.text.trim());
+    const validOptions = options.filter((opt: { text?: string }) => opt.text && opt.text.trim());
     if (validOptions.length < 2) {
       return NextResponse.json({ error: 'At least 2 valid options are required' }, { status: 400 });
     }
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     const pollData: Omit<ChatPollState, 'id'> = {
       channelId,
       question: question.trim(),
-      options: validOptions.map((opt: any) => ({
+      options: validOptions.map((opt: { id?: string; text: string }) => ({
         id: opt.id || `opt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         text: opt.text.trim(),
       })),

@@ -159,7 +159,8 @@ export default function UserProfilePage() {
     } catch (error) {
       console.error('Failed to open chat:', error);
       // Show error to user instead of silent redirect
-      alert(`Failed to start chat: ${error?.message || 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to start chat: ${errorMessage}`);
       // Do NOT redirect - stay on profile page so user knows something went wrong
     }
   };

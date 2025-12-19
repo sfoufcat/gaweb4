@@ -214,15 +214,16 @@ export default function CallPage() {
 
       // Check for existing call message
       const { messages } = await channel.query({ messages: { limit: 20 } });
-      const exists = messages?.find((msg) => (msg as any).call_id === callId);
+      const exists = messages?.find((msg) => (msg as { call_id?: string }).call_id === callId);
       if (exists) return;
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await channel.sendMessage({
         text: '',
         call_ended: true,
         call_id: callId,
         call_timestamp: callTimestamp.toISOString(),
-      } as any);
+      } as Parameters<typeof channel.sendMessage>[0]);
     } catch (err) {
       console.error('[CallPage] Error sending call message:', err);
     }

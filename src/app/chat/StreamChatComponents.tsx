@@ -22,7 +22,7 @@ import { CustomMessage } from '@/components/chat/CustomMessage';
 import { CustomMessageInput } from '@/components/chat/CustomMessageInput';
 import { SquadMemberStoryAvatar } from '@/components/chat/SquadMemberStoryAvatar';
 import { CallButtons } from '@/components/chat/CallButtons';
-import type { Channel as StreamChannel, ChannelSort, ChannelFilters, ChannelOptions } from 'stream-chat';
+import type { Channel as StreamChannel, ChannelSort, ChannelFilters, ChannelOptions, StreamChat } from 'stream-chat';
 import { ANNOUNCEMENTS_CHANNEL_ID, SOCIAL_CORNER_CHANNEL_ID, SHARE_WINS_CHANNEL_ID } from '@/lib/chat-constants';
 import { useSquad } from '@/hooks/useSquad';
 import { useCoachingData } from '@/hooks/useCoachingData';
@@ -161,7 +161,7 @@ function ChannelPreviewWithMobile(props: ChannelPreviewUIComponentProps) {
 }
 
 interface StreamChatComponentsProps {
-  client: any;
+  client: StreamChat;
   user: {
     id: string;
     firstName?: string | null;

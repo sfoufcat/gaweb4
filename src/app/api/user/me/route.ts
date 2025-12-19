@@ -94,7 +94,7 @@ export async function PATCH(req: Request) {
     ];
 
     // Filter only allowed fields from the request
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
     for (const field of allowedFields) {
       if (field in body) {
         updateData[field] = body[field];

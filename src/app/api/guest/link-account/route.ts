@@ -112,7 +112,7 @@ export async function POST(req: Request) {
     const plan = guestData.selectedPlan || 'standard';
     const preselectedTrack = guestData.preselectedTrack;
     
-    const userDocument: Record<string, any> = {
+    const userDocument: Record<string, unknown> = {
       // Basic info
       id: userId,
       email: guestData.email,

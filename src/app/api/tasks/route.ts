@@ -91,11 +91,12 @@ export async function GET(request: NextRequest) {
         await batch.commit();
         console.log(`✅ Migrated ${tasksToMigrate.length} pending tasks to ${date}`);
       }
-    } catch (migrationError: any) {
+    } catch (migrationError) {
       // If migration fails (likely due to missing index), log it but don't crash
-      console.error('⚠️  Task migration failed (this is OK if index is not created yet):', migrationError.message);
+      const errorMessage = migrationError instanceof Error ? migrationError.message : String(migrationError);
+      console.error('⚠️  Task migration failed (this is OK if index is not created yet):', errorMessage);
       
-      if (migrationError.message && migrationError.message.includes('index')) {
+      if (errorMessage && errorMessage.includes('index')) {
         console.error('');
         console.error('📋 ACTION REQUIRED: Create a Firestore Composite Index');
         console.error('   The migration query requires a composite index on the tasks collection.');
@@ -126,9 +127,10 @@ export async function GET(request: NextRequest) {
         await batch.commit();
         console.log(`🧹 Cleaned up ${completedBacklogSnapshot.size} completed backlog tasks from previous days`);
       }
-    } catch (cleanupError: any) {
+    } catch (cleanupError) {
       // If cleanup fails (likely due to missing index), log it but don't crash
-      console.error('⚠️  Backlog cleanup failed (this is OK if index is not created yet):', cleanupError.message);
+      const errorMessage = cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
+      console.error('⚠️  Backlog cleanup failed (this is OK if index is not created yet):', errorMessage);
     }
 
     // Sort by listType (focus first) then by order

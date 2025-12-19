@@ -140,18 +140,20 @@ export async function POST(req: Request) {
         },
       });
 
-    } catch (stripeError: any) {
+    } catch (stripeError) {
       console.error('[PREVIEW_UPGRADE] Stripe error:', stripeError);
+      const message = stripeError instanceof Error ? stripeError.message : 'Failed to calculate upgrade cost.';
       return NextResponse.json(
-        { error: stripeError.message || 'Failed to calculate upgrade cost.' }, 
+        { error: message }, 
         { status: 500 }
       );
     }
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('[PREVIEW_UPGRADE] Error:', error);
+    const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
     return NextResponse.json(
-      { error: error.message || 'An unexpected error occurred.' }, 
+      { error: message }, 
       { status: 500 }
     );
   }

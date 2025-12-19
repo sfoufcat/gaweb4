@@ -79,15 +79,22 @@ export async function GET(
 
     // For completed tasks, PRIORITIZE the snapshot from the evening check-in
     // This is the source of truth for what was completed when they closed their day
-    let completedTasks: any[] = [];
+    interface TaskSnapshot {
+      id: string;
+      title?: string;
+      status?: string;
+      isPrivate?: boolean;
+    }
+    let completedTasks: TaskSnapshot[] = [];
     
     if (hasDayClosed && eveningCheckInData?.completedTasksSnapshot?.length > 0) {
       // Use the snapshot - this was captured at check-in time before tasks moved to backlog
       completedTasks = eveningCheckInData.completedTasksSnapshot;
     } else {
       // Fallback to current API data (for backward compatibility or if snapshot missing)
-      completedTasks = tasks.filter((task: any) => task.status === 'completed');
-    }
+      completedTasks = tasks.filter((task): task is typeof task & { status: 'completed' } => 
+        (task as { status?: string }).status === 'completed'
+      );
 
     // Build response
     const response = {
@@ -112,7 +119,7 @@ export async function GET(
           isPrivate,
         };
       }),
-      completedTasks: completedTasks.map((task: any) => {
+      completedTasks: completedTasks.map((task: TaskSnapshot) => {
         const isPrivate = task.isPrivate || false;
         return {
           id: task.id,
