@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { ensureCoachHasOrganization, getCurrentUserOrganizationId } from '@/lib/clerk-organizations';
-import type { OrgBranding, OrgBrandingColors } from '@/types';
+import type { OrgBranding, OrgBrandingColors, UserRole } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL } from '@/types';
 
 /**
