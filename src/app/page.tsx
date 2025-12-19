@@ -1066,7 +1066,7 @@ export default function Dashboard() {
   };
 
   const goalDaysLeft = userGoal?.targetDate ? calculateDaysLeft(userGoal.targetDate) : null;
-  const goalProgress = userGoal?.progress?.percentage || 0;
+  const goalProgress = userGoal?.progress || 0;
 
   // ============================================================================
   // CAROUSEL CARD RENDER HELPERS
