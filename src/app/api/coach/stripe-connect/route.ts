@@ -146,8 +146,10 @@ export async function POST(request: NextRequest) {
     const settingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
     const settings = settingsDoc.data();
     
-    // Get the origin for redirect URLs
-    const origin = request.headers.get('origin') || 'https://growthaddicts.app';
+    // Use primary domain for Stripe account links (must be registered in Stripe Dashboard)
+    // Store the original domain to redirect back after completion
+    const primaryDomain = process.env.NEXT_PUBLIC_APP_URL || 'https://growthaddicts.app';
+    const returnDomain = request.headers.get('origin') || primaryDomain;
     
     let accountId = settings?.stripeConnectAccountId;
     
@@ -196,10 +198,11 @@ export async function POST(request: NextRequest) {
     }
     
     // Create an account link for onboarding
+    // Use primary domain (registered in Stripe) with return_domain param for redirect back
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
-      refresh_url: `${origin}/coach?tab=customize&stripe=refresh`,
-      return_url: `${origin}/api/coach/stripe-connect/callback?account_id=${accountId}`,
+      refresh_url: `${primaryDomain}/coach?tab=customize&stripe=refresh&return_domain=${encodeURIComponent(returnDomain)}`,
+      return_url: `${primaryDomain}/api/coach/stripe-connect/callback?account_id=${accountId}&return_domain=${encodeURIComponent(returnDomain)}`,
       type: 'account_onboarding',
     });
     

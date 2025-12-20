@@ -10,6 +10,8 @@ import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import Stripe from 'stripe';
 import type { StripeConnectStatus } from '@/types';
+import { registerDomainForApplePay } from '@/lib/stripe-domains';
+import { getOrgCustomDomains } from '@/lib/tenant/resolveTenant';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-02-24.acacia',
@@ -24,14 +26,19 @@ export async function GET(request: NextRequest) {
     const { userId } = await auth();
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get('account_id');
+    const returnDomain = searchParams.get('return_domain');
+    
+    // Use the return domain if provided, otherwise fall back to primary domain
+    const primaryDomain = process.env.NEXT_PUBLIC_APP_URL || 'https://growthaddicts.app';
+    const baseUrl = returnDomain || primaryDomain;
     
     if (!userId) {
-      return NextResponse.redirect(new URL('/sign-in', request.url));
+      return NextResponse.redirect(new URL('/sign-in', baseUrl));
     }
     
     if (!accountId) {
       console.error('[STRIPE_CONNECT_CALLBACK] No account_id provided');
-      return NextResponse.redirect(new URL('/coach?tab=customize&stripe=error', request.url));
+      return NextResponse.redirect(new URL('/coach?tab=customize&stripe=error', baseUrl));
     }
     
     // Verify this account belongs to the user's org
@@ -43,7 +50,7 @@ export async function GET(request: NextRequest) {
     
     if (settingsSnap.empty) {
       console.error('[STRIPE_CONNECT_CALLBACK] Account not found in org_settings:', accountId);
-      return NextResponse.redirect(new URL('/coach?tab=customize&stripe=error', request.url));
+      return NextResponse.redirect(new URL('/coach?tab=customize&stripe=error', baseUrl));
     }
     
     const settingsDoc = settingsSnap.docs[0];
@@ -74,14 +81,37 @@ export async function GET(request: NextRequest) {
       updatedAt: new Date().toISOString(),
     });
     
+    // If newly connected, register any existing custom domains for Apple Pay
+    if (status === 'connected') {
+      try {
+        const customDomains = await getOrgCustomDomains(organizationId);
+        for (const domain of customDomains) {
+          if (domain.status === 'verified') {
+            const result = await registerDomainForApplePay(domain.domain, accountId);
+            if (result.success) {
+              console.log(`[STRIPE_CONNECT_CALLBACK] Registered ${domain.domain} for Apple Pay`);
+            } else {
+              console.warn(`[STRIPE_CONNECT_CALLBACK] Failed to register ${domain.domain} for Apple Pay: ${result.error}`);
+            }
+          }
+        }
+      } catch (domainError) {
+        // Don't fail the callback - Apple Pay registration is non-critical
+        console.error('[STRIPE_CONNECT_CALLBACK] Error registering domains for Apple Pay:', domainError);
+      }
+    }
+    
     // Redirect back to the coach dashboard with success indicator
+    // Use the original domain the coach came from
     const redirectStatus = status === 'connected' ? 'success' : 'pending';
+    console.log(`[STRIPE_CONNECT_CALLBACK] Redirecting to ${baseUrl}/coach?tab=customize&stripe=${redirectStatus}`);
     return NextResponse.redirect(
-      new URL(`/coach?tab=customize&stripe=${redirectStatus}`, request.url)
+      new URL(`/coach?tab=customize&stripe=${redirectStatus}`, baseUrl)
     );
   } catch (error) {
     console.error('[STRIPE_CONNECT_CALLBACK] Error:', error);
-    return NextResponse.redirect(new URL('/coach?tab=customize&stripe=error', request.url));
+    const primaryDomainFallback = process.env.NEXT_PUBLIC_APP_URL || 'https://growthaddicts.app';
+    return NextResponse.redirect(new URL('/coach?tab=customize&stripe=error', primaryDomainFallback));
   }
 }
 

@@ -16,6 +16,7 @@ import {
   isVercelDomainApiConfigured 
 } from '@/lib/vercel-domains';
 import { removeDomainFromClerk } from '@/lib/clerk-domains';
+import { removeDomainFromApplePay } from '@/lib/stripe-domains';
 import { isSuperCoach } from '@/lib/admin-utils-shared';
 import type { OrgCustomDomain, CustomDomainStatus } from '@/types';
 import { 
@@ -300,6 +301,22 @@ export async function DELETE(
       if (!clerkResult.success) {
         console.error(`[COACH_CUSTOM_DOMAIN] Failed to remove domain from Clerk: ${clerkResult.error}`);
         // Continue with deletion anyway
+      }
+    }
+    
+    // Remove the domain from Stripe Apple Pay (if connected account exists)
+    const settingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
+    const settings = settingsDoc.data();
+    if (settings?.stripeConnectAccountId) {
+      const stripeResult = await removeDomainFromApplePay(
+        domainData.domain,
+        settings.stripeConnectAccountId
+      );
+      if (!stripeResult.success) {
+        console.error(`[COACH_CUSTOM_DOMAIN] Failed to remove domain from Stripe Apple Pay: ${stripeResult.error}`);
+        // Continue with deletion anyway
+      } else {
+        console.log(`[COACH_CUSTOM_DOMAIN] Removed domain from Stripe Apple Pay`);
       }
     }
     

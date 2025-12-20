@@ -14,6 +14,8 @@ import {
 } from '@/lib/tenant/resolveTenant';
 import { addDomainToVercel, isVercelDomainApiConfigured } from '@/lib/vercel-domains';
 import { addDomainToClerk } from '@/lib/clerk-domains';
+import { registerDomainForApplePay, isStripeDomainConfigured } from '@/lib/stripe-domains';
+import { adminDb } from '@/lib/firebase-admin';
 import { isSuperCoach } from '@/lib/admin-utils-shared';
 
 /**
@@ -142,6 +144,31 @@ export async function POST(request: Request) {
       console.warn(`[COACH_CUSTOM_DOMAIN] Could not add domain to Clerk: ${clerkResult.error}. Authentication may require manual setup.`);
     }
     
+    // Register domain with Stripe for Apple Pay (if coach has connected Stripe account)
+    let stripeApplePayConfigured = false;
+    if (isStripeDomainConfigured()) {
+      // Get the org_settings to check for Stripe Connect account
+      const settingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
+      const settings = settingsDoc.data();
+      
+      if (settings?.stripeConnectAccountId) {
+        const stripeResult = await registerDomainForApplePay(
+          normalizedDomain,
+          settings.stripeConnectAccountId
+        );
+        
+        if (stripeResult.success) {
+          stripeApplePayConfigured = true;
+          console.log(`[COACH_CUSTOM_DOMAIN] Registered domain for Apple Pay with Stripe Connect account`);
+        } else {
+          // Don't fail the domain addition - Apple Pay is optional
+          console.warn(`[COACH_CUSTOM_DOMAIN] Could not register domain for Apple Pay: ${stripeResult.error}. Apple Pay may not work on this domain.`);
+        }
+      } else {
+        console.log(`[COACH_CUSTOM_DOMAIN] No Stripe Connect account found - skipping Apple Pay domain registration`);
+      }
+    }
+    
     // Add the custom domain to our database
     const customDomain = await addCustomDomain(organizationId, normalizedDomain, clerkDomainId);
     
@@ -194,6 +221,7 @@ export async function POST(request: Request) {
       verificationInstructions,
       vercelConfigured: isVercelDomainApiConfigured(),
       clerkConfigured: !!clerkDomainId,
+      stripeApplePayConfigured,
     }, { status: 201 });
   } catch (error) {
     console.error('[COACH_CUSTOM_DOMAIN_POST] Error:', error);
