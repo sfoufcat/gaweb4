@@ -179,15 +179,20 @@ export function ClerkThemeProvider({ children, hostname = '' }: ClerkThemeProvid
   // However, ClerkProvider needs to be rendered for auth to work
   // So we'll always render it but only apply appearance after mount
   
-  // For satellite domains (custom domains), configure Clerk to use the domain's Frontend API
-  // This makes Clerk load from clerk.{custom-domain} instead of clerk.growthaddicts.app
+  // Build satellite props conditionally to satisfy TypeScript's strict union types
+  // When isSatellite is true, we pass all satellite config together
+  // When false, we spread an empty object (no satellite props)
+  const satelliteProps = isSatellite ? {
+    isSatellite: true as const,
+    domain: domainWithoutPort,
+    signInUrl: `${PRIMARY_DOMAIN}/sign-in`,
+    signUpUrl: `${PRIMARY_DOMAIN}/sign-up`,
+  } : {};
+
   return (
     <ClerkProvider 
       appearance={mounted ? appearance : lightAppearance}
-      isSatellite={isSatellite}
-      domain={isSatellite ? domainWithoutPort : undefined}
-      signInUrl={isSatellite ? `${PRIMARY_DOMAIN}/sign-in` : undefined}
-      signUpUrl={isSatellite ? `${PRIMARY_DOMAIN}/sign-up` : undefined}
+      {...satelliteProps}
     >
       {children}
     </ClerkProvider>
