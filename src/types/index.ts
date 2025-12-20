@@ -1307,3 +1307,129 @@ export const DEFAULT_BRANDING_COLORS: OrgBrandingColors = {
 export const DEFAULT_APP_TITLE = 'GrowthAddicts';
 export const DEFAULT_LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af';
 
+// =============================================================================
+// TENANT DOMAIN TYPES
+// =============================================================================
+
+/**
+ * Reserved subdomains that cannot be used by tenants
+ */
+export const RESERVED_SUBDOMAINS = [
+  'www', 'app', 'admin', 'api', 'static', 'cdn', 'support', 'billing', 
+  'help', 'mail', 'email', 'ftp', 'sftp', 'ssh', 'vpn', 'dev', 'staging',
+  'test', 'demo', 'beta', 'alpha', 'docs', 'blog', 'status', 'health',
+  'metrics', 'analytics', 'dashboard', 'console', 'portal', 'login',
+  'signup', 'register', 'auth', 'oauth', 'sso', 'saml', 'webhook',
+  'webhooks', 'callback', 'redirect', 'assets', 'images', 'img', 'media',
+  'files', 'uploads', 'download', 'downloads', 'store', 'shop', 'pay',
+  'payment', 'payments', 'checkout', 'cart', 'order', 'orders', 'invoice',
+  'invoices', 'subscription', 'subscriptions', 'pro', 'enterprise', 'team',
+  'teams', 'org', 'orgs', 'organization', 'organizations', 'workspace',
+  'workspaces', 'project', 'projects', 'account', 'accounts', 'user',
+  'users', 'member', 'members', 'coach', 'coaches', 'client', 'clients',
+  'partner', 'partners', 'affiliate', 'affiliates', 'reseller', 'resellers',
+] as const;
+
+/**
+ * Custom domain verification status
+ */
+export type CustomDomainStatus = 'pending' | 'verified' | 'failed';
+
+/**
+ * Organization domain mapping
+ * Stored in Firestore: org_domains/{id}
+ * 
+ * Maps subdomains to organizations for multi-tenant routing.
+ * Each organization can have one subdomain and multiple custom domains.
+ */
+export interface OrgDomain {
+  id: string;                    // Auto-generated document ID
+  organizationId: string;        // Clerk Organization ID (unique)
+  subdomain: string;             // e.g., "acme" for acme.growthaddicts.app (unique, lowercase)
+  primaryDomain?: string;        // Display domain (subdomain or verified custom domain)
+  createdAt: string;             // ISO timestamp
+  updatedAt: string;             // ISO timestamp
+}
+
+/**
+ * Custom domain for an organization
+ * Stored in Firestore: org_custom_domains/{id}
+ * 
+ * Allows organizations to use their own domains (e.g., coach.example.com)
+ */
+export interface OrgCustomDomain {
+  id: string;                    // Auto-generated document ID
+  organizationId: string;        // Clerk Organization ID
+  domain: string;                // e.g., "coaching.example.com" (unique, lowercase)
+  status: CustomDomainStatus;    // Verification status
+  verificationToken: string;     // Token for DNS TXT record verification
+  verifiedAt?: string;           // ISO timestamp when verified
+  lastCheckedAt?: string;        // ISO timestamp of last verification attempt
+  createdAt: string;             // ISO timestamp
+  updatedAt: string;             // ISO timestamp
+}
+
+/**
+ * Resolved tenant context from hostname
+ */
+export interface TenantContext {
+  organizationId: string;        // Clerk Organization ID
+  subdomain: string;             // The subdomain (even for custom domains, we track this)
+  isCustomDomain: boolean;       // True if accessed via custom domain
+  hostname: string;              // The original hostname
+}
+
+/**
+ * Tenant resolution result
+ */
+export type TenantResolutionResult = 
+  | { type: 'platform'; hostname: string }           // Main platform domain (no tenant)
+  | { type: 'tenant'; tenant: TenantContext }        // Resolved tenant
+  | { type: 'not_found'; hostname: string };         // Unknown subdomain/domain
+
+/**
+ * Subdomain validation result
+ */
+export interface SubdomainValidationResult {
+  valid: boolean;
+  error?: string;
+}
+
+/**
+ * Validate a subdomain string
+ */
+export function validateSubdomain(subdomain: string): SubdomainValidationResult {
+  // Lowercase and trim
+  const normalized = subdomain.toLowerCase().trim();
+  
+  // Length check: 3-30 characters
+  if (normalized.length < 3) {
+    return { valid: false, error: 'Subdomain must be at least 3 characters' };
+  }
+  if (normalized.length > 30) {
+    return { valid: false, error: 'Subdomain must be 30 characters or less' };
+  }
+  
+  // Character check: letters, numbers, hyphens only
+  if (!/^[a-z0-9-]+$/.test(normalized)) {
+    return { valid: false, error: 'Subdomain can only contain letters, numbers, and hyphens' };
+  }
+  
+  // Cannot start or end with hyphen
+  if (normalized.startsWith('-') || normalized.endsWith('-')) {
+    return { valid: false, error: 'Subdomain cannot start or end with a hyphen' };
+  }
+  
+  // Cannot have consecutive hyphens
+  if (normalized.includes('--')) {
+    return { valid: false, error: 'Subdomain cannot contain consecutive hyphens' };
+  }
+  
+  // Reserved check
+  if (RESERVED_SUBDOMAINS.includes(normalized as typeof RESERVED_SUBDOMAINS[number])) {
+    return { valid: false, error: 'This subdomain is reserved and cannot be used' };
+  }
+  
+  return { valid: true };
+}
+

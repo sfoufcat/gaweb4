@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 // Billing status types (must match admin-utils-clerk.ts)
 type BillingStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | 'none';
@@ -14,20 +15,98 @@ interface ClerkPublicMetadata {
   billingStatus?: BillingStatus;
   billingPeriodEnd?: string;
   tier?: UserTier;
+  organizationId?: string;
   // Coaching (separate from membership tier)
   coaching?: boolean; // Legacy flag - true if has active coaching
   coachingStatus?: CoachingStatus; // New: detailed coaching status
   coachingPlan?: 'monthly' | 'quarterly'; // New: coaching plan type
 }
 
+// =============================================================================
+// TENANT RESOLUTION (Inline for Edge Runtime compatibility)
+// =============================================================================
+
+// Platform domains that are NOT tenant-scoped
+const PLATFORM_DOMAINS = [
+  'growthaddicts.app',
+  'www.growthaddicts.app',
+  'pro.growthaddicts.com',
+  'www.pro.growthaddicts.com',
+];
+
+// Development hosts treated as platform mode
+const DEV_HOSTS = ['localhost', '127.0.0.1'];
+
+interface ParsedHost {
+  type: 'platform' | 'subdomain' | 'custom_domain';
+  hostname: string;
+  subdomain?: string;
+}
+
+function parseHost(hostname: string): ParsedHost {
+  const normalizedHost = hostname.toLowerCase().split(':')[0];
+  
+  if (PLATFORM_DOMAINS.includes(normalizedHost)) {
+    return { type: 'platform', hostname: normalizedHost };
+  }
+  
+  const isDevHost = DEV_HOSTS.some(dev => normalizedHost.startsWith(dev));
+  if (isDevHost) {
+    return { type: 'platform', hostname: normalizedHost };
+  }
+  
+  // Check for subdomain of growthaddicts.app
+  const subdomainMatch = normalizedHost.match(/^([a-z0-9-]+)\.growthaddicts\.app$/);
+  if (subdomainMatch) {
+    const subdomain = subdomainMatch[1];
+    if (subdomain === 'www') {
+      return { type: 'platform', hostname: normalizedHost };
+    }
+    return { type: 'subdomain', hostname: normalizedHost, subdomain };
+  }
+  
+  // Check for subdomain of pro.growthaddicts.com
+  const proSubdomainMatch = normalizedHost.match(/^([a-z0-9-]+)\.pro\.growthaddicts\.com$/);
+  if (proSubdomainMatch) {
+    const subdomain = proSubdomainMatch[1];
+    if (subdomain === 'www') {
+      return { type: 'platform', hostname: normalizedHost };
+    }
+    return { type: 'subdomain', hostname: normalizedHost, subdomain };
+  }
+  
+  // Custom domain
+  return { type: 'custom_domain', hostname: normalizedHost };
+}
+
+function getDevTenantOverride(request: NextRequest): string | null {
+  if (process.env.NODE_ENV !== 'development') {
+    return null;
+  }
+  
+  const tenantParam = request.nextUrl.searchParams.get('tenant');
+  if (tenantParam) {
+    return tenantParam.toLowerCase();
+  }
+  
+  const tenantHeader = request.headers.get('x-dev-tenant');
+  if (tenantHeader) {
+    return tenantHeader.toLowerCase();
+  }
+  
+  return null;
+}
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+
 // Helper to check if user has active billing
 function hasActiveBilling(status?: BillingStatus, periodEnd?: string): boolean {
-  // Active or trialing = full access
   if (status === 'active' || status === 'trialing') {
     return true;
   }
   
-  // Canceled but still in paid period = grace access
   if (status === 'canceled' && periodEnd) {
     const endDate = new Date(periodEnd);
     const now = new Date();
@@ -52,6 +131,10 @@ function canAccessAdminSection(role?: UserRole): boolean {
   return role === 'admin' || role === 'super_admin';
 }
 
+// =============================================================================
+// ROUTE MATCHERS
+// =============================================================================
+
 // Define public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
   '/',
@@ -61,6 +144,8 @@ const isPublicRoute = createRouteMatcher([
   '/onboarding(.*)',
   '/start(.*)',  // Guest checkout flow - auth happens after payment
   '/invite(.*)',  // Smart invite links - page handles auth flow
+  '/tenant-not-found',  // Tenant not found page
+  '/access-denied',     // Access denied page
   '/api/webhooks(.*)',
   '/api/notifications/cron(.*)',  // Cron jobs - auth via CRON_SECRET header
   '/api/squad/validate-invite',  // Allow validating invite tokens without auth
@@ -72,6 +157,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/guest/verify-payment-intent',  // Verify embedded checkout payment - no auth required
   '/api/identity/validate',  // Mission validation - used by guest flow
   '/api/goal/validate',  // Goal validation - used by guest flow
+  '/api/tenant/resolve',  // Tenant resolution API - no auth required
   '/terms(.*)',
   '/privacy(.*)',
   '/refund-policy(.*)',
@@ -105,7 +191,6 @@ const isSeedRoute = createRouteMatcher([
 ]);
 
 // Define routes that require active billing (protected app routes)
-// This is everything EXCEPT: public routes, onboarding, API routes (APIs check themselves)
 const requiresBilling = createRouteMatcher([
   '/habits(.*)',
   '/goal(.*)',
@@ -136,28 +221,216 @@ const isGuestFlowExemptRoute = createRouteMatcher([
   '/subscription-policy(.*)',
   '/invite(.*)',     // Invite links
   '/onboarding(.*)', // Original onboarding flow
+  '/tenant-not-found',
+  '/access-denied',
 ]);
 
+// Routes that are only available on platform domain (not tenant domains)
+const isPlatformOnlyRoute = createRouteMatcher([
+  '/admin(.*)',
+  '/api/admin(.*)',
+  '/editor(.*)',
+]);
+
+// =============================================================================
+// TENANT RESOLUTION CACHE (simple in-memory for edge runtime)
+// =============================================================================
+
+// Note: This is a simple cache that will be per-instance.
+// For production, you might want to use Vercel KV or similar.
+const tenantCache = new Map<string, { orgId: string; subdomain: string; expiresAt: number } | null>();
+const CACHE_TTL = 60 * 1000; // 1 minute
+
+async function resolveTenantFromDb(
+  subdomain?: string,
+  customDomain?: string
+): Promise<{ orgId: string; subdomain: string } | null> {
+  // Check cache first
+  const cacheKey = subdomain ? `sub:${subdomain}` : `domain:${customDomain}`;
+  const cached = tenantCache.get(cacheKey);
+  if (cached !== undefined && (cached === null || cached.expiresAt > Date.now())) {
+    return cached ? { orgId: cached.orgId, subdomain: cached.subdomain } : null;
+  }
+  
+  try {
+    // Call internal API to resolve tenant (API has access to Firebase Admin)
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const params = new URLSearchParams();
+    if (subdomain) params.set('subdomain', subdomain);
+    if (customDomain) params.set('domain', customDomain);
+    
+    const response = await fetch(`${baseUrl}/api/tenant/resolve?${params}`, {
+      method: 'GET',
+      headers: { 'x-internal-request': 'true' },
+      // Short timeout to avoid blocking
+      signal: AbortSignal.timeout(3000),
+    });
+    
+    if (!response.ok) {
+      tenantCache.set(cacheKey, null);
+      return null;
+    }
+    
+    const data = await response.json();
+    if (data.organizationId) {
+      const result = { orgId: data.organizationId, subdomain: data.subdomain || subdomain || '' };
+      tenantCache.set(cacheKey, { ...result, expiresAt: Date.now() + CACHE_TTL });
+      return result;
+    }
+    
+    tenantCache.set(cacheKey, null);
+    return null;
+  } catch (error) {
+    console.error('[MIDDLEWARE] Tenant resolution error:', error);
+    // Don't cache errors - allow retry
+    return null;
+  }
+}
+
+// =============================================================================
+// MIDDLEWARE
+// =============================================================================
+
 export default clerkMiddleware(async (auth, request) => {
+  const hostname = request.headers.get('host') || 'localhost:3000';
+  const pathname = request.nextUrl.pathname;
+  
+  // ==========================================================================
+  // TENANT RESOLUTION
+  // ==========================================================================
+  
+  let tenantOrgId: string | null = null;
+  let tenantSubdomain: string | null = null;
+  let isCustomDomain = false;
+  let isTenantMode = false;
+  
+  // Check for dev override first
+  const devOverride = getDevTenantOverride(request);
+  if (devOverride) {
+    const resolved = await resolveTenantFromDb(devOverride);
+    if (resolved) {
+      tenantOrgId = resolved.orgId;
+      tenantSubdomain = resolved.subdomain;
+      isTenantMode = true;
+    } else {
+      // Dev override specified but not found - redirect to not found
+      console.warn(`[MIDDLEWARE] Dev tenant override "${devOverride}" not found`);
+      return NextResponse.redirect(new URL('/tenant-not-found', request.url));
+    }
+  } else {
+    // Parse hostname
+    const parsed = parseHost(hostname);
+    
+    if (parsed.type === 'subdomain' && parsed.subdomain) {
+      const resolved = await resolveTenantFromDb(parsed.subdomain);
+      if (resolved) {
+        tenantOrgId = resolved.orgId;
+        tenantSubdomain = resolved.subdomain;
+        isTenantMode = true;
+      } else {
+        // Unknown subdomain - show not found page
+        console.log(`[MIDDLEWARE] Unknown subdomain: ${parsed.subdomain}`);
+        // Don't redirect API routes - return 404 JSON
+        if (pathname.startsWith('/api/')) {
+          return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+        }
+        return NextResponse.redirect(new URL('/tenant-not-found', request.url));
+      }
+    } else if (parsed.type === 'custom_domain') {
+      const resolved = await resolveTenantFromDb(undefined, parsed.hostname);
+      if (resolved) {
+        tenantOrgId = resolved.orgId;
+        tenantSubdomain = resolved.subdomain;
+        isCustomDomain = true;
+        isTenantMode = true;
+      } else {
+        // Unknown custom domain - show not found page
+        console.log(`[MIDDLEWARE] Unknown custom domain: ${parsed.hostname}`);
+        if (pathname.startsWith('/api/')) {
+          return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+        }
+        return NextResponse.redirect(new URL('/tenant-not-found', request.url));
+      }
+    }
+    // platform mode - no tenant headers needed
+  }
+  
+  // ==========================================================================
+  // PLATFORM-ONLY ROUTES CHECK
+  // ==========================================================================
+  
+  // Block admin/editor routes on tenant domains
+  if (isTenantMode && isPlatformOnlyRoute(request)) {
+    console.log(`[MIDDLEWARE] Platform-only route accessed on tenant domain: ${pathname}`);
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Not available on tenant domains' }, { status: 403 });
+    }
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+  
+  // ==========================================================================
+  // SET TENANT HEADERS
+  // ==========================================================================
+  
+  // Create response with tenant headers for downstream use
+  const response = NextResponse.next();
+  
+  if (isTenantMode && tenantOrgId) {
+    response.headers.set('x-tenant-org-id', tenantOrgId);
+    response.headers.set('x-tenant-subdomain', tenantSubdomain || '');
+    response.headers.set('x-tenant-is-custom-domain', isCustomDomain ? 'true' : 'false');
+    response.headers.set('x-tenant-hostname', hostname);
+  }
+  
+  // ==========================================================================
+  // EXISTING MIDDLEWARE LOGIC
+  // ==========================================================================
+  
   // Allow seed route in development without auth
   const isDev = process.env.NODE_ENV === 'development';
   if (isDev && isSeedRoute(request)) {
-    return NextResponse.next();
+    return response;
   }
 
   // Get auth state
   const { userId, sessionClaims } = await auth();
   
+  // ==========================================================================
+  // TENANT MEMBERSHIP ENFORCEMENT
+  // ==========================================================================
+  
+  // If in tenant mode and user is signed in, verify they belong to this org
+  if (isTenantMode && userId && tenantOrgId) {
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userOrgId = publicMetadata?.organizationId;
+    const userRole = publicMetadata?.role;
+    
+    // Platform admins can only bypass on platform domain, not tenant domains
+    // On tenant domains, even admins must be org members
+    if (userOrgId !== tenantOrgId) {
+      // User is not a member of this tenant's organization
+      console.log(`[MIDDLEWARE] User ${userId} not member of tenant org ${tenantOrgId} (user org: ${userOrgId})`);
+      
+      // Allow public routes even if not a member
+      if (!isPublicRoute(request)) {
+        if (pathname.startsWith('/api/')) {
+          return NextResponse.json({ error: 'Access denied: Not a member of this organization' }, { status: 403 });
+        }
+        return NextResponse.redirect(new URL('/access-denied', request.url));
+      }
+    }
+  }
+  
+  // ==========================================================================
   // GUEST SESSION REDIRECT LOGIC
-  // For signed-out users, check if they have an active guest session
+  // ==========================================================================
+  
   if (!userId) {
-    const pathname = request.nextUrl.pathname;
     const guestSessionId = request.cookies.get('ga_guest_session_id')?.value;
     const guestStep = request.cookies.get('ga_guest_step')?.value;
     
     // If user has a guest session and is NOT on an exempt route, redirect to their step
     if (guestSessionId && !isGuestFlowExemptRoute(request)) {
-      // Handle legacy 'welcome' step and 'start' step - both map to '/start'
       const targetStep = (guestStep === 'welcome' || guestStep === 'start') ? null : guestStep;
       const redirectPath = targetStep ? `/start/${targetStep}` : '/start';
       console.log(`[MIDDLEWARE] Guest session found, redirecting to ${redirectPath}`);
@@ -171,8 +444,7 @@ export default clerkMiddleware(async (auth, request) => {
       return NextResponse.redirect(new URL(redirectUrl, request.url));
     }
     
-    // Note: /start is now the welcome page itself - no redirect needed
-    // Only redirect if user has a saved step that's NOT the welcome page
+    // Redirect if user has a saved step that's NOT the welcome page
     if (pathname === '/start' && guestStep && guestStep !== 'welcome' && guestStep !== 'start') {
       return NextResponse.redirect(new URL(`/start/${guestStep}`, request.url));
     }
@@ -180,11 +452,9 @@ export default clerkMiddleware(async (auth, request) => {
 
   // REDIRECT SIGNED-IN USERS AWAY FROM /start (guest checkout flow)
   // Exception: Allow access to /start/profile and /start/complete for post-payment setup
-  if (userId && request.nextUrl.pathname.startsWith('/start')) {
+  if (userId && pathname.startsWith('/start')) {
     const allowedPostPaymentPaths = ['/start/profile', '/start/complete'];
-    const isPostPaymentPath = allowedPostPaymentPaths.some(path => 
-      request.nextUrl.pathname.startsWith(path)
-    );
+    const isPostPaymentPath = allowedPostPaymentPaths.some(path => pathname.startsWith(path));
     
     if (!isPostPaymentPath) {
       return NextResponse.redirect('https://pro.growthaddicts.com');
@@ -192,7 +462,7 @@ export default clerkMiddleware(async (auth, request) => {
   }
 
   // REDIRECT SIGNED-IN USERS AWAY FROM /sign-in
-  if (userId && request.nextUrl.pathname.startsWith('/sign-in')) {
+  if (userId && pathname.startsWith('/sign-in')) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
@@ -206,15 +476,12 @@ export default clerkMiddleware(async (auth, request) => {
   const role = publicMetadata?.role;
 
   // BILLING CHECK: For authenticated users on protected app routes
-  // Staff roles (editor, coach, admin, super_admin) bypass billing checks
   if (userId && requiresBilling(request)) {
-    // Staff roles bypass billing
     if (!isStaffRole(role)) {
       const billingStatus = publicMetadata?.billingStatus;
       const billingPeriodEnd = publicMetadata?.billingPeriodEnd;
       
       if (!hasActiveBilling(billingStatus, billingPeriodEnd)) {
-        // No active billing - redirect to plan page
         console.log(`[MIDDLEWARE] User ${userId} blocked: billingStatus=${billingStatus}, redirecting to /onboarding/plan`);
         return NextResponse.redirect(new URL('/onboarding/plan', request.url));
       }
@@ -223,48 +490,38 @@ export default clerkMiddleware(async (auth, request) => {
 
   // Check editor access for editor routes (editor or super_admin only)
   if (isEditorRoute(request)) {
-    // Must be authenticated
     if (!userId) {
       return NextResponse.redirect(new URL('/sign-in', request.url));
     }
 
     if (!canAccessEditorSection(role)) {
-      // Redirect to home if not editor or super_admin
       return NextResponse.redirect(new URL('/', request.url));
     }
   }
 
-  // Check editor API access (editors can manage discover content via /api/admin/discover/*)
+  // Check editor API access
   if (isEditorApiRoute(request)) {
-    // Must be authenticated
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     if (!canAccessEditorSection(role)) {
-      // Return 403 for API routes instead of redirect
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    // Editor API routes pass through here - skip the admin route check below
   }
   // Check admin access for admin routes (admin or super_admin only)
   else if (isAdminRoute(request)) {
-    // Must be authenticated
     if (!userId) {
       return NextResponse.redirect(new URL('/sign-in', request.url));
     }
 
     if (!canAccessAdminSection(role)) {
-      // Redirect to home if not admin
       return NextResponse.redirect(new URL('/', request.url));
     }
   }
 
   // Redirect authenticated users from homepage to dashboard or plan page based on billing
-  if (userId && request.nextUrl.pathname === '/') {
-    // If they have billing, let them through to the dashboard (page.tsx handles further checks)
-    // If no billing, the dashboard will redirect them appropriately
-    const response = NextResponse.next();
+  if (userId && pathname === '/') {
     response.cookies.set('ga_returning_user', 'true', {
       maxAge: 60 * 60 * 24 * 365,
       path: '/',
@@ -273,16 +530,17 @@ export default clerkMiddleware(async (auth, request) => {
     return response;
   }
 
-  // Set returning user cookie for authenticated users (so they go to sign-in next time)
+  // Set returning user cookie for authenticated users
   if (userId) {
-    const response = NextResponse.next();
     response.cookies.set('ga_returning_user', 'true', {
-      maxAge: 60 * 60 * 24 * 365, // 1 year
+      maxAge: 60 * 60 * 24 * 365,
       path: '/',
       sameSite: 'lax',
     });
     return response;
   }
+  
+  return response;
 });
 
 export const config = {
@@ -293,4 +551,3 @@ export const config = {
     '/(api|trpc)(.*)',
   ],
 };
-

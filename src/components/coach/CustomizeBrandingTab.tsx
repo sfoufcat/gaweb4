@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon } from 'lucide-react';
+import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink } from 'lucide-react';
 import { useBranding } from '@/contexts/BrandingContext';
-import type { OrgBranding, OrgBrandingColors } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgCustomDomain, CustomDomainStatus } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, validateSubdomain } from '@/types';
 
 /**
  * CustomizeBrandingTab
@@ -37,6 +37,25 @@ export function CustomizeBrandingTab() {
   
   // File input ref
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Domain settings state
+  const [currentSubdomain, setCurrentSubdomain] = useState<string>('');
+  const [newSubdomain, setNewSubdomain] = useState('');
+  const [subdomainError, setSubdomainError] = useState<string | null>(null);
+  const [subdomainLoading, setSubdomainLoading] = useState(false);
+  const [subdomainSuccess, setSubdomainSuccess] = useState(false);
+  const [customDomains, setCustomDomains] = useState<Array<{
+    id: string;
+    domain: string;
+    status: CustomDomainStatus;
+    verificationToken: string;
+    verifiedAt?: string;
+  }>>([]);
+  const [newCustomDomain, setNewCustomDomain] = useState('');
+  const [customDomainError, setCustomDomainError] = useState<string | null>(null);
+  const [customDomainLoading, setCustomDomainLoading] = useState(false);
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  const [domainSettingsLoading, setDomainSettingsLoading] = useState(true);
 
   // Fetch current branding on mount
   const fetchBranding = useCallback(async () => {
@@ -64,9 +83,135 @@ export function CustomizeBrandingTab() {
     }
   }, []);
 
+  // Fetch domain settings
+  const fetchDomainSettings = useCallback(async () => {
+    try {
+      setDomainSettingsLoading(true);
+      const response = await fetch('/api/coach/org-domain');
+      if (!response.ok) {
+        console.error('Failed to fetch domain settings');
+        return;
+      }
+      
+      const data = await response.json();
+      setCurrentSubdomain(data.subdomain || '');
+      setNewSubdomain(data.subdomain || '');
+      setCustomDomains(data.customDomains || []);
+    } catch (err) {
+      console.error('Error fetching domain settings:', err);
+    } finally {
+      setDomainSettingsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchBranding();
-  }, [fetchBranding]);
+    fetchDomainSettings();
+  }, [fetchBranding, fetchDomainSettings]);
+  
+  // Handle subdomain update
+  const handleSubdomainUpdate = async () => {
+    const validation = validateSubdomain(newSubdomain);
+    if (!validation.valid) {
+      setSubdomainError(validation.error || 'Invalid subdomain');
+      return;
+    }
+    
+    if (newSubdomain.toLowerCase() === currentSubdomain) {
+      setSubdomainError('This is already your current subdomain');
+      return;
+    }
+    
+    setSubdomainLoading(true);
+    setSubdomainError(null);
+    
+    try {
+      const response = await fetch('/api/coach/org-domain', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subdomain: newSubdomain }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update subdomain');
+      }
+      
+      setCurrentSubdomain(data.subdomain);
+      setNewSubdomain(data.subdomain);
+      setSubdomainSuccess(true);
+      setTimeout(() => setSubdomainSuccess(false), 3000);
+    } catch (err) {
+      setSubdomainError(err instanceof Error ? err.message : 'Failed to update subdomain');
+    } finally {
+      setSubdomainLoading(false);
+    }
+  };
+  
+  // Handle add custom domain
+  const handleAddCustomDomain = async () => {
+    if (!newCustomDomain.trim()) {
+      setCustomDomainError('Please enter a domain');
+      return;
+    }
+    
+    setCustomDomainLoading(true);
+    setCustomDomainError(null);
+    
+    try {
+      const response = await fetch('/api/coach/org-domain/custom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain: newCustomDomain }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to add custom domain');
+      }
+      
+      // Add to list
+      setCustomDomains(prev => [data.customDomain, ...prev]);
+      setNewCustomDomain('');
+    } catch (err) {
+      setCustomDomainError(err instanceof Error ? err.message : 'Failed to add custom domain');
+    } finally {
+      setCustomDomainLoading(false);
+    }
+  };
+  
+  // Handle remove custom domain
+  const handleRemoveCustomDomain = async (domainId: string) => {
+    if (!confirm('Are you sure you want to remove this custom domain?')) return;
+    
+    try {
+      const response = await fetch(`/api/coach/org-domain/custom/${domainId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to remove domain');
+      }
+      
+      setCustomDomains(prev => prev.filter(d => d.id !== domainId));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to remove domain');
+    }
+  };
+  
+  // Copy to clipboard
+  const copyToClipboard = async (text: string, tokenId: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedToken(tokenId);
+      setTimeout(() => setCopiedToken(null), 2000);
+    } catch {
+      alert('Failed to copy to clipboard');
+    }
+  };
 
   // Check for changes
   useEffect(() => {
@@ -401,6 +546,203 @@ export function CustomizeBrandingTab() {
             />
           </div>
         </div>
+      </div>
+
+      {/* Domain Settings Section */}
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Globe className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Domain Settings</h3>
+        </div>
+        
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mb-6 font-albert">
+          Configure your subdomain and custom domains for your branded experience.
+        </p>
+        
+        {domainSettingsLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="w-8 h-8 border-3 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Subdomain Section */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                Subdomain
+              </label>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 flex-1 max-w-md">
+                  <input
+                    type="text"
+                    value={newSubdomain}
+                    onChange={(e) => {
+                      setNewSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''));
+                      setSubdomainError(null);
+                    }}
+                    placeholder="your-subdomain"
+                    className="flex-1 px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                  />
+                  <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert whitespace-nowrap">
+                    .growthaddicts.app
+                  </span>
+                </div>
+                <button
+                  onClick={handleSubdomainUpdate}
+                  disabled={subdomainLoading || newSubdomain === currentSubdomain}
+                  className="px-4 py-2.5 bg-[#a07855] hover:bg-[#8c6245] disabled:bg-[#a07855]/50 text-white rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
+                >
+                  {subdomainLoading ? 'Saving...' : 'Update'}
+                </button>
+              </div>
+              
+              {subdomainError && (
+                <p className="text-sm text-red-600 dark:text-red-400 font-albert">{subdomainError}</p>
+              )}
+              
+              {subdomainSuccess && (
+                <p className="text-sm text-green-600 dark:text-green-400 font-albert">Subdomain updated successfully!</p>
+              )}
+              
+              {currentSubdomain && (
+                <div className="flex items-center gap-2 p-3 bg-[#a07855]/10 dark:bg-[#b8896a]/10 rounded-xl">
+                  <Link2 className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+                  <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert font-mono">
+                    https://{currentSubdomain}.growthaddicts.app
+                  </span>
+                  <a
+                    href={`https://${currentSubdomain}.growthaddicts.app`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-auto text-[#a07855] dark:text-[#b8896a] hover:opacity-70 transition-opacity"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                </div>
+              )}
+            </div>
+            
+            {/* Divider */}
+            <div className="border-t border-[#e1ddd8] dark:border-[#313746]"></div>
+            
+            {/* Custom Domains Section */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                Custom Domains
+              </label>
+              <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
+                Add your own domain for a fully branded experience (e.g., app.yourdomain.com)
+              </p>
+              
+              {/* Add new domain form */}
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  value={newCustomDomain}
+                  onChange={(e) => {
+                    setNewCustomDomain(e.target.value.toLowerCase());
+                    setCustomDomainError(null);
+                  }}
+                  placeholder="app.yourdomain.com"
+                  className="flex-1 max-w-md px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                />
+                <button
+                  onClick={handleAddCustomDomain}
+                  disabled={customDomainLoading || !newCustomDomain.trim()}
+                  className="px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#e8e5e1] dark:hover:bg-[#313746] disabled:opacity-50 rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
+                >
+                  {customDomainLoading ? 'Adding...' : 'Add Domain'}
+                </button>
+              </div>
+              
+              {customDomainError && (
+                <p className="text-sm text-red-600 dark:text-red-400 font-albert">{customDomainError}</p>
+              )}
+              
+              {/* Custom domains list */}
+              {customDomains.length > 0 && (
+                <div className="space-y-3 mt-4">
+                  {customDomains.map((domain) => (
+                    <div
+                      key={domain.id}
+                      className="p-4 bg-[#f8f7f5] dark:bg-[#1e222a] rounded-xl border border-[#e1ddd8] dark:border-[#313746]"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                          <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                            {domain.domain}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`
+                            px-2 py-0.5 text-xs font-medium rounded-full font-albert
+                            ${domain.status === 'verified' 
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                              : domain.status === 'failed'
+                                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                            }
+                          `}>
+                            {domain.status === 'verified' ? 'Verified' : domain.status === 'failed' ? 'Failed' : 'Pending'}
+                          </span>
+                          <button
+                            onClick={() => handleRemoveCustomDomain(domain.id)}
+                            className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {domain.status !== 'verified' && (
+                        <div className="mt-3 p-3 bg-white dark:bg-[#11141b] rounded-lg text-xs">
+                          <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+                            To verify your domain, add one of these DNS records:
+                          </p>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[#8c8c8c] dark:text-[#7d8190] font-albert">CNAME:</span>
+                              <code className="px-2 py-1 bg-[#f3f1ef] dark:bg-[#262b35] rounded font-mono text-[#1a1a1a] dark:text-[#f5f5f8]">
+                                {domain.domain} → cname.vercel-dns.com
+                              </code>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <span className="text-[#8c8c8c] dark:text-[#7d8190] font-albert shrink-0">TXT:</span>
+                              <div className="flex items-center gap-2 flex-1">
+                                <code className="px-2 py-1 bg-[#f3f1ef] dark:bg-[#262b35] rounded font-mono text-[#1a1a1a] dark:text-[#f5f5f8] break-all text-xs">
+                                  {domain.verificationToken}
+                                </code>
+                                <button
+                                  onClick={() => copyToClipboard(domain.verificationToken, domain.id)}
+                                  className="p-1.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded transition-colors shrink-0"
+                                >
+                                  {copiedToken === domain.id ? (
+                                    <Check className="w-4 h-4 text-green-500" />
+                                  ) : (
+                                    <Copy className="w-4 h-4" />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          <p className="text-[#a7a39e] dark:text-[#7d8190] font-albert mt-2">
+                            DNS changes may take up to 24 hours to propagate.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {customDomains.length === 0 && (
+                <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] font-albert py-4">
+                  No custom domains added yet.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Action Buttons */}

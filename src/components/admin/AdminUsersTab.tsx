@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
 import type { UserRole, UserTier, CoachingStatus, OrgRole } from '@/types';
+import { validateSubdomain } from '@/types';
 import { 
   canModifyUserRole, 
   canDeleteUser, 
@@ -119,6 +120,16 @@ export function AdminUsersTab({
   const [searchQuery, setSearchQuery] = useState('');
   const [updatingTierUserId, setUpdatingTierUserId] = useState<string | null>(null);
   const [updatingOrgRoleUserId, setUpdatingOrgRoleUserId] = useState<string | null>(null);
+  
+  // Coach subdomain prompt state
+  const [subdomainPrompt, setSubdomainPrompt] = useState<{
+    userId: string;
+    userName: string;
+    currentRole: UserRole;
+  } | null>(null);
+  const [subdomain, setSubdomain] = useState('');
+  const [subdomainError, setSubdomainError] = useState<string | null>(null);
+  const [subdomainLoading, setSubdomainLoading] = useState(false);
 
   const fetchUsers = async () => {
     try {
@@ -166,6 +177,19 @@ export function AdminUsersTab({
       return;
     }
 
+    // If changing to coach, show subdomain prompt instead
+    if (newRole === 'coach') {
+      const user = users.find(u => u.id === userId);
+      setSubdomainPrompt({
+        userId,
+        userName: user?.name || user?.email || 'this user',
+        currentRole,
+      });
+      setSubdomain('');
+      setSubdomainError(null);
+      return;
+    }
+
     try {
       const response = await fetch(`/api/admin/users/${userId}/role`, {
         method: 'PATCH',
@@ -183,6 +207,49 @@ export function AdminUsersTab({
     } catch (err) {
       console.error('Error updating role:', err);
       alert(err instanceof Error ? err.message : 'Failed to update role');
+    }
+  };
+
+  const handleSubdomainSubmit = async () => {
+    if (!subdomainPrompt) return;
+    
+    // Validate subdomain
+    const validation = validateSubdomain(subdomain);
+    if (!validation.valid) {
+      setSubdomainError(validation.error || 'Invalid subdomain');
+      return;
+    }
+    
+    setSubdomainLoading(true);
+    setSubdomainError(null);
+    
+    try {
+      const response = await fetch(`/api/admin/users/${subdomainPrompt.userId}/role`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'coach', subdomain: subdomain.toLowerCase().trim() }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update role');
+      }
+
+      // Success! Show the tenant URL
+      if (data.tenantUrl) {
+        alert(`Coach role assigned! Their tenant URL is:\n${data.tenantUrl}`);
+      }
+
+      // Close dialog and refresh
+      setSubdomainPrompt(null);
+      setSubdomain('');
+      await fetchUsers();
+    } catch (err) {
+      console.error('Error updating role:', err);
+      setSubdomainError(err instanceof Error ? err.message : 'Failed to update role');
+    } finally {
+      setSubdomainLoading(false);
     }
   };
 
@@ -690,6 +757,82 @@ export function AdminUsersTab({
               className="bg-red-600 hover:bg-red-700 font-albert"
             >
               {deleteLoading ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Subdomain prompt dialog for coach role assignment */}
+      <AlertDialog open={!!subdomainPrompt} onOpenChange={(open: boolean) => !open && setSubdomainPrompt(null)}>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-albert">Assign Coach Role</AlertDialogTitle>
+            <AlertDialogDescription className="font-albert" asChild>
+              <div>
+                <p className="mb-4">
+                  Choose a subdomain for <strong>{subdomainPrompt?.userName}</strong>&apos;s organization.
+                  This will be their unique URL for their coaching platform.
+                </p>
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                      Subdomain
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={subdomain}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''));
+                          setSubdomainError(null);
+                        }}
+                        placeholder="acme"
+                        className="flex-1 h-10 px-3 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#313746] bg-white dark:bg-[#1e222a] text-sm text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 focus:border-[#a07855] font-albert disabled:opacity-50"
+                        disabled={subdomainLoading}
+                      />
+                      <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert whitespace-nowrap">
+                        .growthaddicts.app
+                      </span>
+                    </div>
+                    {subdomainError && (
+                      <p className="text-sm text-red-600 dark:text-red-400 font-albert">{subdomainError}</p>
+                    )}
+                    <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                      3-30 characters. Letters, numbers, and hyphens only.
+                    </p>
+                  </div>
+                  
+                  {subdomain && !subdomainError && (
+                    <div className="p-3 bg-[#a07855]/10 dark:bg-[#b8896a]/10 rounded-lg">
+                      <p className="text-sm font-medium text-[#a07855] dark:text-[#b8896a] font-albert">
+                        Tenant URL Preview:
+                      </p>
+                      <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert font-mono">
+                        https://{subdomain.toLowerCase()}.growthaddicts.app
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => setSubdomainPrompt(null)}
+              disabled={subdomainLoading}
+              className="font-albert"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e: React.MouseEvent) => {
+                e.preventDefault();
+                handleSubdomainSubmit();
+              }}
+              disabled={!subdomain || subdomainLoading}
+              className="bg-[#a07855] hover:bg-[#8c6245] text-white font-albert"
+            >
+              {subdomainLoading ? 'Creating...' : 'Assign Coach Role'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

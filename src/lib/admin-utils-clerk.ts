@@ -259,16 +259,18 @@ export async function requireSuperAdmin(): Promise<void> {
  * Throws error if not coach/admin or if no organization exists
  * 
  * Priority for organizationId:
- * 1. Clerk's native org session (auth().orgId) - preferred for full Clerk Orgs
- * 2. publicMetadata.organizationId - backward compatibility
+ * 1. Tenant context from headers (x-tenant-org-id) - for domain-based routing
+ * 2. Clerk's native org session (auth().orgId) - preferred for full Clerk Orgs
+ * 3. publicMetadata.organizationId - backward compatibility
  * 
- * @returns { userId, role, organizationId }
+ * @returns { userId, role, organizationId, isTenantMode }
  */
 export async function requireCoachWithOrg(): Promise<{ 
   userId: string; 
   role: UserRole; 
   orgRole?: OrgRole;
   organizationId: string;
+  isTenantMode?: boolean;
 }> {
   const { userId, orgId, sessionClaims } = await auth();
   
@@ -288,14 +290,35 @@ export async function requireCoachWithOrg(): Promise<{
     throw new Error('Forbidden: Coach access required');
   }
   
-  // Get organizationId - prefer native Clerk org session, fallback to metadata
-  const organizationId = orgId || publicMetadata?.organizationId;
+  // Check for tenant context from headers (set by middleware)
+  let tenantOrgId: string | null = null;
+  let isTenantMode = false;
+  try {
+    // Dynamic import to avoid issues in non-server contexts
+    const { headers } = await import('next/headers');
+    const headersList = await headers();
+    tenantOrgId = headersList.get('x-tenant-org-id');
+    isTenantMode = !!tenantOrgId;
+  } catch {
+    // Headers not available (e.g., in some edge cases)
+  }
+  
+  // Get organizationId - priority: tenant context > Clerk org session > metadata
+  const organizationId = tenantOrgId || orgId || publicMetadata?.organizationId;
   
   if (!organizationId) {
     throw new Error('Organization not found: Coach must have an organization');
   }
   
-  return { userId, role, orgRole, organizationId };
+  // In tenant mode, verify user is actually a member of this org
+  if (isTenantMode && tenantOrgId) {
+    const userOrgId = publicMetadata?.organizationId;
+    if (userOrgId !== tenantOrgId) {
+      throw new Error('Forbidden: Not a member of this organization');
+    }
+  }
+  
+  return { userId, role, orgRole, organizationId, isTenantMode };
 }
 
 // Re-export shared utilities for convenience in server-side code
