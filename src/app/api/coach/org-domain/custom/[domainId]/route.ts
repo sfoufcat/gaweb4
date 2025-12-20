@@ -319,6 +319,7 @@ export async function DELETE(
     
     return NextResponse.json({ 
       success: true,
+      removedDomain: domainData.domain,
       redirectUrl: subdomain ? `https://${subdomain}.growthaddicts.app/coach/customize` : null
     });
   } catch (error) {

@@ -263,17 +263,19 @@ export function CustomizeBrandingTab() {
         throw new Error(data.error || 'Failed to remove domain');
       }
       
-      setCustomDomains(prev => prev.filter(d => d.id !== domainId));
-      
-      // If we're on the custom domain being removed, redirect to subdomain
-      // This prevents being stuck on a broken domain
-      if (data.redirectUrl && typeof window !== 'undefined') {
-        const currentHost = window.location.hostname;
-        const removedDomain = customDomains.find(d => d.id === domainId);
-        if (removedDomain && currentHost === removedDomain.domain) {
+      // If we're on the custom domain being removed, redirect FIRST before updating state
+      // This prevents being stuck on a broken domain after Vercel removes it
+      if (data.redirectUrl && data.removedDomain && typeof window !== 'undefined') {
+        const currentHost = window.location.hostname.toLowerCase();
+        const removedDomain = data.removedDomain.toLowerCase();
+        if (currentHost === removedDomain) {
+          // Redirect immediately - don't wait for state update
           window.location.href = data.redirectUrl;
+          return; // Exit early, page will redirect
         }
       }
+      
+      setCustomDomains(prev => prev.filter(d => d.id !== domainId));
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to remove domain');
     }
