@@ -9,6 +9,12 @@ import { NextResponse } from 'next/server';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { adminDb } from '@/lib/firebase-admin';
 import { removeCustomDomain } from '@/lib/tenant/resolveTenant';
+import { 
+  removeDomainFromVercel, 
+  verifyDomainInVercel, 
+  getDomainVerificationStatus,
+  isVercelDomainApiConfigured 
+} from '@/lib/vercel-domains';
 import { isSuperCoach } from '@/lib/admin-utils-shared';
 import { auth } from '@clerk/nextjs/server';
 import type { OrgRole, OrgCustomDomain, CustomDomainStatus } from '@/types';
@@ -105,8 +111,36 @@ export async function PATCH(
       );
     }
     
-    // Perform DNS verification
-    const { verified, method } = await verifyDomainDns(domainData.domain, domainData.verificationToken);
+    let verified = false;
+    let method: string | null = null;
+    let verificationRecords: Array<{ type: string; domain: string; value: string; reason: string }> = [];
+    
+    // Use Vercel API for verification if configured
+    if (isVercelDomainApiConfigured()) {
+      // First trigger verification in Vercel
+      const verifyResult = await verifyDomainInVercel(domainData.domain);
+      
+      if (verifyResult.success) {
+        verified = verifyResult.verified || false;
+        method = 'vercel';
+        verificationRecords = verifyResult.verification || [];
+      } else {
+        // Domain might not be in Vercel, try to get its status
+        const statusResult = await getDomainVerificationStatus(domainData.domain);
+        if (statusResult.success) {
+          verified = statusResult.verified && statusResult.configured || false;
+          method = 'vercel';
+          verificationRecords = statusResult.verification || [];
+        }
+      }
+    }
+    
+    // Fallback to manual DNS check if Vercel API not configured or failed
+    if (!isVercelDomainApiConfigured() || (!verified && method === null)) {
+      const dnsResult = await verifyDomainDns(domainData.domain, domainData.verificationToken);
+      verified = dnsResult.verified;
+      method = dnsResult.method || null;
+    }
     
     const now = new Date().toISOString();
     const newStatus: CustomDomainStatus = verified ? 'verified' : 'pending';
@@ -137,7 +171,8 @@ export async function PATCH(
         lastCheckedAt: now,
       },
       verified,
-      method: method || null,
+      method,
+      verificationRecords: verificationRecords.length > 0 ? verificationRecords : undefined,
     });
   } catch (error) {
     console.error('[COACH_CUSTOM_DOMAIN_PATCH] Error:', error);
@@ -194,7 +229,16 @@ export async function DELETE(
       );
     }
     
-    // Remove the domain
+    // Remove the domain from Vercel first (if configured)
+    if (isVercelDomainApiConfigured()) {
+      const vercelResult = await removeDomainFromVercel(domainData.domain);
+      if (!vercelResult.success) {
+        console.error(`[COACH_CUSTOM_DOMAIN] Failed to remove domain from Vercel: ${vercelResult.error}`);
+        // Continue with Firestore deletion anyway - the domain might not exist in Vercel
+      }
+    }
+    
+    // Remove the domain from our database
     await removeCustomDomain(domainId);
     
     console.log(`[COACH_CUSTOM_DOMAIN] Removed custom domain ${domainData.domain} from org ${organizationId}`);

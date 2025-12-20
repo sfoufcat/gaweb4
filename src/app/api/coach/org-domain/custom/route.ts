@@ -12,6 +12,7 @@ import {
   addCustomDomain,
   isCustomDomainAvailable,
 } from '@/lib/tenant/resolveTenant';
+import { addDomainToVercel, isVercelDomainApiConfigured } from '@/lib/vercel-domains';
 import { isSuperCoach } from '@/lib/admin-utils-shared';
 import { auth } from '@clerk/nextjs/server';
 import type { OrgRole } from '@/types';
@@ -101,36 +102,66 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
     
-    // Check availability
+    // Check availability in our database
     const isAvailable = await isCustomDomainAvailable(normalizedDomain);
     if (!isAvailable) {
       return NextResponse.json({ error: 'This domain is already registered' }, { status: 400 });
     }
     
-    // Add the custom domain
+    // Add the domain to Vercel project first (if configured)
+    let vercelResult = null;
+    if (isVercelDomainApiConfigured()) {
+      vercelResult = await addDomainToVercel(normalizedDomain);
+      
+      if (!vercelResult.success) {
+        console.error(`[COACH_CUSTOM_DOMAIN] Failed to add domain to Vercel: ${vercelResult.error}`);
+        return NextResponse.json({ 
+          error: vercelResult.error || 'Failed to add domain to hosting provider' 
+        }, { status: 400 });
+      }
+    } else {
+      console.warn('[COACH_CUSTOM_DOMAIN] Vercel API not configured - domain added to database only');
+    }
+    
+    // Add the custom domain to our database
     const customDomain = await addCustomDomain(organizationId, normalizedDomain);
     
     console.log(`[COACH_CUSTOM_DOMAIN] Added custom domain ${normalizedDomain} for org ${organizationId}`);
+    
+    // Build verification instructions
+    // Use Vercel's verification info if available, otherwise use default CNAME instructions
+    const verificationInstructions = vercelResult?.verification && vercelResult.verification.length > 0
+      ? {
+          records: vercelResult.verification.map(v => ({
+            type: v.type,
+            domain: v.domain,
+            value: v.value,
+            reason: v.reason,
+          })),
+          note: 'Add these DNS records to verify domain ownership. DNS changes may take up to 24 hours to propagate.',
+        }
+      : {
+          records: [
+            {
+              type: 'CNAME',
+              domain: normalizedDomain,
+              value: 'cname.vercel-dns.com',
+              reason: 'Point your domain to Vercel',
+            },
+          ],
+          note: 'Add this CNAME record to your DNS settings. Verification may take up to 24 hours.',
+        };
     
     return NextResponse.json({
       success: true,
       customDomain: {
         id: customDomain.id,
         domain: customDomain.domain,
-        status: customDomain.status,
+        status: vercelResult?.verified ? 'verified' : customDomain.status,
         verificationToken: customDomain.verificationToken,
       },
-      verificationInstructions: {
-        type: 'CNAME',
-        host: normalizedDomain,
-        value: 'cname.vercel-dns.com', // Or your canonical app domain
-        note: 'Add this CNAME record to your DNS settings. Verification may take up to 24 hours.',
-        txtRecord: {
-          host: `_growthaddicts-verify.${normalizedDomain}`,
-          value: customDomain.verificationToken,
-          note: 'Alternatively, add this TXT record for verification.',
-        },
-      },
+      verificationInstructions,
+      vercelConfigured: isVercelDomainApiConfigured(),
     }, { status: 201 });
   } catch (error) {
     console.error('[COACH_CUSTOM_DOMAIN_POST] Error:', error);
