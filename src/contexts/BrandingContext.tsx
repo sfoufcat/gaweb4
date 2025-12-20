@@ -169,12 +169,14 @@ export function BrandingProvider({
   // Initialize on mount
   useEffect(() => {
     setMounted(true);
-    // Only fetch if we didn't get SSR branding
-    // This prevents the "flash" - SSR branding is already correct
-    if (!hadInitialBranding) {
+    // Fetch from API if:
+    // 1. No initial branding provided (platform mode, no cookie), OR
+    // 2. Initial branding is default (tenant mode but Edge Config didn't have custom branding)
+    // This ensures custom branding loads even when Edge Config isn't populated
+    if (!hadInitialBranding || initialIsDefault) {
       fetchBranding();
     }
-  }, [fetchBranding, hadInitialBranding]);
+  }, [fetchBranding, hadInitialBranding, initialIsDefault]);
 
   // Apply CSS when effective branding changes
   useEffect(() => {

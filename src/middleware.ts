@@ -1,7 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getTenantBySubdomain, getTenantByCustomDomain, type TenantKVData, DEFAULT_TENANT_BRANDING } from '@/lib/tenant-kv';
+import { getTenantBySubdomain, getTenantByCustomDomain, type TenantConfigData, DEFAULT_TENANT_BRANDING } from '@/lib/tenant-edge-config';
 
 // Billing status types (must match admin-utils-clerk.ts)
 type BillingStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | 'none';
@@ -255,52 +255,52 @@ const isPlatformOnlyRoute = createRouteMatcher([
 ]);
 
 // =============================================================================
-// TENANT RESOLUTION (via Vercel KV)
+// TENANT RESOLUTION (via Vercel Edge Config)
 // =============================================================================
 
 interface ResolvedTenant {
   orgId: string;
   subdomain: string;
   verifiedCustomDomain?: string;  // Present when subdomain should redirect to custom domain
-  kvData?: TenantKVData;          // Full KV data for branding cookie
+  configData?: TenantConfigData;      // Full Edge Config data for branding cookie
 }
 
 /**
- * Resolve tenant from Vercel KV
- * Fast Edge-compatible lookup - no HTTP calls needed
+ * Resolve tenant from Vercel Edge Config
+ * Ultra-fast Edge-compatible lookup - no HTTP calls needed
  */
-async function resolveTenantFromKV(
+async function resolveTenantFromEdgeConfig(
   subdomain?: string,
   customDomain?: string
 ): Promise<ResolvedTenant | null> {
   try {
-    let kvData: TenantKVData | null = null;
+    let configData: TenantConfigData | null = null;
     
     if (subdomain) {
-      kvData = await getTenantBySubdomain(subdomain);
+      configData = await getTenantBySubdomain(subdomain);
     } else if (customDomain) {
-      kvData = await getTenantByCustomDomain(customDomain);
+      configData = await getTenantByCustomDomain(customDomain);
     }
     
-    if (kvData) {
+    if (configData) {
       return {
-        orgId: kvData.organizationId,
-        subdomain: kvData.subdomain,
-        verifiedCustomDomain: kvData.verifiedCustomDomain,
-        kvData,
+        orgId: configData.organizationId,
+        subdomain: configData.subdomain,
+        verifiedCustomDomain: configData.verifiedCustomDomain,
+        configData,
       };
     }
     
     return null;
   } catch (error) {
-    console.error('[MIDDLEWARE] KV tenant resolution error:', error);
+    console.error('[MIDDLEWARE] Edge Config tenant resolution error:', error);
     return null;
   }
 }
 
 /**
- * Fallback: Resolve tenant via API when KV is empty/not available
- * This ensures new tenants work before KV is populated
+ * Fallback: Resolve tenant via API when Edge Config is empty/not available
+ * This ensures new tenants work before Edge Config is populated
  */
 async function resolveTenantFromApi(
   subdomain?: string,
@@ -339,20 +339,20 @@ async function resolveTenantFromApi(
 }
 
 /**
- * Resolve tenant - tries KV first, falls back to API
+ * Resolve tenant - tries Edge Config first, falls back to API
  */
 async function resolveTenant(
   subdomain?: string,
   customDomain?: string
 ): Promise<ResolvedTenant | null> {
-  // Try KV first (fast)
-  const kvResult = await resolveTenantFromKV(subdomain, customDomain);
-  if (kvResult) {
-    return kvResult;
+  // Try Edge Config first (ultra-fast, ~0ms)
+  const edgeResult = await resolveTenantFromEdgeConfig(subdomain, customDomain);
+  if (edgeResult) {
+    return edgeResult;
   }
   
   // Fallback to API (slower but ensures new tenants work)
-  console.log(`[MIDDLEWARE] KV miss for ${subdomain || customDomain}, falling back to API`);
+  console.log(`[MIDDLEWARE] Edge Config miss for ${subdomain || customDomain}, falling back to API`);
   return resolveTenantFromApi(subdomain, customDomain);
 }
 
@@ -372,7 +372,7 @@ export default clerkMiddleware(async (auth, request) => {
   let tenantSubdomain: string | null = null;
   let isCustomDomain = false;
   let isTenantMode = false;
-  let tenantKVData: TenantKVData | null = null;  // Store branding data for cookie
+  let tenantConfigData: TenantConfigData | null = null;  // Store branding data for cookie
   
   // Check for dev override first
   const devOverride = getDevTenantOverride(request);
@@ -381,7 +381,7 @@ export default clerkMiddleware(async (auth, request) => {
     if (resolved) {
       tenantOrgId = resolved.orgId;
       tenantSubdomain = resolved.subdomain;
-      tenantKVData = resolved.kvData || null;
+      tenantConfigData = resolved.configData || null;
       isTenantMode = true;
     } else {
       // Dev override specified but not found - redirect to not found
@@ -412,7 +412,7 @@ export default clerkMiddleware(async (auth, request) => {
         
         tenantOrgId = resolved.orgId;
         tenantSubdomain = resolved.subdomain;
-        tenantKVData = resolved.kvData || null;
+        tenantConfigData = resolved.configData || null;
         isTenantMode = true;
       } else {
         // Unknown subdomain - show not found page
@@ -428,7 +428,7 @@ export default clerkMiddleware(async (auth, request) => {
       if (resolved) {
         tenantOrgId = resolved.orgId;
         tenantSubdomain = resolved.subdomain;
-        tenantKVData = resolved.kvData || null;
+        tenantConfigData = resolved.configData || null;
         isCustomDomain = true;
         isTenantMode = true;
       } else {
@@ -504,7 +504,7 @@ export default clerkMiddleware(async (auth, request) => {
     
     // Set branding cookie for SSR access (JSON-encoded, httpOnly for security)
     // This allows Server Components to read branding without additional API calls
-    const brandingData = tenantKVData?.branding || DEFAULT_TENANT_BRANDING;
+    const brandingData = tenantConfigData?.branding || DEFAULT_TENANT_BRANDING;
     const tenantCookieData = {
       orgId: tenantOrgId,
       subdomain: tenantSubdomain,

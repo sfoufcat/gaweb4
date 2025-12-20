@@ -2,7 +2,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import type { UserRole, OrgRole, OrgSettings, DEFAULT_ORG_SETTINGS } from '@/types';
 import { setupDefaultOrgChannels } from '@/lib/org-channels';
 import { adminDb } from '@/lib/firebase-admin';
-import { syncTenantToKV, DEFAULT_TENANT_BRANDING } from '@/lib/tenant-kv';
+import { syncTenantToEdgeConfig, DEFAULT_TENANT_BRANDING } from '@/lib/tenant-edge-config';
 
 /**
  * Clerk Organizations Utilities
@@ -427,7 +427,7 @@ export async function isUserOrgMember(userId: string, organizationId: string): P
 /**
  * Create org_domains entry for subdomain-based routing
  * Called when a coach organization is created
- * Also syncs to Vercel KV for fast tenant resolution
+ * Also syncs to Vercel Edge Config for fast tenant resolution
  * 
  * @param organizationId - The Clerk organization ID
  * @param subdomain - The subdomain to use (e.g., "coach-abc123")
@@ -478,18 +478,18 @@ async function createOrgDomainEntry(organizationId: string, subdomain: string): 
     updatedAt: now,
   });
   
-  // Sync to KV cache for fast tenant resolution
+  // Sync to Edge Config for fast tenant resolution
   try {
-    await syncTenantToKV(
+    await syncTenantToEdgeConfig(
       organizationId,
       normalizedSubdomain,
       DEFAULT_TENANT_BRANDING,  // New orgs start with default branding
       undefined  // No custom domain initially
     );
-    console.log(`[CLERK_ORGS] Synced initial KV entry for subdomain: ${normalizedSubdomain}`);
-  } catch (kvError) {
-    // Log but don't fail - KV is optimization, not critical
-    console.error('[CLERK_ORGS] KV sync error (non-fatal):', kvError);
+    console.log(`[CLERK_ORGS] Synced initial Edge Config entry for subdomain: ${normalizedSubdomain}`);
+  } catch (edgeError) {
+    // Log but don't fail - Edge Config is optimization, not critical
+    console.error('[CLERK_ORGS] Edge Config sync error (non-fatal):', edgeError);
   }
 }
 

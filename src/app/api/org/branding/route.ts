@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { ensureCoachHasOrganization, getCurrentUserOrganizationId } from '@/lib/clerk-organizations';
-import { syncTenantToKV, type TenantBrandingData } from '@/lib/tenant-kv';
+import { syncTenantToEdgeConfig, type TenantBrandingData } from '@/lib/tenant-edge-config';
 import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, UserRole } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES } from '@/types';
 
@@ -168,14 +168,14 @@ export async function POST(request: Request) {
 
     console.log(`[ORG_BRANDING_POST] Updated branding for org ${organizationId}`);
 
-    // Sync to KV cache for fast tenant resolution
+    // Sync to Edge Config for fast tenant resolution
     try {
       // Get subdomain and custom domain from org_domains
       const domainDoc = await adminDb.collection('org_domains').doc(organizationId).get();
       const domainData = domainDoc.data();
       
       if (domainData?.subdomain) {
-        const kvBranding: TenantBrandingData = {
+        const edgeBranding: TenantBrandingData = {
           logoUrl: brandingData.logoUrl,
           horizontalLogoUrl: brandingData.horizontalLogoUrl,
           appTitle: brandingData.appTitle,
@@ -183,18 +183,18 @@ export async function POST(request: Request) {
           menuTitles: brandingData.menuTitles || DEFAULT_MENU_TITLES,
         };
         
-        await syncTenantToKV(
+        await syncTenantToEdgeConfig(
           organizationId,
           domainData.subdomain,
-          kvBranding,
+          edgeBranding,
           domainData.verifiedCustomDomain || undefined
         );
         
-        console.log(`[ORG_BRANDING_POST] Synced branding to KV for subdomain: ${domainData.subdomain}`);
+        console.log(`[ORG_BRANDING_POST] Synced branding to Edge Config for subdomain: ${domainData.subdomain}`);
       }
-    } catch (kvError) {
-      // Log but don't fail the request - KV is optimization, not critical
-      console.error('[ORG_BRANDING_POST] KV sync error (non-fatal):', kvError);
+    } catch (edgeError) {
+      // Log but don't fail the request - Edge Config is optimization, not critical
+      console.error('[ORG_BRANDING_POST] Edge Config sync error (non-fatal):', edgeError);
     }
 
     return NextResponse.json({

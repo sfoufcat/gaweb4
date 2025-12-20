@@ -131,12 +131,13 @@ export async function getServerBranding(): Promise<ServerBranding> {
   }
   
   // Build OrgBranding from tenant cookie data
+  // Apply fallbacks for all fields to ensure valid branding
   const now = new Date().toISOString();
   const branding: OrgBranding = {
     id: tenantData.orgId,
     organizationId: tenantData.orgId,
-    logoUrl: tenantData.branding.logoUrl,
-    horizontalLogoUrl: tenantData.branding.horizontalLogoUrl,
+    logoUrl: tenantData.branding.logoUrl || DEFAULT_LOGO_URL,
+    horizontalLogoUrl: tenantData.branding.horizontalLogoUrl || null,
     appTitle: tenantData.branding.appTitle || DEFAULT_APP_TITLE,
     colors: tenantData.branding.colors || DEFAULT_BRANDING_COLORS,
     menuTitles: tenantData.branding.menuTitles || DEFAULT_MENU_TITLES,

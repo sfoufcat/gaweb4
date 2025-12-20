@@ -20,10 +20,10 @@ import type { OrgRole } from '@/types';
 import { adminDb } from '@/lib/firebase-admin';
 import { 
   invalidateTenantBySubdomain, 
-  syncTenantToKV, 
+  syncTenantToEdgeConfig, 
   type TenantBrandingData,
   DEFAULT_TENANT_BRANDING,
-} from '@/lib/tenant-kv';
+} from '@/lib/tenant-edge-config';
 
 interface ClerkPublicMetadata {
   orgRole?: OrgRole;
@@ -135,19 +135,19 @@ export async function PATCH(request: Request) {
     
     console.log(`[COACH_ORG_DOMAIN] Updated subdomain to ${normalizedSubdomain} for org ${organizationId}`);
     
-    // Sync to KV cache
+    // Sync to Edge Config
     try {
       // Invalidate old subdomain key if different
       if (oldSubdomain && oldSubdomain !== normalizedSubdomain) {
         await invalidateTenantBySubdomain(oldSubdomain);
-        console.log(`[COACH_ORG_DOMAIN] Invalidated old KV entry for subdomain: ${oldSubdomain}`);
+        console.log(`[COACH_ORG_DOMAIN] Invalidated old Edge Config entry for subdomain: ${oldSubdomain}`);
       }
       
-      // Get branding to populate new KV entry
+      // Get branding to populate new Edge Config entry
       const brandingDoc = await adminDb.collection('org_branding').doc(organizationId).get();
       const brandingData = brandingDoc.data();
       
-      const kvBranding: TenantBrandingData = brandingData ? {
+      const edgeBranding: TenantBrandingData = brandingData ? {
         logoUrl: brandingData.logoUrl || null,
         horizontalLogoUrl: brandingData.horizontalLogoUrl || null,
         appTitle: brandingData.appTitle || DEFAULT_TENANT_BRANDING.appTitle,
@@ -159,18 +159,18 @@ export async function PATCH(request: Request) {
       const domainDoc = await adminDb.collection('org_domains').doc(organizationId).get();
       const verifiedCustomDomain = domainDoc.data()?.verifiedCustomDomain;
       
-      // Set new KV entry
-      await syncTenantToKV(
+      // Set new Edge Config entry
+      await syncTenantToEdgeConfig(
         organizationId,
         normalizedSubdomain,
-        kvBranding,
+        edgeBranding,
         verifiedCustomDomain || undefined
       );
       
-      console.log(`[COACH_ORG_DOMAIN] Synced new KV entry for subdomain: ${normalizedSubdomain}`);
-    } catch (kvError) {
-      // Log but don't fail the request - KV is optimization, not critical
-      console.error('[COACH_ORG_DOMAIN] KV sync error (non-fatal):', kvError);
+      console.log(`[COACH_ORG_DOMAIN] Synced new Edge Config entry for subdomain: ${normalizedSubdomain}`);
+    } catch (edgeError) {
+      // Log but don't fail the request - Edge Config is optimization, not critical
+      console.error('[COACH_ORG_DOMAIN] Edge Config sync error (non-fatal):', edgeError);
     }
     
     return NextResponse.json({
