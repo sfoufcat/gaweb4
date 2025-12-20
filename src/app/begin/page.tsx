@@ -1,6 +1,7 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getBrandingForDomain, getBestLogoUrl } from '@/lib/server/branding';
+import { resolveTenant } from '@/lib/tenant/resolveTenant';
 import { BeginPageClient } from './BeginPageClient';
 
 interface BeginPageProps {
@@ -28,27 +29,12 @@ export default async function BeginPage({ searchParams }: BeginPageProps) {
   // On satellite domains (custom domains), redirect to the org's subdomain for sign-up
   // Clerk satellite domains cannot perform sign-up directly, but subdomains can
   if (isSatellite) {
-    // Fetch the subdomain associated with this custom domain
-    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
-    const baseUrl = `${protocol}://${hostname}`;
+    // Resolve tenant directly using Firebase Admin (no API call needed)
+    const result = await resolveTenant(hostname, null, null);
     
-    try {
-      const res = await fetch(`${baseUrl}/api/tenant/resolve?domain=${domainWithoutPort}`, {
-        headers: { 'x-internal-request': 'true' },
-        cache: 'no-store',
-      });
-      
-      if (res.ok) {
-        const data = await res.json();
-        const subdomain = data.subdomain;
-        
-        if (subdomain) {
-          const returnUrl = `https://${domainWithoutPort}/`;
-          redirect(`https://${subdomain}.growthaddicts.app/begin?redirect_url=${encodeURIComponent(returnUrl)}`);
-        }
-      }
-    } catch (error) {
-      console.error('[BEGIN] Error resolving subdomain for custom domain:', error);
+    if (result.type === 'tenant' && result.tenant.subdomain) {
+      const returnUrl = `https://${domainWithoutPort}/`;
+      redirect(`https://${result.tenant.subdomain}.growthaddicts.app/begin?redirect_url=${encodeURIComponent(returnUrl)}`);
     }
     
     // Fallback to main domain if subdomain lookup fails
