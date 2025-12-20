@@ -6,7 +6,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
+import { requireCoachWithOrg, isUserOrgAdminInOrg } from '@/lib/admin-utils-clerk';
 import { adminDb } from '@/lib/firebase-admin';
 import { removeCustomDomain } from '@/lib/tenant/resolveTenant';
 import { 
@@ -17,8 +17,7 @@ import {
 } from '@/lib/vercel-domains';
 import { removeDomainFromClerk } from '@/lib/clerk-domains';
 import { isSuperCoach } from '@/lib/admin-utils-shared';
-import { auth } from '@clerk/nextjs/server';
-import type { OrgRole, OrgCustomDomain, CustomDomainStatus } from '@/types';
+import type { OrgCustomDomain, CustomDomainStatus } from '@/types';
 import { 
   syncTenantToEdgeConfig, 
   invalidateTenantByCustomDomain,
@@ -32,11 +31,6 @@ const resolveCname = promisify(dns.resolveCname);
 
 // Note: resolveTxt removed - we no longer use custom TXT verification
 // Verification is now done via Vercel API (routing) + Clerk CNAME (auth)
-
-interface ClerkPublicMetadata {
-  orgRole?: OrgRole;
-  [key: string]: unknown;
-}
 
 /**
  * Check if domain has Vercel CNAME configured (for routing)
@@ -248,18 +242,19 @@ export async function DELETE(
 ) {
   try {
     const { domainId } = await params;
-    const { organizationId } = await requireCoachWithOrg();
+    const { userId, organizationId, orgRole } = await requireCoachWithOrg();
     
-    // Check if user is super_coach
-    const { sessionClaims, orgRole: clerkOrgRole } = await auth();
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const orgRole = publicMetadata?.orgRole;
-    
-    // Check either explicit super_coach role in metadata OR org:admin role in Clerk
-    const isAuthorized = isSuperCoach(orgRole) || clerkOrgRole === 'org:admin';
+    // Check if user is authorized (super_coach)
+    // First check metadata (fast), then fall back to Clerk API lookup (handles tenant subdomain routing)
+    let isAuthorized = isSuperCoach(orgRole);
     
     if (!isAuthorized) {
-      console.log(`[COACH_CUSTOM_DOMAIN] Unauthorized delete attempt. orgRole=${orgRole}, clerkOrgRole=${clerkOrgRole}`);
+      // Check Clerk organization membership directly (handles subdomain tenant routing)
+      isAuthorized = await isUserOrgAdminInOrg(userId, organizationId);
+    }
+    
+    if (!isAuthorized) {
+      console.log(`[COACH_CUSTOM_DOMAIN] Unauthorized delete attempt. userId=${userId}, orgRole=${orgRole}, orgId=${organizationId}`);
       return NextResponse.json(
         { error: 'Only the Super Coach can remove custom domains' },
         { status: 403 }

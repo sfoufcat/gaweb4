@@ -6,7 +6,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
+import { requireCoachWithOrg, isUserOrgAdminInOrg } from '@/lib/admin-utils-clerk';
 import { 
   getOrgDomain, 
   updateOrgSubdomain, 
@@ -15,8 +15,6 @@ import {
 } from '@/lib/tenant/resolveTenant';
 import { validateSubdomain } from '@/types';
 import { isSuperCoach } from '@/lib/admin-utils-shared';
-import { auth } from '@clerk/nextjs/server';
-import type { OrgRole } from '@/types';
 import { adminDb } from '@/lib/firebase-admin';
 import { 
   invalidateTenantBySubdomain, 
@@ -24,11 +22,6 @@ import {
   type TenantBrandingData,
   DEFAULT_TENANT_BRANDING,
 } from '@/lib/tenant-edge-config';
-
-interface ClerkPublicMetadata {
-  orgRole?: OrgRole;
-  [key: string]: unknown;
-}
 
 /**
  * GET /api/coach/org-domain
@@ -81,18 +74,19 @@ export async function GET() {
  */
 export async function PATCH(request: Request) {
   try {
-    const { organizationId } = await requireCoachWithOrg();
+    const { userId, organizationId, orgRole } = await requireCoachWithOrg();
     
-    // Check if user is super_coach
-    const { sessionClaims, orgRole: clerkOrgRole } = await auth();
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const orgRole = publicMetadata?.orgRole;
-    
-    // Check either explicit super_coach role in metadata OR org:admin role in Clerk
-    const isAuthorized = isSuperCoach(orgRole) || clerkOrgRole === 'org:admin';
+    // Check if user is authorized (super_coach)
+    // First check metadata (fast), then fall back to Clerk API lookup (handles tenant subdomain routing)
+    let isAuthorized = isSuperCoach(orgRole);
     
     if (!isAuthorized) {
-      console.log(`[COACH_ORG_DOMAIN] Unauthorized update attempt. orgRole=${orgRole}, clerkOrgRole=${clerkOrgRole}`);
+      // Check Clerk organization membership directly (handles subdomain tenant routing)
+      isAuthorized = await isUserOrgAdminInOrg(userId, organizationId);
+    }
+    
+    if (!isAuthorized) {
+      console.log(`[COACH_ORG_DOMAIN] Unauthorized update attempt. userId=${userId}, orgRole=${orgRole}, orgId=${organizationId}`);
       return NextResponse.json(
         { error: 'Only the Super Coach can update the subdomain' },
         { status: 403 }

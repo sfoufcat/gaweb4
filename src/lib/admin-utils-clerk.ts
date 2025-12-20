@@ -199,6 +199,37 @@ export async function getCurrentCoachingStatus(): Promise<{
 // ============================================================================
 
 /**
+ * Check if a user is an org:admin in a specific Clerk organization
+ * 
+ * This is used for tenant subdomain routing where the organization context
+ * comes from headers (x-tenant-org-id) rather than Clerk's active org session.
+ * In this case, auth().orgRole is undefined, so we need to look up the
+ * actual membership role from Clerk's API.
+ * 
+ * @param userId - The Clerk user ID
+ * @param organizationId - The Clerk organization ID
+ * @returns true if user is org:admin in the organization
+ */
+export async function isUserOrgAdminInOrg(userId: string, organizationId: string): Promise<boolean> {
+  try {
+    const client = await clerkClient();
+    const memberships = await client.organizations.getOrganizationMembershipList({
+      organizationId,
+    });
+    
+    const userMembership = memberships.data.find(m => m.publicUserData?.userId === userId);
+    const isAdmin = userMembership?.role === 'org:admin';
+    
+    console.log(`[isUserOrgAdminInOrg] User ${userId} in org ${organizationId}: role=${userMembership?.role}, isAdmin=${isAdmin}`);
+    
+    return isAdmin;
+  } catch (error) {
+    console.error(`[isUserOrgAdminInOrg] Error checking org admin status for user ${userId} in org ${organizationId}:`, error);
+    return false;
+  }
+}
+
+/**
  * Get the current user's role from Clerk database
  * Fetches fresh data to avoid stale JWT issues
  */
