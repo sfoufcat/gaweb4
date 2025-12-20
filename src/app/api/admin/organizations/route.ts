@@ -55,7 +55,7 @@ export async function GET() {
         
         snapshot.forEach((doc) => {
           const data = doc.data() as OrgDomain;
-          domainsMap.set(data.organizationId, { id: doc.id, ...data });
+          domainsMap.set(data.organizationId, { ...data, id: doc.id });
         });
       }
     }
@@ -73,7 +73,7 @@ export async function GET() {
         snapshot.forEach((doc) => {
           const data = doc.data() as OrgCustomDomain;
           const existing = customDomainsMap.get(data.organizationId) || [];
-          existing.push({ id: doc.id, ...data });
+          existing.push({ ...data, id: doc.id });
           customDomainsMap.set(data.organizationId, existing);
         });
       }
