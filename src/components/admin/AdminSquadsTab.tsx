@@ -98,7 +98,7 @@ export function AdminSquadsTab({
     try {
       setDeleteLoading(true);
 
-      const response = await fetch(`/api/admin/squads/${squadToDelete.id}`, {
+      const response = await fetch(`${apiEndpoint}/${squadToDelete.id}`, {
         method: 'DELETE',
       });
 
