@@ -87,7 +87,7 @@ export async function GET() {
 
     // 4. Fetch all users - either from org or by specific IDs
     // We need to find 1:1 coaching clients (coachId in Clerk metadata) + squad members
-    let allClerkUsers;
+    let allClerkUsers: Awaited<ReturnType<typeof client.users.getUserList>>['data'] = [];
     
     if (organizationId) {
       // For org coaches, fetch all org members and filter
