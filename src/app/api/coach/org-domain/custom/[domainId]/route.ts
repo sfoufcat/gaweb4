@@ -15,7 +15,7 @@ import {
   getDomainVerificationStatus,
   isVercelDomainApiConfigured 
 } from '@/lib/vercel-domains';
-import { removeDomainFromClerk } from '@/lib/clerk-domains';
+import { removeDomainFromClerk, getClerkDomainStatus } from '@/lib/clerk-domains';
 import { removeDomainFromApplePay } from '@/lib/stripe-domains';
 import { isSuperCoach } from '@/lib/admin-utils-shared';
 import type { OrgCustomDomain, CustomDomainStatus } from '@/types';
@@ -139,11 +139,29 @@ export async function PATCH(
     // Always check Clerk CNAME for authentication (via DNS lookup)
     authConfigured = await checkClerkCname(domainData.domain);
     
-    // Both routing AND auth must be configured for full verification
+    // Check Clerk domain status (DNS verification + SSL issuance)
+    let clerkDnsReady = false;
+    let clerkSslReady = false;
+    
+    if (domainData.clerkDomainId) {
+      const clerkStatus = await getClerkDomainStatus(domainData.clerkDomainId);
+      clerkDnsReady = clerkStatus.dnsVerified;
+      clerkSslReady = clerkStatus.sslStatus === 'issued';
+      
+      console.log(`[COACH_CUSTOM_DOMAIN] Clerk status for ${domainData.domain}: dns=${clerkDnsReady}, ssl=${clerkSslReady}`);
+    } else {
+      // No Clerk domain ID - use DNS check as proxy
+      clerkDnsReady = authConfigured;
+      clerkSslReady = authConfigured; // Assume SSL is ready if DNS is configured
+    }
+    
+    // Both routing AND auth must be configured, AND Clerk must be fully ready
     const verified = routingConfigured && authConfigured;
+    const fullyReady = verified && clerkSslReady;
     
     const now = new Date().toISOString();
-    const newStatus: CustomDomainStatus = verified ? 'verified' : 'pending';
+    // Only mark as verified in DB when fully ready (including SSL)
+    const newStatus: CustomDomainStatus = fullyReady ? 'verified' : 'pending';
     
     // Update domain status
     const updateData: Record<string, string> = {
@@ -158,10 +176,10 @@ export async function PATCH(
     
     await adminDb.collection('org_custom_domains').doc(domainId).update(updateData);
     
-    console.log(`[COACH_CUSTOM_DOMAIN] Re-verified domain ${domainData.domain}: routing=${routingConfigured}, auth=${authConfigured}, verified=${verified}`);
+    console.log(`[COACH_CUSTOM_DOMAIN] Re-verified domain ${domainData.domain}: routing=${routingConfigured}, auth=${authConfigured}, clerkDns=${clerkDnsReady}, clerkSsl=${clerkSslReady}, fullyReady=${fullyReady}`);
     
-    // Sync to Edge Config when domain is verified
-    if (verified) {
+    // Sync to Edge Config ONLY when domain is fully ready (including Clerk SSL)
+    if (fullyReady) {
       try {
         // Get org subdomain
         const orgDomainSnapshot = await adminDb
@@ -210,12 +228,16 @@ export async function PATCH(
         domain: domainData.domain,
         status: newStatus,
         verificationToken: domainData.verificationToken,
-        verifiedAt: verified ? now : domainData.verifiedAt,
+        verifiedAt: fullyReady ? now : domainData.verifiedAt,
         lastCheckedAt: now,
       },
-      verified,
-      routingConfigured,
-      authConfigured,
+      // Detailed verification status
+      verified,           // DNS checks passed (Vercel + Clerk CNAME)
+      fullyReady,         // Everything ready including Clerk SSL
+      routingConfigured,  // Vercel routing ready
+      authConfigured,     // Clerk CNAME DNS ready
+      clerkDnsReady,      // Clerk domain DNS verified
+      clerkSslReady,      // Clerk SSL certificate issued
     });
   } catch (error) {
     console.error('[COACH_CUSTOM_DOMAIN_PATCH] Error:', error);

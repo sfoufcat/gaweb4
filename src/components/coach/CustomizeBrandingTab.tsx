@@ -63,6 +63,18 @@ export function CustomizeBrandingTab() {
   const [domainSettingsLoading, setDomainSettingsLoading] = useState(true);
   const [reverifyingDomainId, setReverifyingDomainId] = useState<string | null>(null);
   
+  // Verification status for polling
+  const [verificationStatus, setVerificationStatus] = useState<{
+    domainId: string;
+    domain: string;
+    vercelReady: boolean;
+    clerkDnsReady: boolean;
+    clerkSslReady: boolean;
+    fullyReady: boolean;
+    polling: boolean;
+  } | null>(null);
+  const verificationPollRef = useRef<NodeJS.Timeout | null>(null);
+  
   // Stripe Connect state
   const [stripeConnectStatus, setStripeConnectStatus] = useState<StripeConnectStatus>('not_connected');
   const [stripeConnectLoading, setStripeConnectLoading] = useState(true);
@@ -281,9 +293,16 @@ export function CustomizeBrandingTab() {
     }
   };
   
-  // Handle reverify custom domain
-  const handleReverifyDomain = async (domainId: string) => {
-    setReverifyingDomainId(domainId);
+  // Handle reverify custom domain with polling until fully ready
+  const handleReverifyDomain = async (domainId: string, isPolling = false) => {
+    if (!isPolling) {
+      setReverifyingDomainId(domainId);
+      // Clear any existing poll
+      if (verificationPollRef.current) {
+        clearTimeout(verificationPollRef.current);
+        verificationPollRef.current = null;
+      }
+    }
     
     try {
       const response = await fetch(`/api/coach/org-domain/custom/${domainId}`, {
@@ -303,27 +322,58 @@ export function CustomizeBrandingTab() {
           : d
       ));
       
-      if (data.verified) {
-        setSuccessMessage(`Domain verified successfully! Redirecting to your new domain...`);
+      // Update verification status for UI
+      setVerificationStatus({
+        domainId,
+        domain: data.domain.domain,
+        vercelReady: data.routingConfigured,
+        clerkDnsReady: data.clerkDnsReady,
+        clerkSslReady: data.clerkSslReady,
+        fullyReady: data.fullyReady,
+        polling: !data.fullyReady && data.verified,
+      });
+      
+      if (data.fullyReady) {
+        // Everything is ready! Redirect to custom domain
+        setSuccessMessage(`Domain fully verified! Redirecting to your new domain...`);
+        setReverifyingDomainId(null);
+        setVerificationStatus(null);
         
-        // Seamless session handoff:
-        // 1. User is signed in on subdomain
-        // 2. Redirect to primary domain /auth/sync
-        // 3. Primary domain ensures auth and redirects to custom domain
-        // 4. Clerk handles session sync to satellite domain
+        // Seamless session handoff
         const targetUrl = `https://${data.domain.domain}/coach/customize`;
         const syncUrl = `https://growthaddicts.app/auth/sync?target=${encodeURIComponent(targetUrl)}`;
         
         setTimeout(() => {
           window.location.href = syncUrl;
         }, 1500);
+      } else if (data.verified) {
+        // DNS is verified but SSL/Clerk not ready - start polling
+        setSuccessMessage('DNS verified! Waiting for SSL certificate...');
+        
+        // Poll every 5 seconds
+        verificationPollRef.current = setTimeout(() => {
+          handleReverifyDomain(domainId, true);
+        }, 5000);
+      } else {
+        // DNS not verified yet
+        setReverifyingDomainId(null);
+        setVerificationStatus(null);
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to verify domain');
-    } finally {
+      setVerificationStatus(null);
       setReverifyingDomainId(null);
+      alert(err instanceof Error ? err.message : 'Failed to verify domain');
     }
   };
+  
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (verificationPollRef.current) {
+        clearTimeout(verificationPollRef.current);
+      }
+    };
+  }, []);
   
   // Copy to clipboard
   const copyToClipboard = async (text: string, tokenId: string) => {
@@ -1068,6 +1118,57 @@ export function CustomizeBrandingTab() {
                           </button>
                         </div>
                       </div>
+                      
+                      {/* Verification Status - shown when verifying */}
+                      {verificationStatus && verificationStatus.domainId === domain.id && (
+                        <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Clock className="w-4 h-4 text-blue-500 animate-pulse" />
+                            <span className="text-sm font-medium text-blue-700 dark:text-blue-300 font-albert">
+                              {verificationStatus.fullyReady 
+                                ? 'Ready! Redirecting...' 
+                                : 'Verification in progress...'}
+                            </span>
+                          </div>
+                          <div className="space-y-1.5 text-xs font-albert">
+                            <div className="flex items-center gap-2">
+                              {verificationStatus.vercelReady ? (
+                                <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                              ) : (
+                                <Clock className="w-3.5 h-3.5 text-amber-500" />
+                              )}
+                              <span className={verificationStatus.vercelReady ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}>
+                                Vercel routing {verificationStatus.vercelReady ? 'ready' : 'pending'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {verificationStatus.clerkDnsReady ? (
+                                <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                              ) : (
+                                <Clock className="w-3.5 h-3.5 text-amber-500" />
+                              )}
+                              <span className={verificationStatus.clerkDnsReady ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}>
+                                Clerk DNS {verificationStatus.clerkDnsReady ? 'verified' : 'pending'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {verificationStatus.clerkSslReady ? (
+                                <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                              ) : (
+                                <Clock className="w-3.5 h-3.5 text-amber-500 animate-spin" />
+                              )}
+                              <span className={verificationStatus.clerkSslReady ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}>
+                                SSL certificate {verificationStatus.clerkSslReady ? 'issued' : 'issuing...'}
+                              </span>
+                            </div>
+                          </div>
+                          {verificationStatus.polling && !verificationStatus.fullyReady && (
+                            <p className="mt-2 text-xs text-blue-600 dark:text-blue-400 font-albert">
+                              Checking status every 5 seconds...
+                            </p>
+                          )}
+                        </div>
+                      )}
                       
                       {/* DNS Records - always visible for reference */}
                       <div className="mt-3 space-y-3">
