@@ -15,7 +15,7 @@ import {
   getDomainVerificationStatus,
   isVercelDomainApiConfigured 
 } from '@/lib/vercel-domains';
-import { removeDomainFromClerk } from '@/lib/clerk-domains';
+import { addDomainToClerk, removeDomainFromClerk } from '@/lib/clerk-domains';
 import { isSuperCoach } from '@/lib/admin-utils-shared';
 import { auth } from '@clerk/nextjs/server';
 import type { OrgRole, OrgCustomDomain, CustomDomainStatus } from '@/types';
@@ -157,6 +157,19 @@ export async function PATCH(
       updateData.verifiedAt = now;
     }
     
+    // Register with Clerk on first successful verification (cost protection)
+    let clerkConfigured = !!domainData.clerkDomainId;
+    if (verified && !domainData.clerkDomainId) {
+      const clerkResult = await addDomainToClerk(domainData.domain);
+      if (clerkResult.success && clerkResult.domainId) {
+        updateData.clerkDomainId = clerkResult.domainId;
+        clerkConfigured = true;
+        console.log(`[COACH_CUSTOM_DOMAIN] Registered domain with Clerk: ${clerkResult.domainId}`);
+      } else {
+        console.warn(`[COACH_CUSTOM_DOMAIN] Could not register domain with Clerk: ${clerkResult.error}`);
+      }
+    }
+    
     await adminDb.collection('org_custom_domains').doc(domainId).update(updateData);
     
     console.log(`[COACH_CUSTOM_DOMAIN] Re-verified domain ${domainData.domain}: ${verified ? `verified via ${method}` : 'still pending'}`);
@@ -173,6 +186,7 @@ export async function PATCH(
       },
       verified,
       method,
+      clerkConfigured,
       verificationRecords: verificationRecords.length > 0 ? verificationRecords : undefined,
     });
   } catch (error) {

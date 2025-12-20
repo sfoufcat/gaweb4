@@ -13,7 +13,6 @@ import {
   isCustomDomainAvailable,
 } from '@/lib/tenant/resolveTenant';
 import { addDomainToVercel, isVercelDomainApiConfigured } from '@/lib/vercel-domains';
-import { addDomainToClerk } from '@/lib/clerk-domains';
 import { isSuperCoach } from '@/lib/admin-utils-shared';
 import { auth } from '@clerk/nextjs/server';
 import type { OrgRole } from '@/types';
@@ -80,6 +79,14 @@ export async function POST(request: Request) {
       );
     }
     
+    // Enforce domain limit (1 custom domain per organization)
+    const existingDomains = await getOrgCustomDomains(organizationId);
+    if (existingDomains.length >= 1) {
+      return NextResponse.json({ 
+        error: 'Domain limit reached. Remove your existing custom domain first.' 
+      }, { status: 400 });
+    }
+    
     const body = await request.json();
     const { domain } = body as { domain: string };
     
@@ -124,19 +131,8 @@ export async function POST(request: Request) {
       console.warn('[COACH_CUSTOM_DOMAIN] Vercel API not configured - domain added to database only');
     }
     
-    // Add the domain to Clerk for authentication
-    let clerkDomainId: string | undefined;
-    const clerkResult = await addDomainToClerk(normalizedDomain);
-    if (clerkResult.success && clerkResult.domainId) {
-      clerkDomainId = clerkResult.domainId;
-      console.log(`[COACH_CUSTOM_DOMAIN] Added domain to Clerk: ${clerkDomainId}`);
-    } else {
-      // Log but don't fail - Clerk API might not be available on all plans
-      console.warn(`[COACH_CUSTOM_DOMAIN] Could not add domain to Clerk: ${clerkResult.error}. Authentication may require manual setup.`);
-    }
-    
-    // Add the custom domain to our database
-    const customDomain = await addCustomDomain(organizationId, normalizedDomain, clerkDomainId);
+    // Add the custom domain to our database (Clerk registration happens on verification)
+    const customDomain = await addCustomDomain(organizationId, normalizedDomain);
     
     console.log(`[COACH_CUSTOM_DOMAIN] Added custom domain ${normalizedDomain} for org ${organizationId}`);
     
@@ -174,7 +170,6 @@ export async function POST(request: Request) {
       },
       verificationInstructions,
       vercelConfigured: isVercelDomainApiConfigured(),
-      clerkConfigured: !!clerkDomainId,
     }, { status: 201 });
   } catch (error) {
     console.error('[COACH_CUSTOM_DOMAIN_POST] Error:', error);

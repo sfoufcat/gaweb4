@@ -28,9 +28,9 @@ export async function addDomainToClerk(domain: string): Promise<ClerkDomainResul
     const client = await clerkClient();
     
     // Create the domain as a satellite
-    const result = await client.domains.createDomain({ 
+    const result = await client.domains.add({ 
       name: domain,
-      isSatellite: true,
+      is_satellite: true,
     });
     
     console.log(`[CLERK_DOMAINS] Added domain ${domain} to Clerk (ID: ${result.id})`);
@@ -78,7 +78,7 @@ export async function removeDomainFromClerk(domainId: string): Promise<ClerkDoma
   try {
     const client = await clerkClient();
     
-    await client.domains.deleteDomain(domainId);
+    await client.domains.delete(domainId);
     
     console.log(`[CLERK_DOMAINS] Removed domain ${domainId} from Clerk`);
     
@@ -110,8 +110,9 @@ export async function removeDomainFromClerk(domainId: string): Promise<ClerkDoma
 export async function getDomainFromClerk(domainId: string): Promise<{ id: string; name: string } | null> {
   try {
     const client = await clerkClient();
-    const domain = await client.domains.getDomain(domainId);
-    return { id: domain.id, name: domain.name };
+    const { data: domains } = await client.domains.list();
+    const domain = domains.find(d => d.id === domainId);
+    return domain ? { id: domain.id, name: domain.name } : null;
   } catch {
     return null;
   }
@@ -124,7 +125,7 @@ export async function getDomainFromClerk(domainId: string): Promise<{ id: string
 export async function listClerkDomains(): Promise<Array<{ id: string; name: string }>> {
   try {
     const client = await clerkClient();
-    const { data: domains } = await client.domains.getDomainList();
+    const { data: domains } = await client.domains.list();
     return domains.map(d => ({ id: d.id, name: d.name }));
   } catch (error) {
     console.error('[CLERK_DOMAINS] Error listing domains:', error);
