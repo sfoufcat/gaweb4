@@ -80,6 +80,7 @@ export function AdminSquadsTab({ currentUserRole: _currentUserRole, apiEndpoint 
 
   useEffect(() => {
     fetchSquads();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleDeleteSquad = async () => {

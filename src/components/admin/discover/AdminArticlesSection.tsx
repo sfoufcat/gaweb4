@@ -379,6 +379,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
 
   useEffect(() => {
     fetchArticles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Get unique categories

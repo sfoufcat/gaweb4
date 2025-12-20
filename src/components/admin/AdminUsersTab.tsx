@@ -100,6 +100,7 @@ export function AdminUsersTab({ currentUserRole, apiEndpoint = '/api/admin/users
 
   useEffect(() => {
     fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Filter users based on search query

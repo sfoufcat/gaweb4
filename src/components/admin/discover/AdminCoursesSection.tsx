@@ -783,6 +783,7 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
 
   useEffect(() => {
     fetchCourses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Get unique categories and levels

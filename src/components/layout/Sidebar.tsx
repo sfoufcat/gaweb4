@@ -45,7 +45,7 @@ export function Sidebar() {
   const { sessionClaims } = useAuth();
   const { totalUnread } = useChatUnreadCounts();
   const { scrollDirection, isAtTop } = useScrollDirection();
-  const { logoUrl, appTitle, colors, isDefault, accentLightIsDark, accentDarkIsDark } = useBrandingValues();
+  const { logoUrl, appTitle, colors, isDefault, accentLightIsDark, accentDarkIsDark: _accentDarkIsDark } = useBrandingValues();
   
   const isActive = (path: string) => pathname === path;
   
