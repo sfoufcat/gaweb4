@@ -1,6 +1,7 @@
 /**
  * Coach API: Custom Domain Management (Single Domain)
  * 
+ * PATCH /api/coach/org-domain/custom/[domainId] - Re-verify a custom domain
  * DELETE /api/coach/org-domain/custom/[domainId] - Remove a custom domain
  */
 
@@ -10,11 +11,147 @@ import { adminDb } from '@/lib/firebase-admin';
 import { removeCustomDomain } from '@/lib/tenant/resolveTenant';
 import { isSuperCoach } from '@/lib/admin-utils-shared';
 import { auth } from '@clerk/nextjs/server';
-import type { OrgRole, OrgCustomDomain } from '@/types';
+import type { OrgRole, OrgCustomDomain, CustomDomainStatus } from '@/types';
+import dns from 'dns';
+import { promisify } from 'util';
+
+const resolveCname = promisify(dns.resolveCname);
+const resolveTxt = promisify(dns.resolveTxt);
 
 interface ClerkPublicMetadata {
   orgRole?: OrgRole;
   [key: string]: unknown;
+}
+
+/**
+ * Check if domain has valid CNAME pointing to our service
+ */
+async function checkCnameRecord(domain: string): Promise<boolean> {
+  try {
+    const records = await resolveCname(domain);
+    // Check if any CNAME record points to our Vercel DNS
+    return records.some(record => 
+      record.toLowerCase().includes('vercel') || 
+      record.toLowerCase().includes('cname.vercel-dns.com')
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if domain has valid TXT verification record
+ */
+async function checkTxtRecord(domain: string, expectedToken: string): Promise<boolean> {
+  try {
+    // Check for TXT record on the verification subdomain
+    const verifyDomain = `_growthaddicts-verify.${domain}`;
+    const records = await resolveTxt(verifyDomain);
+    // TXT records come as arrays of strings, flatten and check
+    return records.some(recordArray => 
+      recordArray.some(record => record === expectedToken)
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Verify domain DNS configuration
+ */
+async function verifyDomainDns(domain: string, verificationToken: string): Promise<{
+  verified: boolean;
+  method?: 'cname' | 'txt';
+}> {
+  // Check CNAME first
+  const hasCname = await checkCnameRecord(domain);
+  if (hasCname) {
+    return { verified: true, method: 'cname' };
+  }
+  
+  // Check TXT record
+  const hasTxt = await checkTxtRecord(domain, verificationToken);
+  if (hasTxt) {
+    return { verified: true, method: 'txt' };
+  }
+  
+  return { verified: false };
+}
+
+/**
+ * PATCH /api/coach/org-domain/custom/[domainId]
+ * Re-verify a custom domain's DNS configuration
+ */
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ domainId: string }> }
+) {
+  try {
+    const { domainId } = await params;
+    const { organizationId } = await requireCoachWithOrg();
+    
+    // Verify the domain belongs to this organization
+    const domainDoc = await adminDb.collection('org_custom_domains').doc(domainId).get();
+    
+    if (!domainDoc.exists) {
+      return NextResponse.json({ error: 'Domain not found' }, { status: 404 });
+    }
+    
+    const domainData = domainDoc.data() as OrgCustomDomain;
+    if (domainData.organizationId !== organizationId) {
+      return NextResponse.json(
+        { error: 'Domain does not belong to your organization' },
+        { status: 403 }
+      );
+    }
+    
+    // Perform DNS verification
+    const { verified, method } = await verifyDomainDns(domainData.domain, domainData.verificationToken);
+    
+    const now = new Date().toISOString();
+    const newStatus: CustomDomainStatus = verified ? 'verified' : 'pending';
+    
+    // Update domain status
+    const updateData: Record<string, string> = {
+      status: newStatus,
+      lastCheckedAt: now,
+      updatedAt: now,
+    };
+    
+    if (verified) {
+      updateData.verifiedAt = now;
+    }
+    
+    await adminDb.collection('org_custom_domains').doc(domainId).update(updateData);
+    
+    console.log(`[COACH_CUSTOM_DOMAIN] Re-verified domain ${domainData.domain}: ${verified ? `verified via ${method}` : 'still pending'}`);
+    
+    return NextResponse.json({
+      success: true,
+      domain: {
+        id: domainId,
+        domain: domainData.domain,
+        status: newStatus,
+        verificationToken: domainData.verificationToken,
+        verifiedAt: verified ? now : domainData.verifiedAt,
+        lastCheckedAt: now,
+      },
+      verified,
+      method: method || null,
+    });
+  } catch (error) {
+    console.error('[COACH_CUSTOM_DOMAIN_PATCH] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal Error';
+    
+    if (message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (message.includes('Forbidden') || message.includes('Coach access')) {
+      return NextResponse.json({ error: 'Forbidden: Coach access required' }, { status: 403 });
+    }
+    
+    return NextResponse.json({ error: 'Failed to verify domain' }, { status: 500 });
+  }
 }
 
 /**

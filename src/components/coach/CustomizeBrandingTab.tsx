@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink } from 'lucide-react';
+import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw } from 'lucide-react';
 import { useBranding } from '@/contexts/BrandingContext';
 import type { OrgBranding, OrgBrandingColors, OrgCustomDomain, CustomDomainStatus } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, validateSubdomain } from '@/types';
@@ -56,6 +56,7 @@ export function CustomizeBrandingTab() {
   const [customDomainLoading, setCustomDomainLoading] = useState(false);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [domainSettingsLoading, setDomainSettingsLoading] = useState(true);
+  const [reverifyingDomainId, setReverifyingDomainId] = useState<string | null>(null);
 
   // Fetch current branding on mount
   const fetchBranding = useCallback(async () => {
@@ -199,6 +200,39 @@ export function CustomizeBrandingTab() {
       setCustomDomains(prev => prev.filter(d => d.id !== domainId));
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to remove domain');
+    }
+  };
+  
+  // Handle reverify custom domain
+  const handleReverifyDomain = async (domainId: string) => {
+    setReverifyingDomainId(domainId);
+    
+    try {
+      const response = await fetch(`/api/coach/org-domain/custom/${domainId}`, {
+        method: 'PATCH',
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to verify domain');
+      }
+      
+      // Update the domain in the list
+      setCustomDomains(prev => prev.map(d => 
+        d.id === domainId 
+          ? { ...d, status: data.domain.status, verifiedAt: data.domain.verifiedAt }
+          : d
+      ));
+      
+      if (data.verified) {
+        setSuccessMessage(`Domain verified successfully via ${data.method?.toUpperCase()}`);
+        setTimeout(() => setSuccessMessage(null), 3000);
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to verify domain');
+    } finally {
+      setReverifyingDomainId(null);
     }
   };
   
@@ -685,6 +719,16 @@ export function CustomizeBrandingTab() {
                           `}>
                             {domain.status === 'verified' ? 'Verified' : domain.status === 'failed' ? 'Failed' : 'Pending'}
                           </span>
+                          {domain.status !== 'verified' && (
+                            <button
+                              onClick={() => handleReverifyDomain(domain.id)}
+                              disabled={reverifyingDomainId === domain.id}
+                              className="p-1.5 text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/10 dark:hover:bg-[#b8896a]/10 rounded-lg transition-colors disabled:opacity-50"
+                              title="Re-verify domain"
+                            >
+                              <RefreshCw className={`w-4 h-4 ${reverifyingDomainId === domain.id ? 'animate-spin' : ''}`} />
+                            </button>
+                          )}
                           <button
                             onClick={() => handleRemoveCustomDomain(domain.id)}
                             className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
