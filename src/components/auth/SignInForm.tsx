@@ -9,11 +9,25 @@ import { VerificationCodeInput } from './VerificationCodeInput';
 
 interface SignInFormProps {
   redirectUrl?: string;
+  embedded?: boolean;  // Running in iframe for satellite domain
+  origin?: string;     // Parent window origin for postMessage
 }
 
-export function SignInForm({ redirectUrl = '/' }: SignInFormProps) {
+export function SignInForm({ redirectUrl = '/', embedded = false, origin = '' }: SignInFormProps) {
   const { signIn, isLoaded, setActive } = useSignIn();
   const router = useRouter();
+
+  // Helper to handle successful auth
+  // In embedded mode: send postMessage to parent
+  // Otherwise: redirect normally
+  const handleAuthSuccess = () => {
+    if (embedded && origin) {
+      // Notify parent window of successful auth
+      window.parent.postMessage({ type: 'auth-success' }, origin);
+    } else {
+      handleRedirect(redirectUrl);
+    }
+  };
 
   // Helper to handle redirects - external URLs (http/https) use window.location
   // Internal paths use Next.js router
@@ -50,11 +64,35 @@ export function SignInForm({ redirectUrl = '/' }: SignInFormProps) {
     setError('');
 
     try {
-      await signIn.authenticateWithRedirect({
-        strategy: provider,
-        redirectUrl: '/sso-callback',
-        redirectUrlComplete: redirectUrl,
-      });
+      if (embedded && origin) {
+        // In embedded mode, open OAuth in a popup instead of redirecting the iframe
+        // The popup will post a message back when complete
+        const currentOrigin = window.location.origin;
+        const oauthUrl = `${currentOrigin}/sign-in?oauth=${provider}&popup=1&origin=${encodeURIComponent(origin)}`;
+        
+        const popup = window.open(
+          oauthUrl,
+          'oauth-popup',
+          'width=500,height=600,menubar=no,toolbar=no,location=no,status=no'
+        );
+        
+        if (!popup) {
+          setError('Popup was blocked. Please allow popups and try again.');
+          setOauthLoading(false);
+          return;
+        }
+        
+        // The popup will handle the OAuth flow and postMessage back
+        // We don't need to do anything else here - parent window listens for postMessage
+        setOauthLoading(false);
+      } else {
+        // Normal OAuth flow with redirect
+        await signIn.authenticateWithRedirect({
+          strategy: provider,
+          redirectUrl: '/sso-callback',
+          redirectUrlComplete: redirectUrl,
+        });
+      }
     } catch (err: unknown) {
       const clerkError = err as { errors?: Array<{ message: string }> };
       setError(clerkError.errors?.[0]?.message || 'Something went wrong. Please try again.');
@@ -89,7 +127,7 @@ export function SignInForm({ redirectUrl = '/' }: SignInFormProps) {
 
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
-        handleRedirect(redirectUrl);
+        handleAuthSuccess();
       } else if (result.status === 'needs_first_factor' || result.status === 'needs_second_factor') {
         // User needs to verify with a code (email verification or 2FA)
         // Check if email_code strategy is available
@@ -151,7 +189,7 @@ export function SignInForm({ redirectUrl = '/' }: SignInFormProps) {
 
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
-        handleRedirect(redirectUrl);
+        handleAuthSuccess();
       } else if (result.status === 'needs_second_factor') {
         // Handle 2FA if needed (for future expansion)
         setError('Additional verification required. Please contact support.');

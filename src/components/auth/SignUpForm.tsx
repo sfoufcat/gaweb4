@@ -9,11 +9,25 @@ import { VerificationCodeInput } from './VerificationCodeInput';
 
 interface SignUpFormProps {
   redirectUrl?: string;
+  embedded?: boolean;  // Running in iframe for satellite domain
+  origin?: string;     // Parent window origin for postMessage
 }
 
-export function SignUpForm({ redirectUrl = '/onboarding/welcome' }: SignUpFormProps) {
+export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = false, origin = '' }: SignUpFormProps) {
   const { signUp, isLoaded, setActive } = useSignUp();
   const router = useRouter();
+
+  // Helper to handle successful auth
+  // In embedded mode: send postMessage to parent
+  // Otherwise: redirect normally
+  const handleAuthSuccess = () => {
+    if (embedded && origin) {
+      // Notify parent window of successful auth
+      window.parent.postMessage({ type: 'auth-success' }, origin);
+    } else {
+      handleRedirect(redirectUrl);
+    }
+  };
 
   // Helper to handle redirects - external URLs (http/https) use window.location
   // Internal paths use Next.js router
@@ -42,11 +56,33 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome' }: SignUpFormPr
     setError('');
 
     try {
-      await signUp.authenticateWithRedirect({
-        strategy: provider,
-        redirectUrl: '/sso-callback',
-        redirectUrlComplete: redirectUrl,
-      });
+      if (embedded && origin) {
+        // In embedded mode, open OAuth in a popup instead of redirecting the iframe
+        const currentOrigin = window.location.origin;
+        const oauthUrl = `${currentOrigin}/begin?oauth=${provider}&popup=1&origin=${encodeURIComponent(origin)}`;
+        
+        const popup = window.open(
+          oauthUrl,
+          'oauth-popup',
+          'width=500,height=600,menubar=no,toolbar=no,location=no,status=no'
+        );
+        
+        if (!popup) {
+          setError('Popup was blocked. Please allow popups and try again.');
+          setOauthLoading(false);
+          return;
+        }
+        
+        // The popup will handle the OAuth flow and postMessage back
+        setOauthLoading(false);
+      } else {
+        // Normal OAuth flow with redirect
+        await signUp.authenticateWithRedirect({
+          strategy: provider,
+          redirectUrl: '/sso-callback',
+          redirectUrlComplete: redirectUrl,
+        });
+      }
     } catch (err: unknown) {
       const clerkError = err as { errors?: Array<{ message: string }> };
       setError(clerkError.errors?.[0]?.message || 'Something went wrong. Please try again.');
@@ -128,7 +164,7 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome' }: SignUpFormPr
 
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
-        handleRedirect(redirectUrl);
+        handleAuthSuccess();
       } else {
         setError('Verification incomplete. Please try again.');
       }

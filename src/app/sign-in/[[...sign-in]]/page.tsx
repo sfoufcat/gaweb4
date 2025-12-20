@@ -1,26 +1,41 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { SignInForm } from '@/components/auth';
 import { getBrandingForDomain, getBestLogoUrl } from '@/lib/server/branding';
 import { resolveTenant } from '@/lib/tenant/resolveTenant';
+import { OAuthPopupInitiator } from '@/components/auth/OAuthPopupInitiator';
+import { SatelliteSignIn } from '@/components/auth/SatelliteSignIn';
 
 interface SignInPageProps {
-  searchParams: Promise<{ redirect_url?: string }>;
+  searchParams: Promise<{ 
+    redirect_url?: string;
+    oauth?: string;      // OAuth provider for popup mode
+    popup?: string;      // '1' if opened as popup
+    origin?: string;     // Parent window origin for postMessage
+  }>;
 }
 
 /**
  * /sign-in - Sign in page for existing users
  * Server Component that fetches branding based on domain
  * 
- * On satellite domains (custom domains), redirects to primary domain for auth.
- * On primary domain, handles redirect_url to send users back after sign-in.
+ * Modes:
+ * 1. Normal: Shows sign-in form with redirectUrl handling
+ * 2. Satellite: Shows embedded iframe sign-in (URL stays on satellite domain)
+ * 3. OAuth Popup: Initiates OAuth flow in popup window
  */
 export default async function SignInPage({ searchParams }: SignInPageProps) {
   // Fetch branding server-side based on domain
   const headersList = await headers();
   const hostname = headersList.get('host') || '';
+  
+  // Get search params
+  const params = await searchParams;
+  const redirectUrl = params.redirect_url || '/';
+  const oauthProvider = params.oauth as 'oauth_google' | 'oauth_apple' | undefined;
+  const isPopup = params.popup === '1';
+  const popupOrigin = params.origin || '';
   
   // Check if this is a satellite domain (custom domain, not growthaddicts.app)
   const domainWithoutPort = hostname.split(':')[0];
@@ -29,27 +44,32 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
     !domainWithoutPort.includes('localhost') &&
     !domainWithoutPort.includes('127.0.0.1');
   
-  // On satellite domains (custom domains), redirect to the org's SUBDOMAIN for authentication
-  // This preserves coach branding during sign-in
-  // The from_auth=1 param tells middleware to skip auth redirect and let ClerkProvider sync
-  if (isSatellite) {
-    const result = await resolveTenant(hostname, null, null);
-    
-    if (result.type === 'tenant' && result.tenant.subdomain) {
-      // Add from_auth=1 so middleware knows to let the user through for session sync
-      const returnUrl = `https://${domainWithoutPort}/?from_auth=1`;
-      redirect(`https://${result.tenant.subdomain}.growthaddicts.app/sign-in?redirect_url=${encodeURIComponent(returnUrl)}`);
-    }
-    
-    // Fallback to primary domain if no subdomain found
-    const returnUrl = `https://${domainWithoutPort}/?from_auth=1`;
-    redirect(`https://growthaddicts.app/sign-in?redirect_url=${encodeURIComponent(returnUrl)}`);
+  // Mode 1: OAuth Popup - Initiate OAuth flow in popup window
+  if (isPopup && oauthProvider && popupOrigin) {
+    return <OAuthPopupInitiator provider={oauthProvider} origin={popupOrigin} />;
   }
   
-  // Get redirect_url from search params (for redirecting back to satellite after sign-in)
-  const params = await searchParams;
-  const redirectUrl = params.redirect_url || '/';
+  // Mode 2: Satellite domain - Show embedded iframe sign-in
+  // URL stays on satellite domain, auth happens in iframe from subdomain
+  if (isSatellite) {
+    const result = await resolveTenant(hostname, null, null);
+    const branding = await getBrandingForDomain(hostname);
+    const logoUrl = getBestLogoUrl(branding);
+    const appTitle = branding.appTitle;
+    
+    const subdomain = result.type === 'tenant' ? result.tenant.subdomain : null;
+    
+    return (
+      <SatelliteSignIn
+        subdomain={subdomain || ''}
+        customDomain={domainWithoutPort}
+        logoUrl={logoUrl}
+        appTitle={appTitle}
+      />
+    );
+  }
   
+  // Mode 3: Normal sign-in on primary/subdomain
   const branding = await getBrandingForDomain(hostname);
   const logoUrl = getBestLogoUrl(branding);
   const appTitle = branding.appTitle;
