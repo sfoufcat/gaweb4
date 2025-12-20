@@ -2,7 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { SignUpForm } from '@/components/auth';
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 
 /**
  * /begin/embedded - Embeddable sign-up form for iframes
@@ -16,6 +16,14 @@ import { Suspense } from 'react';
 function EmbeddedBeginContent() {
   const searchParams = useSearchParams();
   const origin = searchParams.get('origin') || '';
+  
+  // Make body transparent for iframe embedding
+  useEffect(() => {
+    document.body.style.background = 'transparent';
+    return () => {
+      document.body.style.background = '';
+    };
+  }, []);
   
   return (
     <div className="p-2">
@@ -40,3 +48,4 @@ export default function EmbeddedBeginPage() {
     </Suspense>
   );
 }
+
