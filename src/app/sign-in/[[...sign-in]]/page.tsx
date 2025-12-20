@@ -1,19 +1,45 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { SignInForm } from '@/components/auth';
 import { getBrandingForDomain, getBestLogoUrl } from '@/lib/server/branding';
+
+interface SignInPageProps {
+  searchParams: Promise<{ redirect_url?: string }>;
+}
 
 /**
  * /sign-in - Sign in page for existing users
  * Server Component that fetches branding based on domain
+ * 
+ * On satellite domains (custom domains), redirects to primary domain for auth.
+ * On primary domain, handles redirect_url to send users back after sign-in.
  */
-export default async function SignInPage() {
+export default async function SignInPage({ searchParams }: SignInPageProps) {
   // Fetch branding server-side based on domain
   const headersList = await headers();
   const hostname = headersList.get('host') || '';
-  const branding = await getBrandingForDomain(hostname);
   
+  // Check if this is a satellite domain (custom domain, not growthaddicts.app)
+  const domainWithoutPort = hostname.split(':')[0];
+  const isSatellite = domainWithoutPort && 
+    !domainWithoutPort.includes('growthaddicts') && 
+    !domainWithoutPort.includes('localhost') &&
+    !domainWithoutPort.includes('127.0.0.1');
+  
+  // On satellite domains, redirect to primary domain for authentication
+  // Clerk satellite domains cannot perform sign-in directly
+  if (isSatellite) {
+    const returnUrl = `https://${domainWithoutPort}/`;
+    redirect(`https://growthaddicts.app/sign-in?redirect_url=${encodeURIComponent(returnUrl)}`);
+  }
+  
+  // Get redirect_url from search params (for redirecting back to satellite after sign-in)
+  const params = await searchParams;
+  const redirectUrl = params.redirect_url || '/';
+  
+  const branding = await getBrandingForDomain(hostname);
   const logoUrl = getBestLogoUrl(branding);
   const appTitle = branding.appTitle;
 
@@ -41,7 +67,7 @@ export default async function SignInPage() {
           </div>
 
           {/* Custom Sign In Form */}
-          <SignInForm redirectUrl="/" />
+          <SignInForm redirectUrl={redirectUrl} />
 
           {/* Sign Up Link */}
           <p className="text-center mt-8 lg:mt-10 font-sans text-[15px] text-text-secondary">

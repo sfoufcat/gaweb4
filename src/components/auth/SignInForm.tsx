@@ -15,6 +15,16 @@ export function SignInForm({ redirectUrl = '/' }: SignInFormProps) {
   const { signIn, isLoaded, setActive } = useSignIn();
   const router = useRouter();
 
+  // Helper to handle redirects - external URLs (http/https) use window.location
+  // Internal paths use Next.js router
+  const handleRedirect = (url: string) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      window.location.href = url;
+    } else {
+      router.push(url);
+    }
+  };
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -79,7 +89,7 @@ export function SignInForm({ redirectUrl = '/' }: SignInFormProps) {
 
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
-        router.push(redirectUrl);
+        handleRedirect(redirectUrl);
       } else if (result.status === 'needs_first_factor' || result.status === 'needs_second_factor') {
         // User needs to verify with a code (email verification or 2FA)
         // Check if email_code strategy is available
@@ -141,7 +151,7 @@ export function SignInForm({ redirectUrl = '/' }: SignInFormProps) {
 
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
-        router.push(redirectUrl);
+        handleRedirect(redirectUrl);
       } else if (result.status === 'needs_second_factor') {
         // Handle 2FA if needed (for future expansion)
         setError('Additional verification required. Please contact support.');

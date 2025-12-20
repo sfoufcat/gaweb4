@@ -238,18 +238,30 @@ const isPlatformOnlyRoute = createRouteMatcher([
 
 // Note: This is a simple cache that will be per-instance.
 // For production, you might want to use Vercel KV or similar.
-const tenantCache = new Map<string, { orgId: string; subdomain: string; expiresAt: number } | null>();
+interface TenantCacheEntry {
+  orgId: string;
+  subdomain: string;
+  verifiedCustomDomain?: string;  // Custom domain to redirect subdomain requests to
+  expiresAt: number;
+}
+const tenantCache = new Map<string, TenantCacheEntry | null>();
 const CACHE_TTL = 60 * 1000; // 1 minute
+
+interface ResolvedTenant {
+  orgId: string;
+  subdomain: string;
+  verifiedCustomDomain?: string;  // Present when subdomain should redirect to custom domain
+}
 
 async function resolveTenantFromDb(
   subdomain?: string,
   customDomain?: string
-): Promise<{ orgId: string; subdomain: string } | null> {
+): Promise<ResolvedTenant | null> {
   // Check cache first
   const cacheKey = subdomain ? `sub:${subdomain}` : `domain:${customDomain}`;
   const cached = tenantCache.get(cacheKey);
   if (cached !== undefined && (cached === null || cached.expiresAt > Date.now())) {
-    return cached ? { orgId: cached.orgId, subdomain: cached.subdomain } : null;
+    return cached ? { orgId: cached.orgId, subdomain: cached.subdomain, verifiedCustomDomain: cached.verifiedCustomDomain } : null;
   }
   
   try {
@@ -273,7 +285,11 @@ async function resolveTenantFromDb(
     
     const data = await response.json();
     if (data.organizationId) {
-      const result = { orgId: data.organizationId, subdomain: data.subdomain || subdomain || '' };
+      const result: ResolvedTenant = { 
+        orgId: data.organizationId, 
+        subdomain: data.subdomain || subdomain || '',
+        verifiedCustomDomain: data.verifiedCustomDomain || undefined,
+      };
       tenantCache.set(cacheKey, { ...result, expiresAt: Date.now() + CACHE_TTL });
       return result;
     }
@@ -324,6 +340,15 @@ export default clerkMiddleware(async (auth, request) => {
     if (parsed.type === 'subdomain' && parsed.subdomain) {
       const resolved = await resolveTenantFromDb(parsed.subdomain);
       if (resolved) {
+        // If this org has a verified custom domain, redirect subdomain to custom domain
+        if (resolved.verifiedCustomDomain) {
+          const redirectUrl = new URL(request.url);
+          redirectUrl.host = resolved.verifiedCustomDomain;
+          redirectUrl.port = '';
+          console.log(`[MIDDLEWARE] Redirecting subdomain ${parsed.subdomain} to custom domain ${resolved.verifiedCustomDomain}`);
+          return NextResponse.redirect(redirectUrl, 301);
+        }
+        
         tenantOrgId = resolved.orgId;
         tenantSubdomain = resolved.subdomain;
         isTenantMode = true;
