@@ -42,7 +42,7 @@ function useScrollDirection() {
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { sessionClaims } = useAuth();
+  const { sessionClaims, isLoaded, isSignedIn, userId } = useAuth();
   const { totalUnread } = useChatUnreadCounts();
   const { scrollDirection, isAtTop } = useScrollDirection();
   const { logoUrl, appTitle, colors, isDefault, accentLightIsDark, accentDarkIsDark: _accentDarkIsDark } = useBrandingValues();
@@ -71,15 +71,19 @@ export function Sidebar() {
   // DEBUG: Log session claims and role
   useEffect(() => {
     console.log('🔍 DEBUG - Sidebar Role Check:');
+    console.log('isLoaded:', isLoaded);
+    console.log('isSignedIn:', isSignedIn);
+    console.log('userId:', userId);
     console.log('sessionClaims:', sessionClaims);
     console.log('publicMetadata:', sessionClaims?.publicMetadata);
     console.log('role:', role);
+    console.log('orgRole:', orgRole);
     console.log('hasCoaching:', hasCoaching);
     console.log('showMyCoach:', showMyCoach);
     console.log('showCoachDashboard:', showCoachDashboard);
     console.log('showAdminPanel:', showAdminPanel);
     console.log('showEditorPanel:', showEditorPanel);
-  }, [sessionClaims, role, hasCoaching, showMyCoach, showCoachDashboard, showAdminPanel, showEditorPanel]);
+  }, [isLoaded, isSignedIn, userId, sessionClaims, role, orgRole, hasCoaching, showMyCoach, showCoachDashboard, showAdminPanel, showEditorPanel]);
 
   // Prefetch pages on mount to reduce loading time
   useEffect(() => {
