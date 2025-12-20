@@ -10,6 +10,7 @@ import { SignUpForm } from '@/components/auth';
 interface BeginPageClientProps {
   logoUrl: string;
   appTitle: string;
+  redirectUrl?: string;
 }
 
 /**
@@ -19,7 +20,7 @@ interface BeginPageClientProps {
  * - Shows custom sign-up form for unauthenticated users
  * - Redirects authenticated users to onboarding
  */
-export function BeginPageClient({ logoUrl, appTitle }: BeginPageClientProps) {
+export function BeginPageClient({ logoUrl, appTitle, redirectUrl = '/onboarding/welcome' }: BeginPageClientProps) {
   const router = useRouter();
   const { user, isLoaded } = useUser();
 
@@ -139,7 +140,7 @@ export function BeginPageClient({ logoUrl, appTitle }: BeginPageClientProps) {
           </div>
 
           {/* Custom Sign Up Form */}
-          <SignUpForm redirectUrl="/onboarding/welcome" />
+          <SignUpForm redirectUrl={redirectUrl} />
 
           {/* Sign In Link */}
           <p className="text-center mt-8 lg:mt-10 font-sans text-[15px] text-text-secondary">

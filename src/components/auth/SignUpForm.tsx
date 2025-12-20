@@ -15,6 +15,16 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome' }: SignUpFormPr
   const { signUp, isLoaded, setActive } = useSignUp();
   const router = useRouter();
 
+  // Helper to handle redirects - external URLs (http/https) use window.location
+  // Internal paths use Next.js router
+  const handleRedirect = (url: string) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      window.location.href = url;
+    } else {
+      router.push(url);
+    }
+  };
+
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -118,7 +128,7 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome' }: SignUpFormPr
 
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
-        router.push(redirectUrl);
+        handleRedirect(redirectUrl);
       } else {
         setError('Verification incomplete. Please try again.');
       }

@@ -28,9 +28,33 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
     !domainWithoutPort.includes('localhost') &&
     !domainWithoutPort.includes('127.0.0.1');
   
-  // On satellite domains, redirect to primary domain for authentication
-  // Clerk satellite domains cannot perform sign-in directly
+  // On satellite domains (custom domains), redirect to the org's subdomain for authentication
+  // Clerk satellite domains cannot perform sign-in directly, but subdomains can
   if (isSatellite) {
+    // Fetch the subdomain associated with this custom domain
+    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+    const baseUrl = `${protocol}://${hostname}`;
+    
+    try {
+      const res = await fetch(`${baseUrl}/api/tenant/resolve?domain=${domainWithoutPort}`, {
+        headers: { 'x-internal-request': 'true' },
+        cache: 'no-store',
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        const subdomain = data.subdomain;
+        
+        if (subdomain) {
+          const returnUrl = `https://${domainWithoutPort}/`;
+          redirect(`https://${subdomain}.growthaddicts.app/sign-in?redirect_url=${encodeURIComponent(returnUrl)}`);
+        }
+      }
+    } catch (error) {
+      console.error('[SIGN-IN] Error resolving subdomain for custom domain:', error);
+    }
+    
+    // Fallback to main domain if subdomain lookup fails
     const returnUrl = `https://${domainWithoutPort}/`;
     redirect(`https://growthaddicts.app/sign-in?redirect_url=${encodeURIComponent(returnUrl)}`);
   }
