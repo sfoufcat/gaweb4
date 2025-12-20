@@ -7,4 +7,6 @@ export { SatelliteSignIn } from './SatelliteSignIn';
 export { SatelliteSignUp } from './SatelliteSignUp';
 export { OAuthPopupInitiator } from './OAuthPopupInitiator';
 export { OAuthSignUpPopupInitiator } from './OAuthSignUpPopupInitiator';
+export { OAuthRedirectInitiator } from './OAuthRedirectInitiator';
+export { OAuthSignUpRedirectInitiator } from './OAuthSignUpRedirectInitiator';
 

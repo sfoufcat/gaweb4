@@ -3,13 +3,14 @@ import { getBrandingForDomain, getBestLogoUrl } from '@/lib/server/branding';
 import { resolveTenant } from '@/lib/tenant/resolveTenant';
 import { BeginPageClient } from './BeginPageClient';
 import { SatelliteSignUp, OAuthSignUpPopupInitiator } from '@/components/auth';
+import { OAuthSignUpRedirectInitiator } from '@/components/auth/OAuthSignUpRedirectInitiator';
 
 interface BeginPageProps {
   searchParams: Promise<{ 
     redirect_url?: string;
-    oauth?: string;      // OAuth provider for popup mode
+    oauth?: string;      // OAuth provider for redirect/popup mode
     popup?: string;      // '1' if opened as popup
-    origin?: string;     // Parent window origin for postMessage
+    origin?: string;     // Parent window origin for postMessage (popup mode only)
   }>;
 }
 
@@ -20,6 +21,7 @@ interface BeginPageProps {
  * 1. Normal: Shows sign-up form with redirectUrl handling
  * 2. Satellite: Shows embedded iframe sign-up (URL stays on satellite domain)
  * 3. OAuth Popup: Initiates OAuth flow in popup window
+ * 4. OAuth Redirect: Initiates OAuth flow via redirect (from satellite)
  */
 export default async function BeginPage({ searchParams }: BeginPageProps) {
   // Fetch branding server-side based on domain
@@ -45,7 +47,13 @@ export default async function BeginPage({ searchParams }: BeginPageProps) {
     return <OAuthSignUpPopupInitiator provider={oauthProvider} origin={popupOrigin} />;
   }
   
-  // Mode 2: Satellite domain - Show embedded iframe sign-up
+  // Mode 2: OAuth Redirect - Initiate OAuth flow via redirect (from satellite domain)
+  // When subdomain receives ?oauth=provider&redirect_url=..., start OAuth immediately
+  if (oauthProvider && redirectUrl && !isSatellite) {
+    return <OAuthSignUpRedirectInitiator provider={oauthProvider} redirectUrl={redirectUrl} />;
+  }
+  
+  // Mode 3: Satellite domain - Show embedded iframe sign-up
   // URL stays on satellite domain, auth happens in iframe from subdomain
   if (isSatellite) {
     const result = await resolveTenant(hostname, null, null);

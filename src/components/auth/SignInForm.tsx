@@ -11,9 +11,10 @@ interface SignInFormProps {
   redirectUrl?: string;
   embedded?: boolean;  // Running in iframe for satellite domain
   origin?: string;     // Parent window origin for postMessage
+  hideOAuth?: boolean; // Hide OAuth buttons (used when OAuth is handled by parent)
 }
 
-export function SignInForm({ redirectUrl = '/', embedded = false, origin = '' }: SignInFormProps) {
+export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', hideOAuth = false }: SignInFormProps) {
   const { signIn, isLoaded, setActive } = useSignIn();
   const router = useRouter();
 
@@ -466,22 +467,26 @@ export function SignInForm({ redirectUrl = '/', embedded = false, origin = '' }:
   return (
     <div className="w-full max-w-lg mx-auto">
       <div className="bg-white/80 backdrop-blur-sm border border-[#e1ddd8]/60 rounded-3xl p-8 shadow-lg">
-        {/* OAuth Buttons */}
-        <div className="space-y-3">
-          <OAuthButton
-            provider="google"
-            onClick={() => handleOAuthSignIn('oauth_google')}
-            disabled={loading}
-            loading={oauthLoading}
-          />
-        </div>
+        {/* OAuth Buttons - hidden when parent handles OAuth */}
+        {!hideOAuth && (
+          <>
+            <div className="space-y-3">
+              <OAuthButton
+                provider="google"
+                onClick={() => handleOAuthSignIn('oauth_google')}
+                disabled={loading}
+                loading={oauthLoading}
+              />
+            </div>
 
-        {/* Divider */}
-        <div className="flex items-center gap-4 my-8">
-          <div className="flex-1 h-px bg-[#e1ddd8]" />
-          <span className="font-sans text-sm text-text-secondary">or</span>
-          <div className="flex-1 h-px bg-[#e1ddd8]" />
-        </div>
+            {/* Divider */}
+            <div className="flex items-center gap-4 my-8">
+              <div className="flex-1 h-px bg-[#e1ddd8]" />
+              <span className="font-sans text-sm text-text-secondary">or</span>
+              <div className="flex-1 h-px bg-[#e1ddd8]" />
+            </div>
+          </>
+        )}
 
         {/* Email Form */}
         <form onSubmit={handleEmailSignIn} className="space-y-5">

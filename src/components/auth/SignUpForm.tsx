@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSignUp } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { AuthInput } from './AuthInput';
@@ -11,11 +11,22 @@ interface SignUpFormProps {
   redirectUrl?: string;
   embedded?: boolean;  // Running in iframe for satellite domain
   origin?: string;     // Parent window origin for postMessage
+  hideOAuth?: boolean; // Hide OAuth buttons (used when OAuth is handled by parent)
 }
 
-export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = false, origin = '' }: SignUpFormProps) {
+export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = false, origin = '', hideOAuth = false }: SignUpFormProps) {
   const { signUp, isLoaded, setActive } = useSignUp();
   const router = useRouter();
+  
+  // Capture the current hostname for auto-enrollment
+  const [signupDomain, setSignupDomain] = useState<string>('');
+  
+  useEffect(() => {
+    // Capture the domain on mount (client-side only)
+    if (typeof window !== 'undefined') {
+      setSignupDomain(window.location.hostname);
+    }
+  }, []);
 
   // Helper to handle successful auth
   // In embedded mode: send postMessage to parent
@@ -119,6 +130,10 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
         lastName: lastName.trim(),
         emailAddress: email,
         password,
+        // Pass signup domain for auto-enrollment to organization
+        unsafeMetadata: {
+          signupDomain: signupDomain,
+        },
       });
 
       // Send email verification code
@@ -285,22 +300,26 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
   return (
     <div className="w-full max-w-lg mx-auto">
       <div className="bg-white/80 backdrop-blur-sm border border-[#e1ddd8]/60 rounded-3xl p-8 shadow-lg">
-        {/* OAuth Buttons */}
-        <div className="space-y-3">
-          <OAuthButton
-            provider="google"
-            onClick={() => handleOAuthSignUp('oauth_google')}
-            disabled={loading}
-            loading={oauthLoading}
-          />
-        </div>
+        {/* OAuth Buttons - hidden when parent handles OAuth */}
+        {!hideOAuth && (
+          <>
+            <div className="space-y-3">
+              <OAuthButton
+                provider="google"
+                onClick={() => handleOAuthSignUp('oauth_google')}
+                disabled={loading}
+                loading={oauthLoading}
+              />
+            </div>
 
-        {/* Divider */}
-        <div className="flex items-center gap-4 my-8">
-          <div className="flex-1 h-px bg-[#e1ddd8]" />
-          <span className="font-sans text-sm text-text-secondary">or</span>
-          <div className="flex-1 h-px bg-[#e1ddd8]" />
-        </div>
+            {/* Divider */}
+            <div className="flex items-center gap-4 my-8">
+              <div className="flex-1 h-px bg-[#e1ddd8]" />
+              <span className="font-sans text-sm text-text-secondary">or</span>
+              <div className="flex-1 h-px bg-[#e1ddd8]" />
+            </div>
+          </>
+        )}
 
         {/* Email Form */}
         <form onSubmit={handleEmailSignUp} className="space-y-5">

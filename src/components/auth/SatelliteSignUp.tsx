@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { OAuthButton } from './OAuthButton';
 
 interface SatelliteSignUpProps {
   subdomain: string;
@@ -14,27 +15,40 @@ interface SatelliteSignUpProps {
 /**
  * Satellite Sign-Up Component
  * 
- * Used on custom domains (satellite domains) to show sign-up in an iframe.
- * The iframe loads from the subdomain, preserving coach branding.
- * OAuth buttons in the iframe open popups on the subdomain.
+ * Used on custom domains (satellite domains) to show sign-up.
+ * - OAuth buttons are on this parent page (redirect flow)
+ * - Email/password form is in an iframe from the subdomain
  * 
  * After successful auth, receives postMessage and redirects to /?from_auth=1
  * to let ClerkProvider sync the session.
  */
 export function SatelliteSignUp({ subdomain, customDomain, logoUrl, appTitle }: SatelliteSignUpProps) {
-  // Construct the iframe URL
-  const currentOrigin = typeof window !== 'undefined' ? `https://${customDomain}` : '';
-  const iframeSrc = subdomain 
-    ? `https://${subdomain}.growthaddicts.app/begin/embedded?origin=${encodeURIComponent(currentOrigin)}`
-    : `https://growthaddicts.app/begin/embedded?origin=${encodeURIComponent(currentOrigin)}`;
+  const [mounted, setMounted] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(false);
   
-  // Expected origin for postMessage validation
-  const expectedOrigin = subdomain 
+  // Only render iframe on client side to avoid SSR issues
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Construct URLs
+  const currentOrigin = `https://${customDomain}`;
+  const subdomainBase = subdomain 
     ? `https://${subdomain}.growthaddicts.app`
     : 'https://growthaddicts.app';
+  const iframeSrc = `${subdomainBase}/begin/embedded?origin=${encodeURIComponent(currentOrigin)}`;
+
+  // Handle OAuth - redirect to subdomain which handles Clerk OAuth
+  const handleOAuth = (provider: 'oauth_google' | 'oauth_apple') => {
+    setOauthLoading(true);
+    // Redirect to subdomain with oauth param - subdomain will initiate Clerk OAuth
+    // After OAuth, user will be redirected back to this domain with from_auth=1
+    const returnUrl = `${currentOrigin}/?from_auth=1`;
+    window.location.href = `${subdomainBase}/begin?oauth=${provider}&redirect_url=${encodeURIComponent(returnUrl)}`;
+  };
 
   useEffect(() => {
-    // Listen for postMessage from iframe or popup
+    // Listen for postMessage from iframe (email/password auth success)
     const handleMessage = (event: MessageEvent) => {
       // Validate origin - must be from subdomain or primary domain
       if (!event.origin.includes('growthaddicts.app')) {
@@ -51,7 +65,7 @@ export function SatelliteSignUp({ subdomain, customDomain, logoUrl, appTitle }: 
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [expectedOrigin]);
+  }, []);
 
   return (
     <div className="fixed inset-0 bg-app-bg overflow-y-auto">
@@ -75,15 +89,38 @@ export function SatelliteSignUp({ subdomain, customDomain, logoUrl, appTitle }: 
             </p>
           </div>
 
-          {/* Embedded Sign-Up Form in iframe */}
-          <div className="w-full">
-            <iframe
-              src={iframeSrc}
-              className="w-full border-0 rounded-3xl bg-white/80"
-              style={{ height: '580px' }}
-              allow="clipboard-write"
-              title="Sign Up"
-            />
+          {/* Auth Container */}
+          <div className="w-full max-w-lg mx-auto">
+            <div className="bg-white/80 backdrop-blur-sm border border-[#e1ddd8]/60 rounded-3xl p-8 shadow-lg">
+              {/* OAuth Button - on parent page, uses redirect flow */}
+              <div className="space-y-3">
+                <OAuthButton
+                  provider="google"
+                  onClick={() => handleOAuth('oauth_google')}
+                  disabled={false}
+                  loading={oauthLoading}
+                />
+              </div>
+
+              {/* Divider */}
+              <div className="flex items-center gap-4 my-8">
+                <div className="flex-1 h-px bg-[#e1ddd8]" />
+                <span className="font-sans text-sm text-text-secondary">or</span>
+                <div className="flex-1 h-px bg-[#e1ddd8]" />
+              </div>
+
+              {/* Email/Password Form in iframe */}
+              {mounted && (
+                <iframe
+                  src={iframeSrc}
+                  className="w-full border-0 outline-none"
+                  style={{ height: '420px' }}
+                  scrolling="no"
+                  allow="clipboard-write"
+                  title="Sign Up"
+                />
+              )}
+            </div>
           </div>
 
           {/* Sign In Link */}

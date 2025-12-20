@@ -10,18 +10,20 @@ import { Suspense } from 'react';
  * Used by satellite domains to embed sign-in in an iframe.
  * Accepts ?origin=https://example.com to send postMessage to parent window.
  * 
- * This page has no wrapper/header - just the form.
+ * This page is minimal - no background, no header, just the form.
+ * OAuth buttons are hidden since they're handled by the parent page.
  */
 function EmbeddedSignInContent() {
   const searchParams = useSearchParams();
   const origin = searchParams.get('origin') || '';
   
   return (
-    <div className="min-h-screen bg-app-bg flex items-center justify-center p-4">
+    <div className="p-2">
       <SignInForm 
         embedded={true}
         origin={origin}
         redirectUrl="/"
+        hideOAuth={true}
       />
     </div>
   );
@@ -30,7 +32,7 @@ function EmbeddedSignInContent() {
 export default function EmbeddedSignInPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-app-bg flex items-center justify-center">
+      <div className="flex items-center justify-center p-8">
         <div className="w-8 h-8 border-2 border-text-secondary/30 border-t-text-primary rounded-full animate-spin" />
       </div>
     }>
