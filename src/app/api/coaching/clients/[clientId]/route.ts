@@ -5,6 +5,7 @@ import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import type { 
   ClientCoachingData, 
   UserRole, 
+  OrgRole,
   FirebaseUser, 
   Coach,
   CoachingActionItem,
@@ -29,9 +30,11 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const role = (sessionClaims?.publicMetadata as { role?: UserRole })?.role;
+    const publicMetadata = sessionClaims?.publicMetadata as { role?: UserRole; orgRole?: OrgRole };
+    const role = publicMetadata?.role;
+    const orgRole = publicMetadata?.orgRole;
 
-    if (!canAccessCoachDashboard(role)) {
+    if (!canAccessCoachDashboard(role, orgRole)) {
       return NextResponse.json({ error: 'Coach access required' }, { status: 403 });
     }
 
@@ -44,8 +47,10 @@ export async function GET(
 
     const coachingData = { id: coachingDoc.id, ...coachingDoc.data() } as ClientCoachingData;
 
-    // Verify coach has access to this client
-    if (role === 'coach' && coachingData.coachId !== userId) {
+    // Verify coach has access to this client (global coach role or assigned org coach)
+    const isGlobalCoach = role === 'coach';
+    const isOrgCoach = orgRole === 'coach';
+    if ((isGlobalCoach || isOrgCoach) && coachingData.coachId !== userId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -103,9 +108,11 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const role = (sessionClaims?.publicMetadata as { role?: UserRole })?.role;
+    const patchMetadata = sessionClaims?.publicMetadata as { role?: UserRole; orgRole?: OrgRole };
+    const patchRole = patchMetadata?.role;
+    const patchOrgRole = patchMetadata?.orgRole;
 
-    if (!canAccessCoachDashboard(role)) {
+    if (!canAccessCoachDashboard(patchRole, patchOrgRole)) {
       return NextResponse.json({ error: 'Coach access required' }, { status: 403 });
     }
 
@@ -118,8 +125,10 @@ export async function PATCH(
 
     const existingData = coachingDoc.data() as ClientCoachingData;
 
-    // Verify coach has access to this client
-    if (role === 'coach' && existingData.coachId !== userId) {
+    // Verify coach has access to this client (global coach role or assigned org coach)
+    const isPatchGlobalCoach = patchRole === 'coach';
+    const isPatchOrgCoach = patchOrgRole === 'coach';
+    if ((isPatchGlobalCoach || isPatchOrgCoach) && existingData.coachId !== userId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 

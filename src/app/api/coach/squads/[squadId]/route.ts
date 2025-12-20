@@ -10,7 +10,7 @@ import type { Squad, SquadMember, SquadStats, ClerkPublicMetadata } from '@/type
  * Fetches a specific squad with members and stats for the Coach Dashboard
  * 
  * Authorization:
- * - coach: Can only access squads where coachId === currentUser.id
+ * - coach: Can access squads in their organization (multi-tenancy) OR where coachId === currentUser.id
  * - admin/super_admin: Can access any squad
  * 
  * Returns real alignment data based on UserAlignment docs.
@@ -28,11 +28,14 @@ export async function GET(
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    // Get role from session claims
-    const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
+    // Get role, orgRole, and organizationId from session claims
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata;
+    const role = publicMetadata?.role;
+    const orgRole = publicMetadata?.orgRole;
+    const userOrgId = publicMetadata?.organizationId;
 
     // Check if user can access coach dashboard
-    if (!canAccessCoachDashboard(role)) {
+    if (!canAccessCoachDashboard(role, orgRole)) {
       return new NextResponse('Forbidden - Coach, Admin, or Super Admin access required', { status: 403 });
     }
 
@@ -45,10 +48,18 @@ export async function GET(
 
     const squadData = squadDoc.data();
     const coachId = squadData?.coachId || null;
+    const squadOrgId = squadData?.organizationId || null;
 
-    // Authorization check for coaches (do this early before fetching stats)
-    if (role === 'coach' && coachId !== userId) {
-      return new NextResponse('Forbidden - You are not the coach of this squad', { status: 403 });
+    // Authorization check for coaches:
+    // - Allow if squad is in coach's organization (multi-tenancy)
+    // - Allow if coach is the assigned coach of this squad (legacy)
+    if (role === 'coach') {
+      const isInOrg = userOrgId && squadOrgId && userOrgId === squadOrgId;
+      const isCoach = coachId === userId;
+      
+      if (!isInOrg && !isCoach) {
+        return new NextResponse('Forbidden - You do not have access to this squad', { status: 403 });
+      }
     }
 
     // Get squad stats - cached stats fast, extras loaded in parallel

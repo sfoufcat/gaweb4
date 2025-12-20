@@ -49,6 +49,8 @@ interface SquadFormDialogProps {
   onSave: () => void;
   /** API base path for squad operations (default: /api/admin/squads) */
   apiBasePath?: string;
+  /** API endpoint for fetching coaches (default: /api/admin/coaches, use /api/coach/org-coaches for org context) */
+  coachesApiEndpoint?: string;
 }
 
 // Popular timezones for quick selection
@@ -68,7 +70,14 @@ const POPULAR_TIMEZONES = [
   { value: 'UTC', label: 'UTC (Coordinated Universal Time)' },
 ];
 
-export function SquadFormDialog({ squad, open, onClose, onSave, apiBasePath = '/api/admin/squads' }: SquadFormDialogProps) {
+export function SquadFormDialog({ 
+  squad, 
+  open, 
+  onClose, 
+  onSave, 
+  apiBasePath = '/api/admin/squads',
+  coachesApiEndpoint = '/api/admin/coaches',
+}: SquadFormDialogProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -118,11 +127,11 @@ export function SquadFormDialog({ squad, open, onClose, onSave, apiBasePath = '/
     }
   }, [squad]);
 
-  // Fetch coaches
+  // Fetch coaches (from admin endpoint or org-coaches endpoint depending on context)
   useEffect(() => {
     const fetchCoaches = async () => {
       try {
-        const response = await fetch('/api/admin/coaches');
+        const response = await fetch(coachesApiEndpoint);
         if (response.ok) {
           const data = await response.json();
           setCoaches(data.coaches || []);
@@ -132,7 +141,7 @@ export function SquadFormDialog({ squad, open, onClose, onSave, apiBasePath = '/
       }
     };
     fetchCoaches();
-  }, []);
+  }, [coachesApiEndpoint]);
 
   const fetchMembers = useCallback(async () => {
     if (!squad) return;

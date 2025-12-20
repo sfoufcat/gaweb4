@@ -1,6 +1,6 @@
 import { auth, clerkClient } from '@clerk/nextjs/server';
-import type { UserRole, UserTier, UserTrack, CoachingStatus, CoachingPlan } from '@/types';
-import { isAdmin, isSuperAdmin } from './admin-utils-shared';
+import type { UserRole, UserTier, UserTrack, CoachingStatus, CoachingPlan, OrgRole } from '@/types';
+import { isAdmin, isSuperAdmin, isOrgCoach } from './admin-utils-shared';
 
 /**
  * Clerk-Based Admin & Billing Authorization Utilities (Server-Side)
@@ -21,6 +21,8 @@ export type BillingStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | 'n
 
 export interface ClerkPublicMetadata {
   role?: UserRole;
+  orgRole?: OrgRole; // Organization-level role (super_coach, coach, member)
+  organizationId?: string; // Clerk Organization ID
   billingStatus?: BillingStatus;
   billingPeriodEnd?: string; // ISO date string for grace period checks
   tier?: UserTier; // User subscription tier (free, standard, premium) - NOT coaching
@@ -265,6 +267,7 @@ export async function requireSuperAdmin(): Promise<void> {
 export async function requireCoachWithOrg(): Promise<{ 
   userId: string; 
   role: UserRole; 
+  orgRole?: OrgRole;
   organizationId: string;
 }> {
   const { userId, orgId, sessionClaims } = await auth();
@@ -275,20 +278,24 @@ export async function requireCoachWithOrg(): Promise<{
 
   const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
   const role = publicMetadata?.role || 'user';
+  const orgRole = publicMetadata?.orgRole;
   
-  // Must be coach, admin, or super_admin
-  if (role !== 'coach' && role !== 'admin' && role !== 'super_admin') {
+  // Check access: global coach/admin roles OR org-level coach roles
+  const hasGlobalAccess = role === 'coach' || role === 'admin' || role === 'super_admin';
+  const hasOrgAccess = isOrgCoach(orgRole); // super_coach or coach
+  
+  if (!hasGlobalAccess && !hasOrgAccess) {
     throw new Error('Forbidden: Coach access required');
   }
   
   // Get organizationId - prefer native Clerk org session, fallback to metadata
-  const organizationId = orgId || (publicMetadata as ClerkPublicMetadata & { organizationId?: string })?.organizationId;
+  const organizationId = orgId || publicMetadata?.organizationId;
   
   if (!organizationId) {
     throw new Error('Organization not found: Coach must have an organization');
   }
   
-  return { userId, role, organizationId };
+  return { userId, role, orgRole, organizationId };
 }
 
 // Re-export shared utilities for convenience in server-side code

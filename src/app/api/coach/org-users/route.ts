@@ -2,7 +2,7 @@ import { clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
-import type { UserRole, UserTier, CoachingStatus } from '@/types';
+import type { UserRole, UserTier, CoachingStatus, OrgRole } from '@/types';
 
 interface FirebaseUserData {
   tier?: UserTier;
@@ -16,6 +16,7 @@ interface FirebaseUserData {
 
 interface ClerkUserMetadata {
   role?: UserRole;
+  orgRole?: OrgRole;
   organizationId?: string;
   coaching?: boolean;
   coachingStatus?: CoachingStatus;
@@ -128,6 +129,7 @@ export async function GET() {
         name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unnamed User',
         imageUrl: user.imageUrl || '',
         role: (clerkMetadata?.role as UserRole) || 'user',
+        orgRole: (clerkMetadata?.orgRole as OrgRole) || 'member',
         tier: fbData?.tier || 'free',
         coachingStatus: clerkMetadata?.coachingStatus || fbData?.coaching?.status || 'none',
         coaching: clerkMetadata?.coaching,

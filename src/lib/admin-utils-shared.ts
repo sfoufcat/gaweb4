@@ -1,4 +1,4 @@
-import type { UserRole, UserTier, CoachingStatus, CoachingPlan } from '@/types';
+import type { UserRole, UserTier, CoachingStatus, CoachingPlan, OrgRole } from '@/types';
 
 /**
  * Shared Admin Authorization Utilities
@@ -124,11 +124,15 @@ export function canManageSquads(role?: UserRole): boolean {
  * Check if a user can access the Coach Dashboard
  * 
  * Rules:
- * - coach, admin, and super_admin can access
- * - regular users cannot access
+ * - Global role: coach, admin, and super_admin can access
+ * - Org role: super_coach and coach can access (with limited features for coach)
  */
-export function canAccessCoachDashboard(role?: UserRole): boolean {
-  return role === 'coach' || role === 'admin' || role === 'super_admin';
+export function canAccessCoachDashboard(role?: UserRole, orgRole?: OrgRole): boolean {
+  // Global coach/admin roles have full access
+  if (role === 'coach' || role === 'admin' || role === 'super_admin') return true;
+  // Org-level roles can access (coach has limited features)
+  if (orgRole === 'super_coach' || orgRole === 'coach') return true;
+  return false;
 }
 
 /**
@@ -263,6 +267,79 @@ export function userHasActiveCoaching(
   return false;
 }
 
+// ============================================================================
+// ORGANIZATION ROLE HELPERS (Client-safe)
+// ============================================================================
 
+/**
+ * Check if user is a Super Coach (organization leader)
+ */
+export function isSuperCoach(orgRole?: OrgRole): boolean {
+  return orgRole === 'super_coach';
+}
 
+/**
+ * Check if user can coach within an organization
+ * Both super_coach and coach can be assigned to squads
+ */
+export function isOrgCoach(orgRole?: OrgRole): boolean {
+  return orgRole === 'super_coach' || orgRole === 'coach';
+}
 
+/**
+ * Check if a Super Coach can assign a specific org role to a user
+ * 
+ * Rules:
+ * - Only super_coach can assign org roles
+ * - super_coach can assign: coach, member
+ * - super_coach cannot demote themselves (handled in API)
+ */
+export function canAssignOrgRole(
+  currentUserOrgRole?: OrgRole,
+  targetOrgRole?: OrgRole
+): boolean {
+  // Only super_coach can assign org roles
+  if (!isSuperCoach(currentUserOrgRole)) {
+    return false;
+  }
+  
+  // super_coach can assign any role except super_coach (there's only one leader)
+  return targetOrgRole === 'coach' || targetOrgRole === 'member';
+}
+
+/**
+ * Get a list of org roles that can be assigned by a super coach
+ */
+export function getAssignableOrgRoles(): OrgRole[] {
+  return ['coach', 'member'];
+}
+
+/**
+ * Format org role name for display
+ */
+export function formatOrgRoleName(orgRole?: OrgRole): string {
+  if (!orgRole) return 'Member';
+  
+  const roleMap: Record<OrgRole, string> = {
+    super_coach: 'Super Coach',
+    coach: 'Coach',
+    member: 'Member',
+  };
+  
+  return roleMap[orgRole] || 'Member';
+}
+
+/**
+ * Get org role badge color
+ */
+export function getOrgRoleBadgeColor(orgRole?: OrgRole): string {
+  if (!orgRole) return 'bg-gray-100 text-gray-700';
+  
+  const colorMap: Record<OrgRole, string> = {
+    super_coach: 'bg-purple-100 text-purple-700',
+    coach: 'bg-blue-100 text-blue-700',
+    member: 'bg-gray-100 text-gray-700',
+  };
+  
+  return colorMap[orgRole] || 'bg-gray-100 text-gray-700';
+}

@@ -1,7 +1,28 @@
+// User Role Types
+export type UserRole = 'user' | 'editor' | 'coach' | 'admin' | 'super_admin';
+
+// Organization Role Types (for multi-tenant role hierarchy within an organization)
+// super_coach: Organization leader (owns the org, can manage all members)
+// coach: Can coach squads within the organization
+// member: Regular organization member (client)
+export type OrgRole = 'super_coach' | 'coach' | 'member';
+
+// Track Types - Business type the user is building
+export type UserTrack = 
+  | 'content_creator' 
+  | 'saas' 
+  | 'coach_consultant' 
+  | 'ecom' 
+  | 'agency' 
+  | 'community_builder'
+  | 'general'; // Legacy fallback
+
 // Clerk Public Metadata Type (for type assertions with sessionClaims)
 export interface ClerkPublicMetadata {
   role?: UserRole;
   track?: UserTrack;
+  orgRole?: OrgRole;          // Organization-level role (for multi-tenant hierarchy)
+  organizationId?: string;    // Clerk Organization ID this user belongs to
 }
 
 // Clerk User Types
@@ -15,19 +36,6 @@ export interface ClerkUser {
   updatedAt: string;
   publicMetadata?: ClerkPublicMetadata;
 }
-
-// User Role Types
-export type UserRole = 'user' | 'editor' | 'coach' | 'admin' | 'super_admin';
-
-// Track Types - Business type the user is building
-export type UserTrack = 
-  | 'content_creator' 
-  | 'saas' 
-  | 'coach_consultant' 
-  | 'ecom' 
-  | 'agency' 
-  | 'community_builder'
-  | 'general'; // Legacy fallback
 
 // User Tier Types (for subscription/access level - does NOT include coaching)
 // Coaching is a separate product, not a membership tier

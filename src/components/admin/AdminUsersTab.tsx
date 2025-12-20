@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
-import type { UserRole, UserTier, CoachingStatus } from '@/types';
+import type { UserRole, UserTier, CoachingStatus, OrgRole } from '@/types';
 import { 
   canModifyUserRole, 
   canDeleteUser, 
@@ -13,6 +13,11 @@ import {
   getTierBadgeColor,
   formatCoachingStatus,
   getCoachingStatusBadgeColor,
+  // Org role helpers
+  isSuperCoach,
+  formatOrgRoleName,
+  getOrgRoleBadgeColor,
+  getAssignableOrgRoles,
 } from '@/lib/admin-utils-shared';
 import {
   Table,
@@ -49,10 +54,14 @@ interface ClerkAdminUser {
   name: string;
   imageUrl: string;
   role: UserRole;
+  orgRole?: OrgRole; // Organization-level role (for multi-tenant)
   tier: UserTier;
   // Coaching is separate from membership tier
   coachingStatus?: CoachingStatus;
   coaching?: boolean; // Legacy flag
+  // Assigned coach (for displaying in Coach column)
+  coachId?: string | null;
+  coachName?: string | null;
   // Referral tracking
   invitedBy?: string | null;
   invitedByName?: string | null;
@@ -62,13 +71,46 @@ interface ClerkAdminUser {
   updatedAt: string;
 }
 
+// Available column keys for visibility control
+type ColumnKey = 'avatar' | 'name' | 'email' | 'role' | 'orgRole' | 'tier' | 'coach' | 'coaching' | 'invitedBy' | 'invitedAt' | 'created' | 'actions';
+
+// Default columns for full access
+const ALL_COLUMNS: ColumnKey[] = ['avatar', 'name', 'email', 'role', 'tier', 'coaching', 'invitedBy', 'invitedAt', 'created', 'actions'];
+
+// Limited columns for org coaches (read-only)
+const LIMITED_COLUMNS: ColumnKey[] = ['avatar', 'name', 'email', 'coach', 'coaching', 'created'];
+
 interface AdminUsersTabProps {
   currentUserRole: UserRole;
   /** Override API endpoint for multi-tenancy (e.g., '/api/coach/org-users' for coaches) */
   apiEndpoint?: string;
+  /** Optional callback when a user is selected - makes rows clickable */
+  onSelectUser?: (userId: string) => void;
+  /** Custom header title */
+  headerTitle?: string;
+  /** Show org role column instead of global role (for coach dashboard) */
+  showOrgRole?: boolean;
+  /** Current user's org role for permission checks */
+  currentUserOrgRole?: OrgRole;
+  /** Read-only mode - hides all edit controls (role, tier, delete) */
+  readOnly?: boolean;
+  /** Which columns to show (defaults to ALL_COLUMNS or LIMITED_COLUMNS based on readOnly) */
+  visibleColumns?: ColumnKey[];
 }
 
-export function AdminUsersTab({ currentUserRole, apiEndpoint = '/api/admin/users' }: AdminUsersTabProps) {
+export function AdminUsersTab({ 
+  currentUserRole, 
+  apiEndpoint = '/api/admin/users', 
+  onSelectUser, 
+  headerTitle = 'Users',
+  showOrgRole = false,
+  currentUserOrgRole,
+  readOnly = false,
+  visibleColumns,
+}: AdminUsersTabProps) {
+  // Determine which columns to show
+  const columns = visibleColumns || (readOnly ? LIMITED_COLUMNS : ALL_COLUMNS);
+  const showColumn = (col: ColumnKey) => columns.includes(col);
   const [users, setUsers] = useState<ClerkAdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +118,7 @@ export function AdminUsersTab({ currentUserRole, apiEndpoint = '/api/admin/users
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [updatingTierUserId, setUpdatingTierUserId] = useState<string | null>(null);
+  const [updatingOrgRoleUserId, setUpdatingOrgRoleUserId] = useState<string | null>(null);
 
   const fetchUsers = async () => {
     try {
@@ -174,6 +217,43 @@ export function AdminUsersTab({ currentUserRole, apiEndpoint = '/api/admin/users
     }
   };
 
+  const handleOrgRoleChange = async (userId: string, newOrgRole: OrgRole) => {
+    // Only super_coach can change org roles
+    if (!isSuperCoach(currentUserOrgRole)) {
+      alert('Only Super Coach can change organization roles.');
+      return;
+    }
+
+    try {
+      setUpdatingOrgRoleUserId(userId);
+      
+      const response = await fetch(`/api/coach/org-users/${userId}/org-role`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orgRole: newOrgRole }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update organization role');
+      }
+
+      // Update local state optimistically
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.id === userId ? { ...user, orgRole: newOrgRole } : user
+        )
+      );
+    } catch (err) {
+      console.error('Error updating org role:', err);
+      alert(err instanceof Error ? err.message : 'Failed to update organization role');
+      // Refresh to get correct state
+      await fetchUsers();
+    } finally {
+      setUpdatingOrgRoleUserId(null);
+    }
+  };
+
   const handleDeleteUser = async () => {
     if (!userToDelete) return;
 
@@ -243,9 +323,9 @@ export function AdminUsersTab({ currentUserRole, apiEndpoint = '/api/admin/users
         <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]/50 dark:border-[#262b35]/50">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
-              <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] font-albert">Users</h2>
+              <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] font-albert">{headerTitle}</h2>
               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2] font-albert mt-1">
-                {filteredUsers.length} of {users.length} user{users.length !== 1 ? 's' : ''}
+                {filteredUsers.length} of {users.length} {headerTitle.toLowerCase()}{users.length !== 1 ? '' : ''}
                 {searchQuery && ' matching search'}
               </p>
             </div>
@@ -301,168 +381,249 @@ export function AdminUsersTab({ currentUserRole, apiEndpoint = '/api/admin/users
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="font-albert">Avatar</TableHead>
-                <TableHead className="font-albert">Name</TableHead>
-                <TableHead className="font-albert">Email</TableHead>
-                <TableHead className="font-albert">Role</TableHead>
-                <TableHead className="font-albert">Tier</TableHead>
-                <TableHead className="font-albert">Coaching</TableHead>
-                <TableHead className="font-albert">Invited By</TableHead>
-                <TableHead className="font-albert">Invited At</TableHead>
-                <TableHead className="font-albert">Created</TableHead>
-                <TableHead className="font-albert text-right">Actions</TableHead>
+                {showColumn('avatar') && <TableHead className="font-albert">Avatar</TableHead>}
+                {showColumn('name') && <TableHead className="font-albert">Name</TableHead>}
+                {showColumn('email') && <TableHead className="font-albert">Email</TableHead>}
+                {showColumn('role') && !showOrgRole && <TableHead className="font-albert">Role</TableHead>}
+                {showColumn('orgRole') && showOrgRole && <TableHead className="font-albert">Org Role</TableHead>}
+                {showColumn('tier') && <TableHead className="font-albert">Tier</TableHead>}
+                {showColumn('coach') && <TableHead className="font-albert">Coach</TableHead>}
+                {showColumn('coaching') && <TableHead className="font-albert">Coaching</TableHead>}
+                {showColumn('invitedBy') && <TableHead className="font-albert">Invited By</TableHead>}
+                {showColumn('invitedAt') && <TableHead className="font-albert">Invited At</TableHead>}
+                {showColumn('created') && <TableHead className="font-albert">Created</TableHead>}
+                {showColumn('actions') && !readOnly && <TableHead className="font-albert text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredUsers.map((user) => {
                 const userRole = user.role || 'user';
+                const userOrgRole = user.orgRole || 'member';
                 const userTier = user.tier || 'free';
                 const canModifyThisUser = canModifyUserRole(currentUserRole, userRole, userRole);
                 const canDeleteThisUser = canDeleteUser(currentUserRole, userRole);
                 const isUpdatingTier = updatingTierUserId === user.id;
+                const isUpdatingOrgRole = updatingOrgRoleUserId === user.id;
+                // Super coach can modify org roles (but not their own)
+                const canModifyOrgRole = isSuperCoach(currentUserOrgRole) && userOrgRole !== 'super_coach';
 
                 return (
-                  <TableRow key={user.id}>
+                  <TableRow 
+                    key={user.id}
+                    className={onSelectUser ? 'cursor-pointer hover:bg-[#faf8f6] dark:hover:bg-[#11141b]' : ''}
+                    onClick={() => onSelectUser?.(user.id)}
+                  >
                     {/* Avatar */}
-                    <TableCell>
-                      {user.imageUrl ? (
-                        <Image
-                          src={user.imageUrl}
-                          alt={user.name}
-                          width={40}
-                          height={40}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] flex items-center justify-center text-white font-bold">
-                          {user.name.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                    </TableCell>
+                    {showColumn('avatar') && (
+                      <TableCell>
+                        {user.imageUrl ? (
+                          <Image
+                            src={user.imageUrl}
+                            alt={user.name}
+                            width={40}
+                            height={40}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] flex items-center justify-center text-white font-bold">
+                            {user.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </TableCell>
+                    )}
                     
                     {/* Name */}
-                    <TableCell className="font-albert font-medium">
-                      {user.name || 'Unnamed User'}
-                    </TableCell>
+                    {showColumn('name') && (
+                      <TableCell className="font-albert font-medium">
+                        {user.name || 'Unnamed User'}
+                      </TableCell>
+                    )}
                     
                     {/* Email */}
-                    <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2]">
-                      {user.email}
-                    </TableCell>
+                    {showColumn('email') && (
+                      <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2]">
+                        {user.email}
+                      </TableCell>
+                    )}
                     
-                    {/* Role */}
-                    <TableCell>
-                      {canModifyThisUser ? (
-                        <Select
-                          value={userRole}
-                          onValueChange={(newRole) => handleRoleChange(user.id, userRole, newRole as UserRole)}
-                        >
-                          <SelectTrigger className="w-[140px] font-albert">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {assignableRoles.map((role) => (
-                              <SelectItem key={role} value={role} className="font-albert">
-                                {formatRoleName(role)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium font-albert ${getRoleBadgeColor(userRole)}`}>
-                          {formatRoleName(userRole)}
-                        </span>
-                      )}
-                    </TableCell>
+                    {/* Role (global) - only in admin context */}
+                    {showColumn('role') && !showOrgRole && (
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        {!readOnly && canModifyThisUser ? (
+                          <Select
+                            value={userRole}
+                            onValueChange={(newRole) => handleRoleChange(user.id, userRole, newRole as UserRole)}
+                          >
+                            <SelectTrigger className="w-[140px] font-albert">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {assignableRoles.map((role) => (
+                                <SelectItem key={role} value={role} className="font-albert">
+                                  {formatRoleName(role)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium font-albert ${getRoleBadgeColor(userRole)}`}>
+                            {formatRoleName(userRole)}
+                          </span>
+                        )}
+                      </TableCell>
+                    )}
+
+                    {/* Org Role - only in coach dashboard context */}
+                    {showColumn('orgRole') && showOrgRole && (
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        {!readOnly && canModifyOrgRole ? (
+                          <Select
+                            value={userOrgRole}
+                            onValueChange={(newOrgRole) => handleOrgRoleChange(user.id, newOrgRole as OrgRole)}
+                            disabled={isUpdatingOrgRole}
+                          >
+                            <SelectTrigger className={`w-[140px] font-albert ${isUpdatingOrgRole ? 'opacity-50' : ''}`}>
+                              <SelectValue>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getOrgRoleBadgeColor(userOrgRole)}`}>
+                                  {formatOrgRoleName(userOrgRole)}
+                                </span>
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getAssignableOrgRoles().map((orgRole) => (
+                                <SelectItem key={orgRole} value={orgRole} className="font-albert">
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getOrgRoleBadgeColor(orgRole)}`}>
+                                    {formatOrgRoleName(orgRole)}
+                                  </span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium font-albert ${getOrgRoleBadgeColor(userOrgRole)}`}>
+                            {formatOrgRoleName(userOrgRole)}
+                          </span>
+                        )}
+                      </TableCell>
+                    )}
                     
                     {/* Tier - No longer includes "coaching" (coaching is separate) */}
-                    <TableCell>
-                      <Select
-                        value={userTier}
-                        onValueChange={(newTier) => handleTierChange(user.id, newTier as UserTier)}
-                        disabled={isUpdatingTier}
-                      >
-                        <SelectTrigger className={`w-[130px] font-albert ${isUpdatingTier ? 'opacity-50' : ''}`}>
-                          <SelectValue>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getTierBadgeColor(userTier)}`}>
-                              {formatTierName(userTier)}
-                            </span>
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="free" className="font-albert">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
-                              Free
-                            </span>
-                          </SelectItem>
-                          <SelectItem value="standard" className="font-albert">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                              Standard
-                            </span>
-                          </SelectItem>
-                          <SelectItem value="premium" className="font-albert">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                              Premium
-                            </span>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
+                    {showColumn('tier') && (
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        {!readOnly ? (
+                          <Select
+                            value={userTier}
+                            onValueChange={(newTier) => handleTierChange(user.id, newTier as UserTier)}
+                            disabled={isUpdatingTier}
+                          >
+                            <SelectTrigger className={`w-[130px] font-albert ${isUpdatingTier ? 'opacity-50' : ''}`}>
+                              <SelectValue>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getTierBadgeColor(userTier)}`}>
+                                  {formatTierName(userTier)}
+                                </span>
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="free" className="font-albert">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+                                  Free
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="standard" className="font-albert">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                                  Standard
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="premium" className="font-albert">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                                  Premium
+                                </span>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium font-albert ${getTierBadgeColor(userTier)}`}>
+                            {formatTierName(userTier)}
+                          </span>
+                        )}
+                      </TableCell>
+                    )}
+
+                    {/* Coach - shows assigned coach name */}
+                    {showColumn('coach') && (
+                      <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
+                        {user.coachName ? (
+                          <span>{user.coachName}</span>
+                        ) : (
+                          <span className="text-[#8c8c8c] dark:text-[#7d8190]">-</span>
+                        )}
+                      </TableCell>
+                    )}
                     
                     {/* Coaching Status - Separate from tier */}
-                    <TableCell>
-                      {(() => {
-                        // Determine coaching status from new field or legacy flag
-                        const coachingStatus = user.coachingStatus || (user.coaching ? 'active' : 'none');
-                        return (
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium font-albert ${getCoachingStatusBadgeColor(coachingStatus as CoachingStatus)}`}>
-                            {formatCoachingStatus(coachingStatus as CoachingStatus)}
-                          </span>
-                        );
-                      })()}
-                    </TableCell>
+                    {showColumn('coaching') && (
+                      <TableCell>
+                        {(() => {
+                          // Determine coaching status from new field or legacy flag
+                          const coachingStatus = user.coachingStatus || (user.coaching ? 'active' : 'none');
+                          return (
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium font-albert ${getCoachingStatusBadgeColor(coachingStatus as CoachingStatus)}`}>
+                              {formatCoachingStatus(coachingStatus as CoachingStatus)}
+                            </span>
+                          );
+                        })()}
+                      </TableCell>
+                    )}
                     
                     {/* Invited By */}
-                    <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
-                      {user.invitedByName ? (
-                        <span className="inline-flex items-center gap-1.5">
-                          <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                          {user.invitedByName}
-                        </span>
-                      ) : (
-                        <span className="text-[#8c8c8c] dark:text-[#7d8190]">-</span>
-                      )}
-                    </TableCell>
+                    {showColumn('invitedBy') && (
+                      <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
+                        {user.invitedByName ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            {user.invitedByName}
+                          </span>
+                        ) : (
+                          <span className="text-[#8c8c8c] dark:text-[#7d8190]">-</span>
+                        )}
+                      </TableCell>
+                    )}
                     
                     {/* Invited At */}
-                    <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
-                      {user.invitedAt ? (
-                        new Date(user.invitedAt).toLocaleDateString()
-                      ) : (
-                        <span className="text-[#8c8c8c] dark:text-[#7d8190]">-</span>
-                      )}
-                    </TableCell>
+                    {showColumn('invitedAt') && (
+                      <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
+                        {user.invitedAt ? (
+                          new Date(user.invitedAt).toLocaleDateString()
+                        ) : (
+                          <span className="text-[#8c8c8c] dark:text-[#7d8190]">-</span>
+                        )}
+                      </TableCell>
+                    )}
                     
                     {/* Created Date */}
-                    <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2]">
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </TableCell>
+                    {showColumn('created') && (
+                      <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2]">
+                        {new Date(user.createdAt).toLocaleDateString()}
+                      </TableCell>
+                    )}
                     
                     {/* Actions */}
-                    <TableCell className="text-right">
-                      {canDeleteThisUser && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setUserToDelete(user)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 font-albert"
-                        >
-                          Delete
-                        </Button>
-                      )}
-                    </TableCell>
+                    {showColumn('actions') && !readOnly && (
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        {canDeleteThisUser && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setUserToDelete(user)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 font-albert"
+                          >
+                            Delete
+                          </Button>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })}

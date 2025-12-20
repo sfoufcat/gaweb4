@@ -1,5 +1,5 @@
 import { auth, clerkClient } from '@clerk/nextjs/server';
-import type { UserRole } from '@/types';
+import type { UserRole, OrgRole } from '@/types';
 import { setupDefaultOrgChannels } from '@/lib/org-channels';
 
 /**
@@ -15,10 +15,11 @@ import { setupDefaultOrgChannels } from '@/lib/org-channels';
  * - Is the key for all tenant-scoped data (branding, content, etc.)
  */
 
-// Extended metadata interface to include organizationId
+// Extended metadata interface to include organizationId and orgRole
 export interface ClerkPublicMetadataWithOrg {
   role?: UserRole;
-  organizationId?: string;  // Clerk Organization ID this user belongs to (as admin)
+  orgRole?: OrgRole;         // Organization-level role (super_coach, coach, member)
+  organizationId?: string;   // Clerk Organization ID this user belongs to (as admin)
   [key: string]: unknown;
 }
 
@@ -65,15 +66,16 @@ export async function createOrganizationForCoach(
     
     console.log(`[CLERK_ORGS] Created organization ${organization.id} for coach ${coachUserId}`);
     
-    // Store organization ID in user's publicMetadata
+    // Store organization ID and set orgRole to super_coach in user's publicMetadata
     await client.users.updateUserMetadata(coachUserId, {
       publicMetadata: {
         ...user.publicMetadata,
         organizationId: organization.id,
+        orgRole: 'super_coach', // Organization creator is always the super coach
       },
     });
     
-    console.log(`[CLERK_ORGS] Updated coach ${coachUserId} metadata with organizationId ${organization.id}`);
+    console.log(`[CLERK_ORGS] Updated coach ${coachUserId} metadata with organizationId ${organization.id} and orgRole: super_coach`);
     
     // Setup default org channels (Announcements, Social Corner, Share Wins)
     try {
@@ -283,17 +285,22 @@ export async function addUserToOrganization(
     });
     
     console.log(`[CLERK_ORGS] Added user ${userId} to org ${organizationId} as ${role}`);
-    
+
     // Also set in publicMetadata for backward compatibility
+    // Set default orgRole to 'member' for new org members
     const user = await client.users.getUser(userId);
+    const currentMetadata = user.publicMetadata as ClerkPublicMetadataWithOrg;
+    
     await client.users.updateUserMetadata(userId, {
       publicMetadata: {
-        ...user.publicMetadata,
+        ...currentMetadata,
         organizationId,
+        // Only set orgRole if not already set (preserve existing role)
+        orgRole: currentMetadata?.orgRole || 'member',
       },
     });
-    
-    console.log(`[CLERK_ORGS] Updated user ${userId} publicMetadata with organizationId`);
+
+    console.log(`[CLERK_ORGS] Updated user ${userId} publicMetadata with organizationId and orgRole`);
   } catch (error) {
     console.error(`[CLERK_ORGS] Error adding user ${userId} to org ${organizationId}:`, error);
     throw error;

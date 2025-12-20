@@ -68,7 +68,7 @@ export default function Dashboard() {
   const { user, isLoaded } = useUser();
   const [mounted, setMounted] = useState(false);
   const [_userMission, setUserMission] = useState<string | null>(null);
-  const [userGoal, setUserGoal] = useState<{ goal?: string; targetDate?: string; progress?: number } | null>(null);
+  const [userGoal, setUserGoal] = useState<{ goal?: string; targetDate?: string; progress?: { percentage: number } } | null>(null);
   const [recentlyAchievedGoal, setRecentlyAchievedGoal] = useState<GoalHistoryEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [greeting, setGreeting] = useState('Good evening');
@@ -1066,7 +1066,7 @@ export default function Dashboard() {
   };
 
   const goalDaysLeft = userGoal?.targetDate ? calculateDaysLeft(userGoal.targetDate) : null;
-  const goalProgress = userGoal?.progress || 0;
+  const goalProgress = userGoal?.progress?.percentage || 0;
 
   // ============================================================================
   // CAROUSEL CARD RENDER HELPERS

@@ -6,7 +6,7 @@ import { UserButton, useAuth } from '@clerk/nextjs';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { isAdmin, canAccessCoachDashboard, canAccessEditorSection, isSuperAdmin } from '@/lib/admin-utils-shared';
-import type { UserRole } from '@/types';
+import type { UserRole, OrgRole } from '@/types';
 import { useChatUnreadCounts } from '@/hooks/useChatUnreadCounts';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 
@@ -55,14 +55,16 @@ export function Sidebar() {
   // Get role and coaching status from Clerk session (from JWT, no API call!)
   const publicMetadata = sessionClaims?.publicMetadata as { 
     role?: UserRole; 
+    orgRole?: OrgRole; // Organization-level role
     coaching?: boolean; // Legacy flag
     coachingStatus?: 'none' | 'active' | 'canceled' | 'past_due'; // New field
   } | undefined;
   const role = publicMetadata?.role;
+  const orgRole = publicMetadata?.orgRole;
   // Check both new coachingStatus and legacy coaching flag for backward compatibility
   const hasCoaching = publicMetadata?.coachingStatus === 'active' || publicMetadata?.coaching === true;
   const showAdminPanel = isAdmin(role);
-  const showCoachDashboard = canAccessCoachDashboard(role);
+  const showCoachDashboard = canAccessCoachDashboard(role, orgRole);
   const showEditorPanel = canAccessEditorSection(role);
   const showMyCoach = hasCoaching || isSuperAdmin(role);
 

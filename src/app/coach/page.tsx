@@ -5,12 +5,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { SquadView } from '@/components/squad/SquadView';
-import { ClientsTab, CoachingClientView, CustomizeBrandingTab, ChannelManagementTab } from '@/components/coach';
+import { ClientDetailView, CustomizeBrandingTab, ChannelManagementTab } from '@/components/coach';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft } from 'lucide-react';
-import type { ClerkPublicMetadata } from '@/types';
+import type { ClerkPublicMetadata, OrgRole } from '@/types';
 
 // Admin components for expanded coach dashboard
+import { AdminUsersTab } from '@/components/admin/AdminUsersTab';
 import { AdminSquadsTab } from '@/components/admin/AdminSquadsTab';
 import { AdminDiscoverTab } from '@/components/admin/discover';
 import { AdminPremiumUpgradeFormsTab } from '@/components/admin/AdminPremiumUpgradeFormsTab';
@@ -51,9 +52,17 @@ export default function CoachPage() {
   const initialTab = tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'clients';
   const [activeTab, setActiveTab] = useState<CoachTab>(initialTab);
 
-  // Get role from Clerk session
-  const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
-  const hasAccess = canAccessCoachDashboard(role);
+  // Get role and orgRole from Clerk session
+  const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata;
+  const role = publicMetadata?.role;
+  const orgRole = publicMetadata?.orgRole as OrgRole | undefined;
+  const hasAccess = canAccessCoachDashboard(role, orgRole);
+  
+  // Determine access level:
+  // - Full access: global coach role, super_coach orgRole, admin, or super_admin
+  // - Limited access: orgRole === 'coach' (but not super_coach or global coach)
+  const hasFullAccess = role === 'coach' || role === 'admin' || role === 'super_admin' || orgRole === 'super_coach';
+  const isLimitedOrgCoach = !hasFullAccess && orgRole === 'coach';
 
   useEffect(() => {
     setMounted(true);
@@ -100,9 +109,11 @@ export default function CoachPage() {
             Coach Dashboard
           </h1>
           <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-            {role === 'coach' 
-              ? 'Manage your squads and 1:1 coaching clients'
-              : 'View and manage all squads and coaching clients'}
+            {isLimitedOrgCoach
+              ? 'View your assigned squads and coaching clients'
+              : role === 'coach' || orgRole === 'super_coach'
+                ? 'Manage your squads and 1:1 coaching clients'
+                : 'View and manage all squads and coaching clients'}
           </p>
         </div>
 
@@ -127,42 +138,47 @@ export default function CoachPage() {
             >
               Discover Content
             </TabsTrigger>
-            <TabsTrigger 
-              value="upgrade-forms"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
-            >
-              Upgrade Forms
-            </TabsTrigger>
-            <TabsTrigger 
-              value="coaching-forms"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
-            >
-              Coaching Intake Forms
-            </TabsTrigger>
-            <TabsTrigger 
-              value="quizzes"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
-            >
-              Quizzes
-            </TabsTrigger>
-            <TabsTrigger 
-              value="tracks-programs"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
-            >
-              Tracks & Programs
-            </TabsTrigger>
-            <TabsTrigger 
-              value="channels"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
-            >
-              Channels
-            </TabsTrigger>
-            <TabsTrigger 
-              value="customize"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
-            >
-              Customize
-            </TabsTrigger>
+            {/* Full access tabs - hidden for limited org coaches */}
+            {!isLimitedOrgCoach && (
+              <>
+                <TabsTrigger 
+                  value="upgrade-forms"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Upgrade Forms
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="coaching-forms"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Coaching Intake Forms
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="quizzes"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Quizzes
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="tracks-programs"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Tracks & Programs
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="channels"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Channels
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="customize"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Customize
+                </TabsTrigger>
+              </>
+            )}
           </TabsList>
 
           {/* Clients Tab - Consolidated Users + Coaching Clients */}
@@ -177,14 +193,27 @@ export default function CoachPage() {
                   <ArrowLeft className="w-5 h-5" />
                   Back to clients
                 </button>
-                <CoachingClientView
+                <ClientDetailView
                   clientId={selectedClientId}
                   onBack={() => setSelectedClientId(null)}
                 />
               </>
             ) : (
-              <ClientsTab
-                onSelectClient={(clientId) => setSelectedClientId(clientId)}
+              <AdminUsersTab 
+                currentUserRole={role || 'user'} 
+                apiEndpoint={
+                  isLimitedOrgCoach 
+                    ? '/api/coach/my-clients'  // Limited: only their assigned clients
+                    : role === 'coach' 
+                      ? '/api/coach/org-users'  // Full access: all org users
+                      : '/api/admin/users'      // Admin: all users
+                }
+                onSelectUser={(userId) => setSelectedClientId(userId)}
+                headerTitle="Clients"
+                showOrgRole={hasFullAccess && (role === 'coach' || orgRole === 'super_coach')}
+                currentUserOrgRole={orgRole}
+                readOnly={isLimitedOrgCoach}
+                visibleColumns={isLimitedOrgCoach ? ['avatar', 'name', 'email', 'coach', 'coaching', 'created'] : undefined}
               />
             )}
           </TabsContent>
@@ -210,8 +239,15 @@ export default function CoachPage() {
             ) : (
               <AdminSquadsTab 
                 currentUserRole={role || 'user'} 
-                apiEndpoint={role === 'coach' ? '/api/coach/org-squads' : '/api/admin/squads'}
+                apiEndpoint={
+                  isLimitedOrgCoach
+                    ? '/api/coach/my-squads'   // Limited: only their assigned squads
+                    : role === 'coach'
+                      ? '/api/coach/org-squads' // Full access: all org squads
+                      : '/api/admin/squads'     // Admin: all squads
+                }
                 onSelectSquad={(squadId) => setSelectedSquadIdForView(squadId)}
+                coachesApiEndpoint={role === 'coach' ? '/api/coach/org-coaches' : '/api/admin/coaches'}
               />
             )}
           </TabsContent>

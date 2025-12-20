@@ -48,9 +48,16 @@ interface AdminSquadsTabProps {
   apiEndpoint?: string;
   /** Optional callback when a squad is selected - makes rows clickable */
   onSelectSquad?: (squadId: string) => void;
+  /** API endpoint for fetching coaches (default: /api/admin/coaches, use /api/coach/org-coaches for org context) */
+  coachesApiEndpoint?: string;
 }
 
-export function AdminSquadsTab({ currentUserRole: _currentUserRole, apiEndpoint = '/api/admin/squads', onSelectSquad }: AdminSquadsTabProps) {
+export function AdminSquadsTab({ 
+  currentUserRole: _currentUserRole, 
+  apiEndpoint = '/api/admin/squads', 
+  onSelectSquad,
+  coachesApiEndpoint = '/api/admin/coaches',
+}: AdminSquadsTabProps) {
   const [squads, setSquads] = useState<SquadWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -345,6 +352,7 @@ export function AdminSquadsTab({ currentUserRole: _currentUserRole, apiEndpoint 
           }}
           onSave={handleSquadSaved}
           apiBasePath={apiEndpoint}
+          coachesApiEndpoint={coachesApiEndpoint}
         />
       )}
 
