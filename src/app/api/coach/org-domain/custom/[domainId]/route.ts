@@ -15,6 +15,7 @@ import {
   getDomainVerificationStatus,
   isVercelDomainApiConfigured 
 } from '@/lib/vercel-domains';
+import { removeDomainFromClerk } from '@/lib/clerk-domains';
 import { isSuperCoach } from '@/lib/admin-utils-shared';
 import { auth } from '@clerk/nextjs/server';
 import type { OrgRole, OrgCustomDomain, CustomDomainStatus } from '@/types';
@@ -234,7 +235,16 @@ export async function DELETE(
       const vercelResult = await removeDomainFromVercel(domainData.domain);
       if (!vercelResult.success) {
         console.error(`[COACH_CUSTOM_DOMAIN] Failed to remove domain from Vercel: ${vercelResult.error}`);
-        // Continue with Firestore deletion anyway - the domain might not exist in Vercel
+        // Continue with deletion anyway - the domain might not exist in Vercel
+      }
+    }
+    
+    // Remove the domain from Clerk (if it was added)
+    if (domainData.clerkDomainId) {
+      const clerkResult = await removeDomainFromClerk(domainData.clerkDomainId);
+      if (!clerkResult.success) {
+        console.error(`[COACH_CUSTOM_DOMAIN] Failed to remove domain from Clerk: ${clerkResult.error}`);
+        // Continue with deletion anyway
       }
     }
     

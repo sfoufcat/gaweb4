@@ -1363,6 +1363,7 @@ export interface OrgCustomDomain {
   domain: string;                // e.g., "coaching.example.com" (unique, lowercase)
   status: CustomDomainStatus;    // Verification status
   verificationToken: string;     // Token for DNS TXT record verification
+  clerkDomainId?: string;        // Clerk satellite domain ID for auth
   verifiedAt?: string;           // ISO timestamp when verified
   lastCheckedAt?: string;        // ISO timestamp of last verification attempt
   createdAt: string;             // ISO timestamp

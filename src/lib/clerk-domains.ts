@@ -1,0 +1,133 @@
+/**
+ * Clerk Domain Management
+ * 
+ * Handles adding and removing satellite domains in Clerk for multi-tenant
+ * custom domain authentication.
+ * 
+ * Note: This requires Clerk's domains API access, which may be plan-dependent.
+ * If the API is not available, operations will fail gracefully.
+ */
+
+import { clerkClient } from '@clerk/nextjs/server';
+
+interface ClerkDomainResult {
+  success: boolean;
+  domainId?: string;
+  error?: string;
+}
+
+/**
+ * Add a domain to Clerk as a satellite domain
+ * This enables Clerk authentication to work on the custom domain
+ * 
+ * @param domain - The domain to add (e.g., "cyberked.com")
+ * @returns Result with the Clerk domain ID if successful
+ */
+export async function addDomainToClerk(domain: string): Promise<ClerkDomainResult> {
+  try {
+    const client = await clerkClient();
+    
+    // Create the domain as a satellite
+    const result = await client.domains.createDomain({ 
+      name: domain,
+      isSatellite: true,
+    });
+    
+    console.log(`[CLERK_DOMAINS] Added domain ${domain} to Clerk (ID: ${result.id})`);
+    
+    return {
+      success: true,
+      domainId: result.id,
+    };
+  } catch (error) {
+    console.error('[CLERK_DOMAINS] Error adding domain to Clerk:', error);
+    
+    // Check for specific error types
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Domain might already exist
+    if (errorMessage.includes('already exists') || errorMessage.includes('duplicate')) {
+      return {
+        success: false,
+        error: 'Domain already exists in Clerk',
+      };
+    }
+    
+    // API might not be available on this plan
+    if (errorMessage.includes('not allowed') || errorMessage.includes('unauthorized') || errorMessage.includes('forbidden')) {
+      return {
+        success: false,
+        error: 'Clerk domains API not available on current plan',
+      };
+    }
+    
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+}
+
+/**
+ * Remove a domain from Clerk
+ * 
+ * @param domainId - The Clerk domain ID to remove
+ * @returns Success status
+ */
+export async function removeDomainFromClerk(domainId: string): Promise<ClerkDomainResult> {
+  try {
+    const client = await clerkClient();
+    
+    await client.domains.deleteDomain(domainId);
+    
+    console.log(`[CLERK_DOMAINS] Removed domain ${domainId} from Clerk`);
+    
+    return { success: true };
+  } catch (error) {
+    console.error('[CLERK_DOMAINS] Error removing domain from Clerk:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Domain might not exist (already deleted)
+    if (errorMessage.includes('not found') || errorMessage.includes('404')) {
+      console.log(`[CLERK_DOMAINS] Domain ${domainId} not found in Clerk (already removed)`);
+      return { success: true };
+    }
+    
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+}
+
+/**
+ * Get a domain from Clerk by ID
+ * 
+ * @param domainId - The Clerk domain ID
+ * @returns Domain info or null if not found
+ */
+export async function getDomainFromClerk(domainId: string): Promise<{ id: string; name: string } | null> {
+  try {
+    const client = await clerkClient();
+    const domain = await client.domains.getDomain(domainId);
+    return { id: domain.id, name: domain.name };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * List all domains in Clerk
+ * Useful for debugging/admin purposes
+ */
+export async function listClerkDomains(): Promise<Array<{ id: string; name: string }>> {
+  try {
+    const client = await clerkClient();
+    const { data: domains } = await client.domains.getDomainList();
+    return domains.map(d => ({ id: d.id, name: d.name }));
+  } catch (error) {
+    console.error('[CLERK_DOMAINS] Error listing domains:', error);
+    return [];
+  }
+}

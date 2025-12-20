@@ -314,7 +314,8 @@ export function generateVerificationToken(): string {
  */
 export async function addCustomDomain(
   organizationId: string,
-  domain: string
+  domain: string,
+  clerkDomainId?: string
 ): Promise<OrgCustomDomain> {
   const normalized = domain.toLowerCase().trim();
   const now = new Date().toISOString();
@@ -325,13 +326,14 @@ export async function addCustomDomain(
     domain: normalized,
     status: 'pending',
     verificationToken,
+    clerkDomainId,
     createdAt: now,
     updatedAt: now,
   };
   
   const docRef = await adminDb.collection('org_custom_domains').add(domainData);
   
-  console.log(`[TENANT] Added custom domain: ${normalized} -> org:${organizationId} (pending verification)`);
+  console.log(`[TENANT] Added custom domain: ${normalized} -> org:${organizationId} (pending verification)${clerkDomainId ? ` [Clerk: ${clerkDomainId}]` : ''}`);
   
   return {
     id: docRef.id,

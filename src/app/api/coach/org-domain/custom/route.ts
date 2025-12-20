@@ -13,6 +13,7 @@ import {
   isCustomDomainAvailable,
 } from '@/lib/tenant/resolveTenant';
 import { addDomainToVercel, isVercelDomainApiConfigured } from '@/lib/vercel-domains';
+import { addDomainToClerk } from '@/lib/clerk-domains';
 import { isSuperCoach } from '@/lib/admin-utils-shared';
 import { auth } from '@clerk/nextjs/server';
 import type { OrgRole } from '@/types';
@@ -123,8 +124,19 @@ export async function POST(request: Request) {
       console.warn('[COACH_CUSTOM_DOMAIN] Vercel API not configured - domain added to database only');
     }
     
+    // Add the domain to Clerk for authentication
+    let clerkDomainId: string | undefined;
+    const clerkResult = await addDomainToClerk(normalizedDomain);
+    if (clerkResult.success && clerkResult.domainId) {
+      clerkDomainId = clerkResult.domainId;
+      console.log(`[COACH_CUSTOM_DOMAIN] Added domain to Clerk: ${clerkDomainId}`);
+    } else {
+      // Log but don't fail - Clerk API might not be available on all plans
+      console.warn(`[COACH_CUSTOM_DOMAIN] Could not add domain to Clerk: ${clerkResult.error}. Authentication may require manual setup.`);
+    }
+    
     // Add the custom domain to our database
-    const customDomain = await addCustomDomain(organizationId, normalizedDomain);
+    const customDomain = await addCustomDomain(organizationId, normalizedDomain, clerkDomainId);
     
     console.log(`[COACH_CUSTOM_DOMAIN] Added custom domain ${normalizedDomain} for org ${organizationId}`);
     
@@ -162,6 +174,7 @@ export async function POST(request: Request) {
       },
       verificationInstructions,
       vercelConfigured: isVercelDomainApiConfigured(),
+      clerkConfigured: !!clerkDomainId,
     }, { status: 201 });
   } catch (error) {
     console.error('[COACH_CUSTOM_DOMAIN_POST] Error:', error);
