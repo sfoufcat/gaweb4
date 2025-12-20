@@ -469,10 +469,19 @@ export default clerkMiddleware(async (auth, request) => {
     }
     
     // If user has NO guest session and is visiting root, redirect to /begin
+    // EXCEPTION: If from_auth=1 is present on a custom domain, skip redirect to let ClerkProvider sync
     if (!guestSessionId && pathname === '/') {
-      const isReturningUser = request.cookies.get('ga_returning_user')?.value === 'true';
-      const redirectUrl = isReturningUser ? '/sign-in' : '/begin';
-      return NextResponse.redirect(new URL(redirectUrl, request.url));
+      const fromAuth = request.nextUrl.searchParams.get('from_auth') === '1';
+      
+      // On custom domains coming from auth, let the page load so ClerkProvider can sync the session
+      if (isCustomDomain && fromAuth) {
+        console.log('[MIDDLEWARE] Skipping auth redirect for satellite session sync');
+        // Continue to page - ClerkProvider will sync session client-side
+      } else {
+        const isReturningUser = request.cookies.get('ga_returning_user')?.value === 'true';
+        const redirectUrl = isReturningUser ? '/sign-in' : '/begin';
+        return NextResponse.redirect(new URL(redirectUrl, request.url));
+      }
     }
     
     // Redirect if user has a saved step that's NOT the welcome page

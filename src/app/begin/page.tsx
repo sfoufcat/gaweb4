@@ -1,6 +1,7 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getBrandingForDomain, getBestLogoUrl } from '@/lib/server/branding';
+import { resolveTenant } from '@/lib/tenant/resolveTenant';
 import { BeginPageClient } from './BeginPageClient';
 
 interface BeginPageProps {
@@ -25,11 +26,20 @@ export default async function BeginPage({ searchParams }: BeginPageProps) {
     !domainWithoutPort.includes('localhost') &&
     !domainWithoutPort.includes('127.0.0.1');
   
-  // On satellite domains (custom domains), redirect to PRIMARY domain for sign-up
-  // Clerk satellite domains sync sessions from primary domain, so sign-up must happen there
-  // Note: This loses coach branding during sign-up, but session sync works correctly
+  // On satellite domains (custom domains), redirect to the org's SUBDOMAIN for sign-up
+  // This preserves coach branding during sign-up
+  // The from_auth=1 param tells middleware to skip auth redirect and let ClerkProvider sync
   if (isSatellite) {
-    const returnUrl = `https://${domainWithoutPort}/`;
+    const result = await resolveTenant(hostname, null, null);
+    
+    if (result.type === 'tenant' && result.tenant.subdomain) {
+      // Add from_auth=1 so middleware knows to let the user through for session sync
+      const returnUrl = `https://${domainWithoutPort}/?from_auth=1`;
+      redirect(`https://${result.tenant.subdomain}.growthaddicts.app/begin?redirect_url=${encodeURIComponent(returnUrl)}`);
+    }
+    
+    // Fallback to primary domain if no subdomain found
+    const returnUrl = `https://${domainWithoutPort}/?from_auth=1`;
     redirect(`https://growthaddicts.app/begin?redirect_url=${encodeURIComponent(returnUrl)}`);
   }
   
