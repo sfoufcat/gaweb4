@@ -39,6 +39,7 @@ import type {
   CoachingResource,
   CoachPrivateNotes,
   UserTrack,
+  CoachingStatus,
 } from '@/types';
 import {
   formatTierName,
@@ -649,8 +650,8 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium font-albert ${getTierBadgeColor(userTier)}`}>
                 {formatTierName(userTier)}
               </span>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium font-albert ${getCoachingStatusBadgeColor(coachingStatus as 'none' | 'active' | 'paused' | 'cancelled')}`}>
-                {formatCoachingStatus(coachingStatus as 'none' | 'active' | 'paused' | 'cancelled')}
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium font-albert ${getCoachingStatusBadgeColor(coachingStatus as CoachingStatus)}`}>
+                {formatCoachingStatus(coachingStatus as CoachingStatus)}
               </span>
             </div>
             
