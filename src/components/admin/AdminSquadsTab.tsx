@@ -46,9 +46,11 @@ interface AdminSquadsTabProps {
   currentUserRole: UserRole;
   /** Override API endpoint for multi-tenancy (e.g., '/api/coach/org-squads' for coaches) */
   apiEndpoint?: string;
+  /** Optional callback when a squad is selected - makes rows clickable */
+  onSelectSquad?: (squadId: string) => void;
 }
 
-export function AdminSquadsTab({ currentUserRole: _currentUserRole, apiEndpoint = '/api/admin/squads' }: AdminSquadsTabProps) {
+export function AdminSquadsTab({ currentUserRole: _currentUserRole, apiEndpoint = '/api/admin/squads', onSelectSquad }: AdminSquadsTabProps) {
   const [squads, setSquads] = useState<SquadWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -189,7 +191,11 @@ export function AdminSquadsTab({ currentUserRole: _currentUserRole, apiEndpoint 
             </TableHeader>
             <TableBody>
               {squads.map((squad) => (
-                <TableRow key={squad.id}>
+                <TableRow 
+                  key={squad.id}
+                  className={onSelectSquad ? 'cursor-pointer hover:bg-[#faf8f6] dark:hover:bg-[#11141b]' : ''}
+                  onClick={() => onSelectSquad?.(squad.id)}
+                >
                   <TableCell className="font-albert font-medium">
                     <div className="flex items-center gap-3">
                       {squad.avatarUrl ? (
@@ -288,7 +294,10 @@ export function AdminSquadsTab({ currentUserRole: _currentUserRole, apiEndpoint 
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setSquadToEdit(squad)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSquadToEdit(squad);
+                        }}
                         className="text-[#a07855] hover:text-[#8c6245] hover:bg-[#a07855]/10 font-albert"
                       >
                         Edit
@@ -296,7 +305,10 @@ export function AdminSquadsTab({ currentUserRole: _currentUserRole, apiEndpoint 
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setSquadToDelete(squad)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSquadToDelete(squad);
+                        }}
                         className="text-red-600 hover:text-red-700 hover:bg-red-50 font-albert"
                       >
                         Delete
@@ -332,6 +344,7 @@ export function AdminSquadsTab({ currentUserRole: _currentUserRole, apiEndpoint 
             setSquadToEdit(null);
           }}
           onSave={handleSquadSaved}
+          apiBasePath={apiEndpoint}
         />
       )}
 

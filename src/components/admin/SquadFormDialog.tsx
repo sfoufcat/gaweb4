@@ -47,6 +47,8 @@ interface SquadFormDialogProps {
   open: boolean;
   onClose: () => void;
   onSave: () => void;
+  /** API base path for squad operations (default: /api/admin/squads) */
+  apiBasePath?: string;
 }
 
 // Popular timezones for quick selection
@@ -66,7 +68,7 @@ const POPULAR_TIMEZONES = [
   { value: 'UTC', label: 'UTC (Coordinated Universal Time)' },
 ];
 
-export function SquadFormDialog({ squad, open, onClose, onSave }: SquadFormDialogProps) {
+export function SquadFormDialog({ squad, open, onClose, onSave, apiBasePath = '/api/admin/squads' }: SquadFormDialogProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -333,7 +335,7 @@ export function SquadFormDialog({ squad, open, onClose, onSave }: SquadFormDialo
     try {
       setLoading(true);
 
-      const url = squad ? `/api/admin/squads/${squad.id}` : '/api/admin/squads';
+      const url = squad ? `${apiBasePath}/${squad.id}` : apiBasePath;
       const method = squad ? 'PATCH' : 'POST';
 
       const response = await fetch(url, {
@@ -352,8 +354,16 @@ export function SquadFormDialog({ squad, open, onClose, onSave }: SquadFormDialo
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || `Failed to ${squad ? 'update' : 'create'} squad`);
+        // Handle both JSON and non-JSON error responses gracefully
+        let errorMessage = `Failed to ${squad ? 'update' : 'create'} squad`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          // Response was not JSON (plain text), use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       onSave();
