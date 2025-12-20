@@ -5,6 +5,7 @@ import { dark } from '@clerk/themes';
 import { useEffect, useState } from 'react';
 
 const STORAGE_KEY = 'ga-theme';
+const PRIMARY_DOMAIN = 'https://growthaddicts.app';
 
 // Custom dark theme variables to match app design
 const darkAppearance = {
@@ -185,6 +186,8 @@ export function ClerkThemeProvider({ children, hostname = '' }: ClerkThemeProvid
       appearance={mounted ? appearance : lightAppearance}
       isSatellite={isSatellite}
       domain={isSatellite ? domainWithoutPort : undefined}
+      signInUrl={isSatellite ? `${PRIMARY_DOMAIN}/sign-in` : undefined}
+      signUpUrl={isSatellite ? `${PRIMARY_DOMAIN}/sign-up` : undefined}
     >
       {children}
     </ClerkProvider>
