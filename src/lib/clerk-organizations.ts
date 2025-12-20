@@ -1,6 +1,7 @@
 import { auth, clerkClient } from '@clerk/nextjs/server';
-import type { UserRole, OrgRole } from '@/types';
+import type { UserRole, OrgRole, OrgSettings, DEFAULT_ORG_SETTINGS } from '@/types';
 import { setupDefaultOrgChannels } from '@/lib/org-channels';
+import { adminDb } from '@/lib/firebase-admin';
 
 /**
  * Clerk Organizations Utilities
@@ -84,6 +85,24 @@ export async function createOrganizationForCoach(
     } catch (channelError) {
       // Log but don't fail - channels can be set up later
       console.error(`[CLERK_ORGS] Failed to setup default channels for ${organization.id}:`, channelError);
+    }
+    
+    // Auto-create subdomain in org_domains (for multi-tenant routing)
+    try {
+      await createOrgDomainEntry(organization.id, orgSlug);
+      console.log(`[CLERK_ORGS] Created subdomain ${orgSlug} for organization ${organization.id}`);
+    } catch (domainError) {
+      // Log but don't fail - subdomain can be set up later via coach dashboard
+      console.error(`[CLERK_ORGS] Failed to create subdomain for ${organization.id}:`, domainError);
+    }
+    
+    // Create org_settings with defaults
+    try {
+      await createDefaultOrgSettings(organization.id);
+      console.log(`[CLERK_ORGS] Created default settings for organization ${organization.id}`);
+    } catch (settingsError) {
+      // Log but don't fail - settings can be created later
+      console.error(`[CLERK_ORGS] Failed to create settings for ${organization.id}:`, settingsError);
     }
     
     return organization.id;
@@ -398,4 +417,99 @@ export async function isUserOrgMember(userId: string, organizationId: string): P
     console.error(`[CLERK_ORGS] Error checking org membership:`, error);
     return false;
   }
+}
+
+// ============================================================================
+// MULTI-TENANT DOMAIN & SETTINGS SETUP
+// ============================================================================
+
+/**
+ * Create org_domains entry for subdomain-based routing
+ * Called when a coach organization is created
+ * 
+ * @param organizationId - The Clerk organization ID
+ * @param subdomain - The subdomain to use (e.g., "coach-abc123")
+ */
+async function createOrgDomainEntry(organizationId: string, subdomain: string): Promise<void> {
+  const normalizedSubdomain = subdomain.toLowerCase().trim();
+  const now = new Date().toISOString();
+  
+  // Check if subdomain is already taken
+  const existingSnapshot = await adminDb
+    .collection('org_domains')
+    .where('subdomain', '==', normalizedSubdomain)
+    .limit(1)
+    .get();
+  
+  if (!existingSnapshot.empty) {
+    // Subdomain already exists - this shouldn't happen but handle gracefully
+    const existingData = existingSnapshot.docs[0].data();
+    if (existingData.organizationId === organizationId) {
+      console.log(`[CLERK_ORGS] Subdomain ${normalizedSubdomain} already mapped to org ${organizationId}`);
+      return;
+    }
+    // Generate a unique subdomain by appending random chars
+    const uniqueSubdomain = `${normalizedSubdomain}-${Math.random().toString(36).substring(2, 6)}`;
+    console.log(`[CLERK_ORGS] Subdomain ${normalizedSubdomain} taken, using ${uniqueSubdomain}`);
+    await createOrgDomainEntry(organizationId, uniqueSubdomain);
+    return;
+  }
+  
+  // Check if org already has a subdomain
+  const orgSnapshot = await adminDb
+    .collection('org_domains')
+    .where('organizationId', '==', organizationId)
+    .limit(1)
+    .get();
+  
+  if (!orgSnapshot.empty) {
+    console.log(`[CLERK_ORGS] Organization ${organizationId} already has a subdomain`);
+    return;
+  }
+  
+  // Create the org_domains entry
+  await adminDb.collection('org_domains').add({
+    organizationId,
+    subdomain: normalizedSubdomain,
+    primaryDomain: `${normalizedSubdomain}.growthaddicts.app`,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
+/**
+ * Create default org_settings for an organization
+ * Called when a coach organization is created
+ * 
+ * @param organizationId - The Clerk organization ID
+ */
+async function createDefaultOrgSettings(organizationId: string): Promise<void> {
+  const now = new Date().toISOString();
+  
+  // Check if settings already exist
+  const existingDoc = await adminDb.collection('org_settings').doc(organizationId).get();
+  if (existingDoc.exists) {
+    console.log(`[CLERK_ORGS] Settings already exist for organization ${organizationId}`);
+    return;
+  }
+  
+  // Create default settings
+  const defaultSettings: OrgSettings = {
+    id: organizationId,
+    organizationId,
+    billingMode: 'platform',
+    allowExternalBilling: true,
+    defaultTier: 'standard',
+    defaultTrack: null,
+    stripeConnectAccountId: null,
+    stripeConnectStatus: 'not_connected',
+    platformFeePercent: 10,
+    requireApproval: false,
+    autoJoinSquadId: null,
+    welcomeMessage: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+  
+  await adminDb.collection('org_settings').doc(organizationId).set(defaultSettings);
 }

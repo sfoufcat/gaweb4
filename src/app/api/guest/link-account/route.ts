@@ -1,10 +1,11 @@
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { updateUserBillingInClerk } from '@/lib/admin-utils-clerk';
 import { sendWelcomeEmail } from '@/lib/email';
 import { setUserTrack, isValidTrack } from '@/lib/track';
+import type { OrgMembership, OrgSettings } from '@/types';
 
 // Lazy initialization of Stripe
 function getStripeClient(): Stripe {
@@ -15,6 +16,138 @@ function getStripeClient(): Stripe {
   return new Stripe(key, {
     apiVersion: '2025-02-24.acacia',
   });
+}
+
+/**
+ * Get organization settings with defaults if not found
+ */
+async function getOrgSettings(organizationId: string): Promise<OrgSettings> {
+  const doc = await adminDb.collection('org_settings').doc(organizationId).get();
+  
+  if (doc.exists) {
+    return doc.data() as OrgSettings;
+  }
+  
+  // Return default settings
+  const now = new Date().toISOString();
+  return {
+    id: organizationId,
+    organizationId,
+    billingMode: 'platform',
+    allowExternalBilling: true,
+    defaultTier: 'standard',
+    defaultTrack: null,
+    stripeConnectAccountId: null,
+    stripeConnectStatus: 'not_connected',
+    platformFeePercent: 10,
+    requireApproval: false,
+    autoJoinSquadId: null,
+    welcomeMessage: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/**
+ * Create org_membership for a user in an organization
+ * Called when a guest user on a tenant domain creates their account
+ */
+async function createOrgMembershipFromGuest(
+  userId: string,
+  organizationId: string,
+  tier: 'free' | 'standard' | 'premium'
+): Promise<string | null> {
+  try {
+    // Check if membership already exists
+    const existingMembership = await adminDb
+      .collection('org_memberships')
+      .where('userId', '==', userId)
+      .where('organizationId', '==', organizationId)
+      .limit(1)
+      .get();
+    
+    if (!existingMembership.empty) {
+      console.log(`[LINK_ACCOUNT] User ${userId} already has membership in org ${organizationId}`);
+      return existingMembership.docs[0].id;
+    }
+    
+    // Get org settings for defaults
+    const settings = await getOrgSettings(organizationId);
+    
+    const now = new Date().toISOString();
+    const membership: Omit<OrgMembership, 'id'> = {
+      userId,
+      organizationId,
+      orgRole: 'member',
+      tier: tier,
+      track: settings.defaultTrack,
+      squadId: settings.autoJoinSquadId,
+      premiumSquadId: null,
+      accessSource: 'platform_billing', // User paid through platform
+      accessExpiresAt: null,
+      inviteCodeUsed: null,
+      isActive: true,
+      joinedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    };
+    
+    const membershipRef = await adminDb.collection('org_memberships').add(membership);
+    await membershipRef.update({ id: membershipRef.id });
+    
+    console.log(`[LINK_ACCOUNT] Created org_membership ${membershipRef.id} for user ${userId} in org ${organizationId}`);
+    
+    return membershipRef.id;
+  } catch (error) {
+    console.error(`[LINK_ACCOUNT] Failed to create org_membership for user ${userId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Add user to Clerk organization and update metadata
+ */
+async function enrollUserInClerkOrg(
+  userId: string,
+  organizationId: string
+): Promise<void> {
+  const client = await clerkClient();
+  
+  try {
+    // Check if already a member
+    const memberships = await client.organizations.getOrganizationMembershipList({
+      organizationId,
+    });
+    const existing = memberships.data.find(m => m.publicUserData?.userId === userId);
+    
+    if (!existing) {
+      // Add as organization member
+      await client.organizations.createOrganizationMembership({
+        organizationId,
+        userId,
+        role: 'org:member',
+      });
+      console.log(`[LINK_ACCOUNT] Added user ${userId} to Clerk org ${organizationId}`);
+    }
+    
+    // Update publicMetadata with primaryOrganizationId
+    const user = await client.users.getUser(userId);
+    const currentMetadata = user.publicMetadata as Record<string, unknown>;
+    
+    await client.users.updateUserMetadata(userId, {
+      publicMetadata: {
+        ...currentMetadata,
+        primaryOrganizationId: organizationId,
+        organizationId: organizationId, // Legacy field
+        orgRole: 'member',
+      },
+    });
+    
+    console.log(`[LINK_ACCOUNT] Updated user ${userId} Clerk metadata with org ${organizationId}`);
+  } catch (error) {
+    console.error(`[LINK_ACCOUNT] Error enrolling user ${userId} in Clerk org ${organizationId}:`, error);
+    // Don't throw - we still want to complete the linking
+  }
 }
 
 /**
@@ -204,6 +337,34 @@ export async function POST(req: Request) {
       } catch (trackError) {
         console.error(`[LINK_ACCOUNT] Failed to set track in Clerk:`, trackError);
         // Continue - Firebase is already updated
+      }
+    }
+
+    // ==========================================================================
+    // MULTI-TENANT: Enroll user in organization if they signed up on tenant domain
+    // ==========================================================================
+    const tenantOrgId = guestData.tenantOrgId;
+    if (tenantOrgId) {
+      console.log(`[LINK_ACCOUNT] Guest signed up on tenant domain, enrolling in org: ${tenantOrgId}`);
+      
+      // Create org_membership in Firestore
+      const membershipId = await createOrgMembershipFromGuest(
+        userId,
+        tenantOrgId,
+        plan as 'standard' | 'premium'
+      );
+      
+      if (membershipId) {
+        // Also add to Clerk organization and update metadata
+        await enrollUserInClerkOrg(userId, tenantOrgId);
+        
+        // Update user document with org info
+        await adminDb.collection('users').doc(userId).update({
+          primaryOrganizationId: tenantOrgId,
+          updatedAt: new Date().toISOString(),
+        });
+        
+        console.log(`[LINK_ACCOUNT] Successfully enrolled user ${userId} in org ${tenantOrgId}`);
       }
     }
 

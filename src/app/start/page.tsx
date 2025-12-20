@@ -11,6 +11,59 @@ import type { UserTrack } from '@/types';
 // Valid track values for validation
 const VALID_TRACKS: UserTrack[] = ['content_creator', 'saas', 'coach_consultant', 'ecom', 'agency', 'community_builder', 'general'];
 
+/**
+ * Resolve tenant organization from current hostname
+ * Returns the organization ID if on a tenant domain, null otherwise
+ */
+async function resolveTenantOrg(): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  
+  const hostname = window.location.hostname;
+  
+  // Skip resolution for localhost and platform domains
+  if (hostname === 'localhost' || hostname.includes('127.0.0.1')) {
+    return null;
+  }
+  
+  // Skip for known platform domains
+  const platformDomains = [
+    'growthaddicts.app',
+    'www.growthaddicts.app',
+    'app.growthaddicts.app',
+    'pro.growthaddicts.com',
+    'www.pro.growthaddicts.com',
+  ];
+  if (platformDomains.includes(hostname)) {
+    return null;
+  }
+  
+  try {
+    // Check if subdomain of growthaddicts.app
+    const subdomainMatch = hostname.match(/^([a-z0-9-]+)\.growthaddicts\.app$/);
+    if (subdomainMatch && !['www', 'app'].includes(subdomainMatch[1])) {
+      // It's a tenant subdomain, resolve it
+      const response = await fetch(`/api/tenant/resolve?subdomain=${subdomainMatch[1]}`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.organizationId || null;
+      }
+      return null;
+    }
+    
+    // Check if custom domain
+    const response = await fetch(`/api/tenant/resolve?domain=${hostname}`);
+    if (response.ok) {
+      const data = await response.json();
+      return data.organizationId || null;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('[START] Failed to resolve tenant:', error);
+    return null;
+  }
+}
+
 // Track options with emojis and labels
 const TRACK_OPTIONS: { value: UserTrack; emoji: string; label: string; description: string; enabled: boolean }[] = [
   { 
@@ -68,7 +121,7 @@ export default function StartPage() {
   const [isNavigating, setIsNavigating] = useState(false);
   const [selectedTrack, setSelectedTrack] = useState<UserTrack | null>(null);
 
-  // Handle preselection from URL query param
+  // Handle preselection from URL query param and capture tenant org
   useEffect(() => {
     if (!isLoading) {
       const trackParam = searchParams.get('track');
@@ -82,8 +135,17 @@ export default function StartPage() {
         }
       }
       
-      // Save current step
-      saveData({ currentStep: 'start' });
+      // Capture tenant org if on tenant domain (for multi-tenant support)
+      // This allows auto-enrollment when the account is created
+      resolveTenantOrg().then((tenantOrgId) => {
+        if (tenantOrgId) {
+          console.log('[START] Captured tenant org:', tenantOrgId);
+          saveData({ currentStep: 'start', tenantOrgId });
+        } else {
+          // Save current step without tenant org
+          saveData({ currentStep: 'start' });
+        }
+      });
     }
   }, [isLoading, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 

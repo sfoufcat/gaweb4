@@ -203,6 +203,14 @@ export interface GuestOnboardingData {
   // Goal setting flow
   goalReturnStepIndex?: string; // Step to return to after custom goal setting (stored as string)
   customGoal?: string; // User's custom goal text
+  
+  // ==========================================================================
+  // MULTI-TENANT SUPPORT
+  // ==========================================================================
+  
+  // Tenant organization ID (captured when user starts flow on tenant domain)
+  // Used to auto-enroll user to the organization when account is created
+  tenantOrgId?: string;
 }
 
 /**

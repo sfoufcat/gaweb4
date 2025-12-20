@@ -58,6 +58,7 @@ interface ClerkAdminUser {
   imageUrl: string;
   role: UserRole;
   orgRole?: OrgRole; // Organization-level role (for multi-tenant)
+  orgRoleForOrg?: OrgRole; // Org role for a specific org (from org-scoped API)
   tier: UserTier;
   // Coaching is separate from membership tier
   coachingStatus?: CoachingStatus;
@@ -99,18 +100,30 @@ interface AdminUsersTabProps {
   readOnly?: boolean;
   /** Which columns to show (defaults to ALL_COLUMNS or LIMITED_COLUMNS based on readOnly) */
   visibleColumns?: ColumnKey[];
+  /** 
+   * Org-scoped mode for viewing/managing users in a specific organization.
+   * When set, uses org-scoped API endpoints and shows org role for that specific org.
+   */
+  orgMode?: { organizationId: string };
 }
 
 export function AdminUsersTab({ 
   currentUserRole, 
-  apiEndpoint = '/api/admin/users', 
+  apiEndpoint: apiEndpointProp, 
   onSelectUser, 
   headerTitle = 'Users',
   showOrgRole = false,
   currentUserOrgRole,
   readOnly = false,
   visibleColumns,
+  orgMode,
 }: AdminUsersTabProps) {
+  // Determine API endpoint - use org-scoped endpoint if in orgMode
+  const apiEndpoint = apiEndpointProp || (
+    orgMode 
+      ? `/api/admin/organizations/${orgMode.organizationId}/users`
+      : '/api/admin/users'
+  );
   // Determine which columns to show
   const columns = visibleColumns || (readOnly ? LIMITED_COLUMNS : ALL_COLUMNS);
   const showColumn = (col: ColumnKey) => columns.includes(col);
@@ -305,12 +318,23 @@ export function AdminUsersTab({
     try {
       setUpdatingOrgRoleUserId(userId);
       
-      // Use admin API for super_admin, coach API for super_coach
-      const apiEndpoint = isPlatformAdmin 
-        ? `/api/admin/users/${userId}/org-role`
-        : `/api/coach/org-users/${userId}/org-role`;
+      // Determine API endpoint based on mode:
+      // 1. In orgMode (admin viewing specific org) -> use org-scoped admin API
+      // 2. Platform admin not in orgMode -> use generic admin API
+      // 3. Super coach -> use coach API
+      let orgRoleApiEndpoint: string;
+      if (orgMode && isPlatformAdmin) {
+        // Org-scoped admin API (best for viewing specific org)
+        orgRoleApiEndpoint = `/api/admin/organizations/${orgMode.organizationId}/users/${userId}/org-role`;
+      } else if (isPlatformAdmin) {
+        // Generic admin API
+        orgRoleApiEndpoint = `/api/admin/users/${userId}/org-role`;
+      } else {
+        // Coach API
+        orgRoleApiEndpoint = `/api/coach/org-users/${userId}/org-role`;
+      }
       
-      const response = await fetch(apiEndpoint, {
+      const response = await fetch(orgRoleApiEndpoint, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orgRole: newOrgRole }),
@@ -321,10 +345,12 @@ export function AdminUsersTab({
         throw new Error(error.error || 'Failed to update organization role');
       }
 
-      // Update local state optimistically
+      // Update local state optimistically - support both orgRole and orgRoleForOrg
       setUsers((prev) =>
         prev.map((user) =>
-          user.id === userId ? { ...user, orgRole: newOrgRole } : user
+          user.id === userId 
+            ? { ...user, orgRole: newOrgRole, orgRoleForOrg: newOrgRole } 
+            : user
         )
       );
     } catch (err) {
@@ -481,7 +507,8 @@ export function AdminUsersTab({
             <TableBody>
               {filteredUsers.map((user) => {
                 const userRole = user.role || 'user';
-                const userOrgRole = user.orgRole || 'member';
+                // Use orgRoleForOrg (from org-scoped API) if available, otherwise fallback to orgRole
+                const userOrgRole = user.orgRoleForOrg || user.orgRole || 'member';
                 const userTier = user.tier || 'free';
                 const canModifyThisUser = canModifyUserRole(currentUserRole, userRole, userRole);
                 const canDeleteThisUser = canDeleteUser(currentUserRole, userRole);

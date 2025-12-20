@@ -1,4 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
+import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
@@ -10,30 +11,42 @@ import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_M
  * GET /api/org/branding
  * Fetches branding settings for an organization
  * 
- * Query params:
- * - orgId: (optional) specific organization ID to fetch
- *          If not provided, fetches current user's organization branding
+ * Resolution priority:
+ * 1. x-tenant-org-id header (set by middleware for tenant domains) - NO AUTH REQUIRED
+ * 2. Query param orgId (for specific org lookup)
+ * 3. Current authenticated user's organization
+ * 4. Default branding
  * 
- * Returns default branding if no custom branding is set
+ * This endpoint is public for GET requests when on a tenant domain,
+ * allowing branding to load before user authentication.
  */
 export async function GET(request: Request) {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     // Parse query params
     const { searchParams } = new URL(request.url);
     const requestedOrgId = searchParams.get('orgId');
 
-    // Determine which organization's branding to fetch
-    let organizationId: string | null = requestedOrgId;
+    // Priority 1: Check for tenant org ID from middleware (set for tenant domains)
+    // This allows branding to be loaded without authentication on tenant domains
+    const headersList = await headers();
+    const tenantOrgId = headersList.get('x-tenant-org-id');
     
-    if (!organizationId) {
-      // Try to get current user's organization
-      organizationId = await getCurrentUserOrganizationId();
+    let organizationId: string | null = null;
+    
+    if (tenantOrgId) {
+      // Tenant mode - use tenant org ID (no auth required)
+      organizationId = tenantOrgId;
+      console.log(`[ORG_BRANDING_GET] Using tenant org from header: ${organizationId}`);
+    } else if (requestedOrgId) {
+      // Priority 2: Explicit org ID requested
+      organizationId = requestedOrgId;
+    } else {
+      // Priority 3: Try to get current user's organization (requires auth)
+      const { userId } = await auth();
+      
+      if (userId) {
+        organizationId = await getCurrentUserOrganizationId();
+      }
     }
 
     // If still no org ID, return default branding

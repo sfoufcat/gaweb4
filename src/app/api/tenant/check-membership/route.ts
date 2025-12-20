@@ -3,6 +3,7 @@
  * 
  * Called by middleware to verify if a user is a member of a specific organization.
  * Supports multi-org membership by checking the org_memberships collection.
+ * Also provides fallback for legacy users who don't have org_memberships yet.
  * 
  * This is an internal API - should only be called by middleware.
  */
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Check org_memberships collection for active membership
+    // Primary: Check org_memberships collection for active membership
     const membershipSnapshot = await adminDb
       .collection('org_memberships')
       .where('userId', '==', userId)
@@ -39,6 +40,7 @@ export async function GET(request: Request) {
       const membership = membershipSnapshot.docs[0].data();
       return NextResponse.json({
         isMember: true,
+        source: 'org_memberships',
         membership: {
           id: membershipSnapshot.docs[0].id,
           orgRole: membership.orgRole,
@@ -48,7 +50,29 @@ export async function GET(request: Request) {
       });
     }
 
-    // No active membership found
+    // Fallback: Check user document for legacy organizationId field
+    // This supports users who were assigned to orgs before org_memberships was implemented
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    if (userDoc.exists) {
+      const userData = userDoc.data();
+      const legacyOrgId = userData?.primaryOrganizationId || userData?.organizationId;
+      
+      if (legacyOrgId === organizationId) {
+        // Legacy user is a member based on their user document
+        return NextResponse.json({
+          isMember: true,
+          source: 'legacy_user_doc',
+          membership: {
+            id: null,
+            orgRole: 'member',
+            tier: userData?.tier || 'standard',
+            track: userData?.track || null,
+          },
+        });
+      }
+    }
+
+    // No membership found
     return NextResponse.json({ isMember: false });
   } catch (error) {
     console.error('[CHECK_MEMBERSHIP] Error:', error);
