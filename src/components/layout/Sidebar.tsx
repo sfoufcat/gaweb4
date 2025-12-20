@@ -9,6 +9,7 @@ import { isAdmin, canAccessCoachDashboard, canAccessEditorSection, isSuperAdmin 
 import type { UserRole, OrgRole } from '@/types';
 import { useChatUnreadCounts } from '@/hooks/useChatUnreadCounts';
 import { useBrandingValues } from '@/contexts/BrandingContext';
+import { OrganizationSwitcher } from './OrganizationSwitcher';
 
 // Custom hook for scroll direction detection
 function useScrollDirection() {
@@ -280,7 +281,12 @@ export function Sidebar() {
         </nav>
 
         {/* Account with Clerk UserButton - Rounded glass style */}
-        <div className="mt-auto pt-6 border-t border-[#e1ddd8]/50 dark:border-[#272d38]/50">
+        <div className="mt-auto pt-6 border-t border-[#e1ddd8]/50 dark:border-[#272d38]/50 space-y-2">
+          {/* Organization Switcher - only shows when user has multiple orgs */}
+          <div className="px-2">
+            <OrganizationSwitcher />
+          </div>
+          
           <div 
             onClick={(e) => {
               // Find the UserButton and trigger it

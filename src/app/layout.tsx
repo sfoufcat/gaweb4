@@ -9,6 +9,7 @@ import { PageTransition } from "@/components/layout/PageTransition";
 import { StreamChatProvider } from "@/contexts/StreamChatContext";
 import { StreamVideoProvider } from "@/contexts/StreamVideoContext";
 import { SquadProvider } from "@/contexts/SquadContext";
+import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
 import { IncomingCallHandler } from "@/components/chat/IncomingCallHandler";
@@ -94,6 +95,7 @@ export default async function RootLayout({
           <ThemeProvider>
           <BrandingProvider>
           <SquadProvider>
+          <OrganizationProvider>
             <StreamChatProvider>
               <StreamVideoProvider>
                 <Suspense fallback={null}>
@@ -116,6 +118,7 @@ export default async function RootLayout({
                 <TimezoneSync />
               </StreamVideoProvider>
             </StreamChatProvider>
+          </OrganizationProvider>
           </SquadProvider>
           </BrandingProvider>
           </ThemeProvider>

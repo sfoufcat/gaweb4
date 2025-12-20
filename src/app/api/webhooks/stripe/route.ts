@@ -624,6 +624,33 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
     updatedAt: new Date().toISOString(),
   }, { merge: true });
 
+  // Update org_memberships with tier downgrade (multi-org support)
+  try {
+    const membershipsSnapshot = await adminDb
+      .collection('org_memberships')
+      .where('userId', '==', userDoc.id)
+      .where('isActive', '==', true)
+      .where('accessSource', '==', 'platform_billing')
+      .get();
+    
+    if (!membershipsSnapshot.empty) {
+      const batch = adminDb.batch();
+      const now = new Date().toISOString();
+      
+      for (const doc of membershipsSnapshot.docs) {
+        batch.update(doc.ref, {
+          tier: 'free',
+          updatedAt: now,
+        });
+      }
+      
+      await batch.commit();
+      console.log(`[STRIPE_WEBHOOK] Downgraded ${membershipsSnapshot.size} org_memberships to free tier for user ${userDoc.id}`);
+    }
+  } catch (membershipError) {
+    console.error(`[STRIPE_WEBHOOK] Failed to update org_memberships for user ${userDoc.id}:`, membershipError);
+  }
+
   // Sync to Clerk with tier downgrade
   try {
     await updateUserBillingInClerk(userDoc.id, 'past_due', undefined, 'free');
@@ -801,6 +828,34 @@ async function updateUserBillingStatus(userId: string, subscription: Stripe.Subs
   }
 
   console.log(`[STRIPE_WEBHOOK] Updated subscription for user ${userId}: status=${status}, tier=${tier}, cancelAtPeriodEnd=${cancelAtPeriodEnd}, periodEnd=${currentPeriodEnd}`);
+
+  // Update org_memberships with the new tier (multi-org support)
+  try {
+    const membershipsSnapshot = await adminDb
+      .collection('org_memberships')
+      .where('userId', '==', userId)
+      .where('isActive', '==', true)
+      .where('accessSource', '==', 'platform_billing')
+      .get();
+    
+    if (!membershipsSnapshot.empty) {
+      const batch = adminDb.batch();
+      const now = new Date().toISOString();
+      
+      for (const doc of membershipsSnapshot.docs) {
+        batch.update(doc.ref, {
+          tier,
+          updatedAt: now,
+        });
+      }
+      
+      await batch.commit();
+      console.log(`[STRIPE_WEBHOOK] Updated ${membershipsSnapshot.size} org_memberships with tier=${tier} for user ${userId}`);
+    }
+  } catch (membershipError) {
+    console.error(`[STRIPE_WEBHOOK] Failed to update org_memberships for user ${userId}:`, membershipError);
+    // Don't fail the webhook - this is an enhancement
+  }
 
   // CRITICAL: Sync billing status AND tier to Clerk for middleware access control
   console.log(`[STRIPE_WEBHOOK] Updating Clerk for user ${userId}`);

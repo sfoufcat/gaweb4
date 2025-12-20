@@ -27,12 +27,16 @@ export type CoachingPlan = 'monthly' | 'quarterly' | null;
 
 // Clerk Public Metadata Type (for type assertions with sessionClaims)
 // This is the SINGLE SOURCE OF TRUTH for user access control
+// NOTE: Multi-org architecture - tier/track/orgRole are now per-org in Firestore org_memberships
 export interface ClerkPublicMetadata {
-  role?: UserRole;
-  track?: UserTrack;
-  tier?: UserTier;            // Subscription tier (free, standard, premium)
-  orgRole?: OrgRole;          // Organization-level role (for multi-tenant hierarchy)
-  organizationId?: string;    // Clerk Organization ID this user belongs to
+  role?: UserRole;                    // Platform role (for super_admins only)
+  primaryOrganizationId?: string;     // Last active / default organization
+  // Legacy fields - kept for backward compatibility during migration
+  // These will be deprecated once migration is complete
+  track?: UserTrack;                  // @deprecated - now per-org in org_memberships
+  tier?: UserTier;                    // @deprecated - now per-org in org_memberships
+  orgRole?: OrgRole;                  // @deprecated - now per-org in org_memberships
+  organizationId?: string;            // @deprecated - use primaryOrganizationId
   // Coaching fields (separate from membership tier)
   coaching?: boolean;         // Legacy flag - true if has active coaching
   coachingStatus?: CoachingStatus;  // Detailed coaching status
@@ -1257,6 +1261,144 @@ export interface TrackSpecificHelpResponse {
 }
 
 export type AIResponse = SuggestTasksResponse | HelpCompleteTaskResponse | TrackSpecificHelpResponse;
+
+// =============================================================================
+// MULTI-TENANT ORGANIZATION TYPES
+// =============================================================================
+
+/**
+ * Access source for organization membership
+ * - platform_billing: User pays GrowthAddicts directly
+ * - coach_billing: Coach handles billing (Stripe Connect)
+ * - manual: Coach manually grants access (external billing)
+ * - invite_code: User redeemed an invite code
+ */
+export type OrgAccessSource = 'platform_billing' | 'coach_billing' | 'manual' | 'invite_code';
+
+/**
+ * Organization billing mode
+ * - platform: Users pay GrowthAddicts directly
+ * - coach: Coach handles all billing via Stripe Connect
+ * - external: Coach bills users outside the app
+ * - mixed: Combination of methods allowed
+ */
+export type OrgBillingMode = 'platform' | 'coach' | 'external' | 'mixed';
+
+/**
+ * Organization membership record
+ * Stored in Firestore: org_memberships/{id}
+ * 
+ * This represents a user's membership in a specific organization.
+ * Users can have multiple memberships (one per org they belong to).
+ * Each membership has its own tier, track, squad, and access settings.
+ */
+export interface OrgMembership {
+  id: string;                          // Auto-generated document ID
+  userId: string;                      // Clerk user ID
+  organizationId: string;              // Clerk Organization ID
+  orgRole: OrgRole;                    // Role within this org (super_coach, coach, member)
+  tier: UserTier;                      // Access tier within THIS org
+  track: UserTrack | null;             // Business track within this org
+  squadId: string | null;              // Squad within this org
+  premiumSquadId?: string | null;      // Premium squad within this org (for premium tier users)
+  accessSource: OrgAccessSource;       // How access was granted
+  accessExpiresAt: string | null;      // For manual/external billing - ISO date when access expires
+  inviteCodeUsed: string | null;       // Invite code that granted access (if applicable)
+  isActive: boolean;                   // Whether membership is active
+  joinedAt: string;                    // ISO timestamp when user joined this org
+  createdAt: string;                   // ISO timestamp
+  updatedAt: string;                   // ISO timestamp
+}
+
+/**
+ * Organization invite code
+ * Stored in Firestore: org_invite_codes/{code}
+ * 
+ * Coaches can create invite codes that pre-configure:
+ * - Tier (access level)
+ * - Track (business type)
+ * - Squad (team assignment)
+ */
+export interface OrgInviteCode {
+  id: string;                          // The code itself (e.g., "GA-XY29Q8")
+  organizationId: string;              // Clerk Organization ID
+  createdByUserId: string;             // Coach who created the code
+  name?: string;                       // Optional friendly name (e.g., "Q1 2024 Cohort")
+  tier: UserTier;                      // Tier to grant (standard, premium)
+  track: UserTrack | null;             // Track to assign (null = user chooses)
+  squadId: string | null;              // Squad to join (null = no squad)
+  accessDurationDays: number | null;   // Days of access (null = indefinite/until next billing)
+  maxUses: number | null;              // Max redemptions (null = unlimited)
+  usedCount: number;                   // Current redemption count
+  expiresAt: string | null;            // Code expiration date (null = never expires)
+  isActive: boolean;                   // Whether code can be used
+  createdAt: string;                   // ISO timestamp
+  updatedAt: string;                   // ISO timestamp
+}
+
+/**
+ * Invite code redemption record
+ * Stored in Firestore: org_invite_code_redemptions/{id}
+ * 
+ * Tracks who used which invite codes and when.
+ */
+export interface OrgInviteCodeRedemption {
+  id: string;                          // Auto-generated document ID
+  codeId: string;                      // The invite code used
+  userId: string;                      // User who redeemed the code
+  organizationId: string;              // Organization the code was for
+  membershipId: string;                // Created org_membership ID
+  redeemedAt: string;                  // ISO timestamp
+}
+
+/**
+ * Organization settings
+ * Stored in Firestore: org_settings/{organizationId}
+ * 
+ * Controls how the organization operates, including billing mode,
+ * default settings for new members, and integration settings.
+ */
+// Stripe Connect status for coach billing
+export type StripeConnectStatus = 'not_connected' | 'pending' | 'connected';
+
+export interface OrgSettings {
+  id: string;                          // Same as organizationId
+  organizationId: string;              // Clerk Organization ID
+  billingMode: OrgBillingMode;         // How users are billed
+  allowExternalBilling: boolean;       // Whether coaches can manually grant access
+  defaultTier: UserTier;               // Default tier for new members (usually 'standard')
+  defaultTrack: UserTrack | null;      // Default track for new members (null = user chooses)
+  stripeConnectAccountId: string | null; // For coach billing mode
+  stripeConnectStatus: StripeConnectStatus; // Status of Stripe Connect account
+  platformFeePercent: number;          // Platform fee percentage (0-100, default 10)
+  requireApproval: boolean;            // Whether new signups need coach approval
+  autoJoinSquadId: string | null;      // Auto-assign new members to this squad
+  welcomeMessage: string | null;       // Custom welcome message for new members
+  createdAt: string;                   // ISO timestamp
+  updatedAt: string;                   // ISO timestamp
+}
+
+/**
+ * Default organization settings
+ */
+export const DEFAULT_ORG_SETTINGS: Omit<OrgSettings, 'id' | 'organizationId' | 'createdAt' | 'updatedAt'> = {
+  billingMode: 'platform',
+  allowExternalBilling: true,
+  defaultTier: 'standard',
+  defaultTrack: null,
+  stripeConnectAccountId: null,
+  stripeConnectStatus: 'not_connected',
+  platformFeePercent: 10, // Default 10% platform fee
+  requireApproval: false,
+  autoJoinSquadId: null,
+  welcomeMessage: null,
+};
+
+/**
+ * Platform organization ID constant
+ * This is the "GrowthAddicts Platform" org for existing platform users
+ */
+export const PLATFORM_ORGANIZATION_SLUG = 'growthaddicts-platform';
 
 // =============================================================================
 // ORGANIZATION BRANDING TYPES

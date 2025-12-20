@@ -2,21 +2,16 @@
  * Host Parsing Utilities for Multi-Tenant Routing
  * 
  * Parses hostnames to extract tenant information (subdomain or custom domain).
+ * Uses centralized domain config for easy domain migration.
  */
 
-// Platform domains that are NOT tenant-scoped
-const PLATFORM_DOMAINS = [
-  'growthaddicts.app',
-  'www.growthaddicts.app',
-  'pro.growthaddicts.com',
-  'www.pro.growthaddicts.com',
-];
-
-// Development hosts treated as platform mode
-const DEV_HOSTS = [
-  'localhost',
-  '127.0.0.1',
-];
+import {
+  PLATFORM_DOMAINS,
+  DEV_HOSTS,
+  TENANT_SUBDOMAIN_PATTERN,
+  LEGACY_SUBDOMAIN_PATTERNS,
+  isDevHost as checkDevHost,
+} from '@/lib/config/domains';
 
 export interface ParsedHost {
   type: 'platform' | 'subdomain' | 'custom_domain';
@@ -40,30 +35,31 @@ export function parseHost(hostname: string): ParsedHost {
   }
   
   // Check if it's a development host
-  const isDevHost = DEV_HOSTS.some(dev => normalizedHost.startsWith(dev));
-  if (isDevHost) {
+  if (checkDevHost(normalizedHost)) {
     return { type: 'platform', hostname: normalizedHost };
   }
   
-  // Check if it's a subdomain of growthaddicts.app
-  const subdomainMatch = normalizedHost.match(/^([a-z0-9-]+)\.growthaddicts\.app$/);
-  if (subdomainMatch) {
-    const subdomain = subdomainMatch[1];
-    // Skip www - treat as platform
-    if (subdomain === 'www') {
+  // Check if it's a subdomain of the main domain
+  const mainMatch = normalizedHost.match(TENANT_SUBDOMAIN_PATTERN);
+  if (mainMatch) {
+    const subdomain = mainMatch[1];
+    // Skip www and app - treat as platform
+    if (subdomain === 'www' || subdomain === 'app') {
       return { type: 'platform', hostname: normalizedHost };
     }
     return { type: 'subdomain', hostname: normalizedHost, subdomain };
   }
   
-  // Check if it's a subdomain of pro.growthaddicts.com
-  const proSubdomainMatch = normalizedHost.match(/^([a-z0-9-]+)\.pro\.growthaddicts\.com$/);
-  if (proSubdomainMatch) {
-    const subdomain = proSubdomainMatch[1];
-    if (subdomain === 'www') {
-      return { type: 'platform', hostname: normalizedHost };
+  // Check legacy domain patterns
+  for (const pattern of LEGACY_SUBDOMAIN_PATTERNS) {
+    const match = normalizedHost.match(pattern);
+    if (match) {
+      const subdomain = match[1];
+      if (subdomain === 'www') {
+        return { type: 'platform', hostname: normalizedHost };
+      }
+      return { type: 'subdomain', hostname: normalizedHost, subdomain };
     }
-    return { type: 'subdomain', hostname: normalizedHost, subdomain };
   }
   
   // Otherwise, treat as custom domain
@@ -107,3 +103,4 @@ export function getDevTenantOverride(
   
   return null;
 }
+

@@ -2,7 +2,7 @@ import { clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
-import type { UserRole, UserTier, CoachingStatus, OrgRole } from '@/types';
+import type { UserRole, UserTier, UserTrack, CoachingStatus, OrgRole, OrgMembership } from '@/types';
 
 interface FirebaseUserData {
   tier?: UserTier;
@@ -159,6 +159,219 @@ export async function GET() {
     }
     if (message.includes('Organization not found')) {
       return NextResponse.json({ error: message }, { status: 400 });
+    }
+    
+    return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
+  }
+}
+
+/**
+ * POST /api/coach/org-users
+ * Add a user to the organization by email with tier/track/squad settings
+ * 
+ * Body:
+ * - email: string (required) - User's email
+ * - tier: 'free' | 'standard' | 'premium' (optional, default: 'standard')
+ * - track: UserTrack | null (optional)
+ * - squadId: string | null (optional)
+ * - accessDurationDays: number | null (optional) - Days of access, null = indefinite
+ * 
+ * If user exists in Clerk, they're added to the org.
+ * If not, an invite is created (they can claim access when they sign up).
+ */
+export async function POST(request: Request) {
+  try {
+    const { organizationId, userId: coachUserId } = await requireCoachWithOrg();
+    const body = await request.json();
+    
+    const { 
+      email, 
+      tier = 'standard', 
+      track = null, 
+      squadId = null,
+      accessDurationDays = null,
+    } = body;
+    
+    if (!email || typeof email !== 'string') {
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    }
+    
+    // Validate tier
+    const validTiers: UserTier[] = ['free', 'standard', 'premium'];
+    if (!validTiers.includes(tier)) {
+      return NextResponse.json({ error: 'Invalid tier' }, { status: 400 });
+    }
+    
+    const client = await clerkClient();
+    const now = new Date().toISOString();
+    
+    // Check if user exists in Clerk by email
+    const { data: existingUsers } = await client.users.getUserList({
+      emailAddress: [email],
+      limit: 1,
+    });
+    
+    if (existingUsers.length > 0) {
+      // User exists - add to organization
+      const user = existingUsers[0];
+      
+      // Check if already a member of this org
+      const existingMembership = await adminDb
+        .collection('org_memberships')
+        .where('userId', '==', user.id)
+        .where('organizationId', '==', organizationId)
+        .limit(1)
+        .get();
+      
+      if (!existingMembership.empty) {
+        return NextResponse.json({ 
+          error: 'User is already a member of this organization' 
+        }, { status: 400 });
+      }
+      
+      // Calculate access expiry if specified
+      let accessExpiresAt: string | null = null;
+      if (accessDurationDays && accessDurationDays > 0) {
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + accessDurationDays);
+        accessExpiresAt = expiryDate.toISOString();
+      }
+      
+      // Create org_membership
+      const membership: Omit<OrgMembership, 'id'> = {
+        userId: user.id,
+        organizationId,
+        orgRole: 'member',
+        tier: tier as UserTier,
+        track: track as UserTrack | null,
+        squadId,
+        premiumSquadId: null,
+        accessSource: 'manual',
+        accessExpiresAt,
+        inviteCodeUsed: null,
+        isActive: true,
+        joinedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      };
+      
+      const membershipRef = await adminDb.collection('org_memberships').add(membership);
+      await membershipRef.update({ id: membershipRef.id });
+      
+      // Add to Clerk organization
+      try {
+        await client.organizations.createOrganizationMembership({
+          organizationId,
+          userId: user.id,
+          role: 'org:member',
+        });
+      } catch (clerkError: unknown) {
+        // Might already be a Clerk org member
+        const errorMessage = clerkError instanceof Error ? clerkError.message : String(clerkError);
+        if (!errorMessage.includes('already')) {
+          console.warn('[COACH_ORG_USERS] Clerk org membership error:', clerkError);
+        }
+      }
+      
+      // Update user's publicMetadata
+      const currentMetadata = user.publicMetadata as Record<string, unknown>;
+      if (!currentMetadata.primaryOrganizationId) {
+        await client.users.updateUserMetadata(user.id, {
+          publicMetadata: {
+            ...currentMetadata,
+            primaryOrganizationId: organizationId,
+          },
+        });
+      }
+      
+      // Update Firebase user
+      await adminDb.collection('users').doc(user.id).update({
+        tier,
+        track,
+        updatedAt: now,
+      });
+      
+      console.log(`[COACH_ORG_USERS] Added existing user ${user.id} to org ${organizationId}`);
+      
+      return NextResponse.json({
+        success: true,
+        message: 'User added to organization',
+        user: {
+          id: user.id,
+          email: user.emailAddresses[0]?.emailAddress || email,
+          firstName: user.firstName || '',
+          lastName: user.lastName || '',
+          tier,
+          track,
+          squadId,
+        },
+        membershipId: membershipRef.id,
+      });
+    } else {
+      // User doesn't exist - create a pending invitation
+      // They'll be auto-added when they sign up with this email
+      
+      // Check if there's already a pending invite for this email
+      const existingInvite = await adminDb
+        .collection('org_pending_invites')
+        .where('email', '==', email.toLowerCase())
+        .where('organizationId', '==', organizationId)
+        .where('status', '==', 'pending')
+        .limit(1)
+        .get();
+      
+      if (!existingInvite.empty) {
+        return NextResponse.json({ 
+          error: 'A pending invitation already exists for this email' 
+        }, { status: 400 });
+      }
+      
+      // Calculate access expiry if specified
+      let accessExpiresAt: string | null = null;
+      if (accessDurationDays && accessDurationDays > 0) {
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + accessDurationDays);
+        accessExpiresAt = expiryDate.toISOString();
+      }
+      
+      // Create pending invite
+      const inviteRef = await adminDb.collection('org_pending_invites').add({
+        email: email.toLowerCase(),
+        organizationId,
+        invitedByUserId: coachUserId,
+        tier,
+        track,
+        squadId,
+        accessExpiresAt,
+        status: 'pending',
+        createdAt: now,
+        updatedAt: now,
+      });
+      
+      console.log(`[COACH_ORG_USERS] Created pending invite ${inviteRef.id} for ${email}`);
+      
+      // TODO: Send invitation email to the user
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Invitation created. User will be added when they sign up.',
+        inviteId: inviteRef.id,
+        email,
+        tier,
+        track,
+        squadId,
+        isPending: true,
+      });
+    }
+  } catch (error) {
+    console.error('[COACH_ORG_USERS_POST_ERROR]', error);
+    const message = error instanceof Error ? error.message : 'Internal Error';
+    
+    if (message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (message.includes('Forbidden') || message.includes('Coach access')) {
+      return NextResponse.json({ error: 'Forbidden: Coach access required' }, { status: 403 });
     }
     
     return NextResponse.json({ error: 'Internal Error' }, { status: 500 });

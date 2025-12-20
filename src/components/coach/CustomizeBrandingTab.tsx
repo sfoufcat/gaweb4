@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw } from 'lucide-react';
+import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 import { useBranding } from '@/contexts/BrandingContext';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgCustomDomain, CustomDomainStatus } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, validateSubdomain } from '@/types';
 
 /**
@@ -62,6 +62,17 @@ export function CustomizeBrandingTab() {
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [domainSettingsLoading, setDomainSettingsLoading] = useState(true);
   const [reverifyingDomainId, setReverifyingDomainId] = useState<string | null>(null);
+  
+  // Stripe Connect state
+  const [stripeConnectStatus, setStripeConnectStatus] = useState<StripeConnectStatus>('not_connected');
+  const [stripeConnectLoading, setStripeConnectLoading] = useState(true);
+  const [stripeConnectActionLoading, setStripeConnectActionLoading] = useState(false);
+  const [stripeAccountDetails, setStripeAccountDetails] = useState<{
+    chargesEnabled?: boolean;
+    payoutsEnabled?: boolean;
+    detailsSubmitted?: boolean;
+    platformFeePercent?: number;
+  }>({});
 
   // Fetch current branding on mount
   const fetchBranding = useCallback(async () => {
@@ -112,10 +123,57 @@ export function CustomizeBrandingTab() {
     }
   }, []);
 
+  // Fetch Stripe Connect status
+  const fetchStripeConnect = useCallback(async () => {
+    try {
+      setStripeConnectLoading(true);
+      const response = await fetch('/api/coach/stripe-connect');
+      if (!response.ok) {
+        console.error('Failed to fetch Stripe Connect status');
+        return;
+      }
+      
+      const data = await response.json();
+      setStripeConnectStatus(data.stripeConnectStatus || 'not_connected');
+      setStripeAccountDetails({
+        chargesEnabled: data.chargesEnabled,
+        payoutsEnabled: data.payoutsEnabled,
+        detailsSubmitted: data.detailsSubmitted,
+        platformFeePercent: data.platformFeePercent,
+      });
+    } catch (err) {
+      console.error('Error fetching Stripe Connect status:', err);
+    } finally {
+      setStripeConnectLoading(false);
+    }
+  }, []);
+  
   useEffect(() => {
     fetchBranding();
     fetchDomainSettings();
-  }, [fetchBranding, fetchDomainSettings]);
+    fetchStripeConnect();
+    
+    // Check URL for Stripe callback status
+    const urlParams = new URLSearchParams(window.location.search);
+    const stripeStatus = urlParams.get('stripe');
+    if (stripeStatus === 'success') {
+      setSuccessMessage('Stripe account connected successfully!');
+      setTimeout(() => setSuccessMessage(null), 5000);
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (stripeStatus === 'pending') {
+      setSuccessMessage('Stripe account setup in progress. Verification may take a few minutes.');
+      setTimeout(() => setSuccessMessage(null), 5000);
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (stripeStatus === 'error') {
+      setError('Failed to connect Stripe account. Please try again.');
+      setTimeout(() => setError(null), 5000);
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (stripeStatus === 'refresh') {
+      // User was redirected back, refresh the status
+      fetchStripeConnect();
+    }
+  }, [fetchBranding, fetchDomainSettings, fetchStripeConnect]);
   
   // Handle subdomain update
   const handleSubdomainUpdate = async () => {
@@ -251,6 +309,32 @@ export function CustomizeBrandingTab() {
       setTimeout(() => setCopiedToken(null), 2000);
     } catch {
       alert('Failed to copy to clipboard');
+    }
+  };
+  
+  // Handle Stripe Connect onboarding
+  const handleStripeConnect = async () => {
+    try {
+      setStripeConnectActionLoading(true);
+      const response = await fetch('/api/coach/stripe-connect', {
+        method: 'POST',
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create Stripe Connect link');
+      }
+      
+      // Redirect to Stripe onboarding
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      console.error('Error connecting Stripe:', err);
+      setError(err instanceof Error ? err.message : 'Failed to connect Stripe');
+    } finally {
+      setStripeConnectActionLoading(false);
     }
   };
 
@@ -1082,6 +1166,135 @@ export function CustomizeBrandingTab() {
                 </p>
               )}
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Stripe Connect Section */}
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <CreditCard className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Stripe Connect</h3>
+        </div>
+        
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mb-6 font-albert">
+          Connect your Stripe account to receive payments directly from your clients. 
+          A {stripeAccountDetails.platformFeePercent ?? 10}% platform fee applies to each transaction.
+        </p>
+        
+        {stripeConnectLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="w-8 h-8 border-3 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Status Display */}
+            <div className={`
+              flex items-center gap-3 p-4 rounded-xl border
+              ${stripeConnectStatus === 'connected' 
+                ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/50' 
+                : stripeConnectStatus === 'pending'
+                  ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/50'
+                  : 'bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-700/50'
+              }
+            `}>
+              {stripeConnectStatus === 'connected' ? (
+                <>
+                  <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-green-700 dark:text-green-300 font-albert">
+                      Stripe Connected
+                    </p>
+                    <p className="text-xs text-green-600 dark:text-green-400 font-albert">
+                      {stripeAccountDetails.chargesEnabled && stripeAccountDetails.payoutsEnabled 
+                        ? 'Your account is fully set up and ready to accept payments.'
+                        : 'Account connected but verification may still be in progress.'
+                      }
+                    </p>
+                  </div>
+                </>
+              ) : stripeConnectStatus === 'pending' ? (
+                <>
+                  <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-amber-700 dark:text-amber-300 font-albert">
+                      Setup In Progress
+                    </p>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 font-albert">
+                      {stripeAccountDetails.detailsSubmitted 
+                        ? 'Your details are under review. This usually takes a few minutes.'
+                        : 'Please complete the onboarding process to start accepting payments.'
+                      }
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 font-albert">
+                      Not Connected
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-albert">
+                      Connect your Stripe account to start receiving payments from your clients.
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+            
+            {/* Action Button */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleStripeConnect}
+                disabled={stripeConnectActionLoading}
+                className={`
+                  flex items-center gap-2 px-5 py-2.5 rounded-xl font-albert text-sm transition-colors
+                  ${stripeConnectStatus === 'connected'
+                    ? 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#e8e5e1] dark:hover:bg-[#313746]'
+                    : 'bg-[#635bff] hover:bg-[#5048cc] text-white'
+                  }
+                  disabled:opacity-50 disabled:cursor-not-allowed
+                `}
+              >
+                {stripeConnectActionLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                    Loading...
+                  </>
+                ) : stripeConnectStatus === 'connected' ? (
+                  <>
+                    <ExternalLink className="w-4 h-4" />
+                    Manage Stripe Account
+                  </>
+                ) : stripeConnectStatus === 'pending' ? (
+                  <>
+                    <CreditCard className="w-4 h-4" />
+                    Continue Setup
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-4 h-4" />
+                    Connect Stripe
+                  </>
+                )}
+              </button>
+              
+              {stripeConnectStatus !== 'not_connected' && (
+                <button
+                  onClick={fetchStripeConnect}
+                  className="p-2.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-xl transition-colors"
+                  title="Refresh status"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            
+            {/* Additional info */}
+            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
+              Powered by Stripe Connect. You&apos;ll be redirected to Stripe to complete setup securely.
+            </p>
           </div>
         )}
       </div>

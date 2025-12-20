@@ -15,7 +15,9 @@ interface ClerkPublicMetadata {
   billingStatus?: BillingStatus;
   billingPeriodEnd?: string;
   tier?: UserTier;
-  organizationId?: string;
+  // Multi-org support
+  primaryOrganizationId?: string;  // Last active / default org
+  organizationId?: string;         // @deprecated - use primaryOrganizationId
   // Coaching (separate from membership tier)
   coaching?: boolean; // Legacy flag - true if has active coaching
   coachingStatus?: CoachingStatus; // New: detailed coaching status
@@ -23,19 +25,36 @@ interface ClerkPublicMetadata {
 }
 
 // =============================================================================
-// TENANT RESOLUTION (Inline for Edge Runtime compatibility)
+// DOMAIN CONFIGURATION (Inline for Edge Runtime compatibility)
 // =============================================================================
+
+// Base domain - change this to switch to growthaddicts.com in the future
+const BASE_DOMAIN = 'growthaddicts.app';
+const PLATFORM_ADMIN_DOMAIN = `app.${BASE_DOMAIN}`;
+const MARKETING_DOMAIN = BASE_DOMAIN;
 
 // Platform domains that are NOT tenant-scoped
 const PLATFORM_DOMAINS = [
-  'growthaddicts.app',
-  'www.growthaddicts.app',
-  'pro.growthaddicts.com',
-  'www.pro.growthaddicts.com',
+  BASE_DOMAIN,                        // Marketing domain
+  `www.${BASE_DOMAIN}`,              // www variant
+  PLATFORM_ADMIN_DOMAIN,             // Platform admin domain
+  'pro.growthaddicts.com',           // Legacy domain
+  'www.pro.growthaddicts.com',       // Legacy www variant
 ];
 
 // Development hosts treated as platform mode
 const DEV_HOSTS = ['localhost', '127.0.0.1'];
+
+// Helper to check if hostname is platform admin domain
+function isPlatformAdminDomain(hostname: string): boolean {
+  return hostname.toLowerCase().split(':')[0] === PLATFORM_ADMIN_DOMAIN;
+}
+
+// Helper to check if hostname is marketing domain
+function isMarketingDomain(hostname: string): boolean {
+  const normalized = hostname.toLowerCase().split(':')[0];
+  return normalized === MARKETING_DOMAIN || normalized === `www.${MARKETING_DOMAIN}`;
+}
 
 interface ParsedHost {
   type: 'platform' | 'subdomain' | 'custom_domain';
@@ -55,17 +74,19 @@ function parseHost(hostname: string): ParsedHost {
     return { type: 'platform', hostname: normalizedHost };
   }
   
-  // Check for subdomain of growthaddicts.app
-  const subdomainMatch = normalizedHost.match(/^([a-z0-9-]+)\.growthaddicts\.app$/);
+  // Check for subdomain of the base domain
+  const subdomainPattern = new RegExp(`^([a-z0-9-]+)\\.${BASE_DOMAIN.replace('.', '\\.')}$`);
+  const subdomainMatch = normalizedHost.match(subdomainPattern);
   if (subdomainMatch) {
     const subdomain = subdomainMatch[1];
-    if (subdomain === 'www') {
+    // www and app are platform domains, not tenant subdomains
+    if (subdomain === 'www' || subdomain === 'app') {
       return { type: 'platform', hostname: normalizedHost };
     }
     return { type: 'subdomain', hostname: normalizedHost, subdomain };
   }
   
-  // Check for subdomain of pro.growthaddicts.com
+  // Check for subdomain of pro.growthaddicts.com (legacy)
   const proSubdomainMatch = normalizedHost.match(/^([a-z0-9-]+)\.pro\.growthaddicts\.com$/);
   if (proSubdomainMatch) {
     const subdomain = proSubdomainMatch[1];
@@ -233,7 +254,7 @@ const isPlatformOnlyRoute = createRouteMatcher([
 ]);
 
 // =============================================================================
-// TENANT RESOLUTION CACHE (simple in-memory for edge runtime)
+// CACHING (simple in-memory for edge runtime)
 // =============================================================================
 
 // Note: This is a simple cache that will be per-instance.
@@ -246,6 +267,14 @@ interface TenantCacheEntry {
 }
 const tenantCache = new Map<string, TenantCacheEntry | null>();
 const CACHE_TTL = 60 * 1000; // 1 minute
+
+// Membership cache - keyed by "userId:orgId"
+interface MembershipCacheEntry {
+  isMember: boolean;
+  expiresAt: number;
+}
+const membershipCache = new Map<string, MembershipCacheEntry>();
+const MEMBERSHIP_CACHE_TTL = 30 * 1000; // 30 seconds
 
 interface ResolvedTenant {
   orgId: string;
@@ -300,6 +329,45 @@ async function resolveTenantFromDb(
     console.error('[MIDDLEWARE] Tenant resolution error:', error);
     // Don't cache errors - allow retry
     return null;
+  }
+}
+
+/**
+ * Check if a user is a member of an organization
+ * Uses the org_memberships collection via internal API
+ */
+async function checkOrgMembership(userId: string, organizationId: string): Promise<boolean> {
+  const cacheKey = `${userId}:${organizationId}`;
+  const cached = membershipCache.get(cacheKey);
+  
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.isMember;
+  }
+  
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const params = new URLSearchParams({ userId, organizationId });
+    
+    const response = await fetch(`${baseUrl}/api/tenant/check-membership?${params}`, {
+      method: 'GET',
+      headers: { 'x-internal-request': 'true' },
+      signal: AbortSignal.timeout(3000),
+    });
+    
+    if (!response.ok) {
+      console.error('[MIDDLEWARE] Membership check failed:', response.status);
+      return false;
+    }
+    
+    const data = await response.json();
+    const isMember = data.isMember === true;
+    
+    membershipCache.set(cacheKey, { isMember, expiresAt: Date.now() + MEMBERSHIP_CACHE_TTL });
+    return isMember;
+  } catch (error) {
+    console.error('[MIDDLEWARE] Membership check error:', error);
+    // On error, don't cache and return false (safer to deny access)
+    return false;
   }
 }
 
@@ -400,6 +468,38 @@ export default clerkMiddleware(async (auth, request) => {
   }
   
   // ==========================================================================
+  // DOMAIN-SPECIFIC ROUTING
+  // ==========================================================================
+  
+  // Marketing domain: Only allow public/marketing routes
+  // The main domain is reserved for marketing, users should go to tenant domains
+  if (isMarketingDomain(hostname)) {
+    // Allow marketing-related routes
+    const isMarketingRoute = 
+      pathname === '/' || 
+      pathname === '/begin' ||
+      pathname.startsWith('/start') ||  // Guest checkout flow
+      pathname.startsWith('/sign-in') ||
+      pathname.startsWith('/sign-up') ||
+      pathname.startsWith('/terms') ||
+      pathname.startsWith('/privacy') ||
+      pathname.startsWith('/refund-policy') ||
+      pathname.startsWith('/subscription-policy') ||
+      pathname.startsWith('/api/') ||
+      pathname.startsWith('/sso-callback');
+    
+    // If user is authenticated and tries to access app routes on marketing domain,
+    // they should be on a tenant domain or app.growthaddicts.app
+    // For now, allow this but in the future could redirect to their primary org
+  }
+  
+  // Platform admin domain: Restrict to super_admins only for admin routes
+  if (isPlatformAdminDomain(hostname)) {
+    // On platform admin domain, admin routes require super_admin role
+    // This is handled later in the admin route checks with the auth state
+  }
+  
+  // ==========================================================================
   // SET TENANT HEADERS
   // ==========================================================================
   
@@ -427,20 +527,39 @@ export default clerkMiddleware(async (auth, request) => {
   const { userId, sessionClaims } = await auth();
   
   // ==========================================================================
-  // TENANT MEMBERSHIP ENFORCEMENT
+  // TENANT MEMBERSHIP ENFORCEMENT (Multi-Org Support)
   // ==========================================================================
   
   // If in tenant mode and user is signed in, verify they belong to this org
   if (isTenantMode && userId && tenantOrgId) {
     const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userOrgId = publicMetadata?.organizationId;
-    const userRole = publicMetadata?.role;
     
-    // Platform admins can only bypass on platform domain, not tenant domains
-    // On tenant domains, even admins must be org members
-    if (userOrgId !== tenantOrgId) {
+    // Check membership in priority order:
+    // 1. Clerk's native organization context (if using Clerk Orgs)
+    const { orgId: clerkOrgId } = await auth();
+    
+    // 2. publicMetadata.primaryOrganizationId (new multi-org field)
+    const primaryOrgId = publicMetadata?.primaryOrganizationId;
+    
+    // 3. publicMetadata.organizationId (legacy field)
+    const legacyOrgId = publicMetadata?.organizationId;
+    
+    // Quick check: does any of the metadata match the tenant org?
+    const hasQuickMatch = 
+      clerkOrgId === tenantOrgId || 
+      primaryOrgId === tenantOrgId || 
+      legacyOrgId === tenantOrgId;
+    
+    let isMember = hasQuickMatch;
+    
+    // If no quick match, check org_memberships collection (supports multi-org)
+    if (!isMember) {
+      isMember = await checkOrgMembership(userId, tenantOrgId);
+    }
+    
+    if (!isMember) {
       // User is not a member of this tenant's organization
-      console.log(`[MIDDLEWARE] User ${userId} not member of tenant org ${tenantOrgId} (user org: ${userOrgId})`);
+      console.log(`[MIDDLEWARE] User ${userId} not member of tenant org ${tenantOrgId}`);
       
       // Allow public routes even if not a member
       if (!isPublicRoute(request)) {

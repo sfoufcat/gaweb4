@@ -28,6 +28,16 @@ export default function GuestCreateAccountPage() {
   const [verificationCode, setVerificationCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<React.ReactNode | null>(null);
+  
+  // Capture the current hostname for auto-enrollment
+  const [signupDomain, setSignupDomain] = useState<string>('');
+  
+  useEffect(() => {
+    // Capture the domain on mount (client-side only)
+    if (typeof window !== 'undefined') {
+      setSignupDomain(window.location.hostname);
+    }
+  }, []);
 
   // Pre-fill email from guest session
   useEffect(() => {
@@ -112,6 +122,10 @@ export default function GuestCreateAccountPage() {
         password: password,
         firstName: data.firstName || undefined,
         lastName: data.lastName || undefined,
+        // Pass signup domain for auto-enrollment to organization
+        unsafeMetadata: {
+          signupDomain: signupDomain,
+        },
       });
 
       // Send email verification code
