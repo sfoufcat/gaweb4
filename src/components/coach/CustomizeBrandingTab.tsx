@@ -257,12 +257,23 @@ export function CustomizeBrandingTab() {
         method: 'DELETE',
       });
       
+      const data = await response.json();
+      
       if (!response.ok) {
-        const data = await response.json();
         throw new Error(data.error || 'Failed to remove domain');
       }
       
       setCustomDomains(prev => prev.filter(d => d.id !== domainId));
+      
+      // If we're on the custom domain being removed, redirect to subdomain
+      // This prevents being stuck on a broken domain
+      if (data.redirectUrl && typeof window !== 'undefined') {
+        const currentHost = window.location.hostname;
+        const removedDomain = customDomains.find(d => d.id === domainId);
+        if (removedDomain && currentHost === removedDomain.domain) {
+          window.location.href = data.redirectUrl;
+        }
+      }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to remove domain');
     }

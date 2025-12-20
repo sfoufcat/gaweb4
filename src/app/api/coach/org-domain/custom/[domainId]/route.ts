@@ -308,7 +308,19 @@ export async function DELETE(
     
     console.log(`[COACH_CUSTOM_DOMAIN] Removed custom domain ${domainData.domain} from org ${organizationId}`);
     
-    return NextResponse.json({ success: true });
+    // Get the subdomain for redirect (user may be on the custom domain being removed)
+    const orgDomainSnapshot = await adminDb
+      .collection('org_domains')
+      .where('organizationId', '==', organizationId)
+      .limit(1)
+      .get();
+    
+    const subdomain = orgDomainSnapshot.empty ? null : orgDomainSnapshot.docs[0].data().subdomain;
+    
+    return NextResponse.json({ 
+      success: true,
+      redirectUrl: subdomain ? `https://${subdomain}.growthaddicts.app/coach/customize` : null
+    });
   } catch (error) {
     console.error('[COACH_CUSTOM_DOMAIN_DELETE] Error:', error);
     const message = error instanceof Error ? error.message : 'Internal Error';

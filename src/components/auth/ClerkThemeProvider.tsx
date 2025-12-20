@@ -2,7 +2,7 @@
 
 import { ClerkProvider } from '@clerk/nextjs';
 import { dark } from '@clerk/themes';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 const STORAGE_KEY = 'ga-theme';
 const PRIMARY_DOMAIN = 'https://growthaddicts.app';
@@ -138,6 +138,9 @@ export function ClerkThemeProvider({
     !domainWithoutPort.includes('localhost') &&
     !domainWithoutPort.includes('127.0.0.1')
   );
+  
+  // Track current URL for redirect after sign-in (client-side only)
+  const [currentUrl, setCurrentUrl] = useState<string | null>(null);
 
   useEffect(() => {
     // Initial theme check from localStorage
@@ -148,6 +151,11 @@ export function ClerkThemeProvider({
 
     checkTheme();
     setMounted(true);
+    
+    // Capture current URL for satellite domain redirect
+    if (isSatellite && typeof window !== 'undefined') {
+      setCurrentUrl(window.location.href);
+    }
 
     // Listen for storage changes (when theme is changed in another tab)
     const handleStorage = (e: StorageEvent) => {
@@ -177,7 +185,7 @@ export function ClerkThemeProvider({
       observer.disconnect();
       window.removeEventListener('storage', handleStorage);
     };
-  }, []);
+  }, [isSatellite]);
 
   // Use the appropriate appearance based on theme
   const baseAppearance = isDark ? darkAppearance : lightAppearance;
@@ -198,12 +206,22 @@ export function ClerkThemeProvider({
   // Build satellite props conditionally to satisfy TypeScript's strict union types
   // When isSatellite is true, we pass all satellite config together
   // When false, we spread an empty object (no satellite props)
-  const satelliteProps = isSatellite ? {
-    isSatellite: true as const,
-    domain: domainWithoutPort,
-    signInUrl: `${PRIMARY_DOMAIN}/sign-in`,
-    signUpUrl: `${PRIMARY_DOMAIN}/sign-up`,
-  } : {};
+  // 
+  // For satellite domains, after sign-in on primary domain, redirect back to the custom domain
+  // This ensures users who go directly to custom domains can still sign in
+  const satelliteProps = useMemo(() => {
+    if (!isSatellite) return {};
+    
+    // Build redirect URL - after sign-in, return to the original custom domain
+    const redirectParam = currentUrl ? `?redirect_url=${encodeURIComponent(currentUrl)}` : '';
+    
+    return {
+      isSatellite: true as const,
+      domain: domainWithoutPort,
+      signInUrl: `${PRIMARY_DOMAIN}/sign-in${redirectParam}`,
+      signUpUrl: `${PRIMARY_DOMAIN}/begin${redirectParam}`,
+    };
+  }, [isSatellite, domainWithoutPort, currentUrl]);
 
   return (
     <ClerkProvider 
