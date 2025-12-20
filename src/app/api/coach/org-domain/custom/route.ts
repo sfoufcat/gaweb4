@@ -190,7 +190,7 @@ export async function POST(request: Request) {
       customDomain: {
         id: customDomain.id,
         domain: customDomain.domain,
-        status: vercelResult?.verified ? 'verified' : customDomain.status,
+        status: customDomain.status, // Always pending on add - use reverify to check both CNAMEs
         verificationToken: customDomain.verificationToken,
       },
       verificationInstructions,
