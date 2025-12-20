@@ -739,38 +739,108 @@ export function CustomizeBrandingTab() {
                       </div>
                       
                       {domain.status !== 'verified' && (
-                        <div className="mt-3 p-3 bg-white dark:bg-[#11141b] rounded-lg text-xs">
-                          <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
-                            To verify your domain, add one of these DNS records:
+                        <div className="mt-3 space-y-3">
+                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                            Add these DNS records to your domain provider:
                           </p>
+                          
+                          {/* DNS Record Cards */}
                           <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[#8c8c8c] dark:text-[#7d8190] font-albert">CNAME:</span>
-                              <code className="px-2 py-1 bg-[#f3f1ef] dark:bg-[#262b35] rounded font-mono text-[#1a1a1a] dark:text-[#f5f5f8]">
-                                {domain.domain} → cname.vercel-dns.com
-                              </code>
+                            {/* CNAME for routing */}
+                            <div className="p-3 bg-white dark:bg-[#11141b] rounded-lg border border-[#e1ddd8] dark:border-[#313746]">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-[10px] font-medium text-[#a07855] dark:text-[#b8896a] uppercase tracking-wide font-albert">
+                                  CNAME Record
+                                </span>
+                                <span className="text-[10px] text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                                  For routing
+                                </span>
+                              </div>
+                              <div className="space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] text-[#8c8c8c] dark:text-[#7d8190] font-albert">Name</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <code className="text-xs font-mono text-[#1a1a1a] dark:text-[#f5f5f8]">@</code>
+                                    <button
+                                      onClick={() => copyToClipboard('@', `${domain.id}-cname-name`)}
+                                      className="p-1 text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded transition-colors"
+                                    >
+                                      {copiedToken === `${domain.id}-cname-name` ? (
+                                        <Check className="w-3 h-3 text-green-500" />
+                                      ) : (
+                                        <Copy className="w-3 h-3" />
+                                      )}
+                                    </button>
+                                  </div>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] text-[#8c8c8c] dark:text-[#7d8190] font-albert">Value</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <code className="text-xs font-mono text-[#1a1a1a] dark:text-[#f5f5f8]">cname.vercel-dns.com</code>
+                                    <button
+                                      onClick={() => copyToClipboard('cname.vercel-dns.com', `${domain.id}-cname-value`)}
+                                      className="p-1 text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded transition-colors"
+                                    >
+                                      {copiedToken === `${domain.id}-cname-value` ? (
+                                        <Check className="w-3 h-3 text-green-500" />
+                                      ) : (
+                                        <Copy className="w-3 h-3" />
+                                      )}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex items-start gap-2">
-                              <span className="text-[#8c8c8c] dark:text-[#7d8190] font-albert shrink-0">TXT:</span>
-                              <div className="flex items-center gap-2 flex-1">
-                                <code className="px-2 py-1 bg-[#f3f1ef] dark:bg-[#262b35] rounded font-mono text-[#1a1a1a] dark:text-[#f5f5f8] break-all text-xs">
-                                  {domain.verificationToken}
-                                </code>
-                                <button
-                                  onClick={() => copyToClipboard(domain.verificationToken, domain.id)}
-                                  className="p-1.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded transition-colors shrink-0"
-                                >
-                                  {copiedToken === domain.id ? (
-                                    <Check className="w-4 h-4 text-green-500" />
-                                  ) : (
-                                    <Copy className="w-4 h-4" />
-                                  )}
-                                </button>
+
+                            {/* CNAME for Clerk authentication */}
+                            <div className="p-3 bg-white dark:bg-[#11141b] rounded-lg border border-[#e1ddd8] dark:border-[#313746]">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-[10px] font-medium text-[#a07855] dark:text-[#b8896a] uppercase tracking-wide font-albert">
+                                  CNAME Record
+                                </span>
+                                <span className="text-[10px] text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                                  For authentication
+                                </span>
+                              </div>
+                              <div className="space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] text-[#8c8c8c] dark:text-[#7d8190] font-albert">Name</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <code className="text-xs font-mono text-[#1a1a1a] dark:text-[#f5f5f8]">clerk</code>
+                                    <button
+                                      onClick={() => copyToClipboard('clerk', `${domain.id}-clerk-name`)}
+                                      className="p-1 text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded transition-colors"
+                                    >
+                                      {copiedToken === `${domain.id}-clerk-name` ? (
+                                        <Check className="w-3 h-3 text-green-500" />
+                                      ) : (
+                                        <Copy className="w-3 h-3" />
+                                      )}
+                                    </button>
+                                  </div>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] text-[#8c8c8c] dark:text-[#7d8190] font-albert">Value</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <code className="text-xs font-mono text-[#1a1a1a] dark:text-[#f5f5f8]">frontend-api.clerk.services</code>
+                                    <button
+                                      onClick={() => copyToClipboard('frontend-api.clerk.services', `${domain.id}-clerk-value`)}
+                                      className="p-1 text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded transition-colors"
+                                    >
+                                      {copiedToken === `${domain.id}-clerk-value` ? (
+                                        <Check className="w-3 h-3 text-green-500" />
+                                      ) : (
+                                        <Copy className="w-3 h-3" />
+                                      )}
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </div>
-                          <p className="text-[#a7a39e] dark:text-[#7d8190] font-albert mt-2">
-                            DNS changes may take up to 24 hours to propagate.
+
+                          <p className="text-[10px] text-[#a7a39e] dark:text-[#7d8190] font-albert">
+                            DNS changes may take up to 24 hours to propagate. Click the refresh icon to re-verify.
                           </p>
                         </div>
                       )}
