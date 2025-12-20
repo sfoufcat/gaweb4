@@ -197,14 +197,21 @@ export async function getCurrentCoachingStatus(): Promise<{
 // ============================================================================
 
 /**
- * Get the current user's role from Clerk session
- * This reads from the JWT token (no database call needed)
+ * Get the current user's role from Clerk database
+ * Fetches fresh data to avoid stale JWT issues
  */
 export async function getCurrentUserRole(): Promise<UserRole> {
-  const { sessionClaims } = await auth();
-  const publicMetadata = sessionClaims?.publicMetadata as { role?: UserRole } | undefined;
-  const role = publicMetadata?.role;
-  return role || 'user'; // Default to 'user' if no role set
+  const { userId } = await auth();
+  if (!userId) {
+    return 'user';
+  }
+  
+  // Fetch fresh data from Clerk database (not stale JWT)
+  const client = await clerkClient();
+  const user = await client.users.getUser(userId);
+  const publicMetadata = user.publicMetadata as ClerkPublicMetadata | undefined;
+  
+  return publicMetadata?.role || 'user';
 }
 
 /**
