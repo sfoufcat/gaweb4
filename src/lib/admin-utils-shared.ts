@@ -309,9 +309,18 @@ export function canAssignOrgRole(
 
 /**
  * Get a list of org roles that can be assigned by a super coach
+ * Note: super_coach cannot be assigned by other super_coaches
  */
 export function getAssignableOrgRoles(): OrgRole[] {
   return ['coach', 'member'];
+}
+
+/**
+ * Get a list of ALL org roles that can be assigned by a platform super_admin
+ * Super admins can assign any org role including super_coach
+ */
+export function getAssignableOrgRolesForAdmin(): OrgRole[] {
+  return ['super_coach', 'coach', 'member'];
 }
 
 /**

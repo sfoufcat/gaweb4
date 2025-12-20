@@ -16,9 +16,11 @@ import {
   getCoachingStatusBadgeColor,
   // Org role helpers
   isSuperCoach,
+  isSuperAdmin,
   formatOrgRoleName,
   getOrgRoleBadgeColor,
   getAssignableOrgRoles,
+  getAssignableOrgRolesForAdmin,
 } from '@/lib/admin-utils-shared';
 import {
   Table,
@@ -285,16 +287,30 @@ export function AdminUsersTab({
   };
 
   const handleOrgRoleChange = async (userId: string, newOrgRole: OrgRole) => {
-    // Only super_coach can change org roles
-    if (!isSuperCoach(currentUserOrgRole)) {
-      alert('Only Super Coach can change organization roles.');
+    // Check permissions: super_admin can change any org role, super_coach can change coach/member
+    const isPlatformAdmin = isSuperAdmin(currentUserRole);
+    const isOrgSuperCoach = isSuperCoach(currentUserOrgRole);
+    
+    if (!isPlatformAdmin && !isOrgSuperCoach) {
+      alert('Only Super Admin or Super Coach can change organization roles.');
+      return;
+    }
+
+    // super_coach cannot assign super_coach role
+    if (!isPlatformAdmin && newOrgRole === 'super_coach') {
+      alert('Only Super Admin can assign Super Coach role.');
       return;
     }
 
     try {
       setUpdatingOrgRoleUserId(userId);
       
-      const response = await fetch(`/api/coach/org-users/${userId}/org-role`, {
+      // Use admin API for super_admin, coach API for super_coach
+      const apiEndpoint = isPlatformAdmin 
+        ? `/api/admin/users/${userId}/org-role`
+        : `/api/coach/org-users/${userId}/org-role`;
+      
+      const response = await fetch(apiEndpoint, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orgRole: newOrgRole }),
@@ -471,8 +487,8 @@ export function AdminUsersTab({
                 const canDeleteThisUser = canDeleteUser(currentUserRole, userRole);
                 const isUpdatingTier = updatingTierUserId === user.id;
                 const isUpdatingOrgRole = updatingOrgRoleUserId === user.id;
-                // Super coach can modify org roles (but not their own)
-                const canModifyOrgRole = isSuperCoach(currentUserOrgRole) && userOrgRole !== 'super_coach';
+                // Super admin can modify any org role; super_coach can modify coach/member (but not super_coach)
+                const canModifyOrgRole = isSuperAdmin(currentUserRole) || (isSuperCoach(currentUserOrgRole) && userOrgRole !== 'super_coach');
 
                 return (
                   <TableRow 
@@ -557,7 +573,8 @@ export function AdminUsersTab({
                               </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                              {getAssignableOrgRoles().map((orgRole) => (
+                              {/* Super admins can assign all org roles including super_coach */}
+                              {(isSuperAdmin(currentUserRole) ? getAssignableOrgRolesForAdmin() : getAssignableOrgRoles()).map((orgRole) => (
                                 <SelectItem key={orgRole} value={orgRole} className="font-albert">
                                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getOrgRoleBadgeColor(orgRole)}`}>
                                     {formatOrgRoleName(orgRole)}
