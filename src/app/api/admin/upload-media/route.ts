@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { canManageDiscoverContent, isOrgCoach } from '@/lib/admin-utils-shared';
 import sharp from 'sharp';
 import type { ClerkPublicMetadata } from '@/types';
@@ -23,15 +23,17 @@ import type { ClerkPublicMetadata } from '@/types';
 export async function POST(req: Request) {
   // Wrap everything in try-catch to ensure JSON responses
   try {
-    // Step 1: Authenticate user and get session claims
-    const { userId, sessionClaims } = await auth();
+    // Step 1: Authenticate user
+    const { userId } = await auth();
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized - not logged in' }, { status: 401 });
     }
 
-    // Step 2: Check permissions - check both global role AND org-level role
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    // Step 2: Check permissions - fetch FRESH data from Clerk database (not stale JWT)
+    const client = await clerkClient();
+    const user = await client.users.getUser(userId);
+    const publicMetadata = user.publicMetadata as ClerkPublicMetadata | undefined;
     const role = publicMetadata?.role || 'user';
     const orgRole = publicMetadata?.orgRole;
     

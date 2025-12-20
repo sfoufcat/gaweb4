@@ -1,8 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import type { OrgBranding, OrgBrandingColors } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES } from '@/types';
 
 /**
  * Calculate relative luminance of a hex color
@@ -80,6 +80,7 @@ function getDefaultBranding(): OrgBranding {
     horizontalLogoUrl: null,
     appTitle: DEFAULT_APP_TITLE,
     colors: DEFAULT_BRANDING_COLORS,
+    menuTitles: DEFAULT_MENU_TITLES,
     createdAt: now,
     updatedAt: now,
   };
@@ -237,15 +238,39 @@ export function useBrandingValues() {
   const accentLightIsDark = isColorDark(effectiveBranding.colors.accentLight);
   const accentDarkIsDark = isColorDark(effectiveBranding.colors.accentDark);
   
+  // Merge menu titles with defaults to ensure all fields are present
+  const menuTitles: OrgMenuTitles = {
+    ...DEFAULT_MENU_TITLES,
+    ...effectiveBranding.menuTitles,
+  };
+  
   return {
     logoUrl: effectiveBranding.logoUrl || DEFAULT_LOGO_URL,
     horizontalLogoUrl: effectiveBranding.horizontalLogoUrl || null,
     appTitle: effectiveBranding.appTitle || DEFAULT_APP_TITLE,
     colors: effectiveBranding.colors,
+    menuTitles,
     isPreviewMode,
     isDefault,
     // Smart contrast helpers
     accentLightIsDark,
     accentDarkIsDark,
+  };
+}
+
+/**
+ * Hook to get just the customizable menu titles
+ * Provides the squad title and helper functions for lowercase/uppercase variants
+ */
+export function useMenuTitles() {
+  const { menuTitles } = useBrandingValues();
+  
+  return {
+    // Raw titles
+    squad: menuTitles.squad,
+    // Lowercase variants (for use in sentences like "my squad")
+    squadLower: menuTitles.squad.toLowerCase(),
+    // Helper for "My Squad" style usage
+    mySquad: `My ${menuTitles.squad}`,
   };
 }

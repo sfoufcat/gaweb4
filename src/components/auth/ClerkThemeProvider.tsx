@@ -120,7 +120,6 @@ interface ClerkThemeProviderProps {
 export function ClerkThemeProvider({ children }: ClerkThemeProviderProps) {
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [isSatellite, setIsSatellite] = useState(false);
 
   useEffect(() => {
     // Initial theme check from localStorage
@@ -131,13 +130,6 @@ export function ClerkThemeProvider({ children }: ClerkThemeProviderProps) {
 
     checkTheme();
     setMounted(true);
-    
-    // Detect if we're on a satellite domain (custom domain, not growthaddicts.app)
-    const hostname = window.location.hostname;
-    const isPrimaryDomain = hostname.includes('growthaddicts') || 
-                            hostname.includes('localhost') || 
-                            hostname.includes('127.0.0.1');
-    setIsSatellite(!isPrimaryDomain);
 
     // Listen for storage changes (when theme is changed in another tab)
     const handleStorage = (e: StorageEvent) => {
@@ -175,15 +167,8 @@ export function ClerkThemeProvider({ children }: ClerkThemeProviderProps) {
   // Don't render until mounted to avoid hydration mismatch
   // However, ClerkProvider needs to be rendered for auth to work
   // So we'll always render it but only apply appearance after mount
-  
-  // For satellite domains (custom domains), configure Clerk to use the domain's Frontend API
-  // This makes Clerk load from clerk.{custom-domain} instead of clerk.growthaddicts.app
   return (
-    <ClerkProvider 
-      appearance={mounted ? appearance : lightAppearance}
-      isSatellite={isSatellite}
-      domain={isSatellite ? ((url: URL) => url.host) : undefined}
-    >
+    <ClerkProvider appearance={mounted ? appearance : lightAppearance}>
       {children}
     </ClerkProvider>
   );

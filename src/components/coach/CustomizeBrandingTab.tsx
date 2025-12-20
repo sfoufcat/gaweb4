@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw } from 'lucide-react';
 import { useBranding } from '@/contexts/BrandingContext';
-import type { OrgBranding, OrgBrandingColors, OrgCustomDomain, CustomDomainStatus } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, validateSubdomain } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgCustomDomain, CustomDomainStatus } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, validateSubdomain } from '@/types';
 
 /**
  * CustomizeBrandingTab
@@ -25,6 +25,7 @@ export function CustomizeBrandingTab() {
   const [horizontalLogoUrl, setHorizontalLogoUrl] = useState<string | null>(null);
   const [appTitle, setAppTitle] = useState(DEFAULT_APP_TITLE);
   const [colors, setColors] = useState<OrgBrandingColors>(DEFAULT_BRANDING_COLORS);
+  const [menuTitles, setMenuTitles] = useState<OrgMenuTitles>(DEFAULT_MENU_TITLES);
   
   // UI state
   const [loading, setLoading] = useState(true);
@@ -81,6 +82,7 @@ export function CustomizeBrandingTab() {
       setHorizontalLogoUrl(branding.horizontalLogoUrl || null);
       setAppTitle(branding.appTitle);
       setColors(branding.colors);
+      setMenuTitles(branding.menuTitles || DEFAULT_MENU_TITLES);
     } catch (err) {
       console.error('Error fetching branding:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch branding');
@@ -256,14 +258,16 @@ export function CustomizeBrandingTab() {
   useEffect(() => {
     if (!originalBranding) return;
     
+    const originalMenuTitles = originalBranding.menuTitles || DEFAULT_MENU_TITLES;
     const changed = 
       logoUrl !== originalBranding.logoUrl ||
       horizontalLogoUrl !== (originalBranding.horizontalLogoUrl || null) ||
       appTitle !== originalBranding.appTitle ||
-      JSON.stringify(colors) !== JSON.stringify(originalBranding.colors);
+      JSON.stringify(colors) !== JSON.stringify(originalBranding.colors) ||
+      JSON.stringify(menuTitles) !== JSON.stringify(originalMenuTitles);
     
     setHasChanges(changed);
-  }, [logoUrl, horizontalLogoUrl, appTitle, colors, originalBranding]);
+  }, [logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles, originalBranding]);
 
   // Build preview branding object
   const getPreviewBranding = useCallback((): OrgBranding => {
@@ -274,10 +278,11 @@ export function CustomizeBrandingTab() {
       horizontalLogoUrl,
       appTitle,
       colors,
+      menuTitles,
       createdAt: originalBranding?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-  }, [logoUrl, horizontalLogoUrl, appTitle, colors, originalBranding]);
+  }, [logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles, originalBranding]);
 
   // Toggle preview mode
   const handleTogglePreview = () => {
@@ -293,7 +298,7 @@ export function CustomizeBrandingTab() {
     if (isPreviewMode) {
       setPreviewMode(true, getPreviewBranding());
     }
-  }, [logoUrl, horizontalLogoUrl, appTitle, colors, isPreviewMode, setPreviewMode, getPreviewBranding]);
+  }, [logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles, isPreviewMode, setPreviewMode, getPreviewBranding]);
 
   // Handle logo upload
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -399,6 +404,7 @@ export function CustomizeBrandingTab() {
     setHorizontalLogoUrl(null);
     setAppTitle(DEFAULT_APP_TITLE);
     setColors(DEFAULT_BRANDING_COLORS);
+    setMenuTitles(DEFAULT_MENU_TITLES);
   };
 
   // Revert changes
@@ -408,6 +414,7 @@ export function CustomizeBrandingTab() {
       setHorizontalLogoUrl(originalBranding.horizontalLogoUrl || null);
       setAppTitle(originalBranding.appTitle);
       setColors(originalBranding.colors);
+      setMenuTitles(originalBranding.menuTitles || DEFAULT_MENU_TITLES);
     }
   };
 
@@ -425,6 +432,7 @@ export function CustomizeBrandingTab() {
           horizontalLogoUrl,
           appTitle,
           colors,
+          menuTitles,
         }),
       });
 
@@ -632,23 +640,53 @@ export function CustomizeBrandingTab() {
         </div>
       </div>
 
-      {/* App Title Section */}
+      {/* Business Name Section */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-4">
           <Type className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">App Title</h3>
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Business Name</h3>
         </div>
         
         <input
           type="text"
           value={appTitle}
           onChange={(e) => setAppTitle(e.target.value)}
-          placeholder="Enter app title"
+          placeholder="Enter business name"
           className="w-full max-w-md px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
         />
         <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-2 font-albert">
           This appears in the sidebar next to your logo.
         </p>
+      </div>
+
+      {/* Menu Titles Section */}
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
+        <div className="flex items-center gap-2 mb-2">
+          <Type className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Titles</h3>
+        </div>
+        <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mb-4">
+          Customize how features are named throughout your app.
+        </p>
+        
+        <div className="space-y-4">
+          {/* Squad Title */}
+          <div>
+            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+              Squad
+            </label>
+            <input
+              type="text"
+              value={menuTitles.squad}
+              onChange={(e) => setMenuTitles(prev => ({ ...prev, squad: e.target.value }))}
+              placeholder="e.g., Cohort, Team, Group"
+              className="w-full max-w-md px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+            />
+            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-2 font-albert">
+              This changes &ldquo;Squad&rdquo; throughout the app (e.g., menu, &ldquo;My Squad&rdquo;, upgrade pages).
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Accent Color Section */}

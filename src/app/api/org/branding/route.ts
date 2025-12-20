@@ -3,8 +3,8 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { ensureCoachHasOrganization, getCurrentUserOrganizationId } from '@/lib/clerk-organizations';
-import type { OrgBranding, OrgBrandingColors, UserRole } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, UserRole } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES } from '@/types';
 
 /**
  * GET /api/org/branding
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
 
     // Parse request body
     const body = await request.json();
-    const { logoUrl, horizontalLogoUrl, appTitle, colors } = body as Partial<OrgBranding>;
+    const { logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles } = body as Partial<OrgBranding>;
 
     // Get existing branding or create new
     const brandingRef = adminDb.collection('org_branding').doc(organizationId);
@@ -119,6 +119,13 @@ export async function POST(request: Request) {
             ...colors,
           } as OrgBrandingColors
         }),
+        ...(menuTitles !== undefined && { 
+          menuTitles: {
+            ...DEFAULT_MENU_TITLES,
+            ...existing.menuTitles,
+            ...menuTitles,
+          } as OrgMenuTitles
+        }),
         updatedAt: now,
       };
     } else {
@@ -132,6 +139,10 @@ export async function POST(request: Request) {
         colors: {
           ...DEFAULT_BRANDING_COLORS,
           ...colors,
+        },
+        menuTitles: {
+          ...DEFAULT_MENU_TITLES,
+          ...menuTitles,
         },
         createdAt: now,
         updatedAt: now,
@@ -165,6 +176,7 @@ function getDefaultBranding(organizationId?: string): OrgBranding {
     horizontalLogoUrl: null,
     appTitle: DEFAULT_APP_TITLE,
     colors: DEFAULT_BRANDING_COLORS,
+    menuTitles: DEFAULT_MENU_TITLES,
     createdAt: now,
     updatedAt: now,
   };

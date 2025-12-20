@@ -1272,6 +1272,14 @@ export interface OrgBrandingColors {
 }
 
 /**
+ * Customizable menu titles for an organization
+ * Allows coaches to rebrand navigation items (e.g., "Squad" to "Cohort")
+ */
+export interface OrgMenuTitles {
+  squad: string;               // Default: "Squad" - can be "Cohort", "Team", "Group", etc.
+}
+
+/**
  * Organization branding settings
  * Stored in Firestore: org_branding/{organizationId}
  * 
@@ -1285,6 +1293,7 @@ export interface OrgBranding {
   horizontalLogoUrl: string | null; // Custom horizontal/wide logo URL (replaces square logo + title if set)
   appTitle: string;              // App title shown in sidebar (default: "Growth Addicts")
   colors: OrgBrandingColors;
+  menuTitles?: OrgMenuTitles;    // Customizable menu titles (optional, uses defaults if not set)
   createdAt: string;             // ISO timestamp
   updatedAt: string;             // ISO timestamp
 }
@@ -1299,6 +1308,10 @@ export const DEFAULT_BRANDING_COLORS: OrgBrandingColors = {
 
 export const DEFAULT_APP_TITLE = 'GrowthAddicts';
 export const DEFAULT_LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af';
+
+export const DEFAULT_MENU_TITLES: OrgMenuTitles = {
+  squad: 'Squad',
+};
 
 // =============================================================================
 // TENANT DOMAIN TYPES
