@@ -108,11 +108,35 @@ function removeBrandingCSS(): void {
   root.style.removeProperty('--brand-accent-dark');
 }
 
-export function BrandingProvider({ children }: { children: React.ReactNode }) {
-  const [branding, setBranding] = useState<OrgBranding>(getDefaultBranding());
+interface BrandingProviderProps {
+  children: React.ReactNode;
+  /**
+   * Initial branding from SSR (set by middleware from KV cache).
+   * If provided, skips the initial client-side fetch - eliminates "flash of default branding".
+   */
+  initialBranding?: OrgBranding | null;
+  /**
+   * Whether the initial branding is the default (no custom branding).
+   * Used to skip unnecessary client-side fetches.
+   */
+  initialIsDefault?: boolean;
+}
+
+export function BrandingProvider({ 
+  children, 
+  initialBranding,
+  initialIsDefault = true,
+}: BrandingProviderProps) {
+  // Initialize with SSR branding if provided, otherwise default
+  const [branding, setBranding] = useState<OrgBranding>(
+    initialBranding || getDefaultBranding()
+  );
   const [isLoading, setIsLoading] = useState(false);
-  const [isDefault, setIsDefault] = useState(true);
+  const [isDefault, setIsDefault] = useState(initialIsDefault);
   const [mounted, setMounted] = useState(false);
+  
+  // Track if we got SSR branding (skip initial fetch if so)
+  const hadInitialBranding = initialBranding !== undefined && initialBranding !== null;
   
   // Preview mode state
   const [isPreviewMode, setIsPreviewMode] = useState(false);
@@ -145,9 +169,12 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
   // Initialize on mount
   useEffect(() => {
     setMounted(true);
-    // Load saved branding from server
-    fetchBranding();
-  }, [fetchBranding]);
+    // Only fetch if we didn't get SSR branding
+    // This prevents the "flash" - SSR branding is already correct
+    if (!hadInitialBranding) {
+      fetchBranding();
+    }
+  }, [fetchBranding, hadInitialBranding]);
 
   // Apply CSS when effective branding changes
   useEffect(() => {

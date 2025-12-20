@@ -1,6 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getTenantBySubdomain, getTenantByCustomDomain, type TenantKVData, DEFAULT_TENANT_BRANDING } from '@/lib/tenant-kv';
 
 // Billing status types (must match admin-utils-clerk.ts)
 type BillingStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | 'none';
@@ -254,47 +255,58 @@ const isPlatformOnlyRoute = createRouteMatcher([
 ]);
 
 // =============================================================================
-// CACHING (simple in-memory for edge runtime)
+// TENANT RESOLUTION (via Vercel KV)
 // =============================================================================
-
-// Note: This is a simple cache that will be per-instance.
-// For production, you might want to use Vercel KV or similar.
-interface TenantCacheEntry {
-  orgId: string;
-  subdomain: string;
-  verifiedCustomDomain?: string;  // Custom domain to redirect subdomain requests to
-  expiresAt: number;
-}
-const tenantCache = new Map<string, TenantCacheEntry | null>();
-const CACHE_TTL = 60 * 1000; // 1 minute
-
-// Membership cache - keyed by "userId:orgId"
-interface MembershipCacheEntry {
-  isMember: boolean;
-  expiresAt: number;
-}
-const membershipCache = new Map<string, MembershipCacheEntry>();
-const MEMBERSHIP_CACHE_TTL = 30 * 1000; // 30 seconds
 
 interface ResolvedTenant {
   orgId: string;
   subdomain: string;
   verifiedCustomDomain?: string;  // Present when subdomain should redirect to custom domain
+  kvData?: TenantKVData;          // Full KV data for branding cookie
 }
 
-async function resolveTenantFromDb(
+/**
+ * Resolve tenant from Vercel KV
+ * Fast Edge-compatible lookup - no HTTP calls needed
+ */
+async function resolveTenantFromKV(
   subdomain?: string,
   customDomain?: string
 ): Promise<ResolvedTenant | null> {
-  // Check cache first
-  const cacheKey = subdomain ? `sub:${subdomain}` : `domain:${customDomain}`;
-  const cached = tenantCache.get(cacheKey);
-  if (cached !== undefined && (cached === null || cached.expiresAt > Date.now())) {
-    return cached ? { orgId: cached.orgId, subdomain: cached.subdomain, verifiedCustomDomain: cached.verifiedCustomDomain } : null;
-  }
-  
   try {
-    // Call internal API to resolve tenant (API has access to Firebase Admin)
+    let kvData: TenantKVData | null = null;
+    
+    if (subdomain) {
+      kvData = await getTenantBySubdomain(subdomain);
+    } else if (customDomain) {
+      kvData = await getTenantByCustomDomain(customDomain);
+    }
+    
+    if (kvData) {
+      return {
+        orgId: kvData.organizationId,
+        subdomain: kvData.subdomain,
+        verifiedCustomDomain: kvData.verifiedCustomDomain,
+        kvData,
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('[MIDDLEWARE] KV tenant resolution error:', error);
+    return null;
+  }
+}
+
+/**
+ * Fallback: Resolve tenant via API when KV is empty/not available
+ * This ensures new tenants work before KV is populated
+ */
+async function resolveTenantFromApi(
+  subdomain?: string,
+  customDomain?: string
+): Promise<ResolvedTenant | null> {
+  try {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const params = new URLSearchParams();
     if (subdomain) params.set('subdomain', subdomain);
@@ -303,72 +315,45 @@ async function resolveTenantFromDb(
     const response = await fetch(`${baseUrl}/api/tenant/resolve?${params}`, {
       method: 'GET',
       headers: { 'x-internal-request': 'true' },
-      // Short timeout to avoid blocking
       signal: AbortSignal.timeout(3000),
     });
     
     if (!response.ok) {
-      tenantCache.set(cacheKey, null);
       return null;
     }
     
     const data = await response.json();
     if (data.organizationId) {
-      const result: ResolvedTenant = { 
+      return { 
         orgId: data.organizationId, 
         subdomain: data.subdomain || subdomain || '',
         verifiedCustomDomain: data.verifiedCustomDomain || undefined,
       };
-      tenantCache.set(cacheKey, { ...result, expiresAt: Date.now() + CACHE_TTL });
-      return result;
     }
     
-    tenantCache.set(cacheKey, null);
     return null;
   } catch (error) {
-    console.error('[MIDDLEWARE] Tenant resolution error:', error);
-    // Don't cache errors - allow retry
+    console.error('[MIDDLEWARE] API tenant resolution fallback error:', error);
     return null;
   }
 }
 
 /**
- * Check if a user is a member of an organization
- * Uses the org_memberships collection via internal API
+ * Resolve tenant - tries KV first, falls back to API
  */
-async function checkOrgMembership(userId: string, organizationId: string): Promise<boolean> {
-  const cacheKey = `${userId}:${organizationId}`;
-  const cached = membershipCache.get(cacheKey);
-  
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.isMember;
+async function resolveTenant(
+  subdomain?: string,
+  customDomain?: string
+): Promise<ResolvedTenant | null> {
+  // Try KV first (fast)
+  const kvResult = await resolveTenantFromKV(subdomain, customDomain);
+  if (kvResult) {
+    return kvResult;
   }
   
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const params = new URLSearchParams({ userId, organizationId });
-    
-    const response = await fetch(`${baseUrl}/api/tenant/check-membership?${params}`, {
-      method: 'GET',
-      headers: { 'x-internal-request': 'true' },
-      signal: AbortSignal.timeout(3000),
-    });
-    
-    if (!response.ok) {
-      console.error('[MIDDLEWARE] Membership check failed:', response.status);
-      return false;
-    }
-    
-    const data = await response.json();
-    const isMember = data.isMember === true;
-    
-    membershipCache.set(cacheKey, { isMember, expiresAt: Date.now() + MEMBERSHIP_CACHE_TTL });
-    return isMember;
-  } catch (error) {
-    console.error('[MIDDLEWARE] Membership check error:', error);
-    // On error, don't cache and return false (safer to deny access)
-    return false;
-  }
+  // Fallback to API (slower but ensures new tenants work)
+  console.log(`[MIDDLEWARE] KV miss for ${subdomain || customDomain}, falling back to API`);
+  return resolveTenantFromApi(subdomain, customDomain);
 }
 
 // =============================================================================
@@ -387,14 +372,16 @@ export default clerkMiddleware(async (auth, request) => {
   let tenantSubdomain: string | null = null;
   let isCustomDomain = false;
   let isTenantMode = false;
+  let tenantKVData: TenantKVData | null = null;  // Store branding data for cookie
   
   // Check for dev override first
   const devOverride = getDevTenantOverride(request);
   if (devOverride) {
-    const resolved = await resolveTenantFromDb(devOverride);
+    const resolved = await resolveTenant(devOverride);
     if (resolved) {
       tenantOrgId = resolved.orgId;
       tenantSubdomain = resolved.subdomain;
+      tenantKVData = resolved.kvData || null;
       isTenantMode = true;
     } else {
       // Dev override specified but not found - redirect to not found
@@ -406,7 +393,7 @@ export default clerkMiddleware(async (auth, request) => {
     const parsed = parseHost(hostname);
     
     if (parsed.type === 'subdomain' && parsed.subdomain) {
-      const resolved = await resolveTenantFromDb(parsed.subdomain);
+      const resolved = await resolveTenant(parsed.subdomain);
       if (resolved) {
         // If this org has a verified custom domain, redirect subdomain to custom domain
         // EXCEPT for auth routes - those need to stay on subdomain for Clerk to work
@@ -425,6 +412,7 @@ export default clerkMiddleware(async (auth, request) => {
         
         tenantOrgId = resolved.orgId;
         tenantSubdomain = resolved.subdomain;
+        tenantKVData = resolved.kvData || null;
         isTenantMode = true;
       } else {
         // Unknown subdomain - show not found page
@@ -436,10 +424,11 @@ export default clerkMiddleware(async (auth, request) => {
         return NextResponse.redirect(new URL('/tenant-not-found', request.url));
       }
     } else if (parsed.type === 'custom_domain') {
-      const resolved = await resolveTenantFromDb(undefined, parsed.hostname);
+      const resolved = await resolveTenant(undefined, parsed.hostname);
       if (resolved) {
         tenantOrgId = resolved.orgId;
         tenantSubdomain = resolved.subdomain;
+        tenantKVData = resolved.kvData || null;
         isCustomDomain = true;
         isTenantMode = true;
       } else {
@@ -500,17 +489,38 @@ export default clerkMiddleware(async (auth, request) => {
   }
   
   // ==========================================================================
-  // SET TENANT HEADERS
+  // SET TENANT HEADERS AND COOKIES
   // ==========================================================================
   
   // Create response with tenant headers for downstream use
   const response = NextResponse.next();
   
   if (isTenantMode && tenantOrgId) {
+    // Set headers for API routes
     response.headers.set('x-tenant-org-id', tenantOrgId);
     response.headers.set('x-tenant-subdomain', tenantSubdomain || '');
     response.headers.set('x-tenant-is-custom-domain', isCustomDomain ? 'true' : 'false');
     response.headers.set('x-tenant-hostname', hostname);
+    
+    // Set branding cookie for SSR access (JSON-encoded, httpOnly for security)
+    // This allows Server Components to read branding without additional API calls
+    const brandingData = tenantKVData?.branding || DEFAULT_TENANT_BRANDING;
+    const tenantCookieData = {
+      orgId: tenantOrgId,
+      subdomain: tenantSubdomain,
+      branding: brandingData,
+    };
+    
+    response.cookies.set('ga_tenant_context', JSON.stringify(tenantCookieData), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24, // 24 hours - will be refreshed on each request
+    });
+  } else {
+    // Platform mode - clear tenant cookie if exists
+    response.cookies.delete('ga_tenant_context');
   }
   
   // ==========================================================================
@@ -531,11 +541,12 @@ export default clerkMiddleware(async (auth, request) => {
   // ==========================================================================
   
   // If in tenant mode and user is signed in, verify they belong to this org
+  // Uses Clerk session claims only - no HTTP calls needed
   if (isTenantMode && userId && tenantOrgId) {
     const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
     
-    // Check membership in priority order:
-    // 1. Clerk's native organization context (if using Clerk Orgs)
+    // Check membership using session claims only (fast, no HTTP):
+    // 1. Clerk's native organization context
     const { orgId: clerkOrgId } = await auth();
     
     // 2. publicMetadata.primaryOrganizationId (new multi-org field)
@@ -544,24 +555,21 @@ export default clerkMiddleware(async (auth, request) => {
     // 3. publicMetadata.organizationId (legacy field)
     const legacyOrgId = publicMetadata?.organizationId;
     
-    // Quick check: does any of the metadata match the tenant org?
-    const hasQuickMatch = 
+    // Check if any metadata matches the tenant org
+    // Note: For multi-org, org_memberships is checked server-side in protected routes
+    // Middleware just does fast session-based check
+    const isMember = 
       clerkOrgId === tenantOrgId || 
       primaryOrgId === tenantOrgId || 
       legacyOrgId === tenantOrgId;
     
-    let isMember = hasQuickMatch;
-    
-    // If no quick match, check org_memberships collection (supports multi-org)
     if (!isMember) {
-      isMember = await checkOrgMembership(userId, tenantOrgId);
-    }
-    
-    if (!isMember) {
-      // User is not a member of this tenant's organization
-      console.log(`[MIDDLEWARE] User ${userId} not member of tenant org ${tenantOrgId}`);
+      // User's session doesn't indicate membership in this org
+      // Allow public routes - they might be signing up for this org
+      // Protected routes will do deeper membership checks server-side
+      console.log(`[MIDDLEWARE] User ${userId} session doesn't match tenant org ${tenantOrgId}`);
       
-      // Allow public routes even if not a member
+      // Only block non-public routes
       if (!isPublicRoute(request)) {
         if (pathname.startsWith('/api/')) {
           return NextResponse.json({ error: 'Access denied: Not a member of this organization' }, { status: 403 });

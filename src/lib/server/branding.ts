@@ -1,10 +1,16 @@
 /**
  * Server-side Branding Utility
  * 
- * Fetches organization branding based on hostname (subdomain or custom domain).
+ * Fetches organization branding for Server Components.
+ * 
+ * Priority:
+ * 1. Cookie (set by middleware from KV) - fastest, no DB call
+ * 2. Firestore lookup - fallback for when cookie not available
+ * 
  * Used by layout.tsx for dynamic metadata and ClerkThemeProvider configuration.
  */
 
+import { cookies } from 'next/headers';
 import { adminDb } from '@/lib/firebase-admin';
 import { resolveTenant } from '@/lib/tenant/resolveTenant';
 import type { OrgBranding } from '@/types';
@@ -25,9 +31,40 @@ const DEFAULT_BRANDING: ServerBranding = {
 };
 
 /**
+ * Parse tenant cookie to get branding (set by middleware from KV)
+ */
+async function getBrandingFromCookie(): Promise<ServerBranding | null> {
+  try {
+    const cookieStore = await cookies();
+    const tenantCookie = cookieStore.get('ga_tenant_context')?.value;
+    
+    if (!tenantCookie) {
+      return null;
+    }
+    
+    const parsed = JSON.parse(tenantCookie);
+    
+    if (!parsed.orgId || !parsed.branding) {
+      return null;
+    }
+    
+    return {
+      logoUrl: parsed.branding.logoUrl || DEFAULT_LOGO_URL,
+      horizontalLogoUrl: parsed.branding.horizontalLogoUrl || null,
+      appTitle: parsed.branding.appTitle || DEFAULT_APP_TITLE,
+      organizationId: parsed.orgId,
+    };
+  } catch (error) {
+    console.error('[SERVER_BRANDING] Error parsing tenant cookie:', error);
+    return null;
+  }
+}
+
+/**
  * Get branding for a hostname
  * 
- * Resolves the hostname to an organization and fetches their branding.
+ * First tries cookie (fast, set by middleware from KV).
+ * Falls back to Firestore lookup if cookie not available.
  * Returns default branding if:
  * - Hostname is the platform domain (growthaddicts.app)
  * - Organization not found
@@ -38,6 +75,13 @@ const DEFAULT_BRANDING: ServerBranding = {
  */
 export async function getBrandingForDomain(hostname: string): Promise<ServerBranding> {
   try {
+    // Priority 1: Try cookie (fast - set by middleware from KV)
+    const cookieBranding = await getBrandingFromCookie();
+    if (cookieBranding) {
+      return cookieBranding;
+    }
+    
+    // Priority 2: Fallback to Firestore lookup (for when cookie not set)
     // Resolve tenant from hostname
     const result = await resolveTenant(hostname, null, null);
     
@@ -82,3 +126,4 @@ export async function getBrandingForDomain(hostname: string): Promise<ServerBran
 export function getBestLogoUrl(branding: ServerBranding): string {
   return branding.logoUrl || branding.horizontalLogoUrl || DEFAULT_LOGO_URL;
 }
+

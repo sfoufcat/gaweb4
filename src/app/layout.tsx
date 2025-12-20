@@ -16,6 +16,7 @@ import { IncomingCallHandler } from "@/components/chat/IncomingCallHandler";
 import { ClerkThemeProvider } from "@/components/auth/ClerkThemeProvider";
 import { TimezoneSync } from "@/components/TimezoneSync";
 import { getBrandingForDomain, getBestLogoUrl } from "@/lib/server/branding";
+import { getServerBranding } from "@/lib/branding-server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -64,6 +65,9 @@ export default async function RootLayout({
   const hostname = headersList.get('host') || '';
   const branding = await getBrandingForDomain(hostname);
   
+  // Get full SSR branding for BrandingProvider (from middleware cookie - fast, no DB call)
+  const ssrBranding = await getServerBranding();
+  
   return (
     <ClerkThemeProvider 
       hostname={hostname}
@@ -93,7 +97,10 @@ export default async function RootLayout({
           suppressHydrationWarning
         >
           <ThemeProvider>
-          <BrandingProvider>
+          <BrandingProvider 
+            initialBranding={ssrBranding.branding} 
+            initialIsDefault={ssrBranding.isDefault}
+          >
           <SquadProvider>
           <OrganizationProvider>
             <StreamChatProvider>

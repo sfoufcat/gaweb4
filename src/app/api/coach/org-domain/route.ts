@@ -17,6 +17,13 @@ import { validateSubdomain } from '@/types';
 import { isSuperCoach } from '@/lib/admin-utils-shared';
 import { auth } from '@clerk/nextjs/server';
 import type { OrgRole } from '@/types';
+import { adminDb } from '@/lib/firebase-admin';
+import { 
+  invalidateTenantBySubdomain, 
+  syncTenantToKV, 
+  type TenantBrandingData,
+  DEFAULT_TENANT_BRANDING,
+} from '@/lib/tenant-kv';
 
 interface ClerkPublicMetadata {
   orgRole?: OrgRole;
@@ -120,10 +127,51 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'This subdomain is already taken' }, { status: 400 });
     }
     
-    // Update subdomain
+    // Get the old subdomain before updating
+    const oldSubdomain = currentDomain?.subdomain;
+    
+    // Update subdomain in Firestore
     await updateOrgSubdomain(organizationId, normalizedSubdomain);
     
     console.log(`[COACH_ORG_DOMAIN] Updated subdomain to ${normalizedSubdomain} for org ${organizationId}`);
+    
+    // Sync to KV cache
+    try {
+      // Invalidate old subdomain key if different
+      if (oldSubdomain && oldSubdomain !== normalizedSubdomain) {
+        await invalidateTenantBySubdomain(oldSubdomain);
+        console.log(`[COACH_ORG_DOMAIN] Invalidated old KV entry for subdomain: ${oldSubdomain}`);
+      }
+      
+      // Get branding to populate new KV entry
+      const brandingDoc = await adminDb.collection('org_branding').doc(organizationId).get();
+      const brandingData = brandingDoc.data();
+      
+      const kvBranding: TenantBrandingData = brandingData ? {
+        logoUrl: brandingData.logoUrl || null,
+        horizontalLogoUrl: brandingData.horizontalLogoUrl || null,
+        appTitle: brandingData.appTitle || DEFAULT_TENANT_BRANDING.appTitle,
+        colors: brandingData.colors || DEFAULT_TENANT_BRANDING.colors,
+        menuTitles: brandingData.menuTitles || DEFAULT_TENANT_BRANDING.menuTitles,
+      } : DEFAULT_TENANT_BRANDING;
+      
+      // Get verified custom domain if exists
+      const domainDoc = await adminDb.collection('org_domains').doc(organizationId).get();
+      const verifiedCustomDomain = domainDoc.data()?.verifiedCustomDomain;
+      
+      // Set new KV entry
+      await syncTenantToKV(
+        organizationId,
+        normalizedSubdomain,
+        kvBranding,
+        verifiedCustomDomain || undefined
+      );
+      
+      console.log(`[COACH_ORG_DOMAIN] Synced new KV entry for subdomain: ${normalizedSubdomain}`);
+    } catch (kvError) {
+      // Log but don't fail the request - KV is optimization, not critical
+      console.error('[COACH_ORG_DOMAIN] KV sync error (non-fatal):', kvError);
+    }
     
     return NextResponse.json({
       success: true,
@@ -144,3 +192,4 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Failed to update subdomain' }, { status: 500 });
   }
 }
+
