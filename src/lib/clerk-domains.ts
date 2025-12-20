@@ -13,6 +13,7 @@ import { clerkClient } from '@clerk/nextjs/server';
 interface ClerkDomainResult {
   success: boolean;
   domainId?: string;
+  frontendApi?: string;  // e.g., "clerk.cyberked.com" - needed for DNS setup
   error?: string;
 }
 
@@ -33,11 +34,15 @@ export async function addDomainToClerk(domain: string): Promise<ClerkDomainResul
       is_satellite: true,
     });
     
-    console.log(`[CLERK_DOMAINS] Added domain ${domain} to Clerk (ID: ${result.id})`);
+    // Clerk satellite domains need a CNAME: clerk.{domain} -> frontend-api.clerk.services
+    const frontendApi = `clerk.${domain}`;
+    
+    console.log(`[CLERK_DOMAINS] Added domain ${domain} to Clerk (ID: ${result.id}, Frontend API: ${frontendApi})`);
     
     return {
       success: true,
       domainId: result.id,
+      frontendApi,
     };
   } catch (error) {
     console.error('[CLERK_DOMAINS] Error adding domain to Clerk:', error);

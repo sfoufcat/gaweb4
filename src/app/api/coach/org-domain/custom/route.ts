@@ -13,6 +13,7 @@ import {
   isCustomDomainAvailable,
 } from '@/lib/tenant/resolveTenant';
 import { addDomainToVercel, isVercelDomainApiConfigured } from '@/lib/vercel-domains';
+import { addDomainToClerk } from '@/lib/clerk-domains';
 import { isSuperCoach } from '@/lib/admin-utils-shared';
 import { auth } from '@clerk/nextjs/server';
 import type { OrgRole } from '@/types';
@@ -116,7 +117,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'This domain is already registered' }, { status: 400 });
     }
     
-    // Add the domain to Vercel project first (if configured)
+    // Add the domain to Vercel project (if configured)
     let vercelResult = null;
     if (isVercelDomainApiConfigured()) {
       vercelResult = await addDomainToVercel(normalizedDomain);
@@ -131,34 +132,58 @@ export async function POST(request: Request) {
       console.warn('[COACH_CUSTOM_DOMAIN] Vercel API not configured - domain added to database only');
     }
     
-    // Add the custom domain to our database (Clerk registration happens on verification)
-    const customDomain = await addCustomDomain(organizationId, normalizedDomain);
+    // Add the domain to Clerk for authentication (satellite domain)
+    let clerkDomainId: string | undefined;
+    let clerkFrontendApi: string | undefined;
+    const clerkResult = await addDomainToClerk(normalizedDomain);
+    if (clerkResult.success && clerkResult.domainId) {
+      clerkDomainId = clerkResult.domainId;
+      clerkFrontendApi = clerkResult.frontendApi;
+      console.log(`[COACH_CUSTOM_DOMAIN] Added domain to Clerk: ${clerkDomainId}`);
+    } else {
+      console.warn(`[COACH_CUSTOM_DOMAIN] Could not add domain to Clerk: ${clerkResult.error}. Authentication may require manual setup.`);
+    }
+    
+    // Add the custom domain to our database
+    const customDomain = await addCustomDomain(organizationId, normalizedDomain, clerkDomainId);
     
     console.log(`[COACH_CUSTOM_DOMAIN] Added custom domain ${normalizedDomain} for org ${organizationId}`);
     
-    // Build verification instructions
-    // Use Vercel's verification info if available, otherwise use default CNAME instructions
-    const verificationInstructions = vercelResult?.verification && vercelResult.verification.length > 0
-      ? {
-          records: vercelResult.verification.map(v => ({
-            type: v.type,
-            domain: v.domain,
-            value: v.value,
-            reason: v.reason,
-          })),
-          note: 'Add these DNS records to verify domain ownership. DNS changes may take up to 24 hours to propagate.',
-        }
-      : {
-          records: [
-            {
-              type: 'CNAME',
-              domain: normalizedDomain,
-              value: 'cname.vercel-dns.com',
-              reason: 'Point your domain to Vercel',
-            },
-          ],
-          note: 'Add this CNAME record to your DNS settings. Verification may take up to 24 hours.',
-        };
+    // Build combined DNS instructions (Vercel + Clerk)
+    const dnsRecords: Array<{ type: string; domain: string; value: string; reason: string }> = [];
+    
+    // Add Vercel DNS records
+    if (vercelResult?.verification && vercelResult.verification.length > 0) {
+      dnsRecords.push(...vercelResult.verification.map(v => ({
+        type: v.type,
+        domain: v.domain,
+        value: v.value,
+        reason: v.reason,
+      })));
+    } else {
+      // Default CNAME for Vercel
+      dnsRecords.push({
+        type: 'CNAME',
+        domain: normalizedDomain,
+        value: 'cname.vercel-dns.com',
+        reason: 'Route traffic to your app',
+      });
+    }
+    
+    // Add Clerk DNS record for authentication
+    if (clerkFrontendApi) {
+      dnsRecords.push({
+        type: 'CNAME',
+        domain: clerkFrontendApi,
+        value: 'frontend-api.clerk.services',
+        reason: 'Enable authentication on custom domain',
+      });
+    }
+    
+    const verificationInstructions = {
+      records: dnsRecords,
+      note: 'Add ALL these DNS records to your domain provider. DNS changes may take up to 24 hours to propagate.',
+    };
     
     return NextResponse.json({
       success: true,
@@ -170,6 +195,7 @@ export async function POST(request: Request) {
       },
       verificationInstructions,
       vercelConfigured: isVercelDomainApiConfigured(),
+      clerkConfigured: !!clerkDomainId,
     }, { status: 201 });
   } catch (error) {
     console.error('[COACH_CUSTOM_DOMAIN_POST] Error:', error);
