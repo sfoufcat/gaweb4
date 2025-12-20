@@ -15,8 +15,8 @@ import { BrandingProvider } from "@/contexts/BrandingContext";
 import { IncomingCallHandler } from "@/components/chat/IncomingCallHandler";
 import { ClerkThemeProvider } from "@/components/auth/ClerkThemeProvider";
 import { TimezoneSync } from "@/components/TimezoneSync";
-import { getBrandingForDomain, getBestLogoUrl } from "@/lib/server/branding";
 import { getServerBranding } from "@/lib/branding-server";
+import { DEFAULT_LOGO_URL } from "@/types";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,18 +35,22 @@ const albertSans = Albert_Sans({
 });
 
 /**
+ * Helper to get best logo URL for favicon
+ */
+function getBestLogoUrl(branding: { logoUrl: string | null; horizontalLogoUrl: string | null }): string {
+  return branding.logoUrl || branding.horizontalLogoUrl || DEFAULT_LOGO_URL;
+}
+
+/**
  * Generate dynamic metadata based on domain branding
  * Favicon and title use the organization's branding if on a custom domain
  */
 export async function generateMetadata(): Promise<Metadata> {
-  const headersList = await headers();
-  const hostname = headersList.get('host') || '';
-  
-  const branding = await getBrandingForDomain(hostname);
-  const iconUrl = getBestLogoUrl(branding);
+  const ssrBranding = await getServerBranding();
+  const iconUrl = getBestLogoUrl(ssrBranding.branding);
   
   return {
-    title: branding.appTitle,
+    title: ssrBranding.branding.appTitle,
     description: "Define your mission. Align your life.",
     icons: {
       icon: iconUrl,
@@ -60,19 +64,18 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Get hostname and branding for satellite domain detection and Clerk configuration
+  // Get hostname for satellite domain detection and Clerk configuration
   const headersList = await headers();
   const hostname = headersList.get('host') || '';
-  const branding = await getBrandingForDomain(hostname);
   
-  // Get full SSR branding for BrandingProvider (from middleware cookie - fast, no DB call)
+  // Get SSR branding from middleware cookie - single fetch, no redundant calls
   const ssrBranding = await getServerBranding();
   
   return (
     <ClerkThemeProvider 
       hostname={hostname}
-      logoUrl={getBestLogoUrl(branding)}
-      appTitle={branding.appTitle}
+      logoUrl={getBestLogoUrl(ssrBranding.branding)}
+      appTitle={ssrBranding.branding.appTitle}
     >
       <html lang="en" className="h-full" suppressHydrationWarning>
         <head>

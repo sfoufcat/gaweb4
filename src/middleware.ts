@@ -366,6 +366,31 @@ export default clerkMiddleware(async (auth, request) => {
   const pathname = request.nextUrl.pathname;
   
   // ==========================================================================
+  // STATIC FILE BYPASS (Safety check - should already be excluded by matcher)
+  // ==========================================================================
+  
+  // Explicitly skip static files to prevent any processing issues
+  if (
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/static/') ||
+    pathname.includes('.') && (
+      pathname.endsWith('.css') ||
+      pathname.endsWith('.js') ||
+      pathname.endsWith('.png') ||
+      pathname.endsWith('.jpg') ||
+      pathname.endsWith('.jpeg') ||
+      pathname.endsWith('.gif') ||
+      pathname.endsWith('.svg') ||
+      pathname.endsWith('.ico') ||
+      pathname.endsWith('.woff') ||
+      pathname.endsWith('.woff2') ||
+      pathname.endsWith('.ttf')
+    )
+  ) {
+    return NextResponse.next();
+  }
+  
+  // ==========================================================================
   // CORS PREFLIGHT HANDLING
   // ==========================================================================
   

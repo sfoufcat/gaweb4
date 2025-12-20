@@ -19,6 +19,12 @@ import { removeDomainFromClerk } from '@/lib/clerk-domains';
 import { isSuperCoach } from '@/lib/admin-utils-shared';
 import { auth } from '@clerk/nextjs/server';
 import type { OrgRole, OrgCustomDomain, CustomDomainStatus } from '@/types';
+import { 
+  syncTenantToEdgeConfig, 
+  invalidateTenantByCustomDomain,
+  type TenantBrandingData,
+  DEFAULT_TENANT_BRANDING,
+} from '@/lib/tenant-edge-config';
 import dns from 'dns';
 import { promisify } from 'util';
 
@@ -159,6 +165,49 @@ export async function PATCH(
     
     console.log(`[COACH_CUSTOM_DOMAIN] Re-verified domain ${domainData.domain}: routing=${routingConfigured}, auth=${authConfigured}, verified=${verified}`);
     
+    // Sync to Edge Config when domain is verified
+    if (verified) {
+      try {
+        // Get org subdomain
+        const orgDomainSnapshot = await adminDb
+          .collection('org_domains')
+          .where('organizationId', '==', organizationId)
+          .limit(1)
+          .get();
+        
+        const subdomain = orgDomainSnapshot.empty 
+          ? '' 
+          : orgDomainSnapshot.docs[0].data().subdomain;
+        
+        if (subdomain) {
+          // Get branding to populate Edge Config entry
+          const brandingDoc = await adminDb.collection('org_branding').doc(organizationId).get();
+          const brandingData = brandingDoc.data();
+          
+          const edgeBranding: TenantBrandingData = brandingData ? {
+            logoUrl: brandingData.logoUrl || null,
+            horizontalLogoUrl: brandingData.horizontalLogoUrl || null,
+            appTitle: brandingData.appTitle || DEFAULT_TENANT_BRANDING.appTitle,
+            colors: brandingData.colors || DEFAULT_TENANT_BRANDING.colors,
+            menuTitles: brandingData.menuTitles || DEFAULT_TENANT_BRANDING.menuTitles,
+          } : DEFAULT_TENANT_BRANDING;
+          
+          // Sync with verified custom domain
+          await syncTenantToEdgeConfig(
+            organizationId,
+            subdomain,
+            edgeBranding,
+            domainData.domain  // This is the verified custom domain
+          );
+          
+          console.log(`[COACH_CUSTOM_DOMAIN] Synced Edge Config for verified custom domain: ${domainData.domain}`);
+        }
+      } catch (edgeError) {
+        // Log but don't fail the request - Edge Config is optimization, not critical
+        console.error('[COACH_CUSTOM_DOMAIN] Edge Config sync error (non-fatal):', edgeError);
+      }
+    }
+    
     return NextResponse.json({
       success: true,
       domain: {
@@ -228,7 +277,16 @@ export async function DELETE(
       );
     }
     
-    // Remove the domain from Vercel first (if configured)
+    // Invalidate Edge Config entry for this custom domain FIRST
+    try {
+      await invalidateTenantByCustomDomain(domainData.domain);
+      console.log(`[COACH_CUSTOM_DOMAIN] Invalidated Edge Config for custom domain: ${domainData.domain}`);
+    } catch (edgeError) {
+      // Log but don't fail the request - Edge Config is optimization, not critical
+      console.error('[COACH_CUSTOM_DOMAIN] Edge Config invalidation error (non-fatal):', edgeError);
+    }
+    
+    // Remove the domain from Vercel (if configured)
     if (isVercelDomainApiConfigured()) {
       const vercelResult = await removeDomainFromVercel(domainData.domain);
       if (!vercelResult.success) {
