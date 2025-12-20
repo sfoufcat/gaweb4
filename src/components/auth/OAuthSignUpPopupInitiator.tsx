@@ -18,12 +18,16 @@ export function OAuthSignUpPopupInitiator({ provider, origin }: OAuthSignUpPopup
   useEffect(() => {
     if (!isLoaded || !signUp) return;
 
+    // Capture the current domain for org enrollment
+    const signupDomain = window.location.hostname;
+
     // Start OAuth flow - will redirect to provider, then back to /sso-callback
     // The origin is passed so SSO callback knows where to postMessage
     signUp.authenticateWithRedirect({
       strategy: provider,
       redirectUrl: `/sso-callback?popup=1&origin=${encodeURIComponent(origin)}`,
       redirectUrlComplete: `/sso-callback?popup=1&origin=${encodeURIComponent(origin)}`,
+      unsafeMetadata: { signupDomain },
     }).catch((err) => {
       console.error('OAuth initiation failed:', err);
       // Notify parent of error
@@ -43,3 +47,4 @@ export function OAuthSignUpPopupInitiator({ provider, origin }: OAuthSignUpPopup
     </div>
   );
 }
+

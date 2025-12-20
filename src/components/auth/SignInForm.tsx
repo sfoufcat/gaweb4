@@ -465,8 +465,9 @@ export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', h
 
   // Main sign in form
   return (
-    <div className="w-full max-w-lg mx-auto">
-      <div className="bg-white/80 backdrop-blur-sm border border-[#e1ddd8]/60 rounded-3xl p-8 shadow-lg">
+    <div className={embedded ? "w-full" : "w-full max-w-lg mx-auto"}>
+      {/* Card wrapper - only when NOT embedded (iframe parent already has card) */}
+      <div className={embedded ? "" : "bg-white/80 backdrop-blur-sm border border-[#e1ddd8]/60 rounded-3xl p-8 shadow-lg"}>
         {/* OAuth Buttons - hidden when parent handles OAuth */}
         {!hideOAuth && (
           <>

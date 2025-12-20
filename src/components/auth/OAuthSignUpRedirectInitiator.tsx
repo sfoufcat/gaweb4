@@ -19,11 +19,15 @@ export function OAuthSignUpRedirectInitiator({ provider, redirectUrl }: OAuthSig
   useEffect(() => {
     if (!isLoaded || !signUp) return;
 
-    // Start OAuth flow with redirect
+    // Capture the current domain for org enrollment
+    const signupDomain = window.location.hostname;
+
+    // Start OAuth flow with redirect, passing the signup domain for org enrollment
     signUp.authenticateWithRedirect({
       strategy: provider,
       redirectUrl: '/sso-callback',
       redirectUrlComplete: redirectUrl,
+      unsafeMetadata: { signupDomain },
     }).catch((err) => {
       console.error('OAuth initiation failed:', err);
       // If OAuth fails, redirect back to satellite with error
@@ -42,3 +46,4 @@ export function OAuthSignUpRedirectInitiator({ provider, redirectUrl }: OAuthSig
     </div>
   );
 }
+

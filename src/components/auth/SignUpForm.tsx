@@ -87,11 +87,13 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
         // The popup will handle the OAuth flow and postMessage back
         setOauthLoading(false);
       } else {
-        // Normal OAuth flow with redirect
+        // Normal OAuth flow with redirect - pass signupDomain for org enrollment
+        const signupDomain = window.location.hostname;
         await signUp.authenticateWithRedirect({
           strategy: provider,
           redirectUrl: '/sso-callback',
           redirectUrlComplete: redirectUrl,
+          unsafeMetadata: { signupDomain },
         });
       }
     } catch (err: unknown) {
@@ -298,8 +300,9 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
 
   // Main sign up form
   return (
-    <div className="w-full max-w-lg mx-auto">
-      <div className="bg-white/80 backdrop-blur-sm border border-[#e1ddd8]/60 rounded-3xl p-8 shadow-lg">
+    <div className={embedded ? "w-full" : "w-full max-w-lg mx-auto"}>
+      {/* Card wrapper - only when NOT embedded (iframe parent already has card) */}
+      <div className={embedded ? "" : "bg-white/80 backdrop-blur-sm border border-[#e1ddd8]/60 rounded-3xl p-8 shadow-lg"}>
         {/* OAuth Buttons - hidden when parent handles OAuth */}
         {!hideOAuth && (
           <>

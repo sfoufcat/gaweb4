@@ -412,7 +412,7 @@ export default clerkMiddleware(async (auth, request) => {
         // EXCEPT for auth routes - those need to stay on subdomain for Clerk to work
         const isAuthRoute = pathname === '/sign-in' || pathname.startsWith('/sign-in/') ||
                            pathname === '/sign-up' || pathname.startsWith('/sign-up/') ||
-                           pathname === '/begin' || 
+                           pathname.startsWith('/begin') || 
                            pathname === '/sso-callback' || pathname.startsWith('/sso-callback/');
         
         if (resolved.verifiedCustomDomain && !isAuthRoute) {
@@ -477,7 +477,7 @@ export default clerkMiddleware(async (auth, request) => {
     // Allow marketing-related routes
     const isMarketingRoute = 
       pathname === '/' || 
-      pathname === '/begin' ||
+      pathname.startsWith('/begin') ||
       pathname.startsWith('/start') ||  // Guest checkout flow
       pathname.startsWith('/sign-in') ||
       pathname.startsWith('/sign-up') ||

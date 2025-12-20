@@ -13,7 +13,7 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
   // Framer Motion's transform context causes fixed elements to position relative to the container
   const skipAnimation = pathname === '/chat' || 
     pathname.startsWith('/onboarding') ||
-    pathname === '/begin' ||
+    pathname?.startsWith('/begin') ||
     pathname.startsWith('/sign-in');
   
   // For pages with fixed positioning, render without animation to prevent layout issues

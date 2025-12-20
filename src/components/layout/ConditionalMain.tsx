@@ -14,7 +14,7 @@ export function ConditionalMain({ children }: { children: ReactNode }) {
   const isStartPage = pathname?.startsWith('/start');
   
   // Check if we're on /begin (signup entry point)
-  const isBeginPage = pathname === '/begin';
+  const isBeginPage = pathname?.startsWith('/begin');
   
   // Check if we're on /sign-in
   const isSignInPage = pathname?.startsWith('/sign-in');

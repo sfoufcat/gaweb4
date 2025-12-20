@@ -16,8 +16,8 @@ export function ConditionalSidebar() {
   // Hide sidebar on check-in pages (fullscreen experience)
   const isCheckInPage = pathname?.startsWith('/checkin');
   
-  // Hide sidebar on /begin (signup entry point)
-  const isBeginPage = pathname === '/begin';
+  // Hide sidebar on /begin and /begin/embedded (signup entry point)
+  const isBeginPage = pathname?.startsWith('/begin');
   
   // Hide sidebar on /sign-in
   const isSignInPage = pathname?.startsWith('/sign-in');
