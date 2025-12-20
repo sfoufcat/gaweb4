@@ -42,11 +42,26 @@ export async function GET(request: Request) {
       }
       
       const data = snapshot.docs[0].data() as OrgDomain;
+      
+      // Check if this organization has a verified custom domain
+      // If so, subdomain requests should redirect to the custom domain
+      const customDomainSnapshot = await adminDb
+        .collection('org_custom_domains')
+        .where('organizationId', '==', data.organizationId)
+        .where('status', '==', 'verified')
+        .limit(1)
+        .get();
+      
+      const verifiedCustomDomain = customDomainSnapshot.empty 
+        ? null 
+        : (customDomainSnapshot.docs[0].data() as OrgCustomDomain).domain;
+      
       return NextResponse.json({
         found: true,
         organizationId: data.organizationId,
         subdomain: data.subdomain,
         isCustomDomain: false,
+        verifiedCustomDomain,  // For subdomain -> custom domain redirect
       });
     } else if (domain) {
       // Resolve by custom domain
