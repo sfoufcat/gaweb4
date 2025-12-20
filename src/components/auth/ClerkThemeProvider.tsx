@@ -5,7 +5,6 @@ import { dark } from '@clerk/themes';
 import { useEffect, useState } from 'react';
 
 const STORAGE_KEY = 'ga-theme';
-const PRIMARY_DOMAIN = 'https://growthaddicts.app';
 
 // Custom dark theme variables to match app design
 const darkAppearance = {
@@ -198,11 +197,11 @@ export function ClerkThemeProvider({
   // Build satellite props conditionally to satisfy TypeScript's strict union types
   // When isSatellite is true, we pass all satellite config together
   // When false, we spread an empty object (no satellite props)
+  // Note: signInUrl/signUpUrl are intentionally NOT set - this allows direct
+  // sign-in on the satellite domain using its own Frontend API (clerk.{domain})
   const satelliteProps = isSatellite ? {
     isSatellite: true as const,
     domain: domainWithoutPort,
-    signInUrl: `${PRIMARY_DOMAIN}/sign-in`,
-    signUpUrl: `${PRIMARY_DOMAIN}/sign-up`,
   } : {};
 
   return (
