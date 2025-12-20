@@ -166,6 +166,7 @@ const isPublicRoute = createRouteMatcher([
   '/onboarding(.*)',
   '/start(.*)',  // Guest checkout flow - auth happens after payment
   '/invite(.*)',  // Smart invite links - page handles auth flow
+  '/auth/sync(.*)',  // Session handoff for custom domains - handles its own auth
   '/tenant-not-found',  // Tenant not found page
   '/access-denied',     // Access denied page
   '/api/webhooks(.*)',
