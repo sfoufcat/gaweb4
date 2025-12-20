@@ -17,12 +17,34 @@ export type UserTrack =
   | 'community_builder'
   | 'general'; // Legacy fallback
 
+// User Tier Types (for subscription/access level - does NOT include coaching)
+// Coaching is a separate product, not a membership tier
+export type UserTier = 'free' | 'standard' | 'premium';
+
+// Coaching Status Types (separate from membership tier)
+export type CoachingStatus = 'none' | 'active' | 'canceled' | 'past_due';
+export type CoachingPlan = 'monthly' | 'quarterly' | null;
+
+// Billing Status Type
+export type BillingStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | 'none';
+
 // Clerk Public Metadata Type (for type assertions with sessionClaims)
+// This is the SINGLE SOURCE OF TRUTH for user access control
 export interface ClerkPublicMetadata {
   role?: UserRole;
   track?: UserTrack;
+  tier?: UserTier;            // Subscription tier (free, standard, premium)
   orgRole?: OrgRole;          // Organization-level role (for multi-tenant hierarchy)
   organizationId?: string;    // Clerk Organization ID this user belongs to
+  // Coaching fields (separate from membership tier)
+  coaching?: boolean;         // Legacy flag - true if has active coaching
+  coachingStatus?: CoachingStatus;  // Detailed coaching status
+  coachingPlan?: CoachingPlan;      // Coaching plan type
+  coachingPeriodEnd?: string;       // ISO date when coaching access ends
+  coachId?: string;           // Assigned coach's userId (for 1:1 coaching)
+  // Billing
+  billingStatus?: BillingStatus;
+  billingPeriodEnd?: string;  // ISO date for grace period checks
 }
 
 // Clerk User Types
@@ -36,14 +58,6 @@ export interface ClerkUser {
   updatedAt: string;
   publicMetadata?: ClerkPublicMetadata;
 }
-
-// User Tier Types (for subscription/access level - does NOT include coaching)
-// Coaching is a separate product, not a membership tier
-export type UserTier = 'free' | 'standard' | 'premium';
-
-// Coaching Status Types (separate from membership tier)
-export type CoachingStatus = 'none' | 'active' | 'canceled' | 'past_due';
-export type CoachingPlan = 'monthly' | 'quarterly' | null;
 
 // Onboarding Status Types
 export type OnboardingStatus = 

@@ -20,8 +20,11 @@ interface MyClient {
 /**
  * GET /api/coach/my-clients
  * Fetches clients for an org coach:
- * - Users where coachId === currentUserId (1:1 coaching clients)
- * - Members of squads where the current user is the coach
+ * - Users where coachId === currentUserId (1:1 coaching clients) - from Clerk publicMetadata
+ * - Members of squads where the current user is the coach - from Firebase (relationship data)
+ * 
+ * All user data (coachingStatus, coachId, tier, etc.) comes from Clerk publicMetadata.
+ * Only squad membership (relationship data) comes from Firebase.
  * 
  * Returns limited fields for read-only display
  */
@@ -37,6 +40,7 @@ export async function GET() {
     const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata;
     const role = publicMetadata?.role;
     const orgRole = publicMetadata?.orgRole as OrgRole | undefined;
+    const organizationId = publicMetadata?.organizationId;
 
     // Check if user can access coach dashboard
     if (!canAccessCoachDashboard(role, orgRole)) {
@@ -45,10 +49,10 @@ export async function GET() {
 
     console.log(`[MY_CLIENTS] Fetching clients for coach: ${userId}`);
 
-    const clientUserIds = new Set<string>();
+    const squadMemberUserIds = new Set<string>();
     const client = await clerkClient();
 
-    // 1. Get squads where this user is the coach
+    // 1. Get squads where this user is the coach (relationship data from Firebase)
     const squadsSnapshot = await adminDb
       .collection('squads')
       .where('coachId', '==', userId)
@@ -57,7 +61,7 @@ export async function GET() {
     const squadIds = squadsSnapshot.docs.map(doc => doc.id);
     console.log(`[MY_CLIENTS] Found ${squadIds.length} squads for coach ${userId}`);
 
-    // 2. Get all members of those squads
+    // 2. Get all members of those squads (relationship data from Firebase)
     if (squadIds.length > 0) {
       // Batch in chunks of 10 (Firestore 'in' query limit)
       for (let i = 0; i < squadIds.length; i += 10) {
@@ -71,80 +75,74 @@ export async function GET() {
           const data = doc.data();
           // Don't include the coach themselves
           if (data.userId !== userId) {
-            clientUserIds.add(data.userId);
+            squadMemberUserIds.add(data.userId);
           }
         });
       }
     }
 
-    // 3. Get users where coachId === userId (1:1 coaching clients)
-    const coachingClientsSnapshot = await adminDb
-      .collection('users')
-      .where('coachId', '==', userId)
-      .get();
-    
-    coachingClientsSnapshot.forEach((doc) => {
-      clientUserIds.add(doc.id);
-    });
-
-    console.log(`[MY_CLIENTS] Found ${clientUserIds.size} unique clients for coach ${userId}`);
-
-    if (clientUserIds.size === 0) {
-      return NextResponse.json({ 
-        users: [],
-        totalCount: 0,
-      });
-    }
-
-    // 4. Fetch user details from Clerk
-    const userIdsArray = Array.from(clientUserIds);
-    const { data: clerkUsers } = await client.users.getUserList({
-      userId: userIdsArray,
-      limit: 500,
-    });
-
-    // 5. Fetch Firebase data for coaching status and coachId
-    const firebaseData = new Map<string, { coachingStatus?: CoachingStatus; coachId?: string }>();
-    
-    // Batch fetch in chunks of 10
-    for (let i = 0; i < userIdsArray.length; i += 10) {
-      const chunk = userIdsArray.slice(i, i + 10);
-      const snapshot = await adminDb
-        .collection('users')
-        .where('__name__', 'in', chunk)
-        .get();
-      
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        firebaseData.set(doc.id, {
-          coachingStatus: data.coaching?.status || 'none',
-          coachId: data.coachId || null,
-        });
-      });
-    }
-
-    // 6. Get current coach's name for display
+    // 3. Get current coach's name for display
     const currentCoach = await client.users.getUser(userId);
     const currentCoachName = `${currentCoach.firstName || ''} ${currentCoach.lastName || ''}`.trim() || 'Unknown';
 
-    // 7. Build client list with limited fields
-    const users: MyClient[] = clerkUsers.map((user) => {
-      const fbData = firebaseData.get(user.id);
-      const clerkMetadata = user.publicMetadata as ClerkPublicMetadata;
+    // 4. Fetch all users - either from org or by specific IDs
+    // We need to find 1:1 coaching clients (coachId in Clerk metadata) + squad members
+    let allClerkUsers;
+    
+    if (organizationId) {
+      // For org coaches, fetch all org members and filter
+      const orgMembers = await client.organizations.getOrganizationMembershipList({
+        organizationId,
+        limit: 500,
+      });
       
-      return {
-        id: user.id,
-        email: user.emailAddresses[0]?.emailAddress || '',
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unnamed User',
-        imageUrl: user.imageUrl || '',
-        coachingStatus: clerkMetadata?.coachingStatus || fbData?.coachingStatus || 'none',
-        coachId: fbData?.coachId || null,
-        coachName: fbData?.coachId === userId ? currentCoachName : null,
-        createdAt: new Date(user.createdAt).toISOString(),
-      };
-    });
+      const orgUserIds = orgMembers.data.map(m => m.publicUserData?.userId).filter(Boolean) as string[];
+      const { data } = await client.users.getUserList({
+        userId: orgUserIds,
+        limit: 500,
+      });
+      allClerkUsers = data;
+    } else if (squadMemberUserIds.size > 0) {
+      // Fallback: just fetch squad members
+      const { data } = await client.users.getUserList({
+        userId: Array.from(squadMemberUserIds),
+        limit: 500,
+      });
+      allClerkUsers = data;
+    } else {
+      allClerkUsers = [];
+    }
+
+    // 5. Filter and build client list - include users who:
+    //    - Are in the coach's squads (squadMemberUserIds), OR
+    //    - Have coachId === currentUserId in their Clerk publicMetadata (1:1 coaching)
+    const users: MyClient[] = allClerkUsers
+      .filter((user) => {
+        if (user.id === userId) return false; // Exclude self
+        const userMetadata = user.publicMetadata as ClerkPublicMetadata;
+        const isSquadMember = squadMemberUserIds.has(user.id);
+        const is1on1Client = userMetadata?.coachId === userId;
+        return isSquadMember || is1on1Client;
+      })
+      .map((user) => {
+        const clerkMetadata = user.publicMetadata as ClerkPublicMetadata;
+        const userCoachId = clerkMetadata?.coachId || null;
+        
+        return {
+          id: user.id,
+          email: user.emailAddresses[0]?.emailAddress || '',
+          firstName: user.firstName || '',
+          lastName: user.lastName || '',
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unnamed User',
+          imageUrl: user.imageUrl || '',
+          coachingStatus: clerkMetadata?.coachingStatus || 'none',
+          coachId: userCoachId,
+          coachName: userCoachId === userId ? currentCoachName : null,
+          createdAt: new Date(user.createdAt).toISOString(),
+        };
+      });
+
+    console.log(`[MY_CLIENTS] Found ${users.length} unique clients for coach ${userId}`);
 
     // Sort by name
     users.sort((a, b) => a.name.localeCompare(b.name));
