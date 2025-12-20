@@ -1264,13 +1264,9 @@ export type AIResponse = SuggestTasksResponse | HelpCompleteTaskResponse | Track
 
 /**
  * Branding colors for an organization
- * Supports both light and dark mode variants
+ * Only accent colors are customizable (menu and page backgrounds use theme defaults)
  */
 export interface OrgBrandingColors {
-  menuLight: string;           // Menu/sidebar background in light mode (default: "#ffffff")
-  menuDark: string;            // Menu/sidebar background in dark mode (default: "#101520")
-  bgLight: string;             // Page background in light mode (default: "#faf8f6")
-  bgDark: string;              // Page background in dark mode (default: "#05070b")
   accentLight: string;         // Accent/primary color in light mode (default: "#a07855")
   accentDark: string;          // Accent/primary color in dark mode (default: "#b8896a")
 }
@@ -1285,7 +1281,8 @@ export interface OrgBrandingColors {
 export interface OrgBranding {
   id: string;                    // Same as organizationId
   organizationId: string;        // Clerk Organization ID
-  logoUrl: string | null;        // Custom logo URL (null = use default)
+  logoUrl: string | null;        // Custom square logo URL (null = use default)
+  horizontalLogoUrl: string | null; // Custom horizontal/wide logo URL (replaces square logo + title if set)
   appTitle: string;              // App title shown in sidebar (default: "Growth Addicts")
   colors: OrgBrandingColors;
   createdAt: string;             // ISO timestamp
@@ -1296,10 +1293,6 @@ export interface OrgBranding {
  * Default branding values (matches current hardcoded theme)
  */
 export const DEFAULT_BRANDING_COLORS: OrgBrandingColors = {
-  menuLight: '#ffffff',
-  menuDark: '#101520',
-  bgLight: '#faf8f6',
-  bgDark: '#05070b',
   accentLight: '#a07855',
   accentDark: '#b8896a',
 };

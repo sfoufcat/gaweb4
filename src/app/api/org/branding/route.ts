@@ -95,7 +95,7 @@ export async function POST(request: Request) {
 
     // Parse request body
     const body = await request.json();
-    const { logoUrl, appTitle, colors } = body as Partial<OrgBranding>;
+    const { logoUrl, horizontalLogoUrl, appTitle, colors } = body as Partial<OrgBranding>;
 
     // Get existing branding or create new
     const brandingRef = adminDb.collection('org_branding').doc(organizationId);
@@ -111,6 +111,7 @@ export async function POST(request: Request) {
       brandingData = {
         ...existing,
         ...(logoUrl !== undefined && { logoUrl }),
+        ...(horizontalLogoUrl !== undefined && { horizontalLogoUrl }),
         ...(appTitle !== undefined && { appTitle }),
         ...(colors !== undefined && { 
           colors: {
@@ -126,6 +127,7 @@ export async function POST(request: Request) {
         id: organizationId,
         organizationId,
         logoUrl: logoUrl ?? null,
+        horizontalLogoUrl: horizontalLogoUrl ?? null,
         appTitle: appTitle ?? DEFAULT_APP_TITLE,
         colors: {
           ...DEFAULT_BRANDING_COLORS,
@@ -160,6 +162,7 @@ function getDefaultBranding(organizationId?: string): OrgBranding {
     id: organizationId || 'default',
     organizationId: organizationId || 'default',
     logoUrl: DEFAULT_LOGO_URL,
+    horizontalLogoUrl: null,
     appTitle: DEFAULT_APP_TITLE,
     colors: DEFAULT_BRANDING_COLORS,
     createdAt: now,

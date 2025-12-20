@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { canManageDiscoverContent } from '@/lib/admin-utils-shared';
-import { getCurrentUserRole } from '@/lib/admin-utils-clerk';
+import { canManageDiscoverContent, isOrgCoach } from '@/lib/admin-utils-shared';
 import sharp from 'sharp';
+import type { ClerkPublicMetadata } from '@/types';
 
 /**
  * POST /api/admin/upload-media
@@ -23,22 +23,26 @@ import sharp from 'sharp';
 export async function POST(req: Request) {
   // Wrap everything in try-catch to ensure JSON responses
   try {
-    // Step 1: Authenticate user
-    const { userId } = await auth();
+    // Step 1: Authenticate user and get session claims
+    const { userId, sessionClaims } = await auth();
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized - not logged in' }, { status: 401 });
     }
 
-    // Step 2: Check permissions using consistent helper
-    const role = await getCurrentUserRole();
-    console.log('[ADMIN_UPLOAD] User:', userId, 'Role:', role);
+    // Step 2: Check permissions - check both global role AND org-level role
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const role = publicMetadata?.role || 'user';
+    const orgRole = publicMetadata?.orgRole;
     
-    if (!canManageDiscoverContent(role)) {
-      console.log('[ADMIN_UPLOAD] Permission denied for role:', role);
+    console.log('[ADMIN_UPLOAD] User:', userId, 'Role:', role, 'OrgRole:', orgRole);
+    
+    // Allow both global roles (coach, editor, admin, super_admin) AND org-level coach roles (super_coach, coach)
+    if (!canManageDiscoverContent(role) && !isOrgCoach(orgRole)) {
+      console.log('[ADMIN_UPLOAD] Permission denied for role:', role, 'orgRole:', orgRole);
       return NextResponse.json({ 
         error: 'Insufficient permissions',
-        details: `Role '${role || 'undefined'}' cannot upload media. Required: coach, editor, admin, or super_admin`
+        details: `Role '${role}' / OrgRole '${orgRole || 'none'}' cannot upload media. Required: coach, editor, admin, super_admin, or org-level coach`
       }, { status: 403 });
     }
 

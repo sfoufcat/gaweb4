@@ -77,6 +77,7 @@ function getDefaultBranding(): OrgBranding {
     id: 'default',
     organizationId: 'default',
     logoUrl: DEFAULT_LOGO_URL,
+    horizontalLogoUrl: null,
     appTitle: DEFAULT_APP_TITLE,
     colors: DEFAULT_BRANDING_COLORS,
     createdAt: now,
@@ -86,18 +87,13 @@ function getDefaultBranding(): OrgBranding {
 
 /**
  * Apply branding colors as CSS custom properties
+ * Only accent colors are customizable - menu/page backgrounds use theme defaults
  */
 function applyBrandingCSS(colors: OrgBrandingColors): void {
   const root = document.documentElement;
   
-  // Set CSS custom properties for light mode
-  root.style.setProperty('--brand-menu-light', colors.menuLight);
-  root.style.setProperty('--brand-bg-light', colors.bgLight);
+  // Set CSS custom properties for accent colors only
   root.style.setProperty('--brand-accent-light', colors.accentLight);
-  
-  // Set CSS custom properties for dark mode
-  root.style.setProperty('--brand-menu-dark', colors.menuDark);
-  root.style.setProperty('--brand-bg-dark', colors.bgDark);
   root.style.setProperty('--brand-accent-dark', colors.accentDark);
 }
 
@@ -107,11 +103,7 @@ function applyBrandingCSS(colors: OrgBrandingColors): void {
 function removeBrandingCSS(): void {
   const root = document.documentElement;
   
-  root.style.removeProperty('--brand-menu-light');
-  root.style.removeProperty('--brand-bg-light');
   root.style.removeProperty('--brand-accent-light');
-  root.style.removeProperty('--brand-menu-dark');
-  root.style.removeProperty('--brand-bg-dark');
   root.style.removeProperty('--brand-accent-dark');
 }
 
@@ -247,6 +239,7 @@ export function useBrandingValues() {
   
   return {
     logoUrl: effectiveBranding.logoUrl || DEFAULT_LOGO_URL,
+    horizontalLogoUrl: effectiveBranding.horizontalLogoUrl || null,
     appTitle: effectiveBranding.appTitle || DEFAULT_APP_TITLE,
     colors: effectiveBranding.colors,
     isPreviewMode,

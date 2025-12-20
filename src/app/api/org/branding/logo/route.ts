@@ -7,15 +7,17 @@ import type { UserRole } from '@/types';
 
 /**
  * POST /api/org/branding/logo
- * Upload organization logo
+ * Upload organization logo (square or horizontal)
  * 
  * Images are automatically:
- * - Resized to max 512x512 (maintains aspect ratio)
+ * - Square logos: Resized to max 512x512 (maintains aspect ratio)
+ * - Horizontal logos: Resized to max 400x100 (maintains aspect ratio)
  * - Compressed to 80% quality
  * - Stored in Firebase Storage
  * 
  * Expects: multipart/form-data with:
  *   - file: File (image)
+ *   - type: 'horizontal' | undefined (default: square logo)
  * 
  * Returns: { url: string, originalSize?: number, compressedSize?: number }
  */
@@ -63,6 +65,8 @@ export async function POST(req: Request) {
     }
     
     const file = formData.get('file') as File | null;
+    const logoType = formData.get('type') as string | null;
+    const isHorizontal = logoType === 'horizontal';
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -115,13 +119,15 @@ export async function POST(req: Request) {
     let finalContentType = file.type;
     if (file.type !== 'image/svg+xml' && file.type !== 'image/gif') {
       try {
-        const maxDimension = 512;
+        // Different dimensions for horizontal vs square logos
+        const maxWidth = isHorizontal ? 400 : 512;
+        const maxHeight = isHorizontal ? 100 : 512;
         const quality = 80;
 
         let sharpInstance = sharp(buffer);
         
-        // Resize to max 512x512 (maintaining aspect ratio)
-        sharpInstance = sharpInstance.resize(maxDimension, maxDimension, {
+        // Resize maintaining aspect ratio
+        sharpInstance = sharpInstance.resize(maxWidth, maxHeight, {
           withoutEnlargement: true,
           fit: 'inside',
         });
@@ -138,7 +144,7 @@ export async function POST(req: Request) {
 
         const savings = originalSize - buffer.length;
         const savingsPercent = ((savings / originalSize) * 100).toFixed(1);
-        console.log(`[ORG_LOGO_UPLOAD] Compressed logo: ${originalSize} → ${buffer.length} bytes (${savingsPercent}% smaller)`);
+        console.log(`[ORG_LOGO_UPLOAD] Compressed ${isHorizontal ? 'horizontal' : 'square'} logo: ${originalSize} → ${buffer.length} bytes (${savingsPercent}% smaller)`);
       } catch (compressError) {
         console.error('[ORG_LOGO_UPLOAD] Image compression error (using original):', compressError);
         // Continue with original buffer if compression fails
@@ -151,7 +157,8 @@ export async function POST(req: Request) {
                       finalContentType === 'image/jpeg' ? 'jpg' : 
                       finalContentType === 'image/webp' ? 'webp' : 
                       file.name.split('.').pop() || 'png';
-    const storagePath = `org-branding/${organizationId}/logo-${timestamp}.${extension}`;
+    const logoPrefix = isHorizontal ? 'horizontal-logo' : 'logo';
+    const storagePath = `org-branding/${organizationId}/${logoPrefix}-${timestamp}.${extension}`;
     const fileRef = bucket.file(storagePath);
 
     try {

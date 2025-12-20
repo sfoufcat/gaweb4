@@ -45,7 +45,7 @@ export function Sidebar() {
   const { sessionClaims, isLoaded, isSignedIn, userId } = useAuth();
   const { totalUnread } = useChatUnreadCounts();
   const { scrollDirection, isAtTop } = useScrollDirection();
-  const { logoUrl, appTitle, colors, isDefault, accentLightIsDark, accentDarkIsDark: _accentDarkIsDark } = useBrandingValues();
+  const { logoUrl, horizontalLogoUrl, appTitle, colors, isDefault, accentLightIsDark, accentDarkIsDark: _accentDarkIsDark } = useBrandingValues();
   
   const isActive = (path: string) => pathname === path;
   
@@ -204,18 +204,34 @@ export function Sidebar() {
       {/* Desktop Sidebar - Apple Liquid Glass Style */}
       {/* Uses CSS variables for branding colors when preview mode or custom branding is active */}
       <aside className="hidden lg:flex flex-col w-64 fixed left-0 top-0 bottom-0 z-40 sidebar-branded backdrop-blur-xl border-r border-[#e1ddd8]/50 dark:border-[#272d38]/50 px-6 py-8">
-        {/* Logo */}
+        {/* Logo - Shows horizontal logo if available, otherwise square logo + title */}
         <Link href="/">
           <div className="flex items-center gap-2.5 mb-12 cursor-pointer group">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-all overflow-hidden relative bg-white dark:bg-white/10">
-              <Image 
-                src={logoUrl}
-                alt={`${appTitle} Logo`}
-                fill
-                className="object-cover rounded-2xl"
-              />
-            </div>
-            <span className="font-albert font-semibold text-xl text-[#1a1a1a] dark:text-[#faf8f6]">{appTitle}</span>
+            {horizontalLogoUrl ? (
+              /* Horizontal logo - replaces square logo + title */
+              <div className="h-10 max-w-[200px] relative overflow-hidden">
+                <Image 
+                  src={horizontalLogoUrl}
+                  alt={`${appTitle} Logo`}
+                  width={200}
+                  height={40}
+                  className="object-contain h-full w-auto"
+                />
+              </div>
+            ) : (
+              /* Default: Square logo + title */
+              <>
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-all overflow-hidden relative bg-white dark:bg-white/10">
+                  <Image 
+                    src={logoUrl}
+                    alt={`${appTitle} Logo`}
+                    fill
+                    className="object-cover rounded-2xl"
+                  />
+                </div>
+                <span className="font-albert font-semibold text-xl text-[#1a1a1a] dark:text-[#faf8f6]">{appTitle}</span>
+              </>
+            )}
           </div>
         </Link>
 

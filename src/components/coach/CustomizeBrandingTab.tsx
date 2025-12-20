@@ -11,9 +11,10 @@ import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, validateS
  * CustomizeBrandingTab
  * 
  * Allows coaches to customize their organization's branding:
- * - Logo upload
+ * - Square logo upload
+ * - Horizontal logo upload (replaces square logo + title)
  * - App title
- * - Colors (menu, background, accent) for light and dark modes
+ * - Accent colors for light and dark modes
  * - Preview mode to see changes before saving
  */
 export function CustomizeBrandingTab() {
@@ -21,6 +22,7 @@ export function CustomizeBrandingTab() {
   
   // Form state
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [horizontalLogoUrl, setHorizontalLogoUrl] = useState<string | null>(null);
   const [appTitle, setAppTitle] = useState(DEFAULT_APP_TITLE);
   const [colors, setColors] = useState<OrgBrandingColors>(DEFAULT_BRANDING_COLORS);
   
@@ -28,6 +30,7 @@ export function CustomizeBrandingTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingHorizontal, setUploadingHorizontal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
@@ -35,8 +38,9 @@ export function CustomizeBrandingTab() {
   // Original values for comparison
   const [originalBranding, setOriginalBranding] = useState<OrgBranding | null>(null);
   
-  // File input ref
+  // File input refs
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const horizontalFileInputRef = useRef<HTMLInputElement>(null);
   
   // Domain settings state
   const [currentSubdomain, setCurrentSubdomain] = useState<string>('');
@@ -74,6 +78,7 @@ export function CustomizeBrandingTab() {
       
       setOriginalBranding(branding);
       setLogoUrl(branding.logoUrl);
+      setHorizontalLogoUrl(branding.horizontalLogoUrl || null);
       setAppTitle(branding.appTitle);
       setColors(branding.colors);
     } catch (err) {
@@ -253,11 +258,12 @@ export function CustomizeBrandingTab() {
     
     const changed = 
       logoUrl !== originalBranding.logoUrl ||
+      horizontalLogoUrl !== (originalBranding.horizontalLogoUrl || null) ||
       appTitle !== originalBranding.appTitle ||
       JSON.stringify(colors) !== JSON.stringify(originalBranding.colors);
     
     setHasChanges(changed);
-  }, [logoUrl, appTitle, colors, originalBranding]);
+  }, [logoUrl, horizontalLogoUrl, appTitle, colors, originalBranding]);
 
   // Build preview branding object
   const getPreviewBranding = useCallback((): OrgBranding => {
@@ -265,12 +271,13 @@ export function CustomizeBrandingTab() {
       id: originalBranding?.id || 'preview',
       organizationId: originalBranding?.organizationId || 'preview',
       logoUrl,
+      horizontalLogoUrl,
       appTitle,
       colors,
       createdAt: originalBranding?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-  }, [logoUrl, appTitle, colors, originalBranding]);
+  }, [logoUrl, horizontalLogoUrl, appTitle, colors, originalBranding]);
 
   // Toggle preview mode
   const handleTogglePreview = () => {
@@ -286,7 +293,7 @@ export function CustomizeBrandingTab() {
     if (isPreviewMode) {
       setPreviewMode(true, getPreviewBranding());
     }
-  }, [logoUrl, appTitle, colors, isPreviewMode, setPreviewMode, getPreviewBranding]);
+  }, [logoUrl, horizontalLogoUrl, appTitle, colors, isPreviewMode, setPreviewMode, getPreviewBranding]);
 
   // Handle logo upload
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -334,6 +341,53 @@ export function CustomizeBrandingTab() {
     }
   };
 
+  // Handle horizontal logo upload
+  const handleHorizontalLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file');
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be less than 5MB');
+      return;
+    }
+
+    try {
+      setUploadingHorizontal(true);
+      setError(null);
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'horizontal');
+
+      const response = await fetch('/api/org/branding/logo', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to upload horizontal logo');
+      }
+
+      const data = await response.json();
+      setHorizontalLogoUrl(data.url);
+      setSuccessMessage('Horizontal logo uploaded successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error('Error uploading horizontal logo:', err);
+      setError(err instanceof Error ? err.message : 'Failed to upload horizontal logo');
+    } finally {
+      setUploadingHorizontal(false);
+    }
+  };
+
   // Handle color change
   const handleColorChange = (key: keyof OrgBrandingColors, value: string) => {
     setColors(prev => ({ ...prev, [key]: value }));
@@ -342,6 +396,7 @@ export function CustomizeBrandingTab() {
   // Reset to defaults
   const handleResetToDefaults = () => {
     setLogoUrl(DEFAULT_LOGO_URL);
+    setHorizontalLogoUrl(null);
     setAppTitle(DEFAULT_APP_TITLE);
     setColors(DEFAULT_BRANDING_COLORS);
   };
@@ -350,6 +405,7 @@ export function CustomizeBrandingTab() {
   const handleRevertChanges = () => {
     if (originalBranding) {
       setLogoUrl(originalBranding.logoUrl);
+      setHorizontalLogoUrl(originalBranding.horizontalLogoUrl || null);
       setAppTitle(originalBranding.appTitle);
       setColors(originalBranding.colors);
     }
@@ -366,6 +422,7 @@ export function CustomizeBrandingTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           logoUrl,
+          horizontalLogoUrl,
           appTitle,
           colors,
         }),
@@ -463,46 +520,114 @@ export function CustomizeBrandingTab() {
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-4">
           <ImageIcon className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Logo</h3>
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Logos</h3>
         </div>
         
-        <div className="flex items-center gap-6">
-          {/* Logo Preview */}
-          <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-white dark:bg-[#262b35] border-2 border-dashed border-[#e1ddd8] dark:border-[#313746]">
-            {logoUrl ? (
-              <Image
-                src={logoUrl}
-                alt="Organization logo"
-                fill
-                className="object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <ImageIcon className="w-8 h-8 text-[#a7a39e] dark:text-[#5f6775]" />
+        <div className="space-y-6">
+          {/* Square Logo */}
+          <div>
+            <h4 className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
+              Square Logo
+            </h4>
+            <div className="flex items-center gap-6">
+              {/* Logo Preview */}
+              <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-white dark:bg-[#262b35] border-2 border-dashed border-[#e1ddd8] dark:border-[#313746]">
+                {logoUrl ? (
+                  <Image
+                    src={logoUrl}
+                    alt="Organization logo"
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <ImageIcon className="w-8 h-8 text-[#a7a39e] dark:text-[#5f6775]" />
+                  </div>
+                )}
               </div>
-            )}
+              
+              {/* Upload Button */}
+              <div className="flex-1">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] rounded-xl hover:bg-[#e8e5e1] dark:hover:bg-[#313746] transition-colors font-albert text-sm disabled:opacity-50"
+                >
+                  <Upload className="w-4 h-4" />
+                  {uploading ? 'Uploading...' : 'Upload Logo'}
+                </button>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-2 font-albert">
+                  Recommended: Square image, at least 512×512px. Max 5MB.
+                </p>
+              </div>
+            </div>
           </div>
-          
-          {/* Upload Button */}
-          <div className="flex-1">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleLogoUpload}
-              className="hidden"
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="flex items-center gap-2 px-4 py-2 bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] rounded-xl hover:bg-[#e8e5e1] dark:hover:bg-[#313746] transition-colors font-albert text-sm disabled:opacity-50"
-            >
-              <Upload className="w-4 h-4" />
-              {uploading ? 'Uploading...' : 'Upload Logo'}
-            </button>
-            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-2 font-albert">
-              Recommended: Square image, at least 512×512px. Max 5MB.
+
+          {/* Horizontal Logo */}
+          <div className="pt-4 border-t border-[#e1ddd8]/50 dark:border-[#313746]/50">
+            <h4 className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+              Horizontal Logo (Optional)
+            </h4>
+            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mb-3">
+              Upload a wide logo to replace the square logo + app title combination in the sidebar.
             </p>
+            <div className="flex items-center gap-6">
+              {/* Horizontal Logo Preview */}
+              <div className="relative w-48 h-16 rounded-xl overflow-hidden bg-white dark:bg-[#262b35] border-2 border-dashed border-[#e1ddd8] dark:border-[#313746]">
+                {horizontalLogoUrl ? (
+                  <Image
+                    src={horizontalLogoUrl}
+                    alt="Horizontal logo"
+                    fill
+                    className="object-contain"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <ImageIcon className="w-6 h-6 text-[#a7a39e] dark:text-[#5f6775]" />
+                  </div>
+                )}
+              </div>
+              
+              {/* Upload/Remove Buttons */}
+              <div className="flex-1">
+                <input
+                  ref={horizontalFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleHorizontalLogoUpload}
+                  className="hidden"
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => horizontalFileInputRef.current?.click()}
+                    disabled={uploadingHorizontal}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] rounded-xl hover:bg-[#e8e5e1] dark:hover:bg-[#313746] transition-colors font-albert text-sm disabled:opacity-50"
+                  >
+                    <Upload className="w-4 h-4" />
+                    {uploadingHorizontal ? 'Uploading...' : 'Upload'}
+                  </button>
+                  {horizontalLogoUrl && (
+                    <button
+                      onClick={() => setHorizontalLogoUrl(null)}
+                      className="flex items-center gap-2 px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors font-albert text-sm"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-2 font-albert">
+                  Recommended: 400×100px or similar wide aspect ratio. Max 5MB.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -526,58 +651,61 @@ export function CustomizeBrandingTab() {
         </p>
       </div>
 
-      {/* Colors Section */}
+      {/* Accent Color Section */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-2">
           <Palette className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Colors</h3>
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Accent Color</h3>
         </div>
+        <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mb-4">
+          Your accent color is used for buttons, links, active states, and other interactive elements.
+        </p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Light Mode Colors */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert uppercase tracking-wide">
+          {/* Light Mode Accent */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
               Light Mode
             </h4>
-            
-            <ColorPicker
-              label="Menu Background"
-              value={colors.menuLight}
-              onChange={(v) => handleColorChange('menuLight', v)}
-            />
-            <ColorPicker
-              label="Page Background"
-              value={colors.bgLight}
-              onChange={(v) => handleColorChange('bgLight', v)}
-            />
-            <ColorPicker
-              label="Accent Color"
-              value={colors.accentLight}
-              onChange={(v) => handleColorChange('accentLight', v)}
-            />
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={colors.accentLight}
+                onChange={(e) => handleColorChange('accentLight', e.target.value)}
+                className="w-14 h-14 rounded-xl border-2 border-[#e1ddd8] dark:border-[#313746] cursor-pointer hover:border-[#a07855] dark:hover:border-[#b8896a] transition-colors"
+                style={{ padding: 0 }}
+              />
+              <input
+                type="text"
+                value={colors.accentLight}
+                onChange={(e) => handleColorChange('accentLight', e.target.value)}
+                className="w-28 px-3 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-mono focus:outline-none focus:ring-1 focus:ring-[#a07855]/20"
+                placeholder="#a07855"
+              />
+            </div>
           </div>
           
-          {/* Dark Mode Colors */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert uppercase tracking-wide">
+          {/* Dark Mode Accent */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
               Dark Mode
             </h4>
-            
-            <ColorPicker
-              label="Menu Background"
-              value={colors.menuDark}
-              onChange={(v) => handleColorChange('menuDark', v)}
-            />
-            <ColorPicker
-              label="Page Background"
-              value={colors.bgDark}
-              onChange={(v) => handleColorChange('bgDark', v)}
-            />
-            <ColorPicker
-              label="Accent Color"
-              value={colors.accentDark}
-              onChange={(v) => handleColorChange('accentDark', v)}
-            />
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={colors.accentDark}
+                onChange={(e) => handleColorChange('accentDark', e.target.value)}
+                className="w-14 h-14 rounded-xl border-2 border-[#e1ddd8] dark:border-[#313746] cursor-pointer hover:border-[#a07855] dark:hover:border-[#b8896a] transition-colors"
+                style={{ padding: 0 }}
+              />
+              <input
+                type="text"
+                value={colors.accentDark}
+                onChange={(e) => handleColorChange('accentDark', e.target.value)}
+                className="w-28 px-3 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-mono focus:outline-none focus:ring-1 focus:ring-[#a07855]/20"
+                placeholder="#b8896a"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -891,46 +1019,6 @@ export function CustomizeBrandingTab() {
         >
           <Save className="w-4 h-4" />
           {saving ? 'Saving...' : 'Save Changes'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Color Picker Component
- */
-interface ColorPickerProps {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}
-
-function ColorPicker({ label, value, onChange }: ColorPickerProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  
-  return (
-    <div className="flex items-center justify-between">
-      <label className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{label}</label>
-      <div className="flex items-center gap-2">
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-24 px-2 py-1.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-xs text-[#1a1a1a] dark:text-[#f5f5f8] font-mono focus:outline-none focus:ring-1 focus:ring-[#a07855]/20"
-        />
-        <button
-          onClick={() => inputRef.current?.click()}
-          className="w-10 h-10 rounded-lg border-2 border-[#e1ddd8] dark:border-[#313746] overflow-hidden cursor-pointer hover:border-[#a07855] dark:hover:border-[#b8896a] transition-colors"
-          style={{ backgroundColor: value }}
-        >
-          <input
-            ref={inputRef}
-            type="color"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="opacity-0 w-full h-full cursor-pointer"
-          />
         </button>
       </div>
     </div>
