@@ -4,7 +4,6 @@ import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SignInForm } from '@/components/auth';
 import { getBrandingForDomain, getBestLogoUrl } from '@/lib/server/branding';
-import { resolveTenant } from '@/lib/tenant/resolveTenant';
 
 interface SignInPageProps {
   searchParams: Promise<{ redirect_url?: string }>;
@@ -29,18 +28,10 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
     !domainWithoutPort.includes('localhost') &&
     !domainWithoutPort.includes('127.0.0.1');
   
-  // On satellite domains (custom domains), redirect to the org's subdomain for authentication
-  // Clerk satellite domains cannot perform sign-in directly, but subdomains can
+  // On satellite domains (custom domains), redirect to PRIMARY domain for authentication
+  // Clerk satellite domains sync sessions from primary domain, so sign-in must happen there
+  // Note: This loses coach branding during sign-in, but session sync works correctly
   if (isSatellite) {
-    // Resolve tenant directly using Firebase Admin (no API call needed)
-    const result = await resolveTenant(hostname, null, null);
-    
-    if (result.type === 'tenant' && result.tenant.subdomain) {
-      const returnUrl = `https://${domainWithoutPort}/`;
-      redirect(`https://${result.tenant.subdomain}.growthaddicts.app/sign-in?redirect_url=${encodeURIComponent(returnUrl)}`);
-    }
-    
-    // Fallback to main domain if subdomain lookup fails
     const returnUrl = `https://${domainWithoutPort}/`;
     redirect(`https://growthaddicts.app/sign-in?redirect_url=${encodeURIComponent(returnUrl)}`);
   }

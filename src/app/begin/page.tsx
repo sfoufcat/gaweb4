@@ -1,7 +1,6 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getBrandingForDomain, getBestLogoUrl } from '@/lib/server/branding';
-import { resolveTenant } from '@/lib/tenant/resolveTenant';
 import { BeginPageClient } from './BeginPageClient';
 
 interface BeginPageProps {
@@ -26,18 +25,10 @@ export default async function BeginPage({ searchParams }: BeginPageProps) {
     !domainWithoutPort.includes('localhost') &&
     !domainWithoutPort.includes('127.0.0.1');
   
-  // On satellite domains (custom domains), redirect to the org's subdomain for sign-up
-  // Clerk satellite domains cannot perform sign-up directly, but subdomains can
+  // On satellite domains (custom domains), redirect to PRIMARY domain for sign-up
+  // Clerk satellite domains sync sessions from primary domain, so sign-up must happen there
+  // Note: This loses coach branding during sign-up, but session sync works correctly
   if (isSatellite) {
-    // Resolve tenant directly using Firebase Admin (no API call needed)
-    const result = await resolveTenant(hostname, null, null);
-    
-    if (result.type === 'tenant' && result.tenant.subdomain) {
-      const returnUrl = `https://${domainWithoutPort}/`;
-      redirect(`https://${result.tenant.subdomain}.growthaddicts.app/begin?redirect_url=${encodeURIComponent(returnUrl)}`);
-    }
-    
-    // Fallback to main domain if subdomain lookup fails
     const returnUrl = `https://${domainWithoutPort}/`;
     redirect(`https://growthaddicts.app/begin?redirect_url=${encodeURIComponent(returnUrl)}`);
   }
