@@ -180,6 +180,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/identity/validate',  // Mission validation - used by guest flow
   '/api/goal/validate',  // Goal validation - used by guest flow
   '/api/tenant/resolve',  // Tenant resolution API - no auth required
+  '/api/org/branding',  // Branding API - needs to work for SSR before auth is established
   '/terms(.*)',
   '/privacy(.*)',
   '/refund-policy(.*)',
@@ -365,6 +366,23 @@ export default clerkMiddleware(async (auth, request) => {
   const pathname = request.nextUrl.pathname;
   
   // ==========================================================================
+  // CORS PREFLIGHT HANDLING
+  // ==========================================================================
+  
+  // Handle OPTIONS preflight requests immediately
+  if (request.method === 'OPTIONS') {
+    return new NextResponse(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET,DELETE,PATCH,POST,PUT,OPTIONS',
+        'Access-Control-Allow-Headers': 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, x-tenant-org-id, x-internal-request',
+        'Access-Control-Max-Age': '86400',
+      },
+    });
+  }
+  
+  // ==========================================================================
   // TENANT RESOLUTION
   // ==========================================================================
   
@@ -492,11 +510,26 @@ export default clerkMiddleware(async (auth, request) => {
   // SET TENANT HEADERS AND COOKIES
   // ==========================================================================
   
-  // Create response with tenant headers for downstream use
-  const response = NextResponse.next();
+  // Create modified request headers to pass tenant info to API routes
+  const requestHeaders = new Headers(request.headers);
   
   if (isTenantMode && tenantOrgId) {
-    // Set headers for API routes
+    // Set headers on REQUEST so API routes can read them
+    requestHeaders.set('x-tenant-org-id', tenantOrgId);
+    requestHeaders.set('x-tenant-subdomain', tenantSubdomain || '');
+    requestHeaders.set('x-tenant-is-custom-domain', isCustomDomain ? 'true' : 'false');
+    requestHeaders.set('x-tenant-hostname', hostname);
+  }
+  
+  // Create response with modified request headers
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
+  
+  if (isTenantMode && tenantOrgId) {
+    // Also set headers on response for client-side access if needed
     response.headers.set('x-tenant-org-id', tenantOrgId);
     response.headers.set('x-tenant-subdomain', tenantSubdomain || '');
     response.headers.set('x-tenant-is-custom-domain', isCustomDomain ? 'true' : 'false');
@@ -635,6 +668,14 @@ export default clerkMiddleware(async (auth, request) => {
 
   // Protect non-public routes (require authentication)
   if (!isPublicRoute(request)) {
+    // For API routes, return JSON 401 instead of redirecting to sign-in HTML
+    if (pathname.startsWith('/api/') && !userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized', message: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+    // For non-API routes, use Clerk's standard protection (redirect to sign-in)
     await auth.protect();
   }
 

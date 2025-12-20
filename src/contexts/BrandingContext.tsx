@@ -148,8 +148,24 @@ export function BrandingProvider({
       setIsLoading(true);
       const response = await fetch('/api/org/branding');
       
+      // Check content type to avoid parsing HTML as JSON
+      const contentType = response.headers.get('content-type');
+      const isJson = contentType && contentType.includes('application/json');
+      
       if (!response.ok) {
-        console.error('[BrandingContext] Failed to fetch branding:', response.status);
+        // Log the actual response for debugging
+        if (!isJson) {
+          const text = await response.text();
+          console.error('[BrandingContext] Non-JSON error response:', response.status, text.substring(0, 200));
+        } else {
+          console.error('[BrandingContext] Failed to fetch branding:', response.status);
+        }
+        return;
+      }
+      
+      // Ensure response is JSON before parsing
+      if (!isJson) {
+        console.error('[BrandingContext] Expected JSON but got:', contentType);
         return;
       }
       
