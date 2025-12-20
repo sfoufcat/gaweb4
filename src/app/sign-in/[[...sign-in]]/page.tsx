@@ -1,34 +1,21 @@
-'use client';
-
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { headers } from 'next/headers';
 import { SignInForm } from '@/components/auth';
+import { getBrandingForDomain, getBestLogoUrl } from '@/lib/server/branding';
 
 /**
  * /sign-in - Sign in page for existing users
+ * Server Component that fetches branding based on domain
  */
-export default function SignInPage() {
-  const [logoUrl, setLogoUrl] = useState('/logo.jpg');
-  const [appTitle, setAppTitle] = useState('Growth Architecture');
+export default async function SignInPage() {
+  // Fetch branding server-side based on domain
+  const headersList = await headers();
+  const hostname = headersList.get('host') || '';
+  const branding = await getBrandingForDomain(hostname);
   
-  // Fetch custom branding on custom domains
-  useEffect(() => {
-    const hostname = window.location.hostname;
-    const isCustomDomain = !hostname.includes('growthaddicts') && 
-                           !hostname.includes('localhost') &&
-                           !hostname.includes('127.0.0.1');
-    
-    if (isCustomDomain) {
-      fetch(`/api/public/branding?domain=${hostname}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.logoUrl) setLogoUrl(data.logoUrl);
-          if (data.appTitle) setAppTitle(data.appTitle);
-        })
-        .catch(() => {}); // Keep defaults on error
-    }
-  }, []);
+  const logoUrl = getBestLogoUrl(branding);
+  const appTitle = branding.appTitle;
 
   return (
     <div className="fixed inset-0 bg-app-bg overflow-y-auto">

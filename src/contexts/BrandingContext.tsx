@@ -260,14 +260,18 @@ export function useBrandingValues() {
 
 /**
  * Hook to get just the customizable menu titles
- * Provides the squad title and helper functions for lowercase/uppercase variants
+ * Provides all menu titles and helper functions for lowercase/uppercase variants
  */
 export function useMenuTitles() {
   const { menuTitles } = useBrandingValues();
   
   return {
     // Raw titles
+    home: menuTitles.home,
     squad: menuTitles.squad,
+    learn: menuTitles.learn,
+    chat: menuTitles.chat,
+    coach: menuTitles.coach,
     // Lowercase variants (for use in sentences like "my squad")
     squadLower: menuTitles.squad.toLowerCase(),
     // Helper for "My Squad" style usage

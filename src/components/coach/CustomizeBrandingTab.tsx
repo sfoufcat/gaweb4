@@ -663,13 +663,27 @@ export function CustomizeBrandingTab() {
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-2">
           <Type className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Titles</h3>
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Menu Titles</h3>
         </div>
         <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mb-4">
-          Customize how features are named throughout your app.
+          Customize how navigation items are labeled throughout your app.
         </p>
-        
-        <div className="space-y-4">
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Home Title */}
+          <div>
+            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+              Home
+            </label>
+            <input
+              type="text"
+              value={menuTitles.home}
+              onChange={(e) => setMenuTitles(prev => ({ ...prev, home: e.target.value }))}
+              placeholder="e.g., Dashboard, Start"
+              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+            />
+          </div>
+
           {/* Squad Title */}
           <div>
             <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
@@ -680,13 +694,56 @@ export function CustomizeBrandingTab() {
               value={menuTitles.squad}
               onChange={(e) => setMenuTitles(prev => ({ ...prev, squad: e.target.value }))}
               placeholder="e.g., Cohort, Team, Group"
-              className="w-full max-w-md px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
             />
-            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-2 font-albert">
-              This changes &ldquo;Squad&rdquo; throughout the app (e.g., menu, &ldquo;My Squad&rdquo;, upgrade pages).
-            </p>
+          </div>
+
+          {/* Learn Title */}
+          <div>
+            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+              Learn
+            </label>
+            <input
+              type="text"
+              value={menuTitles.learn}
+              onChange={(e) => setMenuTitles(prev => ({ ...prev, learn: e.target.value }))}
+              placeholder="e.g., Discover, Content, Resources"
+              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+            />
+          </div>
+
+          {/* Chat Title */}
+          <div>
+            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+              Chat
+            </label>
+            <input
+              type="text"
+              value={menuTitles.chat}
+              onChange={(e) => setMenuTitles(prev => ({ ...prev, chat: e.target.value }))}
+              placeholder="e.g., Messages, Community"
+              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+            />
+          </div>
+
+          {/* Coach Title */}
+          <div>
+            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+              Coach
+            </label>
+            <input
+              type="text"
+              value={menuTitles.coach}
+              onChange={(e) => setMenuTitles(prev => ({ ...prev, coach: e.target.value }))}
+              placeholder="e.g., Mentor, Guide, Support"
+              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+            />
           </div>
         </div>
+        
+        <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-4 font-albert">
+          Changes apply to navigation menu items. &ldquo;Squad&rdquo; also updates throughout the app (e.g., &ldquo;My Squad&rdquo;, upgrade pages).
+        </p>
       </div>
 
       {/* Accent Color Section */}

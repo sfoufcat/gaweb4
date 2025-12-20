@@ -1276,7 +1276,11 @@ export interface OrgBrandingColors {
  * Allows coaches to rebrand navigation items (e.g., "Squad" to "Cohort")
  */
 export interface OrgMenuTitles {
+  home: string;                // Default: "Home"
   squad: string;               // Default: "Squad" - can be "Cohort", "Team", "Group", etc.
+  learn: string;               // Default: "Learn" - can be "Discover", "Content", etc.
+  chat: string;                // Default: "Chat" - can be "Messages", "Community", etc.
+  coach: string;               // Default: "Coach" - can be "Mentor", "Guide", etc.
 }
 
 /**
@@ -1310,7 +1314,11 @@ export const DEFAULT_APP_TITLE = 'GrowthAddicts';
 export const DEFAULT_LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af';
 
 export const DEFAULT_MENU_TITLES: OrgMenuTitles = {
+  home: 'Home',
   squad: 'Squad',
+  learn: 'Learn',
+  chat: 'Chat',
+  coach: 'Coach',
 };
 
 // =============================================================================
