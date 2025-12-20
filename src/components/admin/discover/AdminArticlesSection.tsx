@@ -50,11 +50,13 @@ function ArticleFormDialog({
   isOpen,
   onClose,
   onSave,
+  uploadEndpoint,
 }: {
   article: DiscoverArticle | null;
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
+  uploadEndpoint: string;
 }) {
   const isEditing = !!article;
   const [saving, setSaving] = useState(false);
@@ -180,6 +182,7 @@ function ArticleFormDialog({
               type="image"
               label="Cover Image"
               required
+              uploadEndpoint={uploadEndpoint}
             />
 
             {/* Author Info */}
@@ -357,6 +360,11 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
   const [articleToDelete, setArticleToDelete] = useState<DiscoverArticle | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Derive upload endpoint from API endpoint - use coach upload for coach routes
+  const uploadEndpoint = apiEndpoint.includes('/coach/') 
+    ? '/api/coach/org-upload-media' 
+    : '/api/admin/upload-media';
 
   const fetchArticles = async () => {
     try {
@@ -651,6 +659,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
         isOpen={isFormOpen}
         onClose={() => { setIsFormOpen(false); setArticleToEdit(null); }}
         onSave={fetchArticles}
+        uploadEndpoint={uploadEndpoint}
       />
 
       {/* Delete Confirmation */}

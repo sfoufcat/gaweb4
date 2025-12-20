@@ -29,6 +29,7 @@ import { useWeeklyFocus } from '@/hooks/useWeeklyFocus';
 import { useHomeTutorial } from '@/hooks/useHomeTutorial';
 import { HomeTutorialOverlay } from '@/components/tutorial';
 import { getHabitLabelForTrack } from '@/lib/starter-program-config';
+import { useMenuTitles } from '@/contexts/BrandingContext';
 
 /**
  * Homepage / Dashboard
@@ -136,6 +137,9 @@ export default function Dashboard() {
   
   // Integrate squad context for My Squad section
   const { squad, members, isLoading: squadLoading } = useSquadContext();
+  
+  // Get customizable menu titles
+  const { mySquad: mySquadTitle } = useMenuTitles();
   
   // Get user's track for track-specific UI labels
   const { track } = useTrack();
@@ -1794,7 +1798,7 @@ export default function Dashboard() {
       {/* My Squad Section */}
       <div data-tour="my-squad" className="mt-8">
         <h2 className="font-albert text-[24px] text-text-primary leading-[1.3] tracking-[-1.5px] mb-3">
-          My Squad
+          {mySquadTitle}
         </h2>
         
         {squadLoading ? (

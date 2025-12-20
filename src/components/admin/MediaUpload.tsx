@@ -12,6 +12,8 @@ interface MediaUploadProps {
   type?: MediaType;
   label?: string;
   required?: boolean;
+  /** Custom upload endpoint URL (defaults to /api/admin/upload-media) */
+  uploadEndpoint?: string;
 }
 
 const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
@@ -61,7 +63,8 @@ export function MediaUpload({
   folder, 
   type = 'image',
   label = 'Media',
-  required = false 
+  required = false,
+  uploadEndpoint = '/api/admin/upload-media'
 }: MediaUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -105,7 +108,7 @@ export function MediaUpload({
         setProgress(prev => Math.min(prev + 10, 90));
       }, 200);
 
-      const response = await fetch('/api/admin/upload-media', {
+      const response = await fetch(uploadEndpoint, {
         method: 'POST',
         body: formData,
       });

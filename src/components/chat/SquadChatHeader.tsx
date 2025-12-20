@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useChannelStateContext } from 'stream-chat-react';
+import { useMenuTitles } from '@/contexts/BrandingContext';
 
 /**
  * SquadChatHeader Component
@@ -20,10 +21,11 @@ interface SquadChatHeaderProps {
 
 export function SquadChatHeader({ onBack, showBackButton = false }: SquadChatHeaderProps) {
   const { channel, members } = useChannelStateContext();
+  const { mySquad: mySquadTitle } = useMenuTitles();
   
   // Cast channel.data to access custom properties
   const channelData = channel?.data as Record<string, unknown> | undefined;
-  const channelName = (channelData?.name as string) || 'My Squad';
+  const channelName = (channelData?.name as string) || mySquadTitle;
   const channelMembers = Object.values(members || {}).filter(m => m.user);
 
   return (

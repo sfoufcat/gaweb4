@@ -17,6 +17,8 @@ interface RichTextEditorProps {
   label?: string;
   showMediaToolbar?: boolean;
   mediaFolder?: 'events' | 'articles' | 'courses' | 'courses/lessons';
+  /** Custom upload endpoint URL (defaults to /api/admin/upload-media) */
+  uploadEndpoint?: string;
 }
 
 // Media Insert Dialog for inline content
@@ -26,12 +28,14 @@ function MediaInsertDialog({
   onClose,
   onInsert,
   folder,
+  uploadEndpoint,
 }: {
   isOpen: boolean;
   mediaType: 'image' | 'video';
   onClose: () => void;
   onInsert: (url: string) => void;
   folder: 'events' | 'articles' | 'courses' | 'courses/lessons';
+  uploadEndpoint: string;
 }) {
   const [url, setUrl] = useState('');
 
@@ -60,6 +64,7 @@ function MediaInsertDialog({
             folder={folder}
             type={mediaType}
             label={mediaType === 'image' ? 'Upload Image' : 'Upload Video'}
+            uploadEndpoint={uploadEndpoint}
           />
         </div>
         <div className="p-4 border-t border-[#e1ddd8] dark:border-[#262b35] flex justify-end gap-3">
@@ -389,6 +394,7 @@ export function RichTextEditor({
   label,
   showMediaToolbar = true,
   mediaFolder = 'articles',
+  uploadEndpoint = '/api/admin/upload-media',
 }: RichTextEditorProps) {
   const [mediaInsertType, setMediaInsertType] = useState<'image' | 'video' | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -601,6 +607,7 @@ export function RichTextEditor({
           onClose={() => setMediaInsertType(null)}
           onInsert={mediaInsertType === 'video' ? insertVideo : insertImage}
           folder={mediaFolder}
+          uploadEndpoint={uploadEndpoint}
         />
         
         <LinkInsertDialog
@@ -624,6 +631,7 @@ export function RichTextEditor({
         onClose={() => setMediaInsertType(null)}
         onInsert={mediaInsertType === 'video' ? insertVideo : insertImage}
         folder={mediaFolder}
+        uploadEndpoint={uploadEndpoint}
       />
       
       {/* Link Insert Dialog */}

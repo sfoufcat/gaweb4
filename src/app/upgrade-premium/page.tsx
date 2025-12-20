@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useMenuTitles } from '@/contexts/BrandingContext';
 
 /**
  * Upgrade to Premium Page
@@ -18,6 +19,9 @@ import { useSearchParams } from 'next/navigation';
 export default function UpgradePremiumPage() {
   const searchParams = useSearchParams();
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'biannual'>('monthly');
+  
+  // Get customizable menu titles
+  const { squad: squadTitle, squadLower } = useMenuTitles();
   
   // Get redirect URL from query params (used for invite flow)
   const redirectAfterUpgrade = searchParams.get('redirectAfterUpgrade');
@@ -55,12 +59,12 @@ export default function UpgradePremiumPage() {
 
               {/* Title */}
               <h1 className="font-albert text-[32px] sm:text-[40px] lg:text-[48px] font-semibold text-text-primary leading-[1.1] tracking-[-2px] mb-4">
-                Join a premium squad with a dedicated coach
+                Join a premium {squadLower} with a dedicated coach
               </h1>
 
               {/* Subtitle */}
               <p className="font-albert text-[18px] sm:text-[20px] text-text-secondary leading-[1.5] mb-6">
-                Get matched with a coach-led premium squad featuring weekly group calls, 
+                Get matched with a coach-led premium {squadLower} featuring weekly group calls, 
                 advanced performance tracking, and dedicated support to accelerate your personal growth.
               </p>
 
@@ -82,7 +86,7 @@ export default function UpgradePremiumPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   </div>
-                  <span className="font-albert text-[12px] font-medium text-text-primary">Coach-led Premium Squad</span>
+                  <span className="font-albert text-[12px] font-medium text-text-primary">Coach-led Premium {squadTitle}</span>
                 </div>
               </div>
 
@@ -90,7 +94,7 @@ export default function UpgradePremiumPage() {
               <div className="space-y-4 mb-8">
                 {[
                   'Weekly group coaching calls led by your dedicated coach',
-                  'Access to an exclusive premium squad with like-minded members',
+                  `Access to an exclusive premium ${squadLower} with like-minded members`,
                   'Advanced performance tracking and personalized insights',
                   'Priority support and faster response times',
                   'Exclusive resources and growth materials',
@@ -205,7 +209,7 @@ export default function UpgradePremiumPage() {
                 <div className="space-y-3 mb-8">
                   {[
                     'Coach-led weekly group calls',
-                    'Premium squad placement',
+                    `Premium ${squadLower} placement`,
                     'Advanced performance tracking',
                     'Priority support access',
                     'Exclusive growth resources',
@@ -285,8 +289,8 @@ export default function UpgradePremiumPage() {
                 },
                 {
                   step: '2',
-                  title: 'Join your premium squad',
-                  description: 'Get matched with a coach-led squad of motivated members who share your goals.',
+                  title: `Join your premium ${squadLower}`,
+                  description: `Get matched with a coach-led ${squadLower} of motivated members who share your goals.`,
                   icon: (
                     <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
@@ -296,7 +300,7 @@ export default function UpgradePremiumPage() {
                 {
                   step: '3',
                   title: 'Accelerate your growth',
-                  description: 'Weekly coaching calls, premium tracking, and squad support help you achieve more faster.',
+                  description: `Weekly coaching calls, premium tracking, and ${squadLower} support help you achieve more faster.`,
                   icon: (
                     <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
@@ -364,10 +368,10 @@ export default function UpgradePremiumPage() {
 
               {/* Rows */}
               {[
-                { feature: 'Squad group chat', regular: true, premium: true },
+                { feature: `${squadTitle} group chat`, regular: true, premium: true },
                 { feature: 'Basic progress tracking', regular: true, premium: true },
                 { feature: 'Daily streaks', regular: true, premium: true },
-                { feature: 'Coach-led premium squad', regular: false, premium: true },
+                { feature: `Coach-led premium ${squadLower}`, regular: false, premium: true },
                 { feature: 'Weekly group coaching calls', regular: false, premium: true },
                 { feature: 'Advanced performance insights', regular: false, premium: true },
                 { feature: 'Priority support', regular: false, premium: true },
@@ -413,15 +417,15 @@ export default function UpgradePremiumPage() {
               },
               {
                 question: 'How do the weekly coaching calls work?',
-                answer: 'Your coach schedules a recurring weekly video call at a time that works for your squad. These 60-minute sessions include progress check-ins, goal setting, obstacle troubleshooting, and growth exercises. All squad members are encouraged to attend, but recordings are available if you can\'t make it.',
+                answer: `Your coach schedules a recurring weekly video call at a time that works for your ${squadLower}. These 60-minute sessions include progress check-ins, goal setting, obstacle troubleshooting, and growth exercises. All ${squadLower} members are encouraged to attend, but recordings are available if you can't make it.`,
               },
               {
-                question: 'What kind of squad will I be matched with?',
-                answer: 'We match you with a premium squad based on your goals, schedule preferences, and growth areas. You\'ll be joining motivated members who are equally committed to their personal development, led by an experienced coach.',
+                question: `What kind of ${squadLower} will I be matched with?`,
+                answer: `We match you with a premium ${squadLower} based on your goals, schedule preferences, and growth areas. You'll be joining motivated members who are equally committed to their personal development, led by an experienced coach.`,
               },
               {
-                question: 'What if I\'m already in a squad?',
-                answer: 'No problem! When you go premium, you\'ll be matched with a new premium squad led by a coach. You can still maintain connections with your previous squad members outside of the premium program.',
+                question: `What if I'm already in a ${squadLower}?`,
+                answer: `No problem! When you go premium, you'll be matched with a new premium ${squadLower} led by a coach. You can still maintain connections with your previous ${squadLower} members outside of the premium program.`,
               },
               {
                 question: 'Can I cancel my subscription?',

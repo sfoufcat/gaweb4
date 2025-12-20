@@ -2,12 +2,34 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useState, useEffect } from 'react';
 import { SignInForm } from '@/components/auth';
 
 /**
  * /sign-in - Sign in page for existing users
  */
 export default function SignInPage() {
+  const [logoUrl, setLogoUrl] = useState('/logo.jpg');
+  const [appTitle, setAppTitle] = useState('Growth Architecture');
+  
+  // Fetch custom branding on custom domains
+  useEffect(() => {
+    const hostname = window.location.hostname;
+    const isCustomDomain = !hostname.includes('growthaddicts') && 
+                           !hostname.includes('localhost') &&
+                           !hostname.includes('127.0.0.1');
+    
+    if (isCustomDomain) {
+      fetch(`/api/public/branding?domain=${hostname}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.logoUrl) setLogoUrl(data.logoUrl);
+          if (data.appTitle) setAppTitle(data.appTitle);
+        })
+        .catch(() => {}); // Keep defaults on error
+    }
+  }, []);
+
   return (
     <div className="fixed inset-0 bg-app-bg overflow-y-auto">
       <div className="min-h-full flex flex-col items-center justify-center px-4 py-8 lg:py-16">
@@ -16,11 +38,12 @@ export default function SignInPage() {
           <div className="text-center mb-10 lg:mb-12">
             {/* Logo */}
             <Image 
-              src="/logo.jpg" 
-              alt="Growth Architecture" 
+              src={logoUrl} 
+              alt={appTitle} 
               width={80}
               height={80}
               className="w-16 h-16 lg:w-20 lg:h-20 rounded-full mx-auto mb-6 shadow-lg"
+              unoptimized={logoUrl.startsWith('http')}
             />
             <h1 className="font-albert text-[38px] sm:text-[46px] lg:text-[56px] text-text-primary tracking-[-2px] leading-[1.1] mb-5 lg:mb-6">
               Welcome back

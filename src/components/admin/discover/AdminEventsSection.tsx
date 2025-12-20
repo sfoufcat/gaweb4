@@ -50,11 +50,13 @@ function EventFormDialog({
   isOpen,
   onClose,
   onSave,
+  uploadEndpoint,
 }: {
   event: DiscoverEvent | null;
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
+  uploadEndpoint: string;
 }) {
   const isEditing = !!event;
   const [saving, setSaving] = useState(false);
@@ -219,6 +221,7 @@ function EventFormDialog({
               type="image"
               label="Cover Image"
               required
+              uploadEndpoint={uploadEndpoint}
             />
 
             {/* Date & Time Row */}
@@ -304,6 +307,7 @@ function EventFormDialog({
               placeholder="Brief summary of the event..."
               showMediaToolbar={false}
               mediaFolder="events"
+              uploadEndpoint={uploadEndpoint}
             />
 
             {/* Long Description with Multimedia Support */}
@@ -315,6 +319,7 @@ function EventFormDialog({
               placeholder="Detailed event description. Use formatting and add images/videos to make it engaging..."
               showMediaToolbar={true}
               mediaFolder="events"
+              uploadEndpoint={uploadEndpoint}
             />
 
             {/* Bullet Points */}
@@ -523,6 +528,11 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
   const [eventToDelete, setEventToDelete] = useState<DiscoverEvent | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Derive upload endpoint from API endpoint - use coach upload for coach routes
+  const uploadEndpoint = apiEndpoint.includes('/coach/') 
+    ? '/api/coach/org-upload-media' 
+    : '/api/admin/upload-media';
 
   const fetchEvents = async () => {
     try {
@@ -775,6 +785,7 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
         isOpen={isFormOpen}
         onClose={() => { setIsFormOpen(false); setEventToEdit(null); }}
         onSave={fetchEvents}
+        uploadEndpoint={uploadEndpoint}
       />
 
       {/* Delete Confirmation */}

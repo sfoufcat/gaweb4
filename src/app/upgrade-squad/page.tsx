@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useMenuTitles } from '@/contexts/BrandingContext';
 
 /**
  * Upgrade Squad to Premium Page
@@ -17,6 +18,9 @@ import Link from 'next/link';
 
 export default function UpgradeSquadPage() {
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'quarterly'>('monthly');
+  
+  // Get customizable menu titles
+  const { squad: squadTitle, squadLower } = useMenuTitles();
 
   return (
     <div className="min-h-[100dvh] bg-[#1a1a1a] flex flex-col">
@@ -32,7 +36,7 @@ export default function UpgradeSquadPage() {
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
-            <span className="font-albert">Back to Squad</span>
+            <span className="font-albert">Back to {squadTitle}</span>
           </Link>
 
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-start">
@@ -44,18 +48,18 @@ export default function UpgradeSquadPage() {
                   <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                 </svg>
                 <span className="font-albert text-[14px] font-semibold bg-gradient-to-r from-[#FF8A65] to-[#FF6B6B] bg-clip-text text-transparent">
-                  Premium Squad
+                  Premium {squadTitle}
                 </span>
               </div>
 
               {/* Title */}
               <h1 className="font-albert text-[32px] sm:text-[40px] lg:text-[48px] font-semibold text-text-primary leading-[1.1] tracking-[-2px] mb-4">
-                Upgrade your squad with a dedicated mentor
+                Upgrade your {squadLower} with a dedicated mentor
               </h1>
 
               {/* Subtitle */}
               <p className="font-albert text-[18px] sm:text-[20px] text-text-secondary leading-[1.5] mb-6">
-                Get a dedicated mentor who joins your group chat, supports your squad, 
+                Get a dedicated mentor who joins your group chat, supports your {squadLower}, 
                 and leads weekly calls to keep everyone on track and progressing together.
               </p>
 
@@ -80,17 +84,17 @@ export default function UpgradeSquadPage() {
                       />
                     ))}
                   </div>
-                  <span className="font-albert text-[12px] font-medium text-text-primary">Squad + Mentor</span>
+                  <span className="font-albert text-[12px] font-medium text-text-primary">{squadTitle} + Mentor</span>
                 </div>
               </div>
 
               {/* Benefits List */}
               <div className="space-y-4 mb-8">
                 {[
-                  'Dedicated mentor joins your squad chat for daily support',
-                  'Weekly group coaching calls with your entire squad',
-                  'Personalized squad growth plan tailored to your goals',
-                  'Accountability tracking for every squad member',
+                  `Dedicated mentor joins your ${squadLower} chat for daily support`,
+                  `Weekly group coaching calls with your entire ${squadLower}`,
+                  `Personalized ${squadLower} growth plan tailored to your goals`,
+                  `Accountability tracking for every ${squadLower} member`,
                   'Priority support and faster response times',
                 ].map((benefit, index) => (
                   <div key={index} className="flex items-start gap-3">
@@ -149,7 +153,7 @@ export default function UpgradeSquadPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                     <span className="font-albert text-[14px] font-semibold bg-gradient-to-r from-[#FF8A65] to-[#FF6B6B] bg-clip-text text-transparent">
-                      Premium Squad Upgrade
+                      Premium {squadTitle} Upgrade
                     </span>
                   </div>
                 </div>
@@ -199,16 +203,16 @@ export default function UpgradeSquadPage() {
                 {/* Per member info */}
                 <div className="bg-[#f3f1ef] rounded-xl p-3 mb-8 text-center">
                   <p className="font-albert text-[14px] text-text-secondary">
-                    Split with your squad • As low as <span className="font-semibold text-text-primary">${selectedPlan === 'monthly' ? '10' : '8'}/week</span> per member
+                    Split with your {squadLower} • As low as <span className="font-semibold text-text-primary">${selectedPlan === 'monthly' ? '10' : '8'}/week</span> per member
                   </p>
                 </div>
 
                 {/* Features included */}
                 <div className="space-y-3 mb-8">
                   {[
-                    'Dedicated mentor in your squad chat',
+                    `Dedicated mentor in your ${squadLower} chat`,
                     '4 weekly group coaching calls/month',
-                    'Personalized squad growth plans',
+                    `Personalized ${squadLower} growth plans`,
                     'Progress tracking for all members',
                     'Priority support & fast responses',
                   ].map((feature, index) => (
@@ -228,7 +232,7 @@ export default function UpgradeSquadPage() {
                   href={selectedPlan === 'monthly' ? '/guided-monthly' : '/guided-halfyear'}
                   className="block w-full bg-gradient-to-r from-[#FF8A65] to-[#FF6B6B] hover:from-[#FF7A55] hover:to-[#FF5B5B] text-white py-4 px-6 rounded-2xl font-albert text-[17px] font-semibold transition-all duration-200 mb-4 shadow-lg shadow-[#FF6B6B]/20 text-center"
                 >
-                  Upgrade Your Squad
+                  Upgrade Your {squadTitle}
                 </Link>
 
                 {/* Secondary action */}
@@ -236,7 +240,7 @@ export default function UpgradeSquadPage() {
                   href={selectedPlan === 'monthly' ? '/guided-monthly' : '/guided-halfyear'}
                   className="block w-full text-text-secondary hover:text-text-primary py-3 font-albert text-[15px] transition-colors duration-200 text-center"
                 >
-                  Book a free squad consultation first
+                  Book a free {squadLower} consultation first
                 </Link>
 
                 {/* Trust badges */}
@@ -270,15 +274,15 @@ export default function UpgradeSquadPage() {
         <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 py-8">
           <div className="bg-white py-12 px-6 sm:px-12 rounded-3xl border border-[#e1ddd8]">
             <h2 className="font-albert text-[28px] sm:text-[32px] font-semibold text-text-primary text-center mb-12 tracking-[-1px]">
-              How premium squads work
+              How premium {squadLower}s work
             </h2>
 
             <div className="grid sm:grid-cols-3 gap-8">
               {[
                 {
                   step: '1',
-                  title: 'Upgrade your squad',
-                  description: 'Choose a plan and your squad instantly gets premium status with all benefits.',
+                  title: `Upgrade your ${squadLower}`,
+                  description: `Choose a plan and your ${squadLower} instantly gets premium status with all benefits.`,
                   icon: (
                     <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
@@ -288,7 +292,7 @@ export default function UpgradeSquadPage() {
                 {
                   step: '2',
                   title: 'Meet your mentor',
-                  description: 'Your dedicated mentor joins your squad chat and schedules your first group call.',
+                  description: `Your dedicated mentor joins your ${squadLower} chat and schedules your first group call.`,
                   icon: (
                     <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
@@ -298,7 +302,7 @@ export default function UpgradeSquadPage() {
                 {
                   step: '3',
                   title: 'Grow as a team',
-                  description: 'Weekly calls, daily chat support, and squad-wide accountability keep everyone moving forward.',
+                  description: `Weekly calls, daily chat support, and ${squadLower}-wide accountability keep everyone moving forward.`,
                   icon: (
                     <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
@@ -346,10 +350,10 @@ export default function UpgradeSquadPage() {
         <div className="bg-[#faf8f6] py-16 border-t border-[#e1ddd8]">
           <div className="max-w-[900px] mx-auto px-4 sm:px-8">
             <h2 className="font-albert text-[28px] sm:text-[32px] font-semibold text-text-primary text-center mb-4 tracking-[-1px]">
-              Regular vs Premium Squad
+              Regular vs Premium {squadTitle}
             </h2>
             <p className="font-albert text-[16px] text-text-secondary text-center mb-10 max-w-[600px] mx-auto">
-              See how a premium upgrade transforms your squad experience
+              See how a premium upgrade transforms your {squadLower} experience
             </p>
 
             <div className="bg-white rounded-3xl shadow-lg border border-[#e1ddd8] overflow-hidden">
@@ -357,21 +361,21 @@ export default function UpgradeSquadPage() {
               <div className="grid grid-cols-3 border-b border-[#e1ddd8]">
                 <div className="p-4 sm:p-6" />
                 <div className="p-4 sm:p-6 text-center border-l border-[#e1ddd8]">
-                  <span className="font-albert text-[14px] font-semibold text-text-secondary">Regular Squad</span>
+                  <span className="font-albert text-[14px] font-semibold text-text-secondary">Regular {squadTitle}</span>
                 </div>
                 <div className="p-4 sm:p-6 text-center border-l border-[#e1ddd8] bg-gradient-to-r from-[#FF8A65]/5 to-[#FF6B6B]/5">
-                  <span className="font-albert text-[14px] font-semibold bg-gradient-to-r from-[#FF8A65] to-[#FF6B6B] bg-clip-text text-transparent">Premium Squad</span>
+                  <span className="font-albert text-[14px] font-semibold bg-gradient-to-r from-[#FF8A65] to-[#FF6B6B] bg-clip-text text-transparent">Premium {squadTitle}</span>
                 </div>
               </div>
 
               {/* Rows */}
               {[
-                { feature: 'Squad group chat', regular: true, premium: true },
-                { feature: 'Squad streak tracking', regular: true, premium: true },
+                { feature: `${squadTitle} group chat`, regular: true, premium: true },
+                { feature: `${squadTitle} streak tracking`, regular: true, premium: true },
                 { feature: 'Member progress stats', regular: true, premium: true },
                 { feature: 'Dedicated mentor in chat', regular: false, premium: true },
                 { feature: 'Weekly group coaching calls', regular: false, premium: true },
-                { feature: 'Personalized squad plans', regular: false, premium: true },
+                { feature: `Personalized ${squadLower} plans`, regular: false, premium: true },
                 { feature: 'Priority support', regular: false, premium: true },
               ].map((row, index) => (
                 <div key={index} className="grid grid-cols-3 border-b border-[#e1ddd8] last:border-b-0">
@@ -462,16 +466,16 @@ export default function UpgradeSquadPage() {
       <div className="bg-[#1a1a1a] pt-16 pb-32 md:pb-16 rounded-[32px] mt-auto mx-4 sm:mx-6 lg:mx-10 mb-8">
         <div className="max-w-[600px] mx-auto px-4 text-center">
           <h2 className="font-albert text-[28px] sm:text-[32px] font-semibold text-white mb-4 tracking-[-1px]">
-            Ready to level up your squad?
+            Ready to level up your {squadLower}?
           </h2>
           <p className="font-albert text-[16px] text-white/70 mb-8">
-            Join the premium squads achieving more together with dedicated mentorship and weekly coaching.
+            Join the premium {squadLower}s achieving more together with dedicated mentorship and weekly coaching.
           </p>
           <Link 
             href={selectedPlan === 'monthly' ? '/guided-monthly' : '/guided-halfyear'}
             className="inline-block bg-gradient-to-r from-[#FF8A65] to-[#FF6B6B] hover:from-[#FF7A55] hover:to-[#FF5B5B] text-white py-4 px-8 rounded-3xl font-albert text-[17px] font-semibold transition-all duration-200 shadow-lg shadow-[#FF6B6B]/30"
           >
-            Upgrade Your Squad Now
+            Upgrade Your {squadTitle} Now
           </Link>
         </div>
       </div>

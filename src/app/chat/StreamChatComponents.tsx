@@ -31,6 +31,7 @@ import { isAdmin } from '@/lib/admin-utils-shared';
 import type { UserRole } from '@/types';
 import type { OrgChannel } from '@/lib/org-channels';
 import { formatDistanceToNow, format } from 'date-fns';
+import { useMenuTitles } from '@/contexts/BrandingContext';
 
 // Import Stream Chat default CSS
 import 'stream-chat-react/dist/css/v2/index.css';

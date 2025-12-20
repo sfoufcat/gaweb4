@@ -88,6 +88,7 @@ function LessonEditor({
   onMoveDown,
   isFirst,
   isLast,
+  uploadEndpoint,
 }: {
   lesson: CourseLesson;
   index: number;
@@ -97,6 +98,7 @@ function LessonEditor({
   onMoveDown: () => void;
   isFirst: boolean;
   isLast: boolean;
+  uploadEndpoint: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [fetchingDuration, setFetchingDuration] = useState(false);
@@ -208,6 +210,7 @@ function LessonEditor({
               folder="courses/lessons"
               type="video"
               label="Lesson Video"
+              uploadEndpoint={uploadEndpoint}
             />
             {lesson.videoUrl && (
               <div className="mt-2 flex items-center gap-2">
@@ -243,6 +246,7 @@ function LessonEditor({
               folder="courses/lessons"
               type="image"
               label="Video Thumbnail (optional)"
+              uploadEndpoint={uploadEndpoint}
             />
           </div>
           <div>
@@ -283,6 +287,7 @@ function ModuleEditor({
   onMoveDown,
   isFirst,
   isLast,
+  uploadEndpoint,
 }: {
   module: CourseModule;
   index: number;
@@ -292,6 +297,7 @@ function ModuleEditor({
   onMoveDown: () => void;
   isFirst: boolean;
   isLast: boolean;
+  uploadEndpoint: string;
 }) {
   const [expanded, setExpanded] = useState(true);
 
@@ -421,6 +427,7 @@ function ModuleEditor({
               onMoveDown={() => moveLessonDown(lessonIndex)}
               isFirst={lessonIndex === 0}
               isLast={lessonIndex === module.lessons.length - 1}
+              uploadEndpoint={uploadEndpoint}
             />
           ))}
           <button
@@ -442,11 +449,13 @@ function CourseFormDialog({
   isOpen,
   onClose,
   onSave,
+  uploadEndpoint,
 }: {
   course: DiscoverCourse | null;
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
+  uploadEndpoint: string;
 }) {
   const isEditing = !!course;
   const [saving, setSaving] = useState(false);
@@ -610,6 +619,7 @@ function CourseFormDialog({
                     type="image"
                     label="Cover Image"
                     required
+                    uploadEndpoint={uploadEndpoint}
                   />
                 </div>
                 
@@ -707,6 +717,7 @@ function CourseFormDialog({
                     onMoveDown={() => moveModuleDown(index)}
                     isFirst={index === 0}
                     isLast={index === formData.modules.length - 1}
+                    uploadEndpoint={uploadEndpoint}
                   />
                 ))}
                 
@@ -761,6 +772,11 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
   const [courseToDelete, setCourseToDelete] = useState<DiscoverCourse | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Derive upload endpoint from API endpoint - use coach upload for coach routes
+  const uploadEndpoint = apiEndpoint.includes('/coach/') 
+    ? '/api/coach/org-upload-media' 
+    : '/api/admin/upload-media';
 
   const fetchCourses = async () => {
     try {
@@ -1054,6 +1070,7 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
         isOpen={isFormOpen}
         onClose={() => { setIsFormOpen(false); setCourseToEdit(null); }}
         onSave={fetchCourses}
+        uploadEndpoint={uploadEndpoint}
       />
 
       {/* Delete Confirmation */}
