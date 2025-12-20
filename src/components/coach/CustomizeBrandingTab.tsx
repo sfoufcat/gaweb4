@@ -302,8 +302,19 @@ export function CustomizeBrandingTab() {
       ));
       
       if (data.verified) {
-        setSuccessMessage(`Domain verified successfully via ${data.method?.toUpperCase()}`);
-        setTimeout(() => setSuccessMessage(null), 3000);
+        setSuccessMessage(`Domain verified successfully! Redirecting to your new domain...`);
+        
+        // Seamless session handoff:
+        // 1. User is signed in on subdomain
+        // 2. Redirect to primary domain /auth/sync
+        // 3. Primary domain ensures auth and redirects to custom domain
+        // 4. Clerk handles session sync to satellite domain
+        const targetUrl = `https://${data.domain.domain}/coach/customize`;
+        const syncUrl = `https://growthaddicts.app/auth/sync?target=${encodeURIComponent(targetUrl)}`;
+        
+        setTimeout(() => {
+          window.location.href = syncUrl;
+        }, 1500);
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to verify domain');
