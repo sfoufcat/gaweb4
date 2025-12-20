@@ -25,9 +25,6 @@ export type UserTier = 'free' | 'standard' | 'premium';
 export type CoachingStatus = 'none' | 'active' | 'canceled' | 'past_due';
 export type CoachingPlan = 'monthly' | 'quarterly' | null;
 
-// Billing Status Type
-export type BillingStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | 'none';
-
 // Clerk Public Metadata Type (for type assertions with sessionClaims)
 // This is the SINGLE SOURCE OF TRUTH for user access control
 export interface ClerkPublicMetadata {
