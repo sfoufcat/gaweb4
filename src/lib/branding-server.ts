@@ -145,9 +145,16 @@ export async function getServerBranding(): Promise<ServerBranding> {
     updatedAt: now,
   };
   
+  // Check if branding in cookie is actually default (not custom)
+  // This happens when Edge Config is empty and API fallback is used
+  // In that case, we want BrandingProvider to fetch actual branding from API
+  const isActuallyDefault = 
+    branding.logoUrl === DEFAULT_LOGO_URL &&
+    branding.appTitle === DEFAULT_APP_TITLE;
+  
   return {
     branding,
-    isDefault: false,
+    isDefault: isActuallyDefault,
     isTenantMode: true,
     organizationId: tenantData.orgId,
     subdomain: tenantData.subdomain,
