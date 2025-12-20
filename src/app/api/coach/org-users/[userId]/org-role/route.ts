@@ -1,4 +1,4 @@
-import { clerkClient } from '@clerk/nextjs/server';
+import { clerkClient, auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { requireCoachWithOrg, ClerkPublicMetadata } from '@/lib/admin-utils-clerk';
 import { isSuperCoach, canAssignOrgRole } from '@/lib/admin-utils-shared';
@@ -23,19 +23,28 @@ export async function PATCH(
     const { userId: targetUserId } = await params;
     const { userId: currentUserId, organizationId } = await requireCoachWithOrg();
 
-    // Get current user's org role
-    const client = await clerkClient();
-    const currentUser = await client.users.getUser(currentUserId);
-    const currentUserMetadata = currentUser.publicMetadata as ClerkPublicMetadata & { orgRole?: OrgRole };
-    const currentUserOrgRole = currentUserMetadata?.orgRole;
-
+    // Get current user's org role from session
+    // We check both metadata (legacy/custom) and Clerk's native org role
+    const { orgRole: clerkOrgRole, sessionClaims } = await auth();
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    
+    // Determine effective org role
+    // If native Clerk org:admin, treat as super_coach regardless of metadata
+    let currentUserOrgRole = publicMetadata?.orgRole;
+    if (clerkOrgRole === 'org:admin') {
+      currentUserOrgRole = 'super_coach';
+    }
+    
     // Only super_coach can modify org roles
     if (!isSuperCoach(currentUserOrgRole)) {
+      console.log(`[ORG_ROLE] Unauthorized role update attempt. orgRole=${publicMetadata?.orgRole}, clerkOrgRole=${clerkOrgRole}`);
       return NextResponse.json(
         { error: 'Forbidden: Only Super Coach can modify organization roles' },
         { status: 403 }
       );
     }
+
+    const client = await clerkClient();
 
     // Cannot demote yourself from super_coach
     if (targetUserId === currentUserId) {

@@ -84,11 +84,15 @@ export async function PATCH(request: Request) {
     const { organizationId } = await requireCoachWithOrg();
     
     // Check if user is super_coach
-    const { sessionClaims } = await auth();
+    const { sessionClaims, orgRole: clerkOrgRole } = await auth();
     const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
     const orgRole = publicMetadata?.orgRole;
     
-    if (!isSuperCoach(orgRole)) {
+    // Check either explicit super_coach role in metadata OR org:admin role in Clerk
+    const isAuthorized = isSuperCoach(orgRole) || clerkOrgRole === 'org:admin';
+    
+    if (!isAuthorized) {
+      console.log(`[COACH_ORG_DOMAIN] Unauthorized update attempt. orgRole=${orgRole}, clerkOrgRole=${clerkOrgRole}`);
       return NextResponse.json(
         { error: 'Only the Super Coach can update the subdomain' },
         { status: 403 }
