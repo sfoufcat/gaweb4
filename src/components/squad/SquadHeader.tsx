@@ -100,6 +100,7 @@ export function SquadHeader({ squad, onSquadUpdated }: SquadHeaderProps) {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          squadId: squad.id,
           name: editName.trim(),
           avatarUrl: editAvatarUrl,
         }),

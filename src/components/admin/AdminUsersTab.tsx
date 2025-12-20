@@ -385,7 +385,7 @@ export function AdminUsersTab({
                 {showColumn('name') && <TableHead className="font-albert">Name</TableHead>}
                 {showColumn('email') && <TableHead className="font-albert">Email</TableHead>}
                 {showColumn('role') && !showOrgRole && <TableHead className="font-albert">Role</TableHead>}
-                {showColumn('orgRole') && showOrgRole && <TableHead className="font-albert">Org Role</TableHead>}
+                {showColumn('role') && showOrgRole && <TableHead className="font-albert">Org Role</TableHead>}
                 {showColumn('tier') && <TableHead className="font-albert">Tier</TableHead>}
                 {showColumn('coach') && <TableHead className="font-albert">Coach</TableHead>}
                 {showColumn('coaching') && <TableHead className="font-albert">Coaching</TableHead>}
@@ -474,7 +474,7 @@ export function AdminUsersTab({
                     )}
 
                     {/* Org Role - only in coach dashboard context */}
-                    {showColumn('orgRole') && showOrgRole && (
+                    {showColumn('role') && showOrgRole && (
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         {!readOnly && canModifyOrgRole ? (
                           <Select

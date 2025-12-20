@@ -1298,3 +1298,4 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
     </div>
   );
 }
+
