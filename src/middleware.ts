@@ -341,7 +341,13 @@ export default clerkMiddleware(async (auth, request) => {
       const resolved = await resolveTenantFromDb(parsed.subdomain);
       if (resolved) {
         // If this org has a verified custom domain, redirect subdomain to custom domain
-        if (resolved.verifiedCustomDomain) {
+        // EXCEPT for auth routes - those need to stay on subdomain for Clerk to work
+        const isAuthRoute = pathname === '/sign-in' || pathname.startsWith('/sign-in/') ||
+                           pathname === '/sign-up' || pathname.startsWith('/sign-up/') ||
+                           pathname === '/begin' || 
+                           pathname === '/sso-callback' || pathname.startsWith('/sso-callback/');
+        
+        if (resolved.verifiedCustomDomain && !isAuthRoute) {
           const redirectUrl = new URL(request.url);
           redirectUrl.host = resolved.verifiedCustomDomain;
           redirectUrl.port = '';
