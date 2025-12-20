@@ -317,6 +317,29 @@ export async function DELETE(
     
     const subdomain = orgDomainSnapshot.empty ? null : orgDomainSnapshot.docs[0].data().subdomain;
     
+    // CRITICAL: Update subdomain entry in Edge Config to REMOVE verifiedCustomDomain
+    // Without this, middleware will keep redirecting subdomain → removed custom domain
+    if (subdomain) {
+      try {
+        const brandingDoc = await adminDb.collection('org_branding').doc(organizationId).get();
+        const brandingData = brandingDoc.data();
+        
+        const edgeBranding: TenantBrandingData = brandingData ? {
+          logoUrl: brandingData.logoUrl || null,
+          horizontalLogoUrl: brandingData.horizontalLogoUrl || null,
+          appTitle: brandingData.appTitle || DEFAULT_TENANT_BRANDING.appTitle,
+          colors: brandingData.colors || DEFAULT_TENANT_BRANDING.colors,
+          menuTitles: brandingData.menuTitles || DEFAULT_TENANT_BRANDING.menuTitles,
+        } : DEFAULT_TENANT_BRANDING;
+        
+        // Sync WITHOUT verifiedCustomDomain to remove the redirect
+        await syncTenantToEdgeConfig(organizationId, subdomain, edgeBranding, undefined);
+        console.log(`[COACH_CUSTOM_DOMAIN] Updated subdomain Edge Config to remove custom domain redirect`);
+      } catch (edgeError) {
+        console.error('[COACH_CUSTOM_DOMAIN] Edge Config subdomain update error (non-fatal):', edgeError);
+      }
+    }
+    
     return NextResponse.json({ 
       success: true,
       removedDomain: domainData.domain,
