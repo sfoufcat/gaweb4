@@ -13,7 +13,7 @@ interface OrganizationWithDomainInfo {
   createdAt: string;
   // Domain info from Firestore
   subdomain: string | null;
-  customDomains: Array<{ domain: string; status: string }>;
+  customDomains: Array<{ id: string; domain: string; status: string }>;
   tenantUrl: string | null;
 }
 
@@ -108,6 +108,7 @@ export async function GET() {
         createdAt: new Date(org.createdAt).toISOString(),
         subdomain,
         customDomains: customDomains.map(cd => ({
+          id: cd.id,
           domain: cd.domain,
           status: cd.status,
         })),

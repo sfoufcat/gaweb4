@@ -2,10 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Building2, Users, Globe, ArrowLeft, ExternalLink } from 'lucide-react';
-import type { UserRole, OrgRole } from '@/types';
+import { Building2, Users, Globe, ArrowLeft, ExternalLink, Trash2, Loader2 } from 'lucide-react';
+import type { UserRole } from '@/types';
 import { AdminUsersTab } from './AdminUsersTab';
 import { Button } from '@/components/ui/button';
+
+interface CustomDomain {
+  id: string;
+  domain: string;
+  status: string;
+}
 
 interface Organization {
   id: string;
@@ -15,7 +21,7 @@ interface Organization {
   membersCount: number;
   createdAt: string;
   subdomain: string | null;
-  customDomains: Array<{ domain: string; status: string }>;
+  customDomains: CustomDomain[];
   tenantUrl: string | null;
 }
 
@@ -34,6 +40,33 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+  const [deletingDomain, setDeletingDomain] = useState<string | null>(null);
+
+  const handleDeleteDomain = async (orgId: string, domainId: string, domainName: string) => {
+    if (!confirm(`Are you sure you want to delete the domain "${domainName}"?\n\nThis will remove it from:\n- Clerk (authentication)\n- Vercel (hosting)\n- Stripe (Apple Pay)\n- Edge Config (caching)\n\nThis action cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingDomain(domainId);
+    try {
+      const response = await fetch(`/api/admin/organizations/${orgId}/domains/${domainId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to delete domain');
+      }
+
+      // Refresh the organizations list
+      await fetchOrganizations();
+    } catch (err) {
+      console.error('Error deleting domain:', err);
+      alert(err instanceof Error ? err.message : 'Failed to delete domain');
+    } finally {
+      setDeletingDomain(null);
+    }
+  };
 
   const fetchOrganizations = async () => {
     try {
@@ -235,14 +268,29 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
                       <div className="mt-2 flex flex-wrap gap-1">
                         {org.customDomains.slice(0, 2).map((cd) => (
                           <span
-                            key={cd.domain}
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-albert ${
+                            key={cd.id}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-albert ${
                               cd.status === 'verified'
                                 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                                 : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
                             }`}
                           >
                             {cd.domain}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteDomain(org.id, cd.id, cd.domain);
+                              }}
+                              disabled={deletingDomain === cd.id}
+                              className="ml-1 p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors disabled:opacity-50"
+                              title={`Delete ${cd.domain}`}
+                            >
+                              {deletingDomain === cd.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3 h-3" />
+                              )}
+                            </button>
                           </span>
                         ))}
                         {org.customDomains.length > 2 && (
