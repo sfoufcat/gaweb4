@@ -23,7 +23,9 @@ import dns from 'dns';
 import { promisify } from 'util';
 
 const resolveCname = promisify(dns.resolveCname);
-const resolveTxt = promisify(dns.resolveTxt);
+
+// Note: resolveTxt removed - we no longer use custom TXT verification
+// Verification is now done via Vercel API (routing) + Clerk CNAME (auth)
 
 interface ClerkPublicMetadata {
   orgRole?: OrgRole;
@@ -31,12 +33,12 @@ interface ClerkPublicMetadata {
 }
 
 /**
- * Check if domain has valid CNAME pointing to our service
+ * Check if domain has Vercel CNAME configured (for routing)
+ * @ or domain should point to cname.vercel-dns.com
  */
-async function checkCnameRecord(domain: string): Promise<boolean> {
+async function checkVercelCname(domain: string): Promise<boolean> {
   try {
     const records = await resolveCname(domain);
-    // Check if any CNAME record points to our Vercel DNS
     return records.some(record => 
       record.toLowerCase().includes('vercel') || 
       record.toLowerCase().includes('cname.vercel-dns.com')
@@ -47,16 +49,16 @@ async function checkCnameRecord(domain: string): Promise<boolean> {
 }
 
 /**
- * Check if domain has valid TXT verification record
+ * Check if domain has Clerk CNAME configured (for authentication)
+ * clerk.{domain} should point to frontend-api.clerk.services
  */
-async function checkTxtRecord(domain: string, expectedToken: string): Promise<boolean> {
+async function checkClerkCname(domain: string): Promise<boolean> {
   try {
-    // Check for TXT record on the verification subdomain
-    const verifyDomain = `_growthaddicts-verify.${domain}`;
-    const records = await resolveTxt(verifyDomain);
-    // TXT records come as arrays of strings, flatten and check
-    return records.some(recordArray => 
-      recordArray.some(record => record === expectedToken)
+    const clerkSubdomain = `clerk.${domain}`;
+    const records = await resolveCname(clerkSubdomain);
+    return records.some(record => 
+      record.toLowerCase().includes('clerk') || 
+      record.toLowerCase().includes('frontend-api.clerk.services')
     );
   } catch {
     return false;
@@ -65,24 +67,23 @@ async function checkTxtRecord(domain: string, expectedToken: string): Promise<bo
 
 /**
  * Verify domain DNS configuration
+ * Requires BOTH Vercel CNAME (routing) AND Clerk CNAME (auth) to be fully verified
  */
-async function verifyDomainDns(domain: string, verificationToken: string): Promise<{
+async function verifyDomainDns(domain: string): Promise<{
   verified: boolean;
-  method?: 'cname' | 'txt';
+  routingConfigured: boolean;
+  authConfigured: boolean;
 }> {
-  // Check CNAME first
-  const hasCname = await checkCnameRecord(domain);
-  if (hasCname) {
-    return { verified: true, method: 'cname' };
-  }
+  // Check both CNAMEs in parallel
+  const [routingConfigured, authConfigured] = await Promise.all([
+    checkVercelCname(domain),
+    checkClerkCname(domain),
+  ]);
   
-  // Check TXT record
-  const hasTxt = await checkTxtRecord(domain, verificationToken);
-  if (hasTxt) {
-    return { verified: true, method: 'txt' };
-  }
+  // Both must be configured for full verification
+  const verified = routingConfigured && authConfigured;
   
-  return { verified: false };
+  return { verified, routingConfigured, authConfigured };
 }
 
 /**
@@ -112,36 +113,33 @@ export async function PATCH(
       );
     }
     
-    let verified = false;
-    let method: string | null = null;
-    let verificationRecords: Array<{ type: string; domain: string; value: string; reason: string }> = [];
+    let routingConfigured = false;
+    let authConfigured = false;
     
-    // Use Vercel API for verification if configured
+    // Check Vercel API for routing verification if configured
     if (isVercelDomainApiConfigured()) {
       // First trigger verification in Vercel
       const verifyResult = await verifyDomainInVercel(domainData.domain);
       
       if (verifyResult.success) {
-        verified = verifyResult.verified || false;
-        method = 'vercel';
-        verificationRecords = verifyResult.verification || [];
+        routingConfigured = verifyResult.verified || false;
       } else {
         // Domain might not be in Vercel, try to get its status
         const statusResult = await getDomainVerificationStatus(domainData.domain);
         if (statusResult.success) {
-          verified = statusResult.verified && statusResult.configured || false;
-          method = 'vercel';
-          verificationRecords = statusResult.verification || [];
+          routingConfigured = (statusResult.verified && statusResult.configured) || false;
         }
       }
+    } else {
+      // Fallback to manual DNS check for routing
+      routingConfigured = await checkVercelCname(domainData.domain);
     }
     
-    // Fallback to manual DNS check if Vercel API not configured or failed
-    if (!isVercelDomainApiConfigured() || (!verified && method === null)) {
-      const dnsResult = await verifyDomainDns(domainData.domain, domainData.verificationToken);
-      verified = dnsResult.verified;
-      method = dnsResult.method || null;
-    }
+    // Always check Clerk CNAME for authentication (via DNS lookup)
+    authConfigured = await checkClerkCname(domainData.domain);
+    
+    // Both routing AND auth must be configured for full verification
+    const verified = routingConfigured && authConfigured;
     
     const now = new Date().toISOString();
     const newStatus: CustomDomainStatus = verified ? 'verified' : 'pending';
@@ -159,7 +157,7 @@ export async function PATCH(
     
     await adminDb.collection('org_custom_domains').doc(domainId).update(updateData);
     
-    console.log(`[COACH_CUSTOM_DOMAIN] Re-verified domain ${domainData.domain}: ${verified ? `verified via ${method}` : 'still pending'}`);
+    console.log(`[COACH_CUSTOM_DOMAIN] Re-verified domain ${domainData.domain}: routing=${routingConfigured}, auth=${authConfigured}, verified=${verified}`);
     
     return NextResponse.json({
       success: true,
@@ -172,8 +170,8 @@ export async function PATCH(
         lastCheckedAt: now,
       },
       verified,
-      method,
-      verificationRecords: verificationRecords.length > 0 ? verificationRecords : undefined,
+      routingConfigured,
+      authConfigured,
     });
   } catch (error) {
     console.error('[COACH_CUSTOM_DOMAIN_PATCH] Error:', error);
