@@ -14,6 +14,7 @@ import { BrandingProvider } from "@/contexts/BrandingContext";
 import { IncomingCallHandler } from "@/components/chat/IncomingCallHandler";
 import { ClerkThemeProvider } from "@/components/auth/ClerkThemeProvider";
 import { TimezoneSync } from "@/components/TimezoneSync";
+import { getBrandingForDomain, getBestLogoUrl } from "@/lib/server/branding";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,26 +32,43 @@ const albertSans = Albert_Sans({
   display: 'swap',
 });
 
-export const metadata: Metadata = {
-  title: "Growth Addicts",
-  description: "Define your mission. Align your life.",
-  icons: {
-    icon: '/icon.png',
-    apple: '/apple-icon.png',
-  },
-};
+/**
+ * Generate dynamic metadata based on domain branding
+ * Favicon and title use the organization's branding if on a custom domain
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const headersList = await headers();
+  const hostname = headersList.get('host') || '';
+  
+  const branding = await getBrandingForDomain(hostname);
+  const iconUrl = getBestLogoUrl(branding);
+  
+  return {
+    title: branding.appTitle,
+    description: "Define your mission. Align your life.",
+    icons: {
+      icon: iconUrl,
+      apple: iconUrl,
+    },
+  };
+}
 
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Get hostname for satellite domain detection
+  // Get hostname and branding for satellite domain detection and Clerk configuration
   const headersList = await headers();
   const hostname = headersList.get('host') || '';
+  const branding = await getBrandingForDomain(hostname);
   
   return (
-    <ClerkThemeProvider hostname={hostname}>
+    <ClerkThemeProvider 
+      hostname={hostname}
+      logoUrl={getBestLogoUrl(branding)}
+      appTitle={branding.appTitle}
+    >
       <html lang="en" className="h-full" suppressHydrationWarning>
         <head>
           {/* Inline script to prevent flash of wrong theme */}

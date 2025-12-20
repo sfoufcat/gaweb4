@@ -117,9 +117,16 @@ const lightAppearance = {
 interface ClerkThemeProviderProps {
   children: React.ReactNode;
   hostname?: string;
+  logoUrl?: string;
+  appTitle?: string;
 }
 
-export function ClerkThemeProvider({ children, hostname = '' }: ClerkThemeProviderProps) {
+export function ClerkThemeProvider({ 
+  children, 
+  hostname = '',
+  logoUrl,
+  appTitle,
+}: ClerkThemeProviderProps) {
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
   
@@ -173,7 +180,16 @@ export function ClerkThemeProvider({ children, hostname = '' }: ClerkThemeProvid
   }, []);
 
   // Use the appropriate appearance based on theme
-  const appearance = isDark ? darkAppearance : lightAppearance;
+  const baseAppearance = isDark ? darkAppearance : lightAppearance;
+  
+  // Add custom logo to appearance if provided (for whitelabel domains)
+  const appearance = logoUrl ? {
+    ...baseAppearance,
+    layout: {
+      logoImageUrl: logoUrl,
+      logoPlacement: 'inside' as const,
+    },
+  } : baseAppearance;
 
   // Don't render until mounted to avoid hydration mismatch
   // However, ClerkProvider needs to be rendered for auth to work

@@ -58,8 +58,11 @@ export async function GET(request: Request) {
     
     const branding = brandingDoc.data() as OrgBranding;
     
+    // Logo priority: square logo first, then horizontal, then default
+    const logoUrl = branding.logoUrl || branding.horizontalLogoUrl || DEFAULT_LOGO_URL;
+    
     return NextResponse.json({
-      logoUrl: branding.logoUrl || DEFAULT_LOGO_URL,
+      logoUrl,
       appTitle: branding.appTitle || DEFAULT_APP_TITLE,
       isDefault: false,
     });
