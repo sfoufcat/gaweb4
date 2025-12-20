@@ -6,6 +6,7 @@ import { useClerk } from '@clerk/nextjs';
 import type { EmailPreferences, UserTrack } from '@/types';
 import { useTrack } from '@/hooks/useTrack';
 import { TrackSelectionModal } from './TrackSelectionModal';
+import { useMenuTitles } from '@/contexts/BrandingContext';
 
 // Track labels for display
 const TRACK_LABELS: Record<UserTrack, string> = {
@@ -40,6 +41,7 @@ export function SettingsDrawer({
 }: SettingsDrawerProps) {
   const { openUserProfile } = useClerk();
   const { track, hasTrack, isLoading: trackLoading, setTrack, refreshTrack } = useTrack();
+  const { squad: squadTitle } = useMenuTitles();
   
   const [emailPreferences, setEmailPreferences] = useState<EmailPreferences>(
     initialEmailPreferences || DEFAULT_EMAIL_PREFERENCES
@@ -279,8 +281,8 @@ export function SettingsDrawer({
                           <PreferenceRow label="Morning check-in" prefKey="morningCheckIn" />
                           <PreferenceRow label="Evening check-in" prefKey="eveningCheckIn" />
                           <PreferenceRow label="Weekly review" prefKey="weeklyReview" />
-                          <PreferenceRow label="Squad call (24h before)" prefKey="squadCall24h" />
-                          <PreferenceRow label="Squad call (1h before)" prefKey="squadCall1h" />
+                          <PreferenceRow label={`${squadTitle} call (24h before)`} prefKey="squadCall24h" />
+                          <PreferenceRow label={`${squadTitle} call (1h before)`} prefKey="squadCall1h" />
                         </div>
                       </div>
 

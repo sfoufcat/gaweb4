@@ -115,11 +115,21 @@ const lightAppearance = {
 
 interface ClerkThemeProviderProps {
   children: React.ReactNode;
+  hostname?: string;
 }
 
-export function ClerkThemeProvider({ children }: ClerkThemeProviderProps) {
+export function ClerkThemeProvider({ children, hostname = '' }: ClerkThemeProviderProps) {
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
+  
+  // Detect satellite domain (custom domains that aren't growthaddicts.app or localhost)
+  const domainWithoutPort = hostname.split(':')[0];
+  const isSatellite = Boolean(
+    domainWithoutPort && 
+    !domainWithoutPort.includes('growthaddicts') && 
+    !domainWithoutPort.includes('localhost') &&
+    !domainWithoutPort.includes('127.0.0.1')
+  );
 
   useEffect(() => {
     // Initial theme check from localStorage
@@ -167,8 +177,15 @@ export function ClerkThemeProvider({ children }: ClerkThemeProviderProps) {
   // Don't render until mounted to avoid hydration mismatch
   // However, ClerkProvider needs to be rendered for auth to work
   // So we'll always render it but only apply appearance after mount
+  
+  // For satellite domains (custom domains), configure Clerk to use the domain's Frontend API
+  // This makes Clerk load from clerk.{custom-domain} instead of clerk.growthaddicts.app
   return (
-    <ClerkProvider appearance={mounted ? appearance : lightAppearance}>
+    <ClerkProvider 
+      appearance={mounted ? appearance : lightAppearance}
+      isSatellite={isSatellite}
+      domain={isSatellite ? domainWithoutPort : undefined}
+    >
       {children}
     </ClerkProvider>
   );

@@ -258,6 +258,7 @@ function LessonEditor({
               rows={4}
               showMediaToolbar={true}
               mediaFolder="courses/lessons"
+              uploadEndpoint={uploadEndpoint}
             />
           </div>
           <div>
@@ -364,6 +365,7 @@ function ModuleEditor({
               rows={3}
               showMediaToolbar={true}
               mediaFolder="courses"
+              uploadEndpoint={uploadEndpoint}
             />
           </div>
           <div className="flex items-center gap-1">
@@ -633,6 +635,7 @@ function CourseFormDialog({
                     placeholder="Brief course overview..."
                     showMediaToolbar={true}
                     mediaFolder="courses"
+                    uploadEndpoint={uploadEndpoint}
                   />
                 </div>
                 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Albert_Sans } from "next/font/google";
 import { Suspense } from "react";
+import { headers } from "next/headers";
 import "./globals.css";
 import { ConditionalSidebar } from "@/components/layout/ConditionalSidebar";
 import { ConditionalMain } from "@/components/layout/ConditionalMain";
@@ -39,13 +40,17 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Get hostname for satellite domain detection
+  const headersList = await headers();
+  const hostname = headersList.get('host') || '';
+  
   return (
-    <ClerkThemeProvider>
+    <ClerkThemeProvider hostname={hostname}>
       <html lang="en" className="h-full" suppressHydrationWarning>
         <head>
           {/* Inline script to prevent flash of wrong theme */}

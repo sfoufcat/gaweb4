@@ -14,6 +14,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from '@/components/ui/drawer';
+import { useMenuTitles } from '@/contexts/BrandingContext';
 
 type SquadType = 'private' | 'public' | 'premium';
 
@@ -48,6 +49,7 @@ export function SquadInviteDialog({
   const [codeCopied, setCodeCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const { squad: squadTitleBranded, squadLower } = useMenuTitles();
 
   // Detect mobile
   useEffect(() => {
@@ -154,11 +156,11 @@ export function SquadInviteDialog({
   const getShareText = (): string => {
     switch (squadType) {
       case 'premium':
-        return `Join my Premium Squad "${squadName}" on GrowthAddicts! Get accountability coaching and grow with us.`;
+        return `Join my Premium ${squadTitleBranded} "${squadName}" on GrowthAddicts! Get accountability coaching and grow with us.`;
       case 'private':
-        return `You're invited to join my private squad "${squadName}" on GrowthAddicts!`;
+        return `You're invited to join my private ${squadLower} "${squadName}" on GrowthAddicts!`;
       default:
-        return `Join my squad "${squadName}" on GrowthAddicts and let's grow together!`;
+        return `Join my ${squadLower} "${squadName}" on GrowthAddicts and let's grow together!`;
     }
   };
 
@@ -176,22 +178,22 @@ export function SquadInviteDialog({
   const getTitle = (): string => {
     switch (squadType) {
       case 'premium':
-        return 'Invite friends to your Premium Squad';
+        return `Invite friends to your Premium ${squadTitleBranded}`;
       case 'private':
-        return 'Invite friends to your private squad';
+        return `Invite friends to your private ${squadLower}`;
       default:
-        return 'Invite friends to your squad';
+        return `Invite friends to your ${squadLower}`;
     }
   };
 
   const getDescription = (): string => {
     switch (squadType) {
       case 'premium':
-        return 'Only Premium members can join your squad.';
+        return `Only Premium members can join your ${squadLower}.`;
       case 'private':
         return 'Share the code or link with friends you want to invite.';
       default:
-        return 'Your friends will join Growth Addicts and will be automatically added to this squad.';
+        return `Your friends will join Growth Addicts and will be automatically added to this ${squadLower}.`;
     }
   };
 
@@ -233,7 +235,7 @@ export function SquadInviteDialog({
       {squadType === 'private' && inviteCode && (
         <div className="space-y-2">
           <label className="block font-albert font-medium text-[13px] text-text-secondary dark:text-[#b2b6c2]">
-            Squad code
+            {squadTitleBranded} code
           </label>
           <div className="flex items-center gap-2">
             <div className="flex-1 bg-[#faf8f6] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-[12px] px-4 py-3 font-mono text-[18px] text-text-primary dark:text-[#f5f5f8] tracking-[2px] text-center">

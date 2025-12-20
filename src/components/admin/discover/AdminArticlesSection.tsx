@@ -296,6 +296,7 @@ function ArticleFormDialog({
               placeholder="Write your article content here..."
               showMediaToolbar={true}
               mediaFolder="articles"
+              uploadEndpoint={uploadEndpoint}
             />
 
             {/* Featured & Trending */}

@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { SquadInviteDialog } from './SquadInviteDialog';
 import { MAX_SQUAD_MEMBERS } from '@/lib/squad-constants';
+import { useMenuTitles } from '@/contexts/BrandingContext';
 
 type InviteSquadType = 'private' | 'public' | 'premium';
 
@@ -53,6 +54,7 @@ export function SquadInviteCards({
   hasStandardSquad: _hasStandardSquad = false,
 }: SquadInviteCardsProps) {
   const { sessionClaims } = useAuth();
+  const { squad: squadTitle, squadLower } = useMenuTitles();
   
   // Check if user is a premium member
   const publicMetadata = sessionClaims?.publicMetadata as { tier?: string } | undefined;
@@ -144,10 +146,10 @@ export function SquadInviteCards({
         <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4">
           <div className="p-4 space-y-3">
             <h3 className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] leading-[1.3] tracking-[-1px]">
-              Invite friends to your squad
+              Invite friends to your {squadLower}
             </h3>
             <p className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2] leading-[1.2] tracking-[-0.3px]">
-              Grow together with the people you trust — stay motivated, support each other, and keep a strong squad streak side by side. Add friends to your current squad or start a new one together.
+              Grow together with the people you trust — stay motivated, support each other, and keep a strong {squadLower} streak side by side. Add friends to your current {squadLower} or start a new one together.
             </p>
             <button
               onClick={handleInviteFriends}
@@ -181,16 +183,16 @@ export function SquadInviteCards({
               </div>
               
               <h3 className="font-albert font-semibold text-[18px] text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px] mb-1">
-                Join a premium squad with coaching
+                Join a premium {squadLower} with coaching
               </h3>
               
               <p className="font-albert text-[14px] text-text-secondary dark:text-[#b2b6c2] leading-[1.4] mb-3">
-                As a premium member, you can also join a premium squad with weekly coaching calls and expert guidance. Find one now!
+                As a premium member, you can also join a premium {squadLower} with weekly coaching calls and expert guidance. Find one now!
               </p>
 
               {/* CTA */}
               <div className="flex items-center gap-2 text-[#FF6B6B] font-albert font-semibold text-[14px] group-hover:gap-3 transition-all">
-                <span>Find premium squads</span>
+                <span>Find premium {squadLower}s</span>
                 <ArrowRight className="w-4 h-4" />
               </div>
             </div>
@@ -212,16 +214,16 @@ export function SquadInviteCards({
               </span>
             </div>
             <h3 className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] leading-[1.3] tracking-[-1px]">
-              Upgrade to a Premium Squad
+              Upgrade to a Premium {squadTitle}
             </h3>
             <p className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2] leading-[1.2] tracking-[-0.3px]">
-              Get a dedicated mentor who joins your group chat, supports your squad, and leads weekly calls to keep everyone on track and progressing together.
+              Get a dedicated mentor who joins your group chat, supports your {squadLower}, and leads weekly calls to keep everyone on track and progressing together.
             </p>
             <Link
               href="/upgrade-premium"
               className="block w-full bg-white dark:bg-[#11141b] border-[0.3px] border-[rgba(215,210,204,0.5)] dark:border-[#262b35] text-[#2c2520] dark:text-[#f5f5f8] rounded-[32px] px-6 py-4 font-bold text-[16px] leading-[1.4] tracking-[-0.5px] hover:bg-[#f3f1ef] dark:hover:bg-[#1d222b] transition-colors text-center"
             >
-              Upgrade to Premium Squad
+              Upgrade to Premium {squadTitle}
             </Link>
           </div>
         </div>
@@ -240,7 +242,7 @@ export function SquadInviteCards({
             ) : (
               <Copy className="w-3.5 h-3.5" />
             )}
-            <span>Squad invite code: <span className="font-mono">{inviteCode}</span></span>
+            <span>{squadTitle} invite code: <span className="font-mono">{inviteCode}</span></span>
             {codeCopied && <span className="text-green-500 ml-1">Copied!</span>}
           </button>
         ) : (
@@ -254,7 +256,7 @@ export function SquadInviteCards({
           className="flex items-center gap-1.5 text-text-secondary/70 dark:text-[#7d8190] hover:text-red-500 dark:hover:text-red-400 transition-colors font-albert text-[13px] disabled:opacity-50"
         >
           <LogOut className="w-3.5 h-3.5" />
-          <span>{isLeaving ? 'Leaving...' : 'Leave squad'}</span>
+          <span>{isLeaving ? 'Leaving...' : `Leave ${squadLower}`}</span>
         </button>
       </div>
 
@@ -263,10 +265,10 @@ export function SquadInviteCards({
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
             <AlertDialogTitle className="font-albert text-[20px] tracking-[-0.5px]">
-              Leave this squad?
+              Leave this {squadLower}?
             </AlertDialogTitle>
             <AlertDialogDescription className="font-albert text-[15px] text-text-secondary">
-              You can rejoin later or find a new squad to join.
+              You can rejoin later or find a new {squadLower} to join.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-2">
@@ -281,7 +283,7 @@ export function SquadInviteCards({
               disabled={isLeaving}
               className="font-albert rounded-full bg-red-500 hover:bg-red-600 text-white"
             >
-              {isLeaving ? 'Leaving...' : 'Leave squad'}
+              {isLeaving ? 'Leaving...' : `Leave ${squadLower}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
