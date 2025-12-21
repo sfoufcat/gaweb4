@@ -226,6 +226,7 @@ export default function CoachPage() {
                 currentUserOrgRole={orgRole}
                 readOnly={isLimitedOrgCoach}
                 visibleColumns={isLimitedOrgCoach ? ['avatar', 'name', 'email', 'coach', 'coaching', 'created'] : undefined}
+                showInviteButton={!isLimitedOrgCoach}
               />
             )}
           </TabsContent>

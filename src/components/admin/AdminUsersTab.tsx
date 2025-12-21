@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
+import { UserPlus } from 'lucide-react';
 import type { UserRole, UserTier, CoachingStatus, OrgRole, Squad } from '@/types';
 import { validateSubdomain } from '@/types';
 import { 
@@ -48,6 +49,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { InviteClientsDialog } from '@/components/coach/InviteClientsDialog';
 
 interface ClerkAdminUser {
   id: string;
@@ -114,6 +116,8 @@ interface AdminUsersTabProps {
    * When set, uses org-scoped API endpoints and shows org role for that specific org.
    */
   orgMode?: { organizationId: string };
+  /** Show the "Invite New Clients" button (for coach dashboard) */
+  showInviteButton?: boolean;
 }
 
 export function AdminUsersTab({ 
@@ -126,6 +130,7 @@ export function AdminUsersTab({
   readOnly = false,
   visibleColumns,
   orgMode,
+  showInviteButton = false,
 }: AdminUsersTabProps) {
   // Determine API endpoint - use org-scoped endpoint if in orgMode
   const apiEndpoint = apiEndpointProp || (
@@ -137,6 +142,9 @@ export function AdminUsersTab({
   const columns = visibleColumns || (readOnly ? LIMITED_COLUMNS : ALL_COLUMNS);
   const showColumn = (col: ColumnKey) => columns.includes(col);
   const [users, setUsers] = useState<ClerkAdminUser[]>([]);
+  
+  // Invite dialog state
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userToDelete, setUserToDelete] = useState<ClerkAdminUser | null>(null);
@@ -584,6 +592,17 @@ export function AdminUsersTab({
             </div>
             
             <div className="flex flex-wrap items-center gap-3">
+              {/* Invite Button */}
+              {showInviteButton && (
+                <Button
+                  onClick={() => setShowInviteDialog(true)}
+                  className="bg-[#a07855] hover:bg-[#8c6245] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white font-albert"
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Invite New Clients
+                </Button>
+              )}
+              
               {/* Search */}
               <div className="relative">
                 <input
@@ -1126,6 +1145,14 @@ export function AdminUsersTab({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Invite Clients Dialog */}
+      {showInviteButton && (
+        <InviteClientsDialog
+          isOpen={showInviteDialog}
+          onClose={() => setShowInviteDialog(false)}
+        />
+      )}
     </>
   );
 }
