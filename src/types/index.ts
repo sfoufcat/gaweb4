@@ -1775,3 +1775,296 @@ export function validateSubdomain(subdomain: string): SubdomainValidationResult 
   return { valid: true };
 }
 
+// ============================================================================
+// FUNNEL SYSTEM TYPES
+// Unified funnel system for user acquisition - replaces separate /start and /begin flows
+// ============================================================================
+
+/**
+ * Funnel step types
+ */
+export type FunnelStepType = 
+  | 'question'       // Quiz/intake question (single/multi choice, text, scale)
+  | 'signup'         // Account creation step
+  | 'payment'        // Payment collection step
+  | 'goal_setting'   // Goal setting with customizable examples
+  | 'identity'       // Identity/mission statement
+  | 'analyzing'      // Loading/analyzing animation
+  | 'plan_reveal'    // Show personalized plan
+  | 'transformation' // Transformation graph visualization
+  | 'info'           // Information/welcome card
+  | 'success';       // Completion step
+
+/**
+ * Question types for question steps
+ */
+export type FunnelQuestionType = 
+  | 'single_choice'  // Radio buttons
+  | 'multi_choice'   // Checkboxes
+  | 'text'           // Free text input
+  | 'scale'          // 1-5 or 1-10 scale
+  | 'workday'        // Preset: workday style question
+  | 'obstacles'      // Preset: obstacles question
+  | 'business_stage' // Preset: business stage question
+  | 'goal_impact'    // Preset: goal impact question
+  | 'support_needs'; // Preset: support needs question
+
+/**
+ * Funnel access type
+ */
+export type FunnelAccessType = 'public' | 'invite_only';
+
+/**
+ * Payment status for invites
+ */
+export type InvitePaymentStatus = 'required' | 'pre_paid' | 'free';
+
+/**
+ * Funnel - Coach-created user acquisition flow
+ * Stored in Firestore 'funnels' collection
+ */
+export interface Funnel {
+  id: string;
+  organizationId: string;        // Clerk Organization ID (multi-tenant)
+  programId: string;             // Which program this enrolls users in
+  
+  // Identification
+  slug: string;                  // URL-friendly identifier
+  name: string;                  // Display name (e.g., "Discovery Quiz", "Direct Join")
+  description?: string;          // Optional description
+  
+  // Settings
+  isDefault: boolean;            // Default funnel for the program
+  isActive: boolean;             // Whether funnel is accepting users
+  accessType: FunnelAccessType;  // Public or invite-only
+  defaultPaymentStatus: InvitePaymentStatus; // Default for invites
+  
+  // Customization
+  branding?: {
+    logoUrl?: string;            // Override org logo
+    primaryColor?: string;       // Override org color
+  };
+  
+  // Metadata
+  stepCount: number;             // Denormalized for quick display
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Question option for choice-type questions
+ */
+export interface FunnelQuestionOption {
+  id: string;
+  label: string;
+  value: string;
+  emoji?: string;
+  description?: string;
+  order: number;
+}
+
+/**
+ * Step configuration - varies by step type
+ */
+export interface FunnelStepConfigQuestion {
+  questionType: FunnelQuestionType;
+  question?: string;             // Custom question text (for non-preset types)
+  description?: string;          // Helper text
+  options?: FunnelQuestionOption[]; // For choice types
+  required?: boolean;
+  minLength?: number;            // For text type
+  maxLength?: number;            // For text type
+  scaleMin?: number;             // For scale type
+  scaleMax?: number;             // For scale type
+  scaleLabels?: { min: string; max: string }; // For scale type
+  fieldName: string;             // Key to store answer in flow session data
+}
+
+export interface FunnelStepConfigSignup {
+  heading?: string;              // Custom heading
+  subheading?: string;           // Custom subheading
+  showSocialLogin?: boolean;     // Show Google/Apple buttons
+  collectPhone?: boolean;        // Collect phone number
+}
+
+export interface FunnelStepConfigPayment {
+  useProgramPricing: boolean;    // Use program's default pricing
+  priceInCents?: number;         // Override price
+  stripePriceId?: string;        // Override Stripe price ID
+  heading?: string;              // Custom heading
+  features?: string[];           // Features to display
+}
+
+export interface FunnelStepConfigGoal {
+  examples: string[];            // Placeholder goal examples
+  timelineDays: number;          // Default timeline (e.g., 90)
+  heading?: string;              // Custom heading
+  promptText?: string;           // Custom prompt
+}
+
+export interface FunnelStepConfigIdentity {
+  examples: string[];            // Placeholder identity examples
+  heading?: string;              // Custom heading
+  promptText?: string;           // Custom prompt (e.g., "I am becoming...")
+}
+
+export interface FunnelStepConfigAnalyzing {
+  durationMs: number;            // How long to show (e.g., 3000)
+  messages?: string[];           // Messages to cycle through
+}
+
+export interface FunnelStepConfigPlanReveal {
+  heading?: string;              // e.g., "Your {X}-month plan is ready!"
+  body?: string;                 // Custom encouragement text
+  ctaText?: string;              // Button text
+  showGraph?: boolean;           // Show transformation graph
+}
+
+export interface FunnelStepConfigInfo {
+  heading: string;
+  body: string;
+  imageUrl?: string;
+  ctaText?: string;
+}
+
+export interface FunnelStepConfigSuccess {
+  heading?: string;
+  body?: string;
+  showConfetti?: boolean;
+  redirectDelay?: number;        // ms before redirect to dashboard
+}
+
+export type FunnelStepConfig = 
+  | { type: 'question'; config: FunnelStepConfigQuestion }
+  | { type: 'signup'; config: FunnelStepConfigSignup }
+  | { type: 'payment'; config: FunnelStepConfigPayment }
+  | { type: 'goal_setting'; config: FunnelStepConfigGoal }
+  | { type: 'identity'; config: FunnelStepConfigIdentity }
+  | { type: 'analyzing'; config: FunnelStepConfigAnalyzing }
+  | { type: 'plan_reveal'; config: FunnelStepConfigPlanReveal }
+  | { type: 'transformation'; config: FunnelStepConfigPlanReveal }
+  | { type: 'info'; config: FunnelStepConfigInfo }
+  | { type: 'success'; config: FunnelStepConfigSuccess };
+
+/**
+ * Funnel step - A single step in a funnel
+ * Stored in Firestore 'funnels/{funnelId}/steps' subcollection
+ */
+export interface FunnelStep {
+  id: string;
+  funnelId: string;
+  order: number;                 // 0-indexed order
+  type: FunnelStepType;
+  config: FunnelStepConfig;
+  
+  // Conditional display
+  showIf?: {
+    field: string;               // Field in flow session data
+    operator: 'eq' | 'neq' | 'in' | 'nin';
+    value: unknown;
+  };
+  
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Flow session - Temporary state for a user going through a funnel
+ * Stored in Firestore 'flow_sessions' collection
+ */
+export interface FlowSession {
+  id: string;
+  funnelId: string;
+  programId: string;
+  organizationId: string;
+  
+  // User linking
+  userId: string | null;         // null until signup step completes
+  linkedAt: string | null;       // When userId was linked
+  
+  // Invite tracking
+  inviteId: string | null;       // If user came via invite code
+  
+  // Progress
+  currentStepIndex: number;
+  completedStepIndexes: number[]; // Steps that have been completed
+  
+  // Collected data
+  data: Record<string, unknown>; // All answers and data from steps
+  
+  // For custom domain auth
+  originDomain: string;          // Where flow started
+  
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+  expiresAt: string;             // Auto-cleanup after expiration
+  completedAt?: string;          // When funnel was completed
+}
+
+/**
+ * Program invite - Invite code for joining a program via funnel
+ * Stored in Firestore 'program_invites' collection
+ */
+export interface ProgramInvite {
+  id: string;                    // Short code (e.g., "ABC123")
+  funnelId: string;
+  programId: string;
+  organizationId: string;
+  
+  // Creator
+  createdBy: string;             // Coach userId who created it
+  
+  // Target (optional)
+  email?: string;                // For email invites
+  name?: string;                 // Invitee name (for personalization)
+  
+  // Payment handling
+  paymentStatus: InvitePaymentStatus;
+  prePaidNote?: string;          // e.g., "Paid via invoice #123"
+  
+  // Squad assignment (optional)
+  targetSquadId?: string;        // Specific squad to join
+  targetCohortId?: string;       // Specific cohort to join
+  
+  // Usage tracking
+  usedBy?: string;               // userId who claimed it
+  usedAt?: string;               // When it was claimed
+  
+  // Limits
+  maxUses?: number;              // null = unlimited
+  useCount: number;              // Current usage count
+  
+  // Expiration
+  expiresAt?: string;            // null = never expires
+  
+  createdAt: string;
+}
+
+/**
+ * Funnel with step count for list views
+ */
+export interface FunnelWithStats extends Funnel {
+  totalSessions: number;
+  completedSessions: number;
+  conversionRate: number;
+}
+
+/**
+ * Flow session status
+ */
+export type FlowSessionStatus = 'active' | 'completed' | 'expired' | 'abandoned';
+
+/**
+ * Get flow session status helper
+ */
+export function getFlowSessionStatus(session: FlowSession): FlowSessionStatus {
+  if (session.completedAt) return 'completed';
+  if (new Date(session.expiresAt) < new Date()) return 'expired';
+  // Consider abandoned if not updated in 24 hours and not completed
+  const lastUpdate = new Date(session.updatedAt);
+  const hoursSinceUpdate = (Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60);
+  if (hoursSinceUpdate > 24) return 'abandoned';
+  return 'active';
+}
+

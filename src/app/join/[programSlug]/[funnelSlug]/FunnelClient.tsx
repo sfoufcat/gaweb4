@@ -1,0 +1,447 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@clerk/nextjs';
+import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
+import type { Funnel, FunnelStep, FunnelStepConfig } from '@/types';
+
+// Step components (to be created)
+import { QuestionStep } from '@/components/funnel/steps/QuestionStep';
+import { SignupStep } from '@/components/funnel/steps/SignupStep';
+import { PaymentStep } from '@/components/funnel/steps/PaymentStep';
+import { GoalStep } from '@/components/funnel/steps/GoalStep';
+import { IdentityStep } from '@/components/funnel/steps/IdentityStep';
+import { AnalyzingStep } from '@/components/funnel/steps/AnalyzingStep';
+import { PlanRevealStep } from '@/components/funnel/steps/PlanRevealStep';
+import { InfoStep } from '@/components/funnel/steps/InfoStep';
+import { SuccessStep } from '@/components/funnel/steps/SuccessStep';
+
+interface FunnelClientProps {
+  funnel: Funnel;
+  steps: FunnelStep[];
+  program: {
+    id: string;
+    name: string;
+    slug: string;
+    description: string;
+    coverImageUrl?: string;
+    type: string;
+    lengthDays: number;
+    priceInCents: number;
+    currency: string;
+    stripePriceId?: string;
+  };
+  branding: {
+    logoUrl: string;
+    appTitle: string;
+    primaryColor?: string;
+  };
+  inviteCode?: string;
+  validatedInvite?: {
+    paymentStatus: string;
+    targetSquadId?: string;
+  } | null;
+  hostname: string;
+}
+
+interface FlowSessionData {
+  [key: string]: unknown;
+}
+
+export default function FunnelClient({
+  funnel,
+  steps,
+  program,
+  branding,
+  inviteCode,
+  validatedInvite,
+  hostname,
+}: FunnelClientProps) {
+  const router = useRouter();
+  const { isSignedIn, userId, isLoaded } = useAuth();
+  
+  // Flow session state
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [data, setData] = useState<FlowSessionData>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  // Skip payment if invite is pre-paid
+  const skipPayment = validatedInvite?.paymentStatus === 'pre_paid' || validatedInvite?.paymentStatus === 'free';
+
+  // Initialize or restore flow session
+  useEffect(() => {
+    async function initSession() {
+      try {
+        // Check for existing session in localStorage
+        const storedSessionId = localStorage.getItem(`funnel_session_${funnel.id}`);
+        
+        if (storedSessionId) {
+          // Try to restore session
+          const response = await fetch(`/api/funnel/session?sessionId=${storedSessionId}`);
+          const result = await response.json();
+          
+          if (result.session && !result.expired) {
+            setSessionId(storedSessionId);
+            setCurrentStepIndex(result.session.currentStepIndex || 0);
+            setData(result.session.data || {});
+            setIsLoading(false);
+            return;
+          } else {
+            // Session expired or not found, clear it
+            localStorage.removeItem(`funnel_session_${funnel.id}`);
+          }
+        }
+
+        // Create new session
+        const response = await fetch('/api/funnel/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            funnelId: funnel.id,
+            inviteCode,
+          }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to create session');
+        }
+
+        setSessionId(result.sessionId);
+        localStorage.setItem(`funnel_session_${funnel.id}`, result.sessionId);
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Failed to initialize session:', err);
+        setError(err instanceof Error ? err.message : 'Failed to initialize');
+        setIsLoading(false);
+      }
+    }
+
+    initSession();
+  }, [funnel.id, inviteCode]);
+
+  // Link session to user when they sign in
+  useEffect(() => {
+    async function linkSession() {
+      if (isLoaded && isSignedIn && userId && sessionId) {
+        try {
+          const response = await fetch('/api/funnel/link-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ flowSessionId: sessionId }),
+          });
+
+          if (!response.ok) {
+            console.error('Failed to link session');
+          }
+        } catch (err) {
+          console.error('Error linking session:', err);
+        }
+      }
+    }
+
+    linkSession();
+  }, [isLoaded, isSignedIn, userId, sessionId]);
+
+  // Update session on server
+  const updateSession = useCallback(async (updates: {
+    currentStepIndex?: number;
+    completedStepIndex?: number;
+    data?: Record<string, unknown>;
+  }) => {
+    if (!sessionId) return;
+
+    try {
+      await fetch(`/api/funnel/session/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+    } catch (err) {
+      console.error('Failed to update session:', err);
+    }
+  }, [sessionId]);
+
+  // Handle step completion
+  const handleStepComplete = useCallback(async (stepData: Record<string, unknown>) => {
+    // Merge step data
+    const newData = { ...data, ...stepData };
+    setData(newData);
+
+    // Mark current step as completed
+    await updateSession({
+      completedStepIndex: currentStepIndex,
+      data: stepData,
+    });
+
+    // Find next step (skip payment if pre-paid)
+    let nextIndex = currentStepIndex + 1;
+    
+    while (nextIndex < steps.length) {
+      const nextStep = steps[nextIndex];
+      
+      // Skip payment step if pre-paid
+      if (nextStep.type === 'payment' && skipPayment) {
+        nextIndex++;
+        continue;
+      }
+      
+      // Check conditional display
+      if (nextStep.showIf) {
+        const fieldValue = newData[nextStep.showIf.field];
+        let shouldShow = false;
+        
+        switch (nextStep.showIf.operator) {
+          case 'eq':
+            shouldShow = fieldValue === nextStep.showIf.value;
+            break;
+          case 'neq':
+            shouldShow = fieldValue !== nextStep.showIf.value;
+            break;
+          case 'in':
+            shouldShow = Array.isArray(nextStep.showIf.value) && nextStep.showIf.value.includes(fieldValue);
+            break;
+          case 'nin':
+            shouldShow = Array.isArray(nextStep.showIf.value) && !nextStep.showIf.value.includes(fieldValue);
+            break;
+        }
+        
+        if (!shouldShow) {
+          nextIndex++;
+          continue;
+        }
+      }
+      
+      break;
+    }
+
+    // Check if funnel is complete
+    if (nextIndex >= steps.length) {
+      await completeFunnel(newData);
+      return;
+    }
+
+    // Move to next step
+    setCurrentStepIndex(nextIndex);
+    await updateSession({ currentStepIndex: nextIndex });
+  }, [currentStepIndex, data, steps, skipPayment, updateSession]);
+
+  // Handle going back
+  const handleBack = useCallback(() => {
+    if (currentStepIndex > 0) {
+      const newIndex = currentStepIndex - 1;
+      setCurrentStepIndex(newIndex);
+      updateSession({ currentStepIndex: newIndex });
+    }
+  }, [currentStepIndex, updateSession]);
+
+  // Complete funnel and enroll
+  const completeFunnel = async (finalData: FlowSessionData) => {
+    setIsNavigating(true);
+    
+    try {
+      const response = await fetch('/api/funnel/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          flowSessionId: sessionId,
+          stripePaymentIntentId: finalData.stripePaymentIntentId,
+          stripeCheckoutSessionId: finalData.stripeCheckoutSessionId,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to complete enrollment');
+      }
+
+      // Clear session from localStorage
+      localStorage.removeItem(`funnel_session_${funnel.id}`);
+
+      // Redirect to dashboard or success page
+      router.push('/');
+    } catch (err) {
+      console.error('Failed to complete funnel:', err);
+      setError(err instanceof Error ? err.message : 'Failed to complete enrollment');
+      setIsNavigating(false);
+    }
+  };
+
+  // Render current step
+  const renderStep = () => {
+    if (steps.length === 0) {
+      return (
+        <div className="text-center p-8">
+          <p className="text-text-secondary">This funnel has no steps configured.</p>
+        </div>
+      );
+    }
+
+    const currentStep = steps[currentStepIndex];
+    if (!currentStep) return null;
+
+    const stepConfig = currentStep.config as FunnelStepConfig;
+    const commonProps = {
+      onComplete: handleStepComplete,
+      onBack: currentStepIndex > 0 ? handleBack : undefined,
+      data,
+      program,
+      branding,
+      isFirstStep: currentStepIndex === 0,
+      isLastStep: currentStepIndex === steps.length - 1,
+    };
+
+    switch (currentStep.type) {
+      case 'question':
+        return <QuestionStep {...commonProps} config={stepConfig.config} />;
+      
+      case 'signup':
+        return (
+          <SignupStep
+            {...commonProps}
+            config={stepConfig.config}
+            hostname={hostname}
+            flowSessionId={sessionId || ''}
+          />
+        );
+      
+      case 'payment':
+        return (
+          <PaymentStep
+            {...commonProps}
+            config={stepConfig.config}
+            skipPayment={skipPayment}
+          />
+        );
+      
+      case 'goal_setting':
+        return <GoalStep {...commonProps} config={stepConfig.config} />;
+      
+      case 'identity':
+        return <IdentityStep {...commonProps} config={stepConfig.config} />;
+      
+      case 'analyzing':
+        return <AnalyzingStep {...commonProps} config={stepConfig.config} />;
+      
+      case 'plan_reveal':
+      case 'transformation':
+        return <PlanRevealStep {...commonProps} config={stepConfig.config} />;
+      
+      case 'info':
+        return <InfoStep {...commonProps} config={stepConfig.config} />;
+      
+      case 'success':
+        return <SuccessStep {...commonProps} config={stepConfig.config} />;
+      
+      default:
+        return (
+          <div className="text-center p-8">
+            <p className="text-text-secondary">Unknown step type: {currentStep.type}</p>
+            <button
+              onClick={() => handleStepComplete({})}
+              className="mt-4 px-6 py-2 bg-[#a07855] text-white rounded-lg"
+            >
+              Continue
+            </button>
+          </div>
+        );
+    }
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-app-bg flex items-center justify-center">
+        <div className="relative">
+          <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
+          <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-[#a07855] animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-app-bg flex items-center justify-center">
+        <div className="text-center p-8 max-w-md">
+          <h2 className="text-xl font-semibold text-text-primary mb-4">Something went wrong</h2>
+          <p className="text-text-secondary mb-6">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-[#a07855] text-white rounded-lg hover:bg-[#8c6245] transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Navigating state
+  if (isNavigating) {
+    return (
+      <div className="min-h-screen bg-app-bg flex items-center justify-center">
+        <div className="text-center">
+          <div className="relative mb-4">
+            <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
+            <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-[#a07855] animate-spin" />
+          </div>
+          <p className="text-text-secondary">Setting up your account...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Progress calculation
+  const progress = ((currentStepIndex + 1) / steps.length) * 100;
+
+  return (
+    <div className="min-h-screen bg-app-bg">
+      {/* Progress bar */}
+      <div className="fixed top-0 left-0 right-0 h-1 bg-[#e1ddd8] z-50">
+        <motion.div
+          className="h-full bg-[#a07855]"
+          initial={{ width: 0 }}
+          animate={{ width: `${progress}%` }}
+          transition={{ duration: 0.3 }}
+        />
+      </div>
+
+      {/* Logo */}
+      <div className="pt-6 pb-4 px-6 flex justify-center">
+        {branding.logoUrl && (
+          <Image
+            src={branding.logoUrl}
+            alt={branding.appTitle}
+            width={48}
+            height={48}
+            className="rounded-lg"
+          />
+        )}
+      </div>
+
+      {/* Step content */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentStepIndex}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.3 }}
+          className="px-4 pb-8"
+        >
+          {renderStep()}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+

@@ -1,0 +1,420 @@
+'use client';
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Plus, 
+  ArrowLeft, 
+  Copy, 
+  ExternalLink, 
+  MoreVertical, 
+  Pencil, 
+  Trash2,
+  Layers,
+  Eye,
+  EyeOff,
+  Link2,
+  Users
+} from 'lucide-react';
+import type { Funnel, Program } from '@/types';
+import { FunnelEditorDialog } from './FunnelEditorDialog';
+import { FunnelStepsEditor } from './FunnelStepsEditor';
+
+type ViewMode = 'list' | 'editing';
+
+interface CoachFunnelsTabProps {
+  /** Optional program ID to filter funnels by */
+  programId?: string;
+}
+
+export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
+  const [funnels, setFunnels] = useState<Funnel[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Dialogs & editing
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [funnelToEdit, setFunnelToEdit] = useState<Funnel | null>(null);
+  const [editingFunnelId, setEditingFunnelId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [selectedProgramId, setSelectedProgramId] = useState<string>(programId || '');
+  
+  // Dropdown menu state
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  const fetchFunnels = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const params = new URLSearchParams();
+      if (selectedProgramId) {
+        params.append('programId', selectedProgramId);
+      }
+      const response = await fetch(`/api/coach/org-funnels?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch funnels');
+      const data = await response.json();
+      setFunnels(data.funnels || []);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load funnels');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedProgramId]);
+
+  const fetchPrograms = useCallback(async () => {
+    try {
+      const response = await fetch('/api/coach/org-programs');
+      if (!response.ok) throw new Error('Failed to fetch programs');
+      const data = await response.json();
+      setPrograms(data.programs || []);
+    } catch (err) {
+      console.error('Failed to fetch programs:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFunnels();
+    fetchPrograms();
+  }, [fetchFunnels, fetchPrograms]);
+
+  const handleToggleActive = async (funnel: Funnel) => {
+    try {
+      const response = await fetch(`/api/coach/org-funnels/${funnel.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !funnel.isActive }),
+      });
+      if (!response.ok) throw new Error('Failed to update funnel');
+      await fetchFunnels();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to update funnel');
+    }
+  };
+
+  const handleSetDefault = async (funnel: Funnel) => {
+    try {
+      const response = await fetch(`/api/coach/org-funnels/${funnel.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isDefault: true }),
+      });
+      if (!response.ok) throw new Error('Failed to set default');
+      await fetchFunnels();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to set default');
+    }
+  };
+
+  const handleDelete = async (funnel: Funnel) => {
+    if (!confirm(`Are you sure you want to delete "${funnel.name}"? This cannot be undone.`)) {
+      return;
+    }
+    try {
+      const response = await fetch(`/api/coach/org-funnels/${funnel.id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Failed to delete funnel');
+      await fetchFunnels();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete funnel');
+    }
+  };
+
+  const handleEditDetails = (funnel: Funnel) => {
+    setFunnelToEdit(funnel);
+    setShowEditDialog(true);
+    setOpenMenuId(null);
+  };
+
+  const handleEditSteps = (funnel: Funnel) => {
+    setEditingFunnelId(funnel.id);
+    setViewMode('editing');
+    setOpenMenuId(null);
+  };
+
+  const handleBackToList = () => {
+    setEditingFunnelId(null);
+    setViewMode('list');
+    fetchFunnels();
+  };
+
+  const copyFunnelLink = (funnel: Funnel) => {
+    const program = programs.find(p => p.id === funnel.programId);
+    if (program) {
+      const url = `${window.location.origin}/join/${program.slug}/${funnel.slug}`;
+      navigator.clipboard.writeText(url);
+      alert('Link copied to clipboard!');
+    }
+    setOpenMenuId(null);
+  };
+
+  const getProgramName = (programId: string) => {
+    const program = programs.find(p => p.id === programId);
+    return program?.name || 'Unknown Program';
+  };
+
+  // If editing a funnel's steps, show the step editor
+  if (viewMode === 'editing' && editingFunnelId) {
+    const editingFunnel = funnels.find(f => f.id === editingFunnelId);
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleBackToList}
+            className="p-2 rounded-lg hover:bg-[#f5f3f0] transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5 text-text-secondary" />
+          </button>
+          <div>
+            <h2 className="text-xl font-semibold text-text-primary">
+              {editingFunnel?.name || 'Edit Funnel Steps'}
+            </h2>
+            <p className="text-sm text-text-secondary">
+              Configure the steps users will go through
+            </p>
+          </div>
+        </div>
+
+        <FunnelStepsEditor 
+          funnelId={editingFunnelId}
+          onBack={handleBackToList}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-text-primary">Funnels</h2>
+          <p className="text-sm text-text-secondary">
+            Create and manage user acquisition funnels for your programs
+          </p>
+        </div>
+        <button
+          onClick={() => setShowCreateDialog(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-[#a07855] text-white rounded-lg hover:bg-[#8c6245] transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          New Funnel
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-4">
+        <select
+          value={selectedProgramId}
+          onChange={(e) => setSelectedProgramId(e.target.value)}
+          className="px-4 py-2 bg-white border border-[#e1ddd8] rounded-lg text-text-primary focus:outline-none focus:border-[#a07855]"
+        >
+          <option value="">All Programs</option>
+          {programs.map(program => (
+            <option key={program.id} value={program.id}>
+              {program.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Loading state */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="relative">
+            <div className="w-8 h-8 rounded-full border-2 border-[#e1ddd8]" />
+            <div className="absolute inset-0 w-8 h-8 rounded-full border-2 border-transparent border-t-[#a07855] animate-spin" />
+          </div>
+        </div>
+      )}
+
+      {/* Error state */}
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
+          {error}
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!isLoading && !error && funnels.length === 0 && (
+        <div className="text-center py-12 bg-[#faf8f6] rounded-2xl border border-[#e1ddd8]">
+          <Layers className="w-12 h-12 text-text-muted mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-text-primary mb-2">No funnels yet</h3>
+          <p className="text-text-secondary mb-6">
+            Create your first funnel to start acquiring users for your programs.
+          </p>
+          <button
+            onClick={() => setShowCreateDialog(true)}
+            className="px-6 py-2 bg-[#a07855] text-white rounded-lg hover:bg-[#8c6245] transition-colors"
+          >
+            Create Funnel
+          </button>
+        </div>
+      )}
+
+      {/* Funnels list */}
+      {!isLoading && !error && funnels.length > 0 && (
+        <div className="space-y-3">
+          {funnels.map(funnel => (
+            <motion.div
+              key={funnel.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white border border-[#e1ddd8] rounded-xl p-4 hover:border-[#d4d0cb] transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  {/* Status indicator */}
+                  <div className={`w-2 h-2 rounded-full ${funnel.isActive ? 'bg-green-500' : 'bg-gray-300'}`} />
+                  
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium text-text-primary">{funnel.name}</h3>
+                      {funnel.isDefault && (
+                        <span className="px-2 py-0.5 text-xs bg-[#a07855]/10 text-[#a07855] rounded-full">
+                          Default
+                        </span>
+                      )}
+                      {funnel.accessType === 'invite_only' && (
+                        <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-600 rounded-full">
+                          Invite Only
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-text-secondary">
+                      {getProgramName(funnel.programId)} · {funnel.stepCount || 0} steps
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {/* Quick actions */}
+                  <button
+                    onClick={() => handleEditSteps(funnel)}
+                    className="px-3 py-1.5 text-sm text-[#a07855] hover:bg-[#a07855]/5 rounded-lg transition-colors"
+                  >
+                    Edit Steps
+                  </button>
+                  
+                  <button
+                    onClick={() => copyFunnelLink(funnel)}
+                    className="p-2 hover:bg-[#f5f3f0] rounded-lg transition-colors"
+                    title="Copy link"
+                  >
+                    <Link2 className="w-4 h-4 text-text-secondary" />
+                  </button>
+
+                  {/* More menu */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setOpenMenuId(openMenuId === funnel.id ? null : funnel.id)}
+                      className="p-2 hover:bg-[#f5f3f0] rounded-lg transition-colors"
+                    >
+                      <MoreVertical className="w-4 h-4 text-text-secondary" />
+                    </button>
+
+                    <AnimatePresence>
+                      {openMenuId === funnel.id && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          className="absolute right-0 top-full mt-1 w-48 bg-white border border-[#e1ddd8] rounded-xl shadow-lg py-1 z-10"
+                        >
+                          <button
+                            onClick={() => handleEditDetails(funnel)}
+                            className="w-full px-4 py-2 text-left text-sm text-text-primary hover:bg-[#f5f3f0] flex items-center gap-2"
+                          >
+                            <Pencil className="w-4 h-4" />
+                            Edit Details
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleToggleActive(funnel);
+                              setOpenMenuId(null);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-text-primary hover:bg-[#f5f3f0] flex items-center gap-2"
+                          >
+                            {funnel.isActive ? (
+                              <>
+                                <EyeOff className="w-4 h-4" />
+                                Deactivate
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="w-4 h-4" />
+                                Activate
+                              </>
+                            )}
+                          </button>
+                          {!funnel.isDefault && (
+                            <button
+                              onClick={() => {
+                                handleSetDefault(funnel);
+                                setOpenMenuId(null);
+                              }}
+                              className="w-full px-4 py-2 text-left text-sm text-text-primary hover:bg-[#f5f3f0] flex items-center gap-2"
+                            >
+                              <Users className="w-4 h-4" />
+                              Set as Default
+                            </button>
+                          )}
+                          <div className="border-t border-[#e1ddd8] my-1" />
+                          <button
+                            onClick={() => {
+                              handleDelete(funnel);
+                              setOpenMenuId(null);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {/* Create Dialog */}
+      {showCreateDialog && (
+        <FunnelEditorDialog
+          mode="create"
+          programs={programs}
+          onClose={() => setShowCreateDialog(false)}
+          onSaved={() => {
+            setShowCreateDialog(false);
+            fetchFunnels();
+          }}
+        />
+      )}
+
+      {/* Edit Dialog */}
+      {showEditDialog && funnelToEdit && (
+        <FunnelEditorDialog
+          mode="edit"
+          funnel={funnelToEdit}
+          programs={programs}
+          onClose={() => {
+            setShowEditDialog(false);
+            setFunnelToEdit(null);
+          }}
+          onSaved={() => {
+            setShowEditDialog(false);
+            setFunnelToEdit(null);
+            fetchFunnels();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+

@@ -540,6 +540,3 @@ async function createEnrollment(
   }, { status: 201 });
 }
 
-// Export for use by webhook handler
-export { createEnrollment };
-
