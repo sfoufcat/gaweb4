@@ -444,7 +444,7 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
               ) : (
                 <Sparkles className="w-4 h-4 text-accent-secondary dark:text-[#b8896a]" />
               )}
-              <span>{trackHelpLabel}</span>
+              <span>{programHelpLabel}</span>
             </button>
           </div>
           
