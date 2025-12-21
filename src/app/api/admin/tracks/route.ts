@@ -1,4 +1,8 @@
 /**
+ * @deprecated This API is deprecated. Tracks have been replaced by Programs.
+ * Use /api/coach/org-programs instead for program management.
+ * This API is kept for backward compatibility.
+ * 
  * Admin API: Tracks Management
  * 
  * GET /api/admin/tracks - List all tracks

@@ -119,6 +119,7 @@ interface UseHomeTutorialOptions {
   hasCompletedTutorialFromServer?: boolean;
   hasTrack?: boolean;
   isAuthenticated?: boolean;
+  serverDataLoaded?: boolean; // Prevents auto-start until server response is received
 }
 
 export function useHomeTutorial(options: UseHomeTutorialOptions = {}): UseHomeTutorialReturn {
@@ -127,6 +128,7 @@ export function useHomeTutorial(options: UseHomeTutorialOptions = {}): UseHomeTu
     hasCompletedTutorialFromServer = false,
     hasTrack = false,
     isAuthenticated = false,
+    serverDataLoaded = false,
   } = options;
 
   const [isActive, setIsActive] = useState(false);
@@ -174,13 +176,14 @@ export function useHomeTutorial(options: UseHomeTutorialOptions = {}): UseHomeTu
   // Auto-start tutorial when conditions are met
   useEffect(() => {
     if (isLoading) return;
+    if (!serverDataLoaded) return; // Wait for server data before deciding
     if (!isAuthenticated) return;
     if (hasCompletedTutorial) return;
     if (!hasTrack) return; // Wait for track to be set up
 
     // All conditions met - start tutorial
     setIsActive(true);
-  }, [isLoading, isAuthenticated, hasCompletedTutorial, hasTrack]);
+  }, [isLoading, serverDataLoaded, isAuthenticated, hasCompletedTutorial, hasTrack]);
 
   // Save step index to localStorage whenever it changes
   useEffect(() => {

@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock, Mail, Send } from 'lucide-react';
+import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock, Mail, Send, Bell } from 'lucide-react';
 import { useBranding } from '@/contexts/BrandingContext';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_EMAIL_SETTINGS, validateSubdomain } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus, OrgEmailDefaults } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_EMAIL_SETTINGS, DEFAULT_EMAIL_DEFAULTS, validateSubdomain } from '@/types';
 
 /**
  * Get DNS record names for a domain
@@ -120,6 +120,11 @@ export function CustomizeBrandingTab() {
   const [emailReplyTo, setEmailReplyTo] = useState('');
   const [copiedEmailRecord, setCopiedEmailRecord] = useState<string | null>(null);
 
+  // Email Notification Defaults state
+  const [emailDefaults, setEmailDefaults] = useState<OrgEmailDefaults>(DEFAULT_EMAIL_DEFAULTS);
+  const [emailDefaultsLoading, setEmailDefaultsLoading] = useState(true);
+  const [emailDefaultsSaving, setEmailDefaultsSaving] = useState<string | null>(null);
+
   // Fetch current branding on mount
   const fetchBranding = useCallback(async () => {
     try {
@@ -217,12 +222,58 @@ export function CustomizeBrandingTab() {
       setEmailDomainLoading(false);
     }
   }, []);
+
+  // Fetch Email Notification Defaults
+  const fetchEmailDefaults = useCallback(async () => {
+    try {
+      setEmailDefaultsLoading(true);
+      const response = await fetch('/api/org/email-defaults');
+      if (!response.ok) {
+        console.error('Failed to fetch email notification defaults');
+        return;
+      }
+      
+      const data = await response.json();
+      setEmailDefaults(data.emailDefaults || DEFAULT_EMAIL_DEFAULTS);
+    } catch (err) {
+      console.error('Error fetching email notification defaults:', err);
+    } finally {
+      setEmailDefaultsLoading(false);
+    }
+  }, []);
+
+  // Handle email default toggle
+  const handleEmailDefaultToggle = async (key: keyof OrgEmailDefaults, value: boolean) => {
+    setEmailDefaultsSaving(key);
+    
+    try {
+      const response = await fetch('/api/org/email-defaults', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: value }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update email defaults');
+      }
+      
+      const data = await response.json();
+      setEmailDefaults(data.emailDefaults);
+    } catch (err) {
+      console.error('Error updating email defaults:', err);
+      setError('Failed to update email notification defaults');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setEmailDefaultsSaving(null);
+    }
+  };
   
   useEffect(() => {
     fetchBranding();
     fetchDomainSettings();
     fetchStripeConnect();
     fetchEmailDomain();
+    fetchEmailDefaults();
     
     // Check URL for Stripe callback status
     const urlParams = new URLSearchParams(window.location.search);
@@ -244,7 +295,7 @@ export function CustomizeBrandingTab() {
       // User was redirected back, refresh the status
       fetchStripeConnect();
     }
-  }, [fetchBranding, fetchDomainSettings, fetchStripeConnect, fetchEmailDomain]);
+  }, [fetchBranding, fetchDomainSettings, fetchStripeConnect, fetchEmailDomain, fetchEmailDefaults]);
   
   // Handle subdomain update
   const handleSubdomainUpdate = async () => {
@@ -1881,6 +1932,152 @@ export function CustomizeBrandingTab() {
             <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
               Powered by Stripe Connect. You&apos;ll be redirected to Stripe to complete setup securely.
             </p>
+          </div>
+        )}
+      </div>
+
+      {/* Email Notification Defaults Section */}
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Bell className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Email Notification Defaults</h3>
+        </div>
+        
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mb-6 font-albert">
+          Set the default email notification preferences for new members in your organization. 
+          Members can still customize their own preferences in their settings.
+        </p>
+        
+        {emailDefaultsLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="w-8 h-8 border-3 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {/* Morning Check-in */}
+            <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <div>
+                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Morning check-in</p>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Daily reminder to set focus tasks</p>
+              </div>
+              <button
+                onClick={() => handleEmailDefaultToggle('morningCheckIn', !emailDefaults.morningCheckIn)}
+                disabled={emailDefaultsSaving === 'morningCheckIn'}
+                className={`
+                  relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                  ${emailDefaults.morningCheckIn 
+                    ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
+                    : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                  }
+                  ${emailDefaultsSaving === 'morningCheckIn' ? 'opacity-50' : ''}
+                `}
+              >
+                <span className={`
+                  absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                  ${emailDefaults.morningCheckIn ? 'left-6' : 'left-1'}
+                `} />
+              </button>
+            </div>
+
+            {/* Evening Check-in */}
+            <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <div>
+                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Evening check-in</p>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Daily reminder to reflect on completed tasks</p>
+              </div>
+              <button
+                onClick={() => handleEmailDefaultToggle('eveningCheckIn', !emailDefaults.eveningCheckIn)}
+                disabled={emailDefaultsSaving === 'eveningCheckIn'}
+                className={`
+                  relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                  ${emailDefaults.eveningCheckIn 
+                    ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
+                    : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                  }
+                  ${emailDefaultsSaving === 'eveningCheckIn' ? 'opacity-50' : ''}
+                `}
+              >
+                <span className={`
+                  absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                  ${emailDefaults.eveningCheckIn ? 'left-6' : 'left-1'}
+                `} />
+              </button>
+            </div>
+
+            {/* Weekly Review */}
+            <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <div>
+                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Weekly review</p>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Weekly reflection and planning email</p>
+              </div>
+              <button
+                onClick={() => handleEmailDefaultToggle('weeklyReview', !emailDefaults.weeklyReview)}
+                disabled={emailDefaultsSaving === 'weeklyReview'}
+                className={`
+                  relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                  ${emailDefaults.weeklyReview 
+                    ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
+                    : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                  }
+                  ${emailDefaultsSaving === 'weeklyReview' ? 'opacity-50' : ''}
+                `}
+              >
+                <span className={`
+                  absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                  ${emailDefaults.weeklyReview ? 'left-6' : 'left-1'}
+                `} />
+              </button>
+            </div>
+
+            {/* Squad Call 24h */}
+            <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <div>
+                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Cohort call (24h before)</p>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Reminder 24 hours before scheduled calls</p>
+              </div>
+              <button
+                onClick={() => handleEmailDefaultToggle('squadCall24h', !emailDefaults.squadCall24h)}
+                disabled={emailDefaultsSaving === 'squadCall24h'}
+                className={`
+                  relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                  ${emailDefaults.squadCall24h 
+                    ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
+                    : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                  }
+                  ${emailDefaultsSaving === 'squadCall24h' ? 'opacity-50' : ''}
+                `}
+              >
+                <span className={`
+                  absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                  ${emailDefaults.squadCall24h ? 'left-6' : 'left-1'}
+                `} />
+              </button>
+            </div>
+
+            {/* Squad Call 1h */}
+            <div className="flex items-center justify-between py-4">
+              <div>
+                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Cohort call (1h before)</p>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Reminder 1 hour before scheduled calls</p>
+              </div>
+              <button
+                onClick={() => handleEmailDefaultToggle('squadCall1h', !emailDefaults.squadCall1h)}
+                disabled={emailDefaultsSaving === 'squadCall1h'}
+                className={`
+                  relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                  ${emailDefaults.squadCall1h 
+                    ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
+                    : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                  }
+                  ${emailDefaultsSaving === 'squadCall1h' ? 'opacity-50' : ''}
+                `}
+              >
+                <span className={`
+                  absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                  ${emailDefaults.squadCall1h ? 'left-6' : 'left-1'}
+                `} />
+              </button>
+            </div>
           </div>
         )}
       </div>

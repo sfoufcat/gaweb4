@@ -34,6 +34,10 @@ interface UseTrackReturn {
 }
 
 /**
+ * @deprecated This hook is deprecated. Tracks have been replaced by Programs.
+ * Use useActiveEnrollment() or the Discover page for program-based features.
+ * This hook is kept for backward compatibility with existing users.
+ * 
  * Hook for accessing and managing user track
  * 
  * Usage:

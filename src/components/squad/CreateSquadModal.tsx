@@ -10,25 +10,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { SquadVisibility, UserTrack } from '@/types';
+import type { SquadVisibility } from '@/types';
 
 /**
  * CreateSquadModal Component
  * 
- * Modal for creating a new squad with name, description, timezone, visibility, and track.
+ * Modal for creating a new squad with name, description, timezone, and visibility.
  */
-
-// Track options for squad categorization
-const TRACK_OPTIONS: { value: UserTrack | ''; label: string }[] = [
-  { value: '', label: 'All tracks (visible to everyone)' },
-  { value: 'content_creator', label: 'Content Creator' },
-  { value: 'saas', label: 'SaaS Founder' },
-  { value: 'coach_consultant', label: 'Coach / Consultant' },
-  { value: 'ecom', label: 'E-Commerce' },
-  { value: 'agency', label: 'Agency Owner' },
-  { value: 'community_builder', label: 'Community Builder' },
-  { value: 'general', label: 'General Entrepreneur' },
-];
 
 interface CreateSquadModalProps {
   open: boolean;
@@ -77,7 +65,6 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
     Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
   );
   const [visibility, setVisibility] = useState<SquadVisibility>('public');
-  const [trackId, setTrackId] = useState<UserTrack | ''>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -118,7 +105,6 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
           description: description.trim() || undefined,
           timezone,
           visibility,
-          trackId: trackId || null, // null means visible to all tracks
         }),
       });
 
@@ -248,28 +234,6 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Track Selection */}
-          <div>
-            <label className="block font-albert font-medium text-[14px] text-text-primary mb-2">
-              Track <span className="text-text-secondary">(optional)</span>
-            </label>
-            <select
-              value={trackId}
-              onChange={(e) => setTrackId(e.target.value as UserTrack | '')}
-              className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-[12px] font-albert text-[16px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all appearance-none cursor-pointer"
-              style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.75rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
-            >
-              {TRACK_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <p className="text-[12px] text-text-secondary mt-1 font-albert">
-              Choose a track to help users in the same business type find your squad
-            </p>
           </div>
 
           {/* Visibility Toggle */}

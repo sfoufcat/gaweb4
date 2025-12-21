@@ -1,4 +1,8 @@
 /**
+ * @deprecated This API is deprecated. Tracks have been replaced by Programs.
+ * Track-specific config will be migrated to program-based content.
+ * This API is kept for backward compatibility.
+ * 
  * Track Configuration API
  * 
  * GET /api/track-config?track=content_creator

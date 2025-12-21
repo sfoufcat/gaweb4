@@ -446,7 +446,9 @@ export default clerkMiddleware(async (auth, request) => {
         if (pathname.startsWith('/api/')) {
           return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
         }
-        return NextResponse.redirect(new URL('/tenant-not-found', request.url));
+        // Redirect to platform domain to avoid infinite loop
+        // (redirecting to /tenant-not-found on the same unknown subdomain would cause a loop)
+        return NextResponse.redirect(`https://${BASE_DOMAIN}/tenant-not-found`);
       }
     } else if (parsed.type === 'custom_domain') {
       const resolved = await resolveTenant(undefined, parsed.hostname);
@@ -462,7 +464,9 @@ export default clerkMiddleware(async (auth, request) => {
         if (pathname.startsWith('/api/')) {
           return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
         }
-        return NextResponse.redirect(new URL('/tenant-not-found', request.url));
+        // Redirect to platform domain to avoid infinite loop
+        // (redirecting to /tenant-not-found on the same unknown custom domain would cause a loop)
+        return NextResponse.redirect(`https://${BASE_DOMAIN}/tenant-not-found`);
       }
     }
     // platform mode - no tenant headers needed

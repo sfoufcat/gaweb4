@@ -15,30 +15,18 @@ import {
 import { SquadCard } from './SquadCard';
 import { CreateSquadModal } from './CreateSquadModal';
 import { JoinPrivateSquadModal } from './JoinPrivateSquadModal';
-import type { Squad, UserTier, UserTrack } from '@/types';
+import type { Squad, UserTier } from '@/types';
 
 /**
  * SquadDiscovery Component
  * 
  * Main discovery page for users without a squad.
- * Shows squads based on user subscription tier and track:
+ * Shows squads based on user subscription tier:
  * - Premium users: See premium squads, can only join private squads via invite code
  * - Standard users: See standard squads, can create and join squads
- * - Track filtering: Shows track-specific squads first, then general squads
  */
 
 type SortOption = 'most_active' | 'most_members' | 'newest' | 'alphabetical';
-
-// Track display labels for section headers
-const TRACK_LABELS: Record<UserTrack, string> = {
-  content_creator: 'Content Creator',
-  saas: 'SaaS Founder',
-  coach_consultant: 'Coach / Consultant',
-  ecom: 'E-Commerce',
-  agency: 'Agency Owner',
-  community_builder: 'Community Builder',
-  general: 'General Entrepreneur',
-};
 
 interface PublicSquad extends Squad {
   memberCount: number;
@@ -49,10 +37,8 @@ export function SquadDiscovery() {
   const { user } = useUser();
   const router = useRouter();
   
-  // State - squads are pre-grouped by the server
-  const [trackSquads, setTrackSquads] = useState<PublicSquad[]>([]);
-  const [generalSquads, setGeneralSquads] = useState<PublicSquad[]>([]);
-  const [otherTrackSquads, setOtherTrackSquads] = useState<PublicSquad[]>([]);
+  // State - all squads in a flat list
+  const [squads, setSquads] = useState<PublicSquad[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('most_active');
@@ -61,9 +47,8 @@ export function SquadDiscovery() {
   const [showJoinPrivateModal, setShowJoinPrivateModal] = useState(false);
   const [_userTier, setUserTier] = useState<UserTier>('standard');
   const [isPremiumUser, setIsPremiumUser] = useState(false);
-  const [userTrack, setUserTrack] = useState<UserTrack | null>(null);
 
-  // Fetch squads (pre-grouped by server)
+  // Fetch squads
   const fetchSquads = useCallback(async () => {
     try {
       setLoading(true);
@@ -75,14 +60,16 @@ export function SquadDiscovery() {
       if (!response.ok) throw new Error('Failed to fetch squads');
       
       const data = await response.json();
-      // Server returns pre-grouped squads
-      setTrackSquads(data.trackSquads || []);
-      setGeneralSquads(data.generalSquads || []);
-      setOtherTrackSquads(data.otherTrackSquads || []);
-      // Store user tier and track info from API response
+      // Combine all squads into a flat list (API still returns grouped for backward compat)
+      const allSquads = [
+        ...(data.trackSquads || []),
+        ...(data.generalSquads || []),
+        ...(data.otherTrackSquads || []),
+      ];
+      setSquads(allSquads);
+      // Store user tier info from API response
       if (data.userTier) setUserTier(data.userTier);
       if (typeof data.isPremiumUser === 'boolean') setIsPremiumUser(data.isPremiumUser);
-      if (data.userTrack !== undefined) setUserTrack(data.userTrack);
     } catch (err) {
       console.error('Error fetching squads:', err);
     } finally {
@@ -270,7 +257,7 @@ export function SquadDiscovery() {
         </div>
       )}
 
-      {/* Squad Cards - Pre-grouped by Server */}
+      {/* Squad Cards */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -288,85 +275,16 @@ export function SquadDiscovery() {
             </div>
           ))}
         </div>
-      ) : (trackSquads.length > 0 || generalSquads.length > 0 || otherTrackSquads.length > 0) ? (
-        <div className="space-y-8">
-          {/* Track-specific squads section */}
-          {trackSquads.length > 0 && userTrack && (
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <h2 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px]">
-                  {TRACK_LABELS[userTrack]} Squads
-                </h2>
-                <span className="px-2 py-0.5 bg-[#a07855]/10 text-[#a07855] rounded-full text-[12px] font-albert font-medium">
-                  For you
-                </span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {trackSquads.map((squad) => (
-                  <SquadCard
-                    key={squad.id}
-                    squad={squad}
-                    onJoin={() => handleJoinSquad(squad.id)}
-                    isJoining={joiningSquadId === squad.id}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Divider - only show if both sections have content */}
-          {trackSquads.length > 0 && (generalSquads.length > 0 || otherTrackSquads.length > 0) && (
-            <div className="flex items-center gap-4">
-              <div className="flex-1 h-px bg-[#e1ddd8]" />
-              <span className="text-[12px] text-text-secondary font-albert">More squads</span>
-              <div className="flex-1 h-px bg-[#e1ddd8]" />
-            </div>
-          )}
-
-          {/* General squads section (trackless) */}
-          {generalSquads.length > 0 && (
-            <div>
-              {(trackSquads.length > 0 || otherTrackSquads.length > 0) && (
-                <h2 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px] mb-4">
-                  Open to All
-                </h2>
-              )}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {generalSquads.map((squad) => (
-                  <SquadCard
-                    key={squad.id}
-                    squad={squad}
-                    onJoin={() => handleJoinSquad(squad.id)}
-                    isJoining={joiningSquadId === squad.id}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Other track squads (not user's track, but not general) */}
-          {otherTrackSquads.length > 0 && (
-            <div>
-              {(trackSquads.length > 0 || generalSquads.length > 0) && (
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="flex-1 h-px bg-[#e1ddd8]" />
-                  <span className="text-[12px] text-text-secondary font-albert">Other communities</span>
-                  <div className="flex-1 h-px bg-[#e1ddd8]" />
-                </div>
-              )}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {otherTrackSquads.map((squad) => (
-                  <SquadCard
-                    key={squad.id}
-                    squad={squad}
-                    onJoin={() => handleJoinSquad(squad.id)}
-                    isJoining={joiningSquadId === squad.id}
-                    trackLabel={squad.trackId ? TRACK_LABELS[squad.trackId] : undefined}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+      ) : squads.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {squads.map((squad) => (
+            <SquadCard
+              key={squad.id}
+              squad={squad}
+              onJoin={() => handleJoinSquad(squad.id)}
+              isJoining={joiningSquadId === squad.id}
+            />
+          ))}
         </div>
       ) : (
         <div className="text-center py-16 px-4">

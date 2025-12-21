@@ -6,6 +6,10 @@ import { createDefaultHabitsForTrack, hasTrackDefaultHabits } from '@/lib/habit-
 import type { UserTrack } from '@/types';
 
 /**
+ * @deprecated This API is deprecated. Tracks have been replaced by Programs.
+ * Users now join programs from the Discover page instead of selecting tracks.
+ * This API is kept for backward compatibility with existing users.
+ * 
  * GET /api/user/track
  * Get the current user's track
  */
@@ -30,6 +34,10 @@ export async function GET() {
 }
 
 /**
+ * @deprecated This API is deprecated. Tracks have been replaced by Programs.
+ * Users now join programs from the Discover page instead of selecting tracks.
+ * This API is kept for backward compatibility with existing users.
+ * 
  * POST /api/user/track
  * Set the current user's track
  * Body: { track: UserTrack }

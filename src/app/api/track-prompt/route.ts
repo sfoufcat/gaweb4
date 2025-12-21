@@ -1,4 +1,8 @@
 /**
+ * @deprecated This API is deprecated. Tracks have been replaced by Programs.
+ * Track-specific prompts will be migrated to program-based content.
+ * This API is kept for backward compatibility.
+ * 
  * Track Prompt API
  * 
  * GET /api/track-prompt?track=content_creator&type=morning&index=0

@@ -1019,6 +1019,19 @@ export interface EmailPreferences {
   squadCall1h: boolean;
 }
 
+// Organization-level email notification defaults (coaches can configure these)
+// Uses same structure as EmailPreferences - these become defaults for new users in the tenant
+export type OrgEmailDefaults = EmailPreferences;
+
+// Default email preferences (all enabled by default) - used as global fallback
+export const DEFAULT_EMAIL_DEFAULTS: EmailPreferences = {
+  morningCheckIn: true,
+  eveningCheckIn: true,
+  weeklyReview: true,
+  squadCall24h: true,
+  squadCall1h: true,
+};
+
 export interface NotificationPreferences {
   email?: EmailNotificationPreferences;
 }

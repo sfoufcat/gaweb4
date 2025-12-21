@@ -2,19 +2,39 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import type { EmailPreferences } from '@/types';
+import { DEFAULT_EMAIL_DEFAULTS } from '@/types';
 
-// Default email preferences (all enabled by default)
-const DEFAULT_EMAIL_PREFERENCES: EmailPreferences = {
-  morningCheckIn: true,
-  eveningCheckIn: true,
-  weeklyReview: true,
-  squadCall24h: true,
-  squadCall1h: true,
-};
+/**
+ * Get the effective email defaults for a user
+ * Fallback chain: user's org defaults > global defaults
+ */
+async function getEffectiveDefaults(primaryOrganizationId?: string | null): Promise<EmailPreferences> {
+  if (!primaryOrganizationId) {
+    return DEFAULT_EMAIL_DEFAULTS;
+  }
+
+  try {
+    // Fetch org's email defaults from org_branding collection
+    const brandingDoc = await adminDb.collection('org_branding').doc(primaryOrganizationId).get();
+    
+    if (brandingDoc.exists && brandingDoc.data()?.emailDefaults) {
+      return {
+        ...DEFAULT_EMAIL_DEFAULTS,
+        ...brandingDoc.data()?.emailDefaults,
+      };
+    }
+  } catch (error) {
+    console.error('[EMAIL_PREFERENCES] Error fetching org defaults:', error);
+  }
+
+  return DEFAULT_EMAIL_DEFAULTS;
+}
 
 /**
  * GET /api/user/email-preferences
  * Get current user's email notification preferences
+ * 
+ * Fallback chain: user's explicit prefs > org defaults > global defaults
  */
 export async function GET() {
   try {
@@ -28,14 +48,21 @@ export async function GET() {
     const userDoc = await adminDb.collection('users').doc(userId).get();
     
     if (!userDoc.exists) {
-      // Return defaults if user doesn't exist yet
-      return NextResponse.json({ emailPreferences: DEFAULT_EMAIL_PREFERENCES });
+      // Return global defaults if user doesn't exist yet
+      return NextResponse.json({ emailPreferences: DEFAULT_EMAIL_DEFAULTS });
     }
 
     const userData = userDoc.data();
-    const emailPreferences = userData?.emailPreferences || DEFAULT_EMAIL_PREFERENCES;
+    
+    // If user has explicit preferences, return them
+    if (userData?.emailPreferences) {
+      return NextResponse.json({ emailPreferences: userData.emailPreferences });
+    }
 
-    return NextResponse.json({ emailPreferences });
+    // Otherwise, get effective defaults (org defaults or global defaults)
+    const effectiveDefaults = await getEffectiveDefaults(userData?.primaryOrganizationId);
+    
+    return NextResponse.json({ emailPreferences: effectiveDefaults });
   } catch (error) {
     console.error('[EMAIL_PREFERENCES_GET] Error:', error);
     return NextResponse.json(
@@ -84,11 +111,17 @@ export async function PATCH(req: Request) {
       );
     }
 
-    // Get current preferences and merge
+    // Get current user document to determine fallback defaults
     const userDoc = await adminDb.collection('users').doc(userId).get();
-    const currentPreferences = userDoc.exists 
-      ? userDoc.data()?.emailPreferences || DEFAULT_EMAIL_PREFERENCES
-      : DEFAULT_EMAIL_PREFERENCES;
+    const userData = userDoc.exists ? userDoc.data() : null;
+    
+    // Get current preferences or effective defaults
+    let currentPreferences: EmailPreferences;
+    if (userData?.emailPreferences) {
+      currentPreferences = userData.emailPreferences;
+    } else {
+      currentPreferences = await getEffectiveDefaults(userData?.primaryOrganizationId);
+    }
 
     const newPreferences: EmailPreferences = {
       ...currentPreferences,
@@ -118,12 +151,3 @@ export async function PATCH(req: Request) {
     );
   }
 }
-
-
-
-
-
-
-
-
-

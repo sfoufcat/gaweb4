@@ -202,6 +202,7 @@ export default function Dashboard() {
   
   // State for home tutorial
   const [hasCompletedHomeTutorial, setHasCompletedHomeTutorial] = useState(false);
+  const [tutorialDataLoaded, setTutorialDataLoaded] = useState(false);
   
   // Home tutorial hook (must be after state declaration)
   const homeTutorial = useHomeTutorial({
@@ -209,6 +210,7 @@ export default function Dashboard() {
     hasCompletedTutorialFromServer: hasCompletedHomeTutorial,
     hasTrack: !!track,
     isAuthenticated: !!user,
+    serverDataLoaded: tutorialDataLoaded,
   });
   
   // Track if we've synced program tasks this session
@@ -838,6 +840,7 @@ export default function Dashboard() {
           setUserGoal(data.goal || null);
           setUserCreatedAt(data.user?.createdAt || null);
           setHasCompletedHomeTutorial(data.user?.hasCompletedHomeTutorial || false);
+          setTutorialDataLoaded(true);
           
           // Check if user has recently achieved a goal (within last 7 days)
           if (!data.goal && data.user?.goalHistory && Array.isArray(data.user.goalHistory)) {

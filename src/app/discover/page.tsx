@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useDiscover } from '@/hooks/useDiscover';
-import { useTrack } from '@/hooks/useTrack';
 import { 
   EventCard, 
   CourseCard, 
@@ -19,20 +18,9 @@ import type { ArticleType } from '@/types/discover';
 
 export default function DiscoverPage() {
   const { upcomingEvents, pastEvents, courses, articles, categories, trending, recommended, groupPrograms, individualPrograms, enrollmentConstraints, loading } = useDiscover();
-  const { track, hasTrack } = useTrack();
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedArticleType, setSelectedArticleType] = useState<ArticleType | 'all'>('all');
-  
-  // Tab state: "for-you" (track-specific) or "all"
-  const [activeTab, setActiveTab] = useState<'for-you' | 'all'>(hasTrack ? 'for-you' : 'all');
-
-  // Update active tab when track becomes available
-  useEffect(() => {
-    if (hasTrack) {
-      setActiveTab('for-you');
-    }
-  }, [hasTrack]);
 
   // Get selected category name for filtering
   const selectedCategoryName = useMemo(() => {
@@ -40,49 +28,22 @@ export default function DiscoverPage() {
     return categories.find(c => c.id === selectedCategory)?.name || null;
   }, [selectedCategory, categories]);
 
-  // Filter content based on active tab (track filter)
-  const isForYouMode = activeTab === 'for-you' && hasTrack;
-
-  // Filter events by track (when in "For you" mode)
+  // Filter events based on showing past/upcoming
   const filteredEvents = useMemo(() => {
-    const events = showPastEvents ? pastEvents : upcomingEvents;
-    if (!isForYouMode || !track) return events;
-    return events.filter(e => e.track === track);
-  }, [upcomingEvents, pastEvents, showPastEvents, isForYouMode, track]);
+    return showPastEvents ? pastEvents : upcomingEvents;
+  }, [upcomingEvents, pastEvents, showPastEvents]);
 
-  // Filter courses based on selected category AND track filter
+  // Filter courses based on selected category
   const filteredCourses = useMemo(() => {
-    let result = courses;
-    
-    // Apply track filter if in "For you" mode
-    if (isForYouMode && track) {
-      result = result.filter(c => c.track === track);
-    }
-    
-    // Apply category filter if selected
-    if (selectedCategoryName) {
-      result = result.filter(c => c.category === selectedCategoryName);
-    }
-    
-    return result;
-  }, [courses, selectedCategoryName, isForYouMode, track]);
+    if (!selectedCategoryName) return courses;
+    return courses.filter(c => c.category === selectedCategoryName);
+  }, [courses, selectedCategoryName]);
 
-  // Filter articles based on selected category AND track filter
+  // Filter articles based on selected category
   const filteredArticles = useMemo(() => {
-    let result = articles;
-    
-    // Apply track filter if in "For you" mode
-    if (isForYouMode && track) {
-      result = result.filter(a => a.track === track);
-    }
-    
-    // Apply category filter if selected
-    if (selectedCategoryName) {
-      result = result.filter(a => a.category === selectedCategoryName);
-    }
-    
-    return result;
-  }, [articles, selectedCategoryName, isForYouMode, track]);
+    if (!selectedCategoryName) return articles;
+    return articles.filter(a => a.category === selectedCategoryName);
+  }, [articles, selectedCategoryName]);
 
   // Filter "All Articles" section by article type (only this section is affected)
   const allArticlesFiltered = useMemo(() => {
@@ -200,37 +161,9 @@ export default function DiscoverPage() {
       {/* Header */}
       <section className="px-4 pt-5 pb-4">
         <h1 className="font-albert font-normal text-4xl text-text-primary tracking-[-2px] leading-[1.2]">
-          {selectedCategoryName || 'Learn'}
+          {selectedCategoryName || 'Discover'}
         </h1>
       </section>
-
-      {/* Tab Toggle - For you / All - Only show when user has a track */}
-      {hasTrack && (
-        <section className="px-4 pb-4">
-          <div className="bg-[#f3f1ef] dark:bg-[#11141b] rounded-[40px] p-1.5 flex gap-1">
-            <button
-              onClick={() => setActiveTab('for-you')}
-              className={`flex-1 px-5 py-2 rounded-full text-sm font-medium font-sans transition-all ${
-                activeTab === 'for-you'
-                  ? 'bg-white dark:bg-[#1e222a] text-text-primary dark:text-[#f5f5f8] shadow-sm'
-                  : 'text-text-secondary dark:text-[#7d8190] hover:text-text-primary dark:hover:text-[#b2b6c2]'
-              }`}
-            >
-              For you
-            </button>
-            <button
-              onClick={() => setActiveTab('all')}
-              className={`flex-1 px-5 py-2 rounded-full text-sm font-medium font-sans transition-all ${
-                activeTab === 'all'
-                  ? 'bg-white dark:bg-[#1e222a] text-text-primary dark:text-[#f5f5f8] shadow-sm'
-                  : 'text-text-secondary dark:text-[#7d8190] hover:text-text-primary dark:hover:text-[#b2b6c2]'
-              }`}
-            >
-              All
-            </button>
-          </div>
-        </section>
-      )}
 
       {/* 1. Browse by Category */}
       <section className="px-4 py-5">
@@ -269,7 +202,7 @@ export default function DiscoverPage() {
                 ))
               ) : (
                 <p className="text-text-muted text-sm font-sans">
-                  {isForYouMode ? 'No events for your track yet' : 'No events available'}
+                  No events available
                 </p>
               )}
             </div>
@@ -281,7 +214,7 @@ export default function DiscoverPage() {
       {filteredCourses.length > 0 && (
         <section className="px-4 py-5 overflow-hidden">
           <div className="flex flex-col gap-4">
-            <SectionHeader title={isForYouMode ? "Courses for you" : "All Courses"} />
+            <SectionHeader title="Courses" />
             
             {/* Grid when category selected, horizontal scroll otherwise */}
             {selectedCategory ? (
@@ -301,15 +234,6 @@ export default function DiscoverPage() {
         </section>
       )}
 
-      {/* Empty state for courses when in "For you" mode */}
-      {isForYouMode && filteredCourses.length === 0 && !selectedCategory && (
-        <section className="px-4 py-5">
-          <div className="flex flex-col gap-4">
-            <SectionHeader title="Courses for you" />
-            <p className="text-text-muted text-sm font-sans">No courses for your track yet</p>
-          </div>
-        </section>
-      )}
 
       {/* 4. Group Programs - Only show when no category is selected */}
       {!selectedCategory && groupPrograms.length > 0 && (
@@ -409,9 +333,7 @@ export default function DiscoverPage() {
         <section className="px-4 py-12">
           <div className="text-center">
             <p className="text-text-muted font-sans">
-              {isForYouMode 
-                ? 'No content for your track in this category yet.' 
-                : 'No content available in this category yet.'}
+              No content available in this category yet.
             </p>
           </div>
         </section>
@@ -451,7 +373,7 @@ export default function DiscoverPage() {
               <div className="flex flex-col gap-3 overflow-hidden">
                 <div className="flex items-center justify-between">
                   <h3 className="font-albert font-medium text-lg text-text-primary tracking-[-0.5px] leading-[1.3]">
-                    {isForYouMode ? "Articles for you" : "All Articles"}
+                    All Articles
                   </h3>
                   <Link 
                     href={`/articles${selectedArticleType !== 'all' ? `?type=${selectedArticleType}` : ''}`}
@@ -476,18 +398,8 @@ export default function DiscoverPage() {
               </div>
             )}
 
-            {/* Empty state for articles when in "For you" mode */}
-            {isForYouMode && filteredArticles.length === 0 && (
-              <div className="flex flex-col gap-3">
-                <h3 className="font-albert font-medium text-lg text-text-primary tracking-[-0.5px] leading-[1.3]">
-                  Articles for you
-                </h3>
-                <p className="text-text-muted text-sm font-sans">No articles for your track yet</p>
-              </div>
-            )}
-
-            {/* Trending Subheading - Only show in "All" mode */}
-            {!isForYouMode && trending.length > 0 && (
+            {/* Trending Subheading */}
+            {trending.length > 0 && (
               <div className="flex flex-col gap-3 overflow-hidden">
                 <h3 className="font-albert font-medium text-lg text-text-primary tracking-[-0.5px] leading-[1.3]">
                   Trending
@@ -502,8 +414,8 @@ export default function DiscoverPage() {
               </div>
             )}
 
-            {/* Recommended Subheading - Only show in "All" mode */}
-            {!isForYouMode && recommended.length > 0 && (
+            {/* Recommended Subheading */}
+            {recommended.length > 0 && (
               <div className="flex flex-col gap-3">
                 <h3 className="font-albert font-medium text-lg text-text-primary tracking-[-0.5px] leading-[1.3]">
                   Recommended

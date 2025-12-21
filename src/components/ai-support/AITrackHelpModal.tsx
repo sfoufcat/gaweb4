@@ -4,17 +4,6 @@ import { useState } from 'react';
 import { X, Sparkles, Plus, AlertCircle } from 'lucide-react';
 import type { TrackSpecificHelpResponse, UserTrack } from '@/types';
 
-// Track display names
-const TRACK_DISPLAY_NAMES: Record<UserTrack, string> = {
-  content_creator: 'Content Creator',
-  saas: 'SaaS Builder',
-  agency: 'Agency Builder',
-  ecom: 'E-commerce Founder',
-  coach_consultant: 'Coach/Consultant',
-  community_builder: 'Community Builder',
-  general: 'Entrepreneur',
-};
-
 interface AITrackHelpModalProps {
   response: TrackSpecificHelpResponse;
   track: UserTrack;
@@ -25,7 +14,6 @@ interface AITrackHelpModalProps {
 
 export function AITrackHelpModal({
   response,
-  track,
   currentTaskCount,
   onAddTask,
   onClose,
@@ -33,7 +21,6 @@ export function AITrackHelpModal({
   const [isAdding, setIsAdding] = useState(false);
   
   const isFull = currentTaskCount >= 3;
-  const trackName = TRACK_DISPLAY_NAMES[track] || 'your track';
   
   async function handleAddTask() {
     if (isFull) return;
@@ -66,9 +53,9 @@ export function AITrackHelpModal({
             </button>
           </div>
           
-          {/* Track label */}
+          {/* Recommendation label */}
           <p className="font-sans text-[13px] text-text-secondary dark:text-[#b2b6c2] mb-4">
-            Recommended for {trackName}s:
+            Recommended for you:
           </p>
         </div>
         

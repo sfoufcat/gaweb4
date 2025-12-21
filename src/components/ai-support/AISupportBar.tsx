@@ -2,34 +2,18 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Sparkles, Lightbulb, Target, Loader2 } from 'lucide-react';
-import { useTrack } from '@/hooks/useTrack';
 import { useActiveEnrollment } from '@/hooks/useActiveEnrollment';
 import { useTasks } from '@/hooks/useTasks';
 import { AISuggestTasksModal } from './AISuggestTasksModal';
 import { AIHelpCompleteModal } from './AIHelpCompleteModal';
 import { AITrackHelpModal } from './AITrackHelpModal';
-import type { UserTrack, AIAction, SuggestTasksResponse, HelpCompleteTaskResponse, TrackSpecificHelpResponse } from '@/types';
-
-// =============================================================================
-// TRACK LABEL MAPPING
-// =============================================================================
-
-const TRACK_HELP_LABELS: Record<UserTrack, string> = {
-  content_creator: 'Content Creator help',
-  saas: 'SaaS builder help',
-  agency: 'Agency builder help',
-  ecom: 'E-com founder help',
-  coach_consultant: 'Coaching business help',
-  community_builder: 'Community builder help',
-  general: 'Track-specific help',
-};
+import type { AIAction, SuggestTasksResponse, HelpCompleteTaskResponse, TrackSpecificHelpResponse } from '@/types';
 
 interface AISupportBarProps {
   onTasksChange?: () => void;
 }
 
 export function AISupportBar({ onTasksChange }: AISupportBarProps) {
-  const { track, isLoading: trackLoading } = useTrack();
   const { enrollment, program, progress, isLoading: enrollmentLoading } = useActiveEnrollment();
   const today = new Date().toISOString().split('T')[0];
   const { focusTasks, backlogTasks, isLoading: tasksLoading, createTask, updateTask, fetchTasks } = useTasks({ date: today });
@@ -56,10 +40,13 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
   const carouselRef = useRef<HTMLDivElement>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
   
-  const isDataLoading = trackLoading || enrollmentLoading || tasksLoading;
+  const isDataLoading = enrollmentLoading || tasksLoading;
   
   // Determine if user has tasks - this affects button order
   const hasTasks = focusTasks.length > 0;
+  
+  // Get program-specific label for third button
+  const programHelpLabel = program?.name ? `${program.name} help` : 'Program help';
   
   // Track carousel scroll position
   const handleCarouselScroll = useCallback(() => {
@@ -78,9 +65,6 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
     return () => carousel.removeEventListener('scroll', handleCarouselScroll);
   }, [handleCarouselScroll]);
   
-  // Get track-specific label for third button
-  const trackHelpLabel = track ? TRACK_HELP_LABELS[track] : 'Track-specific help';
-  
   // Call the AI support API
   async function callAISupport(action: AIAction, taskId?: string): Promise<boolean> {
     setIsLoading(true);
@@ -90,7 +74,8 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
     try {
       const payload = {
         action,
-        track: track || 'general',
+        // Use 'general' as fallback - the AI will use program context instead
+        track: 'general',
         dailyTasks: focusTasks.map(t => ({ id: t.id, title: t.title })),
         backlogTasks: backlogTasks.map(t => ({ id: t.id, title: t.title })),
         starterProgramContext: {
@@ -349,7 +334,7 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
                 ) : (
                   <Sparkles className="w-4 h-4 text-accent-secondary dark:text-[#b8896a]" />
                 )}
-                <span>{trackHelpLabel}</span>
+                <span>{programHelpLabel}</span>
               </button>
             </div>
           </div>
@@ -533,7 +518,7 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
       {showTrackHelpModal && trackHelpResponse && (
         <AITrackHelpModal
           response={trackHelpResponse}
-          track={track || 'general'}
+          track={'general'}
           currentTaskCount={focusTasks.length}
           onAddTask={handleAddTrackTask}
           onClose={() => {

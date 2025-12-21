@@ -101,22 +101,26 @@ export async function GET(request: NextRequest) {
         // For group programs, get the next available cohort
         if (data.type === 'group') {
           const today = new Date().toISOString().split('T')[0];
+          // Get all open cohorts for this program
           const cohortsSnapshot = await adminDb
             .collection('program_cohorts')
             .where('programId', '==', doc.id)
             .where('enrollmentOpen', '==', true)
-            .where('startDate', '>=', today)
-            .orderBy('startDate', 'asc')
-            .limit(1)
             .get();
 
-          if (!cohortsSnapshot.empty) {
-            const cohortData = cohortsSnapshot.docs[0].data() as ProgramCohort;
+          // Filter and sort in memory to avoid composite index requirement
+          const upcomingCohorts = cohortsSnapshot.docs
+            .map(d => ({ id: d.id, ...d.data() } as ProgramCohort & { id: string }))
+            .filter(c => c.startDate >= today)
+            .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+
+          if (upcomingCohorts.length > 0) {
+            const cohortData = upcomingCohorts[0];
             const maxEnrollment = cohortData.maxEnrollment || Infinity;
             const spotsRemaining = Math.max(0, maxEnrollment - (cohortData.currentEnrollment || 0));
             
             nextCohort = {
-              id: cohortsSnapshot.docs[0].id,
+              id: cohortData.id,
               name: cohortData.name,
               startDate: cohortData.startDate,
               spotsRemaining: maxEnrollment === Infinity ? -1 : spotsRemaining, // -1 = unlimited

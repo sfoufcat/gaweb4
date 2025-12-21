@@ -44,7 +44,6 @@ export async function GET(
     const daysSnapshot = await adminDb
       .collection('program_days')
       .where('programId', '==', programId)
-      .orderBy('dayIndex', 'asc')
       .get();
 
     const days = daysSnapshot.docs.map(doc => ({
@@ -54,13 +53,15 @@ export async function GET(
       updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
     })) as ProgramDay[];
 
+    // Sort days by dayIndex in memory
+    days.sort((a, b) => a.dayIndex - b.dayIndex);
+
     // For group programs, also fetch cohorts
     let cohorts: ProgramCohort[] = [];
     if (program.type === 'group') {
       const cohortsSnapshot = await adminDb
         .collection('program_cohorts')
         .where('programId', '==', programId)
-        .orderBy('startDate', 'desc')
         .get();
 
       cohorts = cohortsSnapshot.docs.map(doc => ({
@@ -69,6 +70,11 @@ export async function GET(
         createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
         updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
       })) as ProgramCohort[];
+
+      // Sort cohorts by startDate descending in memory
+      cohorts.sort((a, b) => 
+        new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+      );
     }
 
     // Count enrollments

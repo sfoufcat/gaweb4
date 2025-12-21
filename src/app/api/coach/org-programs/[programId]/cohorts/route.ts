@@ -45,7 +45,7 @@ export async function GET(
       query = query.where('status', '==', status);
     }
 
-    const cohortsSnapshot = await query.orderBy('startDate', 'desc').get();
+    const cohortsSnapshot = await query.get();
 
     let cohorts: (ProgramCohort | CohortWithSquads)[] = cohortsSnapshot.docs.map(doc => ({
       id: doc.id,
@@ -53,6 +53,11 @@ export async function GET(
       createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
       updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
     })) as ProgramCohort[];
+
+    // Sort by startDate descending (in memory to avoid composite index requirement)
+    cohorts.sort((a, b) => 
+      new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+    );
 
     // Optionally include squads for each cohort
     if (includeSquads) {

@@ -35,7 +35,7 @@ export default function CategoryDetailPage() {
           href="/discover"
           className="text-earth-500 hover:text-earth-600 transition-colors"
         >
-          ← Back to Learn
+          ← Back to Discover
         </Link>
       </div>
     );
