@@ -6,13 +6,11 @@
  * - Abandoned quiz/payment email (sent 15 min after quiz start if no payment)
  */
 
-import { resend, isResendConfigured } from './resend';
 import { adminDb } from './firebase-admin';
+import { sendTenantEmail, APP_BASE_URL, getLogoUrlForEmail, getAppTitleForEmail } from './email-sender';
 import type { FirebaseUser } from '@/types';
 
-// Email sender configuration
-const EMAIL_FROM = 'Growth Addicts <hi@updates.growthaddicts.com>';
-const APP_URL = process.env.APP_BASE_URL || 'https://pro.growthaddicts.com';
+const APP_URL = APP_BASE_URL;
 
 /**
  * Send welcome email when a user successfully pays and becomes a member

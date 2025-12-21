@@ -100,9 +100,9 @@ async function migratePrograms() {
   // 1. Migrate StarterPrograms to Programs
   console.log('📚 Migrating StarterPrograms...');
   
-  let programsQuery = db.collection('starter_programs');
+  let programsQuery: FirebaseFirestore.Query = db.collection('starter_programs');
   if (targetOrgId) {
-    programsQuery = programsQuery.where('organizationId', '==', targetOrgId) as FirebaseFirestore.Query;
+    programsQuery = programsQuery.where('organizationId', '==', targetOrgId);
   }
   
   const starterProgramsSnapshot = await programsQuery.get();
