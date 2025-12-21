@@ -881,3 +881,66 @@ div[class*="LoadingIndicator"],
 .focus\:ring-earth-500:focus {
   --tw-ring-color: var(--brand-accent-light, #a07855);
 }
+
+/* earth-800 -> accent hover (for hover:bg-earth-800) */
+.bg-earth-800 {
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 90%, black);
+}
+
+.dark .bg-earth-800 {
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 90%, black);
+}
+
+.hover\:bg-earth-800:hover {
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 90%, black);
+}
+
+.dark .hover\:bg-earth-800:hover {
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 90%, black);
+}
+
+/* earth-900 -> darker accent (for bg-earth-900) */
+.bg-earth-900 {
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 75%, black);
+}
+
+.dark .bg-earth-900 {
+  background-color: var(--brand-accent-dark, #b8896a);
+}
+
+/* ===========================================
+   Dark Button Color Overrides
+   Maps hardcoded dark buttons to brand accent
+   =========================================== */
+
+/* Dark button backgrounds (#2c2520) */
+.bg-\[\#2c2520\] {
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 75%, black);
+}
+
+.dark .bg-\[\#2c2520\] {
+  background-color: var(--brand-accent-dark, #b8896a);
+}
+
+/* Dark button hover (#1a1a1a) */
+.hover\:bg-\[\#1a1a1a\]:hover {
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 65%, black);
+}
+
+.dark .hover\:bg-\[\#1a1a1a\]:hover {
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 85%, black);
+}
+
+/* ===========================================
+   Group Hover State Overrides
+   Maps group-hover states to brand accent
+   =========================================== */
+
+/* Group hover states for accent buttons */
+.group:hover .group-hover\:bg-\[\#8c6245\] {
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 85%, black);
+}
+
+.dark .group:hover .dark\:group-hover\:bg-\[\#a07855\] {
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 85%, black);
+}

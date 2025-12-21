@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Calendar, ChevronRight, UserPlus } from 'lucide-react';
+import { Calendar, ChevronRight, UserPlus, RefreshCw } from 'lucide-react';
 import type { ClientCoachingData, FirebaseUser, CoachingPlanType } from '@/types';
 import { InviteClientsDialog } from './InviteClientsDialog';
 
@@ -110,7 +110,7 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
             className="px-6 py-3 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-xl hover:bg-[#8c6245] dark:hover:bg-[#a07855] font-albert font-medium transition-colors inline-flex items-center gap-2"
           >
             <UserPlus className="w-5 h-5" />
-            Invite New Clients
+            Add New Clients
           </button>
         </div>
         <InviteClientsDialog
@@ -135,17 +135,18 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
         </div>
         <div className="flex items-center gap-3">
           <button
+            onClick={fetchClients}
+            className="p-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] rounded-lg transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw className="w-5 h-5" />
+          </button>
+          <button
             onClick={() => setShowInviteDialog(true)}
             className="px-4 py-2 bg-[#a07855] dark:bg-[#b8896a] text-white text-sm rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] font-albert font-medium transition-colors flex items-center gap-2"
           >
             <UserPlus className="w-4 h-4" />
-            Invite New Clients
-          </button>
-          <button
-            onClick={fetchClients}
-            className="px-4 py-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] font-albert transition-colors"
-          >
-            Refresh
+            Add New Clients
           </button>
         </div>
       </div>

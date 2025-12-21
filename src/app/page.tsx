@@ -21,7 +21,7 @@ import Image from 'next/image';
 import { Calendar, Users, ChevronRight, ChevronDown, Trophy, BookOpen, User } from 'lucide-react';
 import { useSquadContext } from '@/contexts/SquadContext';
 import { useProgramPrompt } from '@/hooks/useProgramPrompt';
-import { useQuote } from '@/hooks/useQuote';
+import { useDiscoverRecommendation } from '@/hooks/useDiscoverRecommendation';
 import { useStarterProgram } from '@/hooks/useStarterProgram';
 import { useWeeklyFocus } from '@/hooks/useWeeklyFocus';
 import { useHomeTutorial } from '@/hooks/useHomeTutorial';
@@ -33,33 +33,6 @@ import { useMenuTitles } from '@/contexts/BrandingContext';
  * Matches EXACTLY: https://www.figma.com/design/8y6xbjQJTnzqNEFpfB4Wyi/GrowthAddicts--Backup-?node-id=1484-8842&m=dev
  * Mobile design adapted for desktop/responsive
  */
-
-// Curated motivational quotes collection
-const QUOTES = [
-  { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
-  { text: "We suffer more often in imagination than in reality.", author: "Seneca" },
-  { text: "The best time to plant a tree was 20 years ago. The second best time is now.", author: "Chinese Proverb" },
-  { text: "You do not rise to the level of your goals. You fall to the level of your systems.", author: "James Clear" },
-  { text: "What you seek is seeking you.", author: "Rumi" },
-  { text: "A journey of a thousand miles begins with a single step.", author: "Lao Tzu" },
-  { text: "Discipline equals freedom.", author: "Jocko Willink" },
-  { text: "The obstacle is the way.", author: "Marcus Aurelius" },
-  { text: "Be yourself; everyone else is already taken.", author: "Oscar Wilde" },
-  { text: "Play long-term games with long-term people.", author: "Naval Ravikant" },
-  { text: "How we spend our days is, of course, how we spend our lives.", author: "Annie Dillard" },
-  { text: "Done is better than perfect.", author: "Sheryl Sandberg" },
-  { text: "Small daily improvements are the key to staggering long-term results.", author: "Robin Sharma" },
-  { text: "The way to get started is to quit talking and begin doing.", author: "Walt Disney" },
-];
-
-// Get today's quote based on day of year
-const getTodaysQuote = () => {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 0);
-  const diff = now.getTime() - start.getTime();
-  const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
-  return QUOTES[dayOfYear % QUOTES.length];
-};
 
 export default function Dashboard() {
   const router = useRouter();
@@ -173,8 +146,8 @@ export default function Dashboard() {
   // Get program-specific prompt for Dynamic Section
   const { prompt: programPrompt, programName, isLoading: programPromptLoading, hasEnrollment: hasPromptEnrollment } = useProgramPrompt();
   
-  // Get quote from CMS for the quote card
-  const { quote: cmsQuote, isLoading: quoteLoading } = useQuote();
+  // Get discover recommendation for the discover card
+  const { recommendation: discoverRecommendation, isLoading: discoverLoading } = useDiscoverRecommendation();
   
   // Starter Program state for task sync and completion
   const { 
@@ -1084,7 +1057,7 @@ export default function Dashboard() {
   // ============================================================================
   
   // Card type definitions for dynamic ordering
-  type CardType = 'prompt' | 'goal' | 'quote' | 'status' | 'welcome' | 'track' | 'program_checkin';
+  type CardType = 'prompt' | 'goal' | 'discover' | 'status' | 'welcome' | 'track' | 'program_checkin';
   
   // Determine the prompt card content (morning/evening/weekly)
   const renderPromptCard = (isMobile: boolean) => {
@@ -1243,40 +1216,53 @@ export default function Dashboard() {
     );
   };
   
-  // Quote card - uses CMS quotes with fallback to hardcoded
-  const renderQuoteCard = (isMobile: boolean) => {
+  // Discover card - shows recommended content from Discover section
+  const renderDiscoverCard = (isMobile: boolean) => {
     const baseClasses = isMobile
-      ? "w-[calc(100vw-32px)] flex-shrink-0 snap-center h-[200px] rounded-[32px] overflow-hidden relative bg-gradient-to-br from-amber-500 to-amber-700 flex flex-col justify-center items-center"
-      : "h-[200px] rounded-[32px] overflow-hidden relative bg-gradient-to-br from-amber-500 to-amber-700 p-6 flex flex-col justify-center items-center";
+      ? "w-[calc(100vw-32px)] flex-shrink-0 snap-center h-[200px] rounded-[32px] overflow-hidden relative bg-gradient-to-br from-violet-500 to-purple-600 flex flex-col justify-center items-center"
+      : "h-[200px] rounded-[32px] overflow-hidden relative bg-gradient-to-br from-violet-500 to-purple-600 p-6 flex flex-col justify-center items-center hover:scale-[1.02] transition-transform cursor-pointer";
     
     // Show skeleton while loading
-    if (quoteLoading) {
+    if (discoverLoading) {
       return (
-        <div key="quote" className={baseClasses}>
+        <div key="discover" className={baseClasses}>
           <div className="absolute inset-0 bg-black/10" />
           <div className="relative z-10 px-6 w-full">
-            <div className="w-full h-12 bg-white/20 rounded-lg mb-2 mx-auto animate-pulse" />
-            <div className="w-24 h-4 bg-white/15 rounded-lg mx-auto animate-pulse" />
+            <div className="w-20 h-5 bg-white/20 rounded-full mb-3 mx-auto animate-pulse" />
+            <div className="w-3/4 h-7 bg-white/20 rounded-lg mb-2 mx-auto animate-pulse" />
+            <div className="w-full h-4 bg-white/15 rounded-lg mx-auto animate-pulse" />
           </div>
         </div>
       );
     }
     
-    // Use CMS quote or fallback to hardcoded
-    const quote = cmsQuote || getTodaysQuote();
+    // Don't render if no recommendation
+    if (!discoverRecommendation) {
+      return null;
+    }
+    
+    const href = discoverRecommendation.type === 'article' 
+      ? `/discover/articles/${discoverRecommendation.id}`
+      : `/discover/courses/${discoverRecommendation.id}`;
     
     return (
-      <div key="quote" className={baseClasses}>
+      <Link key="discover" href={href} className={baseClasses}>
         <div className="absolute inset-0 bg-black/10" />
-        <div className="relative z-10 px-6">
-          <p className={`font-albert ${isMobile ? 'text-[18px]' : 'text-[20px]'} text-white leading-[1.35] tracking-[-1px] text-center italic mb-2`}>
-            &quot;{quote.text}&quot;
+        <div className="relative z-10 px-6 text-center">
+          {/* Content type badge */}
+          <span className={`inline-block px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full font-sans ${isMobile ? 'text-[10px]' : 'text-[11px]'} text-white/90 font-medium mb-3 uppercase tracking-wide`}>
+            {discoverRecommendation.type === 'article' ? 'Article' : 'Course'}
+          </span>
+          {/* Title */}
+          <p className={`font-albert ${isMobile ? 'text-[20px]' : 'text-[22px]'} text-white leading-[1.2] tracking-[-1.2px] font-semibold mb-2 line-clamp-2`}>
+            {discoverRecommendation.title}
           </p>
-          <p className={`font-sans ${isMobile ? 'text-[12px]' : 'text-[14px]'} text-white/70 leading-[1.2] text-center`}>
-            — {quote.author}
+          {/* Description */}
+          <p className={`font-sans ${isMobile ? 'text-[12px]' : 'text-[13px]'} text-white/80 leading-[1.4] line-clamp-2`}>
+            {discoverRecommendation.description}
           </p>
         </div>
-      </div>
+      </Link>
     );
   };
   
@@ -1424,12 +1410,6 @@ export default function Dashboard() {
       return ['program_checkin', 'goal', 'track'];
     }
     
-    // WEEKEND LOGIC - Show quote instead of track prompt
-    // No daily check-ins on weekends, so show relaxing content
-    if (isWeekend) {
-      return ['goal', 'quote'];
-    }
-    
     // FIRST DAY LOGIC
     if (isFirstDay) {
       // First day + Morning window still open (7am-12pm): Prompt - Goal - Track
@@ -1448,14 +1428,12 @@ export default function Dashboard() {
     
     // NORMAL DAYS LOGIC
     // Check-in active (morning/evening/weekly): Check-In - Goal - Track Prompt
-    // (Quotes NOT shown when check-in exists)
     if (hasActivePrompt) {
       return ['prompt', 'goal', 'track'];
     }
     
-    // No check-in active: Goal - Track Prompt - Quote
-    // (Status tile removed permanently)
-    return ['goal', 'track', 'quote'];
+    // No check-in active: Goal - Track Prompt - Discover
+    return ['goal', 'track', 'discover'];
   };
   
   // Render a card by type
@@ -1465,8 +1443,8 @@ export default function Dashboard() {
         return renderPromptCard(isMobile);
       case 'goal':
         return renderGoalCard(isMobile);
-      case 'quote':
-        return renderQuoteCard(isMobile);
+      case 'discover':
+        return renderDiscoverCard(isMobile);
       case 'status':
         return renderStatusCard(isMobile);
       case 'welcome':

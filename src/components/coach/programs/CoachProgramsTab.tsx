@@ -751,6 +751,23 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     />
                   </div>
 
+                  {/* Daily Prompt */}
+                  <div>
+                    <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+                      Daily Prompt
+                    </label>
+                    <textarea
+                      value={dayFormData.dailyPrompt}
+                      onChange={(e) => setDayFormData({ ...dayFormData, dailyPrompt: e.target.value })}
+                      placeholder="Enter a motivational message or tip for this day..."
+                      rows={3}
+                      className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
+                    />
+                    <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mt-1">
+                      This message will appear as a card on the user&apos;s home page for this day
+                    </p>
+                  </div>
+
                   {/* Tasks */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
