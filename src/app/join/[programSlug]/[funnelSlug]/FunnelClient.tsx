@@ -5,7 +5,20 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { Funnel, FunnelStep, FunnelStepConfig } from '@/types';
+import type { 
+  Funnel, 
+  FunnelStep, 
+  FunnelStepConfig,
+  FunnelStepConfigQuestion,
+  FunnelStepConfigSignup,
+  FunnelStepConfigPayment,
+  FunnelStepConfigGoal,
+  FunnelStepConfigIdentity,
+  FunnelStepConfigAnalyzing,
+  FunnelStepConfigPlanReveal,
+  FunnelStepConfigInfo,
+  FunnelStepConfigSuccess,
+} from '@/types';
 
 // Step components (to be created)
 import { QuestionStep } from '@/components/funnel/steps/QuestionStep';
@@ -300,13 +313,13 @@ export default function FunnelClient({
 
     switch (currentStep.type) {
       case 'question':
-        return <QuestionStep {...commonProps} config={stepConfig.config} />;
+        return <QuestionStep {...commonProps} config={stepConfig.config as FunnelStepConfigQuestion} />;
       
       case 'signup':
         return (
           <SignupStep
             {...commonProps}
-            config={stepConfig.config}
+            config={stepConfig.config as FunnelStepConfigSignup}
             hostname={hostname}
             flowSessionId={sessionId || ''}
           />
@@ -316,29 +329,29 @@ export default function FunnelClient({
         return (
           <PaymentStep
             {...commonProps}
-            config={stepConfig.config}
+            config={stepConfig.config as FunnelStepConfigPayment}
             skipPayment={skipPayment}
           />
         );
       
       case 'goal_setting':
-        return <GoalStep {...commonProps} config={stepConfig.config} />;
+        return <GoalStep {...commonProps} config={stepConfig.config as FunnelStepConfigGoal} />;
       
       case 'identity':
-        return <IdentityStep {...commonProps} config={stepConfig.config} />;
+        return <IdentityStep {...commonProps} config={stepConfig.config as FunnelStepConfigIdentity} />;
       
       case 'analyzing':
-        return <AnalyzingStep {...commonProps} config={stepConfig.config} />;
+        return <AnalyzingStep {...commonProps} config={stepConfig.config as FunnelStepConfigAnalyzing} />;
       
       case 'plan_reveal':
       case 'transformation':
-        return <PlanRevealStep {...commonProps} config={stepConfig.config} />;
+        return <PlanRevealStep {...commonProps} config={stepConfig.config as FunnelStepConfigPlanReveal} />;
       
       case 'info':
-        return <InfoStep {...commonProps} config={stepConfig.config} />;
+        return <InfoStep {...commonProps} config={stepConfig.config as FunnelStepConfigInfo} />;
       
       case 'success':
-        return <SuccessStep {...commonProps} config={stepConfig.config} />;
+        return <SuccessStep {...commonProps} config={stepConfig.config as FunnelStepConfigSuccess} />;
       
       default:
         return (

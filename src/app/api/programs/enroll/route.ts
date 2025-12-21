@@ -98,7 +98,7 @@ async function findOrCreateSquad(
       image: program.coverImageUrl || undefined,
       squad_id: squadRef.id,
       created_by_id: userId,
-    });
+    } as Record<string, unknown>);
     await channel.create();
     
     // Update squad with chat channel ID
@@ -226,7 +226,7 @@ async function createCoachingRelationship(
       members: [userId, coachId],
       created_by_id: userId,
       name: `${clerkUser.firstName || 'Client'} - Coaching`,
-    });
+    } as Record<string, unknown>);
     await channel.create();
     
     console.log(`[PROGRAM_ENROLL] Created coaching chat channel ${chatChannelId}`);

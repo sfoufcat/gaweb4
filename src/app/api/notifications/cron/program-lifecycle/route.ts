@@ -121,7 +121,7 @@ async function handleCronRequest(request: NextRequest) {
         const squad = squadDoc.data() as Squad;
 
         // Send final closing message
-        await sendSquadClosingMessage(squad.chatChannelId);
+        await sendSquadClosingMessage(squad.chatChannelId ?? undefined);
 
         // Close the squad
         await squadDoc.ref.update({

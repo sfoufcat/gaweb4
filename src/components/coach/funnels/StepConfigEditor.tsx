@@ -15,7 +15,7 @@ interface StepConfigEditorProps {
 
 export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProps) {
   const [config, setConfig] = useState<Record<string, unknown>>(
-    (step.config as { config: Record<string, unknown> })?.config || {}
+    ((step.config as unknown) as { config: Record<string, unknown> })?.config || {}
   );
   const [isSaving, setIsSaving] = useState(false);
 

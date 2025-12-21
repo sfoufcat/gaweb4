@@ -89,7 +89,7 @@ async function findOrCreateSquad(
       image: program.coverImageUrl || undefined,
       squad_id: squadRef.id,
       created_by_id: userId,
-    });
+    } as Record<string, unknown>);
     await channel.create();
     
     await squadRef.update({ chatChannelId: channelId });
@@ -193,7 +193,7 @@ async function createCoachingRelationship(
       members: [userId, coachId],
       created_by_id: userId,
       name: `${clerkUser.firstName || 'Client'} - Coaching`,
-    });
+    } as Record<string, unknown>);
     await channel.create();
   } catch (chatError) {
     console.error(`[VERIFY_PAYMENT] Failed to create coaching chat:`, chatError);

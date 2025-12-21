@@ -137,7 +137,6 @@ export default async function FunnelPage({ params, searchParams }: FunnelPagePro
       branding={{
         logoUrl,
         appTitle,
-        primaryColor: branding.primaryColor,
       }}
       inviteCode={inviteCode}
       validatedInvite={validatedInvite}

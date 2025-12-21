@@ -23,7 +23,7 @@ export function AnalyzingStep({
   data,
 }: AnalyzingStepProps) {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
-  const messages = config.messages?.length ? config.messages : DEFAULT_MESSAGES;
+  const messages: string[] = config.messages?.length ? config.messages : DEFAULT_MESSAGES;
   const duration = config.durationMs || 3000;
 
   useEffect(() => {
@@ -68,18 +68,20 @@ export function AnalyzingStep({
       </motion.div>
 
       {/* Animated message */}
-      <AnimatePresence mode="wait">
-        <motion.p
-          key={currentMessageIndex}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.3 }}
-          className="text-text-secondary text-lg text-center"
-        >
-          {messages[currentMessageIndex]}
-        </motion.p>
-      </AnimatePresence>
+      <div>
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={currentMessageIndex}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+            className="text-text-secondary text-lg text-center"
+          >
+            {String(messages[currentMessageIndex])}
+          </motion.p>
+        </AnimatePresence>
+      </div>
 
       {/* Progress dots */}
       <div className="flex gap-2 mt-8">
@@ -98,7 +100,7 @@ export function AnalyzingStep({
       </div>
 
       {/* Summary of what we're analyzing (optional) */}
-      {data.goal && (
+      {typeof data.goal === 'string' && data.goal && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -106,7 +108,7 @@ export function AnalyzingStep({
           className="mt-8 p-4 bg-[#faf8f6] rounded-xl text-center"
         >
           <p className="text-sm text-text-muted">Your goal:</p>
-          <p className="text-text-primary font-medium">{String(data.goal)}</p>
+          <p className="text-text-primary font-medium">{data.goal}</p>
         </motion.div>
       )}
     </div>
