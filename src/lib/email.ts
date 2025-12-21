@@ -19,26 +19,27 @@ export async function sendWelcomeEmail({
   email,
   firstName,
   userId,
+  organizationId,
 }: {
   email: string;
   firstName?: string;
   userId: string;
+  organizationId?: string | null;
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  // Skip if Resend is not configured
-  if (!isResendConfigured() || !resend) {
-    console.log('[WELCOME_EMAIL] Skipping - Resend not configured');
-    return { success: false, error: 'Resend not configured' };
-  }
-
   if (!email) {
     console.log('[WELCOME_EMAIL] Skipping - No email provided');
     return { success: false, error: 'No email provided' };
   }
 
+  // Get tenant branding for customization
+  const appTitle = await getAppTitleForEmail(organizationId || null);
+  const logoUrl = await getLogoUrlForEmail(organizationId || null);
+  const teamName = appTitle === 'GrowthAddicts' ? 'Growth Addicts' : appTitle;
+
   const name = firstName || 'there';
   const dashboardUrl = `${APP_URL}/`;
 
-  const subject = 'Welcome to Growth Addicts: Your Transformation Starts Today 🚀';
+  const subject = `Welcome to ${teamName}: Your Transformation Starts Today 🚀`;
 
   const htmlBody = `
 <!DOCTYPE html>
@@ -50,12 +51,12 @@ export async function sendWelcomeEmail({
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #2c2520; max-width: 600px; margin: 0 auto; padding: 20px;">
   <div style="text-align: center; margin-bottom: 30px;">
-    <img src="${APP_URL}/logo.jpg" alt="Growth Addicts" style="width: 60px; height: 60px; border-radius: 12px;">
+    <img src="${logoUrl}" alt="${teamName}" style="width: 60px; height: 60px; border-radius: 12px;">
   </div>
   
   <p style="font-size: 18px; margin-bottom: 20px;">Hey ${name},</p>
   
-  <p style="margin-bottom: 20px;"><strong>Welcome to Growth Addicts</strong>. We're genuinely excited you're here.</p>
+  <p style="margin-bottom: 20px;"><strong>Welcome to ${teamName}</strong>. We're genuinely excited you're here.</p>
   
   <p style="margin-bottom: 20px;">You've just taken the first step into a system built to help you grow consistently, without burning out or losing momentum.</p>
   
@@ -79,7 +80,7 @@ export async function sendWelcomeEmail({
   
   <div style="text-align: center; margin: 30px 0;">
     <a href="${dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #2c2520 0%, #3d342d 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 32px; font-weight: bold; font-size: 16px;">
-      👉 Start your Growth Addicts journey
+      👉 Start your ${teamName} journey
     </a>
   </div>
   
@@ -89,12 +90,12 @@ export async function sendWelcomeEmail({
   
   <p style="margin-bottom: 30px;">Welcome to the family. ❤️</p>
   
-  <p style="color: #666;">The Growth Addicts Team</p>
+  <p style="color: #666;">The ${teamName} Team</p>
   
   <hr style="border: none; border-top: 1px solid #e1ddd8; margin: 30px 0;">
   
   <p style="font-size: 12px; color: #999; text-align: center;">
-    © ${new Date().getFullYear()} Growth Addicts. All rights reserved.
+    © ${new Date().getFullYear()} ${teamName}. All rights reserved.
   </p>
 </body>
 </html>
@@ -103,7 +104,7 @@ export async function sendWelcomeEmail({
   const textBody = `
 Hey ${name},
 
-Welcome to Growth Addicts. We're genuinely excited you're here.
+Welcome to ${teamName}. We're genuinely excited you're here.
 
 You've just taken the first step into a system built to help you grow consistently, without burning out or losing momentum.
 
@@ -123,7 +124,7 @@ Your login details are the same as the ones you used to sign up.
 
 You can jump into your dashboard here:
 
-👉 Start your Growth Addicts journey
+👉 Start your ${teamName} journey
 ${dashboardUrl}
 
 If you ever need support, we're always here for you.
@@ -132,32 +133,33 @@ Let's make the next 12 months the most transformative of your life.
 
 Welcome to the family. ❤️
 
-The Growth Addicts Team
+The ${teamName} Team
   `.trim();
 
-  try {
-    const result = await resend.emails.send({
-      from: EMAIL_FROM,
-      to: email,
-      subject,
-      html: htmlBody,
-      text: textBody,
-      headers: {
-        'X-Entity-Ref-ID': `welcome-${userId}`,
-      },
-    });
+  const result = await sendTenantEmail({
+    to: email,
+    subject,
+    html: htmlBody,
+    text: textBody,
+    organizationId,
+    userId,
+    headers: {
+      'X-Entity-Ref-ID': `welcome-${userId}`,
+    },
+  });
 
+  if (result.success) {
     console.log('[WELCOME_EMAIL] Sent successfully:', {
       userId,
       to: email,
-      messageId: result.data?.id,
+      messageId: result.messageId,
+      isWhitelabel: result.sender.isWhitelabel,
     });
-
-    return { success: true, messageId: result.data?.id };
-  } catch (error) {
-    console.error('[WELCOME_EMAIL] Failed to send:', { userId, error });
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  } else {
+    console.error('[WELCOME_EMAIL] Failed to send:', { userId, error: result.error });
   }
+
+  return { success: result.success, messageId: result.messageId, error: result.error };
 }
 
 /**
@@ -169,27 +171,28 @@ export async function sendAbandonedEmail({
   firstName,
   userId,
   resumeUrl,
+  organizationId,
 }: {
   email: string;
   firstName?: string;
   userId: string;
   resumeUrl?: string;
+  organizationId?: string | null;
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  // Skip if Resend is not configured
-  if (!isResendConfigured() || !resend) {
-    console.log('[ABANDONED_EMAIL] Skipping - Resend not configured');
-    return { success: false, error: 'Resend not configured' };
-  }
-
   if (!email) {
     console.log('[ABANDONED_EMAIL] Skipping - No email provided');
     return { success: false, error: 'No email provided' };
   }
 
+  // Get tenant branding for customization
+  const appTitle = await getAppTitleForEmail(organizationId || null);
+  const logoUrl = await getLogoUrlForEmail(organizationId || null);
+  const teamName = appTitle === 'GrowthAddicts' ? 'Growth Addicts' : appTitle;
+
   const name = firstName || 'there';
   const planUrl = resumeUrl || `${APP_URL}/onboarding/plan`;
 
-  const subject = 'Your Growth Addicts plan is ready: complete your signup ⚡';
+  const subject = `Your ${teamName} plan is ready: complete your signup ⚡`;
   const htmlBody = `
 <!DOCTYPE html>
 <html>
@@ -200,12 +203,12 @@ export async function sendAbandonedEmail({
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #2c2520; max-width: 600px; margin: 0 auto; padding: 20px;">
   <div style="text-align: center; margin-bottom: 30px;">
-    <img src="${APP_URL}/logo.jpg" alt="Growth Addicts" style="width: 60px; height: 60px; border-radius: 12px;">
+    <img src="${logoUrl}" alt="${teamName}" style="width: 60px; height: 60px; border-radius: 12px;">
   </div>
   
   <p style="font-size: 18px; margin-bottom: 20px;">Hey ${name},</p>
   
-  <p style="margin-bottom: 20px;">You started building your plan inside Growth Addicts, and you were so close to unlocking everything.</p>
+  <p style="margin-bottom: 20px;">You started building your plan inside ${teamName}, and you were so close to unlocking everything.</p>
   
   <p style="margin-bottom: 20px;"><strong>Your personalized setup is saved and ready.</strong></p>
   
@@ -215,7 +218,7 @@ export async function sendAbandonedEmail({
   
   <div style="text-align: center; margin: 30px 0;">
     <a href="${planUrl}" style="display: inline-block; background: linear-gradient(135deg, #2c2520 0%, #3d342d 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 32px; font-weight: bold; font-size: 16px;">
-      👉 Resume your Growth Addicts plan
+      👉 Resume your ${teamName} plan
     </a>
   </div>
   
@@ -235,12 +238,12 @@ export async function sendAbandonedEmail({
   <p style="margin-bottom: 30px;">If you run into anything while joining, reply directly to this email. We're here to help.</p>
   
   <p style="margin-bottom: 10px;">See you inside,</p>
-  <p style="color: #666;">The Growth Addicts Team</p>
+  <p style="color: #666;">The ${teamName} Team</p>
   
   <hr style="border: none; border-top: 1px solid #e1ddd8; margin: 30px 0;">
   
   <p style="font-size: 12px; color: #999; text-align: center;">
-    © ${new Date().getFullYear()} Growth Addicts. All rights reserved.
+    © ${new Date().getFullYear()} ${teamName}. All rights reserved.
   </p>
 </body>
 </html>
@@ -249,7 +252,7 @@ export async function sendAbandonedEmail({
   const textBody = `
 Hey ${name},
 
-You started building your plan inside Growth Addicts, and you were so close to unlocking everything.
+You started building your plan inside ${teamName}, and you were so close to unlocking everything.
 
 Your personalized setup is saved and ready.
 
@@ -257,7 +260,7 @@ All that's left is to complete your membership.
 
 Here's the link to finish your signup:
 
-👉 Resume your Growth Addicts plan
+👉 Resume your ${teamName} plan
 ${planUrl}
 
 Why it's worth coming back (right now):
@@ -274,32 +277,33 @@ Now take the final step so we can guide you through the rest.
 If you run into anything while joining, reply directly to this email. We're here to help.
 
 See you inside,
-The Growth Addicts Team
+The ${teamName} Team
   `.trim();
 
-  try {
-    const result = await resend.emails.send({
-      from: EMAIL_FROM,
-      to: email,
-      subject,
-      html: htmlBody,
-      text: textBody,
-      headers: {
-        'X-Entity-Ref-ID': `abandoned-${userId}`,
-      },
-    });
+  const result = await sendTenantEmail({
+    to: email,
+    subject,
+    html: htmlBody,
+    text: textBody,
+    organizationId,
+    userId,
+    headers: {
+      'X-Entity-Ref-ID': `abandoned-${userId}`,
+    },
+  });
 
+  if (result.success) {
     console.log('[ABANDONED_EMAIL] Sent successfully:', {
       userId,
       to: email,
-      messageId: result.data?.id,
+      messageId: result.messageId,
+      isWhitelabel: result.sender.isWhitelabel,
     });
-
-    return { success: true, messageId: result.data?.id };
-  } catch (error) {
-    console.error('[ABANDONED_EMAIL] Failed to send:', { userId, error });
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  } else {
+    console.error('[ABANDONED_EMAIL] Failed to send:', { userId, error: result.error });
   }
+
+  return { success: result.success, messageId: result.messageId, error: result.error };
 }
 
 /**

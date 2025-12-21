@@ -137,6 +137,9 @@ export interface FirebaseUser extends ClerkUser {
   // Add any additional fields specific to your Firebase users
   bio?: string;
   preferences?: UserPreferences;
+  
+  // Organization - synced from Clerk webhook
+  primaryOrganizationId?: string; // User's primary organization ID
   identity?: string;
   identitySetAt?: string;
   identityHistory?: IdentityHistoryEntry[];

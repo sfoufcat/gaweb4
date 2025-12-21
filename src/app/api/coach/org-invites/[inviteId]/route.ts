@@ -27,7 +27,7 @@ export async function GET(
       return NextResponse.json({ error: 'Invite not in your organization' }, { status: 403 });
     }
 
-    return NextResponse.json({ invite: { id: inviteDoc.id, ...invite } });
+    return NextResponse.json({ invite: { ...invite, id: inviteDoc.id } });
   } catch (error) {
     console.error('[COACH_INVITE_GET]', error);
     return NextResponse.json({ error: 'Internal Error' }, { status: 500 });

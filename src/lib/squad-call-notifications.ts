@@ -14,12 +14,10 @@
 
 import { adminDb } from './firebase-admin';
 import { notifyUser } from './notifications';
-import { resend, isResendConfigured } from './resend';
+import { sendTenantEmail, APP_BASE_URL, getAppTitleForEmail } from './email-sender';
 import type { FirebaseUser, SquadCallJobType, SquadCallScheduledJob, NotificationType } from '@/types';
 
-// Email sender configuration
-const EMAIL_FROM = 'Growth Addicts <hi@updates.growthaddicts.com>';
-const APP_URL = process.env.APP_BASE_URL || 'https://pro.growthaddicts.com';
+const APP_URL = APP_BASE_URL;
 
 // ============================================================================
 // Scheduling Functions

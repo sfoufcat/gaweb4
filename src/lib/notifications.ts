@@ -9,7 +9,7 @@
 
 import { adminDb } from './firebase-admin';
 import type { NotificationType, Notification, FirebaseUser } from '@/types';
-import { resend, isResendConfigured } from './resend';
+import { sendTenantEmail, APP_BASE_URL, getAppTitleForEmail } from './email-sender';
 import { getTodayInTimezone, DEFAULT_TIMEZONE } from './timezone';
 
 export interface NotifyUserInput {
@@ -54,12 +54,6 @@ async function sendNotificationEmail({
     return;
   }
 
-  // Skip if Resend is not configured
-  if (!isResendConfigured() || !resend) {
-    console.log('[NOTIFICATION_EMAIL] Skipping - Resend not configured');
-    return;
-  }
-
   // Check user's email preferences
   const emailPrefs = user.emailPreferences;
   if (emailPrefs) {
@@ -87,8 +81,12 @@ async function sendNotificationEmail({
   }
 
   const name = friendlyName(user);
-  const baseUrl = process.env.APP_BASE_URL || 'https://pro.growthaddicts.com';
-  const url = actionRoute ? `${baseUrl}${actionRoute}` : baseUrl;
+  const url = actionRoute ? `${APP_BASE_URL}${actionRoute}` : APP_BASE_URL;
+  
+  // Get tenant branding for customization
+  const organizationId = user.primaryOrganizationId || null;
+  const appTitle = await getAppTitleForEmail(organizationId);
+  const teamName = appTitle === 'GrowthAddicts' ? 'Growth Addicts' : appTitle;
 
   let subject: string;
   let textBody: string;
@@ -98,7 +96,7 @@ async function sendNotificationEmail({
       subject = 'Your morning check-in is ready 🌅';
       textBody = `Hi ${name},
 
-Your Growth Addicts morning check-in is ready.
+Your ${teamName} morning check-in is ready.
 
 Take 2–3 minutes to check in and set your focus for today.
 
@@ -106,7 +104,7 @@ Start your morning check-in:
 ${url}
 
 Keep going,
-The Growth Addicts Team`.trim();
+The ${teamName} Team`.trim();
       break;
 
     case 'evening_checkin_complete_tasks':
@@ -121,7 +119,7 @@ Complete your evening check-in:
 ${url}
 
 Proud of your consistency,
-The Growth Addicts Team`.trim();
+The ${teamName} Team`.trim();
       break;
 
     case 'evening_checkin_incomplete_tasks':
@@ -136,7 +134,7 @@ Complete your evening check-in:
 ${url}
 
 One step at a time,
-The Growth Addicts Team`.trim();
+The ${teamName} Team`.trim();
       break;
 
     case 'weekly_reflection':
@@ -152,7 +150,7 @@ Start your weekly reflection:
 ${url}
 
 On your side,
-The Growth Addicts Team`.trim();
+The ${teamName} Team`.trim();
       break;
 
     case 'squad_call_24h':
@@ -164,30 +162,33 @@ The Growth Addicts Team`.trim();
 
     default:
       // Fallback: generic notification email using title/body
-      subject = title || 'You have a new update in Growth Addicts';
+      subject = title || `You have a new update in ${teamName}`;
       textBody = `Hi ${name},
 
-${body || 'You have a new notification in Growth Addicts.'}
+${body || `You have a new notification in ${teamName}.`}
 
-Open Growth Addicts:
+Open ${teamName}:
 ${url}
 
-The Growth Addicts Team`.trim();
+The ${teamName} Team`.trim();
   }
 
-  // Send via Resend
-  const result = await resend.emails.send({
-    from: 'Growth Addicts <hi@updates.growthaddicts.com>',
+  // Send via tenant-aware email sender
+  const result = await sendTenantEmail({
     to: user.email,
     subject,
+    html: `<pre style="font-family: system-ui, sans-serif; white-space: pre-wrap;">${textBody}</pre>`,
     text: textBody,
+    organizationId,
+    userId: user.id,
   });
 
   console.log('[NOTIFICATION_EMAIL] Sent:', {
     userId: user.id,
     type,
     to: user.email,
-    messageId: result.data?.id,
+    messageId: result.messageId,
+    isWhitelabel: result.sender.isWhitelabel,
   });
 }
 
