@@ -32,12 +32,24 @@ export interface TenantBrandingData {
 }
 
 /**
+ * Coaching promo data stored in Edge Config
+ * Separate from branding (visual identity) - this is feature/content config
+ */
+export interface TenantCoachingPromoData {
+  title: string;
+  subtitle: string;
+  imageUrl: string;
+  isVisible: boolean;
+}
+
+/**
  * Complete tenant data stored in Edge Config
  */
 export interface TenantConfigData {
   organizationId: string;
   subdomain: string;
   branding: TenantBrandingData;
+  coachingPromo?: TenantCoachingPromoData;
   verifiedCustomDomain?: string;
   updatedAt: string;
 }
@@ -51,6 +63,16 @@ export const DEFAULT_TENANT_BRANDING: TenantBrandingData = {
   appTitle: DEFAULT_APP_TITLE,
   colors: DEFAULT_BRANDING_COLORS,
   menuTitles: DEFAULT_MENU_TITLES,
+};
+
+/**
+ * Default coaching promo for new organizations or when Edge Config is empty
+ */
+export const DEFAULT_TENANT_COACHING_PROMO: TenantCoachingPromoData = {
+  title: 'Get your personal coach',
+  subtitle: 'Work with a performance psychologist 1:1',
+  imageUrl: 'https://images.unsplash.com/photo-1580518324671-c2f0833a3af3?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  isVisible: true,
 };
 
 // =============================================================================
@@ -204,7 +226,8 @@ export function buildTenantConfigData(
   organizationId: string,
   subdomain: string,
   branding?: Partial<TenantBrandingData>,
-  verifiedCustomDomain?: string
+  verifiedCustomDomain?: string,
+  coachingPromo?: Partial<TenantCoachingPromoData>
 ): TenantConfigData {
   return {
     organizationId,
@@ -216,6 +239,12 @@ export function buildTenantConfigData(
       colors: branding?.colors ?? DEFAULT_TENANT_BRANDING.colors,
       menuTitles: branding?.menuTitles ?? DEFAULT_TENANT_BRANDING.menuTitles,
     },
+    coachingPromo: coachingPromo ? {
+      title: coachingPromo.title ?? DEFAULT_TENANT_COACHING_PROMO.title,
+      subtitle: coachingPromo.subtitle ?? DEFAULT_TENANT_COACHING_PROMO.subtitle,
+      imageUrl: coachingPromo.imageUrl ?? DEFAULT_TENANT_COACHING_PROMO.imageUrl,
+      isVisible: coachingPromo.isVisible ?? DEFAULT_TENANT_COACHING_PROMO.isVisible,
+    } : undefined,
     verifiedCustomDomain,
     updatedAt: new Date().toISOString(),
   };
@@ -228,9 +257,10 @@ export async function syncTenantToEdgeConfig(
   organizationId: string,
   subdomain: string,
   branding?: Partial<TenantBrandingData>,
-  verifiedCustomDomain?: string
+  verifiedCustomDomain?: string,
+  coachingPromo?: Partial<TenantCoachingPromoData>
 ): Promise<void> {
-  const data = buildTenantConfigData(organizationId, subdomain, branding, verifiedCustomDomain);
+  const data = buildTenantConfigData(organizationId, subdomain, branding, verifiedCustomDomain, coachingPromo);
   
   const items: EdgeConfigItem[] = [
     { operation: 'upsert', key: getSubdomainKey(subdomain), value: data },

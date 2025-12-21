@@ -101,7 +101,8 @@ export default async function RootLayout({
         >
           <ThemeProvider>
           <BrandingProvider 
-            initialBranding={ssrBranding.branding} 
+            initialBranding={ssrBranding.branding}
+            initialCoachingPromo={ssrBranding.coachingPromo}
             initialIsDefault={ssrBranding.isDefault}
           >
           <SquadProvider>

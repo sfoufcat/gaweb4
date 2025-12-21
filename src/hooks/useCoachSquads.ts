@@ -23,9 +23,8 @@ interface UseCoachSquadsReturn {
  * For non-coaches, returns empty array and isCoach=false
  * 
  * Multi-tenancy support:
- * - For super_coach (orgRole === 'super_coach'): calls /api/coach/org-squads (returns all org squads)
- * - For global coaches (role === 'coach'): calls /api/coach/squads (returns squads where coachId === userId)
- * - For regular org coaches (orgRole === 'coach'): calls /api/coach/squads (returns only squads they coach)
+ * - Full access coaches (global coach OR super_coach): calls /api/coach/org-squads (returns all org squads)
+ * - Limited org coaches (orgRole === 'coach' without full access): calls /api/coach/squads (returns only squads they coach)
  */
 export function useCoachSquads(): UseCoachSquadsReturn {
   const { sessionClaims, isLoaded } = useAuth();
@@ -41,8 +40,10 @@ export function useCoachSquads(): UseCoachSquadsReturn {
     primaryOrganizationId?: string;
   } | undefined;
 
-  // Check for global coach role
-  const isGlobalCoach = publicMetadata?.role === 'coach';
+  // Check for global roles
+  const role = publicMetadata?.role;
+  const isGlobalCoach = role === 'coach';
+  const isAdmin = role === 'admin' || role === 'super_admin';
   
   // Check for org-level coach roles
   const orgRole = publicMetadata?.orgRole;
@@ -50,12 +51,15 @@ export function useCoachSquads(): UseCoachSquadsReturn {
   const isRegularOrgCoach = orgRole === 'coach';
   const isOrgLevelCoach = isSuperCoach || isRegularOrgCoach;
   
-  // Determine if user has an organization context
-  const organizationId = publicMetadata?.organizationId || publicMetadata?.primaryOrganizationId;
-  const hasOrgContext = !!organizationId;
+  // Determine access level (same logic as coach dashboard)
+  // Full access: global coach role, super_coach orgRole, admin, or super_admin
+  const hasFullAccess = isGlobalCoach || isAdmin || isSuperCoach;
+  
+  // Limited org coach: has orgRole=coach but NOT full access
+  const isLimitedOrgCoach = !hasFullAccess && isRegularOrgCoach;
   
   // User is considered a coach if they have either global or org-level coach access
-  const isCoach = isGlobalCoach || isOrgLevelCoach;
+  const isCoach = isGlobalCoach || isOrgLevelCoach || isAdmin;
 
   const fetchCoachSquads = useCallback(async () => {
     // Not loaded yet - don't fetch
@@ -74,12 +78,10 @@ export function useCoachSquads(): UseCoachSquadsReturn {
       setIsLoading(true);
       setError(null);
 
-      // Choose endpoint based on coach type:
-      // - Super coaches with org context: use /api/coach/org-squads (returns all org squads)
-      // - Regular org coaches: use /api/coach/squads (returns only squads they are assigned to coach)
-      // - Global coaches: use /api/coach/squads (returns only squads where coachId === userId)
-      const shouldSeeAllOrgSquads = isSuperCoach && hasOrgContext;
-      const endpoint = shouldSeeAllOrgSquads ? '/api/coach/org-squads' : '/api/coach/squads';
+      // Choose endpoint based on access level:
+      // - Limited org coaches: use /api/coach/squads (returns only squads they coach)
+      // - Full access coaches (global coach OR super_coach): use /api/coach/org-squads (returns all org squads)
+      const endpoint = isLimitedOrgCoach ? '/api/coach/squads' : '/api/coach/org-squads';
       
       const response = await fetch(endpoint);
       if (!response.ok) {
@@ -100,7 +102,7 @@ export function useCoachSquads(): UseCoachSquadsReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoaded, isCoach, isSuperCoach, hasOrgContext]);
+  }, [isLoaded, isCoach, isLimitedOrgCoach]);
 
   useEffect(() => {
     fetchCoachSquads();

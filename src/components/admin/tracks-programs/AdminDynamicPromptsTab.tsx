@@ -93,9 +93,12 @@ export function AdminDynamicPromptsTab({ apiBasePath = '/api/admin/dynamic-promp
     }
   }, [apiBasePath]);
 
+  // Derive the tracks API path from the prompts API path
+  const tracksApiPath = apiBasePath.replace('/dynamic-prompts', '/tracks').replace('/org-dynamic-prompts', '/org-tracks');
+
   const fetchTracks = useCallback(async () => {
     try {
-      const response = await fetch('/api/admin/tracks');
+      const response = await fetch(tracksApiPath);
       if (response.ok) {
         const data = await response.json();
         const trackMap: Record<string, string> = {};
@@ -107,7 +110,7 @@ export function AdminDynamicPromptsTab({ apiBasePath = '/api/admin/dynamic-promp
     } catch (err) {
       console.error('Error fetching tracks:', err);
     }
-  }, []);
+  }, [tracksApiPath]);
 
   useEffect(() => {
     fetchPrompts();
@@ -163,8 +166,8 @@ export function AdminDynamicPromptsTab({ apiBasePath = '/api/admin/dynamic-promp
       setSaveError(null);
 
       const url = editingPrompt 
-        ? `/api/admin/dynamic-prompts/${editingPrompt.id}`
-        : '/api/admin/dynamic-prompts';
+        ? `${apiBasePath}/${editingPrompt.id}`
+        : apiBasePath;
       
       const payload = {
         ...formData,
@@ -202,7 +205,7 @@ export function AdminDynamicPromptsTab({ apiBasePath = '/api/admin/dynamic-promp
       setDeleting(true);
       setSaveError(null);
 
-      const response = await fetch(`/api/admin/dynamic-prompts/${editingPrompt.id}`, {
+      const response = await fetch(`${apiBasePath}/${editingPrompt.id}`, {
         method: 'DELETE',
       });
 

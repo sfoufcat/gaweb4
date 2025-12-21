@@ -3,6 +3,10 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import type { OrgBranding, OrgBrandingColors, OrgMenuTitles } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES } from '@/types';
+import { 
+  DEFAULT_TENANT_COACHING_PROMO, 
+  type TenantCoachingPromoData 
+} from '@/lib/tenant-edge-config';
 
 /**
  * Calculate relative luminance of a hex color
@@ -51,6 +55,8 @@ function isColorDark(hex: string): boolean {
 interface BrandingContextType {
   // Current active branding (either from org or default)
   branding: OrgBranding;
+  // Coaching promo settings (separate from branding)
+  coachingPromo: TenantCoachingPromoData;
   // Whether branding is loading
   isLoading: boolean;
   // Whether using default branding (no custom branding loaded)
@@ -116,6 +122,11 @@ interface BrandingProviderProps {
    */
   initialBranding?: OrgBranding | null;
   /**
+   * Initial coaching promo from SSR (set by middleware from Edge Config).
+   * Prevents flash of coaching promo that should be hidden.
+   */
+  initialCoachingPromo?: TenantCoachingPromoData | null;
+  /**
    * Whether the initial branding is the default (no custom branding).
    * Used to skip unnecessary client-side fetches.
    */
@@ -125,11 +136,16 @@ interface BrandingProviderProps {
 export function BrandingProvider({ 
   children, 
   initialBranding,
+  initialCoachingPromo,
   initialIsDefault = true,
 }: BrandingProviderProps) {
   // Initialize with SSR branding if provided, otherwise default
   const [branding, setBranding] = useState<OrgBranding>(
     initialBranding || getDefaultBranding()
+  );
+  // Initialize coaching promo from SSR to prevent flash
+  const [coachingPromo, setCoachingPromo] = useState<TenantCoachingPromoData>(
+    initialCoachingPromo || DEFAULT_TENANT_COACHING_PROMO
   );
   const [isLoading, setIsLoading] = useState(false);
   const [isDefault, setIsDefault] = useState(initialIsDefault);
@@ -251,6 +267,7 @@ export function BrandingProvider({
     <BrandingContext.Provider
       value={{
         branding,
+        coachingPromo,
         isLoading,
         isDefault,
         isPreviewMode,
@@ -322,4 +339,13 @@ export function useMenuTitles() {
     // Helper for "My Squad" style usage
     mySquad: `My ${menuTitles.squad}`,
   };
+}
+
+/**
+ * Hook to get coaching promo settings
+ * Used to render or hide the coaching promo in chat sidebar
+ */
+export function useCoachingPromo() {
+  const { coachingPromo } = useBranding();
+  return coachingPromo;
 }

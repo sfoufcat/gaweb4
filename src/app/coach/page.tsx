@@ -245,12 +245,12 @@ export default function CoachPage() {
               <AdminSquadsTab 
                 currentUserRole={role || 'user'} 
                 apiEndpoint={
-                  // Super coach sees all org squads
-                  orgRole === 'super_coach'
-                    ? '/api/coach/org-squads'
-                    // Regular org coach or global coach sees only squads they coach
-                    : (role === 'coach' || orgRole === 'coach')
-                      ? '/api/coach/my-squads'
+                  // Limited org coaches (orgRole=coach without full access) see only coached squads
+                  isLimitedOrgCoach
+                    ? '/api/coach/my-squads'
+                    // Full access coaches (global coach role OR super_coach) see all org squads
+                    : (role === 'coach' || orgRole === 'super_coach')
+                      ? '/api/coach/org-squads'
                       // Admin/super_admin sees all squads
                       : '/api/admin/squads'
                 }
@@ -263,21 +263,21 @@ export default function CoachPage() {
           {/* Discover Content Tab - Uses org-scoped API for coaches */}
           <TabsContent value="discover">
             <AdminDiscoverTab 
-              apiBasePath={role === 'coach' ? '/api/coach/org-discover' : '/api/admin/discover'}
+              apiBasePath={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-discover' : '/api/admin/discover'}
             />
           </TabsContent>
 
           {/* Upgrade Forms Tab - Uses org-scoped API for coaches */}
           <TabsContent value="upgrade-forms">
             <AdminPremiumUpgradeFormsTab 
-              apiEndpoint={role === 'coach' ? '/api/coach/org-forms/premium-upgrade' : '/api/admin/premium-upgrade-forms'}
+              apiEndpoint={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-forms/premium-upgrade' : '/api/admin/premium-upgrade-forms'}
             />
           </TabsContent>
 
           {/* Coaching Intake Forms Tab - Uses org-scoped API for coaches */}
           <TabsContent value="coaching-forms">
             <AdminCoachingIntakeFormsTab 
-              apiEndpoint={role === 'coach' ? '/api/coach/org-forms/coaching-intake' : '/api/admin/coaching-intake-forms'}
+              apiEndpoint={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-forms/coaching-intake' : '/api/admin/coaching-intake-forms'}
             />
           </TabsContent>
 
@@ -285,7 +285,7 @@ export default function CoachPage() {
           <TabsContent value="quizzes">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
               <AdminQuizzesTab 
-                apiBasePath={role === 'coach' ? '/api/coach/org-quizzes' : '/api/admin/quizzes'}
+                apiBasePath={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-quizzes' : '/api/admin/quizzes'}
               />
             </div>
           </TabsContent>
@@ -293,9 +293,9 @@ export default function CoachPage() {
           {/* Tracks & Programs Tab */}
           <TabsContent value="tracks-programs">
             <AdminTracksAndProgramsTab 
-              tracksApiBasePath={role === 'coach' ? '/api/coach/org-tracks' : '/api/admin/tracks'}
-              programsApiBasePath={role === 'coach' ? '/api/coach/org-starter-programs' : '/api/admin/starter-programs'}
-              promptsApiBasePath={role === 'coach' ? '/api/coach/org-dynamic-prompts' : '/api/admin/dynamic-prompts'}
+              tracksApiBasePath={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-tracks' : '/api/admin/tracks'}
+              programsApiBasePath={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-starter-programs' : '/api/admin/starter-programs'}
+              promptsApiBasePath={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-dynamic-prompts' : '/api/admin/dynamic-prompts'}
             />
           </TabsContent>
 

@@ -24,6 +24,10 @@ import {
   DEFAULT_LOGO_URL, 
   DEFAULT_MENU_TITLES 
 } from '@/types';
+import { 
+  DEFAULT_TENANT_COACHING_PROMO,
+  type TenantCoachingPromoData,
+} from '@/lib/tenant-edge-config';
 
 // =============================================================================
 // TYPES
@@ -42,6 +46,7 @@ export interface TenantCookieData {
     colors: OrgBrandingColors;
     menuTitles: OrgMenuTitles;
   };
+  coachingPromo?: TenantCoachingPromoData;
 }
 
 /**
@@ -49,6 +54,7 @@ export interface TenantCookieData {
  */
 export interface ServerBranding {
   branding: OrgBranding;
+  coachingPromo: TenantCoachingPromoData;
   isDefault: boolean;
   isTenantMode: boolean;
   organizationId: string | null;
@@ -123,6 +129,7 @@ export async function getServerBranding(): Promise<ServerBranding> {
     // Platform mode or no tenant cookie - return default branding
     return {
       branding: getDefaultBranding(),
+      coachingPromo: DEFAULT_TENANT_COACHING_PROMO,
       isDefault: true,
       isTenantMode: false,
       organizationId: null,
@@ -152,8 +159,12 @@ export async function getServerBranding(): Promise<ServerBranding> {
     branding.logoUrl === DEFAULT_LOGO_URL &&
     branding.appTitle === DEFAULT_APP_TITLE;
   
+  // Get coaching promo from cookie, fallback to defaults if not present
+  const coachingPromo: TenantCoachingPromoData = tenantData.coachingPromo || DEFAULT_TENANT_COACHING_PROMO;
+  
   return {
     branding,
+    coachingPromo,
     isDefault: isActuallyDefault,
     isTenantMode: true,
     organizationId: tenantData.orgId,

@@ -104,7 +104,7 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
     try {
       setLoadingDays(true);
 
-      const response = await fetch(`/api/admin/starter-programs/${programId}`);
+      const response = await fetch(`${apiBasePath}/${programId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch program details');
       }
@@ -195,8 +195,8 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
       setSaveError(null);
 
       const url = editingProgram 
-        ? `/api/admin/starter-programs/${editingProgram.id}`
-        : '/api/admin/starter-programs';
+        ? `${apiBasePath}/${editingProgram.id}`
+        : apiBasePath;
       
       const response = await fetch(url, {
         method: editingProgram ? 'PUT' : 'POST',
@@ -232,7 +232,7 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
       setSaving(true);
       setSaveError(null);
 
-      const response = await fetch(`/api/admin/starter-programs/${selectedProgram.id}/days/${selectedDayIndex}`, {
+      const response = await fetch(`${apiBasePath}/${selectedProgram.id}/days/${selectedDayIndex}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dayFormData),
@@ -325,7 +325,7 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
     try {
       setDeletingProgramId(program.id);
       
-      const response = await fetch(`/api/admin/starter-programs/${program.id}`, {
+      const response = await fetch(`${apiBasePath}/${program.id}`, {
         method: 'DELETE',
       });
 

@@ -29,9 +29,9 @@ import { useCoachingData } from '@/hooks/useCoachingData';
 import { useCoachSquads } from '@/hooks/useCoachSquads';
 import { isAdmin } from '@/lib/admin-utils-shared';
 import type { UserRole } from '@/types';
-import type { OrgChannel, OrgCoachingPromo } from '@/lib/org-channels';
+import type { OrgChannel } from '@/lib/org-channels';
 import { formatDistanceToNow, format } from 'date-fns';
-import { useMenuTitles } from '@/contexts/BrandingContext';
+import { useMenuTitles, useCoachingPromo } from '@/contexts/BrandingContext';
 
 // Import Stream Chat default CSS
 import 'stream-chat-react/dist/css/v2/index.css';
@@ -692,8 +692,8 @@ function ChatContent({
   const [orgChannelUnreads, setOrgChannelUnreads] = useState<Record<string, number>>({});
   const [orgChannelLastMessages, setOrgChannelLastMessages] = useState<Record<string, Date | null>>({});
   
-  // Coaching promo settings (customizable by org coaches)
-  const [coachingPromo, setCoachingPromo] = useState<OrgCoachingPromo | null>(null);
+  // Get coaching promo from SSR context (prevents flash)
+  const coachingPromo = useCoachingPromo();
   
   // Fetch org channels for users in organizations
   useEffect(() => {
@@ -721,23 +721,6 @@ function ChatContent({
     };
 
     fetchOrgChannels();
-  }, []);
-  
-  // Fetch coaching promo settings
-  useEffect(() => {
-    const fetchCoachingPromo = async () => {
-      try {
-        const response = await fetch('/api/user/org-coaching-promo');
-        if (response.ok) {
-          const data = await response.json();
-          setCoachingPromo(data.promo);
-        }
-      } catch (error) {
-        console.warn('Failed to fetch coaching promo:', error);
-      }
-    };
-
-    fetchCoachingPromo();
   }, []);
 
   // Calculate unread counts and last message times from active channels
@@ -1437,12 +1420,12 @@ function ChatContent({
             })}
 
             {/* Get Your Personal Coach - Promo Item (only show if user doesn't have coaching and promo is visible) */}
-            {!hasCoaching && coachingPromo?.isVisible !== false && (
+            {!hasCoaching && coachingPromo.isVisible && (
               <div className="p-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
                 <CoachPromoItem 
-                  title={coachingPromo?.title}
-                  subtitle={coachingPromo?.subtitle}
-                  imageUrl={coachingPromo?.imageUrl}
+                  title={coachingPromo.title}
+                  subtitle={coachingPromo.subtitle}
+                  imageUrl={coachingPromo.imageUrl}
                 />
               </div>
             )}

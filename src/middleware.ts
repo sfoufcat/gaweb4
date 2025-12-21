@@ -564,10 +564,12 @@ export default clerkMiddleware(async (auth, request) => {
     // Set branding cookie for SSR access (JSON-encoded, httpOnly for security)
     // This allows Server Components to read branding without additional API calls
     const brandingData = tenantConfigData?.branding || DEFAULT_TENANT_BRANDING;
+    const coachingPromoData = tenantConfigData?.coachingPromo; // May be undefined
     const tenantCookieData = {
       orgId: tenantOrgId,
       subdomain: tenantSubdomain,
       branding: brandingData,
+      coachingPromo: coachingPromoData,
     };
     
     response.cookies.set('ga_tenant_context', JSON.stringify(tenantCookieData), {

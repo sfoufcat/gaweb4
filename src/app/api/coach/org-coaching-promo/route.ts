@@ -5,6 +5,12 @@ import {
   updateOrgCoachingPromo,
   type UpdateOrgCoachingPromoInput,
 } from '@/lib/org-channels';
+import { adminDb } from '@/lib/firebase-admin';
+import { 
+  syncTenantToEdgeConfig, 
+  getTenantBySubdomain,
+  type TenantCoachingPromoData,
+} from '@/lib/tenant-edge-config';
 
 /**
  * GET /api/coach/org-coaching-promo
@@ -99,6 +105,38 @@ export async function PUT(req: Request) {
     }
 
     const promo = await updateOrgCoachingPromo(organizationId, updates);
+
+    // Sync to Edge Config for instant access (prevents flash of content)
+    try {
+      // Get org's subdomain from org_domains
+      const domainDoc = await adminDb.collection('org_domains').doc(organizationId).get();
+      const domainData = domainDoc.data();
+      
+      if (domainData?.subdomain) {
+        // Get existing tenant config to preserve branding
+        const existingConfig = await getTenantBySubdomain(domainData.subdomain);
+        
+        const coachingPromoData: TenantCoachingPromoData = {
+          title: promo.title,
+          subtitle: promo.subtitle,
+          imageUrl: promo.imageUrl,
+          isVisible: promo.isVisible,
+        };
+        
+        await syncTenantToEdgeConfig(
+          organizationId,
+          domainData.subdomain,
+          existingConfig?.branding,
+          domainData.verifiedCustomDomain || undefined,
+          coachingPromoData
+        );
+        
+        console.log(`[COACH_ORG_COACHING_PROMO] Synced coaching promo to Edge Config for subdomain: ${domainData.subdomain}`);
+      }
+    } catch (edgeError) {
+      // Log but don't fail the request - Edge Config is optimization, not critical
+      console.error('[COACH_ORG_COACHING_PROMO] Edge Config sync error (non-fatal):', edgeError);
+    }
 
     return NextResponse.json({
       success: true,
