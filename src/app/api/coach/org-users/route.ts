@@ -6,12 +6,23 @@ import type { UserRole, UserTier, UserTrack, CoachingStatus, OrgRole, OrgMembers
 
 interface FirebaseUserData {
   tier?: UserTier;
+  track?: UserTrack | null;
+  standardSquadId?: string | null;
+  premiumSquadId?: string | null;
   coaching?: {
     status?: CoachingStatus;
   };
   invitedBy?: string;
   inviteCode?: string;
   invitedAt?: string;
+}
+
+interface OrgMembershipData {
+  tier?: UserTier;
+  track?: UserTrack | null;
+  squadId?: string | null;
+  premiumSquadId?: string | null;
+  orgRole?: OrgRole;
 }
 
 interface ClerkUserMetadata {
@@ -82,9 +93,10 @@ export async function GET() {
     // Fetch tier, coaching, and referral data from Firebase for org users
     const userIds = combinedUsers.map(u => u.id);
     const firebaseUserData = new Map<string, FirebaseUserData>();
+    const orgMembershipData = new Map<string, OrgMembershipData>();
     
     if (userIds.length > 0) {
-      // Batch fetch in chunks of 10 (Firestore 'in' query limit)
+      // Batch fetch user data in chunks of 10 (Firestore 'in' query limit)
       for (let i = 0; i < userIds.length; i += 10) {
         const chunk = userIds.slice(i, i + 10);
         const snapshot = await adminDb
@@ -96,10 +108,34 @@ export async function GET() {
           const data = doc.data();
           firebaseUserData.set(doc.id, {
             tier: data.tier as UserTier | undefined,
+            track: data.track as UserTrack | null | undefined,
+            standardSquadId: data.standardSquadId as string | null | undefined,
+            premiumSquadId: data.premiumSquadId as string | null | undefined,
             coaching: data.coaching,
             invitedBy: data.invitedBy,
             inviteCode: data.inviteCode,
             invitedAt: data.invitedAt,
+          });
+        });
+      }
+      
+      // Fetch org_memberships for track/squad data (authoritative for multi-tenant)
+      for (let i = 0; i < userIds.length; i += 10) {
+        const chunk = userIds.slice(i, i + 10);
+        const membershipSnapshot = await adminDb
+          .collection('org_memberships')
+          .where('userId', 'in', chunk)
+          .where('organizationId', '==', organizationId)
+          .get();
+        
+        membershipSnapshot.forEach((doc) => {
+          const data = doc.data();
+          orgMembershipData.set(data.userId, {
+            tier: data.tier as UserTier | undefined,
+            track: data.track as UserTrack | null | undefined,
+            squadId: data.squadId as string | null | undefined,
+            premiumSquadId: data.premiumSquadId as string | null | undefined,
+            orgRole: data.orgRole as OrgRole | undefined,
           });
         });
       }
@@ -115,12 +151,14 @@ export async function GET() {
     // Transform to our format
     const transformedUsers = combinedUsers.map((user) => {
       const fbData = firebaseUserData.get(user.id);
+      const membershipData = orgMembershipData.get(user.id);
       const clerkMetadata = user.publicMetadata as ClerkUserMetadata;
       
       const invitedByName = fbData?.invitedBy 
         ? userIdToName.get(fbData.invitedBy) || 'Unknown User'
         : null;
       
+      // Org membership data takes precedence (multi-tenant), fallback to Firebase user data
       return {
         id: user.id,
         email: user.emailAddresses[0]?.emailAddress || '',
@@ -129,8 +167,11 @@ export async function GET() {
         name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unnamed User',
         imageUrl: user.imageUrl || '',
         role: (clerkMetadata?.role as UserRole) || 'user',
-        orgRole: (clerkMetadata?.orgRole as OrgRole) || 'member',
-        tier: fbData?.tier || 'free',
+        orgRole: membershipData?.orgRole || (clerkMetadata?.orgRole as OrgRole) || 'member',
+        tier: membershipData?.tier || fbData?.tier || 'free',
+        track: membershipData?.track ?? fbData?.track ?? null,
+        squadId: membershipData?.squadId ?? fbData?.standardSquadId ?? null,
+        premiumSquadId: membershipData?.premiumSquadId ?? fbData?.premiumSquadId ?? null,
         coachingStatus: clerkMetadata?.coachingStatus || fbData?.coaching?.status || 'none',
         coaching: clerkMetadata?.coaching,
         invitedBy: fbData?.invitedBy || null,

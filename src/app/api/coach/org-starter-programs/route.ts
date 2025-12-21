@@ -28,18 +28,77 @@ export async function GET() {
 
     console.log(`[COACH_ORG_STARTER_PROGRAMS] Fetching programs for organization: ${organizationId}`);
 
-    const programsSnapshot = await adminDb
-      .collection('starter_programs')
-      .where('organizationId', '==', organizationId)
-      .orderBy('track', 'asc')
-      .get();
+    // Fetch both org-specific programs AND global/platform programs (no organizationId)
+    // This allows coaches to see platform content plus their own customizations
+    const [orgProgramsSnapshot, globalProgramsSnapshot] = await Promise.all([
+      adminDb
+        .collection('starter_programs')
+        .where('organizationId', '==', organizationId)
+        .orderBy('track', 'asc')
+        .get(),
+      adminDb
+        .collection('starter_programs')
+        .where('organizationId', '==', null)
+        .orderBy('track', 'asc')
+        .get()
+        .catch(() => ({ docs: [] })), // Handle case where field doesn't exist
+    ]);
 
-    const programs = programsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
-      updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
-    })) as StarterProgram[];
+    // Also try fetching programs without the organizationId field (legacy data)
+    let legacyProgramsSnapshot: FirebaseFirestore.QuerySnapshot | null = null;
+    try {
+      // Get all programs and filter out ones that have organizationId
+      const allProgramsSnapshot = await adminDb
+        .collection('starter_programs')
+        .orderBy('track', 'asc')
+        .get();
+      
+      // Filter to only programs without organizationId field
+      const legacyDocs = allProgramsSnapshot.docs.filter(doc => {
+        const data = doc.data();
+        return data.organizationId === undefined || data.organizationId === null;
+      });
+      
+      legacyProgramsSnapshot = { docs: legacyDocs } as unknown as FirebaseFirestore.QuerySnapshot;
+    } catch {
+      // Ignore errors
+    }
+
+    // Combine results, preferring org-specific over global, and dedupe by id
+    const programMap = new Map<string, StarterProgram>();
+    
+    // Add legacy/global programs first (lower priority)
+    if (legacyProgramsSnapshot) {
+      legacyProgramsSnapshot.docs.forEach(doc => {
+        programMap.set(doc.id, {
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
+          updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
+        } as StarterProgram);
+      });
+    }
+    
+    globalProgramsSnapshot.docs.forEach(doc => {
+      programMap.set(doc.id, {
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
+        updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
+      } as StarterProgram);
+    });
+    
+    // Add org-specific programs (higher priority, overwrites global if same slug)
+    orgProgramsSnapshot.docs.forEach(doc => {
+      programMap.set(doc.id, {
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
+        updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
+      } as StarterProgram);
+    });
+
+    const programs = Array.from(programMap.values());
 
     return NextResponse.json({ 
       programs,

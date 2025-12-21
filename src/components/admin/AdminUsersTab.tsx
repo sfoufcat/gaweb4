@@ -2,8 +2,19 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
-import type { UserRole, UserTier, CoachingStatus, OrgRole } from '@/types';
+import type { UserRole, UserTier, CoachingStatus, OrgRole, UserTrack, Track, Squad } from '@/types';
 import { validateSubdomain } from '@/types';
+
+// Track labels for display
+const TRACK_LABELS: Record<UserTrack, string> = {
+  content_creator: 'Content Creator',
+  saas: 'SaaS',
+  coach_consultant: 'Coach/Consultant',
+  ecom: 'E-Commerce',
+  agency: 'Agency',
+  community_builder: 'Community Builder',
+  general: 'General',
+};
 import { 
   canModifyUserRole, 
   canDeleteUser, 
@@ -60,6 +71,10 @@ interface ClerkAdminUser {
   orgRole?: OrgRole; // Organization-level role (for multi-tenant)
   orgRoleForOrg?: OrgRole; // Org role for a specific org (from org-scoped API)
   tier: UserTier;
+  // Track and Squad (for multi-tenant)
+  track?: UserTrack | null;
+  squadId?: string | null;
+  premiumSquadId?: string | null;
   // Coaching is separate from membership tier
   coachingStatus?: CoachingStatus;
   coaching?: boolean; // Legacy flag
@@ -76,13 +91,19 @@ interface ClerkAdminUser {
 }
 
 // Available column keys for visibility control
-type ColumnKey = 'avatar' | 'name' | 'email' | 'role' | 'orgRole' | 'tier' | 'coach' | 'coaching' | 'invitedBy' | 'invitedAt' | 'created' | 'actions';
+type ColumnKey = 'select' | 'avatar' | 'name' | 'email' | 'role' | 'orgRole' | 'tier' | 'track' | 'squad' | 'coach' | 'coaching' | 'invitedBy' | 'invitedAt' | 'created' | 'actions';
 
-// Default columns for full access
-const ALL_COLUMNS: ColumnKey[] = ['avatar', 'name', 'email', 'role', 'tier', 'coaching', 'invitedBy', 'invitedAt', 'created', 'actions'];
+// Default columns for full access (select column added for bulk operations)
+const ALL_COLUMNS: ColumnKey[] = ['select', 'avatar', 'name', 'email', 'role', 'tier', 'track', 'squad', 'coaching', 'invitedBy', 'invitedAt', 'created', 'actions'];
 
-// Limited columns for org coaches (read-only)
+// Limited columns for org coaches (read-only, no select)
 const LIMITED_COLUMNS: ColumnKey[] = ['avatar', 'name', 'email', 'coach', 'coaching', 'created'];
+
+// Simplified squad info for dropdown
+interface SquadOption {
+  id: string;
+  name: string;
+}
 
 interface AdminUsersTabProps {
   currentUserRole: UserRole;
@@ -145,6 +166,19 @@ export function AdminUsersTab({
   const [subdomain, setSubdomain] = useState('');
   const [subdomainError, setSubdomainError] = useState<string | null>(null);
   const [subdomainLoading, setSubdomainLoading] = useState(false);
+  
+  // Track/Squad state for org-scoped mode
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [squads, setSquads] = useState<SquadOption[]>([]);
+  const [updatingTrackUserId, setUpdatingTrackUserId] = useState<string | null>(null);
+  const [updatingSquadUserId, setUpdatingSquadUserId] = useState<string | null>(null);
+  
+  // Multi-select state for bulk operations
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+  const [bulkUpdating, setBulkUpdating] = useState(false);
+  
+  // Detect if using org-scoped API (coach dashboard)
+  const isOrgScopedApi = apiEndpointProp?.includes('/api/coach/org-users');
 
   const fetchUsers = async () => {
     try {
@@ -171,6 +205,34 @@ export function AdminUsersTab({
     fetchUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  
+  // Fetch tracks and squads for org-scoped mode
+  useEffect(() => {
+    if (!isOrgScopedApi) return;
+    
+    const fetchTracksAndSquads = async () => {
+      try {
+        const [tracksRes, squadsRes] = await Promise.all([
+          fetch('/api/coach/org-tracks'),
+          fetch('/api/coach/org-squads'),
+        ]);
+        
+        if (tracksRes.ok) {
+          const data = await tracksRes.json();
+          setTracks(data.tracks || []);
+        }
+        
+        if (squadsRes.ok) {
+          const data = await squadsRes.json();
+          setSquads((data.squads || []).map((s: Squad) => ({ id: s.id, name: s.name })));
+        }
+      } catch (err) {
+        console.warn('Failed to fetch tracks/squads:', err);
+      }
+    };
+    
+    fetchTracksAndSquads();
+  }, [isOrgScopedApi]);
 
   // Filter users based on search query
   const filteredUsers = useMemo(() => {
@@ -363,6 +425,187 @@ export function AdminUsersTab({
     }
   };
 
+  const handleTrackChange = async (userId: string, newTrack: UserTrack | null) => {
+    if (!isOrgScopedApi) return;
+    
+    try {
+      setUpdatingTrackUserId(userId);
+      
+      const response = await fetch(`/api/coach/org-users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ track: newTrack }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update track');
+      }
+
+      // Update local state optimistically
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.id === userId ? { ...user, track: newTrack } : user
+        )
+      );
+    } catch (err) {
+      console.error('Error updating track:', err);
+      alert(err instanceof Error ? err.message : 'Failed to update track');
+      await fetchUsers();
+    } finally {
+      setUpdatingTrackUserId(null);
+    }
+  };
+
+  const handleSquadChange = async (userId: string, newSquadId: string | null) => {
+    if (!isOrgScopedApi) return;
+    
+    try {
+      setUpdatingSquadUserId(userId);
+      
+      const response = await fetch(`/api/coach/org-users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ squadId: newSquadId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update squad');
+      }
+
+      // Update local state optimistically
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.id === userId ? { ...user, squadId: newSquadId } : user
+        )
+      );
+    } catch (err) {
+      console.error('Error updating squad:', err);
+      alert(err instanceof Error ? err.message : 'Failed to update squad');
+      await fetchUsers();
+    } finally {
+      setUpdatingSquadUserId(null);
+    }
+  };
+
+  // Selection handlers
+  const handleSelectUser = (userId: string, selected: boolean) => {
+    setSelectedUserIds((prev) => {
+      const newSet = new Set(prev);
+      if (selected) {
+        newSet.add(userId);
+      } else {
+        newSet.delete(userId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = (selected: boolean) => {
+    if (selected) {
+      setSelectedUserIds(new Set(filteredUsers.map((u) => u.id)));
+    } else {
+      setSelectedUserIds(new Set());
+    }
+  };
+
+  const isAllSelected = filteredUsers.length > 0 && selectedUserIds.size === filteredUsers.length;
+  const isSomeSelected = selectedUserIds.size > 0 && selectedUserIds.size < filteredUsers.length;
+
+  // Bulk update handlers - uses bulk API for efficiency
+  const handleBulkTrackChange = async (newTrack: UserTrack | null) => {
+    if (!isOrgScopedApi || selectedUserIds.size === 0) return;
+    
+    try {
+      setBulkUpdating(true);
+      
+      const response = await fetch('/api/coach/org-users/bulk', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userIds: Array.from(selectedUserIds),
+          track: newTrack,
+        }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update users');
+      }
+      
+      const result = await response.json();
+      
+      // Update local state for successful updates
+      const successfulIds = new Set(result.results?.success || Array.from(selectedUserIds));
+      setUsers((prev) =>
+        prev.map((user) =>
+          successfulIds.has(user.id) ? { ...user, track: newTrack } : user
+        )
+      );
+      
+      // Show warning if some failed
+      if (result.failed > 0) {
+        alert(`Updated ${result.updated} users. ${result.failed} failed.`);
+      }
+      
+      // Clear selection after bulk operation
+      setSelectedUserIds(new Set());
+    } catch (err) {
+      console.error('Error bulk updating track:', err);
+      alert(err instanceof Error ? err.message : 'Failed to update users. Please try again.');
+      await fetchUsers();
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
+  const handleBulkSquadChange = async (newSquadId: string | null) => {
+    if (!isOrgScopedApi || selectedUserIds.size === 0) return;
+    
+    try {
+      setBulkUpdating(true);
+      
+      const response = await fetch('/api/coach/org-users/bulk', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userIds: Array.from(selectedUserIds),
+          squadId: newSquadId,
+        }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update users');
+      }
+      
+      const result = await response.json();
+      
+      // Update local state for successful updates
+      const successfulIds = new Set(result.results?.success || Array.from(selectedUserIds));
+      setUsers((prev) =>
+        prev.map((user) =>
+          successfulIds.has(user.id) ? { ...user, squadId: newSquadId } : user
+        )
+      );
+      
+      // Show warning if some failed
+      if (result.failed > 0) {
+        alert(`Updated ${result.updated} users. ${result.failed} failed.`);
+      }
+      
+      // Clear selection after bulk operation
+      setSelectedUserIds(new Set());
+    } catch (err) {
+      console.error('Error bulk updating squad:', err);
+      alert(err instanceof Error ? err.message : 'Failed to update users. Please try again.');
+      await fetchUsers();
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
   const handleDeleteUser = async () => {
     if (!userToDelete) return;
 
@@ -485,17 +728,105 @@ export function AdminUsersTab({
           </div>
         </div>
 
+        {/* Bulk Actions Toolbar */}
+        {selectedUserIds.size > 0 && isOrgScopedApi && !readOnly && (
+          <div className="px-6 py-3 bg-[#a07855]/10 dark:bg-[#b8896a]/10 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50 flex items-center gap-4 flex-wrap">
+            <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">
+              {selectedUserIds.size} user{selectedUserIds.size !== 1 ? 's' : ''} selected
+            </span>
+            
+            <div className="flex items-center gap-2">
+              <span className="font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2]">Set Track:</span>
+              <Select
+                value=""
+                onValueChange={(value) => handleBulkTrackChange(value === 'none' ? null : value as UserTrack)}
+                disabled={bulkUpdating}
+              >
+                <SelectTrigger className={`w-[150px] font-albert text-sm h-8 ${bulkUpdating ? 'opacity-50' : ''}`}>
+                  <SelectValue placeholder="Select track" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none" className="font-albert">Not set</SelectItem>
+                  {tracks.length > 0 ? (
+                    tracks.map((track) => (
+                      <SelectItem key={track.id} value={track.slug} className="font-albert">
+                        {track.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    Object.entries(TRACK_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value} className="font-albert">
+                        {label}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2]">Set Squad:</span>
+              <Select
+                value=""
+                onValueChange={(value) => handleBulkSquadChange(value === 'none' ? null : value)}
+                disabled={bulkUpdating}
+              >
+                <SelectTrigger className={`w-[150px] font-albert text-sm h-8 ${bulkUpdating ? 'opacity-50' : ''}`}>
+                  <SelectValue placeholder="Select squad" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none" className="font-albert">None</SelectItem>
+                  {squads.map((squad) => (
+                    <SelectItem key={squad.id} value={squad.id} className="font-albert">
+                      {squad.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <button
+              onClick={() => setSelectedUserIds(new Set())}
+              className="ml-auto font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors"
+            >
+              Clear selection
+            </button>
+            
+            {bulkUpdating && (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin"></div>
+                <span className="font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2]">Updating...</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Users table */}
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
+                {showColumn('select') && isOrgScopedApi && !readOnly && (
+                  <TableHead className="w-[50px]">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = isSomeSelected;
+                      }}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                      className="w-4 h-4 rounded border-[#e1ddd8] dark:border-[#262b35] text-[#a07855] focus:ring-[#a07855] focus:ring-offset-0 cursor-pointer"
+                    />
+                  </TableHead>
+                )}
                 {showColumn('avatar') && <TableHead className="font-albert">Avatar</TableHead>}
                 {showColumn('name') && <TableHead className="font-albert">Name</TableHead>}
                 {showColumn('email') && <TableHead className="font-albert">Email</TableHead>}
                 {showColumn('role') && !showOrgRole && <TableHead className="font-albert">Role</TableHead>}
                 {showColumn('role') && showOrgRole && <TableHead className="font-albert">Org Role</TableHead>}
                 {showColumn('tier') && <TableHead className="font-albert">Tier</TableHead>}
+                {showColumn('track') && <TableHead className="font-albert">Track</TableHead>}
+                {showColumn('squad') && <TableHead className="font-albert">Squad</TableHead>}
                 {showColumn('coach') && <TableHead className="font-albert">Coach</TableHead>}
                 {showColumn('coaching') && <TableHead className="font-albert">Coaching</TableHead>}
                 {showColumn('invitedBy') && <TableHead className="font-albert">Invited By</TableHead>}
@@ -520,9 +851,21 @@ export function AdminUsersTab({
                 return (
                   <TableRow 
                     key={user.id}
-                    className={onSelectUser ? 'cursor-pointer hover:bg-[#faf8f6] dark:hover:bg-[#11141b]' : ''}
+                    className={`${onSelectUser ? 'cursor-pointer' : ''} ${selectedUserIds.has(user.id) ? 'bg-[#a07855]/5 dark:bg-[#b8896a]/5' : ''} hover:bg-[#faf8f6] dark:hover:bg-[#11141b]`}
                     onClick={() => onSelectUser?.(user.id)}
                   >
+                    {/* Checkbox for selection */}
+                    {showColumn('select') && isOrgScopedApi && !readOnly && (
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedUserIds.has(user.id)}
+                          onChange={(e) => handleSelectUser(user.id, e.target.checked)}
+                          className="w-4 h-4 rounded border-[#e1ddd8] dark:border-[#262b35] text-[#a07855] focus:ring-[#a07855] focus:ring-offset-0 cursor-pointer"
+                        />
+                      </TableCell>
+                    )}
+                    
                     {/* Avatar */}
                     {showColumn('avatar') && (
                       <TableCell>
@@ -655,6 +998,76 @@ export function AdminUsersTab({
                         ) : (
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium font-albert ${getTierBadgeColor(userTier)}`}>
                             {formatTierName(userTier)}
+                          </span>
+                        )}
+                      </TableCell>
+                    )}
+
+                    {/* Track */}
+                    {showColumn('track') && (
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        {isOrgScopedApi && !readOnly ? (
+                          <Select
+                            value={user.track || 'none'}
+                            onValueChange={(value) => handleTrackChange(user.id, value === 'none' ? null : value as UserTrack)}
+                            disabled={updatingTrackUserId === user.id}
+                          >
+                            <SelectTrigger className={`w-[150px] font-albert text-sm h-9 ${updatingTrackUserId === user.id ? 'opacity-50' : ''}`}>
+                              <SelectValue>
+                                {user.track ? (tracks.find(t => t.slug === user.track)?.name || TRACK_LABELS[user.track as UserTrack] || user.track) : 'Not set'}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none" className="font-albert">Not set</SelectItem>
+                              {tracks.length > 0 ? (
+                                tracks.map((track) => (
+                                  <SelectItem key={track.id} value={track.slug} className="font-albert">
+                                    {track.name}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                Object.entries(TRACK_LABELS).map(([value, label]) => (
+                                  <SelectItem key={value} value={value} className="font-albert">
+                                    {label}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className="font-albert text-[14px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                            {user.track ? (tracks.find(t => t.slug === user.track)?.name || TRACK_LABELS[user.track as UserTrack] || user.track) : '-'}
+                          </span>
+                        )}
+                      </TableCell>
+                    )}
+
+                    {/* Squad */}
+                    {showColumn('squad') && (
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        {isOrgScopedApi && !readOnly ? (
+                          <Select
+                            value={user.squadId || 'none'}
+                            onValueChange={(value) => handleSquadChange(user.id, value === 'none' ? null : value)}
+                            disabled={updatingSquadUserId === user.id}
+                          >
+                            <SelectTrigger className={`w-[150px] font-albert text-sm h-9 ${updatingSquadUserId === user.id ? 'opacity-50' : ''}`}>
+                              <SelectValue>
+                                {user.squadId ? (squads.find(s => s.id === user.squadId)?.name || 'Unknown') : 'None'}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none" className="font-albert">None</SelectItem>
+                              {squads.map((squad) => (
+                                <SelectItem key={squad.id} value={squad.id} className="font-albert">
+                                  {squad.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className="font-albert text-[14px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                            {user.squadId ? (squads.find(s => s.id === user.squadId)?.name || 'Unknown') : '-'}
                           </span>
                         )}
                       </TableCell>

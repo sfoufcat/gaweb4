@@ -25,12 +25,17 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid day index' }, { status: 400 });
     }
 
-    // Verify program exists and belongs to this organization
+    // Verify program exists and belongs to this org OR is global
     const programDoc = await adminDb.collection('starter_programs').doc(programId).get();
     if (!programDoc.exists) {
       return NextResponse.json({ error: 'Starter program not found' }, { status: 404 });
     }
-    if (programDoc.data()?.organizationId !== organizationId) {
+    
+    const programOrgId = programDoc.data()?.organizationId;
+    const isOrgProgram = programOrgId === organizationId;
+    const isGlobalProgram = programOrgId === undefined || programOrgId === null;
+    
+    if (!isOrgProgram && !isGlobalProgram) {
       return NextResponse.json({ error: 'Program not found in your organization' }, { status: 404 });
     }
 

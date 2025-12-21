@@ -37,8 +37,12 @@ export async function GET(
       return NextResponse.json({ error: 'Starter program not found' }, { status: 404 });
     }
 
-    // Verify program belongs to this organization
-    if (programDoc.data()?.organizationId !== organizationId) {
+    // Allow viewing if program belongs to this org OR is global (no organizationId)
+    const programOrgId = programDoc.data()?.organizationId;
+    const isOrgProgram = programOrgId === organizationId;
+    const isGlobalProgram = programOrgId === undefined || programOrgId === null;
+    
+    if (!isOrgProgram && !isGlobalProgram) {
       return NextResponse.json({ error: 'Program not found in your organization' }, { status: 404 });
     }
 

@@ -28,18 +28,27 @@ export async function GET() {
 
     console.log(`[COACH_ORG_TRACKS] Fetching tracks for organization: ${organizationId}`);
 
-    const tracksSnapshot = await adminDb
+    // Fetch all tracks and filter to include org-specific OR global (no organizationId)
+    // This allows coaches to see platform tracks plus their own customizations
+    const allTracksSnapshot = await adminDb
       .collection('tracks')
-      .where('organizationId', '==', organizationId)
       .orderBy('slug', 'asc')
       .get();
 
-    const tracks = tracksSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
-      updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
-    })) as Track[];
+    const tracks = allTracksSnapshot.docs
+      .filter(doc => {
+        const data = doc.data();
+        // Include if org matches OR if no organizationId (global/platform content)
+        return data.organizationId === organizationId || 
+               data.organizationId === undefined || 
+               data.organizationId === null;
+      })
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
+        updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
+      })) as Track[];
 
     return NextResponse.json({ 
       tracks,
@@ -144,3 +153,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to create track' }, { status: 500 });
   }
 }
+

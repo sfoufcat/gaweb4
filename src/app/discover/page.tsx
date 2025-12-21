@@ -8,6 +8,7 @@ import { useTrack } from '@/hooks/useTrack';
 import { 
   EventCard, 
   CourseCard, 
+  ProgramCard,
   CategoryPills, 
   TrendingItem, 
   RecommendedCard,
@@ -17,7 +18,7 @@ import {
 import type { ArticleType } from '@/types/discover';
 
 export default function DiscoverPage() {
-  const { upcomingEvents, pastEvents, courses, articles, categories, trending, recommended, loading } = useDiscover();
+  const { upcomingEvents, pastEvents, courses, articles, categories, trending, recommended, groupPrograms, individualPrograms, enrollmentConstraints, loading } = useDiscover();
   const { track, hasTrack } = useTrack();
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -306,6 +307,52 @@ export default function DiscoverPage() {
           <div className="flex flex-col gap-4">
             <SectionHeader title="Courses for you" />
             <p className="text-text-muted text-sm font-sans">No courses for your track yet</p>
+          </div>
+        </section>
+      )}
+
+      {/* 4. Group Programs - Only show when no category is selected */}
+      {!selectedCategory && groupPrograms.length > 0 && (
+        <section className="px-4 py-5 overflow-hidden">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <SectionHeader title="Group Programs" />
+              {!enrollmentConstraints.canEnrollInGroup && (
+                <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-full">
+                  Active program in progress
+                </span>
+              )}
+            </div>
+            
+            {/* Horizontal scrollable list */}
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+              {groupPrograms.map((program) => (
+                <ProgramCard key={program.id} program={program} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 5. 1:1 Programs - Only show when no category is selected */}
+      {!selectedCategory && individualPrograms.length > 0 && (
+        <section className="px-4 py-5 overflow-hidden">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <SectionHeader title="1:1 Coaching Programs" />
+              {!enrollmentConstraints.canEnrollInIndividual && (
+                <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-full">
+                  Active coaching in progress
+                </span>
+              )}
+            </div>
+            
+            {/* Horizontal scrollable list */}
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+              {individualPrograms.map((program) => (
+                <ProgramCard key={program.id} program={program} />
+              ))}
+            </div>
           </div>
         </section>
       )}

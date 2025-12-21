@@ -18,7 +18,7 @@ import { ThemeToggle } from '@/components/theme';
 import { ProgramCheckInModal, type ProgramCheckInData } from '@/components/programs/ProgramCheckInModal';
 import type { Habit, MorningCheckIn, EveningCheckIn, Task, GoalHistoryEntry } from '@/types';
 import Image from 'next/image';
-import { Calendar, Users, ChevronRight, ChevronDown, Trophy } from 'lucide-react';
+import { Calendar, Users, ChevronRight, ChevronDown, Trophy, BookOpen, User } from 'lucide-react';
 import { useSquadContext } from '@/contexts/SquadContext';
 import { getGuestSessionId, getGuestDataLocally } from '@/lib/guest-session';
 import { useTrack } from '@/hooks/useTrack';
@@ -91,6 +91,27 @@ export default function Dashboard() {
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [showAllHabits, setShowAllHabits] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
+  
+  // Program enrollments state (for My Programs section)
+  const [programEnrollments, setProgramEnrollments] = useState<{
+    active: Array<{
+      id: string;
+      programId: string;
+      program: { id: string; name: string; type: 'group' | 'individual'; lengthDays: number; coverImageUrl?: string };
+      cohort?: { id: string; name: string; startDate: string; endDate: string };
+      progress: { currentDay: number; totalDays: number; percentComplete: number; daysRemaining: number };
+      status: string;
+    }>;
+    upcoming: Array<{
+      id: string;
+      programId: string;
+      program: { id: string; name: string; type: 'group' | 'individual'; lengthDays: number; coverImageUrl?: string };
+      cohort?: { id: string; name: string; startDate: string; endDate: string };
+      progress: { currentDay: number; totalDays: number; percentComplete: number; daysRemaining: number };
+      status: string;
+    }>;
+  }>({ active: [], upcoming: [] });
+  const [enrollmentsLoading, setEnrollmentsLoading] = useState(true);
   
   // Helper: Check if today is the user's first day (based on createdAt in local timezone)
   const isUserFirstDay = useCallback((createdAt: string | null): boolean => {
@@ -683,6 +704,35 @@ export default function Dashboard() {
     
     if (isLoaded && user) {
       fetchProgramCheckInStatus();
+    }
+  }, [user, isLoaded]);
+
+  // Fetch program enrollments for My Programs section
+  useEffect(() => {
+    async function fetchProgramEnrollments() {
+      if (!user) {
+        setEnrollmentsLoading(false);
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/programs/my-enrollments');
+        if (response.ok) {
+          const data = await response.json();
+          setProgramEnrollments({
+            active: data.activeEnrollments || [],
+            upcoming: data.upcomingEnrollments || [],
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching program enrollments:', error);
+      } finally {
+        setEnrollmentsLoading(false);
+      }
+    }
+    
+    if (isLoaded && user) {
+      fetchProgramEnrollments();
     }
   }, [user, isLoaded]);
 
@@ -1904,6 +1954,146 @@ export default function Dashboard() {
           </Link>
         )}
       </div>
+
+      {/* My Programs Section */}
+      {(programEnrollments.active.length > 0 || programEnrollments.upcoming.length > 0) && (
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-albert text-[24px] text-text-primary leading-[1.3] tracking-[-1.5px]">
+              My Programs
+            </h2>
+            <Link href="/discover" className="font-sans text-[12px] text-accent-secondary leading-[1.2]">
+              Discover more
+            </Link>
+          </div>
+          
+          {enrollmentsLoading ? (
+            <div className="bg-white dark:bg-surface rounded-[20px] p-5 animate-pulse">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-xl bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+                <div className="flex-1">
+                  <div className="h-5 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded w-1/3 mb-2" />
+                  <div className="h-4 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded w-1/4" />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {/* Active Programs */}
+              {programEnrollments.active.map((enrollment) => (
+                <Link
+                  key={enrollment.id}
+                  href={`/discover/programs/${enrollment.programId}`}
+                  className="block bg-white dark:bg-surface rounded-[20px] p-5 hover:shadow-lg transition-all"
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Program Image */}
+                    <div className="w-14 h-14 rounded-xl overflow-hidden bg-gradient-to-br from-[#a07855]/20 to-[#8c6245]/10 flex items-center justify-center flex-shrink-0">
+                      {enrollment.program.coverImageUrl ? (
+                        <Image 
+                          src={enrollment.program.coverImageUrl} 
+                          alt={enrollment.program.name} 
+                          width={56} 
+                          height={56} 
+                          className="w-full h-full object-cover" 
+                        />
+                      ) : enrollment.program.type === 'group' ? (
+                        <Users className="w-6 h-6 text-[#a07855]" />
+                      ) : (
+                        <User className="w-6 h-6 text-[#a07855]" />
+                      )}
+                    </div>
+
+                    {/* Program Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-albert font-semibold text-[16px] text-text-primary tracking-[-0.5px] truncate">
+                          {enrollment.program.name}
+                        </h3>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                          enrollment.program.type === 'group'
+                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                            : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                        }`}>
+                          {enrollment.program.type === 'group' ? 'Group' : '1:1'}
+                        </span>
+                      </div>
+                      {enrollment.cohort && (
+                        <p className="font-sans text-[12px] text-text-secondary mb-2">
+                          {enrollment.cohort.name}
+                        </p>
+                      )}
+                      {/* Progress bar */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-1.5 bg-[#e1ddd8] dark:bg-[#272d38] rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-[#a07855] rounded-full transition-all"
+                            style={{ width: `${enrollment.progress.percentComplete}%` }}
+                          />
+                        </div>
+                        <span className="font-sans text-[11px] text-text-muted">
+                          Day {enrollment.progress.currentDay}/{enrollment.progress.totalDays}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Arrow */}
+                    <ChevronRight className="w-5 h-5 text-text-muted flex-shrink-0" />
+                  </div>
+                </Link>
+              ))}
+
+              {/* Upcoming Programs */}
+              {programEnrollments.upcoming.map((enrollment) => (
+                <Link
+                  key={enrollment.id}
+                  href={`/discover/programs/${enrollment.programId}`}
+                  className="block bg-white/70 dark:bg-surface/70 rounded-[20px] p-5 border border-[#e1ddd8]/50 dark:border-[#272d38]/50 hover:shadow-lg transition-all"
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Program Image */}
+                    <div className="w-14 h-14 rounded-xl overflow-hidden bg-gradient-to-br from-[#a07855]/20 to-[#8c6245]/10 flex items-center justify-center flex-shrink-0 opacity-70">
+                      {enrollment.program.coverImageUrl ? (
+                        <Image 
+                          src={enrollment.program.coverImageUrl} 
+                          alt={enrollment.program.name} 
+                          width={56} 
+                          height={56} 
+                          className="w-full h-full object-cover" 
+                        />
+                      ) : enrollment.program.type === 'group' ? (
+                        <Users className="w-6 h-6 text-[#a07855]" />
+                      ) : (
+                        <User className="w-6 h-6 text-[#a07855]" />
+                      )}
+                    </div>
+
+                    {/* Program Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-albert font-semibold text-[16px] text-text-primary tracking-[-0.5px] truncate">
+                          {enrollment.program.name}
+                        </h3>
+                        <span className="px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 rounded-full text-[10px] font-medium">
+                          Upcoming
+                        </span>
+                      </div>
+                      {enrollment.cohort && (
+                        <p className="font-sans text-[12px] text-text-secondary">
+                          {enrollment.cohort.name} · Starts {new Date(enrollment.cohort.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Arrow */}
+                    <ChevronRight className="w-5 h-5 text-text-muted flex-shrink-0" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Habit Check-In Modal */}
       {selectedHabit && (

@@ -141,3 +141,38 @@ export type EventAttendee = {
   avatarUrl?: string;
 };
 
+// Discover Program type for public display
+export type DiscoverProgram = {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  type: 'group' | 'individual';
+  lengthDays: number;
+  priceInCents: number;
+  currency?: string;
+  coverImageUrl?: string;
+  coachId?: string;
+  organizationId?: string;
+  isPublished?: boolean;
+  isActive?: boolean;
+  squadCapacity?: number;
+  // Display fields
+  coachName: string;
+  coachImageUrl?: string;
+  // For group programs
+  nextCohort?: {
+    id: string;
+    name: string;
+    startDate: string;
+    spotsRemaining: number;
+  } | null;
+  // User's enrollment status
+  userEnrollment?: {
+    status: string;
+    cohortId?: string;
+  } | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+

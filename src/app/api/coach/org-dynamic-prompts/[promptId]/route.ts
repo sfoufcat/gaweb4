@@ -30,8 +30,12 @@ export async function GET(
       return NextResponse.json({ error: 'Dynamic prompt not found' }, { status: 404 });
     }
 
-    // Verify prompt belongs to this organization
-    if (promptDoc.data()?.organizationId !== organizationId) {
+    // Allow viewing if prompt belongs to this org OR is global (no organizationId)
+    const promptOrgId = promptDoc.data()?.organizationId;
+    const isOrgPrompt = promptOrgId === organizationId;
+    const isGlobalPrompt = promptOrgId === undefined || promptOrgId === null;
+    
+    if (!isOrgPrompt && !isGlobalPrompt) {
       return NextResponse.json({ error: 'Prompt not found in your organization' }, { status: 404 });
     }
 

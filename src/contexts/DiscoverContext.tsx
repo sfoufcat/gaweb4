@@ -7,6 +7,7 @@ import type {
   DiscoverArticle,
   DiscoverCourse,
   DiscoverCategory,
+  DiscoverProgram,
   TrendingItem,
   RecommendedItem,
 } from '@/types/discover';
@@ -20,6 +21,12 @@ interface DiscoverContextType {
   categories: DiscoverCategory[];
   trending: TrendingItem[];
   recommended: RecommendedItem[];
+  groupPrograms: DiscoverProgram[];
+  individualPrograms: DiscoverProgram[];
+  enrollmentConstraints: {
+    canEnrollInGroup: boolean;
+    canEnrollInIndividual: boolean;
+  };
   loading: boolean;
 }
 

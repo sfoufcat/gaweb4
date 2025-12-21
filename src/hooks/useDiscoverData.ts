@@ -6,6 +6,7 @@ import type {
   DiscoverArticle,
   DiscoverCourse,
   DiscoverCategory,
+  DiscoverProgram,
   TrendingItem,
   RecommendedItem,
   EventUpdate,
@@ -313,6 +314,47 @@ export function useDiscoverCategories() {
   return { categories };
 }
 
+// Hook: useDiscoverPrograms - Fetches programs from API
+export function useDiscoverPrograms() {
+  const [groupPrograms, setGroupPrograms] = useState<DiscoverProgram[]>([]);
+  const [individualPrograms, setIndividualPrograms] = useState<DiscoverProgram[]>([]);
+  const [enrollmentConstraints, setEnrollmentConstraints] = useState<{
+    canEnrollInGroup: boolean;
+    canEnrollInIndividual: boolean;
+  }>({ canEnrollInGroup: true, canEnrollInIndividual: true });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchPrograms() {
+      try {
+        const response = await fetch('/api/discover/programs');
+        if (!response.ok) throw new Error('Failed to fetch programs');
+        const data = await response.json();
+        
+        if (data.groupPrograms) {
+          setGroupPrograms(data.groupPrograms);
+        }
+        if (data.individualPrograms) {
+          setIndividualPrograms(data.individualPrograms);
+        }
+        if (data.enrollmentConstraints) {
+          setEnrollmentConstraints(data.enrollmentConstraints);
+        }
+      } catch (err) {
+        console.error('Failed to fetch programs:', err);
+        setError('Failed to load programs');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchPrograms();
+  }, []);
+
+  return { groupPrograms, individualPrograms, enrollmentConstraints, loading, error };
+}
+
 // Combined hook for the main discover page
 // Optimized: derives trending/recommended from articles/courses instead of separate fetches
 export function useDiscoverData() {
@@ -320,8 +362,14 @@ export function useDiscoverData() {
   const { articles, loading: articlesLoading } = useDiscoverArticles();
   const { courses, loading: coursesLoading } = useDiscoverCourses();
   const { categories } = useDiscoverCategories();
+  const { 
+    groupPrograms, 
+    individualPrograms, 
+    enrollmentConstraints,
+    loading: programsLoading 
+  } = useDiscoverPrograms();
 
-  const loading = eventsLoading || articlesLoading || coursesLoading;
+  const loading = eventsLoading || articlesLoading || coursesLoading || programsLoading;
 
   // Split events into upcoming and past
   const { upcomingEvents, pastEvents } = useMemo(() => {
@@ -424,6 +472,9 @@ export function useDiscoverData() {
     categories,
     trending,
     recommended,
+    groupPrograms,
+    individualPrograms,
+    enrollmentConstraints,
     loading,
   };
 }

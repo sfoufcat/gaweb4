@@ -23,6 +23,10 @@
     {
       "path": "/api/notifications/cron/squad-call-jobs",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/notifications/cron/program-lifecycle",
+      "schedule": "0 6 * * *"
     }
   ]
 }

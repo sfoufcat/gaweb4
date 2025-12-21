@@ -7,7 +7,12 @@ export type UserRole = 'user' | 'editor' | 'coach' | 'admin' | 'super_admin';
 // member: Regular organization member (client)
 export type OrgRole = 'super_coach' | 'coach' | 'member';
 
-// Track Types - Business type the user is building
+/**
+ * Track Types - Business type the user is building
+ * @deprecated Tracks are being replaced by coach-defined Programs.
+ * Programs can be created for any topic, not limited to these categories.
+ * Kept for backward compatibility during migration.
+ */
 export type UserTrack = 
   | 'content_creator' 
   | 'saas' 
@@ -385,11 +390,14 @@ export interface UpdateTaskRequest {
 
 // ============================================================================
 // STARTER PROGRAM SYSTEM TYPES
+// @deprecated - Use the new Program system types below instead
+// These types are kept for backward compatibility during migration
 // ============================================================================
 
 /**
  * Task template within a program day
  * These are templates that get instantiated as real Task records
+ * @deprecated Use ProgramDay.tasks with the new Program system
  */
 export interface ProgramTaskTemplate {
   label: string; // Task title that shows in the app
@@ -403,6 +411,7 @@ export interface ProgramTaskTemplate {
 /**
  * A single day within a starter program
  * Contains the task templates for that day
+ * @deprecated Use ProgramDay with the new Program system
  */
 export interface StarterProgramDay {
   id: string;
@@ -420,6 +429,7 @@ export interface StarterProgramDay {
 /**
  * A starter program template
  * Defines a multi-day program for a specific track
+ * @deprecated Use Program with the new Program system
  */
 export interface StarterProgram {
   id: string;
@@ -439,9 +449,13 @@ export interface StarterProgram {
 
 /**
  * User's enrollment in a starter program
+ * @deprecated Use ProgramEnrollment with the new Program system
  */
 export type ProgramEnrollmentStatus = 'active' | 'completed' | 'stopped';
 
+/**
+ * @deprecated Use ProgramEnrollment with the new Program system
+ */
 export interface StarterProgramEnrollment {
   id: string;
   userId: string;
@@ -454,7 +468,166 @@ export interface StarterProgramEnrollment {
 }
 
 // ============================================================================
-// TRACK CMS TYPES (Admin-managed)
+// PROGRAM SYSTEM TYPES (New - replaces Track/StarterProgram)
+// ============================================================================
+
+/**
+ * Program type - group (with cohorts/squads) or individual (1:1 coaching)
+ */
+export type ProgramType = 'group' | 'individual';
+
+/**
+ * Program enrollment status
+ * - upcoming: Paid but cohort/program hasn't started yet
+ * - active: Currently in progress
+ * - completed: Program finished
+ * - stopped: User left early or was removed
+ */
+export type NewProgramEnrollmentStatus = 'upcoming' | 'active' | 'completed' | 'stopped';
+
+/**
+ * Program - Coach-defined content template
+ * Replaces the Track + StarterProgram concepts
+ * Stored in Firestore 'programs' collection
+ */
+export interface Program {
+  id: string;
+  organizationId: string; // Clerk Organization ID (multi-tenant)
+  
+  // Basic info
+  name: string;
+  slug: string; // URL-friendly identifier
+  description: string;
+  coverImageUrl?: string; // Hero/cover image
+  
+  // Type and settings
+  type: ProgramType; // 'group' | 'individual'
+  lengthDays: number; // Duration in days
+  
+  // Pricing
+  priceInCents: number; // 0 = free
+  currency: string; // 'usd', 'eur', etc.
+  stripePriceId?: string; // Stripe Price ID for checkout
+  
+  // Group program settings (only applicable when type = 'group')
+  squadCapacity?: number; // Max members per squad (e.g., 10)
+  coachInSquads?: boolean; // Whether coach joins each squad
+  
+  // Content
+  defaultHabits?: ProgramHabitTemplate[]; // Default habits for enrolled users
+  
+  // Status
+  isActive: boolean; // Whether program can accept enrollments
+  isPublished: boolean; // Whether visible in Discover
+  
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Program day content - tasks and habits for a specific day
+ * Stored in Firestore 'program_days' collection
+ */
+export interface ProgramDay {
+  id: string;
+  programId: string;
+  dayIndex: number; // 1-based: 1..lengthDays
+  title?: string; // Optional title/theme (e.g., "Clarify your niche")
+  summary?: string; // 1-2 lines description
+  dailyPrompt?: string; // Encouragement/explanation for the day
+  tasks: ProgramTaskTemplate[];
+  habits?: ProgramHabitTemplate[]; // Optional habits (typically Day 1)
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Program cohort - Time-based instance of a group program
+ * Only used for group programs (type = 'group')
+ * Stored in Firestore 'program_cohorts' collection
+ */
+export interface ProgramCohort {
+  id: string;
+  programId: string;
+  organizationId: string; // Denormalized for queries
+  
+  // Cohort info
+  name: string; // e.g., "March 2025", "Spring Cohort"
+  startDate: string; // ISO date when cohort starts
+  endDate: string; // ISO date when cohort ends
+  
+  // Enrollment settings
+  enrollmentOpen: boolean; // Whether new users can join
+  maxEnrollment?: number; // Optional cap on total cohort size
+  currentEnrollment: number; // Current number of enrollees
+  
+  // Lifecycle
+  status: 'upcoming' | 'active' | 'completed' | 'archived';
+  gracePeriodEndDate?: string; // When squad closes (7 days after endDate)
+  closingNotificationSent?: boolean; // Whether closing notification was sent
+  
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Program enrollment - User's enrollment in a program
+ * Stored in Firestore 'program_enrollments' collection
+ */
+export interface ProgramEnrollment {
+  id: string;
+  userId: string;
+  programId: string;
+  organizationId: string; // Denormalized for queries
+  
+  // For group programs
+  cohortId?: string | null; // FK to program_cohorts
+  squadId?: string | null; // FK to squads (auto-assigned)
+  
+  // Payment
+  stripePaymentIntentId?: string;
+  stripeCheckoutSessionId?: string;
+  paidAt?: string; // ISO timestamp when payment completed
+  amountPaid: number; // Amount in cents
+  
+  // Progress
+  status: NewProgramEnrollmentStatus;
+  startedAt: string; // ISO date when enrollment becomes active
+  completedAt?: string; // ISO timestamp when completed
+  stoppedAt?: string; // ISO timestamp if stopped early
+  lastAssignedDayIndex: number; // Last program day with generated tasks
+  currentDayIndex?: number; // Current day user is on (calculated)
+  
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Program with enrollment counts for admin views
+ */
+export interface ProgramWithStats extends Program {
+  totalEnrollments: number;
+  activeEnrollments: number;
+  cohortCount?: number; // For group programs
+}
+
+/**
+ * Cohort with squad info for admin views
+ */
+export interface CohortWithSquads extends ProgramCohort {
+  squads: Array<{
+    id: string;
+    name: string;
+    memberCount: number;
+    capacity: number;
+  }>;
+}
+
+// ============================================================================
+// TRACK CMS TYPES (Admin-managed) - DEPRECATED: Use Program types above
 // ============================================================================
 
 /**
@@ -567,8 +740,20 @@ export interface Squad {
   nextCallTimezone?: string | null; // IANA timezone e.g. "America/New_York"
   nextCallLocation?: string | null; // e.g. "Squad chat", "Zoom", a URL
   nextCallTitle?: string | null; // Optional custom title, defaults to "Squad coaching call"
-  // Track association - optional, null means visible to all users regardless of track
+  // Track association - @deprecated, use programId/cohortId instead
   trackId?: UserTrack | null;
+  // Program/Cohort association (new system)
+  programId?: string | null; // FK to programs collection
+  cohortId?: string | null; // FK to program_cohorts collection
+  capacity?: number; // Max members (overrides program's squadCapacity if set)
+  // Auto-created squad info
+  isAutoCreated?: boolean; // True if created automatically by enrollment system
+  squadNumber?: number; // Sequential number within cohort (e.g., 1, 2, 3)
+  // Lifecycle management
+  gracePeriodMessageSent?: boolean; // True if grace period notification was sent
+  gracePeriodStartDate?: string; // Date when grace period started (YYYY-MM-DD)
+  isClosed?: boolean; // True if squad is archived/closed
+  closedAt?: string; // ISO timestamp when squad was closed
 }
 
 export interface SquadMember {

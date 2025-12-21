@@ -1,0 +1,2 @@
+export { CoachProgramsTab } from './CoachProgramsTab';
+

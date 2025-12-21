@@ -27,45 +27,59 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type') as DynamicPromptType | null;
     const slot = searchParams.get('slot') as DynamicPromptSlot | null;
 
-    // Build query - filter by organization
-    let query: FirebaseFirestore.Query = adminDb
+    // Fetch both org-specific prompts AND global/platform prompts
+    // This allows coaches to see platform content plus their own customizations
+    
+    // Get all prompts and filter based on criteria
+    const allPromptsSnapshot = await adminDb
       .collection('dynamic_prompts')
-      .where('organizationId', '==', organizationId);
+      .orderBy('priority', 'asc')
+      .get();
 
+    // Filter prompts - include org-specific OR global (no organizationId)
+    let prompts = allPromptsSnapshot.docs
+      .filter(doc => {
+        const data = doc.data();
+        // Include if org matches OR if no organizationId (global/platform content)
+        return data.organizationId === organizationId || 
+               data.organizationId === undefined || 
+               data.organizationId === null;
+      })
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
+        updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
+      })) as DynamicPrompt[];
+
+    // Apply additional filters
     if (trackId) {
       if (trackId === 'null' || trackId === 'generic') {
-        query = query.where('trackId', '==', null);
+        prompts = prompts.filter(p => p.trackId === null || p.trackId === undefined);
       } else {
-        query = query.where('trackId', '==', trackId);
+        prompts = prompts.filter(p => p.trackId === trackId);
       }
     }
 
     if (type && VALID_TYPES.includes(type)) {
-      query = query.where('type', '==', type);
+      prompts = prompts.filter(p => p.type === type);
     }
 
     if (slot && VALID_SLOTS.includes(slot)) {
-      query = query.where('slot', '==', slot);
+      prompts = prompts.filter(p => p.slot === slot);
     }
 
-    const promptsSnapshot = await query
-      .orderBy('priority', 'asc')
-      .get();
-
-    const prompts = promptsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
-      updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
-    })) as DynamicPrompt[];
-
-    // Also fetch track names for display (org-scoped)
-    const tracksSnapshot = await adminDb
-      .collection('tracks')
-      .where('organizationId', '==', organizationId)
-      .get();
+    // Fetch track names for display - include both org tracks and global tracks
+    const allTracksSnapshot = await adminDb.collection('tracks').get();
     const tracks = Object.fromEntries(
-      tracksSnapshot.docs.map(doc => [doc.id, doc.data().name])
+      allTracksSnapshot.docs
+        .filter(doc => {
+          const data = doc.data();
+          return data.organizationId === organizationId || 
+                 data.organizationId === undefined || 
+                 data.organizationId === null;
+        })
+        .map(doc => [doc.id, doc.data().name])
     );
 
     return NextResponse.json({ 

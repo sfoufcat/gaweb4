@@ -30,6 +30,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import type { 
   ClientCoachingData, 
   FirebaseUser, 
@@ -40,6 +47,7 @@ import type {
   CoachPrivateNotes,
   UserTrack,
   CoachingStatus,
+  Track,
 } from '@/types';
 import {
   formatTierName,
@@ -125,9 +133,14 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   const [hasCoaching, setHasCoaching] = useState<boolean>(false);
   const [_coach, setCoach] = useState<Coach | null>(null);
   const [squads, setSquads] = useState<SquadInfo[]>([]);
+  const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  
+  // Track/Squad update states
+  const [updatingTrack, setUpdatingTrack] = useState(false);
+  const [updatingSquad, setUpdatingSquad] = useState(false);
 
   // Coach notes about user (stored separately from coaching data)
   const [coachNotes, setCoachNotes] = useState('');
@@ -257,15 +270,22 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
         setHasCoaching(false);
       }
 
-      // Fetch squads for display
+      // Fetch squads and tracks for display/selection
       try {
-        const squadsResponse = await fetch('/api/coach/org-squads');
+        const [squadsResponse, tracksResponse] = await Promise.all([
+          fetch('/api/coach/org-squads'),
+          fetch('/api/coach/org-tracks'),
+        ]);
         if (squadsResponse.ok) {
           const squadsData = await squadsResponse.json();
           setSquads(squadsData.squads || []);
         }
+        if (tracksResponse.ok) {
+          const tracksData = await tracksResponse.json();
+          setTracks(tracksData.tracks || []);
+        }
       } catch (err) {
-        console.warn('Failed to fetch squads:', err);
+        console.warn('Failed to fetch squads/tracks:', err);
       }
 
     } catch (err) {
@@ -279,6 +299,56 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Update track for user
+  const handleTrackChange = async (newTrack: UserTrack | null) => {
+    try {
+      setUpdatingTrack(true);
+      
+      const response = await fetch(`/api/coach/org-users/${clientId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ track: newTrack }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update track');
+      }
+
+      // Update local state
+      setUser((prev) => prev ? { ...prev, track: newTrack } : prev);
+    } catch (err) {
+      console.error('Error updating track:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update track');
+    } finally {
+      setUpdatingTrack(false);
+    }
+  };
+
+  // Update squad for user
+  const handleSquadChange = async (newSquadId: string | null) => {
+    try {
+      setUpdatingSquad(true);
+      
+      const response = await fetch(`/api/coach/org-users/${clientId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ squadId: newSquadId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update squad');
+      }
+
+      // Update local state
+      setUser((prev) => prev ? { ...prev, standardSquadId: newSquadId } : prev);
+    } catch (err) {
+      console.error('Error updating squad:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update squad');
+    } finally {
+      setUpdatingSquad(false);
+    }
+  };
 
   // Save coaching data changes
   const handleSaveCoachingChanges = async () => {
@@ -714,17 +784,63 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
           {/* Track */}
           <div className="flex items-center justify-between py-2 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
             <span className="font-albert text-[14px] text-[#5f5a55] dark:text-[#b2b6c2]">Track</span>
-            <span className="font-albert text-[14px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-              {user?.track ? TRACK_LABELS[user.track as UserTrack] || user.track : 'Not set'}
-            </span>
+            <Select
+              value={user?.track || 'none'}
+              onValueChange={(value) => handleTrackChange(value === 'none' ? null : value as UserTrack)}
+              disabled={updatingTrack}
+            >
+              <SelectTrigger className={`w-[180px] font-albert text-[14px] h-9 ${updatingTrack ? 'opacity-50' : ''}`}>
+                <SelectValue placeholder="Select track">
+                  {user?.track ? TRACK_LABELS[user.track as UserTrack] || user.track : 'Not set'}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none" className="font-albert">
+                  Not set
+                </SelectItem>
+                {tracks.length > 0 ? (
+                  tracks.map((track) => (
+                    <SelectItem key={track.id} value={track.slug} className="font-albert">
+                      {track.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  Object.entries(TRACK_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value} className="font-albert">
+                      {label}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Squad */}
           <div className="flex items-center justify-between py-2 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
             <span className="font-albert text-[14px] text-[#5f5a55] dark:text-[#b2b6c2]">Squad</span>
-            <span className="font-albert text-[14px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-              {getUserSquadNames()}
-            </span>
+            <Select
+              value={user?.standardSquadId || 'none'}
+              onValueChange={(value) => handleSquadChange(value === 'none' ? null : value)}
+              disabled={updatingSquad}
+            >
+              <SelectTrigger className={`w-[180px] font-albert text-[14px] h-9 ${updatingSquad ? 'opacity-50' : ''}`}>
+                <SelectValue placeholder="Select squad">
+                  {user?.standardSquadId 
+                    ? squads.find(s => s.id === user.standardSquadId)?.name || 'Unknown squad'
+                    : 'None'}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none" className="font-albert">
+                  None
+                </SelectItem>
+                {squads.map((squad) => (
+                  <SelectItem key={squad.id} value={squad.id} className="font-albert">
+                    {squad.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Notes about user */}

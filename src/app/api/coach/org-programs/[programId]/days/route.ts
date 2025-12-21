@@ -1,15 +1,15 @@
 /**
- * Coach API: Starter Program Days Management (org-scoped)
+ * Coach API: Program Days Management
  * 
- * GET /api/coach/org-starter-programs/[programId]/days - List all days for a program
- * POST /api/coach/org-starter-programs/[programId]/days - Create/update a program day
+ * GET /api/coach/org-programs/[programId]/days - List all days for a program
+ * POST /api/coach/org-programs/[programId]/days - Create/update a program day
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { StarterProgramDay, ProgramTaskTemplate, ProgramHabitTemplate } from '@/types';
+import type { ProgramDay, ProgramTaskTemplate, ProgramHabitTemplate } from '@/types';
 
 export async function GET(
   request: NextRequest,
@@ -19,22 +19,17 @@ export async function GET(
     const { organizationId } = await requireCoachWithOrg();
     const { programId } = await params;
 
-    // Verify program exists and belongs to this org OR is global
-    const programDoc = await adminDb.collection('starter_programs').doc(programId).get();
+    // Verify program exists and belongs to this org
+    const programDoc = await adminDb.collection('programs').doc(programId).get();
     if (!programDoc.exists) {
-      return NextResponse.json({ error: 'Starter program not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Program not found' }, { status: 404 });
     }
-    
-    const programOrgId = programDoc.data()?.organizationId;
-    const isOrgProgram = programOrgId === organizationId;
-    const isGlobalProgram = programOrgId === undefined || programOrgId === null;
-    
-    if (!isOrgProgram && !isGlobalProgram) {
+    if (programDoc.data()?.organizationId !== organizationId) {
       return NextResponse.json({ error: 'Program not found in your organization' }, { status: 404 });
     }
 
     const daysSnapshot = await adminDb
-      .collection('starter_program_days')
+      .collection('program_days')
       .where('programId', '==', programId)
       .orderBy('dayIndex', 'asc')
       .get();
@@ -44,11 +39,12 @@ export async function GET(
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
       updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
-    })) as StarterProgramDay[];
+    })) as ProgramDay[];
 
     return NextResponse.json({ 
       days,
       programLengthDays: programDoc.data()?.lengthDays || 30,
+      totalDays: days.length,
     });
   } catch (error) {
     console.error('[COACH_ORG_PROGRAM_DAYS_GET] Error:', error);
@@ -75,9 +71,9 @@ export async function POST(
     const body = await request.json();
 
     // Verify program exists and belongs to this organization
-    const programDoc = await adminDb.collection('starter_programs').doc(programId).get();
+    const programDoc = await adminDb.collection('programs').doc(programId).get();
     if (!programDoc.exists) {
-      return NextResponse.json({ error: 'Starter program not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Program not found' }, { status: 404 });
     }
     if (programDoc.data()?.organizationId !== organizationId) {
       return NextResponse.json({ error: 'Program not found in your organization' }, { status: 404 });
@@ -131,7 +127,7 @@ export async function POST(
 
     // Check if day already exists
     const existingDay = await adminDb
-      .collection('starter_program_days')
+      .collection('program_days')
       .where('programId', '==', programId)
       .where('dayIndex', '==', body.dayIndex)
       .limit(1)
@@ -140,7 +136,9 @@ export async function POST(
     const dayData = {
       programId,
       dayIndex: body.dayIndex,
-      title: body.title || '',
+      title: body.title?.trim() || '',
+      summary: body.summary?.trim() || '',
+      dailyPrompt: body.dailyPrompt?.trim() || '',
       tasks,
       habits: habits.length > 0 ? habits : undefined,
       updatedAt: FieldValue.serverTimestamp(),
@@ -152,27 +150,27 @@ export async function POST(
     if (!existingDay.empty) {
       // Update existing day
       dayId = existingDay.docs[0].id;
-      await adminDb.collection('starter_program_days').doc(dayId).update(dayData);
+      await adminDb.collection('program_days').doc(dayId).update(dayData);
       isUpdate = true;
-      console.log(`[COACH_ORG_PROGRAM_DAYS_POST] Updated day ${body.dayIndex} for program ${programId} in org ${organizationId}`);
+      console.log(`[COACH_ORG_PROGRAM_DAYS_POST] Updated day ${body.dayIndex} for program ${programId}`);
     } else {
       // Create new day
-      const docRef = await adminDb.collection('starter_program_days').add({
+      const docRef = await adminDb.collection('program_days').add({
         ...dayData,
         createdAt: FieldValue.serverTimestamp(),
       });
       dayId = docRef.id;
-      console.log(`[COACH_ORG_PROGRAM_DAYS_POST] Created day ${body.dayIndex} for program ${programId} in org ${organizationId}`);
+      console.log(`[COACH_ORG_PROGRAM_DAYS_POST] Created day ${body.dayIndex} for program ${programId}`);
     }
 
     // Fetch the updated/created day
-    const savedDoc = await adminDb.collection('starter_program_days').doc(dayId).get();
+    const savedDoc = await adminDb.collection('program_days').doc(dayId).get();
     const savedDay = {
       id: savedDoc.id,
       ...savedDoc.data(),
       createdAt: savedDoc.data()?.createdAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.createdAt,
       updatedAt: savedDoc.data()?.updatedAt?.toDate?.()?.toISOString?.() || savedDoc.data()?.updatedAt,
-    } as StarterProgramDay;
+    } as ProgramDay;
 
     return NextResponse.json({ 
       success: true, 

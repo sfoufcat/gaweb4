@@ -18,6 +18,7 @@ import { AdminPremiumUpgradeFormsTab } from '@/components/admin/AdminPremiumUpgr
 import { AdminCoachingIntakeFormsTab } from '@/components/admin/AdminCoachingIntakeFormsTab';
 import { AdminQuizzesTab } from '@/components/admin/quizzes';
 import { AdminTracksAndProgramsTab } from '@/components/admin/tracks-programs';
+import { CoachProgramsTab } from '@/components/coach/programs';
 
 /**
  * Coach Dashboard Page
@@ -32,8 +33,8 @@ import { AdminTracksAndProgramsTab } from '@/components/admin/tracks-programs';
  */
 
 // Valid tab values
-type CoachTab = 'clients' | 'squads' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'quizzes' | 'tracks-programs' | 'channels' | 'customize';
-const VALID_TABS: CoachTab[] = ['clients', 'squads', 'discover', 'upgrade-forms', 'coaching-forms', 'quizzes', 'tracks-programs', 'channels', 'customize'];
+type CoachTab = 'clients' | 'squads' | 'programs' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'quizzes' | 'tracks-programs' | 'channels' | 'customize';
+const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'discover', 'upgrade-forms', 'coaching-forms', 'quizzes', 'tracks-programs', 'channels', 'customize'];
 
 export default function CoachPage() {
   const router = useRouter();
@@ -136,10 +137,16 @@ export default function CoachPage() {
             {!isLimitedOrgCoach && (
               <>
                 <TabsTrigger 
-                  value="tracks-programs"
+                  value="programs"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
                 >
                   Programs
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="tracks-programs"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Legacy Programs
                 </TabsTrigger>
                 <TabsTrigger 
                   value="channels"
@@ -290,7 +297,14 @@ export default function CoachPage() {
             </div>
           </TabsContent>
 
-          {/* Tracks & Programs Tab */}
+          {/* Programs Tab - New system */}
+          <TabsContent value="programs">
+            <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
+              <CoachProgramsTab apiBasePath="/api/coach/org-programs" />
+            </div>
+          </TabsContent>
+
+          {/* Legacy Tracks & Programs Tab */}
           <TabsContent value="tracks-programs">
             <AdminTracksAndProgramsTab 
               tracksApiBasePath={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-tracks' : '/api/admin/tracks'}
