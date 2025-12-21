@@ -1194,7 +1194,7 @@ async function seedDynamicPrompts(trackIdMap: Record<string, string>) {
   for (const prompt of DYNAMIC_PROMPTS) {
     const trackId = prompt.track ? trackIdMap[prompt.track] : null;
     
-    // Check if prompt exists (by trackId + type + slot + title)
+    // Check if prompt exists (by trackId + type + slot + title/body)
     let query = db.collection('dynamic_prompts')
       .where('type', '==', prompt.type)
       .where('slot', '==', prompt.slot);
@@ -1207,6 +1207,9 @@ async function seedDynamicPrompts(trackIdMap: Record<string, string>) {
     
     if (prompt.title) {
       query = query.where('title', '==', prompt.title);
+    } else {
+      // For quotes with empty title, use body for uniqueness
+      query = query.where('body', '==', prompt.body);
     }
     
     const existingSnapshot = await query.limit(1).get();

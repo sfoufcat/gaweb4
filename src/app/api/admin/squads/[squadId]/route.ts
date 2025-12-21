@@ -81,6 +81,33 @@ export async function PATCH(
     // Update squad
     await squadRef.update(updateData);
 
+    // Remove old coach from Stream Chat channel if coach changed
+    const oldCoachId = existingData?.coachId;
+    if (coachId !== undefined && oldCoachId && oldCoachId !== coachId && existingData?.chatChannelId) {
+      try {
+        const streamClient = await getStreamServerClient();
+        const channel = streamClient.channel('messaging', existingData.chatChannelId);
+        await channel.removeMembers([oldCoachId]);
+        console.log(`[ADMIN_SQUADS] Removed old coach ${oldCoachId} from chat channel ${existingData.chatChannelId}`);
+        
+        // Also remove from squadMembers if they're only there as a coach
+        const oldCoachMembership = await adminDb.collection('squadMembers')
+          .where('squadId', '==', squadId)
+          .where('userId', '==', oldCoachId)
+          .where('roleInSquad', '==', 'coach')
+          .limit(1)
+          .get();
+        
+        if (!oldCoachMembership.empty) {
+          await oldCoachMembership.docs[0].ref.delete();
+          console.log(`[ADMIN_SQUADS] Removed old coach ${oldCoachId} from squadMembers`);
+        }
+      } catch (streamError) {
+        console.error('[STREAM_REMOVE_OLD_COACH_ERROR]', streamError);
+        // Don't fail the request if Stream removal fails
+      }
+    }
+
     // If a coach is set, ensure they're in squadMembers and Stream Chat channel
     if (coachId) {
       const existingMembership = await adminDb.collection('squadMembers')

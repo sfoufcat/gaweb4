@@ -29,7 +29,7 @@ import { useCoachingData } from '@/hooks/useCoachingData';
 import { useCoachSquads } from '@/hooks/useCoachSquads';
 import { isAdmin } from '@/lib/admin-utils-shared';
 import type { UserRole } from '@/types';
-import type { OrgChannel } from '@/lib/org-channels';
+import type { OrgChannel, OrgCoachingPromo } from '@/lib/org-channels';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useMenuTitles } from '@/contexts/BrandingContext';
 
@@ -181,6 +181,15 @@ function PinIcon({ className }: { className?: string }) {
   );
 }
 
+// Star icon for coached squads
+function CoachStarIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+    </svg>
+  );
+}
+
 // Special channel item component
 function SpecialChannelItem({ 
   icon, 
@@ -192,6 +201,7 @@ function SpecialChannelItem({
   isPinned,
   unreadCount,
   lastMessageTime,
+  isCoaching,
 }: { 
   icon?: React.ReactNode; 
   name: string; 
@@ -202,6 +212,7 @@ function SpecialChannelItem({
   isPinned?: boolean;
   unreadCount?: number;
   lastMessageTime?: Date | null;
+  isCoaching?: boolean;
 }) {
   // Format timestamp
   const timestamp = lastMessageTime 
@@ -228,6 +239,9 @@ function SpecialChannelItem({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 min-w-0">
             <p className="font-albert text-[15px] font-medium text-text-primary truncate">{name}</p>
+            {isCoaching && (
+              <CoachStarIcon className="w-4 h-4 text-amber-500 flex-shrink-0" />
+            )}
             {isPinned && (
               <PinIcon className="w-3.5 h-3.5 text-[#a07855] flex-shrink-0" />
             )}
@@ -252,22 +266,33 @@ function SpecialChannelItem({
 }
 
 // Get your personal coach item (links to /get-coach page)
-function CoachPromoItem() {
+// Now accepts props for org-customized promo settings
+interface CoachPromoItemProps {
+  title?: string;
+  subtitle?: string;
+  imageUrl?: string;
+}
+
+function CoachPromoItem({ 
+  title = 'Get your personal coach',
+  subtitle = 'Work with a performance psychologist 1:1',
+  imageUrl = 'https://images.unsplash.com/photo-1580518324671-c2f0833a3af3?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+}: CoachPromoItemProps) {
   return (
     <Link
       href="/get-coach"
       className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[#ffffff]/60 dark:hover:bg-[#171b22]/60 transition-colors"
     >
       <Image 
-        src="https://images.unsplash.com/photo-1580518324671-c2f0833a3af3?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+        src={imageUrl}
         alt="Personal Coach"
         width={48}
         height={48}
         className="w-12 h-12 rounded-full object-cover flex-shrink-0"
       />
       <div className="flex-1 min-w-0">
-        <p className="font-albert text-[15px] font-medium text-text-primary">Get your personal coach</p>
-        <p className="font-albert text-[13px] text-text-secondary">Work with a performance psychologist 1:1</p>
+        <p className="font-albert text-[15px] font-medium text-text-primary">{title}</p>
+        <p className="font-albert text-[13px] text-text-secondary">{subtitle}</p>
       </div>
     </Link>
   );
@@ -667,6 +692,9 @@ function ChatContent({
   const [orgChannelUnreads, setOrgChannelUnreads] = useState<Record<string, number>>({});
   const [orgChannelLastMessages, setOrgChannelLastMessages] = useState<Record<string, Date | null>>({});
   
+  // Coaching promo settings (customizable by org coaches)
+  const [coachingPromo, setCoachingPromo] = useState<OrgCoachingPromo | null>(null);
+  
   // Fetch org channels for users in organizations
   useEffect(() => {
     const fetchOrgChannels = async () => {
@@ -693,6 +721,23 @@ function ChatContent({
     };
 
     fetchOrgChannels();
+  }, []);
+  
+  // Fetch coaching promo settings
+  useEffect(() => {
+    const fetchCoachingPromo = async () => {
+      try {
+        const response = await fetch('/api/user/org-coaching-promo');
+        if (response.ok) {
+          const data = await response.json();
+          setCoachingPromo(data.promo);
+        }
+      } catch (error) {
+        console.warn('Failed to fetch coaching promo:', error);
+      }
+    };
+
+    fetchCoachingPromo();
   }, []);
 
   // Calculate unread counts and last message times from active channels
@@ -1101,6 +1146,8 @@ function ChatContent({
               <>
                 {coachSquads.map((coachSquad) => {
                   if (!coachSquad.chatChannelId) return null;
+                  // Show star icon if user is the assigned coach of this squad
+                  const isUserTheCoach = coachSquad.coachId === user.id;
                   return (
                     <div key={coachSquad.id} className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
                       <SpecialChannelItem
@@ -1117,6 +1164,7 @@ function ChatContent({
                         isPinned={true}
                         unreadCount={coachSquadUnreads[coachSquad.chatChannelId] || 0}
                         lastMessageTime={coachSquadLastMessages[coachSquad.chatChannelId] || null}
+                        isCoaching={isUserTheCoach}
                       />
                     </div>
                   );
@@ -1388,17 +1436,21 @@ function ChatContent({
               );
             })}
 
-            {/* Edit Channels Link - Only show for coaches with org channels */}
-            {userRole === 'coach' && hasOrgChannels && (
+            {/* Get Your Personal Coach - Promo Item (only show if user doesn't have coaching and promo is visible) */}
+            {!hasCoaching && coachingPromo?.isVisible !== false && (
               <div className="p-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
-                <EditChannelsLink />
+                <CoachPromoItem 
+                  title={coachingPromo?.title}
+                  subtitle={coachingPromo?.subtitle}
+                  imageUrl={coachingPromo?.imageUrl}
+                />
               </div>
             )}
 
-            {/* Get Your Personal Coach - Promo Item (only show if user doesn't have coaching) */}
-            {!hasCoaching && (
+            {/* Edit Channels Link - Only show for coaches with org channels */}
+            {userRole === 'coach' && hasOrgChannels && (
               <div className="p-2">
-                <CoachPromoItem />
+                <EditChannelsLink />
               </div>
             )}
           </div>

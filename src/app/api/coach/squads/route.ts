@@ -2,14 +2,17 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
-import type { Squad, ClerkPublicMetadata } from '@/types';
+import type { Squad, ClerkPublicMetadata, OrgRole } from '@/types';
 
 /**
  * GET /api/coach/squads
  * Fetches squads for the Coach Dashboard
  * 
- * - For coach: Returns only squads where coachId === currentUser.id
+ * - For global coach (role === 'coach'): Returns only squads where coachId === currentUser.id
+ * - For org-level coach (orgRole === 'coach'): Returns only squads where coachId === currentUser.id
  * - For admin/super_admin: Returns ALL squads
+ * 
+ * Note: Super coaches should use /api/coach/org-squads to see all org squads
  */
 export async function GET() {
   try {
@@ -19,17 +22,23 @@ export async function GET() {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    // Get role from session claims
-    const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
+    // Get role and orgRole from session claims
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata;
+    const role = publicMetadata?.role;
+    const orgRole = publicMetadata?.orgRole as OrgRole | undefined;
 
-    // Check if user can access coach dashboard
-    if (!canAccessCoachDashboard(role)) {
+    // Check if user can access coach dashboard (supports both global and org-level roles)
+    if (!canAccessCoachDashboard(role, orgRole)) {
       return new NextResponse('Forbidden - Coach, Admin, or Super Admin access required', { status: 403 });
     }
 
     let squadsQuery;
 
-    if (role === 'coach') {
+    // Coaches (global or org-level) see only squads they coach
+    // Admin/Super Admin see all squads
+    const isCoachRole = role === 'coach' || orgRole === 'coach' || orgRole === 'super_coach';
+    
+    if (isCoachRole && role !== 'admin' && role !== 'super_admin') {
       // Coach: only fetch squads where they are the coach
       squadsQuery = adminDb.collection('squads').where('coachId', '==', userId);
     } else {

@@ -8,6 +8,28 @@ import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgCustomDomain, Cu
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, validateSubdomain } from '@/types';
 
 /**
+ * Get DNS record names for a domain
+ * For subdomains (e.g., app.porepower.com), returns the subdomain part
+ * For root domains (e.g., porepower.com), returns @ for routing
+ */
+function getDnsRecordNames(domain: string): { routing: string; clerk: string } {
+  const parts = domain.split('.');
+  // If more than 2 parts (e.g., app.porepower.com), it's a subdomain
+  if (parts.length > 2) {
+    const subdomain = parts.slice(0, -2).join('.'); // "app" or "app.sub"
+    return {
+      routing: subdomain,
+      clerk: `clerk.${subdomain}`,
+    };
+  }
+  // Root domain (e.g., porepower.com)
+  return {
+    routing: '@',
+    clerk: 'clerk',
+  };
+}
+
+/**
  * CustomizeBrandingTab
  * 
  * Allows coaches to customize their organization's branding:
@@ -105,7 +127,10 @@ export function CustomizeBrandingTab() {
       setHorizontalLogoUrl(branding.horizontalLogoUrl || null);
       setAppTitle(branding.appTitle);
       setColors(branding.colors);
-      setMenuTitles(branding.menuTitles || DEFAULT_MENU_TITLES);
+      setMenuTitles({
+        ...DEFAULT_MENU_TITLES,
+        ...(branding.menuTitles || {}),
+      });
     } catch (err) {
       console.error('Error fetching branding:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch branding');
@@ -572,7 +597,10 @@ export function CustomizeBrandingTab() {
       setHorizontalLogoUrl(originalBranding.horizontalLogoUrl || null);
       setAppTitle(originalBranding.appTitle);
       setColors(originalBranding.colors);
-      setMenuTitles(originalBranding.menuTitles || DEFAULT_MENU_TITLES);
+      setMenuTitles({
+        ...DEFAULT_MENU_TITLES,
+        ...(originalBranding.menuTitles || {}),
+      });
     }
   };
 
@@ -1172,7 +1200,7 @@ export function CustomizeBrandingTab() {
                       
                       {/* DNS Records - always visible for reference */}
                       <div className="mt-3 space-y-3">
-                        <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                           {domain.status === 'verified' 
                             ? 'DNS records configured for this domain:'
                             : 'Add BOTH DNS records to your domain provider:'
@@ -1180,46 +1208,46 @@ export function CustomizeBrandingTab() {
                         </p>
                         
                         {/* DNS Record Cards */}
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           {/* CNAME for routing */}
-                          <div className="p-3 bg-white dark:bg-[#11141b] rounded-lg border border-[#e1ddd8] dark:border-[#313746]">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-[10px] font-medium text-[#a07855] dark:text-[#b8896a] uppercase tracking-wide font-albert">
+                          <div className="p-4 bg-white dark:bg-[#11141b] rounded-lg border border-[#e1ddd8] dark:border-[#313746]">
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-xs font-medium text-[#a07855] dark:text-[#b8896a] uppercase tracking-wide font-albert">
                                 CNAME Record
                               </span>
-                              <span className="text-[10px] text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                              <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
                                 For routing
                               </span>
                             </div>
-                            <div className="space-y-1.5">
+                            <div className="space-y-2">
                               <div className="flex items-center justify-between">
-                                <span className="text-[10px] text-[#8c8c8c] dark:text-[#7d8190] font-albert">Name</span>
+                                <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">Name</span>
                                 <div className="flex items-center gap-1.5">
-                                  <code className="text-xs font-mono text-[#1a1a1a] dark:text-[#f5f5f8]">@</code>
+                                  <code className="text-sm font-mono text-[#1a1a1a] dark:text-[#f5f5f8]">{getDnsRecordNames(domain.domain).routing}</code>
                                   <button
-                                    onClick={() => copyToClipboard('@', `${domain.id}-cname-name`)}
+                                    onClick={() => copyToClipboard(getDnsRecordNames(domain.domain).routing, `${domain.id}-cname-name`)}
                                     className="p-1 text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded transition-colors"
                                   >
                                     {copiedToken === `${domain.id}-cname-name` ? (
-                                      <Check className="w-3 h-3 text-green-500" />
+                                      <Check className="w-3.5 h-3.5 text-green-500" />
                                     ) : (
-                                      <Copy className="w-3 h-3" />
+                                      <Copy className="w-3.5 h-3.5" />
                                     )}
                                   </button>
                                 </div>
                               </div>
                               <div className="flex items-center justify-between">
-                                <span className="text-[10px] text-[#8c8c8c] dark:text-[#7d8190] font-albert">Value</span>
+                                <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">Value</span>
                                 <div className="flex items-center gap-1.5">
-                                  <code className="text-xs font-mono text-[#1a1a1a] dark:text-[#f5f5f8]">cname.vercel-dns.com</code>
+                                  <code className="text-sm font-mono text-[#1a1a1a] dark:text-[#f5f5f8]">cname.vercel-dns.com</code>
                                   <button
                                     onClick={() => copyToClipboard('cname.vercel-dns.com', `${domain.id}-cname-value`)}
                                     className="p-1 text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded transition-colors"
                                   >
                                     {copiedToken === `${domain.id}-cname-value` ? (
-                                      <Check className="w-3 h-3 text-green-500" />
+                                      <Check className="w-3.5 h-3.5 text-green-500" />
                                     ) : (
-                                      <Copy className="w-3 h-3" />
+                                      <Copy className="w-3.5 h-3.5" />
                                     )}
                                   </button>
                                 </div>
@@ -1228,44 +1256,44 @@ export function CustomizeBrandingTab() {
                           </div>
 
                           {/* CNAME for Clerk authentication */}
-                          <div className="p-3 bg-white dark:bg-[#11141b] rounded-lg border border-[#e1ddd8] dark:border-[#313746]">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-[10px] font-medium text-[#a07855] dark:text-[#b8896a] uppercase tracking-wide font-albert">
+                          <div className="p-4 bg-white dark:bg-[#11141b] rounded-lg border border-[#e1ddd8] dark:border-[#313746]">
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-xs font-medium text-[#a07855] dark:text-[#b8896a] uppercase tracking-wide font-albert">
                                 CNAME Record
                               </span>
-                              <span className="text-[10px] text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                              <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
                                 For authentication
                               </span>
                             </div>
-                            <div className="space-y-1.5">
+                            <div className="space-y-2">
                               <div className="flex items-center justify-between">
-                                <span className="text-[10px] text-[#8c8c8c] dark:text-[#7d8190] font-albert">Name</span>
+                                <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">Name</span>
                                 <div className="flex items-center gap-1.5">
-                                  <code className="text-xs font-mono text-[#1a1a1a] dark:text-[#f5f5f8]">clerk</code>
+                                  <code className="text-sm font-mono text-[#1a1a1a] dark:text-[#f5f5f8]">{getDnsRecordNames(domain.domain).clerk}</code>
                                   <button
-                                    onClick={() => copyToClipboard('clerk', `${domain.id}-clerk-name`)}
+                                    onClick={() => copyToClipboard(getDnsRecordNames(domain.domain).clerk, `${domain.id}-clerk-name`)}
                                     className="p-1 text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded transition-colors"
                                   >
                                     {copiedToken === `${domain.id}-clerk-name` ? (
-                                      <Check className="w-3 h-3 text-green-500" />
+                                      <Check className="w-3.5 h-3.5 text-green-500" />
                                     ) : (
-                                      <Copy className="w-3 h-3" />
+                                      <Copy className="w-3.5 h-3.5" />
                                     )}
                                   </button>
                                 </div>
                               </div>
                               <div className="flex items-center justify-between">
-                                <span className="text-[10px] text-[#8c8c8c] dark:text-[#7d8190] font-albert">Value</span>
+                                <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">Value</span>
                                 <div className="flex items-center gap-1.5">
-                                  <code className="text-xs font-mono text-[#1a1a1a] dark:text-[#f5f5f8]">frontend-api.clerk.services</code>
+                                  <code className="text-sm font-mono text-[#1a1a1a] dark:text-[#f5f5f8]">frontend-api.clerk.services</code>
                                   <button
                                     onClick={() => copyToClipboard('frontend-api.clerk.services', `${domain.id}-clerk-value`)}
                                     className="p-1 text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded transition-colors"
                                   >
                                     {copiedToken === `${domain.id}-clerk-value` ? (
-                                      <Check className="w-3 h-3 text-green-500" />
+                                      <Check className="w-3.5 h-3.5 text-green-500" />
                                     ) : (
-                                      <Copy className="w-3 h-3" />
+                                      <Copy className="w-3.5 h-3.5" />
                                     )}
                                   </button>
                                 </div>
@@ -1275,7 +1303,7 @@ export function CustomizeBrandingTab() {
                         </div>
 
                         {domain.status !== 'verified' && (
-                          <p className="text-[10px] text-[#a7a39e] dark:text-[#7d8190] font-albert">
+                          <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
                             DNS changes may take up to 24 hours to propagate. Click the refresh icon to re-verify.
                           </p>
                         )}

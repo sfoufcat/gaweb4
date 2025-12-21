@@ -58,6 +58,32 @@ export interface UpdateOrgChannelInput {
 }
 
 // ============================================================================
+// COACHING PROMO TYPES
+// ============================================================================
+
+/**
+ * Organization coaching promo settings
+ * Displayed in the chat sidebar to promote coaching services
+ */
+export interface OrgCoachingPromo {
+  id: string;                    // Same as organizationId
+  organizationId: string;        // Clerk org ID
+  title: string;                 // Display title (default: "Get your personal coach")
+  subtitle: string;              // Display subtitle (default: "Work with a performance psychologist 1:1")
+  imageUrl: string;              // Promo image URL
+  isVisible: boolean;            // Show/hide toggle
+  createdAt: string;             // ISO timestamp
+  updatedAt: string;             // ISO timestamp
+}
+
+export interface UpdateOrgCoachingPromoInput {
+  title?: string;
+  subtitle?: string;
+  imageUrl?: string;
+  isVisible?: boolean;
+}
+
+// ============================================================================
 // CONSTANTS
 // ============================================================================
 
@@ -67,6 +93,14 @@ export const DEFAULT_CHANNEL_ICONS: Record<OrgChannelType, string> = {
   social: 'chat',
   wins: 'sparkles',
   custom: 'hash',
+};
+
+// Default coaching promo configuration
+export const DEFAULT_COACHING_PROMO: Omit<OrgCoachingPromo, 'id' | 'organizationId' | 'createdAt' | 'updatedAt'> = {
+  title: 'Get your personal coach',
+  subtitle: 'Work with a performance psychologist 1:1',
+  imageUrl: 'https://images.unsplash.com/photo-1580518324671-c2f0833a3af3?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  isVisible: true,
 };
 
 // Default channel configurations
@@ -335,3 +369,69 @@ export function canUserPostInChannel(channel: OrgChannel, userRole?: string): bo
   // Otherwise, only coach/admin/super_admin can post
   return userRole === 'coach' || userRole === 'admin' || userRole === 'super_admin';
 }
+
+// ============================================================================
+// COACHING PROMO FIRESTORE OPERATIONS
+// ============================================================================
+
+const COACHING_PROMO_COLLECTION = 'orgCoachingPromo';
+
+/**
+ * Get coaching promo settings for an organization
+ * Returns default values if no custom settings exist
+ */
+export async function getOrgCoachingPromo(organizationId: string): Promise<OrgCoachingPromo> {
+  const docRef = adminDb.collection(COACHING_PROMO_COLLECTION).doc(organizationId);
+  const doc = await docRef.get();
+  
+  if (!doc.exists) {
+    // Return default promo settings
+    const now = new Date().toISOString();
+    return {
+      id: organizationId,
+      organizationId,
+      ...DEFAULT_COACHING_PROMO,
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+  
+  return { id: doc.id, ...doc.data() } as OrgCoachingPromo;
+}
+
+/**
+ * Update coaching promo settings for an organization
+ * Creates the document if it doesn't exist
+ */
+export async function updateOrgCoachingPromo(
+  organizationId: string,
+  updates: UpdateOrgCoachingPromoInput
+): Promise<OrgCoachingPromo> {
+  const docRef = adminDb.collection(COACHING_PROMO_COLLECTION).doc(organizationId);
+  const doc = await docRef.get();
+  const now = new Date().toISOString();
+  
+  if (!doc.exists) {
+    // Create new document with defaults + updates
+    const newData: Omit<OrgCoachingPromo, 'id'> = {
+      organizationId,
+      ...DEFAULT_COACHING_PROMO,
+      ...updates,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await docRef.set(newData);
+    return { id: organizationId, ...newData };
+  }
+  
+  // Update existing document
+  const updateData = {
+    ...updates,
+    updatedAt: now,
+  };
+  await docRef.update(updateData);
+  
+  const updatedDoc = await docRef.get();
+  return { id: updatedDoc.id, ...updatedDoc.data() } as OrgCoachingPromo;
+}
+

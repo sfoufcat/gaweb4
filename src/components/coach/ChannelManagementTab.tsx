@@ -16,8 +16,10 @@ import {
   Check,
   AlertCircle,
   Loader2,
+  Users,
 } from 'lucide-react';
-import type { OrgChannel, OrgChannelType } from '@/lib/org-channels';
+import Image from 'next/image';
+import type { OrgChannel, OrgChannelType, OrgCoachingPromo } from '@/lib/org-channels';
 
 // Icon map for channel types
 const CHANNEL_ICONS: Record<string, React.ReactNode> = {
@@ -329,6 +331,191 @@ function DeleteConfirmModal({ channel, isOpen, onClose, onConfirm }: DeleteConfi
   );
 }
 
+interface EditCoachingPromoModalProps {
+  promo: OrgCoachingPromo | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (updates: Partial<OrgCoachingPromo>) => Promise<void>;
+}
+
+function EditCoachingPromoModal({ promo, isOpen, onClose, onSave }: EditCoachingPromoModalProps) {
+  const [title, setTitle] = useState('');
+  const [subtitle, setSubtitle] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [isVisible, setIsVisible] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen && promo) {
+      setTitle(promo.title);
+      setSubtitle(promo.subtitle);
+      setImageUrl(promo.imageUrl);
+      setIsVisible(promo.isVisible);
+    }
+  }, [isOpen, promo]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+
+    setSaving(true);
+    try {
+      await onSave({
+        title: title.trim(),
+        subtitle: subtitle.trim(),
+        imageUrl: imageUrl.trim(),
+        isVisible,
+      });
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      
+      {/* Modal */}
+      <div className="relative bg-white dark:bg-[#11141b] rounded-2xl shadow-xl max-w-md w-full mx-4 overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
+          <h2 className="font-albert text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+            Edit Coaching Promo
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#171b22] transition-colors"
+          >
+            <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {/* Title */}
+          <div>
+            <label className="block font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+              Title
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Get your personal coach"
+              className="w-full px-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/50"
+              required
+            />
+          </div>
+
+          {/* Subtitle */}
+          <div>
+            <label className="block font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+              Subtitle
+            </label>
+            <input
+              type="text"
+              value={subtitle}
+              onChange={(e) => setSubtitle(e.target.value)}
+              placeholder="Work with a performance psychologist 1:1"
+              className="w-full px-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/50"
+            />
+          </div>
+
+          {/* Image URL */}
+          <div>
+            <label className="block font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+              Image URL
+            </label>
+            <input
+              type="url"
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="https://..."
+              className="w-full px-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/50"
+            />
+            {/* Image Preview */}
+            {imageUrl && (
+              <div className="mt-3 flex justify-center">
+                <div className="w-16 h-16 rounded-full overflow-hidden bg-[#f3f1ef] dark:bg-[#171b22]">
+                  <Image
+                    src={imageUrl}
+                    alt="Preview"
+                    width={64}
+                    height={64}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Visibility Pills */}
+          <div>
+            <label className="block font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+              Visibility
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsVisible(true)}
+                className={`flex-1 px-4 py-2.5 rounded-xl font-albert font-medium transition-colors ${
+                  isVisible
+                    ? 'bg-[#a07855] text-white'
+                    : 'border border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-[#a07855]/50'
+                }`}
+              >
+                Show
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsVisible(false)}
+                className={`flex-1 px-4 py-2.5 rounded-xl font-albert font-medium transition-colors ${
+                  !isVisible
+                    ? 'bg-[#a07855] text-white'
+                    : 'border border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-[#a07855]/50'
+                }`}
+              >
+                Hide
+              </button>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] font-albert font-medium text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#171b22] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving || !title.trim()}
+              className="flex-1 px-4 py-2.5 rounded-xl bg-[#a07855] font-albert font-medium text-white hover:bg-[#8c6847] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            >
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4" />
+              )}
+              Save
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 /**
  * ChannelManagementTab
  * 
@@ -347,6 +534,23 @@ export function ChannelManagementTab() {
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [deletingChannel, setDeletingChannel] = useState<OrgChannel | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  
+  // Coaching promo state
+  const [coachingPromo, setCoachingPromo] = useState<OrgCoachingPromo | null>(null);
+  const [editingPromo, setEditingPromo] = useState(false);
+
+  // Fetch coaching promo
+  const fetchCoachingPromo = useCallback(async () => {
+    try {
+      const response = await fetch('/api/coach/org-coaching-promo');
+      if (response.ok) {
+        const data = await response.json();
+        setCoachingPromo(data.promo);
+      }
+    } catch (err) {
+      console.error('Error fetching coaching promo:', err);
+    }
+  }, []);
 
   // Fetch channels
   const fetchChannels = useCallback(async () => {
@@ -372,7 +576,8 @@ export function ChannelManagementTab() {
 
   useEffect(() => {
     fetchChannels();
-  }, [fetchChannels]);
+    fetchCoachingPromo();
+  }, [fetchChannels, fetchCoachingPromo]);
 
   // Setup default channels
   const handleSetupDefaults = async () => {
@@ -444,6 +649,22 @@ export function ChannelManagementTab() {
     }
 
     await fetchChannels();
+  };
+
+  // Handle coaching promo save
+  const handlePromoSave = async (updates: Partial<OrgCoachingPromo>) => {
+    const response = await fetch('/api/coach/org-coaching-promo', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to update coaching promo');
+    }
+
+    await fetchCoachingPromo();
   };
 
   // Drag and drop handlers
@@ -564,6 +785,14 @@ export function ChannelManagementTab() {
           </div>
         )}
 
+        {/* Squad Channels Section Header */}
+        <div className="flex items-center gap-2.5 px-1 py-2 mb-2">
+          <Users className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+          <span className="font-albert text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2]">
+            Squad Channels
+          </span>
+        </div>
+
         {/* Channel List */}
         <div className="space-y-2">
           {channels.map((channel, index) => (
@@ -632,6 +861,57 @@ export function ChannelManagementTab() {
         <p className="font-albert text-xs text-[#8c8c8c] dark:text-[#7d8190] mt-4 text-center">
           Drag channels to reorder them
         </p>
+
+        {/* Coaching Promo Section */}
+        {coachingPromo && (
+          <div className="mt-8">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-albert text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                Coaching Promo
+              </h3>
+            </div>
+            
+            <div className="flex items-center gap-4 p-4 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b]">
+              {/* Promo Image */}
+              <div className="w-14 h-14 rounded-full overflow-hidden bg-[#f3f1ef] dark:bg-[#171b22] flex-shrink-0">
+                <Image
+                  src={coachingPromo.imageUrl}
+                  alt="Coaching promo"
+                  width={56}
+                  height={56}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                    {coachingPromo.title}
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-albert font-medium ${
+                    coachingPromo.isVisible
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                      : 'bg-[#f3f1ef] dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2]'
+                  }`}>
+                    {coachingPromo.isVisible ? 'Visible' : 'Hidden'}
+                  </span>
+                </div>
+                <p className="font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2] truncate">
+                  {coachingPromo.subtitle}
+                </p>
+              </div>
+              
+              {/* Edit Button */}
+              <button
+                onClick={() => setEditingPromo(true)}
+                className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#171b22] transition-colors text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#a07855] flex-shrink-0"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Edit Modal */}
@@ -658,8 +938,17 @@ export function ChannelManagementTab() {
         onClose={() => setDeletingChannel(null)}
         onConfirm={handleDelete}
       />
+
+      {/* Edit Coaching Promo Modal */}
+      <EditCoachingPromoModal
+        promo={coachingPromo}
+        isOpen={editingPromo}
+        onClose={() => setEditingPromo(false)}
+        onSave={handlePromoSave}
+      />
     </div>
   );
 }
 
 export default ChannelManagementTab;
+

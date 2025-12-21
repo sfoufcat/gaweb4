@@ -63,9 +63,13 @@ export async function GET(
       .get();
 
     // Filter for active calls and sort by createdAt desc
+    // Exclude confirmed delete proposals - they represent "no active call"
     const activeCalls = callsSnapshot.docs
       .filter(doc => {
         const data = doc.data();
+        if (data.status === 'confirmed' && data.proposalType === 'delete') {
+          return false;
+        }
         return data.status === 'pending' || data.status === 'confirmed';
       })
       .sort((a, b) => {
