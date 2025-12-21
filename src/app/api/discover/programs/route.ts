@@ -137,8 +137,8 @@ export async function GET(request: NextRequest) {
         }
 
         return {
-          id: doc.id,
           ...data,
+          id: doc.id,
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
           coachName,
