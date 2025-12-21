@@ -84,7 +84,7 @@ async function handleCronRequest(request: NextRequest) {
           if (squad.gracePeriodMessageSent) continue;
 
           // Send message in squad chat
-          await sendGracePeriodMessage(squad.chatChannelId, cohort, GRACE_PERIOD_DAYS);
+          await sendGracePeriodMessage(squad.chatChannelId ?? undefined, cohort, GRACE_PERIOD_DAYS);
 
           // Mark that we sent the message
           await squadDoc.ref.update({
