@@ -177,8 +177,8 @@ export async function GET(
     }
 
     const program = {
-      id: programDoc.id,
       ...programData,
+      id: programDoc.id,
       coachName,
       coachImageUrl,
       coachBio,
