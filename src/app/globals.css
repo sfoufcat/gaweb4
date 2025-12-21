@@ -668,12 +668,12 @@ div[class*="LoadingIndicator"],
 
 /* Solid background colors - Light mode */
 .bg-\[\#a07855\] {
-  background-color: var(--brand-accent-light, #a07855);
+  background-color: var(--brand-accent-light, #a07855) !important;
 }
 
 /* Solid background colors - Dark mode */
 .dark .dark\:bg-\[\#b8896a\] {
-  background-color: var(--brand-accent-dark, #b8896a);
+  background-color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 /* Text colors - Light mode */
@@ -688,22 +688,22 @@ div[class*="LoadingIndicator"],
 
 /* Hover background states - Light mode */
 .hover\:bg-\[\#a07855\]:hover {
-  background-color: var(--brand-accent-light, #a07855);
+  background-color: var(--brand-accent-light, #a07855) !important;
 }
 
 .hover\:bg-\[\#8c6245\]:hover {
   /* Slightly darker version of accent for hover states */
-  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 85%, black);
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 85%, black) !important;
 }
 
 /* Hover background states - Dark mode */
 .dark .dark\:hover\:bg-\[\#b8896a\]:hover {
-  background-color: var(--brand-accent-dark, #b8896a);
+  background-color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 .dark .dark\:hover\:bg-\[\#a07855\]:hover {
   /* Slightly darker version of accent for hover states in dark mode */
-  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 85%, black);
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 85%, black) !important;
 }
 
 /* Hover text states */
@@ -819,37 +819,37 @@ div[class*="LoadingIndicator"],
 
 /* earth-500 -> accent */
 .bg-earth-500 {
-  background-color: var(--brand-accent-light, #a07855);
+  background-color: var(--brand-accent-light, #a07855) !important;
 }
 
 .dark .bg-earth-500 {
-  background-color: var(--brand-accent-dark, #b8896a);
+  background-color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 /* earth-600 -> darker accent */
 .bg-earth-600 {
-  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 85%, black);
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 85%, black) !important;
 }
 
 .dark .bg-earth-600 {
-  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 85%, black);
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 85%, black) !important;
 }
 
 /* hover states for earth colors */
 .hover\:bg-earth-600:hover {
-  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 85%, black);
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 85%, black) !important;
 }
 
 .dark .hover\:bg-earth-600:hover {
-  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 85%, black);
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 85%, black) !important;
 }
 
 .hover\:bg-earth-700:hover {
-  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 70%, black);
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 70%, black) !important;
 }
 
 .dark .hover\:bg-earth-700:hover {
-  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 70%, black);
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 70%, black) !important;
 }
 
 /* text colors */
@@ -884,28 +884,28 @@ div[class*="LoadingIndicator"],
 
 /* earth-800 -> accent hover (for hover:bg-earth-800) */
 .bg-earth-800 {
-  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 90%, black);
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 90%, black) !important;
 }
 
 .dark .bg-earth-800 {
-  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 90%, black);
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 90%, black) !important;
 }
 
 .hover\:bg-earth-800:hover {
-  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 90%, black);
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 90%, black) !important;
 }
 
 .dark .hover\:bg-earth-800:hover {
-  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 90%, black);
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 90%, black) !important;
 }
 
 /* earth-900 -> darker accent (for bg-earth-900) */
 .bg-earth-900 {
-  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 75%, black);
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 75%, black) !important;
 }
 
 .dark .bg-earth-900 {
-  background-color: var(--brand-accent-dark, #b8896a);
+  background-color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 /* ===========================================
@@ -915,20 +915,20 @@ div[class*="LoadingIndicator"],
 
 /* Dark button backgrounds (#2c2520) */
 .bg-\[\#2c2520\] {
-  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 75%, black);
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 75%, black) !important;
 }
 
 .dark .bg-\[\#2c2520\] {
-  background-color: var(--brand-accent-dark, #b8896a);
+  background-color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 /* Dark button hover (#1a1a1a) */
 .hover\:bg-\[\#1a1a1a\]:hover {
-  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 65%, black);
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 65%, black) !important;
 }
 
 .dark .hover\:bg-\[\#1a1a1a\]:hover {
-  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 85%, black);
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 85%, black) !important;
 }
 
 /* ===========================================
@@ -938,11 +938,11 @@ div[class*="LoadingIndicator"],
 
 /* Group hover states for accent buttons */
 .group:hover .group-hover\:bg-\[\#8c6245\] {
-  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 85%, black);
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 85%, black) !important;
 }
 
 .dark .group:hover .dark\:group-hover\:bg-\[\#a07855\] {
-  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 85%, black);
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 85%, black) !important;
 }
 
 /* ===========================================
@@ -952,20 +952,20 @@ div[class*="LoadingIndicator"],
 
 /* Disabled button with 50% opacity accent */
 .disabled\:bg-\[\#a07855\]\/50:disabled {
-  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 50%, transparent);
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 50%, transparent) !important;
 }
 
 .dark .disabled\:bg-\[\#a07855\]\/50:disabled {
-  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 50%, transparent);
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 50%, transparent) !important;
 }
 
 /* Disabled button with full accent (opacity handled separately) */
 .disabled\:bg-\[\#a07855\]:disabled {
-  background-color: var(--brand-accent-light, #a07855);
+  background-color: var(--brand-accent-light, #a07855) !important;
 }
 
 .dark .disabled\:bg-\[\#a07855\]:disabled {
-  background-color: var(--brand-accent-dark, #b8896a);
+  background-color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 /* ===========================================
@@ -974,10 +974,10 @@ div[class*="LoadingIndicator"],
 
 /* Active states for touch devices */
 .active\:bg-\[\#7a5639\]:active {
-  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 70%, black);
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 70%, black) !important;
 }
 
 .dark .active\:bg-\[\#96714d\]:active,
 .dark .dark\:active\:bg-\[\#96714d\]:active {
-  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 70%, black);
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 70%, black) !important;
 }
