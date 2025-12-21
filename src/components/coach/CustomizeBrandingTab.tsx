@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock, Mail, Send } from 'lucide-react';
 import { useBranding } from '@/contexts/BrandingContext';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, validateSubdomain } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_EMAIL_SETTINGS, validateSubdomain } from '@/types';
 
 /**
  * Get DNS record names for a domain
@@ -108,6 +108,18 @@ export function CustomizeBrandingTab() {
     platformFeePercent?: number;
   }>({});
 
+  // Email Domain state
+  const [emailSettings, setEmailSettings] = useState<OrgEmailSettings>(DEFAULT_EMAIL_SETTINGS);
+  const [emailDomainLoading, setEmailDomainLoading] = useState(true);
+  const [newEmailDomain, setNewEmailDomain] = useState('');
+  const [emailDomainError, setEmailDomainError] = useState<string | null>(null);
+  const [emailDomainActionLoading, setEmailDomainActionLoading] = useState(false);
+  const [emailDomainVerifying, setEmailDomainVerifying] = useState(false);
+  const [emailTestLoading, setEmailTestLoading] = useState(false);
+  const [emailFromName, setEmailFromName] = useState('');
+  const [emailReplyTo, setEmailReplyTo] = useState('');
+  const [copiedEmailRecord, setCopiedEmailRecord] = useState<string | null>(null);
+
   // Fetch current branding on mount
   const fetchBranding = useCallback(async () => {
     try {
@@ -184,11 +196,33 @@ export function CustomizeBrandingTab() {
       setStripeConnectLoading(false);
     }
   }, []);
+
+  // Fetch Email Domain settings
+  const fetchEmailDomain = useCallback(async () => {
+    try {
+      setEmailDomainLoading(true);
+      const response = await fetch('/api/org/email-domain');
+      if (!response.ok) {
+        console.error('Failed to fetch email domain settings');
+        return;
+      }
+      
+      const data = await response.json();
+      setEmailSettings(data.emailSettings || DEFAULT_EMAIL_SETTINGS);
+      setEmailFromName(data.emailSettings?.fromName || '');
+      setEmailReplyTo(data.emailSettings?.replyTo || '');
+    } catch (err) {
+      console.error('Error fetching email domain settings:', err);
+    } finally {
+      setEmailDomainLoading(false);
+    }
+  }, []);
   
   useEffect(() => {
     fetchBranding();
     fetchDomainSettings();
     fetchStripeConnect();
+    fetchEmailDomain();
     
     // Check URL for Stripe callback status
     const urlParams = new URLSearchParams(window.location.search);
@@ -210,7 +244,7 @@ export function CustomizeBrandingTab() {
       // User was redirected back, refresh the status
       fetchStripeConnect();
     }
-  }, [fetchBranding, fetchDomainSettings, fetchStripeConnect]);
+  }, [fetchBranding, fetchDomainSettings, fetchStripeConnect, fetchEmailDomain]);
   
   // Handle subdomain update
   const handleSubdomainUpdate = async () => {
@@ -411,6 +445,144 @@ export function CustomizeBrandingTab() {
     }
   };
   
+  // Handle add email domain
+  const handleAddEmailDomain = async () => {
+    if (!newEmailDomain.trim()) {
+      setEmailDomainError('Please enter a domain');
+      return;
+    }
+    
+    setEmailDomainActionLoading(true);
+    setEmailDomainError(null);
+    
+    try {
+      const response = await fetch('/api/org/email-domain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          domain: newEmailDomain,
+          fromName: emailFromName || appTitle,
+          replyTo: emailReplyTo || undefined,
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to add email domain');
+      }
+      
+      setEmailSettings(data.emailSettings);
+      setNewEmailDomain('');
+      setSuccessMessage('Email domain added! Configure DNS records below.');
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      setEmailDomainError(err instanceof Error ? err.message : 'Failed to add email domain');
+    } finally {
+      setEmailDomainActionLoading(false);
+    }
+  };
+
+  // Handle remove email domain
+  const handleRemoveEmailDomain = async () => {
+    if (!confirm('Are you sure you want to remove your email domain? Emails will be sent from the platform default.')) {
+      return;
+    }
+    
+    setEmailDomainActionLoading(true);
+    setEmailDomainError(null);
+    
+    try {
+      const response = await fetch('/api/org/email-domain', {
+        method: 'DELETE',
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to remove email domain');
+      }
+      
+      setEmailSettings(data.emailSettings);
+      setNewEmailDomain('');
+      setEmailFromName('');
+      setEmailReplyTo('');
+      setSuccessMessage('Email domain removed.');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      setEmailDomainError(err instanceof Error ? err.message : 'Failed to remove email domain');
+    } finally {
+      setEmailDomainActionLoading(false);
+    }
+  };
+
+  // Handle verify email domain
+  const handleVerifyEmailDomain = async () => {
+    setEmailDomainVerifying(true);
+    setEmailDomainError(null);
+    
+    try {
+      const response = await fetch('/api/org/email-domain/verify', {
+        method: 'POST',
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to verify email domain');
+      }
+      
+      setEmailSettings(data.emailSettings);
+      
+      if (data.verified) {
+        setSuccessMessage('Email domain verified! You can now send emails from your domain.');
+        setTimeout(() => setSuccessMessage(null), 5000);
+      } else {
+        setEmailDomainError('DNS records not yet verified. Please check your DNS configuration.');
+      }
+    } catch (err) {
+      setEmailDomainError(err instanceof Error ? err.message : 'Failed to verify email domain');
+    } finally {
+      setEmailDomainVerifying(false);
+    }
+  };
+
+  // Handle send test email
+  const handleSendTestEmail = async () => {
+    setEmailTestLoading(true);
+    setEmailDomainError(null);
+    
+    try {
+      const response = await fetch('/api/org/email-domain/test', {
+        method: 'POST',
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send test email');
+      }
+      
+      setSuccessMessage(`Test email sent to ${data.sentTo}!`);
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      setEmailDomainError(err instanceof Error ? err.message : 'Failed to send test email');
+    } finally {
+      setEmailTestLoading(false);
+    }
+  };
+
+  // Copy email DNS record to clipboard
+  const copyEmailRecord = async (text: string, recordId: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedEmailRecord(recordId);
+      setTimeout(() => setCopiedEmailRecord(null), 2000);
+    } catch {
+      alert('Failed to copy to clipboard');
+    }
+  };
+
   // Handle Stripe Connect onboarding
   const handleStripeConnect = async () => {
     try {
@@ -1318,6 +1490,267 @@ export function CustomizeBrandingTab() {
                   No custom domains added yet.
                 </p>
               )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Email Domain Section */}
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Mail className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Email Sending Domain</h3>
+        </div>
+        
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mb-6 font-albert">
+          Send emails from your own domain (e.g., notifications@yourcompany.com) instead of the platform default.
+        </p>
+        
+        {emailDomainLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="w-8 h-8 border-3 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : emailSettings.domain ? (
+          // Domain configured - show status and DNS records
+          <div className="space-y-6">
+            {/* Status Card */}
+            <div className={`
+              flex items-center gap-3 p-4 rounded-xl border
+              ${emailSettings.status === 'verified' 
+                ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/50' 
+                : emailSettings.status === 'failed'
+                  ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/50'
+                  : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/50'
+              }
+            `}>
+              {emailSettings.status === 'verified' ? (
+                <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+              ) : emailSettings.status === 'failed' ? (
+                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+              ) : (
+                <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              )}
+              <div className="flex-1">
+                <p className={`text-sm font-medium font-albert ${
+                  emailSettings.status === 'verified' 
+                    ? 'text-green-700 dark:text-green-300'
+                    : emailSettings.status === 'failed'
+                      ? 'text-red-700 dark:text-red-300'
+                      : 'text-amber-700 dark:text-amber-300'
+                }`}>
+                  {emailSettings.domain}
+                </p>
+                <p className={`text-xs font-albert ${
+                  emailSettings.status === 'verified' 
+                    ? 'text-green-600 dark:text-green-400'
+                    : emailSettings.status === 'failed'
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-amber-600 dark:text-amber-400'
+                }`}>
+                  {emailSettings.status === 'verified' 
+                    ? `Verified • Emails sent from notifications@${emailSettings.domain}`
+                    : emailSettings.status === 'failed'
+                      ? 'Verification failed. Please check your DNS records.'
+                      : 'Pending verification. Add DNS records below.'
+                  }
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {emailSettings.status !== 'verified' && (
+                  <button
+                    onClick={handleVerifyEmailDomain}
+                    disabled={emailDomainVerifying}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-[#1e222a] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg text-sm font-albert transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${emailDomainVerifying ? 'animate-spin' : ''}`} />
+                    Verify
+                  </button>
+                )}
+                {emailSettings.status === 'verified' && (
+                  <button
+                    onClick={handleSendTestEmail}
+                    disabled={emailTestLoading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-[#1e222a] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg text-sm font-albert transition-colors disabled:opacity-50"
+                  >
+                    <Send className={`w-3.5 h-3.5 ${emailTestLoading ? 'animate-pulse' : ''}`} />
+                    Test
+                  </button>
+                )}
+                <button
+                  onClick={handleRemoveEmailDomain}
+                  disabled={emailDomainActionLoading}
+                  className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Sender Settings */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Sender Settings</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1.5">From Name</label>
+                  <input
+                    type="text"
+                    value={emailFromName}
+                    onChange={(e) => setEmailFromName(e.target.value)}
+                    placeholder={appTitle}
+                    className="w-full px-3 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1.5">Reply-To Email (optional)</label>
+                  <input
+                    type="email"
+                    value={emailReplyTo}
+                    onChange={(e) => setEmailReplyTo(e.target.value)}
+                    placeholder="support@yourcompany.com"
+                    className="w-full px-3 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* DNS Records */}
+            {emailSettings.status !== 'verified' && emailSettings.dnsRecords.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">DNS Records Required</h4>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
+                  Add these DNS records to your domain provider, then click Verify.
+                </p>
+                <div className="space-y-3">
+                  {emailSettings.dnsRecords.map((record, index) => (
+                    <div 
+                      key={index}
+                      className="p-4 bg-[#f8f7f5] dark:bg-[#1e222a] rounded-xl border border-[#e1ddd8] dark:border-[#313746]"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-[#a07855] dark:text-[#b8896a] uppercase tracking-wide font-albert">
+                          {record.type} Record
+                        </span>
+                        {record.priority !== undefined && (
+                          <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                            Priority: {record.priority}
+                          </span>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert whitespace-nowrap pt-0.5">Name</span>
+                          <div className="flex items-center gap-1.5 flex-1 justify-end">
+                            <code className="text-xs font-mono text-[#1a1a1a] dark:text-[#f5f5f8] break-all text-right">
+                              {record.name}
+                            </code>
+                            <button
+                              onClick={() => copyEmailRecord(record.name, `${index}-name`)}
+                              className="p-1 text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-white dark:hover:bg-[#262b35] rounded transition-colors flex-shrink-0"
+                            >
+                              {copiedEmailRecord === `${index}-name` ? (
+                                <Check className="w-3.5 h-3.5 text-green-500" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert whitespace-nowrap pt-0.5">Value</span>
+                          <div className="flex items-center gap-1.5 flex-1 justify-end">
+                            <code className="text-xs font-mono text-[#1a1a1a] dark:text-[#f5f5f8] break-all text-right max-w-[300px] overflow-hidden">
+                              {record.value.length > 50 ? `${record.value.substring(0, 50)}...` : record.value}
+                            </code>
+                            <button
+                              onClick={() => copyEmailRecord(record.value, `${index}-value`)}
+                              className="p-1 text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-white dark:hover:bg-[#262b35] rounded transition-colors flex-shrink-0"
+                            >
+                              {copiedEmailRecord === `${index}-value` ? (
+                                <Check className="w-3.5 h-3.5 text-green-500" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
+                  DNS changes may take up to 24 hours to propagate.
+                </p>
+              </div>
+            )}
+
+            {emailDomainError && (
+              <p className="text-sm text-red-600 dark:text-red-400 font-albert">{emailDomainError}</p>
+            )}
+          </div>
+        ) : (
+          // No domain configured - show add form
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                Email Domain
+              </label>
+              <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
+                Enter a subdomain to use for sending emails (e.g., mail.yourcompany.com or notifications.yourcompany.com)
+              </p>
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  value={newEmailDomain}
+                  onChange={(e) => {
+                    setNewEmailDomain(e.target.value.toLowerCase());
+                    setEmailDomainError(null);
+                  }}
+                  placeholder="mail.yourcompany.com"
+                  className="flex-1 max-w-md px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                />
+                <button
+                  onClick={handleAddEmailDomain}
+                  disabled={emailDomainActionLoading || !newEmailDomain.trim()}
+                  className="px-4 py-2.5 bg-[#a07855] hover:bg-[#8c6245] disabled:bg-[#a07855]/50 text-white rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
+                >
+                  {emailDomainActionLoading ? 'Adding...' : 'Add Domain'}
+                </button>
+              </div>
+            </div>
+            
+            {/* Optional: Sender settings before adding */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              <div>
+                <label className="block text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1.5">From Name (optional)</label>
+                <input
+                  type="text"
+                  value={emailFromName}
+                  onChange={(e) => setEmailFromName(e.target.value)}
+                  placeholder={appTitle || 'Your Company'}
+                  className="w-full px-3 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1.5">Reply-To Email (optional)</label>
+                <input
+                  type="email"
+                  value={emailReplyTo}
+                  onChange={(e) => setEmailReplyTo(e.target.value)}
+                  placeholder="support@yourcompany.com"
+                  className="w-full px-3 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20"
+                />
+              </div>
+            </div>
+
+            {emailDomainError && (
+              <p className="text-sm text-red-600 dark:text-red-400 font-albert">{emailDomainError}</p>
+            )}
+            
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl">
+              <p className="text-xs text-blue-700 dark:text-blue-300 font-albert">
+                <strong>How it works:</strong> After adding your domain, you&apos;ll need to add DNS records to verify ownership. 
+                Once verified, all emails (check-ins, welcome emails, notifications) will be sent from your domain.
+              </p>
             </div>
           </div>
         )}

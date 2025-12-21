@@ -302,10 +302,6 @@ async function sendSquadCallEmail({
   callDateTime: string;
   callTimezone: string;
 }): Promise<void> {
-  if (!isResendConfigured() || !resend) {
-    return;
-  }
-
   const user = await getUserById(userId);
   if (!user || !user.email) return;
 
@@ -322,6 +318,11 @@ async function sendSquadCallEmail({
       return;
     }
   }
+
+  // Get tenant branding
+  const organizationId = user.primaryOrganizationId || null;
+  const appTitle = await getAppTitleForEmail(organizationId);
+  const teamName = appTitle === 'GrowthAddicts' ? 'Growth Addicts' : appTitle;
 
   const userTimezone = user.timezone || 'UTC';
   const firstName = user.firstName || 'there';
@@ -353,7 +354,7 @@ Join your squad chat at the time of the call to participate.
 
 ${squadUrl}
 
-– Growth Addicts`.trim();
+– ${teamName}`.trim();
       break;
 
     case 'email_1h':
@@ -366,27 +367,29 @@ See you there 👊
 
 ${squadUrl}
 
-– Growth Addicts`.trim();
+– ${teamName}`.trim();
       break;
 
     default:
       return;
   }
 
-  try {
-    await resend.emails.send({
-      from: EMAIL_FROM,
-      to: user.email,
-      subject,
-      text: textBody,
-      headers: {
-        'X-Entity-Ref-ID': `squad-call-${userId}-${jobType}`,
-      },
-    });
+  const result = await sendTenantEmail({
+    to: user.email,
+    subject,
+    html: `<pre style="font-family: system-ui, sans-serif; white-space: pre-wrap;">${textBody}</pre>`,
+    text: textBody,
+    organizationId,
+    userId,
+    headers: {
+      'X-Entity-Ref-ID': `squad-call-${userId}-${jobType}`,
+    },
+  });
 
-    console.log(`[SQUAD_CALL_EMAIL] Sent ${jobType} email to ${userId}`);
-  } catch (error) {
-    console.error(`[SQUAD_CALL_EMAIL] Failed to send ${jobType} email to ${userId}:`, error);
+  if (result.success) {
+    console.log(`[SQUAD_CALL_EMAIL] Sent ${jobType} email to ${userId} (whitelabel: ${result.sender.isWhitelabel})`);
+  } else {
+    console.error(`[SQUAD_CALL_EMAIL] Failed to send ${jobType} email to ${userId}:`, result.error);
   }
 }
 

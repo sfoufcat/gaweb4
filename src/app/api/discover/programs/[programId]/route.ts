@@ -146,8 +146,8 @@ export async function GET(
         }
 
         return {
-          id: doc.id,
           ...data,
+          id: doc.id,
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
           spotsRemaining,

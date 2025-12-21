@@ -14,12 +14,10 @@
 
 import { adminDb } from './firebase-admin';
 import { notifyUser } from './notifications';
-import { resend, isResendConfigured } from './resend';
+import { sendTenantEmail, APP_BASE_URL, getAppTitleForEmail } from './email-sender';
 import type { FirebaseUser, CoachingCallJobType, CoachingCallScheduledJob, ClientCoachingData } from '@/types';
 
-// Email sender configuration
-const EMAIL_FROM = 'Growth Addicts <hi@updates.growthaddicts.com>';
-const APP_URL = process.env.APP_BASE_URL || 'https://pro.growthaddicts.com';
+const APP_URL = APP_BASE_URL;
 
 // ============================================================================
 // Scheduling Functions
@@ -251,10 +249,6 @@ async function sendCoachingCallEmail({
   callDateTime: string;
   callTimezone: string;
 }): Promise<void> {
-  if (!isResendConfigured() || !resend) {
-    return;
-  }
-
   const user = await getUserById(userId);
   if (!user || !user.email) return;
 
@@ -268,6 +262,11 @@ async function sendCoachingCallEmail({
       return;
     }
   }
+
+  // Get tenant branding
+  const organizationId = user.primaryOrganizationId || null;
+  const appTitle = await getAppTitleForEmail(organizationId);
+  const teamName = appTitle === 'GrowthAddicts' ? 'Growth Addicts' : appTitle;
 
   const userTimezone = user.timezone || 'UTC';
   const firstName = user.firstName || 'there';
@@ -297,7 +296,7 @@ This is a reminder that your 1:1 coaching call with ${coachName} is scheduled fo
 You can access your coaching dashboard and call here:
 ${coachingUrl}
 
-– Growth Addicts`.trim();
+– ${teamName}`.trim();
       break;
 
     case 'email_1h':
@@ -311,27 +310,29 @@ ${coachingUrl}
 
 See you soon! 👊
 
-– Growth Addicts`.trim();
+– ${teamName}`.trim();
       break;
 
     default:
       return;
   }
 
-  try {
-    await resend.emails.send({
-      from: EMAIL_FROM,
-      to: user.email,
-      subject,
-      text: textBody,
-      headers: {
-        'X-Entity-Ref-ID': `coaching-call-${userId}-${jobType}`,
-      },
-    });
+  const result = await sendTenantEmail({
+    to: user.email,
+    subject,
+    html: `<pre style="font-family: system-ui, sans-serif; white-space: pre-wrap;">${textBody}</pre>`,
+    text: textBody,
+    organizationId,
+    userId,
+    headers: {
+      'X-Entity-Ref-ID': `coaching-call-${userId}-${jobType}`,
+    },
+  });
 
-    console.log(`[COACHING_CALL_EMAIL] Sent ${jobType} email to ${userId}`);
-  } catch (error) {
-    console.error(`[COACHING_CALL_EMAIL] Failed to send ${jobType} email to ${userId}:`, error);
+  if (result.success) {
+    console.log(`[COACHING_CALL_EMAIL] Sent ${jobType} email to ${userId} (whitelabel: ${result.sender.isWhitelabel})`);
+  } else {
+    console.error(`[COACHING_CALL_EMAIL] Failed to send ${jobType} email to ${userId}:`, result.error);
   }
 }
 
