@@ -2,19 +2,8 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
-import type { UserRole, UserTier, CoachingStatus, OrgRole, UserTrack, Track, Squad } from '@/types';
+import type { UserRole, UserTier, CoachingStatus, OrgRole, Squad } from '@/types';
 import { validateSubdomain } from '@/types';
-
-// Track labels for display
-const TRACK_LABELS: Record<UserTrack, string> = {
-  content_creator: 'Content Creator',
-  saas: 'SaaS',
-  coach_consultant: 'Coach/Consultant',
-  ecom: 'E-Commerce',
-  agency: 'Agency',
-  community_builder: 'Community Builder',
-  general: 'General',
-};
 import { 
   canModifyUserRole, 
   canDeleteUser, 
@@ -71,8 +60,7 @@ interface ClerkAdminUser {
   orgRole?: OrgRole; // Organization-level role (for multi-tenant)
   orgRoleForOrg?: OrgRole; // Org role for a specific org (from org-scoped API)
   tier: UserTier;
-  // Track and Squad (for multi-tenant)
-  track?: UserTrack | null;
+  // Squad (for multi-tenant)
   squadId?: string | null;
   premiumSquadId?: string | null;
   // Coaching is separate from membership tier
@@ -91,10 +79,10 @@ interface ClerkAdminUser {
 }
 
 // Available column keys for visibility control
-type ColumnKey = 'select' | 'avatar' | 'name' | 'email' | 'role' | 'orgRole' | 'tier' | 'track' | 'squad' | 'coach' | 'coaching' | 'invitedBy' | 'invitedAt' | 'created' | 'actions';
+type ColumnKey = 'select' | 'avatar' | 'name' | 'email' | 'role' | 'orgRole' | 'tier' | 'squad' | 'coach' | 'coaching' | 'invitedBy' | 'invitedAt' | 'created' | 'actions';
 
 // Default columns for full access (select column added for bulk operations)
-const ALL_COLUMNS: ColumnKey[] = ['select', 'avatar', 'name', 'email', 'role', 'tier', 'track', 'squad', 'coaching', 'invitedBy', 'invitedAt', 'created', 'actions'];
+const ALL_COLUMNS: ColumnKey[] = ['select', 'avatar', 'name', 'email', 'role', 'tier', 'squad', 'coaching', 'invitedBy', 'invitedAt', 'created', 'actions'];
 
 // Limited columns for org coaches (read-only, no select)
 const LIMITED_COLUMNS: ColumnKey[] = ['avatar', 'name', 'email', 'coach', 'coaching', 'created'];
@@ -167,10 +155,8 @@ export function AdminUsersTab({
   const [subdomainError, setSubdomainError] = useState<string | null>(null);
   const [subdomainLoading, setSubdomainLoading] = useState(false);
   
-  // Track/Squad state for org-scoped mode
-  const [tracks, setTracks] = useState<Track[]>([]);
+  // Squad state for org-scoped mode
   const [squads, setSquads] = useState<SquadOption[]>([]);
-  const [updatingTrackUserId, setUpdatingTrackUserId] = useState<string | null>(null);
   const [updatingSquadUserId, setUpdatingSquadUserId] = useState<string | null>(null);
   
   // Multi-select state for bulk operations
@@ -206,32 +192,24 @@ export function AdminUsersTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
-  // Fetch tracks and squads for org-scoped mode
+  // Fetch squads for org-scoped mode
   useEffect(() => {
     if (!isOrgScopedApi) return;
     
-    const fetchTracksAndSquads = async () => {
+    const fetchSquads = async () => {
       try {
-        const [tracksRes, squadsRes] = await Promise.all([
-          fetch('/api/coach/org-tracks'),
-          fetch('/api/coach/org-squads'),
-        ]);
-        
-        if (tracksRes.ok) {
-          const data = await tracksRes.json();
-          setTracks(data.tracks || []);
-        }
+        const squadsRes = await fetch('/api/coach/org-squads');
         
         if (squadsRes.ok) {
           const data = await squadsRes.json();
           setSquads((data.squads || []).map((s: Squad) => ({ id: s.id, name: s.name })));
         }
       } catch (err) {
-        console.warn('Failed to fetch tracks/squads:', err);
+        console.warn('Failed to fetch squads:', err);
       }
     };
     
-    fetchTracksAndSquads();
+    fetchSquads();
   }, [isOrgScopedApi]);
 
   // Filter users based on search query
@@ -425,37 +403,6 @@ export function AdminUsersTab({
     }
   };
 
-  const handleTrackChange = async (userId: string, newTrack: UserTrack | null) => {
-    if (!isOrgScopedApi) return;
-    
-    try {
-      setUpdatingTrackUserId(userId);
-      
-      const response = await fetch(`/api/coach/org-users/${userId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ track: newTrack }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update track');
-      }
-
-      // Update local state optimistically
-      setUsers((prev) =>
-        prev.map((user) =>
-          user.id === userId ? { ...user, track: newTrack } : user
-        )
-      );
-    } catch (err) {
-      console.error('Error updating track:', err);
-      alert(err instanceof Error ? err.message : 'Failed to update track');
-      await fetchUsers();
-    } finally {
-      setUpdatingTrackUserId(null);
-    }
-  };
 
   const handleSquadChange = async (userId: string, newSquadId: string | null) => {
     if (!isOrgScopedApi) return;
@@ -514,52 +461,6 @@ export function AdminUsersTab({
   const isSomeSelected = selectedUserIds.size > 0 && selectedUserIds.size < filteredUsers.length;
 
   // Bulk update handlers - uses bulk API for efficiency
-  const handleBulkTrackChange = async (newTrack: UserTrack | null) => {
-    if (!isOrgScopedApi || selectedUserIds.size === 0) return;
-    
-    try {
-      setBulkUpdating(true);
-      
-      const response = await fetch('/api/coach/org-users/bulk', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userIds: Array.from(selectedUserIds),
-          track: newTrack,
-        }),
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update users');
-      }
-      
-      const result = await response.json();
-      
-      // Update local state for successful updates
-      const successfulIds = new Set(result.results?.success || Array.from(selectedUserIds));
-      setUsers((prev) =>
-        prev.map((user) =>
-          successfulIds.has(user.id) ? { ...user, track: newTrack } : user
-        )
-      );
-      
-      // Show warning if some failed
-      if (result.failed > 0) {
-        alert(`Updated ${result.updated} users. ${result.failed} failed.`);
-      }
-      
-      // Clear selection after bulk operation
-      setSelectedUserIds(new Set());
-    } catch (err) {
-      console.error('Error bulk updating track:', err);
-      alert(err instanceof Error ? err.message : 'Failed to update users. Please try again.');
-      await fetchUsers();
-    } finally {
-      setBulkUpdating(false);
-    }
-  };
-
   const handleBulkSquadChange = async (newSquadId: string | null) => {
     if (!isOrgScopedApi || selectedUserIds.size === 0) return;
     
@@ -736,35 +637,6 @@ export function AdminUsersTab({
             </span>
             
             <div className="flex items-center gap-2">
-              <span className="font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2]">Set Track:</span>
-              <Select
-                value=""
-                onValueChange={(value) => handleBulkTrackChange(value === 'none' ? null : value as UserTrack)}
-                disabled={bulkUpdating}
-              >
-                <SelectTrigger className={`w-[150px] font-albert text-sm h-8 ${bulkUpdating ? 'opacity-50' : ''}`}>
-                  <SelectValue placeholder="Select track" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none" className="font-albert">Not set</SelectItem>
-                  {tracks.length > 0 ? (
-                    tracks.map((track) => (
-                      <SelectItem key={track.id} value={track.slug} className="font-albert">
-                        {track.name}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    Object.entries(TRACK_LABELS).map(([value, label]) => (
-                      <SelectItem key={value} value={value} className="font-albert">
-                        {label}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="flex items-center gap-2">
               <span className="font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2]">Set Squad:</span>
               <Select
                 value=""
@@ -825,7 +697,6 @@ export function AdminUsersTab({
                 {showColumn('role') && !showOrgRole && <TableHead className="font-albert">Role</TableHead>}
                 {showColumn('role') && showOrgRole && <TableHead className="font-albert">Org Role</TableHead>}
                 {showColumn('tier') && <TableHead className="font-albert">Tier</TableHead>}
-                {showColumn('track') && <TableHead className="font-albert">Track</TableHead>}
                 {showColumn('squad') && <TableHead className="font-albert">Squad</TableHead>}
                 {showColumn('coach') && <TableHead className="font-albert">Coach</TableHead>}
                 {showColumn('coaching') && <TableHead className="font-albert">Coaching</TableHead>}
@@ -998,45 +869,6 @@ export function AdminUsersTab({
                         ) : (
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium font-albert ${getTierBadgeColor(userTier)}`}>
                             {formatTierName(userTier)}
-                          </span>
-                        )}
-                      </TableCell>
-                    )}
-
-                    {/* Track */}
-                    {showColumn('track') && (
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        {isOrgScopedApi && !readOnly ? (
-                          <Select
-                            value={user.track || 'none'}
-                            onValueChange={(value) => handleTrackChange(user.id, value === 'none' ? null : value as UserTrack)}
-                            disabled={updatingTrackUserId === user.id}
-                          >
-                            <SelectTrigger className={`w-[150px] font-albert text-sm h-9 ${updatingTrackUserId === user.id ? 'opacity-50' : ''}`}>
-                              <SelectValue>
-                                {user.track ? (tracks.find(t => t.slug === user.track)?.name || TRACK_LABELS[user.track as UserTrack] || user.track) : 'Not set'}
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none" className="font-albert">Not set</SelectItem>
-                              {tracks.length > 0 ? (
-                                tracks.map((track) => (
-                                  <SelectItem key={track.id} value={track.slug} className="font-albert">
-                                    {track.name}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                Object.entries(TRACK_LABELS).map(([value, label]) => (
-                                  <SelectItem key={value} value={value} className="font-albert">
-                                    {label}
-                                  </SelectItem>
-                                ))
-                              )}
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <span className="font-albert text-[14px] text-[#5f5a55] dark:text-[#b2b6c2]">
-                            {user.track ? (tracks.find(t => t.slug === user.track)?.name || TRACK_LABELS[user.track as UserTrack] || user.track) : '-'}
                           </span>
                         )}
                       </TableCell>

@@ -45,9 +45,7 @@ import type {
   CoachingSessionHistory,
   CoachingResource,
   CoachPrivateNotes,
-  UserTrack,
   CoachingStatus,
-  Track,
 } from '@/types';
 import {
   formatTierName,
@@ -56,16 +54,6 @@ import {
   getCoachingStatusBadgeColor,
 } from '@/lib/admin-utils-shared';
 
-// Track labels for display
-const TRACK_LABELS: Record<UserTrack, string> = {
-  content_creator: 'Content Creator',
-  saas: 'SaaS',
-  coach_consultant: 'Coach/Consultant',
-  ecom: 'E-Commerce',
-  agency: 'Agency',
-  community_builder: 'Community Builder',
-  general: 'General',
-};
 
 // Common timezones for the dropdown
 const COMMON_TIMEZONES = [
@@ -104,7 +92,6 @@ interface UserData {
   timezone?: string;
   goal?: string;
   goalProgress?: number;
-  track?: UserTrack | null;
   standardSquadId?: string | null;
   premiumSquadId?: string | null;
   tier?: string;
@@ -133,13 +120,11 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   const [hasCoaching, setHasCoaching] = useState<boolean>(false);
   const [_coach, setCoach] = useState<Coach | null>(null);
   const [squads, setSquads] = useState<SquadInfo[]>([]);
-  const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   
-  // Track/Squad update states
-  const [updatingTrack, setUpdatingTrack] = useState(false);
+  // Squad update state
   const [updatingSquad, setUpdatingSquad] = useState(false);
 
   // Coach notes about user (stored separately from coaching data)
@@ -270,22 +255,15 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
         setHasCoaching(false);
       }
 
-      // Fetch squads and tracks for display/selection
+      // Fetch squads for display/selection
       try {
-        const [squadsResponse, tracksResponse] = await Promise.all([
-          fetch('/api/coach/org-squads'),
-          fetch('/api/coach/org-tracks'),
-        ]);
+        const squadsResponse = await fetch('/api/coach/org-squads');
         if (squadsResponse.ok) {
           const squadsData = await squadsResponse.json();
           setSquads(squadsData.squads || []);
         }
-        if (tracksResponse.ok) {
-          const tracksData = await tracksResponse.json();
-          setTracks(tracksData.tracks || []);
-        }
       } catch (err) {
-        console.warn('Failed to fetch squads/tracks:', err);
+        console.warn('Failed to fetch squads:', err);
       }
 
     } catch (err) {
@@ -300,30 +278,6 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
     fetchData();
   }, [fetchData]);
 
-  // Update track for user
-  const handleTrackChange = async (newTrack: UserTrack | null) => {
-    try {
-      setUpdatingTrack(true);
-      
-      const response = await fetch(`/api/coach/org-users/${clientId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ track: newTrack }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update track');
-      }
-
-      // Update local state
-      setUser((prev) => prev ? { ...prev, track: newTrack } : prev);
-    } catch (err) {
-      console.error('Error updating track:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update track');
-    } finally {
-      setUpdatingTrack(false);
-    }
-  };
 
   // Update squad for user
   const handleSquadChange = async (newSquadId: string | null) => {
@@ -781,40 +735,6 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
         </div>
 
         <div className="space-y-4">
-          {/* Track */}
-          <div className="flex items-center justify-between py-2 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-            <span className="font-albert text-[14px] text-[#5f5a55] dark:text-[#b2b6c2]">Track</span>
-            <Select
-              value={user?.track || 'none'}
-              onValueChange={(value) => handleTrackChange(value === 'none' ? null : value as UserTrack)}
-              disabled={updatingTrack}
-            >
-              <SelectTrigger className={`w-[180px] font-albert text-[14px] h-9 ${updatingTrack ? 'opacity-50' : ''}`}>
-                <SelectValue placeholder="Select track">
-                  {user?.track ? TRACK_LABELS[user.track as UserTrack] || user.track : 'Not set'}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none" className="font-albert">
-                  Not set
-                </SelectItem>
-                {tracks.length > 0 ? (
-                  tracks.map((track) => (
-                    <SelectItem key={track.id} value={track.slug} className="font-albert">
-                      {track.name}
-                    </SelectItem>
-                  ))
-                ) : (
-                  Object.entries(TRACK_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value} className="font-albert">
-                      {label}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Squad */}
           <div className="flex items-center justify-between py-2 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
             <span className="font-albert text-[14px] text-[#5f5a55] dark:text-[#b2b6c2]">Squad</span>

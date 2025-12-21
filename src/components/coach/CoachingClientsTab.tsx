@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Calendar, ChevronRight } from 'lucide-react';
+import { Calendar, ChevronRight, UserPlus } from 'lucide-react';
 import type { ClientCoachingData, FirebaseUser, CoachingPlanType } from '@/types';
+import { InviteClientsDialog } from './InviteClientsDialog';
 
 interface CoachingClientWithUser extends ClientCoachingData {
   user?: Partial<FirebaseUser>;
@@ -23,6 +24,7 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
   const [clients, setClients] = useState<CoachingClientWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
 
   const fetchClients = async () => {
     try {
@@ -90,19 +92,32 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
 
   if (clients.length === 0) {
     return (
-      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-3xl p-12 text-center">
-        <div className="w-20 h-20 bg-[#f3f1ef] dark:bg-[#11141b] rounded-full flex items-center justify-center mx-auto mb-6">
-          <svg className="w-10 h-10 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
+      <>
+        <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-3xl p-12 text-center">
+          <div className="w-20 h-20 bg-[#f3f1ef] dark:bg-[#11141b] rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 font-albert tracking-[-1px]">
+            No coaching clients yet
+          </h2>
+          <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert max-w-md mx-auto mb-6">
+            Start by inviting clients to join your program.
+          </p>
+          <button
+            onClick={() => setShowInviteDialog(true)}
+            className="px-6 py-3 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-xl hover:bg-[#8c6245] dark:hover:bg-[#a07855] font-albert font-medium transition-colors inline-flex items-center gap-2"
+          >
+            <UserPlus className="w-5 h-5" />
+            Invite New Clients
+          </button>
         </div>
-        <h2 className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 font-albert tracking-[-1px]">
-          No coaching clients yet
-        </h2>
-        <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert max-w-md mx-auto">
-          When you&apos;re assigned 1:1 coaching clients, they&apos;ll appear here.
-        </p>
-      </div>
+        <InviteClientsDialog
+          isOpen={showInviteDialog}
+          onClose={() => setShowInviteDialog(false)}
+        />
+      </>
     );
   }
 
@@ -118,13 +133,28 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
             {clients.length} client{clients.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <button
-          onClick={fetchClients}
-          className="px-4 py-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] font-albert transition-colors"
-        >
-          Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowInviteDialog(true)}
+            className="px-4 py-2 bg-[#a07855] dark:bg-[#b8896a] text-white text-sm rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] font-albert font-medium transition-colors flex items-center gap-2"
+          >
+            <UserPlus className="w-4 h-4" />
+            Invite New Clients
+          </button>
+          <button
+            onClick={fetchClients}
+            className="px-4 py-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] font-albert transition-colors"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
+
+      {/* Invite Dialog */}
+      <InviteClientsDialog
+        isOpen={showInviteDialog}
+        onClose={() => setShowInviteDialog(false)}
+      />
 
       {/* Clients List */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl overflow-hidden">

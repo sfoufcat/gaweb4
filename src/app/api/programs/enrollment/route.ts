@@ -8,7 +8,21 @@ import {
   calculateCurrentDayIndex,
 } from '@/lib/program-engine';
 import type { UserTrack } from '@/types';
-import { isValidTrack } from '@/lib/track';
+
+// Valid tracks for legacy enrollment (deprecated)
+const VALID_TRACKS: UserTrack[] = [
+  'content_creator',
+  'saas',
+  'coach_consultant',
+  'ecom',
+  'agency',
+  'community_builder',
+  'general',
+];
+
+function isValidTrack(track: string): track is UserTrack {
+  return VALID_TRACKS.includes(track as UserTrack);
+}
 
 /**
  * GET /api/programs/enrollment

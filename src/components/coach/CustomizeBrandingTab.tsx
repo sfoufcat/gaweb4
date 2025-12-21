@@ -1236,8 +1236,8 @@ export function CustomizeBrandingTab() {
               <label className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                 Subdomain
               </label>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 flex-1 max-w-md">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex items-center gap-2 flex-1 sm:max-w-md">
                   <input
                     type="text"
                     value={newSubdomain}
@@ -1255,7 +1255,7 @@ export function CustomizeBrandingTab() {
                 <button
                   onClick={handleSubdomainUpdate}
                   disabled={subdomainLoading || newSubdomain === currentSubdomain}
-                  className="px-4 py-2.5 bg-[#a07855] hover:bg-[#8c6245] disabled:bg-[#a07855]/50 text-white rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto px-4 py-2.5 bg-[#a07855] hover:bg-[#8c6245] disabled:bg-[#a07855]/50 text-white rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
                 >
                   {subdomainLoading ? 'Saving...' : 'Update'}
                 </button>
@@ -1300,7 +1300,7 @@ export function CustomizeBrandingTab() {
               </p>
               
               {/* Add new domain form */}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <input
                   type="text"
                   value={newCustomDomain}
@@ -1309,12 +1309,12 @@ export function CustomizeBrandingTab() {
                     setCustomDomainError(null);
                   }}
                   placeholder="app.yourdomain.com"
-                  className="flex-1 max-w-md px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                  className="flex-1 sm:max-w-md px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
                 />
                 <button
                   onClick={handleAddCustomDomain}
                   disabled={customDomainLoading || !newCustomDomain.trim()}
-                  className="px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#e8e5e1] dark:hover:bg-[#313746] disabled:opacity-50 rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#e8e5e1] dark:hover:bg-[#313746] disabled:opacity-50 rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
                 >
                   {customDomainLoading ? 'Adding...' : 'Add Domain'}
                 </button>
@@ -1748,7 +1748,7 @@ export function CustomizeBrandingTab() {
               <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
                 Enter a subdomain to use for sending emails (e.g., mail.yourcompany.com or notifications.yourcompany.com)
               </p>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <input
                   type="text"
                   value={newEmailDomain}
@@ -1757,12 +1757,12 @@ export function CustomizeBrandingTab() {
                     setEmailDomainError(null);
                   }}
                   placeholder="mail.yourcompany.com"
-                  className="flex-1 max-w-md px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                  className="flex-1 sm:max-w-md px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
                 />
                 <button
                   onClick={handleAddEmailDomain}
                   disabled={emailDomainActionLoading || !newEmailDomain.trim()}
-                  className="px-4 py-2.5 bg-[#a07855] hover:bg-[#8c6245] disabled:bg-[#a07855]/50 text-white rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto px-4 py-2.5 bg-[#a07855] hover:bg-[#8c6245] disabled:bg-[#a07855]/50 text-white rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
                 >
                   {emailDomainActionLoading ? 'Adding...' : 'Add Domain'}
                 </button>
@@ -2083,11 +2083,11 @@ export function CustomizeBrandingTab() {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center justify-between bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-4">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
           <button
             onClick={handleResetToDefaults}
-            className="flex items-center gap-2 px-4 py-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] font-albert text-sm transition-colors"
+            className="flex items-center justify-center gap-2 px-4 py-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] font-albert text-sm transition-colors"
           >
             <RotateCcw className="w-4 h-4" />
             Reset to Defaults
@@ -2096,7 +2096,7 @@ export function CustomizeBrandingTab() {
           {hasChanges && (
             <button
               onClick={handleRevertChanges}
-              className="flex items-center gap-2 px-4 py-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] font-albert text-sm transition-colors"
+              className="flex items-center justify-center gap-2 px-4 py-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] font-albert text-sm transition-colors"
             >
               Revert Changes
             </button>
@@ -2106,7 +2106,7 @@ export function CustomizeBrandingTab() {
         <button
           onClick={handleSave}
           disabled={saving || !hasChanges}
-          className="flex items-center gap-2 px-6 py-2.5 bg-[#a07855] hover:bg-[#8c6245] disabled:bg-[#a07855]/50 text-white rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
+          className="flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-2.5 bg-[#a07855] hover:bg-[#8c6245] disabled:bg-[#a07855]/50 text-white rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
         >
           <Save className="w-4 h-4" />
           {saving ? 'Saving...' : 'Save Changes'}

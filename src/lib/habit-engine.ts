@@ -10,7 +10,6 @@
 
 import { adminDb } from './firebase-admin';
 import { getDefaultHabitsForTrack } from './starter-program-config';
-import { getDefaultHabitsForTrackFromDB } from './track-cms';
 import type { UserTrack, Habit, HabitSource } from '@/types';
 
 // ============================================================================
@@ -51,13 +50,9 @@ export async function createDefaultHabitsForTrack(
   userId: string,
   trackId: UserTrack
 ): Promise<{ habitsCreated: number; habitIds: string[] }> {
-  // Try to get habits from database first (CMS-managed), fall back to hard-coded
-  let templates = await getDefaultHabitsForTrackFromDB(trackId);
-  
-  // If no DB habits, use hard-coded defaults
-  if (templates.length === 0) {
-    templates = getDefaultHabitsForTrack(trackId);
-  }
+  // Get default habits from hard-coded config
+  // Track CMS deprecated - habits now come from program enrollment
+  const templates = getDefaultHabitsForTrack(trackId);
   
   if (templates.length === 0) {
     console.log(`[HABIT_ENGINE] No default habits defined for track: ${trackId}`);

@@ -302,10 +302,9 @@ export default function CoachPage() {
             </div>
           </TabsContent>
 
-          {/* Legacy Tracks & Programs Tab */}
+          {/* Legacy Starter Programs Tab */}
           <TabsContent value="tracks-programs">
             <AdminTracksAndProgramsTab 
-              tracksApiBasePath={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-tracks' : '/api/admin/tracks'}
               programsApiBasePath={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-starter-programs' : '/api/admin/starter-programs'}
               promptsApiBasePath={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-dynamic-prompts' : '/api/admin/dynamic-prompts'}
             />

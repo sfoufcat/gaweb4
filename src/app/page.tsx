@@ -20,14 +20,12 @@ import type { Habit, MorningCheckIn, EveningCheckIn, Task, GoalHistoryEntry } fr
 import Image from 'next/image';
 import { Calendar, Users, ChevronRight, ChevronDown, Trophy, BookOpen, User } from 'lucide-react';
 import { useSquadContext } from '@/contexts/SquadContext';
-import { useTrack } from '@/hooks/useTrack';
-import { useTrackPrompt } from '@/hooks/useTrackPrompt';
+import { useProgramPrompt } from '@/hooks/useProgramPrompt';
 import { useQuote } from '@/hooks/useQuote';
 import { useStarterProgram } from '@/hooks/useStarterProgram';
 import { useWeeklyFocus } from '@/hooks/useWeeklyFocus';
 import { useHomeTutorial } from '@/hooks/useHomeTutorial';
 import { HomeTutorialOverlay } from '@/components/tutorial';
-import { getHabitLabelForTrack } from '@/lib/starter-program-config';
 import { useMenuTitles } from '@/contexts/BrandingContext';
 
 /**
@@ -161,8 +159,7 @@ export default function Dashboard() {
   // Get customizable menu titles
   const { mySquad: mySquadTitle } = useMenuTitles();
   
-  // Get user's track for track-specific UI labels
-  const { track } = useTrack();
+  // Program-based prompts have replaced track-based prompts
   
   // Determine if we should show weekly prompts
   // (Friday/Saturday/Sunday and weekly reflection not yet completed)
@@ -173,11 +170,8 @@ export default function Dashboard() {
     return isWeeklyReflectionPeriod && !weeklyReflectionCompleted;
   }, [weeklyReflection]);
   
-  // Get track-specific prompt for Dynamic Section
-  // Use 'weekly' type during weekly reflection period, otherwise auto-detect from time
-  const { prompt: trackPrompt, trackName, isLoading: trackPromptLoading } = useTrackPrompt({
-    typeOverride: shouldUseWeeklyPrompt ? 'weekly' : undefined,
-  });
+  // Get program-specific prompt for Dynamic Section
+  const { prompt: programPrompt, programName, isLoading: programPromptLoading, hasEnrollment: hasPromptEnrollment } = useProgramPrompt();
   
   // Get quote from CMS for the quote card
   const { quote: cmsQuote, isLoading: quoteLoading } = useQuote();
@@ -208,7 +202,7 @@ export default function Dashboard() {
   const homeTutorial = useHomeTutorial({
     userId: user?.id,
     hasCompletedTutorialFromServer: hasCompletedHomeTutorial,
-    hasTrack: !!track,
+    hasTrack: hasEnrollment,
     isAuthenticated: !!user,
     serverDataLoaded: tutorialDataLoaded,
   });
@@ -1346,7 +1340,7 @@ export default function Dashboard() {
       : "h-[200px] rounded-[32px] overflow-hidden relative bg-gradient-to-br from-rose-500 to-pink-600 p-6 flex flex-col justify-center items-center";
     
     // Show skeleton while loading
-    if (trackPromptLoading) {
+    if (programPromptLoading) {
       return (
         <div key="track" className={baseClasses}>
           <div className="absolute inset-0 bg-black/10" />
@@ -1363,7 +1357,7 @@ export default function Dashboard() {
     }
     
     // Don't render if no prompt available
-    if (!trackPrompt) {
+    if (!programPrompt) {
       return null;
     }
     
@@ -1371,17 +1365,17 @@ export default function Dashboard() {
       <div key="track" className={baseClasses}>
         <div className="absolute inset-0 bg-black/10" />
         <div className="relative z-10 px-6 text-center">
-          {/* Track badge */}
+          {/* Program badge */}
           <span className={`inline-block px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full font-sans ${isMobile ? 'text-[10px]' : 'text-[11px]'} text-white/90 font-medium mb-3 uppercase tracking-wide`}>
-            {trackName} Tip
+            {programName || 'Daily'} Tip
           </span>
           {/* Prompt title */}
           <p className={`font-albert ${isMobile ? 'text-[22px]' : 'text-[24px]'} text-white leading-[1.2] tracking-[-1.2px] font-semibold mb-2`}>
-            {trackPrompt.title}
+            {programPrompt.title}
           </p>
           {/* Prompt description */}
           <p className={`font-sans ${isMobile ? 'text-[13px]' : 'text-[14px]'} text-white/80 leading-[1.4] line-clamp-2`}>
-            {trackPrompt.description}
+            {programPrompt.description}
           </p>
         </div>
       </div>
@@ -1671,7 +1665,7 @@ export default function Dashboard() {
       <div data-tour="habits">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-albert text-[24px] text-text-primary leading-[1.3] tracking-[-1.5px]">
-            {getHabitLabelForTrack(track)}
+            Habits
           </h2>
           <div className="flex items-center gap-3">
             <Link href="/habits" className="font-sans text-[12px] text-accent-secondary leading-[1.2]">
@@ -2143,12 +2137,12 @@ export default function Dashboard() {
             <div className="space-y-3">
               <button
                 onClick={async () => {
-                  // Restart program (re-enroll in same track)
+                  // Restart program (re-enroll in same program track)
                   try {
                     await fetch('/api/programs/enrollment', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ track }),
+                      body: JSON.stringify({ track: program?.track || 'general' }),
                     });
                     await refreshProgram();
                     setShowProgramCompletionModal(false);
@@ -2171,11 +2165,11 @@ export default function Dashboard() {
               <button
                 onClick={() => {
                   setShowProgramCompletionModal(false);
-                  router.push('/profile?settings=true');
+                  router.push('/discover');
                 }}
                 className="w-full py-4 px-6 text-[#a07855] dark:text-[#b8896a] font-sans font-semibold text-[15px] hover:text-[#8c6245] dark:hover:text-[#a07855] transition-colors"
               >
-                Switch to a new track
+                Explore new programs
               </button>
             </div>
           </div>

@@ -2,22 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { summarizeWeeklyFocus } from '@/lib/anthropic';
-import type { FirebaseUser, WeeklyFocusDefaults } from '@/types';
-
-/**
- * Calculate the current week number based on program enrollment or account creation
- * Week number is 1-based (week 1, week 2, etc.)
- * Cycles through weeks 1-4 and repeats
- */
-function calculateCurrentWeek(startDate: string): number {
-  const start = new Date(startDate);
-  const now = new Date();
-  const diffTime = now.getTime() - start.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  const weekNumber = Math.floor(diffDays / 7) + 1;
-  // Cycle through weeks 1-4 (mod 4, but 1-indexed)
-  return ((weekNumber - 1) % 4) + 1;
-}
+import type { FirebaseUser } from '@/types';
 
 /**
  * GET /api/weekly-focus
@@ -88,77 +73,13 @@ export async function GET() {
       });
     }
 
-    // If no focus set, try to get track default
-    const userTrack = userData.track;
-    
-    if (!userTrack) {
-      return NextResponse.json({
-        weeklyFocus: null,
-        weeklyFocusSummary: null,
-        currentWeek: null,
-        isAutoInitialized: false,
-      });
-    }
-
-    // Determine reference date for week calculation
-    // Priority: Program enrollment start date > Account creation date
-    let referenceDate = userData.createdAt;
-
-    // Check if user has an active program enrollment
-    const enrollmentSnapshot = await adminDb
-      .collection('starter_program_enrollments')
-      .where('userId', '==', userId)
-      .where('status', '==', 'active')
-      .limit(1)
-      .get();
-
-    if (!enrollmentSnapshot.empty) {
-      const enrollment = enrollmentSnapshot.docs[0].data();
-      if (enrollment.startedAt) {
-        referenceDate = enrollment.startedAt;
-      }
-    }
-
-    // Calculate current week
-    const currentWeek = referenceDate ? calculateCurrentWeek(referenceDate) : 1;
-
-    // Fetch track's weekly focus defaults
-    const trackSnapshot = await adminDb
-      .collection('tracks')
-      .where('slug', '==', userTrack)
-      .limit(1)
-      .get();
-
-    if (trackSnapshot.empty) {
-      return NextResponse.json({
-        weeklyFocus: null,
-        weeklyFocusSummary: null,
-        currentWeek,
-        isAutoInitialized: false,
-      });
-    }
-
-    const trackData = trackSnapshot.docs[0].data();
-    const weeklyFocusDefaults = trackData.weeklyFocusDefaults as WeeklyFocusDefaults | undefined;
-
-    if (!weeklyFocusDefaults || !weeklyFocusDefaults[currentWeek]) {
-      return NextResponse.json({
-        weeklyFocus: null,
-        weeklyFocusSummary: null,
-        currentWeek,
-        isAutoInitialized: false,
-      });
-    }
-
-    // Return the default focus for current week
-    // For track defaults, use the full text as summary (they're typically short already)
-    const defaultFocus = weeklyFocusDefaults[currentWeek];
-    
+    // No focus set - tracks deprecated, so no track-based defaults
+    // Weekly focus must be set manually by the user
     return NextResponse.json({
-      weeklyFocus: defaultFocus,
-      weeklyFocusSummary: defaultFocus,
-      currentWeek,
-      isAutoInitialized: true,
+      weeklyFocus: null,
+      weeklyFocusSummary: null,
+      currentWeek: null,
+      isAutoInitialized: false,
     });
 
   } catch (error) {

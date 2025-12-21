@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { 
   Plus, 
@@ -99,11 +100,19 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   
+  // Portal mounting state
+  const [mounted, setMounted] = useState(false);
+  
   // Add step dialog
   const [showAddStep, setShowAddStep] = useState(false);
   
   // Edit step
   const [editingStep, setEditingStep] = useState<FunnelStep | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   const fetchSteps = useCallback(async () => {
     try {
@@ -323,61 +332,64 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
         </p>
       </div>
 
-      {/* Add Step Modal */}
-      <AnimatePresence>
-        {showAddStep && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            onClick={(e) => e.target === e.currentTarget && setShowAddStep(false)}
-          >
+      {/* Add Step Modal - rendered via portal to escape stacking context */}
+      {mounted && createPortal(
+        <AnimatePresence>
+          {showAddStep && (
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl w-full max-w-md shadow-xl"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+              onClick={(e) => e.target === e.currentTarget && setShowAddStep(false)}
             >
-              <div className="p-6 border-b border-[#e1ddd8]">
-                <h3 className="text-lg font-semibold text-text-primary">Add Step</h3>
-                <p className="text-sm text-text-secondary">Choose the type of step to add</p>
-              </div>
-              
-              <div className="p-4 grid grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto">
-                {(Object.keys(STEP_TYPE_INFO) as FunnelStepType[]).map((type) => {
-                  const info = STEP_TYPE_INFO[type];
-                  const Icon = info.icon;
-                  
-                  return (
-                    <button
-                      key={type}
-                      onClick={() => handleAddStep(type)}
-                      disabled={isSaving}
-                      className="p-4 border border-[#e1ddd8] rounded-xl hover:border-[#a07855] hover:bg-[#faf8f6] transition-colors text-left disabled:opacity-50"
-                    >
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${info.color}`}>
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <p className="font-medium text-text-primary text-sm">{info.label}</p>
-                      <p className="text-xs text-text-muted">{info.description}</p>
-                    </button>
-                  );
-                })}
-              </div>
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white rounded-2xl w-full max-w-md shadow-xl"
+              >
+                <div className="p-6 border-b border-[#e1ddd8]">
+                  <h3 className="text-lg font-semibold text-text-primary">Add Step</h3>
+                  <p className="text-sm text-text-secondary">Choose the type of step to add</p>
+                </div>
+                
+                <div className="p-4 grid grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto">
+                  {(Object.keys(STEP_TYPE_INFO) as FunnelStepType[]).map((type) => {
+                    const info = STEP_TYPE_INFO[type];
+                    const Icon = info.icon;
+                    
+                    return (
+                      <button
+                        key={type}
+                        onClick={() => handleAddStep(type)}
+                        disabled={isSaving}
+                        className="p-4 border border-[#e1ddd8] rounded-xl hover:border-[#a07855] hover:bg-[#faf8f6] transition-colors text-left disabled:opacity-50"
+                      >
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${info.color}`}>
+                          <Icon className="w-5 h-5" />
+                        </div>
+                        <p className="font-medium text-text-primary text-sm">{info.label}</p>
+                        <p className="text-xs text-text-muted">{info.description}</p>
+                      </button>
+                    );
+                  })}
+                </div>
 
-              <div className="p-4 border-t border-[#e1ddd8]">
-                <button
-                  onClick={() => setShowAddStep(false)}
-                  className="w-full py-2 text-text-secondary hover:text-text-primary transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
+                <div className="p-4 border-t border-[#e1ddd8]">
+                  <button
+                    onClick={() => setShowAddStep(false)}
+                    className="w-full py-2 text-text-secondary hover:text-text-primary transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Edit Step Config Modal */}
       {editingStep && (

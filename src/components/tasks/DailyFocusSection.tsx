@@ -26,10 +26,7 @@ import { TaskItem } from './TaskItem';
 import { TaskSheetDefine } from './TaskSheetDefine';
 import { TaskSheetManage } from './TaskSheetManage';
 import { useTasks } from '@/hooks/useTasks';
-import { useTrack } from '@/hooks/useTrack';
 import { useActiveEnrollment } from '@/hooks/useActiveEnrollment';
-import { getProgramBadgeForTrack } from '@/lib/starter-program-config';
-import { getTrackDisplayName } from '@/lib/track-prompts';
 import type { Task } from '@/types';
 
 // Empty drop zone component for when Daily Focus has no tasks
@@ -91,17 +88,16 @@ export function DailyFocusSection({
     reorderTasks,
   } = useTasks({ date: today });
   
-  // Get track and enrollment for program badge
-  const { track } = useTrack();
-  const { hasEnrollment, enrollment } = useActiveEnrollment();
+  // Get enrollment for program badge
+  const { hasEnrollment, enrollment, program } = useActiveEnrollment();
   
   // Determine if we should show the starter program badge
-  const programBadge = track && hasEnrollment && enrollment?.status === 'active' 
-    ? getProgramBadgeForTrack(track) 
+  const programBadge = hasEnrollment && enrollment?.status === 'active' && program?.name
+    ? `${program.name} Program`
     : null;
   
-  // Get track display name for program task tags
-  const trackDisplayName = track ? getTrackDisplayName(track) : null;
+  // Get program name for program task tags
+  const programDisplayName = program?.name || null;
 
   const [showBacklog, setShowBacklog] = useState(false); // Start with backlog hidden
   const [showDefineSheet, setShowDefineSheet] = useState(false);
@@ -428,7 +424,7 @@ export function DailyFocusSection({
                     task={task}
                     onClick={() => handleTaskClick(task)}
                     isDraggable={true}
-                    trackDisplayName={trackDisplayName || undefined}
+                    trackDisplayName={programDisplayName || undefined}
                   />
                 ))}
               </SortableContext>
@@ -541,7 +537,7 @@ export function DailyFocusSection({
                             task={task}
                             onClick={() => handleTaskClick(task)}
                             isDraggable={true}
-                            trackDisplayName={trackDisplayName || undefined}
+                            trackDisplayName={programDisplayName || undefined}
                           />
                         ))}
                       </SortableContext>

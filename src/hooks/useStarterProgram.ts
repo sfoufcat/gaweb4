@@ -2,10 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { useTrack } from './useTrack';
 import type { UserTrack, StarterProgramEnrollment } from '@/types';
-import { getProgramBadgeForTrack, getHabitLabelForTrack } from '@/lib/starter-program-config';
-import { getTrackDisplayName } from '@/lib/track-prompts';
 
 // ============================================================================
 // TYPES
@@ -102,7 +99,6 @@ interface UseStarterProgramReturn {
  */
 export function useStarterProgram(): UseStarterProgramReturn {
   const { user, isLoaded } = useUser();
-  const { track } = useTrack();
   
   // State
   const [hasEnrollment, setHasEnrollment] = useState(false);
@@ -208,21 +204,21 @@ export function useStarterProgram(): UseStarterProgramReturn {
     }
   }, [user, fetchEnrollment]);
 
-  // Computed values
+  // Computed values - now use program name instead of track
   const programBadge = useMemo(() => {
-    if (!track || !hasEnrollment || enrollment?.status !== 'active') {
+    if (!hasEnrollment || enrollment?.status !== 'active' || !program?.name) {
       return null;
     }
-    return getProgramBadgeForTrack(track);
-  }, [track, hasEnrollment, enrollment?.status]);
+    return `${program.name} Program`;
+  }, [hasEnrollment, enrollment?.status, program?.name]);
 
   const habitLabel = useMemo(() => {
-    return getHabitLabelForTrack(track);
-  }, [track]);
+    return 'Habits';
+  }, []);
 
   const trackDisplayName = useMemo(() => {
-    return getTrackDisplayName(track);
-  }, [track]);
+    return program?.name || 'Program';
+  }, [program?.name]);
 
   const isLastDay = useMemo(() => {
     if (!progress || !program) return false;

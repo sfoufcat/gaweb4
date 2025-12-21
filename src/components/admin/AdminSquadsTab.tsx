@@ -2,18 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import type { Squad, UserRole, UserTrack } from '@/types';
-
-// Track labels for display
-const TRACK_LABELS: Record<UserTrack, string> = {
-  content_creator: 'Content Creator',
-  saas: 'SaaS',
-  coach_consultant: 'Coach',
-  ecom: 'E-Commerce',
-  agency: 'Agency',
-  community_builder: 'Community',
-  general: 'General',
-};
+import type { Squad, UserRole } from '@/types';
 
 interface SquadWithDetails extends Squad {
   coachName?: string;
@@ -187,7 +176,6 @@ export function AdminSquadsTab({
               <TableRow>
                 <TableHead className="font-albert">Name</TableHead>
                 <TableHead className="font-albert">Visibility</TableHead>
-                <TableHead className="font-albert">Track</TableHead>
                 <TableHead className="font-albert">Timezone</TableHead>
                 <TableHead className="font-albert">Type</TableHead>
                 <TableHead className="font-albert">Coach</TableHead>
@@ -237,15 +225,6 @@ export function AdminSquadsTab({
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 font-albert">
                         Public
                       </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {squad.trackId ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#a07855]/10 text-[#a07855] font-albert">
-                        {TRACK_LABELS[squad.trackId as UserTrack] || squad.trackId}
-                      </span>
-                    ) : (
-                      <span className="text-[#5f5a55] dark:text-[#b2b6c2]/50 text-xs font-albert">All tracks</span>
                     )}
                   </TableCell>
                   <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2] text-xs">

@@ -2,7 +2,6 @@
 
 import useSWR from 'swr';
 import { useMemo } from 'react';
-import { useTrack } from './useTrack';
 
 export interface Quote {
   text: string;
@@ -39,19 +38,13 @@ function getQuoteCycleIndex(): number {
  * 
  * Fetches quotes from the CMS via /api/quote
  * - Cycles to a new quote each day
- * - Falls back to generic quotes if no track-specific quotes exist
  */
 export function useQuote(): UseQuoteReturn {
-  const { track, isLoading: trackLoading } = useTrack();
-  
   // Get cycle index for quote rotation (changes daily)
   const cycleIndex = useMemo(() => getQuoteCycleIndex(), []);
   
-  // Build cache key - includes track and index for uniqueness
-  // Quote changes daily and by track, so this key reflects that
-  const cacheKey = !trackLoading 
-    ? `/api/quote?track=${track || 'general'}&index=${cycleIndex}`
-    : null;
+  // Build cache key - uses index for daily cycling
+  const cacheKey = `/api/quote?index=${cycleIndex}`;
   
   const { data, error, isLoading } = useSWR<{ quote: Quote | null }>(
     cacheKey,
@@ -71,7 +64,7 @@ export function useQuote(): UseQuoteReturn {
 
   return {
     quote: data?.quote ?? null,
-    isLoading: trackLoading || (isLoading && !data),
+    isLoading: isLoading && !data,
     error: error?.message ?? null,
   };
 }

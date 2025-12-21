@@ -9,9 +9,9 @@ export type OrgRole = 'super_coach' | 'coach' | 'member';
 
 /**
  * Track Types - Business type the user is building
- * @deprecated Tracks are being replaced by coach-defined Programs.
- * Programs can be created for any topic, not limited to these categories.
- * Kept for backward compatibility during migration.
+ * @deprecated FULLY DEPRECATED - Tracks have been replaced by coach-defined Programs.
+ * This type is kept ONLY for backward compatibility with legacy code.
+ * Do NOT use in new code - use Program entities instead.
  */
 export type UserTrack = 
   | 'content_creator' 
@@ -37,8 +37,7 @@ export interface ClerkPublicMetadata {
   role?: UserRole;                    // Platform role (for super_admins only)
   primaryOrganizationId?: string;     // Last active / default organization
   // Legacy fields - kept for backward compatibility during migration
-  // These will be deprecated once migration is complete
-  track?: UserTrack;                  // @deprecated - now per-org in org_memberships
+  // track field REMOVED - tracks fully deprecated
   tier?: UserTier;                    // @deprecated - now per-org in org_memberships
   orgRole?: OrgRole;                  // @deprecated - now per-org in org_memberships
   organizationId?: string;            // @deprecated - use primaryOrganizationId
@@ -159,7 +158,7 @@ export interface FirebaseUser extends ClerkUser {
   premiumSquadId?: string | null; // Premium squad membership (requires premium tier)
   
   tier?: UserTier; // User subscription tier (defaults to 'standard')
-  track?: UserTrack | null; // Business track (content_creator, saas, coach_consultant, ecom, agency, general)
+  // track field removed - tracks deprecated in favor of Programs
   
   // Referral tracking (set when user joins via invite link)
   invitedBy?: string; // User ID of who invited them

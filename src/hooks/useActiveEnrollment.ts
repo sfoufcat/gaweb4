@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
-import type { UserTrack } from '@/types';
 
 interface ProgramInfo {
   id: string;
@@ -10,7 +9,6 @@ interface ProgramInfo {
   slug: string;
   description?: string;
   lengthDays: number;
-  track: UserTrack;
 }
 
 interface EnrollmentProgress {
