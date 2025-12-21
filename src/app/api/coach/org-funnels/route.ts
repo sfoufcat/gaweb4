@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { verifyCoachRole, getCoachOrganizationId } from '@/lib/admin-utils-clerk';
-import type { Funnel, FunnelStep } from '@/types';
+import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
+import type { Funnel } from '@/types';
 
 /**
  * GET /api/coach/org-funnels
@@ -13,21 +12,7 @@ import type { Funnel, FunnelStep } from '@/types';
  */
 export async function GET(req: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Verify coach role
-    const isCoach = await verifyCoachRole(userId);
-    if (!isCoach) {
-      return NextResponse.json({ error: 'Forbidden - Coach access required' }, { status: 403 });
-    }
-
-    const organizationId = await getCoachOrganizationId(userId);
-    if (!organizationId) {
-      return NextResponse.json({ error: 'No organization found' }, { status: 404 });
-    }
+    const { organizationId } = await requireCoachWithOrg();
 
     const { searchParams } = new URL(req.url);
     const programId = searchParams.get('programId');
@@ -69,20 +54,7 @@ export async function GET(req: Request) {
  */
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const isCoach = await verifyCoachRole(userId);
-    if (!isCoach) {
-      return NextResponse.json({ error: 'Forbidden - Coach access required' }, { status: 403 });
-    }
-
-    const organizationId = await getCoachOrganizationId(userId);
-    if (!organizationId) {
-      return NextResponse.json({ error: 'No organization found' }, { status: 404 });
-    }
+    const { organizationId } = await requireCoachWithOrg();
 
     const body = await req.json();
     const { name, slug, programId, description, accessType = 'public', isDefault = false } = body;
@@ -175,4 +147,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
   }
 }
-

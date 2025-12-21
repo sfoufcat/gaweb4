@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { verifyCoachRole, getCoachOrganizationId } from '@/lib/admin-utils-clerk';
+import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { nanoid } from 'nanoid';
 import type { ProgramInvite, Funnel } from '@/types';
 
@@ -23,20 +22,7 @@ interface BulkInviteEntry {
  */
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const isCoach = await verifyCoachRole(userId);
-    if (!isCoach) {
-      return NextResponse.json({ error: 'Forbidden - Coach access required' }, { status: 403 });
-    }
-
-    const organizationId = await getCoachOrganizationId(userId);
-    if (!organizationId) {
-      return NextResponse.json({ error: 'No organization found' }, { status: 404 });
-    }
+    const { userId, organizationId } = await requireCoachWithOrg();
 
     const body = await req.json();
     const { 
@@ -176,4 +162,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
   }
 }
-

@@ -114,7 +114,7 @@ export async function POST(req: Request) {
     }
 
     // For group programs, find or assign squad/cohort
-    let assignedSquadId: string | null = targetSquadId;
+    const assignedSquadId: string | null = targetSquadId;
     let assignedCohortId: string | null = targetCohortId;
 
     if (program.type === 'group' && !assignedCohortId) {

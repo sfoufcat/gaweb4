@@ -1611,6 +1611,39 @@ export interface OrgMenuTitles {
 }
 
 /**
+ * Email domain verification status for whitelabel email sending
+ */
+export type EmailDomainStatus = 'not_started' | 'pending' | 'verified' | 'failed';
+
+/**
+ * DNS record returned by Resend when adding a domain
+ */
+export interface EmailDnsRecord {
+  type: 'MX' | 'TXT';
+  name: string;
+  value: string;
+  priority?: number;
+  ttl?: string;
+}
+
+/**
+ * Email settings for whitelabel email sending
+ * Allows coaches to send emails from their own domain via Resend
+ */
+export interface OrgEmailSettings {
+  // Resend domain configuration
+  domain: string | null;           // e.g., "notifications.coachbrand.com"
+  resendDomainId: string | null;   // Resend domain ID: "d_123..."
+  status: EmailDomainStatus;
+  dnsRecords: EmailDnsRecord[];
+  verifiedAt: string | null;
+  
+  // Sender configuration
+  fromName: string;                // e.g., "Coach Brand" (default: org appTitle)
+  replyTo: string | null;          // e.g., "support@coachbrand.com"
+}
+
+/**
  * Organization branding settings
  * Stored in Firestore: org_branding/{organizationId}
  * 
@@ -1625,6 +1658,7 @@ export interface OrgBranding {
   appTitle: string;              // App title shown in sidebar (default: "Growth Addicts")
   colors: OrgBrandingColors;
   menuTitles?: OrgMenuTitles;    // Customizable menu titles (optional, uses defaults if not set)
+  emailSettings?: OrgEmailSettings; // Whitelabel email settings (optional)
   createdAt: string;             // ISO timestamp
   updatedAt: string;             // ISO timestamp
 }
@@ -1646,6 +1680,16 @@ export const DEFAULT_MENU_TITLES: OrgMenuTitles = {
   learn: 'Learn',
   chat: 'Chat',
   coach: 'Coach',
+};
+
+export const DEFAULT_EMAIL_SETTINGS: OrgEmailSettings = {
+  domain: null,
+  resendDomainId: null,
+  status: 'not_started',
+  dnsRecords: [],
+  verifiedAt: null,
+  fromName: 'Growth Addicts',
+  replyTo: null,
 };
 
 // =============================================================================

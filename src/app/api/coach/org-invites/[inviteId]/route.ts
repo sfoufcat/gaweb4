@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { verifyCoachRole, getCoachOrganizationId } from '@/lib/admin-utils-clerk';
+import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import type { ProgramInvite } from '@/types';
 
 /**
@@ -14,21 +13,7 @@ export async function GET(
 ) {
   try {
     const { inviteId } = await params;
-    const { userId } = await auth();
-    
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const isCoach = await verifyCoachRole(userId);
-    if (!isCoach) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const organizationId = await getCoachOrganizationId(userId);
-    if (!organizationId) {
-      return NextResponse.json({ error: 'No organization found' }, { status: 404 });
-    }
+    const { organizationId } = await requireCoachWithOrg();
 
     const inviteDoc = await adminDb.collection('program_invites').doc(inviteId).get();
     
@@ -59,21 +44,7 @@ export async function PUT(
 ) {
   try {
     const { inviteId } = await params;
-    const { userId } = await auth();
-    
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const isCoach = await verifyCoachRole(userId);
-    if (!isCoach) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const organizationId = await getCoachOrganizationId(userId);
-    if (!organizationId) {
-      return NextResponse.json({ error: 'No organization found' }, { status: 404 });
-    }
+    const { organizationId } = await requireCoachWithOrg();
 
     const inviteDoc = await adminDb.collection('program_invites').doc(inviteId).get();
     
@@ -123,21 +94,7 @@ export async function DELETE(
 ) {
   try {
     const { inviteId } = await params;
-    const { userId } = await auth();
-    
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const isCoach = await verifyCoachRole(userId);
-    if (!isCoach) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const organizationId = await getCoachOrganizationId(userId);
-    if (!organizationId) {
-      return NextResponse.json({ error: 'No organization found' }, { status: 404 });
-    }
+    const { organizationId } = await requireCoachWithOrg();
 
     const inviteDoc = await adminDb.collection('program_invites').doc(inviteId).get();
     
@@ -161,4 +118,3 @@ export async function DELETE(
     return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
   }
 }
-
