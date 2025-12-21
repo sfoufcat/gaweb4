@@ -20,24 +20,30 @@ export async function GET(req: Request) {
     const programId = searchParams.get('programId');
     const funnelId = searchParams.get('funnelId');
 
-    // Build query
-    let query = adminDb
+    // Build query - fetch by organizationId and optionally filter client-side
+    // (Firestore requires composite indexes for multiple where + orderBy)
+    const snapshot = await adminDb
       .collection('program_invites')
-      .where('organizationId', '==', organizationId);
+      .where('organizationId', '==', organizationId)
+      .get();
 
-    if (programId) {
-      query = query.where('programId', '==', programId);
-    }
-    if (funnelId) {
-      query = query.where('funnelId', '==', funnelId);
-    }
-
-    const snapshot = await query.orderBy('createdAt', 'desc').limit(100).get();
-
-    const invites = snapshot.docs.map(doc => ({
+    let invites = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
     })) as ProgramInvite[];
+
+    // Filter by programId or funnelId if provided
+    if (programId) {
+      invites = invites.filter(inv => inv.programId === programId);
+    }
+    if (funnelId) {
+      invites = invites.filter(inv => inv.funnelId === funnelId);
+    }
+
+    // Sort by createdAt descending and limit
+    invites = invites
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .slice(0, 100);
 
     return NextResponse.json({ invites });
   } catch (error) {
