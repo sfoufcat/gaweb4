@@ -1,43 +1,52 @@
-import { useState, useEffect } from 'react';
+'use client';
+
+import useSWR from 'swr';
 import type { Habit, HabitFormData } from '@/types';
 
-export function useHabits() {
-  const [habits, setHabits] = useState<Habit[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const HABITS_CACHE_KEY = '/api/habits';
 
-  const fetchHabits = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const response = await fetch('/api/habits');
-      
-      // Handle any non-OK response gracefully
+interface HabitsResponse {
+  habits: Habit[];
+}
+
+/**
+ * Hook for managing user habits with SWR caching
+ * 
+ * Uses SWR for:
+ * - Instant loading from cache on return visits
+ * - Optimistic updates for mutations
+ * - Background revalidation for fresh data
+ */
+export function useHabits() {
+  const { data, error, isLoading, mutate } = useSWR<HabitsResponse>(
+    HABITS_CACHE_KEY,
+    async (url: string) => {
+      const response = await fetch(url);
       if (!response.ok) {
         console.warn('Habits API returned non-OK status:', response.status);
-        setHabits([]);
-        setIsLoading(false);
-        return;
+        return { habits: [] };
       }
-
-      const data = await response.json();
-      setHabits(data.habits || []);
-    } catch (err) {
-      // Silently fail and return empty habits
-      console.warn('Error fetching habits (non-critical):', err);
-      setHabits([]);
-    } finally {
-      setIsLoading(false);
+      return response.json();
+    },
+    {
+      // Fallback to empty array while loading
+      fallbackData: { habits: [] },
+      revalidateOnFocus: false,
     }
+  );
+
+  const habits = data?.habits ?? [];
+
+  const fetchHabits = async () => {
+    await mutate();
   };
 
-  const createHabit = async (data: HabitFormData) => {
+  const createHabit = async (formData: HabitFormData) => {
     try {
       const response = await fetch('/api/habits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
@@ -45,7 +54,13 @@ export function useHabits() {
       }
 
       const result = await response.json();
-      setHabits(prev => [result.habit, ...prev]);
+      
+      // Optimistically update cache
+      await mutate(
+        { habits: [result.habit, ...habits] },
+        { revalidate: false }
+      );
+      
       return result.habit;
     } catch (err) {
       console.error('Error creating habit:', err);
@@ -53,12 +68,12 @@ export function useHabits() {
     }
   };
 
-  const updateHabit = async (id: string, data: Partial<HabitFormData>) => {
+  const updateHabit = async (id: string, formData: Partial<HabitFormData>) => {
     try {
       const response = await fetch(`/api/habits/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
@@ -66,7 +81,13 @@ export function useHabits() {
       }
 
       const result = await response.json();
-      setHabits(prev => prev.map(h => h.id === id ? result.habit : h));
+      
+      // Optimistically update cache
+      await mutate(
+        { habits: habits.map(h => h.id === id ? result.habit : h) },
+        { revalidate: false }
+      );
+      
       return result.habit;
     } catch (err) {
       console.error('Error updating habit:', err);
@@ -84,8 +105,11 @@ export function useHabits() {
         throw new Error('Failed to archive habit');
       }
 
-      // Remove from active habits list (it will be fetched separately as archived)
-      setHabits(prev => prev.filter(h => h.id !== id));
+      // Optimistically remove from cache
+      await mutate(
+        { habits: habits.filter(h => h.id !== id) },
+        { revalidate: false }
+      );
     } catch (err) {
       console.error('Error archiving habit:', err);
       throw err;
@@ -99,14 +123,17 @@ export function useHabits() {
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to mark habit complete');
+        const responseData = await response.json();
+        throw new Error(responseData.error || 'Failed to mark habit complete');
       }
 
       const result = await response.json();
-      setHabits(prev => prev.map(h => 
-        h.id === id ? { ...h, progress: result.progress } : h
-      ));
+      
+      // Optimistically update progress in cache
+      await mutate(
+        { habits: habits.map(h => h.id === id ? { ...h, progress: result.progress } : h) },
+        { revalidate: false }
+      );
     } catch (err) {
       console.error('Error marking habit complete:', err);
       throw err;
@@ -120,28 +147,27 @@ export function useHabits() {
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to skip habit');
+        const responseData = await response.json();
+        throw new Error(responseData.error || 'Failed to skip habit');
       }
 
       const result = await response.json();
-      setHabits(prev => prev.map(h => 
-        h.id === id ? { ...h, progress: result.progress } : h
-      ));
+      
+      // Optimistically update progress in cache
+      await mutate(
+        { habits: habits.map(h => h.id === id ? { ...h, progress: result.progress } : h) },
+        { revalidate: false }
+      );
     } catch (err) {
       console.error('Error skipping habit:', err);
       throw err;
     }
   };
 
-  useEffect(() => {
-    fetchHabits();
-  }, []);
-
   return {
     habits,
-    isLoading,
-    error,
+    isLoading: isLoading && habits.length === 0,
+    error: error?.message ?? null,
     fetchHabits,
     createHabit,
     updateHabit,
@@ -150,4 +176,3 @@ export function useHabits() {
     markSkip,
   };
 }
-

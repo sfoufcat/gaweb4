@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { sendWelcomeEmail } from '@/lib/email';
 import { updateUserBillingInClerk, updateUserCoachingInClerk, type BillingStatus } from '@/lib/admin-utils-clerk';
-import type { CoachingStatus, CoachingPlan } from '@/types';
+import type { CoachingStatus, CoachingPlan, FlowSession, Program, ProgramEnrollment, ProgramInvite, NewProgramEnrollmentStatus } from '@/types';
 
 // Coaching product ID - used to identify coaching subscriptions vs membership subscriptions
 const COACHING_PRODUCT_ID = 'prod_TV2dhbvP1vJ69e';
@@ -124,6 +125,21 @@ export async function POST(req: Request) {
         const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
         console.log(`[STRIPE_WEBHOOK] invoice.payment_failed - invoiceId: ${invoice.id}, customerId: ${customerId}`);
         await handlePaymentFailed(invoice);
+        break;
+      }
+
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        // For Connect events, event.account contains the connected account ID
+        const connectedAccountId = (event as { account?: string }).account;
+        
+        // Only handle funnel payments (one-time program enrollment payments via Stripe Connect)
+        if (paymentIntent.metadata?.type === 'funnel_payment') {
+          console.log(`[STRIPE_WEBHOOK] payment_intent.succeeded (funnel) - paymentIntentId: ${paymentIntent.id}, flowSessionId: ${paymentIntent.metadata?.flowSessionId}, connectedAccount: ${connectedAccountId || 'platform'}`);
+          await handleFunnelPaymentSucceeded(paymentIntent);
+        } else {
+          console.log(`[STRIPE_WEBHOOK] payment_intent.succeeded - paymentIntentId: ${paymentIntent.id} (not a funnel payment, skipping)`);
+        }
         break;
       }
 
@@ -329,14 +345,19 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 }
 
 /**
- * Handle guest checkout completion
- * This stores payment info in the guest session for later linking
+ * Handle guest checkout completion (LEGACY)
+ * 
+ * @deprecated This handles the old /start guest flow which used guestSessions.
+ * The new /join funnel flow uses flow_sessions and PaymentIntents handled by handleFunnelPaymentSucceeded.
+ * This function is kept for any remaining in-flight checkout sessions.
+ * Safe to remove after confirming no guestSessions with paymentStatus='pending' exist.
  */
 async function handleGuestCheckoutCompleted(
   session: Stripe.Checkout.Session,
   guestSessionId: string | undefined,
   plan: 'trial' | 'standard' | 'premium' | undefined
 ) {
+  console.warn('[STRIPE_WEBHOOK] DEPRECATED: handleGuestCheckoutCompleted called - this is the old guest flow');
   const isTrial = session.metadata?.isTrial === 'true';
   const effectiveTier = session.metadata?.effectiveTier as 'standard' | 'premium' | undefined;
   
@@ -659,6 +680,205 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
   }
 
   console.log(`[STRIPE_WEBHOOK] Payment failed for user ${userDoc.id}, downgraded to free tier`);
+}
+
+/**
+ * Handle successful funnel payment (one-time program enrollment payment)
+ * This is a safety net in case the client-side flow fails after payment succeeds
+ */
+async function handleFunnelPaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
+  const flowSessionId = paymentIntent.metadata?.flowSessionId;
+  const userId = paymentIntent.metadata?.userId;
+  const programId = paymentIntent.metadata?.programId;
+  const organizationId = paymentIntent.metadata?.organizationId;
+
+  if (!flowSessionId) {
+    console.log(`[STRIPE_WEBHOOK] Funnel payment ${paymentIntent.id} has no flowSessionId, skipping`);
+    return;
+  }
+
+  if (!userId) {
+    console.error(`[STRIPE_WEBHOOK] Funnel payment ${paymentIntent.id} has no userId`);
+    return;
+  }
+
+  // Get the flow session
+  const sessionRef = adminDb.collection('flow_sessions').doc(flowSessionId);
+  const sessionDoc = await sessionRef.get();
+
+  if (!sessionDoc.exists) {
+    console.error(`[STRIPE_WEBHOOK] Flow session ${flowSessionId} not found for payment ${paymentIntent.id}`);
+    return;
+  }
+
+  const flowSession = sessionDoc.data() as FlowSession;
+
+  // Check if already completed - don't double-process
+  if (flowSession.completedAt) {
+    console.log(`[STRIPE_WEBHOOK] Flow session ${flowSessionId} already completed, skipping`);
+    return;
+  }
+
+  // Check if enrollment already exists for this payment intent
+  const existingEnrollment = await adminDb
+    .collection('program_enrollments')
+    .where('stripePaymentIntentId', '==', paymentIntent.id)
+    .limit(1)
+    .get();
+
+  if (!existingEnrollment.empty) {
+    console.log(`[STRIPE_WEBHOOK] Enrollment already exists for payment ${paymentIntent.id}, marking session complete`);
+    // Just mark the session as complete
+    await sessionRef.update({
+      completedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    return;
+  }
+
+  // Get program details
+  const programDoc = await adminDb.collection('programs').doc(flowSession.programId).get();
+  if (!programDoc.exists) {
+    console.error(`[STRIPE_WEBHOOK] Program ${flowSession.programId} not found for flow session ${flowSessionId}`);
+    return;
+  }
+
+  const program = programDoc.data() as Program;
+
+  // Handle invite if present
+  let invite: ProgramInvite | null = null;
+  let targetSquadId: string | null = null;
+  let targetCohortId: string | null = null;
+
+  if (flowSession.inviteId) {
+    const inviteDoc = await adminDb.collection('program_invites').doc(flowSession.inviteId).get();
+    if (inviteDoc.exists) {
+      invite = inviteDoc.data() as ProgramInvite;
+      targetSquadId = invite.targetSquadId || null;
+      targetCohortId = invite.targetCohortId || null;
+
+      // Update invite usage
+      await adminDb.collection('program_invites').doc(flowSession.inviteId).update({
+        useCount: FieldValue.increment(1),
+        usedBy: userId,
+        usedAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  // For group programs, find or assign squad/cohort
+  const assignedSquadId: string | null = targetSquadId;
+  let assignedCohortId: string | null = targetCohortId;
+
+  if (program.type === 'group' && !assignedCohortId) {
+    // Find active cohort with enrollment open
+    const cohortsSnapshot = await adminDb
+      .collection('program_cohorts')
+      .where('programId', '==', flowSession.programId)
+      .where('enrollmentOpen', '==', true)
+      .where('status', 'in', ['upcoming', 'active'])
+      .orderBy('startDate', 'asc')
+      .limit(1)
+      .get();
+
+    if (!cohortsSnapshot.empty) {
+      const cohort = cohortsSnapshot.docs[0];
+      assignedCohortId = cohort.id;
+
+      // Update cohort enrollment count
+      await cohort.ref.update({
+        currentEnrollment: FieldValue.increment(1),
+      });
+    }
+  }
+
+  // Determine enrollment status
+  let enrollmentStatus: NewProgramEnrollmentStatus = 'active';
+  let startedAt = new Date().toISOString();
+
+  if (assignedCohortId) {
+    // Check if cohort has started
+    const cohortDoc = await adminDb.collection('program_cohorts').doc(assignedCohortId).get();
+    if (cohortDoc.exists) {
+      const cohortData = cohortDoc.data();
+      if (cohortData?.startDate && new Date(cohortData.startDate) > new Date()) {
+        enrollmentStatus = 'upcoming';
+        startedAt = cohortData.startDate;
+      }
+    }
+  }
+
+  // Create program enrollment
+  const now = new Date().toISOString();
+  const enrollmentData: Omit<ProgramEnrollment, 'id'> = {
+    userId,
+    programId: flowSession.programId,
+    organizationId: flowSession.organizationId,
+    cohortId: assignedCohortId,
+    squadId: assignedSquadId,
+    stripePaymentIntentId: paymentIntent.id,
+    paidAt: now,
+    amountPaid: invite?.paymentStatus === 'pre_paid' ? 0 : (paymentIntent.amount || program.priceInCents || 0),
+    status: enrollmentStatus,
+    startedAt,
+    lastAssignedDayIndex: 0,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const enrollmentRef = await adminDb.collection('program_enrollments').add(enrollmentData);
+
+  // Mark flow session as completed
+  await sessionRef.update({
+    completedAt: now,
+    updatedAt: now,
+    data: {
+      ...flowSession.data,
+      stripePaymentIntentId: paymentIntent.id,
+    },
+  });
+
+  // Update user record with program enrollment reference
+  const userRef = adminDb.collection('users').doc(userId);
+  const userDoc = await userRef.get();
+
+  const userUpdate: Record<string, unknown> = {
+    organizationId: flowSession.organizationId,
+    currentProgramEnrollmentId: enrollmentRef.id,
+    currentProgramId: flowSession.programId,
+    // Flow session data (goal, identity, etc.)
+    ...extractUserDataFromFlowSession(flowSession.data),
+    updatedAt: now,
+  };
+
+  if (!userDoc.exists) {
+    userUpdate.createdAt = now;
+    userUpdate.id = userId;
+  }
+
+  await userRef.set(userUpdate, { merge: true });
+
+  console.log(`[STRIPE_WEBHOOK] Funnel payment processed: User ${userId} enrolled in program ${flowSession.programId}, enrollment ${enrollmentRef.id}`);
+}
+
+/**
+ * Extract user-relevant data from flow session data (for webhook handler)
+ */
+function extractUserDataFromFlowSession(data: Record<string, unknown>): Record<string, unknown> {
+  const userFields: Record<string, unknown> = {};
+
+  // Standard fields that should be saved to user record
+  if (data.goal) userFields.goal = data.goal;
+  if (data.goalTargetDate) userFields.goalTargetDate = data.goalTargetDate;
+  if (data.goalSummary) userFields.goalSummary = data.goalSummary;
+  if (data.identity) userFields.identity = data.identity;
+  if (data.workdayStyle) userFields.workdayStyle = data.workdayStyle;
+  if (data.businessStage) userFields.businessStage = data.businessStage;
+  if (data.obstacles) userFields.obstacles = data.obstacles;
+  if (data.goalImpact) userFields.goalImpact = data.goalImpact;
+  if (data.supportNeeds) userFields.supportNeeds = data.supportNeeds;
+
+  return userFields;
 }
 
 /**

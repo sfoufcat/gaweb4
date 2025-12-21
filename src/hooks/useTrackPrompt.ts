@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import useSWR from 'swr';
+import { useMemo } from 'react';
 import { useTrack } from './useTrack';
 import { getTrackDisplayName } from '@/lib/track-prompts';
 import type { DynamicPromptType } from '@/types';
@@ -64,89 +65,56 @@ function getPromptCycleIndex(): number {
 /**
  * Hook for getting track-specific prompts for the Dynamic Section
  * 
+ * Uses SWR for:
+ * - Instant loading from cache on return visits
+ * - Background revalidation for fresh data
+ * 
  * Fetches prompts from the CMS via /api/track-prompt
  * - Shows 'morning' prompts before 5pm (unless overridden)
  * - Shows 'evening' prompts after 5pm (unless overridden)
  * - Shows 'weekly' prompts when typeOverride is 'weekly'
  * - Cycles to a new prompt at 1pm each day
- * 
- * Usage:
- * ```tsx
- * // Auto-detect type based on time
- * const { prompt, trackName, isLoading, promptType } = useTrackPrompt();
- * 
- * // Force weekly prompts
- * const { prompt } = useTrackPrompt({ typeOverride: 'weekly' });
- * 
- * if (isLoading) return <Skeleton />;
- * if (!prompt) return null;
- * 
- * // Render: "Creator Tip" with prompt.title and prompt.description
- * ```
  */
 export function useTrackPrompt(options?: UseTrackPromptOptions): UseTrackPromptReturn {
   const { typeOverride } = options || {};
   const { track, isLoading: trackLoading, hasTrack } = useTrack();
-  const [prompt, setPrompt] = useState<TrackPrompt | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   
   // Determine prompt type - use override if provided, otherwise detect from time
   const promptType = useMemo(() => typeOverride || getPromptTypeForTime(), [typeOverride]);
   
   // Get cycle index for prompt rotation
   const cycleIndex = useMemo(() => getPromptCycleIndex(), []);
+  
+  // Build cache key - includes all variables that affect the result
+  const cacheKey = !trackLoading
+    ? `/api/track-prompt?track=${track || 'general'}&type=${promptType}&index=${cycleIndex}`
+    : null;
 
-  // Fetch prompt from CMS API
-  const fetchPrompt = useCallback(async (trackSlug: string | null, type: DynamicPromptType, index: number) => {
-    try {
-      setError(null);
-      setIsLoading(true);
-      
-      // Build URL with query params
-      const url = new URL('/api/track-prompt', window.location.origin);
-      if (trackSlug) {
-        url.searchParams.set('track', trackSlug);
-      }
-      url.searchParams.set('type', type);
-      url.searchParams.set('index', index.toString());
-      
-      const response = await fetch(url.toString());
-      
+  const { data, error, isLoading } = useSWR<{ prompt: TrackPrompt | null }>(
+    cacheKey,
+    async (url: string) => {
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Failed to fetch prompt');
       }
-      
-      const data = await response.json();
-      setPrompt(data.prompt || null);
-    } catch (err) {
-      console.error('[useTrackPrompt] Error fetching prompt:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch prompt');
-      setPrompt(null);
-    } finally {
-      setIsLoading(false);
+      return response.json();
+    },
+    {
+      // Prompts change based on time, cache for 30 minutes
+      dedupingInterval: 30 * 60 * 1000,
+      revalidateOnFocus: false,
     }
-  }, []);
-
-  // Fetch prompt when track changes or loads
-  useEffect(() => {
-    // Wait for track to finish loading
-    if (trackLoading) {
-      return;
-    }
-    
-    fetchPrompt(track, promptType, cycleIndex);
-  }, [track, trackLoading, promptType, cycleIndex, fetchPrompt]);
+  );
 
   // Get track display name
   const trackName = getTrackDisplayName(track);
 
   return {
-    prompt,
+    prompt: data?.prompt ?? null,
     trackName,
-    isLoading: trackLoading || isLoading,
+    isLoading: trackLoading || (isLoading && !data),
     hasTrack,
-    error,
+    error: error?.message ?? null,
     promptType,
   };
 }

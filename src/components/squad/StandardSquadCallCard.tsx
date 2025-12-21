@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import useSWR from 'swr';
 import { Calendar, MessageCircle, Download, Pencil, Check, X, Users } from 'lucide-react';
 import type { Squad, StandardSquadCall } from '@/types';
 import { CallSuggestionModal } from './CallSuggestionModal';
@@ -23,11 +24,9 @@ interface StandardSquadCallCardProps {
   onCallUpdated?: () => void;
 }
 
-interface CallState {
+interface CallDataResponse {
   call: StandardSquadCall | null;
   userVote: 'yes' | 'no' | null;
-  isLoading: boolean;
-  error: string | null;
 }
 
 /**
@@ -81,50 +80,35 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
   const router = useRouter();
   const [showSuggestModal, setShowSuggestModal] = useState(false);
   const [isVoting, setIsVoting] = useState(false);
-  const [callState, setCallState] = useState<CallState>({
-    call: null,
-    userVote: null,
-    isLoading: true,
-    error: null,
-  });
 
   const userTimezone = getUserTimezone();
 
-  // Fetch call data
-  const fetchCallData = useCallback(async () => {
-    try {
-      setCallState(prev => ({ ...prev, isLoading: true, error: null }));
-      
-      const response = await fetch(`/api/squad/${squad.id}/standard-call`);
-      
+  // Fetch call data with SWR for instant loading from cache
+  const { data, error, isLoading, mutate } = useSWR<CallDataResponse>(
+    `/api/squad/${squad.id}/standard-call`,
+    async (url: string) => {
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Failed to fetch call data');
       }
-
-      const data = await response.json();
-      setCallState({
-        call: data.call,
-        userVote: data.userVote,
-        isLoading: false,
-        error: null,
-      });
-    } catch (err) {
-      console.error('Error fetching call data:', err);
-      setCallState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: 'Failed to load call data',
-      }));
+      return response.json();
+    },
+    {
+      revalidateOnFocus: false,
     }
-  }, [squad.id]);
+  );
 
-  useEffect(() => {
-    fetchCallData();
-  }, [fetchCallData]);
+  const call = data?.call ?? null;
+  const userVote = data?.userVote ?? null;
+
+  // Function to refetch data
+  const fetchCallData = useCallback(async () => {
+    await mutate();
+  }, [mutate]);
 
   // Vote handler
-  const handleVote = async (vote: 'yes' | 'no') => {
-    if (isVoting || !callState.call) return;
+  const handleVote = async (voteChoice: 'yes' | 'no') => {
+    if (isVoting || !call) return;
 
     try {
       setIsVoting(true);
@@ -133,22 +117,23 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          callId: callState.call.id,
-          vote,
+          callId: call.id,
+          vote: voteChoice,
         }),
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to vote');
+        const responseData = await response.json();
+        throw new Error(responseData.error || 'Failed to vote');
       }
 
-      const data = await response.json();
-      setCallState(prev => ({
-        ...prev,
-        call: data.call,
-        userVote: data.userVote,
-      }));
+      const responseData = await response.json();
+      
+      // Update SWR cache with new data
+      await mutate({
+        call: responseData.call,
+        userVote: responseData.userVote,
+      }, { revalidate: false });
 
       if (onCallUpdated) {
         onCallUpdated();
@@ -162,10 +147,10 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
 
   // Call time info for confirmed/pending calls
   const callTimeInfo = useMemo(() => {
-    if (!callState.call?.startDateTimeUtc) return null;
+    if (!call?.startDateTimeUtc) return null;
     
-    const callDate = new Date(callState.call.startDateTimeUtc);
-    const callTimezone = callState.call.timezone || 'UTC';
+    const callDate = new Date(call.startDateTimeUtc);
+    const callTimezone = call.timezone || 'UTC';
     const squadTime = formatDateInTimezone(callDate, callTimezone);
     const userTime = formatDateInTimezone(callDate, userTimezone);
     const sameTimezone = callTimezone === userTimezone;
@@ -176,11 +161,11 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
       sameTimezone,
       callTimezone,
     };
-  }, [callState.call, userTimezone]);
+  }, [call, userTimezone]);
 
   // Download ICS handler
   const handleAddToCalendar = async () => {
-    if (!callState.call || callState.call.status !== 'confirmed') return;
+    if (!call || call.status !== 'confirmed') return;
     
     const link = document.createElement('a');
     link.href = `/api/squad/${squad.id}/next-call.ics?type=standard`;
@@ -209,8 +194,8 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
     return null;
   }
 
-  // Loading state
-  if (callState.isLoading) {
+  // Loading state - only show on initial load (no cached data)
+  if (isLoading && !data) {
     return (
       <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-5 shadow-sm mb-6">
         <div className="animate-pulse flex items-center gap-3">
@@ -223,8 +208,6 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
       </div>
     );
   }
-
-  const { call, userVote } = callState;
 
   // State A: No active call
   if (!call || call.status === 'canceled') {

@@ -6,6 +6,7 @@ import { useUser } from '@clerk/nextjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { Users, Crown, Lock, AlertCircle, Loader2, AlertTriangle } from 'lucide-react';
+import { useBrandingValues } from '@/contexts/BrandingContext';
 
 type InviteState = 
   | 'loading' 
@@ -49,6 +50,7 @@ export default function InvitePage() {
   const token = params.token as string;
   
   const { user, isLoaded: userLoaded } = useUser();
+  const { logoUrl, appTitle } = useBrandingValues();
   
   const [state, setState] = useState<InviteState>('loading');
   const [tokenPayload, setTokenPayload] = useState<TokenPayload | null>(null);
@@ -260,11 +262,12 @@ export default function InvitePage() {
           transition={{ duration: 0.5 }}
         >
           <Image 
-            src="/logo.jpg" 
-            alt="GrowthAddicts" 
+            src={logoUrl} 
+            alt={appTitle} 
             width={56} 
             height={56} 
             className="rounded-lg"
+            unoptimized
           />
         </motion.div>
 

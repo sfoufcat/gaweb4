@@ -5,6 +5,10 @@ import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import type { FunnelStepConfigSuccess } from '@/types';
 
+// CSS variable helper - uses values set by FunnelClient
+const primaryVar = 'var(--funnel-primary, #a07855)';
+const primaryHoverVar = 'var(--funnel-primary-hover, #8c6245)';
+
 interface SuccessStepProps {
   config: FunnelStepConfigSuccess;
   onComplete: (data: Record<string, unknown>) => void;
@@ -119,7 +123,10 @@ export function SuccessStep({
         >
           <div className="relative">
             <div className="w-8 h-8 rounded-full border-2 border-[#e1ddd8]" />
-            <div className="absolute inset-0 w-8 h-8 rounded-full border-2 border-transparent border-t-[#a07855] animate-spin" />
+            <div 
+              className="absolute inset-0 w-8 h-8 rounded-full border-2 border-transparent animate-spin"
+              style={{ borderTopColor: primaryVar }}
+            />
           </div>
         </motion.div>
       )}

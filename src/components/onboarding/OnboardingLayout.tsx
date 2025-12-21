@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { ReactNode } from 'react';
 import Image from 'next/image';
+import { useBrandingValues } from '@/contexts/BrandingContext';
 
 interface OnboardingLayoutProps {
   children: ReactNode;
@@ -23,6 +24,8 @@ export function OnboardingLayout({
   totalSteps = 3,
   stepLabel
 }: OnboardingLayoutProps) {
+  const { logoUrl, appTitle } = useBrandingValues();
+  
   return (
     <div className="fixed inset-0 bg-app-bg overflow-y-auto">
       <div className="min-h-full flex flex-col">
@@ -34,11 +37,12 @@ export function OnboardingLayout({
           transition={{ duration: 0.5 }}
         >
           <Image 
-            src="/logo.jpg" 
-            alt="GrowthAddicts" 
+            src={logoUrl} 
+            alt={appTitle} 
             width={44} 
             height={44} 
             className="rounded-lg"
+            unoptimized
           />
         </motion.div>
 

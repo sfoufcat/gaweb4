@@ -36,6 +36,7 @@ export default async function FunnelPage({ params, searchParams }: FunnelPagePro
   const branding = await getBrandingForDomain(hostname);
   const logoUrl = getBestLogoUrl(branding);
   const appTitle = branding.appTitle;
+  const primaryColor = branding.primaryColor;
 
   // Find program by slug
   let programQuery = adminDb.collection('programs').where('slug', '==', programSlug);
@@ -137,6 +138,7 @@ export default async function FunnelPage({ params, searchParams }: FunnelPagePro
       branding={{
         logoUrl,
         appTitle,
+        primaryColor,
       }}
       inviteCode={inviteCode}
       validatedInvite={validatedInvite}

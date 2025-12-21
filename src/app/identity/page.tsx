@@ -7,6 +7,7 @@ import { useTypewriter } from '@/hooks/useTypewriter';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { ArrowLeft } from 'lucide-react';
+import { useBrandingValues } from '@/contexts/BrandingContext';
 
 type ValidationState = 'idle' | 'validating' | 'accepted' | 'needs_suggestion' | 'saving' | 'error';
 
@@ -30,6 +31,7 @@ const EXAMPLE_IDENTITIES = [
 export default function IdentityEditPage() {
   const router = useRouter();
   const { isSignedIn, isLoaded } = useAuth();
+  const { logoUrl, appTitle } = useBrandingValues();
   
   const [identity, setIdentity] = useState('');
   const [originalIdentity, setOriginalIdentity] = useState('');
@@ -199,11 +201,12 @@ export default function IdentityEditPage() {
             <span className="font-sans text-[14px]">Back</span>
           </button>
           <Image 
-            src="/logo.jpg" 
-            alt="GrowthAddicts" 
+            src={logoUrl} 
+            alt={appTitle} 
             width={40} 
             height={40} 
             className="rounded-lg"
+            unoptimized
           />
           <div className="w-16" /> {/* Spacer for centering logo */}
         </motion.div>

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import useSWR from 'swr';
+import { useCallback, useMemo, useState } from 'react';
 import type {
   DiscoverEvent,
   DiscoverArticle,
@@ -13,87 +14,63 @@ import type {
   EventAttendee,
 } from '@/types/discover';
 
-// Hook: useDiscoverEvents - Fetches from API
-export function useDiscoverEvents() {
-  const [events, setEvents] = useState<DiscoverEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchEvents() {
-      try {
-        const response = await fetch('/api/discover/events');
-        if (!response.ok) throw new Error('Failed to fetch events');
-        const data = await response.json();
-        
-        if (data.events) {
-          setEvents(data.events);
-        }
-      } catch (err) {
-        console.error('Failed to fetch events:', err);
-        setError('Failed to load events');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchEvents();
-  }, []);
-
-  return { events, loading, error };
+// Shared SWR fetcher
+async function fetcher<T>(url: string): Promise<T> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${url}`);
+  }
+  return response.json();
 }
 
-// Hook: useEvent - Fetches single event from API
+// Hook: useDiscoverEvents - Fetches from API with SWR caching
+export function useDiscoverEvents() {
+  const { data, error, isLoading } = useSWR<{ events: DiscoverEvent[] }>(
+    '/api/discover/events',
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 5 * 60 * 1000, // 5 minutes
+    }
+  );
+
+  return {
+    events: data?.events ?? [],
+    loading: isLoading && !data,
+    error: error?.message ?? null,
+  };
+}
+
+// Hook: useEvent - Fetches single event from API with SWR caching
 export function useEvent(eventId: string) {
-  const [event, setEvent] = useState<DiscoverEvent | null>(null);
-  const [updates, setUpdates] = useState<EventUpdate[]>([]);
-  const [attendees, setAttendees] = useState<EventAttendee[]>([]);
-  const [totalAttendees, setTotalAttendees] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isJoined, setIsJoined] = useState(false);
+  const { data, error, isLoading, mutate } = useSWR<{
+    event: DiscoverEvent;
+    updates: EventUpdate[];
+    attendees: EventAttendee[];
+    totalAttendees: number;
+    isJoined: boolean;
+  }>(
+    eventId ? `/api/discover/events/${eventId}` : null,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+    }
+  );
+
   const [isJoining, setIsJoining] = useState(false);
 
-  useEffect(() => {
-    async function fetchEvent() {
-      try {
-        const response = await fetch(`/api/discover/events/${eventId}`);
-        if (!response.ok) throw new Error('Failed to fetch event');
-        const data = await response.json();
-        
-        if (data.event) {
-          setEvent(data.event);
-          if (data.updates) {
-            setUpdates(data.updates);
-          }
-          // Set real attendee data from API
-          if (data.attendees) {
-            setAttendees(data.attendees);
-          }
-          if (typeof data.totalAttendees === 'number') {
-            setTotalAttendees(data.totalAttendees);
-          }
-          // Set initial RSVP status from API
-          if (typeof data.isJoined === 'boolean') {
-            setIsJoined(data.isJoined);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to fetch event:', err);
-        setError('Failed to load event');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchEvent();
-  }, [eventId]);
-
   const joinEvent = useCallback(async () => {
-    // Optimistic update - set joined immediately for better UX
-    setIsJoined(true);
+    if (!data) return;
+    
+    // Optimistic update
+    const optimisticData = {
+      ...data,
+      isJoined: true,
+      totalAttendees: data.totalAttendees + 1,
+    };
+    
     setIsJoining(true);
-    setTotalAttendees(prev => prev + 1);
+    await mutate(optimisticData, { revalidate: false });
     
     try {
       const response = await fetch(`/api/discover/events/${eventId}`, {
@@ -103,30 +80,36 @@ export function useEvent(eventId: string) {
       });
       
       if (response.ok) {
-        const data = await response.json();
-        if (typeof data.totalAttendees === 'number') {
-          setTotalAttendees(data.totalAttendees);
-        }
+        const result = await response.json();
+        await mutate({
+          ...data,
+          isJoined: true,
+          totalAttendees: result.totalAttendees ?? data.totalAttendees + 1,
+        }, { revalidate: false });
       } else {
-        // Revert optimistic update if failed
-        setIsJoined(false);
-        setTotalAttendees(prev => Math.max(0, prev - 1));
+        // Revert on failure
+        await mutate(data, { revalidate: false });
       }
-    } catch (err) {
-      console.error('Failed to join event:', err);
-      // Revert optimistic update if failed
-      setIsJoined(false);
-      setTotalAttendees(prev => Math.max(0, prev - 1));
+    } catch {
+      // Revert on error
+      await mutate(data, { revalidate: false });
     } finally {
       setIsJoining(false);
     }
-  }, [eventId]);
+  }, [eventId, data, mutate]);
 
   const leaveEvent = useCallback(async () => {
-    // Optimistic update - set left immediately for better UX
-    setIsJoined(false);
+    if (!data) return;
+    
+    // Optimistic update
+    const optimisticData = {
+      ...data,
+      isJoined: false,
+      totalAttendees: Math.max(0, data.totalAttendees - 1),
+    };
+    
     setIsJoining(true);
-    setTotalAttendees(prev => Math.max(0, prev - 1));
+    await mutate(optimisticData, { revalidate: false });
     
     try {
       const response = await fetch(`/api/discover/events/${eventId}`, {
@@ -136,223 +119,150 @@ export function useEvent(eventId: string) {
       });
       
       if (response.ok) {
-        const data = await response.json();
-        if (typeof data.totalAttendees === 'number') {
-          setTotalAttendees(data.totalAttendees);
-        }
+        const result = await response.json();
+        await mutate({
+          ...data,
+          isJoined: false,
+          totalAttendees: result.totalAttendees ?? Math.max(0, data.totalAttendees - 1),
+        }, { revalidate: false });
       } else {
-        // Revert optimistic update if failed
-        setIsJoined(true);
-        setTotalAttendees(prev => prev + 1);
+        // Revert on failure
+        await mutate(data, { revalidate: false });
       }
-    } catch (err) {
-      console.error('Failed to leave event:', err);
-      // Revert optimistic update if failed
-      setIsJoined(true);
-      setTotalAttendees(prev => prev + 1);
+    } catch {
+      // Revert on error
+      await mutate(data, { revalidate: false });
     } finally {
       setIsJoining(false);
     }
-  }, [eventId]);
+  }, [eventId, data, mutate]);
 
-  return { 
-    event, 
-    loading, 
-    error, 
-    updates, 
-    attendees,
-    totalAttendees,
-    isJoined,
+  return {
+    event: data?.event ?? null,
+    loading: isLoading && !data,
+    error: error?.message ?? null,
+    updates: data?.updates ?? [],
+    attendees: data?.attendees ?? [],
+    totalAttendees: data?.totalAttendees ?? 0,
+    isJoined: data?.isJoined ?? false,
     isJoining,
     joinEvent,
     leaveEvent,
   };
 }
 
-// Hook: useDiscoverArticles - Fetches from API
+// Hook: useDiscoverArticles - Fetches from API with SWR caching
 export function useDiscoverArticles() {
-  const [articles, setArticles] = useState<DiscoverArticle[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchArticles() {
-      try {
-        const response = await fetch('/api/discover/articles');
-        if (!response.ok) throw new Error('Failed to fetch articles');
-        const data = await response.json();
-        
-        if (data.articles) {
-          setArticles(data.articles);
-        }
-      } catch (err) {
-        console.error('Failed to fetch articles:', err);
-        setError('Failed to load articles');
-      } finally {
-        setLoading(false);
-      }
+  const { data, error, isLoading } = useSWR<{ articles: DiscoverArticle[] }>(
+    '/api/discover/articles',
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 5 * 60 * 1000, // 5 minutes
     }
+  );
 
-    fetchArticles();
-  }, []);
-
-  return { articles, loading, error };
+  return {
+    articles: data?.articles ?? [],
+    loading: isLoading && !data,
+    error: error?.message ?? null,
+  };
 }
 
-// Hook: useArticle - Fetches single article from API
+// Hook: useArticle - Fetches single article from API with SWR caching
 export function useArticle(articleId: string) {
-  const [article, setArticle] = useState<DiscoverArticle | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchArticle() {
-      try {
-        const response = await fetch(`/api/discover/articles/${articleId}`);
-        if (!response.ok) throw new Error('Failed to fetch article');
-        const data = await response.json();
-        
-        if (data.article) {
-          setArticle(data.article);
-        }
-      } catch (err) {
-        console.error('Failed to fetch article:', err);
-        setError('Failed to load article');
-      } finally {
-        setLoading(false);
-      }
+  const { data, error, isLoading } = useSWR<{ article: DiscoverArticle }>(
+    articleId ? `/api/discover/articles/${articleId}` : null,
+    fetcher,
+    {
+      revalidateOnFocus: false,
     }
+  );
 
-    fetchArticle();
-  }, [articleId]);
-
-  return { article, loading, error };
+  return {
+    article: data?.article ?? null,
+    loading: isLoading && !data,
+    error: error?.message ?? null,
+  };
 }
 
-// Hook: useDiscoverCourses - Fetches from API
+// Hook: useDiscoverCourses - Fetches from API with SWR caching
 export function useDiscoverCourses() {
-  const [courses, setCourses] = useState<DiscoverCourse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchCourses() {
-      try {
-        const response = await fetch('/api/discover/courses');
-        if (!response.ok) throw new Error('Failed to fetch courses');
-        const data = await response.json();
-        
-        if (data.courses) {
-          setCourses(data.courses);
-        }
-      } catch (err) {
-        console.error('Failed to fetch courses:', err);
-        setError('Failed to load courses');
-      } finally {
-        setLoading(false);
-      }
+  const { data, error, isLoading } = useSWR<{ courses: DiscoverCourse[] }>(
+    '/api/discover/courses',
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 5 * 60 * 1000, // 5 minutes
     }
+  );
 
-    fetchCourses();
-  }, []);
-
-  return { courses, loading, error };
+  return {
+    courses: data?.courses ?? [],
+    loading: isLoading && !data,
+    error: error?.message ?? null,
+  };
 }
 
-// Hook: useCourse - Fetches single course from API
+// Hook: useCourse - Fetches single course from API with SWR caching
 export function useCourse(courseId: string) {
-  const [course, setCourse] = useState<DiscoverCourse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchCourse() {
-      try {
-        const response = await fetch(`/api/discover/courses/${courseId}`);
-        if (!response.ok) throw new Error('Failed to fetch course');
-        const data = await response.json();
-        
-        if (data.course) {
-          setCourse(data.course);
-        }
-      } catch (err) {
-        console.error('Failed to fetch course:', err);
-        setError('Failed to load course');
-      } finally {
-        setLoading(false);
-      }
+  const { data, error, isLoading } = useSWR<{ course: DiscoverCourse }>(
+    courseId ? `/api/discover/courses/${courseId}` : null,
+    fetcher,
+    {
+      revalidateOnFocus: false,
     }
+  );
 
-    fetchCourse();
-  }, [courseId]);
-
-  return { course, loading, error };
+  return {
+    course: data?.course ?? null,
+    loading: isLoading && !data,
+    error: error?.message ?? null,
+  };
 }
 
-// Hook: useDiscoverCategories
+// Hook: useDiscoverCategories with SWR caching
 export function useDiscoverCategories() {
-  const [categories, setCategories] = useState<DiscoverCategory[]>([]);
-  
-  useEffect(() => {
-    async function fetchCategories() {
-      try {
-        const response = await fetch('/api/discover/categories');
-        if (response.ok) {
-          const data = await response.json();
-          if (data.categories) {
-            setCategories(data.categories);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch categories:', error);
-      }
+  const { data } = useSWR<{ categories: DiscoverCategory[] }>(
+    '/api/discover/categories',
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 10 * 60 * 1000, // 10 minutes - categories rarely change
     }
-    
-    fetchCategories();
-  }, []);
+  );
 
-  return { categories };
+  return { categories: data?.categories ?? [] };
 }
 
-// Hook: useDiscoverPrograms - Fetches programs from API
+// Hook: useDiscoverPrograms - Fetches programs from API with SWR caching
 export function useDiscoverPrograms() {
-  const [groupPrograms, setGroupPrograms] = useState<DiscoverProgram[]>([]);
-  const [individualPrograms, setIndividualPrograms] = useState<DiscoverProgram[]>([]);
-  const [enrollmentConstraints, setEnrollmentConstraints] = useState<{
-    canEnrollInGroup: boolean;
-    canEnrollInIndividual: boolean;
-  }>({ canEnrollInGroup: true, canEnrollInIndividual: true });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchPrograms() {
-      try {
-        const response = await fetch('/api/discover/programs');
-        if (!response.ok) throw new Error('Failed to fetch programs');
-        const data = await response.json();
-        
-        if (data.groupPrograms) {
-          setGroupPrograms(data.groupPrograms);
-        }
-        if (data.individualPrograms) {
-          setIndividualPrograms(data.individualPrograms);
-        }
-        if (data.enrollmentConstraints) {
-          setEnrollmentConstraints(data.enrollmentConstraints);
-        }
-      } catch (err) {
-        console.error('Failed to fetch programs:', err);
-        setError('Failed to load programs');
-      } finally {
-        setLoading(false);
-      }
+  const { data, error, isLoading } = useSWR<{
+    groupPrograms: DiscoverProgram[];
+    individualPrograms: DiscoverProgram[];
+    enrollmentConstraints: {
+      canEnrollInGroup: boolean;
+      canEnrollInIndividual: boolean;
+    };
+  }>(
+    '/api/discover/programs',
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 5 * 60 * 1000, // 5 minutes
     }
+  );
 
-    fetchPrograms();
-  }, []);
-
-  return { groupPrograms, individualPrograms, enrollmentConstraints, loading, error };
+  return {
+    groupPrograms: data?.groupPrograms ?? [],
+    individualPrograms: data?.individualPrograms ?? [],
+    enrollmentConstraints: data?.enrollmentConstraints ?? {
+      canEnrollInGroup: true,
+      canEnrollInIndividual: true,
+    },
+    loading: isLoading && !data,
+    error: error?.message ?? null,
+  };
 }
 
 // Combined hook for the main discover page
@@ -362,11 +272,11 @@ export function useDiscoverData() {
   const { articles, loading: articlesLoading } = useDiscoverArticles();
   const { courses, loading: coursesLoading } = useDiscoverCourses();
   const { categories } = useDiscoverCategories();
-  const { 
-    groupPrograms, 
-    individualPrograms, 
+  const {
+    groupPrograms,
+    individualPrograms,
     enrollmentConstraints,
-    loading: programsLoading 
+    loading: programsLoading,
   } = useDiscoverPrograms();
 
   const loading = eventsLoading || articlesLoading || coursesLoading || programsLoading;
@@ -375,26 +285,26 @@ export function useDiscoverData() {
   const { upcomingEvents, pastEvents } = useMemo(() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0); // Start of today
-    
+
     const upcoming: DiscoverEvent[] = [];
     const past: DiscoverEvent[] = [];
-    
-    events.forEach(event => {
+
+    events.forEach((event) => {
       const eventDate = new Date(event.date);
       eventDate.setHours(0, 0, 0, 0);
-      
+
       if (eventDate >= now) {
         upcoming.push(event);
       } else {
         past.push(event);
       }
     });
-    
+
     // Sort upcoming by date ascending (soonest first)
     upcoming.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     // Sort past by date descending (most recent first)
     past.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    
+
     return { upcomingEvents: upcoming, pastEvents: past };
   }, [events]);
 
@@ -404,8 +314,8 @@ export function useDiscoverData() {
 
     // Filter trending articles
     const trendingArticles = articles
-      .filter(a => a.trending)
-      .map(a => ({
+      .filter((a) => a.trending)
+      .map((a) => ({
         id: a.id,
         type: 'article' as const,
         title: a.title,
@@ -417,8 +327,8 @@ export function useDiscoverData() {
 
     // Filter trending courses
     const trendingCourses = courses
-      .filter(c => c.trending)
-      .map(c => ({
+      .filter((c) => c.trending)
+      .map((c) => ({
         id: c.id,
         type: 'course' as const,
         title: c.title,
@@ -436,8 +346,8 @@ export function useDiscoverData() {
 
     // Filter featured articles
     const featuredArticles = articles
-      .filter(a => a.featured)
-      .map(a => ({
+      .filter((a) => a.featured)
+      .map((a) => ({
         id: a.id,
         type: 'article' as const,
         title: a.title,
@@ -450,8 +360,8 @@ export function useDiscoverData() {
 
     // Filter featured courses
     const featuredCourses = courses
-      .filter(c => c.featured)
-      .map(c => ({
+      .filter((c) => c.featured)
+      .map((c) => ({
         id: c.id,
         type: 'course' as const,
         title: c.title,

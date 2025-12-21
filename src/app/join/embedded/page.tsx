@@ -1,21 +1,32 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { SignUpForm } from '@/components/auth';
 import { Suspense, useEffect } from 'react';
+import { SignUpForm } from '@/components/auth';
 
 /**
- * /begin/embedded - Embeddable sign-up form for iframes
+ * /join/embedded - Embeddable sign-up form for funnel iframes
  * 
- * Used by satellite domains to embed sign-up in an iframe.
- * Accepts ?origin=https://example.com to send postMessage to parent window.
+ * This page runs on the subdomain (where Clerk is registered) and is embedded
+ * as an iframe in custom domain funnel pages.
+ * 
+ * Query params:
+ * - origin: Parent window origin for postMessage (e.g., https://mycoach.com)
+ * - flowSessionId: The flow session ID (for context, not directly used here)
+ * 
+ * Flow:
+ * 1. Custom domain's SignupStep renders iframe with this as src
+ * 2. User fills out email/password signup form
+ * 3. After successful signup, this page sends postMessage to parent
+ * 4. Parent (SignupStep) receives message and calls link-session API
  * 
  * This page is minimal - no background, no header, just the form.
  * OAuth buttons are hidden since they're handled by the parent page.
  */
-function EmbeddedBeginContent() {
+function EmbeddedContent() {
   const searchParams = useSearchParams();
   const origin = searchParams.get('origin') || '';
+  const flowSessionId = searchParams.get('flowSessionId') || '';
   
   // Make body transparent for iframe embedding
   useEffect(() => {
@@ -30,21 +41,22 @@ function EmbeddedBeginContent() {
       <SignUpForm 
         embedded={true}
         origin={origin}
-        redirectUrl="/onboarding/welcome"
+        // Don't redirect - let parent handle via postMessage
+        redirectUrl=""
         hideOAuth={true}
       />
     </div>
   );
 }
 
-export default function EmbeddedBeginPage() {
+export default function JoinEmbeddedPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center p-8">
         <div className="w-8 h-8 border-2 border-text-secondary/30 border-t-text-primary rounded-full animate-spin" />
       </div>
     }>
-      <EmbeddedBeginContent />
+      <EmbeddedContent />
     </Suspense>
   );
 }

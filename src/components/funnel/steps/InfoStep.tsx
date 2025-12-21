@@ -5,6 +5,10 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import type { FunnelStepConfigInfo } from '@/types';
 
+// CSS variable helper - uses values set by FunnelClient
+const primaryVar = 'var(--funnel-primary, #a07855)';
+const primaryHoverVar = 'var(--funnel-primary-hover, #8c6245)';
+
 interface InfoStepProps {
   config: FunnelStepConfigInfo;
   onComplete: (data: Record<string, unknown>) => void;
@@ -74,7 +78,10 @@ export function InfoStep({
         <button
           onClick={handleContinue}
           disabled={isSubmitting}
-          className="flex-1 py-3 px-6 bg-[#a07855] text-white rounded-xl font-medium hover:bg-[#8c6245] disabled:opacity-50 transition-colors"
+          className="flex-1 py-3 px-6 text-white rounded-xl font-medium disabled:opacity-50 transition-colors"
+          style={{ backgroundColor: primaryVar }}
+          onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = primaryHoverVar)}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = primaryVar}
         >
           {isSubmitting ? 'Loading...' : config.ctaText || 'Continue'}
         </button>

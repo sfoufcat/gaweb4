@@ -11,6 +11,7 @@ import { Check, Calendar, Users, Sparkles, TrendingUp, Shield, Target, UserPlus,
 import Image from 'next/image';
 import Script from 'next/script';
 import { usePendingInvite } from '@/hooks/usePendingInvite';
+import { useBrandingValues } from '@/contexts/BrandingContext';
 
 type PlanType = 'trial' | 'standard' | 'premium';
 
@@ -144,6 +145,7 @@ export default function PlanPage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
+  const { logoUrl, appTitle } = useBrandingValues();
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('standard');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -245,11 +247,12 @@ export default function PlanPage() {
         >
           <div className="flex items-center justify-center md:justify-between px-6 py-3 max-w-5xl mx-auto">
             <Image 
-              src="/logo.jpg" 
-              alt="GrowthAddicts" 
+              src={logoUrl} 
+              alt={appTitle} 
               width={44} 
               height={44} 
               className="rounded-lg"
+              unoptimized
             />
             <button
               onClick={handleContinue}

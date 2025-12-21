@@ -126,7 +126,7 @@ export function SatelliteSignIn({ subdomain, customDomain, logoUrl, appTitle }: 
           {/* Sign Up Link */}
           <p className="text-center mt-8 lg:mt-10 font-sans text-[15px] text-text-secondary">
             Don&apos;t have an account?{' '}
-            <Link href="/begin" className="text-[#a07855] hover:text-[#8a6649] font-medium">
+            <Link href="/join/starter-90" className="text-[#a07855] hover:text-[#8a6649] font-medium">
               Start your journey
             </Link>
           </p>
@@ -135,3 +135,4 @@ export function SatelliteSignIn({ subdomain, customDomain, logoUrl, appTitle }: 
     </div>
   );
 }
+

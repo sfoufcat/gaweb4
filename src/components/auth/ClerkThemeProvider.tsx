@@ -219,7 +219,7 @@ export function ClerkThemeProvider({
       isSatellite: true as const,
       domain: domainWithoutPort,
       signInUrl: `${PRIMARY_DOMAIN}/sign-in${redirectParam}`,
-      signUpUrl: `${PRIMARY_DOMAIN}/begin${redirectParam}`,
+      signUpUrl: `${PRIMARY_DOMAIN}/join/starter-90${redirectParam}`,
     };
   }, [isSatellite, domainWithoutPort, currentUrl]);
 

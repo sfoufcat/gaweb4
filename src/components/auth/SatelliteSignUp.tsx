@@ -36,15 +36,15 @@ export function SatelliteSignUp({ subdomain, customDomain, logoUrl, appTitle }: 
   const subdomainBase = subdomain 
     ? `https://${subdomain}.growthaddicts.app`
     : 'https://growthaddicts.app';
-  const iframeSrc = `${subdomainBase}/begin/embedded?origin=${encodeURIComponent(currentOrigin)}`;
+  const iframeSrc = `${subdomainBase}/join/embedded?origin=${encodeURIComponent(currentOrigin)}`;
 
   // Handle OAuth - redirect to subdomain which handles Clerk OAuth
   const handleOAuth = (provider: 'oauth_google' | 'oauth_apple') => {
     setOauthLoading(true);
-    // Redirect to subdomain with oauth param - subdomain will initiate Clerk OAuth
+    // Redirect to subdomain with oauth param - subdomain will initiate Clerk OAuth via /join/oauth
     // After OAuth, user will be redirected back to this domain with from_auth=1
     const returnUrl = `${currentOrigin}/?from_auth=1`;
-    window.location.href = `${subdomainBase}/begin?oauth=${provider}&redirect_url=${encodeURIComponent(returnUrl)}`;
+    window.location.href = `${subdomainBase}/join/oauth?provider=${provider}&returnUrl=${encodeURIComponent(returnUrl)}`;
   };
 
   useEffect(() => {
@@ -135,3 +135,4 @@ export function SatelliteSignUp({ subdomain, customDomain, logoUrl, appTitle }: 
     </div>
   );
 }
+

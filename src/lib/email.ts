@@ -314,12 +314,12 @@ function hasActiveSubscription(billingStatus?: string | null): boolean {
 }
 
 /**
- * Process abandoned cart emails for users who started quiz but didn't pay within 15 minutes
+ * Process abandoned cart emails for users who started onboarding but didn't complete within 15 minutes
  * This function is meant to be called by a cron job
  * 
  * Processes both:
  * 1. Authenticated users in the `users` collection (from /onboarding flow)
- * 2. Guest users in the `guestSessions` collection (from /start flow)
+ * 2. Flow sessions in the `flow_sessions` collection (from /join funnel flow)
  * 
  * Includes deduplication to ensure each email only receives one abandoned email.
  */
@@ -432,38 +432,30 @@ export async function processAbandonedEmails(): Promise<{
   }
 
   // ==========================================
-  // PART 2: Process guest sessions (from /start flow)
+  // PART 2: Process flow sessions (from /join funnel flow)
   // ==========================================
   try {
-    // Find guest sessions that have an email (meaning they reached the your-info step)
-    // We can't query by "email exists" in Firestore, so we query all recent sessions
-    // and filter in memory
-    const guestSessionsSnapshot = await adminDb
-      .collection('guestSessions')
+    // Find flow sessions that have a userId but are not completed
+    // Only process sessions updated more than 15 minutes ago
+    const flowSessionsSnapshot = await adminDb
+      .collection('flow_sessions')
+      .where('completedAt', '==', null)
       .limit(200) // Process in batches
       .get();
 
-    for (const sessionDoc of guestSessionsSnapshot.docs) {
+    for (const sessionDoc of flowSessionsSnapshot.docs) {
       stats.processed++;
       const sessionId = sessionDoc.id;
       const sessionData = sessionDoc.data();
-      const normalizedEmail = sessionData.email?.toLowerCase().trim();
-
-      // Skip if no email (they haven't reached the your-info step)
-      if (!normalizedEmail) {
+      
+      // Skip if no userId (they haven't signed up yet)
+      if (!sessionData.userId) {
         stats.skipped++;
         continue;
       }
 
-      // Skip if we already processed this email (from users collection)
-      if (processedEmails.has(normalizedEmail)) {
-        stats.skipped++;
-        console.log('[ABANDONED_EMAIL_CRON] Skipped guest - email already processed:', normalizedEmail);
-        continue;
-      }
-
-      // Skip if payment is completed
-      if (sessionData.paymentStatus === 'completed') {
+      // Skip if already completed
+      if (sessionData.completedAt) {
         stats.skipped++;
         continue;
       }
@@ -475,85 +467,87 @@ export async function processAbandonedEmails(): Promise<{
       }
 
       // Skip if session was updated less than 15 minutes ago
-      // Use updatedAt if available, otherwise skip (no timestamp to check)
       if (!sessionData.updatedAt || sessionData.updatedAt > fifteenMinutesAgo) {
         stats.skipped++;
         continue;
       }
 
-      // Check if this email already has an active subscription in the users collection
+      // Get user email from users collection
+      let userEmail: string | undefined;
+      let firstName: string | undefined;
+      
       try {
-        // Try exact match first
-        let existingUserSnapshot = await adminDb
-          .collection('users')
-          .where('email', '==', normalizedEmail)
-          .limit(1)
-          .get();
-        
-        // If empty, try the original email from session (in case normalization messed up specific casing stored in DB)
-        if (existingUserSnapshot.empty && sessionData.email !== normalizedEmail) {
-           existingUserSnapshot = await adminDb
-            .collection('users')
-            .where('email', '==', sessionData.email)
-            .limit(1)
-            .get();
-        }
-
-        if (!existingUserSnapshot.empty) {
-          const existingUser = existingUserSnapshot.docs[0].data() as FirebaseUser;
+        const userDoc = await adminDb.collection('users').doc(sessionData.userId).get();
+        if (userDoc.exists) {
+          const userData = userDoc.data() as FirebaseUser;
+          userEmail = userData.email?.toLowerCase().trim();
+          firstName = userData.firstName || userData.name?.split(' ')[0];
           
-          // Skip if user has active subscription or is a converted member
-          if (existingUser.convertedToMember === true || hasActiveSubscription(existingUser.billing?.status)) {
+          // Skip if user has active subscription
+          if (hasActiveSubscription(userData.billing?.status)) {
             stats.skipped++;
-            console.log('[ABANDONED_EMAIL_CRON] Skipped guest - email has active subscription:', normalizedEmail);
-            // Mark this guest session to avoid checking again
-            await adminDb.collection('guestSessions').doc(sessionId).set(
-              { abandonedEmailSent: true, updatedAt: new Date().toISOString() },
-              { merge: true }
-            );
+            console.log('[ABANDONED_EMAIL_CRON] Skipped flow session - user has active subscription:', sessionId);
+            await adminDb.collection('flow_sessions').doc(sessionId).update({
+              abandonedEmailSent: true,
+              updatedAt: new Date().toISOString(),
+            });
             continue;
           }
         }
-      } catch (lookupError) {
-        console.error('[ABANDONED_EMAIL_CRON] Error checking existing user:', normalizedEmail, lookupError);
-        // Continue processing - don't skip on lookup errors
+      } catch (userLookupError) {
+        console.error('[ABANDONED_EMAIL_CRON] Error looking up user for flow session:', sessionId, userLookupError);
+      }
+
+      // Skip if no email found
+      if (!userEmail) {
+        stats.skipped++;
+        continue;
+      }
+
+      // Skip if we already processed this email (from users collection in Part 1)
+      if (processedEmails.has(userEmail)) {
+        stats.skipped++;
+        console.log('[ABANDONED_EMAIL_CRON] Skipped flow session - email already processed:', userEmail);
+        continue;
       }
 
       // Track this email as processed
-      processedEmails.add(normalizedEmail);
+      processedEmails.add(userEmail);
 
       try {
-        // Send the abandoned email with guest-specific URL (/start/plan)
+        // Build resume URL for the specific funnel
+        const resumeUrl = sessionData.programSlug && sessionData.funnelSlug
+          ? `${APP_URL}/join/${sessionData.programSlug}/${sessionData.funnelSlug}`
+          : `${APP_URL}/join`;
+
+        // Send the abandoned email
         const result = await sendAbandonedEmail({
-          email: sessionData.email,
-          firstName: sessionData.firstName,
-          userId: sessionId, // Use session ID as identifier for logging
-          resumeUrl: `${APP_URL}/start/plan`,
+          email: userEmail,
+          firstName,
+          userId: sessionData.userId,
+          resumeUrl,
         });
 
         if (result.success) {
-          // Mark as sent on the guest session
-          await adminDb.collection('guestSessions').doc(sessionId).set(
-            {
-              abandonedEmailSent: true,
-              abandonedEmailSentAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
-            { merge: true }
-          );
+          // Mark as sent on the flow session
+          await adminDb.collection('flow_sessions').doc(sessionId).update({
+            abandonedEmailSent: true,
+            abandonedEmailSentAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
           stats.sent++;
-          console.log('[ABANDONED_EMAIL_CRON] Sent to guest:', sessionId, sessionData.email);
+          console.log('[ABANDONED_EMAIL_CRON] Sent to flow session user:', sessionId, userEmail);
         } else {
           stats.errors++;
-          console.error('[ABANDONED_EMAIL_CRON] Failed to send to guest:', sessionId, result.error);
+          console.error('[ABANDONED_EMAIL_CRON] Failed to send to flow session:', sessionId, result.error);
         }
       } catch (error) {
         stats.errors++;
-        console.error('[ABANDONED_EMAIL_CRON] Error processing guest:', sessionId, error);
+        console.error('[ABANDONED_EMAIL_CRON] Error processing flow session:', sessionId, error);
       }
     }
   } catch (error) {
-    console.error('[ABANDONED_EMAIL_CRON] Error querying guest sessions:', error);
+    console.error('[ABANDONED_EMAIL_CRON] Error querying flow sessions:', error);
     stats.errors++;
   }
 

@@ -16,8 +16,8 @@ export function ConditionalSidebar() {
   // Hide sidebar on check-in pages (fullscreen experience)
   const isCheckInPage = pathname?.startsWith('/checkin');
   
-  // Hide sidebar on /begin and /begin/embedded (signup entry point)
-  const isBeginPage = pathname?.startsWith('/begin');
+  // Hide sidebar on /join pages (unified funnel entry point)
+  const isJoinPage = pathname?.startsWith('/join');
   
   // Hide sidebar on /sign-in
   const isSignInPage = pathname?.startsWith('/sign-in');
@@ -36,7 +36,7 @@ export function ConditionalSidebar() {
   // Hide sidebar on invite pages (fullscreen experience)
   const isInvitePage = pathname?.startsWith('/invite');
   
-  const shouldHideSidebar = isOnboardingPage || isStartPage || isCheckInPage || isBeginPage || isSignInPage || isProfileEditOnboarding || isPremiumUpgradeForm || isCoachingForm || isInvitePage;
+  const shouldHideSidebar = isOnboardingPage || isStartPage || isCheckInPage || isJoinPage || isSignInPage || isProfileEditOnboarding || isPremiumUpgradeForm || isCoachingForm || isInvitePage;
   
   if (shouldHideSidebar) {
     return null;

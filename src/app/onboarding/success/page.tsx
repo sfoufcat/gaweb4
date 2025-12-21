@@ -216,7 +216,7 @@ function CheckoutSuccessContent() {
   // Redirect if not authenticated
   useEffect(() => {
     if (isLoaded && !user) {
-      router.push('/begin');
+      router.push('/join/starter-90');
     }
   }, [isLoaded, user, router]);
 

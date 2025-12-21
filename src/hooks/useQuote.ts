@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import useSWR from 'swr';
+import { useMemo } from 'react';
 import { useTrack } from './useTrack';
 
 export interface Quote {
@@ -32,74 +33,45 @@ function getQuoteCycleIndex(): number {
 /**
  * Hook for getting quotes from the CMS for the quote card
  * 
+ * Uses SWR for:
+ * - Instant loading from cache on return visits
+ * - Background revalidation for fresh data
+ * 
  * Fetches quotes from the CMS via /api/quote
  * - Cycles to a new quote each day
  * - Falls back to generic quotes if no track-specific quotes exist
- * 
- * Usage:
- * ```tsx
- * const { quote, isLoading } = useQuote();
- * 
- * if (isLoading) return <Skeleton />;
- * if (!quote) return null;
- * 
- * // Render: "{quote.text}" — {quote.author}
- * ```
  */
 export function useQuote(): UseQuoteReturn {
   const { track, isLoading: trackLoading } = useTrack();
-  const [quote, setQuote] = useState<Quote | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   
   // Get cycle index for quote rotation (changes daily)
   const cycleIndex = useMemo(() => getQuoteCycleIndex(), []);
-
-  // Fetch quote from CMS API
-  const fetchQuote = useCallback(async (trackSlug: string | null, index: number) => {
-    try {
-      setError(null);
-      setIsLoading(true);
-      
-      // Build URL with query params
-      const url = new URL('/api/quote', window.location.origin);
-      if (trackSlug) {
-        url.searchParams.set('track', trackSlug);
-      }
-      url.searchParams.set('index', index.toString());
-      
-      const response = await fetch(url.toString());
-      
+  
+  // Build cache key - includes track and index for uniqueness
+  // Quote changes daily and by track, so this key reflects that
+  const cacheKey = !trackLoading 
+    ? `/api/quote?track=${track || 'general'}&index=${cycleIndex}`
+    : null;
+  
+  const { data, error, isLoading } = useSWR<{ quote: Quote | null }>(
+    cacheKey,
+    async (url: string) => {
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Failed to fetch quote');
       }
-      
-      const data = await response.json();
-      setQuote(data.quote || null);
-    } catch (err) {
-      console.error('[useQuote] Error fetching quote:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch quote');
-      setQuote(null);
-    } finally {
-      setIsLoading(false);
+      return response.json();
+    },
+    {
+      // Quotes don't change during the day, cache for 1 hour
+      dedupingInterval: 60 * 60 * 1000,
+      revalidateOnFocus: false,
     }
-  }, []);
-
-  // Fetch quote when track changes or loads
-  useEffect(() => {
-    // Wait for track to finish loading
-    if (trackLoading) {
-      return;
-    }
-    
-    fetchQuote(track, cycleIndex);
-  }, [track, trackLoading, cycleIndex, fetchQuote]);
+  );
 
   return {
-    quote,
-    isLoading: trackLoading || isLoading,
-    error,
+    quote: data?.quote ?? null,
+    isLoading: trackLoading || (isLoading && !data),
+    error: error?.message ?? null,
   };
 }
-
-

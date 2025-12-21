@@ -20,13 +20,17 @@ export interface ServerBranding {
   logoUrl: string;
   horizontalLogoUrl: string | null;
   appTitle: string;
+  primaryColor: string;
   organizationId: string | null;
 }
+
+const DEFAULT_PRIMARY_COLOR = '#a07855';
 
 const DEFAULT_BRANDING: ServerBranding = {
   logoUrl: DEFAULT_LOGO_URL,
   horizontalLogoUrl: null,
   appTitle: DEFAULT_APP_TITLE,
+  primaryColor: DEFAULT_PRIMARY_COLOR,
   organizationId: null,
 };
 
@@ -52,6 +56,7 @@ async function getBrandingFromCookie(): Promise<ServerBranding | null> {
       logoUrl: parsed.branding.logoUrl || DEFAULT_LOGO_URL,
       horizontalLogoUrl: parsed.branding.horizontalLogoUrl || null,
       appTitle: parsed.branding.appTitle || DEFAULT_APP_TITLE,
+      primaryColor: parsed.branding.colors?.accentLight || DEFAULT_PRIMARY_COLOR,
       organizationId: parsed.orgId,
     };
   } catch (error) {
@@ -111,6 +116,7 @@ export async function getBrandingForDomain(hostname: string): Promise<ServerBran
       logoUrl: branding.logoUrl || DEFAULT_LOGO_URL,
       horizontalLogoUrl: branding.horizontalLogoUrl || null,
       appTitle: branding.appTitle || DEFAULT_APP_TITLE,
+      primaryColor: branding.colors?.accentLight || DEFAULT_PRIMARY_COLOR,
       organizationId,
     };
   } catch (error) {

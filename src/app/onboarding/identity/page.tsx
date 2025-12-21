@@ -9,6 +9,7 @@ import { useUser } from '@clerk/nextjs';
 import { useTypewriter } from '@/hooks/useTypewriter';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import { useBrandingValues } from '@/contexts/BrandingContext';
 
 type ValidationState = 'idle' | 'validating' | 'accepted' | 'needs_suggestion' | 'saving' | 'error';
 
@@ -32,6 +33,7 @@ const EXAMPLE_IDENTITIES = [
 export default function OnboardingIdentityPage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
+  const { logoUrl, appTitle } = useBrandingValues();
   
   const [identity, setIdentity] = useState('');
   const [validationState, setValidationState] = useState<ValidationState>('idle');
@@ -161,11 +163,12 @@ export default function OnboardingIdentityPage() {
           transition={{ duration: 0.5 }}
         >
           <Image 
-            src="/logo.jpg" 
-            alt="GrowthAddicts" 
+            src={logoUrl} 
+            alt={appTitle} 
             width={48} 
             height={48} 
             className="rounded-lg"
+            unoptimized
           />
         </motion.div>
 

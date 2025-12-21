@@ -112,7 +112,7 @@ export default function GoalImpactPage() {
         </div>
       );
     }
-    router.push('/begin');
+    router.push('/join/starter-90');
     return null;
   }
 

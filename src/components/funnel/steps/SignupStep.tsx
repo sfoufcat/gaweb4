@@ -6,6 +6,10 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import type { FunnelStepConfigSignup } from '@/types';
 
+// CSS variable helper - uses values set by FunnelClient
+const primaryVar = 'var(--funnel-primary, #a07855)';
+const primaryHoverVar = 'var(--funnel-primary-hover, #8c6245)';
+
 interface SignupStepProps {
   config: FunnelStepConfigSignup;
   onComplete: (data: Record<string, unknown>) => void;
@@ -89,14 +93,14 @@ export function SignupStep({
     setOauthLoading(true);
     
     if (isCustomDomain) {
-      // Redirect to subdomain which handles Clerk OAuth
+      // Redirect to subdomain which handles Clerk OAuth via /join/oauth
       const subdomainBase = subdomain 
         ? `https://${subdomain}.growthaddicts.app`
         : 'https://growthaddicts.app';
       
       // Return URL with flowSessionId so we can link after auth
       const returnUrl = `https://${hostname}/join/callback?flowSessionId=${flowSessionId}`;
-      window.location.href = `${subdomainBase}/begin?oauth=${provider}&redirect_url=${encodeURIComponent(returnUrl)}`;
+      window.location.href = `${subdomainBase}/join/oauth?provider=${provider}&flowSessionId=${flowSessionId}&returnUrl=${encodeURIComponent(returnUrl)}`;
     }
   };
 
@@ -128,7 +132,10 @@ export function SignupStep({
       <div className="w-full max-w-xl mx-auto flex flex-col items-center justify-center min-h-[300px]">
         <div className="relative mb-4">
           <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
-          <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-[#a07855] animate-spin" />
+          <div 
+            className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin"
+            style={{ borderTopColor: primaryVar }}
+          />
         </div>
         <p className="text-text-secondary">
           {isSignedIn ? 'Setting up your account...' : 'Loading...'}
@@ -146,7 +153,7 @@ export function SignupStep({
       ? `https://${subdomain}.growthaddicts.app`
       : 'https://growthaddicts.app';
     const currentOrigin = `https://${hostname}`;
-    const iframeSrc = `${subdomainBase}/begin/embedded?origin=${encodeURIComponent(currentOrigin)}&flowSessionId=${flowSessionId}`;
+    const iframeSrc = `${subdomainBase}/join/embedded?origin=${encodeURIComponent(currentOrigin)}&flowSessionId=${flowSessionId}`;
 
     return (
       <div className="w-full max-w-xl mx-auto">

@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       query = query.where('isPublished', '==', isPublished === 'true');
     }
 
-    const programsSnapshot = await query.orderBy('createdAt', 'desc').get();
+    const programsSnapshot = await query.get();
 
     // Get enrollment counts for each program
     const programs: ProgramWithStats[] = await Promise.all(
@@ -73,6 +73,11 @@ export async function GET(request: NextRequest) {
           cohortCount: cohorts?.data().count,
         } as ProgramWithStats;
       })
+    );
+
+    // Sort by createdAt descending (in memory to avoid composite index requirement)
+    programs.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
     return NextResponse.json({ 

@@ -4,6 +4,10 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import type { FunnelStepConfigQuestion, FunnelQuestionOption } from '@/types';
 
+// CSS variable helper - uses values set by FunnelClient
+const primaryVar = 'var(--funnel-primary, #a07855)';
+const primaryHoverVar = 'var(--funnel-primary-hover, #8c6245)';
+
 // Preset question configurations
 const PRESET_QUESTIONS: Record<string, {
   question: string;
@@ -160,7 +164,12 @@ export function QuestionStep({
             value={textInput}
             onChange={(e) => setTextInput(e.target.value)}
             placeholder="Type your answer..."
-            className="w-full p-4 border-2 border-[#e1ddd8] rounded-xl bg-white focus:border-[#a07855] focus:outline-none resize-none"
+            className="w-full p-4 border-2 border-[#e1ddd8] rounded-xl bg-white focus:outline-none resize-none"
+            style={{ 
+              borderColor: textInput ? primaryVar : undefined,
+            }}
+            onFocus={(e) => e.target.style.borderColor = primaryVar}
+            onBlur={(e) => e.target.style.borderColor = '#e1ddd8'}
             rows={4}
             maxLength={config.maxLength || 500}
           />
@@ -186,7 +195,10 @@ export function QuestionStep({
           <button
             onClick={handleContinue}
             disabled={!canContinue() || isSubmitting}
-            className="flex-1 py-3 px-6 bg-[#a07855] text-white rounded-xl font-medium hover:bg-[#8c6245] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 py-3 px-6 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            style={{ backgroundColor: primaryVar }}
+            onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = primaryHoverVar)}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = primaryVar}
           >
             {isSubmitting ? 'Saving...' : 'Continue'}
           </button>
@@ -225,9 +237,16 @@ export function QuestionStep({
               onClick={() => setSelected(String(value))}
               className={`flex-1 py-3 rounded-xl font-medium transition-all ${
                 selected === String(value)
-                  ? 'bg-[#a07855] text-white'
-                  : 'bg-white border-2 border-[#e1ddd8] text-text-primary hover:border-[#a07855]'
+                  ? 'text-white'
+                  : 'bg-white border-2 border-[#e1ddd8] text-text-primary'
               }`}
+              style={selected === String(value) ? { backgroundColor: primaryVar } : undefined}
+              onMouseEnter={(e) => {
+                if (selected !== String(value)) e.currentTarget.style.borderColor = primaryVar;
+              }}
+              onMouseLeave={(e) => {
+                if (selected !== String(value)) e.currentTarget.style.borderColor = '#e1ddd8';
+              }}
             >
               {value}
             </button>
@@ -258,7 +277,10 @@ export function QuestionStep({
           <button
             onClick={handleContinue}
             disabled={!canContinue() || isSubmitting}
-            className="flex-1 py-3 px-6 bg-[#a07855] text-white rounded-xl font-medium hover:bg-[#8c6245] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 py-3 px-6 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            style={{ backgroundColor: primaryVar }}
+            onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = primaryHoverVar)}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = primaryVar}
           >
             {isSubmitting ? 'Saving...' : 'Continue'}
           </button>
@@ -303,9 +325,10 @@ export function QuestionStep({
               onClick={() => handleOptionClick(option.value)}
               className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
                 isSelected
-                  ? 'border-[#a07855] bg-[#faf8f6]'
+                  ? 'bg-[#faf8f6]'
                   : 'border-[#e1ddd8] bg-white hover:border-[#d4d0cb]'
               }`}
+              style={isSelected ? { borderColor: primaryVar } : undefined}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 + index * 0.05 }}
@@ -321,9 +344,12 @@ export function QuestionStep({
                   )}
                 </div>
                 {isMultiChoice ? (
-                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                    isSelected ? 'border-[#a07855] bg-[#a07855]' : 'border-[#d4d0cb]'
-                  }`}>
+                  <div 
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                      isSelected ? '' : 'border-[#d4d0cb]'
+                    }`}
+                    style={isSelected ? { borderColor: primaryVar, backgroundColor: primaryVar } : undefined}
+                  >
                     {isSelected && (
                       <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -331,9 +357,12 @@ export function QuestionStep({
                     )}
                   </div>
                 ) : (
-                  <div className={`w-5 h-5 rounded-full border-2 ${
-                    isSelected ? 'border-[#a07855] bg-[#a07855]' : 'border-[#d4d0cb]'
-                  }`}>
+                  <div 
+                    className={`w-5 h-5 rounded-full border-2 ${
+                      isSelected ? '' : 'border-[#d4d0cb]'
+                    }`}
+                    style={isSelected ? { borderColor: primaryVar, backgroundColor: primaryVar } : undefined}
+                  >
                     {isSelected && (
                       <div className="w-full h-full flex items-center justify-center">
                         <div className="w-2 h-2 rounded-full bg-white" />
@@ -364,7 +393,10 @@ export function QuestionStep({
         <button
           onClick={handleContinue}
           disabled={!canContinue() || isSubmitting}
-          className="flex-1 py-3 px-6 bg-[#a07855] text-white rounded-xl font-medium hover:bg-[#8c6245] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="flex-1 py-3 px-6 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          style={{ backgroundColor: primaryVar }}
+          onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = primaryHoverVar)}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = primaryVar}
         >
           {isSubmitting ? 'Saving...' : 'Continue'}
         </button>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import { useBrandingValues } from '@/contexts/BrandingContext';
 
 const TESTIMONIALS = [
   {
@@ -40,6 +41,7 @@ interface AnalyzingLoaderProps {
 }
 
 export function AnalyzingLoader({ onComplete, duration = 4000 }: AnalyzingLoaderProps) {
+  const { logoUrl, appTitle } = useBrandingValues();
   const [progress, setProgress] = useState(0);
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [benefitIndex, setBenefitIndex] = useState(0);
@@ -94,11 +96,12 @@ export function AnalyzingLoader({ onComplete, duration = 4000 }: AnalyzingLoader
           transition={{ duration: 0.6 }}
         >
           <Image 
-            src="/logo.jpg" 
-            alt="GrowthAddicts" 
+            src={logoUrl} 
+            alt={appTitle} 
             width={48} 
             height={48} 
             className="rounded-lg"
+            unoptimized
           />
         </motion.div>
       </div>

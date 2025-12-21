@@ -90,7 +90,7 @@ export default function WorkdayPage() {
         </div>
       );
     }
-    router.push('/begin');
+    router.push('/join/starter-90');
     return null;
   }
 

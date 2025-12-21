@@ -109,7 +109,7 @@ export default function SupportNeedsPage() {
         </div>
       );
     }
-    router.push('/begin');
+    router.push('/join/starter-90');
     return null;
   }
 

@@ -10,6 +10,7 @@ import { useTypewriter } from '@/hooks/useTypewriter';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import type { GoalValidationResult } from '@/types';
+import { useBrandingValues } from '@/contexts/BrandingContext';
 
 const EXAMPLE_GOALS = [
   "lose 10 kg",
@@ -21,6 +22,7 @@ const EXAMPLE_GOALS = [
 export default function GoalPage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
+  const { logoUrl, appTitle } = useBrandingValues();
   const [goal, setGoal] = useState('');
   const [targetDate, setTargetDate] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
@@ -217,11 +219,12 @@ export default function GoalPage() {
           transition={{ duration: 0.5 }}
         >
           <Image 
-            src="/logo.jpg" 
-            alt="GrowthAddicts" 
+            src={logoUrl} 
+            alt={appTitle} 
             width={48} 
             height={48} 
             className="rounded-lg"
+            unoptimized
           />
         </motion.div>
 

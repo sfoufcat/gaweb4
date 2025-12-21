@@ -88,6 +88,7 @@
     "stripe": "^17.7.0",
     "style-to-js": "^1.1.21",
     "svix": "^1.47.0",
+    "swr": "^2.3.8",
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "textarea-autosize": "^1.0.0",

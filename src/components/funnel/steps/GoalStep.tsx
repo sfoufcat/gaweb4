@@ -5,6 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTypewriter } from '@/hooks/useTypewriter';
 import type { FunnelStepConfigGoal } from '@/types';
 
+// CSS variable helper - uses values set by FunnelClient
+const primaryVar = 'var(--funnel-primary, #a07855)';
+const primaryHoverVar = 'var(--funnel-primary-hover, #8c6245)';
+
 const DEFAULT_GOAL_EXAMPLES = [
   "grow to 10k followers",
   "land my first brand deal",
@@ -66,6 +70,7 @@ export function GoalStep({
         body: JSON.stringify({ 
           goal: goal.trim(),
           targetDate: getTargetDate(),
+          flowSessionId: data.flowSessionId,
         }),
       });
 
@@ -152,7 +157,10 @@ export function GoalStep({
         </label>
 
         {/* Input Box */}
-        <div className="relative bg-white border-2 border-[#e1ddd8] rounded-xl p-4 focus-within:border-[#a07855] transition-colors">
+        <div 
+          className="relative bg-white border-2 rounded-xl p-4 transition-colors"
+          style={{ borderColor: goal ? primaryVar : '#e1ddd8' }}
+        >
           <AnimatePresence mode="wait">
             {!isValidated ? (
               <motion.div
@@ -208,7 +216,9 @@ export function GoalStep({
               <button
                 key={index}
                 onClick={() => handleExampleClick(example)}
-                className="px-4 py-2 bg-[#faf8f6] border border-[#e1ddd8] rounded-full text-sm text-text-secondary hover:bg-[#f5f2ef] hover:border-[#a07855] hover:text-text-primary active:scale-[0.98] transition-all"
+                className="px-4 py-2 bg-[#faf8f6] border border-[#e1ddd8] rounded-full text-sm text-text-secondary hover:bg-[#f5f2ef] hover:text-text-primary active:scale-[0.98] transition-all"
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = primaryVar}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = '#e1ddd8'}
               >
                 {example}
               </button>
@@ -251,7 +261,10 @@ export function GoalStep({
           <button
             onClick={handleValidate}
             disabled={!isButtonEnabled || isValidating}
-            className="flex-1 py-3 px-6 bg-[#a07855] text-white rounded-xl font-medium hover:bg-[#8c6245] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 py-3 px-6 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            style={{ backgroundColor: primaryVar }}
+            onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = primaryHoverVar)}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = primaryVar}
           >
             {isValidating ? (
               <span className="flex items-center justify-center gap-2">
@@ -272,7 +285,10 @@ export function GoalStep({
             </button>
             <button
               onClick={handleContinue}
-              className="flex-1 py-3 px-6 bg-[#a07855] text-white rounded-xl font-medium hover:bg-[#8c6245] transition-colors"
+              className="flex-1 py-3 px-6 text-white rounded-xl font-medium transition-colors"
+              style={{ backgroundColor: primaryVar }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = primaryHoverVar}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = primaryVar}
             >
               Continue
             </button>

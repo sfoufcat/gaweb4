@@ -8,6 +8,7 @@ import { useUser } from '@clerk/nextjs';
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
+import { useBrandingValues } from '@/contexts/BrandingContext';
 
 const CHECKLIST_ITEMS = [
   { 
@@ -87,6 +88,7 @@ const VALUE_PROPS = [
 export default function OnboardingWelcomePage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
+  const { logoUrl, appTitle } = useBrandingValues();
   const [isNavigating, setIsNavigating] = useState(false);
 
   // Redirect if not authenticated
@@ -142,12 +144,13 @@ export default function OnboardingWelcomePage() {
           transition={{ duration: 0.6 }}
         >
           <Image 
-            src="/logo.jpg" 
-            alt="GrowthAddicts" 
+            src={logoUrl} 
+            alt={appTitle} 
             width={56} 
             height={56} 
             priority
             className="rounded-xl shadow-lg"
+            unoptimized
           />
         </motion.div>
 

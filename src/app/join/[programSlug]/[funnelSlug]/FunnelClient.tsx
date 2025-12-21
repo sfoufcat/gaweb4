@@ -22,6 +22,32 @@ import type {
 
 // Step components (to be created)
 import { QuestionStep } from '@/components/funnel/steps/QuestionStep';
+
+/**
+ * Darken or lighten a hex color
+ * @param hex - Hex color string (e.g., "#a07855")
+ * @param percent - Positive to lighten, negative to darken
+ */
+function adjustColor(hex: string, percent: number): string {
+  // Remove # if present
+  const cleanHex = hex.replace('#', '');
+  
+  // Parse RGB values
+  const r = parseInt(cleanHex.substring(0, 2), 16);
+  const g = parseInt(cleanHex.substring(2, 4), 16);
+  const b = parseInt(cleanHex.substring(4, 6), 16);
+  
+  // Adjust each component
+  const adjust = (value: number) => {
+    const adjusted = Math.round(value + (percent / 100) * 255);
+    return Math.max(0, Math.min(255, adjusted));
+  };
+  
+  // Convert back to hex
+  const toHex = (value: number) => value.toString(16).padStart(2, '0');
+  
+  return `#${toHex(adjust(r))}${toHex(adjust(g))}${toHex(adjust(b))}`;
+}
 import { SignupStep } from '@/components/funnel/steps/SignupStep';
 import { PaymentStep } from '@/components/funnel/steps/PaymentStep';
 import { GoalStep } from '@/components/funnel/steps/GoalStep';
@@ -49,7 +75,7 @@ interface FunnelClientProps {
   branding: {
     logoUrl: string;
     appTitle: string;
-    primaryColor?: string;
+    primaryColor: string;
   };
   inviteCode?: string;
   validatedInvite?: {
@@ -359,7 +385,8 @@ export default function FunnelClient({
             <p className="text-text-secondary">Unknown step type: {currentStep.type}</p>
             <button
               onClick={() => handleStepComplete({})}
-              className="mt-4 px-6 py-2 bg-[#a07855] text-white rounded-lg"
+              className="mt-4 px-6 py-2 text-white rounded-lg"
+              style={{ backgroundColor: branding.primaryColor }}
             >
               Continue
             </button>
@@ -374,7 +401,10 @@ export default function FunnelClient({
       <div className="min-h-screen bg-app-bg flex items-center justify-center">
         <div className="relative">
           <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
-          <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-[#a07855] animate-spin" />
+          <div 
+            className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin" 
+            style={{ borderTopColor: branding.primaryColor }}
+          />
         </div>
       </div>
     );
@@ -389,7 +419,12 @@ export default function FunnelClient({
           <p className="text-text-secondary mb-6">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-[#a07855] text-white rounded-lg hover:bg-[#8c6245] transition-colors"
+            className="px-6 py-2 text-white rounded-lg transition-colors"
+            style={{ 
+              backgroundColor: branding.primaryColor,
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = adjustColor(branding.primaryColor, -15)}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = branding.primaryColor}
           >
             Try Again
           </button>
@@ -405,7 +440,10 @@ export default function FunnelClient({
         <div className="text-center">
           <div className="relative mb-4">
             <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
-            <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-[#a07855] animate-spin" />
+            <div 
+              className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin"
+              style={{ borderTopColor: branding.primaryColor }}
+            />
           </div>
           <p className="text-text-secondary">Setting up your account...</p>
         </div>
@@ -416,12 +454,19 @@ export default function FunnelClient({
   // Progress calculation
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
 
+  // CSS variable style for dynamic theming
+  const themeStyle = {
+    '--funnel-primary': branding.primaryColor,
+    '--funnel-primary-hover': adjustColor(branding.primaryColor, -15),
+  } as React.CSSProperties;
+
   return (
-    <div className="min-h-screen bg-app-bg">
+    <div className="min-h-screen bg-app-bg" style={themeStyle}>
       {/* Progress bar */}
       <div className="fixed top-0 left-0 right-0 h-1 bg-[#e1ddd8] z-50">
         <motion.div
-          className="h-full bg-[#a07855]"
+          className="h-full"
+          style={{ backgroundColor: 'var(--funnel-primary)' }}
           initial={{ width: 0 }}
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.3 }}

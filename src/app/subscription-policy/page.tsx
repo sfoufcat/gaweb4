@@ -4,8 +4,11 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { useBrandingValues } from '@/contexts/BrandingContext';
 
 export default function SubscriptionPolicyPage() {
+  const { logoUrl, appTitle } = useBrandingValues();
+  
   return (
     <div className="min-h-screen bg-app-bg">
       {/* Header */}
@@ -21,11 +24,12 @@ export default function SubscriptionPolicyPage() {
             <span className="font-sans text-[14px]">Back</span>
           </Link>
           <Image 
-            src="/logo.jpg" 
-            alt="GrowthAddicts" 
+            src={logoUrl} 
+            alt={appTitle} 
             width={40} 
             height={40} 
             className="rounded-lg"
+            unoptimized
           />
         </div>
       </motion.div>

@@ -13,8 +13,8 @@ export function ConditionalMain({ children }: { children: ReactNode }) {
   // Check if we're on guest checkout flow (fullscreen experience)
   const isStartPage = pathname?.startsWith('/start');
   
-  // Check if we're on /begin (signup entry point)
-  const isBeginPage = pathname?.startsWith('/begin');
+  // Check if we're on /join (unified funnel entry point)
+  const isJoinPage = pathname?.startsWith('/join');
   
   // Check if we're on /sign-in
   const isSignInPage = pathname?.startsWith('/sign-in');
@@ -36,7 +36,7 @@ export function ConditionalMain({ children }: { children: ReactNode }) {
   // Check if on invite pages (fullscreen experience)
   const isInvitePage = pathname?.startsWith('/invite');
   
-  const shouldRemovePadding = isOnboardingPage || isStartPage || isCheckInPage || isBeginPage || isSignInPage || isProfileEditOnboarding || isPremiumUpgradeForm || isCoachingForm || isInvitePage;
+  const shouldRemovePadding = isOnboardingPage || isStartPage || isCheckInPage || isJoinPage || isSignInPage || isProfileEditOnboarding || isPremiumUpgradeForm || isCoachingForm || isInvitePage;
   
   return (
     <main className={shouldRemovePadding ? 'min-h-screen' : 'lg:pl-64 min-h-screen'}>

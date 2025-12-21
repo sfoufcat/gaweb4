@@ -7,7 +7,6 @@ import { canAccessEditorSection } from '@/lib/admin-utils-shared';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AdminDiscoverTab } from '@/components/admin/discover';
 import { AdminTracksAndProgramsTab } from '@/components/admin/tracks-programs';
-import { AdminQuizzesTab } from '@/components/admin/quizzes';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import type { ClerkPublicMetadata } from '@/types';
 
@@ -80,12 +79,6 @@ export default function EditorPage() {
             >
               Tracks & Programs
             </TabsTrigger>
-            <TabsTrigger 
-              value="quizzes"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
-            >
-              Quizzes
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="discover">
@@ -94,12 +87,6 @@ export default function EditorPage() {
 
           <TabsContent value="tracks-programs">
             <AdminTracksAndProgramsTab />
-          </TabsContent>
-
-          <TabsContent value="quizzes">
-            <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
-              <AdminQuizzesTab />
-            </div>
           </TabsContent>
         </Tabs>
       </div>

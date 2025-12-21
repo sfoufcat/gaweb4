@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { FunnelStepConfigAnalyzing } from '@/types';
 
+// CSS variable helper - uses values set by FunnelClient
+const primaryVar = 'var(--funnel-primary, #a07855)';
+
 const DEFAULT_MESSAGES = [
   'Analyzing your responses...',
   'Building your personalized plan...',
@@ -55,13 +58,15 @@ export function AnalyzingStep({
         <div className="w-20 h-20 rounded-full border-4 border-[#e1ddd8]" />
         {/* Spinning ring */}
         <motion.div
-          className="absolute inset-0 w-20 h-20 rounded-full border-4 border-transparent border-t-[#a07855]"
+          className="absolute inset-0 w-20 h-20 rounded-full border-4 border-transparent"
+          style={{ borderTopColor: primaryVar }}
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
         />
         {/* Inner pulse */}
         <motion.div
-          className="absolute inset-4 bg-[#a07855]/10 rounded-full"
+          className="absolute inset-4 rounded-full"
+          style={{ backgroundColor: `color-mix(in srgb, ${primaryVar} 10%, transparent)` }}
           animate={{ scale: [1, 1.2, 1] }}
           transition={{ duration: 1.5, repeat: Infinity }}
         />
@@ -88,9 +93,8 @@ export function AnalyzingStep({
         {messages.map((_, index) => (
           <motion.div
             key={index}
-            className={`w-2 h-2 rounded-full ${
-              index <= currentMessageIndex ? 'bg-[#a07855]' : 'bg-[#e1ddd8]'
-            }`}
+            className="w-2 h-2 rounded-full"
+            style={{ backgroundColor: index <= currentMessageIndex ? primaryVar : '#e1ddd8' }}
             animate={{
               scale: index === currentMessageIndex ? [1, 1.3, 1] : 1,
             }}

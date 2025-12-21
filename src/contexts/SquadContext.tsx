@@ -1,8 +1,76 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
 import type { Squad, SquadMember, SquadStats, SquadType, ContributionDay } from '@/types';
+
+const SQUAD_CACHE_KEY = 'ga-squad-cache';
+const CACHE_VERSION = 1;
+const CACHE_MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
+
+interface SquadCacheData {
+  version: number;
+  timestamp: number;
+  userId: string;
+  premiumSquad: Squad | null;
+  premiumMembers: SquadMember[];
+  standardSquad: Squad | null;
+  standardMembers: SquadMember[];
+  activeSquadType: SquadType | null;
+}
+
+/**
+ * Load squad data from localStorage
+ */
+function loadSquadCache(userId: string): Partial<SquadCacheData> | null {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    const stored = localStorage.getItem(SQUAD_CACHE_KEY);
+    if (!stored) return null;
+    
+    const parsed: SquadCacheData = JSON.parse(stored);
+    
+    // Validate version and user
+    if (parsed.version !== CACHE_VERSION || parsed.userId !== userId) {
+      return null;
+    }
+    
+    // Check if cache is expired
+    if (Date.now() - parsed.timestamp > CACHE_MAX_AGE) {
+      return null;
+    }
+    
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save squad data to localStorage
+ */
+function saveSquadCache(userId: string, data: {
+  premiumSquad: Squad | null;
+  premiumMembers: SquadMember[];
+  standardSquad: Squad | null;
+  standardMembers: SquadMember[];
+  activeSquadType: SquadType | null;
+}): void {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    const cacheData: SquadCacheData = {
+      version: CACHE_VERSION,
+      timestamp: Date.now(),
+      userId,
+      ...data,
+    };
+    localStorage.setItem(SQUAD_CACHE_KEY, JSON.stringify(cacheData));
+  } catch (error) {
+    console.warn('[SquadContext] Failed to save cache to localStorage:', error);
+  }
+}
 
 interface SquadContextValue {
   // Active squad (the one currently being viewed)
@@ -95,6 +163,7 @@ interface SquadProviderProps {
  */
 export function SquadProvider({ children }: SquadProviderProps) {
   const { user, isLoaded } = useUser();
+  const hasInitializedFromStorage = useRef(false);
   
   // Premium squad state
   const [premiumSquad, setPremiumSquad] = useState<Squad | null>(globalSquadData.premiumSquad);
@@ -115,6 +184,34 @@ export function SquadProvider({ children }: SquadProviderProps) {
   const [isLoadingMoreContributions, setIsLoadingMoreContributions] = useState(false);
   const [hasMoreContributions, setHasMoreContributions] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Initialize from localStorage on mount (only once)
+  useEffect(() => {
+    if (hasInitializedFromStorage.current || !user?.id) return;
+    
+    // Check localStorage for cached data
+    const cached = loadSquadCache(user.id);
+    if (cached && !globalSquadData.fetchedForUserId) {
+      // Initialize from localStorage cache
+      setPremiumSquad(cached.premiumSquad ?? null);
+      setPremiumMembers(cached.premiumMembers ?? []);
+      setStandardSquad(cached.standardSquad ?? null);
+      setStandardMembers(cached.standardMembers ?? []);
+      setActiveSquadTypeState(cached.activeSquadType ?? null);
+      
+      // Also update global cache
+      globalSquadData.premiumSquad = cached.premiumSquad ?? null;
+      globalSquadData.premiumMembers = cached.premiumMembers ?? [];
+      globalSquadData.standardSquad = cached.standardSquad ?? null;
+      globalSquadData.standardMembers = cached.standardMembers ?? [];
+      globalSquadData.activeSquadType = cached.activeSquadType ?? null;
+      
+      // Mark as having data (even if stale, shows instantly)
+      setIsLoading(false);
+    }
+    
+    hasInitializedFromStorage.current = true;
+  }, [user?.id]);
 
   // Convenience flags
   const hasPremiumSquad = !!premiumSquad;
@@ -194,6 +291,15 @@ export function SquadProvider({ children }: SquadProviderProps) {
       setStandardStats(fastData.standardStats || null);
       setActiveSquadTypeState(defaultActiveType);
       setIsLoading(false); // Page can render now!
+      
+      // Save to localStorage for instant loading on next visit
+      saveSquadCache(userId, {
+        premiumSquad: newPremiumSquad,
+        premiumMembers: newPremiumMembers,
+        standardSquad: newStandardSquad,
+        standardMembers: newStandardMembers,
+        activeSquadType: defaultActiveType,
+      });
 
       // STEP 2: Fetch full stats in background for both squads (fills in the alignment bars)
       if (newPremiumSquad || newStandardSquad) {
@@ -216,6 +322,15 @@ export function SquadProvider({ children }: SquadProviderProps) {
           setStandardSquad(fullData.standardSquad || null);
           setStandardMembers(fullData.standardMembers || []);
           setStandardStats(fullData.standardStats || null);
+          
+          // Update localStorage cache with full data
+          saveSquadCache(userId, {
+            premiumSquad: fullData.premiumSquad || null,
+            premiumMembers: fullData.premiumMembers || [],
+            standardSquad: fullData.standardSquad || null,
+            standardMembers: fullData.standardMembers || [],
+            activeSquadType: defaultActiveType,
+          });
         }
       }
 

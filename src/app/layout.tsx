@@ -16,6 +16,7 @@ import { IncomingCallHandler } from "@/components/chat/IncomingCallHandler";
 import { ClerkThemeProvider } from "@/components/auth/ClerkThemeProvider";
 import { TimezoneSync } from "@/components/TimezoneSync";
 import { getServerBranding } from "@/lib/branding-server";
+import { SWRProvider } from "@/lib/swr-provider";
 import { DEFAULT_LOGO_URL } from "@/types";
 
 const geistSans = Geist({
@@ -100,6 +101,7 @@ export default async function RootLayout({
           suppressHydrationWarning
         >
           <ThemeProvider>
+          <SWRProvider>
           <BrandingProvider 
             initialBranding={ssrBranding.branding}
             initialCoachingPromo={ssrBranding.coachingPromo}
@@ -132,6 +134,7 @@ export default async function RootLayout({
           </OrganizationProvider>
           </SquadProvider>
           </BrandingProvider>
+          </SWRProvider>
           </ThemeProvider>
         </body>
       </html>

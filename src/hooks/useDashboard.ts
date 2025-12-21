@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import { useUser } from '@clerk/nextjs';
 import type { FirebaseUser, Habit, Task } from '@/types';
 
@@ -23,54 +23,51 @@ interface UseDashboardReturn {
 
 /**
  * Custom hook to fetch all dashboard data in one request
- * Replaces multiple separate API calls for better performance
+ * 
+ * Uses SWR for:
+ * - Instant loading from cache on return visits
+ * - Background revalidation for fresh data
+ * - Automatic deduplication of requests
  */
 export function useDashboard(): UseDashboardReturn {
   const { user, isLoaded } = useUser();
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchDashboard = async () => {
-    if (!user) {
-      setData(null);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const date = new Date().toISOString().split('T')[0];
-      const response = await fetch(`/api/dashboard?date=${date}`);
-
+  
+  // Generate date-specific cache key
+  const date = new Date().toISOString().split('T')[0];
+  
+  // Only fetch if user is authenticated
+  // Using user ID in key ensures cache is per-user
+  const cacheKey = user ? `/api/dashboard?date=${date}&uid=${user.id}` : null;
+  
+  const { data, error, isLoading, mutate } = useSWR<DashboardData>(
+    cacheKey,
+    // Custom fetcher that strips the uid param (it's just for cache key uniqueness)
+    async (key: string) => {
+      const url = key.replace(/&uid=[^&]+/, '');
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Failed to fetch dashboard data');
       }
-
-      const dashboardData = await response.json();
-      setData(dashboardData);
-    } catch (err: unknown) {
-      console.error('Error fetching dashboard data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch dashboard data');
-      setData(null);
-    } finally {
-      setLoading(false);
+      return response.json();
+    },
+    {
+      // Keep data fresh for 2 minutes before revalidating
+      dedupingInterval: 2 * 60 * 1000,
+      // Don't retry too aggressively
+      errorRetryCount: 2,
     }
-  };
+  );
 
-  useEffect(() => {
-    if (!isLoaded) return;
-    fetchDashboard();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, isLoaded]);
+  // Refetch function that triggers SWR revalidation
+  const refetch = async () => {
+    await mutate();
+  };
 
   return {
-    data,
-    loading,
-    error,
-    refetch: fetchDashboard,
+    data: data ?? null,
+    // Show loading only on initial load (when no cached data exists)
+    loading: !isLoaded || (isLoading && !data),
+    error: error?.message ?? null,
+    refetch,
   };
 }
-

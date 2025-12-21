@@ -4,14 +4,14 @@ import { validateIdentityStatement } from '@/lib/anthropic';
 
 export async function POST(req: Request) {
   try {
-    // Get the statement and optional guest session from request body
-    const { statement, guestSessionId } = await req.json();
+    // Get the statement and optional flow session from request body
+    const { statement, flowSessionId } = await req.json();
 
-    // Check for authenticated user OR guest session
+    // Check for authenticated user OR flow session
     const { userId } = await auth();
     
-    // Allow if authenticated OR has valid guest session ID
-    if (!userId && !guestSessionId) {
+    // Allow if authenticated OR has valid flow session ID (for funnel guest flow)
+    if (!userId && !flowSessionId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

@@ -20,7 +20,6 @@ import type { Habit, MorningCheckIn, EveningCheckIn, Task, GoalHistoryEntry } fr
 import Image from 'next/image';
 import { Calendar, Users, ChevronRight, ChevronDown, Trophy, BookOpen, User } from 'lucide-react';
 import { useSquadContext } from '@/contexts/SquadContext';
-import { getGuestSessionId, getGuestDataLocally } from '@/lib/guest-session';
 import { useTrack } from '@/hooks/useTrack';
 import { useTrackPrompt } from '@/hooks/useTrackPrompt';
 import { useQuote } from '@/hooks/useQuote';
@@ -433,45 +432,6 @@ export default function Dashboard() {
     else if (hour < 18) setGreeting('Good afternoon');
     else setGreeting('Good evening');
   }, []);
-
-  // Check for active guest session and redirect to where they left off
-  useEffect(() => {
-    // Only check for guest session if NOT authenticated
-    if (isLoaded && !user) {
-      const guestSessionId = getGuestSessionId();
-      if (guestSessionId) {
-        const guestData = getGuestDataLocally();
-        
-        // Map currentStep to the appropriate /start/* route
-        const stepToRoute: Record<string, string> = {
-          'workday': '/start/workday',
-          'obstacles': '/start/obstacles',
-          'business_stage': '/start/business-stage',
-          'mission': '/start/mission',
-          'goal': '/start/goal',
-          'goal_impact': '/start/goal-impact',
-          'support_needs': '/start/support-needs',
-          'your_info': '/start/your-info',
-          'plan': '/start/plan',
-        };
-        
-        // If payment completed, redirect to create-account
-        if (guestData.paymentStatus === 'completed') {
-          router.push('/start/create-account');
-          return;
-        }
-        
-        // If has a current step, redirect there
-        if (guestData.currentStep && stepToRoute[guestData.currentStep]) {
-          router.push(stepToRoute[guestData.currentStep]);
-          return;
-        }
-        
-        // If has session but no step, redirect to welcome
-        router.push('/start/welcome');
-      }
-    }
-  }, [isLoaded, user, router]);
 
   // Fetch morning check-in status
   useEffect(() => {

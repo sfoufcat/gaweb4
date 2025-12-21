@@ -2,6 +2,7 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getTenantBySubdomain, getTenantByCustomDomain, type TenantConfigData, DEFAULT_TENANT_BRANDING } from '@/lib/tenant-edge-config';
+import { shouldRedirectToFunnel, getFunnelRedirectUrl } from '@/lib/funnel-redirects';
 
 // Billing status types (must match admin-utils-clerk.ts)
 type BillingStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | 'none';
@@ -160,7 +161,7 @@ function canAccessAdminSection(role?: UserRole): boolean {
 // Define public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
   '/',
-  '/begin(.*)',
+  '/join(.*)',     // Unified funnel system (replaces /begin)
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/onboarding(.*)',
@@ -172,14 +173,11 @@ const isPublicRoute = createRouteMatcher([
   '/api/webhooks(.*)',
   '/api/notifications/cron(.*)',  // Cron jobs - auth via CRON_SECRET header
   '/api/squad/validate-invite',  // Allow validating invite tokens without auth
-  '/api/guest(.*)',  // Guest session APIs - no auth required
-  '/api/quizzes(.*)',  // Quiz data for guest checkout flow - no auth required
-  '/api/checkout/guest',  // Guest checkout - no auth required
-  '/api/checkout/create-subscription',  // Guest subscription creation - no auth required
-  '/api/checkout/check-existing-member',  // Check if email is already a member - used by guest flow
-  '/api/guest/verify-payment-intent',  // Verify embedded checkout payment - no auth required
-  '/api/identity/validate',  // Mission validation - used by guest flow
-  '/api/goal/validate',  // Goal validation - used by guest flow
+  '/api/funnel(.*)',  // Funnel data for funnel flow - no auth required
+  '/api/checkout/check-existing-member',  // Check if email is already a member
+  '/api/identity/validate',  // Mission validation - used by funnel flow
+  '/api/goal/validate',  // Goal validation - used by funnel flow
+  '/api/goal/save',      // Goal save - used during onboarding (has own auth check)
   '/api/tenant/resolve',  // Tenant resolution API - no auth required
   '/api/org/branding',  // Branding API - needs to work for SSR before auth is established
   '/terms(.*)',
@@ -206,7 +204,6 @@ const isEditorApiRoute = createRouteMatcher([
   '/api/admin/tracks(.*)',
   '/api/admin/starter-programs(.*)',
   '/api/admin/dynamic-prompts(.*)',
-  '/api/admin/quizzes(.*)',
 ]);
 
 // Define seed route that can bypass auth in development
@@ -231,22 +228,6 @@ const requiresBilling = createRouteMatcher([
   '/upgrade-squad(.*)',
   '/guided-monthly(.*)',
   '/guided-halfyear(.*)',
-]);
-
-// Routes that should never trigger guest session redirects
-const isGuestFlowExemptRoute = createRouteMatcher([
-  '/start(.*)',      // Already in guest flow
-  '/sign-in(.*)',    // Auth pages
-  '/sign-up(.*)',    // Auth pages
-  '/api(.*)',        // API routes
-  '/terms(.*)',      // Policy pages
-  '/privacy(.*)',
-  '/refund-policy(.*)',
-  '/subscription-policy(.*)',
-  '/invite(.*)',     // Invite links
-  '/onboarding(.*)', // Original onboarding flow
-  '/tenant-not-found',
-  '/access-denied',
 ]);
 
 // Routes that are only available on platform domain (not tenant domains)
@@ -443,7 +424,7 @@ export default clerkMiddleware(async (auth, request) => {
         // EXCEPT for auth routes - those need to stay on subdomain for Clerk to work
         const isAuthRoute = pathname === '/sign-in' || pathname.startsWith('/sign-in/') ||
                            pathname === '/sign-up' || pathname.startsWith('/sign-up/') ||
-                           pathname.startsWith('/begin') || 
+                           pathname.startsWith('/join') ||  // Funnel system needs subdomain for auth iframes
                            pathname === '/sso-callback' || pathname.startsWith('/sso-callback/');
         
         if (resolved.verifiedCustomDomain && !isAuthRoute) {
@@ -501,6 +482,21 @@ export default clerkMiddleware(async (auth, request) => {
   }
   
   // ==========================================================================
+  // LEGACY PATH REDIRECTS (/start, /begin -> /join)
+  // ==========================================================================
+  
+  // Redirect legacy quiz paths to the new unified funnel system
+  if (shouldRedirectToFunnel(pathname)) {
+    const searchParams = request.nextUrl.searchParams;
+    const redirectUrl = getFunnelRedirectUrl(pathname, searchParams, tenantOrgId);
+    
+    if (redirectUrl) {
+      console.log(`[MIDDLEWARE] Legacy funnel redirect: ${pathname} -> ${redirectUrl}`);
+      return NextResponse.redirect(new URL(redirectUrl, request.url), 302);
+    }
+  }
+  
+  // ==========================================================================
   // DOMAIN-SPECIFIC ROUTING
   // ==========================================================================
   
@@ -510,8 +506,7 @@ export default clerkMiddleware(async (auth, request) => {
     // Allow marketing-related routes
     const isMarketingRoute = 
       pathname === '/' || 
-      pathname.startsWith('/begin') ||
-      pathname.startsWith('/start') ||  // Guest checkout flow
+      pathname.startsWith('/join') ||    // New unified funnel system
       pathname.startsWith('/sign-in') ||
       pathname.startsWith('/sign-up') ||
       pathname.startsWith('/terms') ||
@@ -641,24 +636,12 @@ export default clerkMiddleware(async (auth, request) => {
   }
   
   // ==========================================================================
-  // GUEST SESSION REDIRECT LOGIC
+  // UNAUTHENTICATED USER HANDLING
   // ==========================================================================
   
   if (!userId) {
-    const guestSessionId = request.cookies.get('ga_guest_session_id')?.value;
-    const guestStep = request.cookies.get('ga_guest_step')?.value;
-    
-    // If user has a guest session and is NOT on an exempt route, redirect to their step
-    if (guestSessionId && !isGuestFlowExemptRoute(request)) {
-      const targetStep = (guestStep === 'welcome' || guestStep === 'start') ? null : guestStep;
-      const redirectPath = targetStep ? `/start/${targetStep}` : '/start';
-      console.log(`[MIDDLEWARE] Guest session found, redirecting to ${redirectPath}`);
-      return NextResponse.redirect(new URL(redirectPath, request.url));
-    }
-    
-    // If user has NO guest session and is visiting root, redirect to /begin
-    // EXCEPTION: If from_auth=1 is present on a custom domain, skip redirect to let ClerkProvider sync
-    if (!guestSessionId && pathname === '/') {
+    // If user is visiting root and not authenticated, redirect to sign-in or join
+    if (pathname === '/') {
       const fromAuth = request.nextUrl.searchParams.get('from_auth') === '1';
       
       // On custom domains coming from auth, let the page load so ClerkProvider can sync the session
@@ -667,25 +650,9 @@ export default clerkMiddleware(async (auth, request) => {
         // Continue to page - ClerkProvider will sync session client-side
       } else {
         const isReturningUser = request.cookies.get('ga_returning_user')?.value === 'true';
-        const redirectUrl = isReturningUser ? '/sign-in' : '/begin';
+        const redirectUrl = isReturningUser ? '/sign-in' : '/join/starter-90';
         return NextResponse.redirect(new URL(redirectUrl, request.url));
       }
-    }
-    
-    // Redirect if user has a saved step that's NOT the welcome page
-    if (pathname === '/start' && guestStep && guestStep !== 'welcome' && guestStep !== 'start') {
-      return NextResponse.redirect(new URL(`/start/${guestStep}`, request.url));
-    }
-  }
-
-  // REDIRECT SIGNED-IN USERS AWAY FROM /start (guest checkout flow)
-  // Exception: Allow access to /start/profile and /start/complete for post-payment setup
-  if (userId && pathname.startsWith('/start')) {
-    const allowedPostPaymentPaths = ['/start/profile', '/start/complete'];
-    const isPostPaymentPath = allowedPostPaymentPaths.some(path => pathname.startsWith(path));
-    
-    if (!isPostPaymentPath) {
-      return NextResponse.redirect('https://pro.growthaddicts.com');
     }
   }
 

@@ -70,7 +70,8 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
       if (embedded && origin) {
         // In embedded mode, open OAuth in a popup instead of redirecting the iframe
         const currentOrigin = window.location.origin;
-        const oauthUrl = `${currentOrigin}/begin?oauth=${provider}&popup=1&origin=${encodeURIComponent(origin)}`;
+        // Use /join/oauth route for popup OAuth flow
+        const oauthUrl = `${currentOrigin}/join/oauth?provider=${provider}&returnUrl=${encodeURIComponent(origin + '?from_auth=1')}`;
         
         const popup = window.open(
           oauthUrl,

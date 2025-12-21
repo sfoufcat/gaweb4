@@ -9,6 +9,7 @@ import { useUser } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { AnalyzingLoader } from '@/components/onboarding/AnalyzingLoader';
+import { useBrandingValues } from '@/contexts/BrandingContext';
 
 /**
  * Generate time labels for the x-axis based on duration
@@ -49,6 +50,7 @@ function generateTimeLabels(startDate: Date, targetDate: Date): string[] {
 export default function TransformationPage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
+  const { logoUrl, appTitle } = useBrandingValues();
   const [isNavigating, setIsNavigating] = useState(false);
   const [userData, setUserData] = useState<{ user?: { goal?: string; goalTargetDate?: string; onboarding?: { businessStage?: string[] } }; goal?: { goal?: string; targetDate?: string } } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -185,11 +187,12 @@ export default function TransformationPage() {
           transition={{ duration: 0.5 }}
         >
           <Image 
-            src="/logo.jpg" 
-            alt="GrowthAddicts" 
+            src={logoUrl} 
+            alt={appTitle} 
             width={48} 
             height={48} 
             className="rounded-lg"
+            unoptimized
           />
         </motion.div>
 

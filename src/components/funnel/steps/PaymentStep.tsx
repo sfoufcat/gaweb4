@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
+import { useState, useEffect, useMemo } from 'react';
+import { loadStripe, Stripe } from '@stripe/stripe-js';
 import {
   Elements,
   PaymentElement,
@@ -12,8 +12,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, CreditCard, Check } from 'lucide-react';
 import type { FunnelStepConfigPayment } from '@/types';
 
-// Initialize Stripe
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+// CSS variable helper - uses values set by FunnelClient
+const primaryVar = 'var(--funnel-primary, #a07855)';
+const primaryHoverVar = 'var(--funnel-primary-hover, #8c6245)';
 
 interface PaymentStepProps {
   config: FunnelStepConfigPayment;
@@ -142,7 +143,10 @@ function PaymentForm({ onSuccess, programName, priceInCents, currency, features 
       <button
         type="submit"
         disabled={!stripe || isProcessing}
-        className="w-full py-4 px-6 bg-[#a07855] text-white rounded-xl font-medium hover:bg-[#8c6245] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+        className="w-full py-4 px-6 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+        style={{ backgroundColor: primaryVar }}
+        onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = primaryHoverVar)}
+        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = primaryVar}
       >
         {isProcessing ? (
           <>
@@ -176,6 +180,8 @@ export function PaymentStep({
   isFirstStep,
 }: PaymentStepProps) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [connectedAccountId, setConnectedAccountId] = useState<string | null>(null);
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -223,8 +229,17 @@ export function PaymentStep({
         throw new Error(errorData.error || 'Failed to create payment');
       }
 
-      const { clientSecret: secret } = await response.json();
+      const { clientSecret: secret, connectedAccountId: accountId } = await response.json();
       setClientSecret(secret);
+      setConnectedAccountId(accountId);
+      
+      // Load Stripe with the connected account
+      // For Stripe Connect, we need to pass stripeAccount option
+      const stripeInstance = loadStripe(
+        process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
+        accountId ? { stripeAccount: accountId } : undefined
+      );
+      setStripePromise(stripeInstance);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to initialize payment');
     } finally {
@@ -236,6 +251,7 @@ export function PaymentStep({
     onComplete({
       stripePaymentIntentId: paymentIntentId,
       paidAmount: priceInCents,
+      connectedAccountId,
     });
   };
 
@@ -245,7 +261,10 @@ export function PaymentStep({
       <div className="w-full max-w-xl mx-auto flex flex-col items-center justify-center min-h-[300px]">
         <div className="relative mb-4">
           <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
-          <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-[#a07855] animate-spin" />
+          <div 
+            className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin"
+            style={{ borderTopColor: primaryVar }}
+          />
         </div>
         <p className="text-text-secondary">Setting up payment...</p>
       </div>
@@ -269,7 +288,10 @@ export function PaymentStep({
               setIsLoading(true);
               createPaymentIntent();
             }}
-            className="py-3 px-6 bg-[#a07855] text-white rounded-xl font-medium hover:bg-[#8c6245] transition-colors"
+            className="py-3 px-6 text-white rounded-xl font-medium transition-colors"
+            style={{ backgroundColor: primaryVar }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = primaryHoverVar}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = primaryVar}
           >
             Try Again
           </button>
@@ -300,7 +322,7 @@ export function PaymentStep({
         </h1>
       </motion.div>
 
-      {clientSecret && (
+      {clientSecret && stripePromise && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -353,4 +375,3 @@ export function PaymentStep({
     </div>
   );
 }
-
