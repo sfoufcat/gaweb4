@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, RefreshCw } from 'lucide-react';
 import type { UserRole, UserTier, CoachingStatus, OrgRole, Squad } from '@/types';
 import { validateSubdomain } from '@/types';
 import { 
@@ -591,26 +591,15 @@ export function AdminUsersTab({
               </p>
             </div>
             
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Invite Button */}
-              {showInviteButton && (
-                <Button
-                  onClick={() => setShowInviteDialog(true)}
-                  className="bg-[#a07855] hover:bg-[#8c6245] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white font-albert"
-                >
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Invite New Clients
-                </Button>
-              )}
-              
+            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full lg:w-auto">
               {/* Search */}
-              <div className="relative">
+              <div className="relative flex-1 sm:flex-none">
                 <input
                   type="text"
                   placeholder="Search by name or email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-64 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190]"
+                  className="w-full sm:w-64 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190]"
                 />
                 <svg
                   className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#7d8190]"
@@ -637,13 +626,28 @@ export function AdminUsersTab({
                 )}
               </div>
               
-              <Button 
-                onClick={fetchUsers}
-                variant="outline"
-                className="border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-white/5"
-              >
-                Refresh
-              </Button>
+              {/* Refresh Icon + Add Button row on mobile */}
+              <div className="flex items-center gap-3">
+                {/* Refresh Icon */}
+                <button 
+                  onClick={fetchUsers}
+                  className="p-2.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] active:bg-[#e8e5e1] dark:active:bg-[#1a1e27] rounded-lg border border-[#e1ddd8] dark:border-[#262b35] transition-colors"
+                  title="Refresh"
+                >
+                  <RefreshCw className="w-5 h-5" />
+                </button>
+                
+                {/* Add Clients Button */}
+                {showInviteButton && (
+                  <Button
+                    onClick={() => setShowInviteDialog(true)}
+                    className="flex-1 sm:flex-none bg-[#a07855] hover:bg-[#8c6245] active:bg-[#7a5639] dark:bg-[#b8896a] dark:hover:bg-[#a07855] dark:active:bg-[#96714d] text-white font-albert"
+                  >
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Add New Clients
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>

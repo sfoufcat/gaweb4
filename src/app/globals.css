@@ -944,3 +944,40 @@ div[class*="LoadingIndicator"],
 .dark .group:hover .dark\:group-hover\:bg-\[\#a07855\] {
   background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 85%, black);
 }
+
+/* ===========================================
+   Disabled Button State Overrides
+   Maps disabled button states to brand accent
+   =========================================== */
+
+/* Disabled button with 50% opacity accent */
+.disabled\:bg-\[\#a07855\]\/50:disabled {
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 50%, transparent);
+}
+
+.dark .disabled\:bg-\[\#a07855\]\/50:disabled {
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 50%, transparent);
+}
+
+/* Disabled button with full accent (opacity handled separately) */
+.disabled\:bg-\[\#a07855\]:disabled {
+  background-color: var(--brand-accent-light, #a07855);
+}
+
+.dark .disabled\:bg-\[\#a07855\]:disabled {
+  background-color: var(--brand-accent-dark, #b8896a);
+}
+
+/* ===========================================
+   Active (Touch) State Overrides for Mobile
+   =========================================== */
+
+/* Active states for touch devices */
+.active\:bg-\[\#7a5639\]:active {
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 70%, black);
+}
+
+.dark .active\:bg-\[\#96714d\]:active,
+.dark .dark\:active\:bg-\[\#96714d\]:active {
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 70%, black);
+}

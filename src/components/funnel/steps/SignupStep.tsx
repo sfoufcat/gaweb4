@@ -74,17 +74,22 @@ export function SignupStep({
   const linkSessionAndContinue = async () => {
     try {
       // Link the flow session to this user
-      await fetch('/api/funnel/link-session', {
+      const response = await fetch('/api/funnel/link-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ flowSessionId }),
       });
 
-      // Continue to next step
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to link session');
+      }
+
+      // Continue to next step only if linking succeeded
       onComplete({ userId });
     } catch (err) {
       console.error('Failed to link session:', err);
-      setError('Failed to link your account. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to link your account. Please try again.');
     }
   };
 

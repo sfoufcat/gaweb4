@@ -190,8 +190,17 @@ export async function POST(req: Request) {
     const userDoc = await userRef.get();
 
     // Get user info from Clerk
-    const clerk = await clerkClient();
-    const clerkUser = await clerk.users.getUser(userId);
+    let clerkUser;
+    try {
+      const clerk = await clerkClient();
+      clerkUser = await clerk.users.getUser(userId);
+    } catch (clerkError) {
+      console.error('[FUNNEL_COMPLETE] Clerk API error:', clerkError);
+      return NextResponse.json(
+        { error: 'Failed to fetch user information from authentication provider' },
+        { status: 500 }
+      );
+    }
 
     const userUpdate: Record<string, unknown> = {
       // Basic info from Clerk
