@@ -1,16 +1,33 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
+import type { ClerkPublicMetadata } from '@/types';
 
+/**
+ * POST /api/goal/save
+ * Saves a new goal for the user
+ * 
+ * MULTI-TENANCY: Goals are stored per-organization in org_memberships
+ */
 export async function POST(req: Request) {
   try {
     // Check authentication
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
     if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
+    }
+
+    // MULTI-TENANCY: Get effective org ID
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+
+    if (!organizationId) {
+      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
     }
 
     // Get the goal and target date from request body
@@ -33,36 +50,69 @@ export async function POST(req: Request) {
     const trimmedGoal = goal.trim();
     const now = new Date().toISOString();
 
-    // Get existing user data to preserve history
-    const userRef = adminDb.collection('users').doc(userId);
-    const userDoc = await userRef.get();
-    const existingData = userDoc.data() || {};
+    // Get org_membership to update (multi-tenancy)
+    const membershipSnapshot = await adminDb.collection('org_memberships')
+      .where('userId', '==', userId)
+      .where('organizationId', '==', organizationId)
+      .limit(1)
+      .get();
 
-    // Build goal history
-    const goalHistory = existingData.goalHistory || [];
-    if (existingData.goal) {
-      // Add previous goal to history
-      goalHistory.push({
-        goal: existingData.goal,
-        targetDate: existingData.goalTargetDate,
-        setAt: existingData.goalSetAt || now,
-        completedAt: null,
-      });
-    }
+    if (!membershipSnapshot.empty) {
+      // Update org_membership with new goal
+      const memberRef = membershipSnapshot.docs[0].ref;
+      const memberData = membershipSnapshot.docs[0].data();
+      
+      // Build goal history
+      const goalHistory = memberData.goalHistory || [];
+      if (memberData.goal) {
+        goalHistory.push({
+          goal: memberData.goal,
+          targetDate: memberData.goalTargetDate,
+          setAt: memberData.goalSetAt || now,
+          completedAt: null,
+        });
+      }
 
-    // Update user document with new goal and advance onboarding status
-    await userRef.set(
-      {
+      await memberRef.update({
         goal: trimmedGoal,
         goalTargetDate: targetDate,
         goalSetAt: now,
         goalIsAISuggested: isAISuggested || false,
         goalHistory: goalHistory,
-        onboardingStatus: 'goal_impact', // Move to post-goal questions
+        goalCompleted: false,
+        goalProgress: 0,
+        onboardingStatus: 'goal_impact',
         updatedAt: now,
-      },
-      { merge: true }
-    );
+      });
+    } else {
+      // Legacy fallback: Update user document
+      const userRef = adminDb.collection('users').doc(userId);
+      const userDoc = await userRef.get();
+      const existingData = userDoc.data() || {};
+
+      const goalHistory = existingData.goalHistory || [];
+      if (existingData.goal) {
+        goalHistory.push({
+          goal: existingData.goal,
+          targetDate: existingData.goalTargetDate,
+          setAt: existingData.goalSetAt || now,
+          completedAt: null,
+        });
+      }
+
+      await userRef.set(
+        {
+          goal: trimmedGoal,
+          goalTargetDate: targetDate,
+          goalSetAt: now,
+          goalIsAISuggested: isAISuggested || false,
+          goalHistory: goalHistory,
+          onboardingStatus: 'goal_impact',
+          updatedAt: now,
+        },
+        { merge: true }
+      );
+    }
 
     return NextResponse.json({
       success: true,

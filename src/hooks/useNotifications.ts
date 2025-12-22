@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useUser, useOrganization } from '@clerk/nextjs';
 import { 
   collection, 
   query, 
@@ -30,15 +30,22 @@ interface UseNotificationsReturn {
  * 
  * Features:
  * - Real-time subscription to notifications via Firestore
+ * - Organization-scoped for multi-tenancy
  * - Unread count for badge display
  * - Functions to mark notifications as read
  */
 export function useNotifications(): UseNotificationsReturn {
   const { user, isLoaded } = useUser();
+  const { organization } = useOrganization();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Get current organization ID from user metadata or Clerk organization
+  const organizationId = (user?.publicMetadata as { primaryOrganizationId?: string })?.primaryOrganizationId 
+    || organization?.id 
+    || null;
 
   // Fetch notifications from API (for initial load and refetch)
   const fetchNotifications = useCallback(async () => {
@@ -84,14 +91,29 @@ export function useNotifications(): UseNotificationsReturn {
 
     setIsLoading(true);
 
-    // Query for user's notifications
+    // Query for user's notifications, scoped by organization for multi-tenancy
     const notificationsRef = collection(db, 'notifications');
-    const q = query(
-      notificationsRef,
-      where('userId', '==', user.id),
-      orderBy('createdAt', 'desc'),
-      limit(30)
-    );
+    
+    // Build query with organization filtering if available
+    let q;
+    if (organizationId) {
+      // Multi-tenant query: filter by both userId and organizationId
+      q = query(
+        notificationsRef,
+        where('userId', '==', user.id),
+        where('organizationId', '==', organizationId),
+        orderBy('createdAt', 'desc'),
+        limit(30)
+      );
+    } else {
+      // Legacy fallback: no organization filtering (for backward compatibility)
+      q = query(
+        notificationsRef,
+        where('userId', '==', user.id),
+        orderBy('createdAt', 'desc'),
+        limit(30)
+      );
+    }
 
     // Subscribe to real-time updates
     const unsubscribe: Unsubscribe = onSnapshot(
@@ -125,7 +147,7 @@ export function useNotifications(): UseNotificationsReturn {
     return () => {
       unsubscribe();
     };
-  }, [user?.id, isLoaded, fetchNotifications]);
+  }, [user?.id, isLoaded, organizationId, fetchNotifications]);
 
   // Mark all notifications as read
   const markAllAsRead = useCallback(async () => {

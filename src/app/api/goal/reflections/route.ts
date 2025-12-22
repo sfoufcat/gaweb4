@@ -1,57 +1,77 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-// Types DailyReflection, WeeklyReflection are documented but not directly referenced
+import { getEffectiveOrgId } from '@/lib/tenant/context';
+import type { ClerkPublicMetadata } from '@/types';
 
 /**
  * GET /api/goal/reflections
  * Fetches all reflections for the user's active goal
+ * 
+ * MULTI-TENANCY: Reflections are scoped per organization
+ * 
  * Query params:
  * - type: 'daily' | 'weekly' | 'all' (default: 'all')
  * - limit: number (default: 20)
  */
 export async function GET(req: Request) {
   try {
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // MULTI-TENANCY: Get effective org ID
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+
+    if (!organizationId) {
+      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
     }
 
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type') || 'all';
     const limit = parseInt(searchParams.get('limit') || '20', 10);
 
-    // Get user's active goal ID (from user document)
-    const userRef = adminDb.collection('users').doc(userId);
-    const userDoc = await userRef.get();
+    // Get user's active goal ID (from org_memberships for multi-tenancy)
+    let goalId: string | null = null;
+    const membershipSnapshot = await adminDb.collection('org_memberships')
+      .where('userId', '==', userId)
+      .where('organizationId', '==', organizationId)
+      .limit(1)
+      .get();
     
-    if (!userDoc.exists) {
-      return NextResponse.json({ reflections: [] });
+    if (!membershipSnapshot.empty) {
+      const memberData = membershipSnapshot.docs[0].data();
+      if (memberData?.goal) {
+        goalId = `${organizationId}_${userId}_goal`;
+      }
+    } else {
+      // Legacy fallback
+      const userDoc = await adminDb.collection('users').doc(userId).get();
+      if (userDoc.exists && userDoc.data()?.goal) {
+        goalId = `${userId}_goal`;
+      }
     }
-
-    const userData = userDoc.data();
-    
-    // For now, we use the user's goal directly. GoalId is the same as the goal string for simplicity.
-    // In a more complex system, goals would have their own IDs.
-    const goalId = userData?.goal ? `${userId}_goal` : null;
     
     if (!goalId) {
       return NextResponse.json({ reflections: [] });
     }
 
-    // Fetch reflections from subcollection
+    // Fetch reflections from top-level collection (org-scoped)
     let query = adminDb
-      .collection('users')
-      .doc(userId)
       .collection('reflections')
+      .where('userId', '==', userId)
+      .where('organizationId', '==', organizationId)
       .orderBy('createdAt', 'desc')
       .limit(limit);
 
     if (type !== 'all') {
       query = adminDb
-        .collection('users')
-        .doc(userId)
         .collection('reflections')
+        .where('userId', '==', userId)
+        .where('organizationId', '==', organizationId)
         .where('type', '==', type)
         .orderBy('createdAt', 'desc')
         .limit(limit);
@@ -62,6 +82,26 @@ export async function GET(req: Request) {
       id: doc.id,
       ...doc.data()
     }));
+
+    // Legacy fallback: Also check user subcollection if no results
+    if (reflections.length === 0) {
+      const legacyQuery = type !== 'all'
+        ? adminDb.collection('users').doc(userId).collection('reflections')
+            .where('type', '==', type).orderBy('createdAt', 'desc').limit(limit)
+        : adminDb.collection('users').doc(userId).collection('reflections')
+            .orderBy('createdAt', 'desc').limit(limit);
+      
+      const legacySnapshot = await legacyQuery.get();
+      const legacyReflections = legacySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      return NextResponse.json({
+        reflections: legacyReflections,
+        goalId,
+      });
+    }
 
     return NextResponse.json({
       reflections,
@@ -79,12 +119,23 @@ export async function GET(req: Request) {
 /**
  * POST /api/goal/reflections
  * Creates a new reflection
+ * 
+ * MULTI-TENANCY: Reflections are scoped per organization
  */
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // MULTI-TENANCY: Get effective org ID
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+
+    if (!organizationId) {
+      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
     }
 
     const body = await req.json();
@@ -97,19 +148,26 @@ export async function POST(req: Request) {
       );
     }
 
-    // Get user's active goal
-    const userRef = adminDb.collection('users').doc(userId);
-    const userDoc = await userRef.get();
+    // Get user's active goal (from org_memberships for multi-tenancy)
+    let goalId: string | null = null;
+    const membershipSnapshot = await adminDb.collection('org_memberships')
+      .where('userId', '==', userId)
+      .where('organizationId', '==', organizationId)
+      .limit(1)
+      .get();
     
-    if (!userDoc.exists) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+    if (!membershipSnapshot.empty) {
+      const memberData = membershipSnapshot.docs[0].data();
+      if (memberData?.goal) {
+        goalId = `${organizationId}_${userId}_goal`;
+      }
+    } else {
+      // Legacy fallback
+      const userDoc = await adminDb.collection('users').doc(userId).get();
+      if (userDoc.exists && userDoc.data()?.goal) {
+        goalId = `${userId}_goal`;
+      }
     }
-
-    const userData = userDoc.data();
-    const goalId = userData?.goal ? `${userId}_goal` : null;
 
     if (!goalId) {
       return NextResponse.json(
@@ -119,10 +177,11 @@ export async function POST(req: Request) {
     }
 
     const now = new Date().toISOString();
-    const reflectionId = `${type}_${Date.now()}`;
+    const reflectionId = `${organizationId}_${userId}_${type}_${Date.now()}`;
 
     const newReflection = {
       userId,
+      organizationId,
       goalId,
       type,
       ...reflectionData,
@@ -130,10 +189,8 @@ export async function POST(req: Request) {
       updatedAt: now,
     };
 
-    // Save to subcollection
+    // Save to top-level reflections collection (org-scoped)
     await adminDb
-      .collection('users')
-      .doc(userId)
       .collection('reflections')
       .doc(reflectionId)
       .set(newReflection);

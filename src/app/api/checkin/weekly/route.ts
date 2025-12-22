@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { summarizeWeeklyFocus } from '@/lib/anthropic';
-import type { WeeklyReflectionCheckIn } from '@/types';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
+import type { WeeklyReflectionCheckIn, ClerkPublicMetadata } from '@/types';
 
 // Get the week identifier (Monday of the current week)
 function getWeekId(): string {
@@ -13,19 +14,44 @@ function getWeekId(): string {
   return monday.toISOString().split('T')[0];
 }
 
+/**
+ * Generate document ID for weekly reflection: `${organizationId}_${userId}_${weekId}`
+ * Multi-tenancy: Reflections are scoped per organization
+ */
+function getWeeklyReflectionDocId(organizationId: string, userId: string, weekId: string): string {
+  return `${organizationId}_${userId}_${weekId}`;
+}
+
 // GET - Fetch current week's reflection
+// MULTI-TENANCY: Fetches reflection for current organization
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // MULTI-TENANCY: Get effective org ID
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+
+    if (!organizationId) {
+      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
     }
 
     const { searchParams } = new URL(request.url);
     const weekId = searchParams.get('weekId') || getWeekId();
 
-    const checkInRef = adminDb.collection('users').doc(userId).collection('weeklyReflections').doc(weekId);
-    const checkInDoc = await checkInRef.get();
+    // Try new top-level collection first
+    const docId = getWeeklyReflectionDocId(organizationId, userId, weekId);
+    let checkInDoc = await adminDb.collection('weekly_reflections').doc(docId).get();
+
+    // Legacy fallback: Check user subcollection
+    if (!checkInDoc.exists) {
+      const legacyRef = adminDb.collection('users').doc(userId).collection('weeklyReflections').doc(weekId);
+      checkInDoc = await legacyRef.get();
+    }
 
     if (!checkInDoc.exists) {
       return NextResponse.json({ checkIn: null });
@@ -40,15 +66,26 @@ export async function GET(request: NextRequest) {
 }
 
 // POST - Start a new weekly reflection
+// MULTI-TENANCY: Creates reflection scoped to current organization
 export async function POST(_request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // MULTI-TENANCY: Get effective org ID
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+
+    if (!organizationId) {
+      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
+    }
+
     const weekId = getWeekId();
-    const checkInRef = adminDb.collection('users').doc(userId).collection('weeklyReflections').doc(weekId);
+    const docId = getWeeklyReflectionDocId(organizationId, userId, weekId);
+    const checkInRef = adminDb.collection('weekly_reflections').doc(docId);
     const existingDoc = await checkInRef.get();
 
     // If check-in already exists, return it
@@ -56,16 +93,27 @@ export async function POST(_request: NextRequest) {
       return NextResponse.json({ checkIn: { id: existingDoc.id, ...existingDoc.data() } });
     }
 
-    // Get user's current goal progress
-    const userRef = adminDb.collection('users').doc(userId);
-    const userDoc = await userRef.get();
-    const userData = userDoc.data();
-    const currentProgress = userData?.goalProgress || 0;
+    // Get user's current goal progress (from org_memberships for multi-tenancy)
+    let currentProgress = 0;
+    const membershipSnapshot = await adminDb.collection('org_memberships')
+      .where('userId', '==', userId)
+      .where('organizationId', '==', organizationId)
+      .limit(1)
+      .get();
+    
+    if (!membershipSnapshot.empty) {
+      currentProgress = membershipSnapshot.docs[0].data()?.goalProgress || 0;
+    } else {
+      // Legacy fallback
+      const userDoc = await adminDb.collection('users').doc(userId).get();
+      currentProgress = userDoc.data()?.goalProgress || 0;
+    }
 
     const now = new Date().toISOString();
     const newCheckIn: Omit<WeeklyReflectionCheckIn, 'id'> = {
       date: weekId,
       userId,
+      organizationId,
       onTrackStatus: 'not_sure',
       progress: currentProgress,
       previousProgress: currentProgress,
@@ -75,7 +123,7 @@ export async function POST(_request: NextRequest) {
 
     await checkInRef.set(newCheckIn);
 
-    return NextResponse.json({ checkIn: { id: weekId, ...newCheckIn } }, { status: 201 });
+    return NextResponse.json({ checkIn: { id: docId, ...newCheckIn } }, { status: 201 });
   } catch (error) {
     console.error('Error creating weekly reflection:', error);
     const message = error instanceof Error ? error.message : 'Failed to create weekly reflection';
@@ -84,17 +132,39 @@ export async function POST(_request: NextRequest) {
 }
 
 // PATCH - Update weekly reflection progress
+// MULTI-TENANCY: Updates reflection scoped to current organization
 export async function PATCH(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // MULTI-TENANCY: Get effective org ID
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+
+    if (!organizationId) {
+      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
+    }
+
     const updates = await request.json();
     const weekId = getWeekId();
-    const checkInRef = adminDb.collection('users').doc(userId).collection('weeklyReflections').doc(weekId);
-    const existingDoc = await checkInRef.get();
+    
+    // Try new top-level collection first
+    const docId = getWeeklyReflectionDocId(organizationId, userId, weekId);
+    let checkInRef = adminDb.collection('weekly_reflections').doc(docId);
+    let existingDoc = await checkInRef.get();
+
+    // Legacy fallback: Check user subcollection
+    if (!existingDoc.exists) {
+      const legacyRef = adminDb.collection('users').doc(userId).collection('weeklyReflections').doc(weekId);
+      existingDoc = await legacyRef.get();
+      if (existingDoc.exists) {
+        checkInRef = legacyRef as FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>;
+      }
+    }
 
     if (!existingDoc.exists) {
       return NextResponse.json({ error: 'Weekly reflection not found' }, { status: 404 });
@@ -111,11 +181,12 @@ export async function PATCH(request: NextRequest) {
       updatedData.completedAt = new Date().toISOString();
       delete updatedData.completedAt; // Remove the boolean flag
       
-      // Save to reflections collection for goal page
+      // Save to reflections collection for goal page (org-scoped)
       const progressChange = (existingData.progress || 0) - (existingData.previousProgress || 0);
       const reflectionData = {
         userId,
-        goalId: `${userId}_goal`,
+        organizationId,
+        goalId: `${organizationId}_${userId}_goal`,
         type: 'weekly',
         date: weekId,
         weekEndDate: new Date().toISOString().split('T')[0],
@@ -129,36 +200,51 @@ export async function PATCH(request: NextRequest) {
         updatedAt: new Date().toISOString(),
       };
 
-      // Save to reflections subcollection
+      // Save to top-level reflections collection with org scope
       await adminDb
-        .collection('users')
-        .doc(userId)
         .collection('reflections')
-        .doc(`weekly_${weekId}`)
+        .doc(`${organizationId}_${userId}_weekly_${weekId}`)
         .set(reflectionData);
 
-      // Update user's publicFocus field for profile display
+      // Update org_membership's publicFocus field for profile display
       const focusText = existingData.publicFocus || updates.publicFocus;
       if (focusText) {
         // Generate AI summary for the weekly focus
         const { summary: focusSummary } = await summarizeWeeklyFocus(focusText);
         
-        await adminDb.collection('users').doc(userId).update({
-          publicFocus: focusText,
-          publicFocusSummary: focusSummary,
-          publicFocusUpdatedAt: new Date().toISOString(),
-        });
+        // Update in org_memberships for multi-tenancy
+        const membershipSnapshot = await adminDb.collection('org_memberships')
+          .where('userId', '==', userId)
+          .where('organizationId', '==', organizationId)
+          .limit(1)
+          .get();
+        
+        if (!membershipSnapshot.empty) {
+          await membershipSnapshot.docs[0].ref.update({
+            publicFocus: focusText,
+            publicFocusSummary: focusSummary,
+            publicFocusUpdatedAt: new Date().toISOString(),
+          });
+        }
       }
 
       // Update completedAt in weeklyReflections
       updatedData.completedAt = new Date().toISOString();
     }
 
-    // If updating progress, also update user's goalProgress
+    // If updating progress, also update org_membership's goalProgress
     if (typeof updates.progress === 'number') {
-      await adminDb.collection('users').doc(userId).update({
-        goalProgress: updates.progress,
-      });
+      const membershipSnapshot = await adminDb.collection('org_memberships')
+        .where('userId', '==', userId)
+        .where('organizationId', '==', organizationId)
+        .limit(1)
+        .get();
+      
+      if (!membershipSnapshot.empty) {
+        await membershipSnapshot.docs[0].ref.update({
+          goalProgress: updates.progress,
+        });
+      }
     }
 
     // If marking goal as complete
@@ -166,12 +252,20 @@ export async function PATCH(request: NextRequest) {
       updatedData.goalCompleted = true;
       updatedData.completedAt = new Date().toISOString();
       
-      // Mark the goal as completed in user document
-      await adminDb.collection('users').doc(userId).update({
-        goalProgress: 100,
-        goalCompletedAt: new Date().toISOString(),
-        goalCompleted: true,
-      });
+      // Mark the goal as completed in org_membership (multi-tenancy)
+      const membershipSnapshot = await adminDb.collection('org_memberships')
+        .where('userId', '==', userId)
+        .where('organizationId', '==', organizationId)
+        .limit(1)
+        .get();
+      
+      if (!membershipSnapshot.empty) {
+        await membershipSnapshot.docs[0].ref.update({
+          goalProgress: 100,
+          goalCompletedAt: new Date().toISOString(),
+          goalCompleted: true,
+        });
+      }
     }
 
     await checkInRef.update(updatedData);

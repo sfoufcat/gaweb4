@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
 import Anthropic from '@anthropic-ai/sdk';
 import type { UserTrack } from '@/types';
 
@@ -183,10 +184,12 @@ Return ONLY this JSON:
  * Fetch user's completed tasks from the last 30 days for the given track.
  * This provides context for AI suggestions based on what the user has been working on.
  * Only fetches tasks that were completed while on this track.
+ * Scoped to the current organization for multi-tenancy.
  */
 async function getCompletedTaskHistory(
   userId: string,
-  _track: UserTrack
+  _track: UserTrack,
+  organizationId?: string | null
 ): Promise<string[]> {
   try {
     // Calculate 30 days ago
@@ -194,13 +197,20 @@ async function getCompletedTaskHistory(
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
     
-    // Fetch completed tasks from the last 30 days
-    // We filter by date range and completion status
-    const snapshot = await adminDb
+    // Build query with organization filtering for multi-tenancy
+    let query = adminDb
       .collection('tasks')
       .where('userId', '==', userId)
       .where('status', '==', 'completed')
-      .where('date', '>=', thirtyDaysAgoStr)
+      .where('date', '>=', thirtyDaysAgoStr);
+    
+    // Filter by organization if provided
+    if (organizationId) {
+      query = query.where('organizationId', '==', organizationId);
+    }
+    
+    // Fetch completed tasks from the last 30 days
+    const snapshot = await query
       .orderBy('date', 'desc')
       .limit(50) // Fetch more than we need, will dedupe and limit
       .get();
@@ -236,9 +246,17 @@ async function getCompletedTaskHistory(
 // RATE LIMITING
 // =============================================================================
 
-async function checkRateLimit(userId: string): Promise<{ allowed: boolean; remaining: number }> {
+/**
+ * Check rate limit for AI calls - scoped by organization for multi-tenancy
+ * Each user has separate rate limits per organization
+ */
+async function checkRateLimit(userId: string, organizationId?: string | null): Promise<{ allowed: boolean; remaining: number }> {
   const today = new Date().toISOString().split('T')[0];
-  const rateLimitRef = adminDb.collection('ai_rate_limits').doc(`${userId}_${today}`);
+  // Include organizationId in the rate limit key for multi-tenancy
+  const rateLimitKey = organizationId 
+    ? `${organizationId}_${userId}_${today}`
+    : `${userId}_${today}`;
+  const rateLimitRef = adminDb.collection('ai_rate_limits').doc(rateLimitKey);
   
   const doc = await rateLimitRef.get();
   
@@ -250,6 +268,7 @@ async function checkRateLimit(userId: string): Promise<{ allowed: boolean; remai
       count: 1,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      ...(organizationId && { organizationId }),
     });
     return { allowed: true, remaining: DAILY_LIMIT - 1 };
   }
@@ -282,6 +301,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
+    // Get current organization from tenant context for multi-tenancy
+    const organizationId = await getEffectiveOrgId();
+    
     // Parse request
     const payload: AIRequestPayload = await req.json();
     const { action, track, dailyTasks, backlogTasks, starterProgramContext, selectedTaskId } = payload;
@@ -291,8 +313,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
     
-    // Rate limit check
-    const rateLimit = await checkRateLimit(userId);
+    // Rate limit check - scoped by organization for multi-tenancy
+    const rateLimit = await checkRateLimit(userId, organizationId);
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: 'Daily AI limit reached. Try again tomorrow.', rateLimitExceeded: true },
@@ -307,8 +329,8 @@ export async function POST(req: Request) {
     
     switch (action) {
       case 'suggest_tasks_for_today':
-        // Fetch completed task history for smarter suggestions
-        const completedTaskHistory = await getCompletedTaskHistory(userId, track || 'general');
+        // Fetch completed task history for smarter suggestions (org-scoped)
+        const completedTaskHistory = await getCompletedTaskHistory(userId, track || 'general', organizationId);
         
         prompt = buildSuggestTasksPrompt(
           track || 'general',

@@ -28,6 +28,7 @@ export interface ChatPollVote {
 export interface ChatPollState {
   id: string;
   channelId: string;
+  organizationId: string;              // Multi-tenancy: Clerk Organization ID
   question: string;
   options: ChatPollOption[];
   settings: ChatPollSettings;

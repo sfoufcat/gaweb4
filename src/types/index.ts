@@ -260,6 +260,7 @@ export type HabitSource = 'track_default' | 'user';
 export interface Habit {
   id: string;
   userId: string;
+  organizationId: string;              // Multi-tenancy: Clerk Organization ID
   text: string;
   linkedRoutine?: string;
   frequencyType: FrequencyType;
@@ -353,6 +354,7 @@ export type TaskSourceType = 'user' | 'program';
 export interface Task {
   id: string;
   userId: string;
+  organizationId: string;              // Multi-tenancy: Clerk Organization ID
   title: string;
   status: TaskStatus;
   listType: TaskListType;
@@ -801,6 +803,7 @@ export interface MorningCheckIn {
   id: string;
   date: string; // YYYY-MM-DD
   userId: string;
+  organizationId: string;              // Multi-tenancy: Clerk Organization ID
   emotionalState: EmotionalState;
   userThought?: string; // What user typed/spoke in reframe step
   aiReframe?: string; // AI's reframed thought
@@ -842,6 +845,7 @@ export type ReflectionEmotionalState = EmotionalState | EveningEmotionalState;
 export interface DailyReflection {
   id: string;
   userId: string;
+  organizationId: string;              // Multi-tenancy: Clerk Organization ID
   goalId: string;
   type: 'daily';
   date: string; // ISO date YYYY-MM-DD
@@ -856,6 +860,7 @@ export interface DailyReflection {
 export interface WeeklyReflection {
   id: string;
   userId: string;
+  organizationId: string;              // Multi-tenancy: Clerk Organization ID
   goalId: string;
   type: 'weekly';
   date: string; // ISO date YYYY-MM-DD (start of week)
@@ -877,6 +882,7 @@ export interface WeeklyReflectionCheckIn {
   id: string;
   date: string; // YYYY-MM-DD (week identifier)
   userId: string;
+  organizationId: string;              // Multi-tenancy: Clerk Organization ID
   onTrackStatus: OnTrackStatus;
   progress: number; // 0-100 progress percentage
   previousProgress: number; // Previous progress for calculating change
@@ -916,6 +922,7 @@ export interface EveningCheckIn {
   id: string;
   date: string; // YYYY-MM-DD
   userId: string;
+  organizationId: string;              // Multi-tenancy: Clerk Organization ID
   emotionalState: EveningEmotionalState;
   reflectionText?: string; // Optional reflection note
   tasksCompleted: number;
@@ -927,8 +934,9 @@ export interface EveningCheckIn {
 
 // Daily Alignment & Streak Types
 export interface UserAlignment {
-  id: string; // Format: `${userId}_${YYYY-MM-DD}`
+  id: string; // Format: `${organizationId}_${userId}_${YYYY-MM-DD}`
   userId: string;
+  organizationId: string;              // Multi-tenancy: Clerk Organization ID
   date: string; // "YYYY-MM-DD" — normalized date
   didMorningCheckin: boolean;
   didSetTasks: boolean;
@@ -942,7 +950,9 @@ export interface UserAlignment {
 }
 
 export interface UserAlignmentSummary {
+  id: string; // Format: `${organizationId}_${userId}`
   userId: string;
+  organizationId: string;              // Multi-tenancy: Clerk Organization ID
   currentStreak: number; // consecutive days with fullyAligned true
   lastAlignedDate?: string; // last date with fullyAligned true (YYYY-MM-DD)
   updatedAt: string;
@@ -994,6 +1004,7 @@ export type NotificationType =
 export interface Notification {
   id: string;
   userId: string;
+  organizationId: string;              // Multi-tenancy: Clerk Organization ID
   type: NotificationType;
   title: string;
   body: string;
@@ -1144,8 +1155,9 @@ export interface CoachingCallData {
 
 // Main client coaching data model
 export interface ClientCoachingData {
-  id: string; // Same as userId
+  id: string; // Format: `${organizationId}_${userId}`
   userId: string;
+  organizationId: string;              // Multi-tenancy: Clerk Organization ID
   coachId: string;
   coachingPlan: CoachingPlanType;
   startDate: string; // When coaching started
@@ -1508,6 +1520,45 @@ export interface OrgMembership {
   joinedAt: string;                    // ISO timestamp when user joined this org
   createdAt: string;                   // ISO timestamp
   updatedAt: string;                   // ISO timestamp
+  
+  // ============================================
+  // PROFILE FIELDS (per-organization)
+  // These fields allow users to have different profiles per org
+  // ============================================
+  
+  // Basic profile (can differ per org)
+  firstName?: string;
+  lastName?: string;
+  imageUrl?: string;
+  bio?: string;
+  
+  // Goal fields (per-org goals)
+  goal?: string;
+  goalTargetDate?: string;
+  goalSummary?: string;
+  goalCompleted?: boolean;
+  goalProgress?: number;               // 0-100 percentage
+  
+  // Mission/Identity (per-org)
+  identity?: string;
+  
+  // Onboarding data (per-org)
+  workdayStyle?: string;
+  businessStage?: string;
+  obstacles?: string[];
+  goalImpact?: string;
+  supportNeeds?: string[];
+  onboardingStatus?: OnboardingStatus;
+  hasCompletedOnboarding?: boolean;
+  
+  // Preferences (per-org)
+  timezone?: string;
+  weeklyFocus?: string;
+  
+  // Coaching (per-org - coach assignment within this org)
+  coachId?: string | null;
+  coachingStatus?: CoachingStatus;
+  coachingPlan?: CoachingPlan;
 }
 
 /**

@@ -10,7 +10,6 @@ import { useCurrentUserStoryAvailability } from '@/hooks/useUserStoryAvailabilit
 import { useStoryViewTracking, useStoryViewStatus } from '@/hooks/useStoryViewTracking';
 import { HabitCheckInModal } from '@/components/habits/HabitCheckInModal';
 import { DailyFocusSection } from '@/components/tasks/DailyFocusSection';
-import { AISupportBar } from '@/components/ai-support';
 import { StoryAvatar } from '@/components/stories/StoryAvatar';
 import { AlignmentGauge } from '@/components/alignment';
 import { NotificationBell } from '@/components/notifications';
@@ -1632,11 +1631,6 @@ export default function Dashboard() {
           onLoadProgramTasks={async () => { await syncProgramTasks(); }}
         />
         </div>
-      )}
-
-      {/* AI SUPPORT BAR - Between Daily Focus and Habits */}
-      {!shouldHideDailyFocus && !isEveningCheckInCompleted && (
-        <AISupportBar onTasksChange={storyAvailability.refetch} />
       )}
 
       {/* HABITS SECTION */}

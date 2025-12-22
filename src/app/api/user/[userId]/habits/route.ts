@@ -1,11 +1,14 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
 import type { Habit } from '@/types';
 
 /**
  * GET /api/user/[userId]/habits
  * Fetches another user's habits (active, non-private habits only)
+ * 
+ * MULTI-TENANCY: Only returns habits within the current organization
  */
 export async function GET(
   request: Request,
@@ -20,10 +23,18 @@ export async function GET(
 
     const { userId: targetUserId } = await params;
 
-    // Fetch habits for this user
-    const habitsSnapshot = await adminDb.collection('habits')
-      .where('userId', '==', targetUserId)
-      .get();
+    // MULTI-TENANCY: Get current organization
+    const organizationId = await getEffectiveOrgId();
+
+    // Build query with organization filtering
+    let query = adminDb.collection('habits').where('userId', '==', targetUserId);
+    
+    // Filter by organization if we have one (for multi-tenancy)
+    if (organizationId) {
+      query = query.where('organizationId', '==', organizationId);
+    }
+
+    const habitsSnapshot = await query.get();
 
     const habits: Habit[] = [];
 

@@ -86,6 +86,7 @@ export function DailyFocusSection({
     deleteTask,
     markComplete,
     reorderTasks,
+    fetchTasks,
   } = useTasks({ date: today });
   
   // Get enrollment for program badge
@@ -425,6 +426,7 @@ export function DailyFocusSection({
                     onClick={() => handleTaskClick(task)}
                     isDraggable={true}
                     trackDisplayName={programDisplayName || undefined}
+                    onTaskUpdate={fetchTasks}
                   />
                 ))}
               </SortableContext>
@@ -538,6 +540,7 @@ export function DailyFocusSection({
                             onClick={() => handleTaskClick(task)}
                             isDraggable={true}
                             trackDisplayName={programDisplayName || undefined}
+                            onTaskUpdate={fetchTasks}
                           />
                         ))}
                       </SortableContext>

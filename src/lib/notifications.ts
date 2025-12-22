@@ -18,6 +18,7 @@ export interface NotifyUserInput {
   title: string;
   body: string;
   actionRoute?: string;
+  organizationId?: string;
 }
 
 export interface SendNotificationEmailParams {
@@ -214,10 +215,11 @@ async function getUserById(userId: string): Promise<FirebaseUser | null> {
  * are enforced BEFORE calling this function, so email sending respects those rules.
  */
 export async function notifyUser(input: NotifyUserInput): Promise<string> {
-  const { userId, type, title, body, actionRoute } = input;
+  const { userId, type, title, body, actionRoute, organizationId } = input;
 
   // 1) Create in-app notification document
-  const notificationData: Omit<Notification, 'id'> = {
+  // Note: organizationId is required for multi-tenancy, but we support legacy notifications without it
+  const notificationData = {
     userId,
     type,
     title,
@@ -225,7 +227,8 @@ export async function notifyUser(input: NotifyUserInput): Promise<string> {
     actionRoute: actionRoute ?? undefined,
     createdAt: new Date().toISOString(),
     read: false,
-  };
+    ...(organizationId && { organizationId }),
+  } as Omit<Notification, 'id'>;
 
   const notificationRef = await adminDb.collection('notifications').add(notificationData);
 
@@ -260,23 +263,30 @@ export async function notifyUser(input: NotifyUserInput): Promise<string> {
  * @param userId The user's ID
  * @param type The notification type to check
  * @param timezone Optional: User's timezone for accurate "today" calculation
+ * @param organizationId Optional: Organization ID for multi-tenancy
  */
 export async function hasNotificationForToday(
   userId: string,
   type: NotificationType,
-  timezone?: string
+  timezone?: string,
+  organizationId?: string
 ): Promise<boolean> {
   // Get today's date in the user's timezone
   const todayStr = getTodayInTimezone(timezone || DEFAULT_TIMEZONE);
   const todayStart = new Date(todayStr + 'T00:00:00.000Z').toISOString();
 
-  const snapshot = await adminDb
+  let query = adminDb
     .collection('notifications')
     .where('userId', '==', userId)
     .where('type', '==', type)
-    .where('createdAt', '>=', todayStart)
-    .limit(1)
-    .get();
+    .where('createdAt', '>=', todayStart);
+
+  // Filter by organization if provided (for multi-tenancy)
+  if (organizationId) {
+    query = query.where('organizationId', '==', organizationId);
+  }
+
+  const snapshot = await query.limit(1).get();
 
   return !snapshot.empty;
 }
@@ -287,10 +297,12 @@ export async function hasNotificationForToday(
  * 
  * @param userId The user's ID
  * @param timezone Optional: User's timezone for accurate "today" calculation
+ * @param organizationId Optional: Organization ID for multi-tenancy
  */
 export async function hasAnyEveningNotificationForToday(
   userId: string,
-  timezone?: string
+  timezone?: string,
+  organizationId?: string
 ): Promise<boolean> {
   // Get today's date in the user's timezone
   const todayStr = getTodayInTimezone(timezone || DEFAULT_TIMEZONE);
@@ -303,13 +315,18 @@ export async function hasAnyEveningNotificationForToday(
   ];
 
   for (const type of eveningTypes) {
-    const snapshot = await adminDb
+    let query = adminDb
       .collection('notifications')
       .where('userId', '==', userId)
       .where('type', '==', type)
-      .where('createdAt', '>=', todayStart)
-      .limit(1)
-      .get();
+      .where('createdAt', '>=', todayStart);
+
+    // Filter by organization if provided (for multi-tenancy)
+    if (organizationId) {
+      query = query.where('organizationId', '==', organizationId);
+    }
+
+    const snapshot = await query.limit(1).get();
 
     if (!snapshot.empty) {
       return true;
@@ -333,9 +350,13 @@ export function getWeekIdentifier(date: Date = new Date()): string {
 
 /**
  * Check if a weekly reflection notification exists for the current week
+ * 
+ * @param userId The user's ID
+ * @param organizationId Optional: Organization ID for multi-tenancy
  */
 export async function hasWeeklyReflectionNotificationForThisWeek(
-  userId: string
+  userId: string,
+  organizationId?: string
 ): Promise<boolean> {
   
   // Get start and end of current week
@@ -349,28 +370,39 @@ export async function hasWeeklyReflectionNotificationForThisWeek(
   sunday.setDate(monday.getDate() + 6);
   sunday.setHours(23, 59, 59, 999);
 
-  const snapshot = await adminDb
+  let query = adminDb
     .collection('notifications')
     .where('userId', '==', userId)
     .where('type', '==', 'weekly_reflection')
     .where('createdAt', '>=', monday.toISOString())
-    .where('createdAt', '<=', sunday.toISOString())
-    .limit(1)
-    .get();
+    .where('createdAt', '<=', sunday.toISOString());
+
+  // Filter by organization if provided (for multi-tenancy)
+  if (organizationId) {
+    query = query.where('organizationId', '==', organizationId);
+  }
+
+  const snapshot = await query.limit(1).get();
 
   return !snapshot.empty;
 }
 
 /**
- * Mark all unread notifications as read for a user
+ * Mark all unread notifications as read for a user within an organization
  * Called when user opens the notification panel
  */
-export async function markAllNotificationsAsRead(userId: string): Promise<number> {
-  const snapshot = await adminDb
+export async function markAllNotificationsAsRead(userId: string, organizationId?: string): Promise<number> {
+  let query = adminDb
     .collection('notifications')
     .where('userId', '==', userId)
-    .where('read', '==', false)
-    .get();
+    .where('read', '==', false);
+
+  // Filter by organization if provided (for multi-tenancy)
+  if (organizationId) {
+    query = query.where('organizationId', '==', organizationId);
+  }
+
+  const snapshot = await query.get();
 
   if (snapshot.empty) {
     return 0;
@@ -387,36 +419,59 @@ export async function markAllNotificationsAsRead(userId: string): Promise<number
 
 /**
  * Mark a single notification as read
+ * Optionally verify it belongs to the given organization
  */
-export async function markNotificationAsRead(notificationId: string): Promise<void> {
+export async function markNotificationAsRead(notificationId: string, organizationId?: string): Promise<void> {
+  if (organizationId) {
+    // Verify the notification belongs to this organization before updating
+    const doc = await adminDb.collection('notifications').doc(notificationId).get();
+    if (doc.exists && doc.data()?.organizationId !== organizationId) {
+      throw new Error('Notification does not belong to this organization');
+    }
+  }
+  
   await adminDb.collection('notifications').doc(notificationId).update({
     read: true,
   });
 }
 
 /**
- * Get user's unread notification count
+ * Get user's unread notification count within an organization
  */
-export async function getUnreadNotificationCount(userId: string): Promise<number> {
-  const snapshot = await adminDb
+export async function getUnreadNotificationCount(userId: string, organizationId?: string): Promise<number> {
+  let query = adminDb
     .collection('notifications')
     .where('userId', '==', userId)
-    .where('read', '==', false)
-    .get();
+    .where('read', '==', false);
+
+  // Filter by organization if provided (for multi-tenancy)
+  if (organizationId) {
+    query = query.where('organizationId', '==', organizationId);
+  }
+
+  const snapshot = await query.get();
 
   return snapshot.size;
 }
 
 /**
- * Get user's recent notifications (for display in panel)
+ * Get user's recent notifications (for display in panel) within an organization
  */
 export async function getUserNotifications(
   userId: string,
-  limit: number = 20
+  limit: number = 20,
+  organizationId?: string
 ): Promise<Notification[]> {
-  const snapshot = await adminDb
+  let query = adminDb
     .collection('notifications')
-    .where('userId', '==', userId)
+    .where('userId', '==', userId);
+
+  // Filter by organization if provided (for multi-tenancy)
+  if (organizationId) {
+    query = query.where('organizationId', '==', organizationId);
+  }
+
+  const snapshot = await query
     .orderBy('createdAt', 'desc')
     .limit(limit)
     .get();

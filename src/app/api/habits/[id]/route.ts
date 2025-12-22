@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
 import type { HabitFormData } from '@/types';
 
 // GET /api/habits/[id] - Fetch a single habit
@@ -27,6 +28,12 @@ export async function GET(
     // Verify ownership
     if (habitData?.userId !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // MULTI-TENANCY: Verify habit belongs to current organization
+    const organizationId = await getEffectiveOrgId();
+    if (organizationId && habitData?.organizationId && habitData.organizationId !== organizationId) {
+      return NextResponse.json({ error: 'Habit not found' }, { status: 404 });
     }
 
     return NextResponse.json({ habit });
@@ -63,6 +70,12 @@ export async function PATCH(
     // Verify ownership
     if (habit?.userId !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // MULTI-TENANCY: Verify habit belongs to current organization
+    const organizationId = await getEffectiveOrgId();
+    if (organizationId && habit?.organizationId && habit.organizationId !== organizationId) {
+      return NextResponse.json({ error: 'Habit not found' }, { status: 404 });
     }
 
     const body: Partial<HabitFormData> = await req.json();
@@ -118,6 +131,12 @@ export async function DELETE(
     // Verify ownership
     if (habit?.userId !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // MULTI-TENANCY: Verify habit belongs to current organization
+    const organizationId = await getEffectiveOrgId();
+    if (organizationId && habit?.organizationId && habit.organizationId !== organizationId) {
+      return NextResponse.json({ error: 'Habit not found' }, { status: 404 });
     }
 
     // Archive instead of delete

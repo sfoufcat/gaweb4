@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
 import type { 
   ClientCoachingData, 
   UserRole, 
@@ -11,12 +12,15 @@ import type {
   CoachingActionItem,
   CoachingSessionHistory,
   CoachingResource,
-  CoachPrivateNotes
+  CoachPrivateNotes,
+  ClerkPublicMetadata
 } from '@/types';
 
 /**
  * GET /api/coaching/clients/[clientId]
  * Fetches detailed coaching data for a specific client
+ * 
+ * MULTI-TENANCY: Coaching data is scoped per organization
  */
 export async function GET(
   request: NextRequest,
@@ -30,7 +34,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const publicMetadata = sessionClaims?.publicMetadata as { role?: UserRole; orgRole?: OrgRole };
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata & { role?: UserRole; orgRole?: OrgRole };
     const role = publicMetadata?.role;
     const orgRole = publicMetadata?.orgRole;
 
@@ -38,14 +42,33 @@ export async function GET(
       return NextResponse.json({ error: 'Coach access required' }, { status: 403 });
     }
 
-    // Fetch coaching data
-    const coachingDoc = await adminDb.collection('clientCoachingData').doc(clientId).get();
+    // MULTI-TENANCY: Get effective org ID
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+
+    if (!organizationId) {
+      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
+    }
+
+    // Fetch coaching data (org-scoped document ID: organizationId_clientId)
+    const orgScopedDocId = `${organizationId}_${clientId}`;
+    let coachingDoc = await adminDb.collection('clientCoachingData').doc(orgScopedDocId).get();
+
+    // Legacy fallback: try clientId only
+    if (!coachingDoc.exists) {
+      coachingDoc = await adminDb.collection('clientCoachingData').doc(clientId).get();
+    }
 
     if (!coachingDoc.exists) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
 
     const coachingData = { id: coachingDoc.id, ...coachingDoc.data() } as ClientCoachingData;
+
+    // MULTI-TENANCY: Verify coaching data belongs to current organization
+    if (coachingData.organizationId && coachingData.organizationId !== organizationId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
 
     // Verify coach has access to this client (global coach role or assigned org coach)
     const isGlobalCoach = role === 'coach';
@@ -54,22 +77,47 @@ export async function GET(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Fetch user details
-    const userDoc = await adminDb.collection('users').doc(clientId).get();
+    // Fetch user details (try org_memberships first, then users)
     let user: Partial<FirebaseUser> | null = null;
-    if (userDoc.exists) {
-      const userData = userDoc.data() as FirebaseUser;
+    
+    // Get user's profile from org_memberships (multi-tenancy)
+    const membershipSnapshot = await adminDb.collection('org_memberships')
+      .where('userId', '==', clientId)
+      .where('organizationId', '==', organizationId)
+      .limit(1)
+      .get();
+    
+    if (!membershipSnapshot.empty) {
+      const memberData = membershipSnapshot.docs[0].data();
       user = {
-        id: userDoc.id,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        email: userData.email,
-        imageUrl: userData.imageUrl,
-        timezone: userData.timezone,
-        goal: userData.goal,
-        goalTargetDate: userData.goalTargetDate,
-        goalProgress: userData.goalProgress,
+        id: clientId,
+        firstName: memberData.firstName,
+        lastName: memberData.lastName,
+        imageUrl: memberData.imageUrl,
+        timezone: memberData.timezone,
+        goal: memberData.goal,
+        goalTargetDate: memberData.goalTargetDate,
+        goalProgress: memberData.goalProgress,
       };
+    }
+    
+    // Fallback: get from users collection
+    if (!user) {
+      const userDoc = await adminDb.collection('users').doc(clientId).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data() as FirebaseUser;
+        user = {
+          id: userDoc.id,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          email: userData.email,
+          imageUrl: userData.imageUrl,
+          timezone: userData.timezone,
+          goal: userData.goal,
+          goalTargetDate: userData.goalTargetDate,
+          goalProgress: userData.goalProgress,
+        };
+      }
     }
 
     // Fetch coach info

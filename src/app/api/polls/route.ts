@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
 import type { ChatPollState } from '@/types/poll';
 
 /**
  * POST /api/polls
  * Creates a new poll and returns the poll ID
+ * Polls are scoped to the current organization for multi-tenancy
  */
 export async function POST(request: NextRequest) {
   try {
@@ -13,6 +15,9 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Get current organization from tenant context
+    const organizationId = await getEffectiveOrgId();
 
     const body = await request.json();
     const { question, options, settings, channelId } = body;
@@ -46,8 +51,8 @@ export async function POST(request: NextRequest) {
 
     const now = new Date().toISOString();
 
-    // Create poll document
-    const pollData: Omit<ChatPollState, 'id'> = {
+    // Create poll document with organizationId for multi-tenancy
+    const pollData = {
       channelId,
       question: question.trim(),
       options: validOptions.map((opt: { id?: string; text: string }) => ({
@@ -67,7 +72,9 @@ export async function POST(request: NextRequest) {
       votes: [],
       votesByOption: {},
       totalVotes: 0,
-    };
+      // Add organizationId for multi-tenancy
+      ...(organizationId && { organizationId }),
+    } as Omit<ChatPollState, 'id'>;
 
     // Initialize votesByOption
     pollData.options.forEach((opt) => {
@@ -95,6 +102,7 @@ export async function POST(request: NextRequest) {
 /**
  * GET /api/polls?id=pollId
  * Get a poll by ID
+ * Verifies the poll belongs to the user's current organization
  */
 export async function GET(request: NextRequest) {
   try {
@@ -102,6 +110,9 @@ export async function GET(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Get current organization from tenant context
+    const organizationId = await getEffectiveOrgId();
 
     const { searchParams } = new URL(request.url);
     const pollId = searchParams.get('id');
@@ -117,6 +128,11 @@ export async function GET(request: NextRequest) {
     }
 
     const pollData = pollDoc.data() as Omit<ChatPollState, 'id'>;
+    
+    // Verify poll belongs to the current organization (multi-tenancy check)
+    if (organizationId && pollData.organizationId && pollData.organizationId !== organizationId) {
+      return NextResponse.json({ error: 'Poll not found' }, { status: 404 });
+    }
     
     // Get user's own votes
     const userVotesSnapshot = await adminDb

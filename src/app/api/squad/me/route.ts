@@ -2,6 +2,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getSquadStatsWithCache } from '@/lib/squad-alignment';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
 import type { Squad, SquadMember, SquadStats, ClerkPublicMetadata } from '@/types';
 
 /**
@@ -222,19 +223,16 @@ export async function GET(request: Request) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    // Get user's current organizationId for multi-tenancy filtering
-    // First try from session claims (most reliable for current session)
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    let userOrgId = publicMetadata?.organizationId || null;
-    
     // Get user document to find squad IDs
     const userDoc = await adminDb.collection('users').doc(userId).get();
     const userData = userDoc.exists ? userDoc.data() : null;
     
-    // Fallback: get organizationId from user document if not in session
-    if (!userOrgId && userData?.organizationId) {
-      userOrgId = userData.organizationId;
-    }
+    // MULTI-TENANCY: Get effective org ID
+    // In tenant mode (subdomain): uses x-tenant-org-id header from middleware
+    // In platform mode: falls back to user's org from Clerk session
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userSessionOrgId = publicMetadata?.organizationId || userData?.organizationId || null;
+    const userOrgId = await getEffectiveOrgId(userSessionOrgId);
     
     // Get squad IDs - support both new dual fields and legacy squadId
     let standardSquadId = userData?.standardSquadId || null;

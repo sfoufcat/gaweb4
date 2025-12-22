@@ -6,6 +6,8 @@
  * - Delete track-default habits when user changes track (keeps user-created habits)
  * 
  * Now supports CMS-backed habits from database with fallback to hard-coded defaults.
+ * 
+ * MULTI-TENANCY: All operations are scoped by organizationId
  */
 
 import { adminDb } from './firebase-admin';
@@ -17,14 +19,23 @@ import type { UserTrack, Habit, HabitSource } from '@/types';
 // ============================================================================
 
 /**
- * Count active (non-archived) habits for a user
+ * Count active (non-archived) habits for a user within an organization
+ * 
+ * @param userId - The user's ID
+ * @param organizationId - The organization ID for multi-tenancy
  */
-async function countActiveHabits(userId: string): Promise<number> {
-  const snapshot = await adminDb
+async function countActiveHabits(userId: string, organizationId?: string): Promise<number> {
+  let query = adminDb
     .collection('habits')
     .where('userId', '==', userId)
-    .where('archived', '==', false)
-    .get();
+    .where('archived', '==', false);
+  
+  // MULTI-TENANCY: Filter by organization if provided
+  if (organizationId) {
+    query = query.where('organizationId', '==', organizationId);
+  }
+  
+  const snapshot = await query.get();
   
   return snapshot.size;
 }
@@ -42,13 +53,17 @@ async function countActiveHabits(userId: string): Promise<number> {
  * - Never overrides user-created habits
  * - These are Day 1 habits from the Starter Program
  * 
+ * MULTI-TENANCY: Habits are created within the specified organization
+ * 
  * @param userId - The user's ID
  * @param trackId - The track to create habits for
+ * @param organizationId - The organization ID for multi-tenancy
  * @returns Object with number of habits created
  */
 export async function createDefaultHabitsForTrack(
   userId: string,
-  trackId: UserTrack
+  trackId: UserTrack,
+  organizationId?: string
 ): Promise<{ habitsCreated: number; habitIds: string[] }> {
   // Get default habits from hard-coded config
   // Track CMS deprecated - habits now come from program enrollment
@@ -59,8 +74,8 @@ export async function createDefaultHabitsForTrack(
     return { habitsCreated: 0, habitIds: [] };
   }
   
-  // Check how many active habits user already has
-  const existingHabitCount = await countActiveHabits(userId);
+  // Check how many active habits user already has (within org)
+  const existingHabitCount = await countActiveHabits(userId, organizationId);
   const maxHabits = 3;
   
   // If user already has 3+ habits, don't add any
@@ -85,13 +100,18 @@ export async function createDefaultHabitsForTrack(
     }
     
     // Check if this habit already exists (prevent duplicates on re-selection)
-    const existingSnapshot = await adminDb
+    // MULTI-TENANCY: Include organizationId in the query
+    let existingQuery = adminDb
       .collection('habits')
       .where('userId', '==', userId)
       .where('source', '==', 'track_default')
-      .where('trackDefaultId', '==', template.id)
-      .limit(1)
-      .get();
+      .where('trackDefaultId', '==', template.id);
+    
+    if (organizationId) {
+      existingQuery = existingQuery.where('organizationId', '==', organizationId);
+    }
+    
+    const existingSnapshot = await existingQuery.limit(1).get();
     
     if (!existingSnapshot.empty) {
       console.log(`[HABIT_ENGINE] Habit "${template.title}" already exists for user ${userId}, skipping`);
@@ -118,8 +138,8 @@ export async function createDefaultHabitsForTrack(
         break;
     }
     
-    // Create the habit
-    const habitData: Omit<Habit, 'id'> = {
+    // Create the habit with organizationId for multi-tenancy
+    const habitData = {
       userId,
       text: template.title,
       linkedRoutine: template.description || '',
@@ -139,7 +159,9 @@ export async function createDefaultHabitsForTrack(
       trackDefaultId: template.id,
       createdAt: now,
       updatedAt: now,
-    };
+      // MULTI-TENANCY: Include organizationId if provided
+      ...(organizationId && { organizationId }),
+    } as Omit<Habit, 'id'>;
     
     const docRef = await adminDb.collection('habits').add(habitData);
     habitIds.push(docRef.id);
@@ -156,18 +178,27 @@ export async function createDefaultHabitsForTrack(
 // ============================================================================
 
 /**
- * Delete only track-default habits for a user
+ * Delete only track-default habits for a user within an organization
  * User-created habits (source === 'user' or no source) are preserved
  * 
+ * MULTI-TENANCY: Only deletes habits within the specified organization
+ * 
  * @param userId - The user's ID
+ * @param organizationId - The organization ID for multi-tenancy
  * @returns Number of habits deleted
  */
-export async function deleteTrackDefaultHabits(userId: string): Promise<number> {
-  const snapshot = await adminDb
+export async function deleteTrackDefaultHabits(userId: string, organizationId?: string): Promise<number> {
+  let query = adminDb
     .collection('habits')
     .where('userId', '==', userId)
-    .where('source', '==', 'track_default')
-    .get();
+    .where('source', '==', 'track_default');
+  
+  // MULTI-TENANCY: Filter by organization if provided
+  if (organizationId) {
+    query = query.where('organizationId', '==', organizationId);
+  }
+  
+  const snapshot = await query.get();
   
   if (snapshot.empty) {
     console.log(`[HABIT_ENGINE] No track-default habits to delete for user ${userId}`);
@@ -188,18 +219,26 @@ export async function deleteTrackDefaultHabits(userId: string): Promise<number> 
 // ============================================================================
 
 /**
- * Check if a user has track-default habits
+ * Check if a user has track-default habits within an organization
+ * 
+ * MULTI-TENANCY: Only checks within the specified organization
  * 
  * @param userId - The user's ID
+ * @param organizationId - The organization ID for multi-tenancy
  * @returns True if user has at least one track-default habit
  */
-export async function hasTrackDefaultHabits(userId: string): Promise<boolean> {
-  const snapshot = await adminDb
+export async function hasTrackDefaultHabits(userId: string, organizationId?: string): Promise<boolean> {
+  let query = adminDb
     .collection('habits')
     .where('userId', '==', userId)
-    .where('source', '==', 'track_default')
-    .limit(1)
-    .get();
+    .where('source', '==', 'track_default');
+  
+  // MULTI-TENANCY: Filter by organization if provided
+  if (organizationId) {
+    query = query.where('organizationId', '==', organizationId);
+  }
+  
+  const snapshot = await query.limit(1).get();
   
   return !snapshot.empty;
 }
@@ -217,23 +256,27 @@ export async function hasTrackDefaultHabits(userId: string): Promise<boolean> {
  * 
  * User-created habits are ALWAYS preserved.
  * 
+ * MULTI-TENANCY: Operations are scoped to the specified organization
+ * 
  * @param userId - The user's ID
  * @param newTrackId - The new track ID
+ * @param organizationId - The organization ID for multi-tenancy
  * @returns Object with stats about the migration
  */
 export async function migrateHabitsForTrackChange(
   userId: string,
-  newTrackId: UserTrack
+  newTrackId: UserTrack,
+  organizationId?: string
 ): Promise<{
   deleted: number;
   created: number;
   habitIds: string[];
 }> {
-  // Step 1: Delete existing track-default habits
-  const deleted = await deleteTrackDefaultHabits(userId);
+  // Step 1: Delete existing track-default habits (within org)
+  const deleted = await deleteTrackDefaultHabits(userId, organizationId);
   
-  // Step 2: Create new track-default habits
-  const { habitsCreated, habitIds } = await createDefaultHabitsForTrack(userId, newTrackId);
+  // Step 2: Create new track-default habits (within org)
+  const { habitsCreated, habitIds } = await createDefaultHabitsForTrack(userId, newTrackId, organizationId);
   
   console.log(`[HABIT_ENGINE] Track change migration complete: deleted ${deleted}, created ${habitsCreated}`);
   

@@ -171,7 +171,14 @@ export function useCurrentUserStoryAvailability(): StoryAvailability {
   // Calculate story availability - user has story if they have goal OR day/week is closed
   const hasStory = data.hasActiveGoal || data.hasDayClosed || data.hasWeekClosed;
   const showRing = data.hasActiveGoal || data.hasDayClosed || data.hasWeekClosed;
-  const showCheck = (data.hasActiveGoal && data.hasTasksToday) || data.hasDayClosed || data.hasWeekClosed;
+  
+  // Weekly check-in completion only shows checkmark on weekends
+  // On weekdays, only morning check-in (via hasTasksToday) or evening check-in (hasDayClosed) shows checkmark
+  const isWeekend = (() => {
+    const day = new Date().getDay();
+    return day === 0 || day === 6; // Sunday or Saturday
+  })();
+  const showCheck = (data.hasActiveGoal && data.hasTasksToday) || data.hasDayClosed || (isWeekend && data.hasWeekClosed);
 
   // Generate content hash for view tracking
   // This changes when story content changes (morning/evening/weekly check-in, new day)
@@ -260,7 +267,14 @@ export function useUserStoryAvailability(userId: string): StoryAvailability {
   // Calculate story availability - user has story if they have goal OR day/week is closed
   const hasStory = data.hasActiveGoal || data.hasDayClosed || data.hasWeekClosed;
   const showRing = data.hasActiveGoal || data.hasDayClosed || data.hasWeekClosed;
-  const showCheck = (data.hasActiveGoal && data.hasTasksToday) || data.hasDayClosed || data.hasWeekClosed;
+  
+  // Weekly check-in completion only shows checkmark on weekends
+  // On weekdays, only morning check-in (via hasTasksToday) or evening check-in (hasDayClosed) shows checkmark
+  const isWeekend = (() => {
+    const day = new Date().getDay();
+    return day === 0 || day === 6; // Sunday or Saturday
+  })();
+  const showCheck = (data.hasActiveGoal && data.hasTasksToday) || data.hasDayClosed || (isWeekend && data.hasWeekClosed);
 
   // Generate content hash for view tracking
   // This changes when story content changes (morning/evening/weekly check-in, new day)

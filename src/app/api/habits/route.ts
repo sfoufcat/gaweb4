@@ -1,27 +1,58 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import type { CreateHabitRequest, Habit } from '@/types';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
+import type { CreateHabitRequest, Habit, ClerkPublicMetadata } from '@/types';
 
-// GET /api/habits - Fetch all habits for the user
+/**
+ * GET /api/habits - Fetch all habits for the user
+ * 
+ * MULTI-TENANCY: Habits are scoped per organization
+ */
 export async function GET() {
   try {
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch all user habits (no archived filter to support legacy data)
+    // MULTI-TENANCY: Get effective org ID
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+
+    if (!organizationId) {
+      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
+    }
+
+    // Fetch all user habits for this organization
     const habitsSnapshot = await adminDb
       .collection('habits')
       .where('userId', '==', userId)
+      .where('organizationId', '==', organizationId)
       .get();
     
     const allHabits: Habit[] = [];
     habitsSnapshot.forEach((doc) => {
       allHabits.push({ id: doc.id, ...doc.data() } as Habit);
     });
+
+    // Legacy fallback: Also check for habits without organizationId (to be migrated)
+    if (allHabits.length === 0) {
+      const legacySnapshot = await adminDb
+        .collection('habits')
+        .where('userId', '==', userId)
+        .get();
+      
+      legacySnapshot.forEach((doc) => {
+        const data = doc.data();
+        // Only include if no organizationId (legacy data)
+        if (!data.organizationId) {
+          allHabits.push({ id: doc.id, ...data } as Habit);
+        }
+      });
+    }
 
     // Filter out explicitly archived habits in memory (handles legacy data with missing 'archived' field)
     const activeHabits = allHabits.filter(h => h.archived !== true);
@@ -39,15 +70,28 @@ export async function GET() {
   }
 }
 
-// POST /api/habits - Create a new habit
+/**
+ * POST /api/habits - Create a new habit
+ * 
+ * MULTI-TENANCY: Habits are scoped per organization
+ */
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
     console.log('[Habits API] POST - User ID:', userId);
     
     if (!userId) {
       console.error('[Habits API] POST - No user ID found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // MULTI-TENANCY: Get effective org ID
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+
+    if (!organizationId) {
+      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
     }
 
     const body: CreateHabitRequest = await req.json();
@@ -70,6 +114,7 @@ export async function POST(req: Request) {
     // Build habit object, conditionally including optional fields
     const habitData: Record<string, unknown> = {
       userId,
+      organizationId, // Multi-tenancy: scope habit to organization
       text: body.text.trim(),
       frequencyType: body.frequencyType,
       frequencyValue: body.frequencyValue,

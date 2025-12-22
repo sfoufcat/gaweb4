@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
 import type { ChatPollState } from '@/types/poll';
 
 /**
  * POST /api/polls/vote
  * Cast or update a vote on a poll
+ * Verifies the poll belongs to the user's current organization
  * 
  * Body: { pollId: string, optionIds: string[] }
  */
@@ -16,6 +18,9 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Get current organization from tenant context
+    const organizationId = await getEffectiveOrgId();
 
     const body = await request.json();
     const { pollId, optionIds } = body;
@@ -38,6 +43,11 @@ export async function POST(request: NextRequest) {
     }
 
     const pollData = pollDoc.data() as Omit<ChatPollState, 'id'>;
+    
+    // Verify poll belongs to the current organization (multi-tenancy check)
+    if (organizationId && pollData.organizationId && pollData.organizationId !== organizationId) {
+      return NextResponse.json({ error: 'Poll not found' }, { status: 404 });
+    }
 
     // Check if poll is closed
     if (pollData.closedAt) {

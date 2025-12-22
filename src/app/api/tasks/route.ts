@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { updateAlignmentForToday } from '@/lib/alignment';
-import type { Task, CreateTaskRequest } from '@/types';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
+import type { Task, CreateTaskRequest, ClerkPublicMetadata } from '@/types';
 
 /**
  * GET /api/tasks?date=YYYY-MM-DD
@@ -11,7 +12,7 @@ import type { Task, CreateTaskRequest } from '@/types';
  */
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -28,11 +29,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid date format. Use YYYY-MM-DD' }, { status: 400 });
     }
 
-    // Fetch tasks for the requested date
-    const tasksRef = adminDb
+    // MULTI-TENANCY: Get effective org ID for filtering
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+
+    // Fetch tasks for the requested date, filtered by organization
+    let tasksRef = adminDb
       .collection('tasks')
       .where('userId', '==', userId)
       .where('date', '==', date);
+    
+    // Filter by organization if available (multi-tenancy)
+    if (organizationId) {
+      tasksRef = tasksRef.where('organizationId', '==', organizationId);
+    }
 
     const snapshot = await tasksRef.get();
     const tasks: Task[] = [];
@@ -41,15 +52,21 @@ export async function GET(request: NextRequest) {
       tasks.push({ id: doc.id, ...doc.data() } as Task);
     });
 
-    // Try to migrate pending tasks from previous days
+    // Try to migrate pending tasks from previous days (within same organization)
     // This is wrapped in try/catch so it doesn't break the API if index is missing
     try {
-      const previousTasksSnapshot = await adminDb
+      let previousTasksQuery = adminDb
         .collection('tasks')
         .where('userId', '==', userId)
         .where('status', '==', 'pending')
-        .where('date', '<', date)
-        .get();
+        .where('date', '<', date);
+      
+      // Filter by organization for multi-tenancy
+      if (organizationId) {
+        previousTasksQuery = previousTasksQuery.where('organizationId', '==', organizationId);
+      }
+      
+      const previousTasksSnapshot = await previousTasksQuery.get();
 
       // Migration attempted
       const tasksToMigrate: Task[] = [];
@@ -108,16 +125,22 @@ export async function GET(request: NextRequest) {
       // Continue without migration - return today's tasks only
     }
 
-    // Clean up completed backlog tasks from previous days
+    // Clean up completed backlog tasks from previous days (within same organization)
     // These tasks clutter the backlog and should be removed after the day ends
     try {
-      const completedBacklogSnapshot = await adminDb
+      let cleanupQuery = adminDb
         .collection('tasks')
         .where('userId', '==', userId)
         .where('status', '==', 'completed')
         .where('listType', '==', 'backlog')
-        .where('date', '<', date)
-        .get();
+        .where('date', '<', date);
+      
+      // Filter by organization for multi-tenancy
+      if (organizationId) {
+        cleanupQuery = cleanupQuery.where('organizationId', '==', organizationId);
+      }
+      
+      const completedBacklogSnapshot = await cleanupQuery.get();
 
       if (!completedBacklogSnapshot.empty) {
         const batch = adminDb.batch();
@@ -163,7 +186,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -193,10 +216,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid date format. Use YYYY-MM-DD' }, { status: 400 });
     }
 
-    // Get existing tasks for this date to determine order and listType
+    // MULTI-TENANCY: Get effective org ID
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+
+    if (!organizationId) {
+      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
+    }
+
+    // Get existing tasks for this date to determine order and listType (within org)
     const existingTasksSnapshot = await adminDb
       .collection('tasks')
       .where('userId', '==', userId)
+      .where('organizationId', '==', organizationId)
       .where('date', '==', date)
       .get();
 
@@ -225,6 +258,7 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString();
     const taskData: Omit<Task, 'id'> = {
       userId,
+      organizationId,                    // Multi-tenancy: scope task to organization
       title: title.trim(),
       status: 'pending',
       listType: finalListType,
@@ -242,11 +276,11 @@ export async function POST(request: NextRequest) {
     const docRef = await adminDb.collection('tasks').add(taskData);
     const task: Task = { id: docRef.id, ...taskData };
 
-    // Update alignment when a focus task is created for today
+    // Update alignment when a focus task is created for today (org-scoped)
     const today = new Date().toISOString().split('T')[0];
     if (finalListType === 'focus' && date === today) {
       try {
-        await updateAlignmentForToday(userId, { didSetTasks: true });
+        await updateAlignmentForToday(userId, organizationId, { didSetTasks: true });
       } catch (alignmentError) {
         // Don't fail task creation if alignment update fails
         console.error('[TASKS] Alignment update failed:', alignmentError);

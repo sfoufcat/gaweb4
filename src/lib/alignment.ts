@@ -7,6 +7,9 @@
  * 2. Set today's tasks (Daily Focus)
  * 3. Chat with your squad (send a message)
  * 4. Have an active goal
+ * 
+ * MULTI-TENANCY: All alignment data is scoped per-organization.
+ * Each user has separate alignment scores/streaks for each org they belong to.
  */
 
 import { adminDb } from './firebase-admin';
@@ -57,10 +60,19 @@ function getLastWeekdayDate(fromDate: string): string {
 }
 
 /**
- * Generate document ID for alignment: `${userId}_${date}`
+ * Generate document ID for alignment: `${organizationId}_${userId}_${date}`
+ * Multi-tenancy: Each user has separate alignment per organization
  */
-function getAlignmentDocId(userId: string, date: string): string {
-  return `${userId}_${date}`;
+function getAlignmentDocId(organizationId: string, userId: string, date: string): string {
+  return `${organizationId}_${userId}_${date}`;
+}
+
+/**
+ * Generate document ID for alignment summary: `${organizationId}_${userId}`
+ * Multi-tenancy: Each user has separate streak per organization
+ */
+function getAlignmentSummaryDocId(organizationId: string, userId: string): string {
+  return `${organizationId}_${userId}`;
 }
 
 /**
@@ -81,16 +93,32 @@ function calculateAlignmentScore(
 }
 
 /**
- * Check if user has an active goal
+ * Check if user has an active goal within an organization
+ * Multi-tenancy: Goals are stored in org_memberships collection
  */
-async function checkUserHasActiveGoal(userId: string): Promise<boolean> {
+async function checkUserHasActiveGoal(userId: string, organizationId: string): Promise<boolean> {
   try {
+    // First check org_memberships for org-scoped goal
+    const membershipSnapshot = await adminDb.collection('org_memberships')
+      .where('userId', '==', userId)
+      .where('organizationId', '==', organizationId)
+      .limit(1)
+      .get();
+    
+    if (!membershipSnapshot.empty) {
+      const memberData = membershipSnapshot.docs[0].data();
+      // User has an active goal if they have a goal and goalTargetDate set
+      // and the goal hasn't been completed or archived
+      if (memberData?.goal && memberData?.goalTargetDate && !memberData?.goalCompleted) {
+        return true;
+      }
+    }
+    
+    // Fallback to legacy users collection for backward compatibility
     const userDoc = await adminDb.collection('users').doc(userId).get();
     if (!userDoc.exists) return false;
     
     const userData = userDoc.data();
-    // User has an active goal if they have a goal and goalTargetDate set
-    // and the goal hasn't been completed or archived
     return !!(userData?.goal && userData?.goalTargetDate && !userData?.goalCompleted);
   } catch (error) {
     console.error('[ALIGNMENT] Error checking active goal:', error);
@@ -101,13 +129,15 @@ async function checkUserHasActiveGoal(userId: string): Promise<boolean> {
 /**
  * Check if user has set tasks for today (at least one focus task)
  * Also checks evening check-in as fallback (tasks may have moved to backlog)
+ * Multi-tenancy: Only checks tasks within the specified organization
  */
-async function checkUserHasSetTasks(userId: string, date: string): Promise<boolean> {
+async function checkUserHasSetTasks(userId: string, organizationId: string, date: string): Promise<boolean> {
   try {
-    // First, check if there are any focus tasks
+    // First, check if there are any focus tasks within this organization
     const tasksSnapshot = await adminDb
       .collection('tasks')
       .where('userId', '==', userId)
+      .where('organizationId', '==', organizationId)
       .where('date', '==', date)
       .where('listType', '==', 'focus')
       .limit(1)
@@ -117,18 +147,32 @@ async function checkUserHasSetTasks(userId: string, date: string): Promise<boole
       return true;
     }
 
-    // Fallback: Check evening check-in for historical task data
+    // Fallback: Check evening check-in for historical task data (top-level collection)
     // This handles the case where tasks were moved to backlog after evening check-in
+    const checkInId = `${organizationId}_${userId}_${date}`;
     const eveningCheckInDoc = await adminDb
+      .collection('evening_checkins')
+      .doc(checkInId)
+      .get();
+
+    if (eveningCheckInDoc.exists) {
+      const data = eveningCheckInDoc.data();
+      // If evening check-in has recorded tasks (either in snapshot or total count), user had set tasks
+      if (data?.completedTasksSnapshot?.length > 0 || data?.tasksTotal > 0) {
+        return true;
+      }
+    }
+
+    // Legacy fallback: Check user subcollection (for data migration period)
+    const legacyCheckInDoc = await adminDb
       .collection('users')
       .doc(userId)
       .collection('eveningCheckins')
       .doc(date)
       .get();
 
-    if (eveningCheckInDoc.exists) {
-      const data = eveningCheckInDoc.data();
-      // If evening check-in has recorded tasks (either in snapshot or total count), user had set tasks
+    if (legacyCheckInDoc.exists) {
+      const data = legacyCheckInDoc.data();
       if (data?.completedTasksSnapshot?.length > 0 || data?.tasksTotal > 0) {
         return true;
       }
@@ -142,14 +186,16 @@ async function checkUserHasSetTasks(userId: string, date: string): Promise<boole
 }
 
 /**
- * Get user alignment for a specific date
+ * Get user alignment for a specific date within an organization
+ * Multi-tenancy: Alignment is scoped per organization
  */
 export async function getUserAlignment(
   userId: string,
+  organizationId: string,
   date: string = getTodayDate()
 ): Promise<UserAlignment | null> {
   try {
-    const docId = getAlignmentDocId(userId, date);
+    const docId = getAlignmentDocId(organizationId, userId, date);
     const docRef = adminDb.collection('userAlignment').doc(docId);
     const doc = await docRef.get();
     
@@ -163,18 +209,21 @@ export async function getUserAlignment(
 }
 
 /**
- * Get user alignment summary (streak info)
+ * Get user alignment summary (streak info) within an organization
+ * Multi-tenancy: Streak is tracked separately per organization
  */
 export async function getUserAlignmentSummary(
-  userId: string
+  userId: string,
+  organizationId: string
 ): Promise<UserAlignmentSummary | null> {
   try {
-    const docRef = adminDb.collection('userAlignmentSummary').doc(userId);
+    const docId = getAlignmentSummaryDocId(organizationId, userId);
+    const docRef = adminDb.collection('userAlignmentSummary').doc(docId);
     const doc = await docRef.get();
     
     if (!doc.exists) return null;
     
-    return doc.data() as UserAlignmentSummary;
+    return { id: doc.id, ...doc.data() } as UserAlignmentSummary;
   } catch (error) {
     console.error('[ALIGNMENT] Error fetching alignment summary:', error);
     return null;
@@ -182,15 +231,17 @@ export async function getUserAlignmentSummary(
 }
 
 /**
- * Update alignment for today
+ * Update alignment for today within an organization
  * This is the main function called when user actions occur
+ * Multi-tenancy: Alignment is tracked separately per organization
  */
 export async function updateAlignmentForToday(
   userId: string,
+  organizationId: string,
   updates: AlignmentUpdatePayload
 ): Promise<UserAlignment | null> {
   const today = getTodayDate();
-  const docId = getAlignmentDocId(userId, today);
+  const docId = getAlignmentDocId(organizationId, userId, today);
   const docRef = adminDb.collection('userAlignment').doc(docId);
   const now = new Date().toISOString();
 
@@ -214,11 +265,11 @@ export async function updateAlignmentForToday(
     // For didSetTasks: if already true, keep it true; otherwise check updates or current state
     let didSetTasks = existingData.didSetTasks || false;
     if (!didSetTasks) {
-      didSetTasks = updates.didSetTasks ?? await checkUserHasSetTasks(userId, today);
+      didSetTasks = updates.didSetTasks ?? await checkUserHasSetTasks(userId, organizationId, today);
     }
     
-    // Always recompute hasActiveGoal to ensure it's current
-    const hasActiveGoal = await checkUserHasActiveGoal(userId);
+    // Always recompute hasActiveGoal to ensure it's current (org-scoped)
+    const hasActiveGoal = await checkUserHasActiveGoal(userId, organizationId);
 
     // Calculate score
     const alignmentScore = calculateAlignmentScore(
@@ -234,12 +285,13 @@ export async function updateAlignmentForToday(
 
     // If becoming fully aligned for the first time today, update streak
     if (fullyAligned && !wasFullyAlignedBefore) {
-      streakOnThisDay = await updateStreak(userId, today);
+      streakOnThisDay = await updateStreak(userId, organizationId, today);
     }
 
     // Prepare alignment data
     const alignmentData: Omit<UserAlignment, 'id'> = {
       userId,
+      organizationId,
       date: today,
       didMorningCheckin,
       didSetTasks,
@@ -257,7 +309,7 @@ export async function updateAlignmentForToday(
 
     // Invalidate squad cache so squad view shows updated alignment instantly
     // This is fire-and-forget - we don't wait for it and don't fail if it errors
-    invalidateUserSquadCache(userId).catch(err => {
+    invalidateUserSquadCache(userId, organizationId).catch(err => {
       console.error('[ALIGNMENT] Failed to invalidate squad cache (will refresh via TTL):', err);
     });
 
@@ -269,33 +321,47 @@ export async function updateAlignmentForToday(
 }
 
 /**
- * Find user's squad and invalidate its cache
+ * Find user's squad within an organization and invalidate its cache
  * Called after alignment updates to ensure squad view shows fresh data
+ * Multi-tenancy: Only invalidates squad cache for squads in the same organization
  */
-async function invalidateUserSquadCache(userId: string): Promise<void> {
-  // Find the user's squad membership
+async function invalidateUserSquadCache(userId: string, organizationId: string): Promise<void> {
+  // Find the user's squad membership within this organization
   const membershipSnapshot = await adminDb.collection('squadMembers')
     .where('userId', '==', userId)
-    .limit(1)
     .get();
 
   if (membershipSnapshot.empty) {
-    return; // User is not in a squad
+    return; // User is not in any squad
   }
 
-  const squadId = membershipSnapshot.docs[0].data().squadId;
-  await invalidateSquadCache(squadId);
+  // Find squad that belongs to this organization
+  for (const doc of membershipSnapshot.docs) {
+    const squadId = doc.data().squadId;
+    const squadDoc = await adminDb.collection('squads').doc(squadId).get();
+    
+    if (squadDoc.exists) {
+      const squadData = squadDoc.data();
+      // Only invalidate cache for squads in the current organization
+      if (squadData?.organizationId === organizationId) {
+        await invalidateSquadCache(squadId);
+        return; // Found and invalidated the relevant squad
+      }
+    }
+  }
 }
 
 /**
- * Check if the user's streak should be reset to 0
+ * Check if the user's streak should be reset to 0 within an organization
  * Called on page load to proactively show broken streaks
  * 
  * If the previous weekday wasn't fully aligned, reset streak to 0 immediately
  * rather than waiting until the user next hits 100%
+ * Multi-tenancy: Streak is tracked separately per organization
  */
-async function checkAndResetBrokenStreak(userId: string, today: string): Promise<void> {
-  const summaryRef = adminDb.collection('userAlignmentSummary').doc(userId);
+async function checkAndResetBrokenStreak(userId: string, organizationId: string, today: string): Promise<void> {
+  const summaryDocId = getAlignmentSummaryDocId(organizationId, userId);
+  const summaryRef = adminDb.collection('userAlignmentSummary').doc(summaryDocId);
   
   try {
     const summaryDoc = await summaryRef.get();
@@ -324,23 +390,25 @@ async function checkAndResetBrokenStreak(userId: string, today: string): Promise
       updatedAt: new Date().toISOString(),
     });
     
-    console.log(`[ALIGNMENT] Reset broken streak for user ${userId} (last aligned: ${summary.lastAlignedDate}, expected: ${lastWeekday})`);
+    console.log(`[ALIGNMENT] Reset broken streak for user ${userId} in org ${organizationId} (last aligned: ${summary.lastAlignedDate}, expected: ${lastWeekday})`);
   } catch (error) {
     console.error('[ALIGNMENT] Error checking/resetting broken streak:', error);
   }
 }
 
 /**
- * Update the user's streak when they become fully aligned
+ * Update the user's streak when they become fully aligned within an organization
  * Returns the new streak count
  * 
  * Weekend handling:
  * - If called on a weekend, returns current streak without modification (safety guard)
  * - When checking streak continuity, looks back to last weekday (skipping Sat/Sun)
  * - This ensures streaks bridge from Friday to Monday without breaking
+ * Multi-tenancy: Streak is tracked separately per organization
  */
-async function updateStreak(userId: string, today: string): Promise<number> {
-  const summaryRef = adminDb.collection('userAlignmentSummary').doc(userId);
+async function updateStreak(userId: string, organizationId: string, today: string): Promise<number> {
+  const summaryDocId = getAlignmentSummaryDocId(organizationId, userId);
+  const summaryRef = adminDb.collection('userAlignmentSummary').doc(summaryDocId);
   const now = new Date().toISOString();
 
   try {
@@ -376,8 +444,9 @@ async function updateStreak(userId: string, today: string): Promise<number> {
     }
 
     // Update summary
-    const summaryUpdate: UserAlignmentSummary = {
+    const summaryUpdate: Omit<UserAlignmentSummary, 'id'> = {
       userId,
+      organizationId,
       currentStreak,
       lastAlignedDate: today,
       updatedAt: now,
@@ -393,54 +462,57 @@ async function updateStreak(userId: string, today: string): Promise<number> {
 }
 
 /**
- * Get full alignment state for client (alignment + summary)
+ * Get full alignment state for client (alignment + summary) within an organization
+ * Multi-tenancy: Alignment is scoped per organization
  */
 export async function getFullAlignmentState(
   userId: string,
+  organizationId: string,
   date: string = getTodayDate()
 ): Promise<{ alignment: UserAlignment | null; summary: UserAlignmentSummary | null }> {
   const [alignment, summary] = await Promise.all([
-    getUserAlignment(userId, date),
-    getUserAlignmentSummary(userId),
+    getUserAlignment(userId, organizationId, date),
+    getUserAlignmentSummary(userId, organizationId),
   ]);
 
   return { alignment, summary };
 }
 
 /**
- * Initialize alignment for today if it doesn't exist
+ * Initialize alignment for today if it doesn't exist within an organization
  * This should be called when loading the homepage to ensure we have current state
+ * Multi-tenancy: Alignment is scoped per organization
  */
-export async function initializeAlignmentForToday(userId: string): Promise<UserAlignment> {
+export async function initializeAlignmentForToday(userId: string, organizationId: string): Promise<UserAlignment> {
   const today = getTodayDate();
   
   // Proactively check and reset broken streaks on page load
   // This ensures users see their streak as 0 immediately if they missed a day
-  await checkAndResetBrokenStreak(userId, today);
+  await checkAndResetBrokenStreak(userId, organizationId, today);
   
-  const existing = await getUserAlignment(userId, today);
+  const existing = await getUserAlignment(userId, organizationId, today);
   
   if (existing) {
     // Refresh hasActiveGoal as it can change (goal completed/archived)
-    const hasActiveGoal = await checkUserHasActiveGoal(userId);
+    const hasActiveGoal = await checkUserHasActiveGoal(userId, organizationId);
     
     // For didSetTasks: only check if currently false (it's "sticky" - once true, stays true)
     // This prevents losing credit when tasks are moved to backlog after evening check-in
     let didSetTasks = existing.didSetTasks;
     if (!didSetTasks) {
-      didSetTasks = await checkUserHasSetTasks(userId, today);
+      didSetTasks = await checkUserHasSetTasks(userId, organizationId, today);
     }
     
     // Only update if something changed
     if (existing.hasActiveGoal !== hasActiveGoal || existing.didSetTasks !== didSetTasks) {
-      return (await updateAlignmentForToday(userId, { hasActiveGoal, didSetTasks }))!;
+      return (await updateAlignmentForToday(userId, organizationId, { hasActiveGoal, didSetTasks }))!;
     }
     
     return existing;
   }
 
   // Create new alignment for today
-  const alignment = await updateAlignmentForToday(userId, {});
+  const alignment = await updateAlignmentForToday(userId, organizationId, {});
   return alignment!;
 }
 

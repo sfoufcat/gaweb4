@@ -3,7 +3,8 @@ import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { updateAlignmentForToday } from '@/lib/alignment';
 import { sendTasksCompletedNotification } from '@/lib/notifications';
-import type { Task, UpdateTaskRequest } from '@/types';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
+import type { Task, UpdateTaskRequest, ClerkPublicMetadata } from '@/types';
 
 /**
  * PATCH /api/tasks/:id
@@ -14,13 +15,18 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id } = await params;
     const body: UpdateTaskRequest = await request.json();
+
+    // MULTI-TENANCY: Get effective org ID
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
 
     // Get the existing task
     const taskRef = adminDb.collection('tasks').doc(id);
@@ -35,6 +41,11 @@ export async function PATCH(
     // Verify ownership
     if (existingTask.userId !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // MULTI-TENANCY: Verify task belongs to current organization
+    if (organizationId && existingTask.organizationId && existingTask.organizationId !== organizationId) {
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
     // Build update object
@@ -86,11 +97,11 @@ export async function PATCH(
 
     const updatedTask: Task = { ...existingTask, ...updates } as Task;
 
-    // Update alignment when a task is moved to focus for today
+    // Update alignment when a task is moved to focus for today (org-scoped)
     const today = new Date().toISOString().split('T')[0];
-    if (body.listType === 'focus' && existingTask.listType !== 'focus' && existingTask.date === today) {
+    if (body.listType === 'focus' && existingTask.listType !== 'focus' && existingTask.date === today && organizationId) {
       try {
-        await updateAlignmentForToday(userId, { didSetTasks: true });
+        await updateAlignmentForToday(userId, organizationId, { didSetTasks: true });
       } catch (alignmentError) {
         // Don't fail task update if alignment update fails
         console.error('[TASKS] Alignment update failed:', alignmentError);
@@ -155,12 +166,17 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id } = await params;
+
+    // MULTI-TENANCY: Get effective org ID
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
 
     // Get the existing task
     const taskRef = adminDb.collection('tasks').doc(id);
@@ -175,6 +191,11 @@ export async function DELETE(
     // Verify ownership
     if (existingTask.userId !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // MULTI-TENANCY: Verify task belongs to current organization
+    if (organizationId && existingTask.organizationId && existingTask.organizationId !== organizationId) {
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
     await taskRef.delete();
