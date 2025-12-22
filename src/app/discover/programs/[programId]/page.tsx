@@ -6,9 +6,18 @@ import Image from 'next/image';
 import { useAuth, useOrganization } from '@clerk/nextjs';
 import { BackButton, SectionHeader } from '@/components/discover';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { 
   Users, User, Calendar, Clock, DollarSign, Check, 
-  ChevronRight, AlertCircle, Loader2 
+  ChevronRight, AlertCircle, Loader2, CheckCircle, XCircle
 } from 'lucide-react';
 import type { Program, ProgramCohort } from '@/types';
 
@@ -48,6 +57,8 @@ export default function ProgramDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null);
   const [enrolling, setEnrolling] = useState(false);
+  const [successModal, setSuccessModal] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
+  const [errorModal, setErrorModal] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
 
   useEffect(() => {
     const fetchProgram = async () => {
@@ -126,14 +137,11 @@ export default function ProgramDetailPage() {
         return;
       }
 
-      // For free programs, show success and refresh
-      alert(result.message || 'Successfully enrolled!');
-      
-      // Refresh the page data
-      window.location.reload();
+      // For free programs, show success modal
+      setSuccessModal({ open: true, message: result.message || 'Successfully enrolled!' });
     } catch (err) {
       console.error('Enrollment error:', err);
-      alert(err instanceof Error ? err.message : 'Failed to enroll');
+      setErrorModal({ open: true, message: err instanceof Error ? err.message : 'Failed to enroll' });
     } finally {
       setEnrolling(false);
     }
@@ -425,6 +433,66 @@ export default function ProgramDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Success Modal */}
+      <AlertDialog open={successModal.open} onOpenChange={(open) => {
+        if (!open) {
+          setSuccessModal({ open: false, message: '' });
+          window.location.reload();
+        }
+      }}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-3 text-[#1a1a1a] dark:text-[#f5f5f8]">
+              <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+              </div>
+              Success!
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[#5f5a55] dark:text-[#b2b6c2] text-base">
+              {successModal.message}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction 
+              onClick={() => {
+                setSuccessModal({ open: false, message: '' });
+                window.location.reload();
+              }}
+              className="bg-[#a07855] hover:bg-[#8c6245] text-white"
+            >
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Error Modal */}
+      <AlertDialog open={errorModal.open} onOpenChange={(open) => {
+        if (!open) setErrorModal({ open: false, message: '' });
+      }}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-3 text-[#1a1a1a] dark:text-[#f5f5f8]">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+              </div>
+              Enrollment Failed
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[#5f5a55] dark:text-[#b2b6c2] text-base">
+              {errorModal.message}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction 
+              onClick={() => setErrorModal({ open: false, message: '' })}
+              className="bg-[#a07855] hover:bg-[#8c6245] text-white"
+            >
+              Try Again
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
