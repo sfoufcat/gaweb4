@@ -139,9 +139,9 @@ async function addUserToExistingSquad(
     const squadData = squadDoc.data() as Squad;
     const memberIds = squadData.memberIds || [];
     
-    // Check if already a member
+    // Check if already a member in memberIds array
     if (memberIds.includes(userId)) {
-      console.log(`[SQUAD_ASSIGNMENT] User ${userId} already in squad ${squadId}`);
+      console.log(`[SQUAD_ASSIGNMENT] User ${userId} already in squad ${squadId} memberIds`);
       return true; // Already a member is a success
     }
     
@@ -151,17 +151,29 @@ async function addUserToExistingSquad(
       updatedAt: now,
     });
     
-    // Create squadMember document
-    await adminDb.collection('squadMembers').add({
-      squadId,
-      userId,
-      roleInSquad: 'member',
-      firstName: clerkUser.firstName || '',
-      lastName: clerkUser.lastName || '',
-      imageUrl: clerkUser.imageUrl || '',
-      createdAt: now,
-      updatedAt: now,
-    });
+    // Check if squadMember document already exists to prevent duplicates
+    const existingMember = await adminDb
+      .collection('squadMembers')
+      .where('squadId', '==', squadId)
+      .where('userId', '==', userId)
+      .limit(1)
+      .get();
+
+    if (existingMember.empty) {
+      // Create squadMember document only if it doesn't exist
+      await adminDb.collection('squadMembers').add({
+        squadId,
+        userId,
+        roleInSquad: 'member',
+        firstName: clerkUser.firstName || '',
+        lastName: clerkUser.lastName || '',
+        imageUrl: clerkUser.imageUrl || '',
+        createdAt: now,
+        updatedAt: now,
+      });
+    } else {
+      console.log(`[SQUAD_ASSIGNMENT] SquadMember record already exists for user ${userId} in squad ${squadId}`);
+    }
     
     // Add user to Stream Chat channel if it exists
     if (squadData.chatChannelId) {

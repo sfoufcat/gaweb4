@@ -122,11 +122,24 @@ async function addUserToSquad(
 ): Promise<void> {
   const now = new Date().toISOString();
   
-  // Update squad memberIds
+  // Update squad memberIds (arrayUnion is idempotent - won't duplicate)
   await adminDb.collection('squads').doc(squadId).update({
     memberIds: FieldValue.arrayUnion(userId),
     updatedAt: now,
   });
+
+  // Check if squadMember record already exists to prevent duplicates
+  const existingMember = await adminDb
+    .collection('squadMembers')
+    .where('squadId', '==', squadId)
+    .where('userId', '==', userId)
+    .limit(1)
+    .get();
+
+  if (!existingMember.empty) {
+    console.log(`[PROGRAM_ENROLL] SquadMember record already exists for user ${userId} in squad ${squadId}`);
+    return;
+  }
 
   // Create squad member record
   await adminDb.collection('squadMembers').add({

@@ -112,6 +112,19 @@ async function addUserToSquad(
     updatedAt: now,
   });
 
+  // Check if squadMember record already exists to prevent duplicates
+  const existingMember = await adminDb
+    .collection('squadMembers')
+    .where('squadId', '==', squadId)
+    .where('userId', '==', userId)
+    .limit(1)
+    .get();
+
+  if (!existingMember.empty) {
+    console.log(`[VERIFY_PAYMENT] SquadMember record already exists for user ${userId} in squad ${squadId}`);
+    return;
+  }
+
   await adminDb.collection('squadMembers').add({
     squadId,
     userId,
