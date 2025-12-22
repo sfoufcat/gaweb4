@@ -22,9 +22,7 @@ export async function GET(req: Request) {
     }
 
     // MULTI-TENANCY: Get effective org ID
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    const organizationId = await getEffectiveOrgId();
 
     if (!organizationId) {
       return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
@@ -130,9 +128,7 @@ export async function POST(req: Request) {
     }
 
     // MULTI-TENANCY: Get effective org ID
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    const organizationId = await getEffectiveOrgId();
 
     if (!organizationId) {
       return NextResponse.json({ error: 'Organization context required' }, { status: 400 });

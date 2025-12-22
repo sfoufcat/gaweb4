@@ -19,9 +19,7 @@ export async function POST(_request: NextRequest) {
     }
 
     // MULTI-TENANCY: Get effective org ID
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    const organizationId = await getEffectiveOrgId();
 
     const today = new Date().toISOString().split('T')[0];
 

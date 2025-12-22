@@ -2,7 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import type { FirebaseUser, ClerkPublicMetadata } from '@/types';
+import type { FirebaseUser } from '@/types';
 
 /**
  * GET /api/user/me
@@ -13,16 +13,14 @@ import type { FirebaseUser, ClerkPublicMetadata } from '@/types';
  */
 export async function GET() {
   try {
-    const { userId, sessionClaims } = await auth();
+    const { userId } = await auth();
 
     if (!userId) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    // MULTI-TENANCY: Get effective org ID
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    // MULTI-TENANCY: Get org from tenant domain
+    const organizationId = await getEffectiveOrgId();
 
     // Fetch user data from Firebase using Admin SDK
     const userRef = adminDb.collection('users').doc(userId);

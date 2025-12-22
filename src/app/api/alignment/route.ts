@@ -7,7 +7,7 @@ import {
   getTodayDate 
 } from '@/lib/alignment';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import type { AlignmentUpdatePayload, ClerkPublicMetadata } from '@/types';
+import type { AlignmentUpdatePayload } from '@/types';
 
 /**
  * GET /api/alignment
@@ -22,15 +22,13 @@ import type { AlignmentUpdatePayload, ClerkPublicMetadata } from '@/types';
  */
 export async function GET(request: NextRequest) {
   try {
-    const { userId, sessionClaims } = await auth();
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // MULTI-TENANCY: Get effective org ID
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    // MULTI-TENANCY: Get org from tenant domain
+    const organizationId = await getEffectiveOrgId();
 
     // If no organization context, return empty alignment (backward compatibility during migration)
     if (!organizationId) {
@@ -104,15 +102,13 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { userId, sessionClaims } = await auth();
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // MULTI-TENANCY: Get effective org ID
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    // MULTI-TENANCY: Get org from tenant domain
+    const organizationId = await getEffectiveOrgId();
 
     // If no organization context, return success without updating (backward compatibility)
     if (!organizationId) {

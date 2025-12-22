@@ -4,7 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { ensureCoachHasOrganization } from '@/lib/clerk-organizations';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import type { OrgEmailDefaults, UserRole, ClerkPublicMetadata } from '@/types';
+import type { OrgEmailDefaults, UserRole } from '@/types';
 import { DEFAULT_EMAIL_DEFAULTS } from '@/types';
 
 /**
@@ -16,16 +16,14 @@ import { DEFAULT_EMAIL_DEFAULTS } from '@/types';
  */
 export async function GET() {
   try {
-    const { userId, sessionClaims } = await auth();
+    const { userId } = await auth();
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // MULTI-TENANCY: Get effective org ID (domain-based in tenant mode, session-based in platform mode)
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    // MULTI-TENANCY: Get org from tenant domain (null on platform domain)
+    const organizationId = await getEffectiveOrgId();
 
     if (!organizationId) {
       // No org, return global defaults

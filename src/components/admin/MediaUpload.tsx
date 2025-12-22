@@ -8,7 +8,7 @@ type MediaType = 'image' | 'video' | 'any' | 'file';
 interface MediaUploadProps {
   value: string; // Current URL
   onChange: (url: string) => void;
-  folder: 'events' | 'articles' | 'courses' | 'courses/lessons' | 'downloads' | 'links';
+  folder: 'events' | 'articles' | 'courses' | 'courses/lessons' | 'downloads' | 'links' | 'programs';
   type?: MediaType;
   label?: string;
   required?: boolean;

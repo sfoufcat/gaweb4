@@ -6,7 +6,7 @@ import {
   markNotificationAsRead,
 } from '@/lib/notifications';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import type { Notification, ClerkPublicMetadata } from '@/types';
+import type { Notification } from '@/types';
 
 /**
  * GET /api/notifications
@@ -20,15 +20,13 @@ import type { Notification, ClerkPublicMetadata } from '@/types';
  */
 export async function GET(request: NextRequest) {
   try {
-    const { userId, sessionClaims } = await auth();
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // MULTI-TENANCY: Get effective org ID
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    // MULTI-TENANCY: Get org from tenant domain
+    const organizationId = await getEffectiveOrgId();
 
     if (!organizationId) {
       return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
@@ -102,9 +100,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // MULTI-TENANCY: Get effective org ID
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    const organizationId = await getEffectiveOrgId();
 
     if (!organizationId) {
       return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
@@ -174,9 +170,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // MULTI-TENANCY: Get effective org ID
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    const organizationId = await getEffectiveOrgId();
 
     if (!organizationId) {
       return NextResponse.json({ error: 'Organization context required' }, { status: 400 });

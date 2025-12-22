@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Edit2, ChevronRight, UserMinus } from 'lucide-react';
+import { MediaUpload } from '@/components/admin/MediaUpload';
 
 // Enrollment with user info
 interface EnrollmentWithUser extends ProgramEnrollment {
@@ -1322,19 +1323,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       />
                     </div>
 
-                    {/* Cover Image URL */}
-                    <div>
-                      <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-                        Cover Image URL
-                      </label>
-                      <input
-                        type="url"
-                        value={programFormData.coverImageUrl}
-                        onChange={(e) => setProgramFormData({ ...programFormData, coverImageUrl: e.target.value })}
-                        placeholder="https://..."
-                        className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
-                      />
-                    </div>
+                    {/* Cover Image */}
+                    <MediaUpload
+                      value={programFormData.coverImageUrl}
+                      onChange={(url) => setProgramFormData({ ...programFormData, coverImageUrl: url })}
+                      folder="programs"
+                      type="image"
+                      label="Cover Image"
+                      uploadEndpoint="/api/coach/org-upload-media"
+                    />
 
                     {/* Duration & Price */}
                     <div className="grid grid-cols-2 gap-4">

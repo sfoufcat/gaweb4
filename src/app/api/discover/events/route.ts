@@ -8,19 +8,13 @@
  */
 
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import type { ClerkPublicMetadata } from '@/types';
 
 export async function GET() {
   try {
-    const { sessionClaims } = await auth();
-    
-    // MULTI-TENANCY: Get effective org ID (domain-based in tenant mode, session-based in platform mode)
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    // MULTI-TENANCY: Get org from tenant domain (null on platform domain)
+    const organizationId = await getEffectiveOrgId();
     
     let query: FirebaseFirestore.Query = adminDb.collection('events');
     

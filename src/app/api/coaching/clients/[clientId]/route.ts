@@ -43,8 +43,7 @@ export async function GET(
     }
 
     // MULTI-TENANCY: Get effective org ID
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    const organizationId = await getEffectiveOrgId();
 
     if (!organizationId) {
       return NextResponse.json({ error: 'Organization context required' }, { status: 400 });

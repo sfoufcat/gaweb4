@@ -75,23 +75,26 @@ export async function getTenantContext(): Promise<TenantContext | null> {
  * Get the effective organization ID for database queries
  * 
  * In tenant mode: Returns the tenant's organizationId (domain-based)
- * In platform mode: Returns the provided fallback (e.g., from Clerk session)
+ * In platform mode: Returns null (no tenant context)
  * 
  * This ensures that:
  * - On tenant domains, the domain's org is always used (cannot be spoofed)
- * - On platform domain, the user's own org (from session) is used
+ * - On platform domain (app.growthaddicts.app), NO tenant data is shown
+ *   Platform domain is for admin/management, not user experience
  * 
- * @param fallbackOrgId - Organization ID from Clerk session (for platform mode)
- * @returns The effective organization ID for queries
+ * @returns The effective organization ID for queries, or null on platform domain
  */
-export async function getEffectiveOrgId(fallbackOrgId?: string | null): Promise<string | null> {
+export async function getEffectiveOrgId(): Promise<string | null> {
   const tenantOrgId = await getTenantOrgId();
   
-  // In tenant mode, always use the domain's org
+  // In tenant mode, use the domain's org
   if (tenantOrgId) {
     return tenantOrgId;
   }
   
-  // In platform mode, use the fallback (from session)
-  return fallbackOrgId ?? null;
+  // Platform mode - NO tenant context
+  // Platform domain is for admin management, not tenant-specific features
+  // Users should visit tenant domains to see tenant data
+  return null;
 }
+

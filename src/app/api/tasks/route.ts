@@ -30,9 +30,7 @@ export async function GET(request: NextRequest) {
     }
 
     // MULTI-TENANCY: Get effective org ID for filtering
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    const organizationId = await getEffectiveOrgId();
 
     // Fetch tasks for the requested date, filtered by organization
     let tasksRef = adminDb
@@ -217,9 +215,7 @@ export async function POST(request: NextRequest) {
     }
 
     // MULTI-TENANCY: Get effective org ID
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    const organizationId = await getEffectiveOrgId();
 
     if (!organizationId) {
       return NextResponse.json({ error: 'Organization context required' }, { status: 400 });

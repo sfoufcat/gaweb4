@@ -16,26 +16,24 @@ import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { isUserOrgAdmin } from '@/lib/clerk-organizations';
 import { removeUserFromSquadEntirely } from '@/lib/program-engine';
-import type { ProgramEnrollment, Program, ClerkPublicMetadata } from '@/types';
+import type { ProgramEnrollment, Program } from '@/types';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ programId: string; enrollmentId: string }> }
 ) {
   try {
-    const { userId, sessionClaims } = await auth();
+    const { userId } = await auth();
     const { programId, enrollmentId } = await params;
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // MULTI-TENANCY: Get effective org ID (domain-based in tenant mode, session-based in platform mode)
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    // MULTI-TENANCY: Get org from tenant domain (null on platform domain)
+    const organizationId = await getEffectiveOrgId();
     if (!organizationId) {
-      return NextResponse.json({ error: 'No organization found' }, { status: 403 });
+      return NextResponse.json({ error: 'Coach features require tenant domain' }, { status: 403 });
     }
 
     // Verify user is an admin (coach) of the organization
@@ -101,19 +99,17 @@ export async function DELETE(
   { params }: { params: Promise<{ programId: string; enrollmentId: string }> }
 ) {
   try {
-    const { userId, sessionClaims } = await auth();
+    const { userId } = await auth();
     const { programId, enrollmentId } = await params;
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // MULTI-TENANCY: Get effective org ID (domain-based in tenant mode, session-based in platform mode)
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    // MULTI-TENANCY: Get org from tenant domain (null on platform domain)
+    const organizationId = await getEffectiveOrgId();
     if (!organizationId) {
-      return NextResponse.json({ error: 'No organization found' }, { status: 403 });
+      return NextResponse.json({ error: 'Coach features require tenant domain' }, { status: 403 });
     }
 
     // Verify user is an admin (coach) of the organization

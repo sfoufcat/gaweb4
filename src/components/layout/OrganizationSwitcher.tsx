@@ -1,60 +1,72 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ChevronDown, Check, Building2 } from 'lucide-react';
+import { ChevronDown, Check, Building2, ExternalLink } from 'lucide-react';
 
-interface Organization {
-  id: string;
+interface TenantDomain {
+  organizationId: string;
   name: string;
-  slug: string;
+  subdomain: string | null;
+  customDomain: string | null;
   imageUrl: string | null;
-  membership: {
-    id: string;
-    orgRole: string;
-    tier: string;
-    track: string | null;
-    joinedAt: string;
-  };
-  branding?: {
-    logoUrl: string | null;
-    appTitle: string;
-  };
-  isPrimary: boolean;
+  tenantUrl: string | null;
 }
 
 interface OrganizationSwitcherProps {
   compact?: boolean;
 }
 
+/**
+ * OrganizationSwitcher Component
+ * 
+ * On web: Shows user's organizations with links to their tenant domains.
+ * Clicking an org navigates to its tenant domain (external redirect).
+ * 
+ * Future mobile: Will switch in-app context instead.
+ */
 export function OrganizationSwitcher({ compact = false }: OrganizationSwitcherProps) {
-  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [tenantDomains, setTenantDomains] = useState<TenantDomain[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSwitching, setIsSwitching] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
-  const currentOrg = organizations.find(org => org.isPrimary) || organizations[0];
+  // Determine current tenant from URL
+  const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
   
-  // Fetch organizations on mount
   useEffect(() => {
-    async function fetchOrgs() {
+    // Try to identify current tenant from the current domain
+    const hostname = window.location.hostname;
+    // This will be set after we fetch tenant domains
+    if (tenantDomains.length > 0) {
+      const matchingTenant = tenantDomains.find(t => {
+        if (t.customDomain && hostname === t.customDomain) return true;
+        if (t.subdomain && hostname === `${t.subdomain}.growthaddicts.app`) return true;
+        return false;
+      });
+      setCurrentOrgId(matchingTenant?.organizationId || null);
+    }
+  }, [tenantDomains]);
+  
+  const currentOrg = tenantDomains.find(d => d.organizationId === currentOrgId) || tenantDomains[0];
+  
+  // Fetch tenant domains on mount
+  useEffect(() => {
+    async function fetchTenantDomains() {
       try {
-        const response = await fetch('/api/user/organizations');
-        if (!response.ok) throw new Error('Failed to fetch organizations');
+        const response = await fetch('/api/user/tenant-domains');
+        if (!response.ok) throw new Error('Failed to fetch tenant domains');
         
         const data = await response.json();
-        setOrganizations(data.organizations || []);
+        setTenantDomains(data.tenantDomains || []);
       } catch (error) {
-        console.error('[ORG_SWITCHER] Error fetching orgs:', error);
+        console.error('[ORG_SWITCHER] Error fetching tenant domains:', error);
       } finally {
         setIsLoading(false);
       }
     }
     
-    fetchOrgs();
+    fetchTenantDomains();
   }, []);
   
   // Close dropdown when clicking outside
@@ -69,61 +81,49 @@ export function OrganizationSwitcher({ compact = false }: OrganizationSwitcherPr
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
   
-  // Don't show if only one or no orgs
-  if (isLoading || organizations.length <= 1) {
+  // Filter to only orgs with tenant URLs
+  const orgsWithUrls = tenantDomains.filter(d => d.tenantUrl);
+  
+  // Don't show if only one or no orgs with URLs
+  if (isLoading || orgsWithUrls.length <= 1) {
     return null;
   }
   
-  const handleSwitch = async (orgId: string) => {
-    if (orgId === currentOrg?.id || isSwitching) return;
+  const handleOrgClick = (org: TenantDomain) => {
+    if (!org.tenantUrl) return;
     
-    setIsSwitching(true);
+    // Check if this is the current tenant
+    const hostname = window.location.hostname;
+    const isCurrent = (org.customDomain && hostname === org.customDomain) ||
+                      (org.subdomain && hostname === `${org.subdomain}.growthaddicts.app`);
     
-    try {
-      const response = await fetch('/api/user/organizations/switch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ organizationId: orgId }),
-      });
-      
-      if (!response.ok) throw new Error('Failed to switch organization');
-      
-      // Update local state
-      setOrganizations(prev => 
-        prev.map(org => ({
-          ...org,
-          isPrimary: org.id === orgId,
-        }))
-      );
-      
+    if (isCurrent) {
+      // Already on this tenant, just close dropdown
       setIsOpen(false);
-      
-      // Reload the page to apply new org context
-      router.refresh();
-    } catch (error) {
-      console.error('[ORG_SWITCHER] Error switching org:', error);
-    } finally {
-      setIsSwitching(false);
+      return;
     }
+    
+    // Navigate to the tenant domain (external redirect on web)
+    // This preserves the current path, so user stays on same page type
+    const currentPath = window.location.pathname;
+    window.location.href = `${org.tenantUrl}${currentPath}`;
   };
   
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        disabled={isSwitching}
         className={`
           flex items-center gap-2 w-full p-2 rounded-xl transition-colors
           hover:bg-[#f5f3f0] dark:hover:bg-[#333]
           ${isOpen ? 'bg-[#f5f3f0] dark:bg-[#333]' : ''}
-          ${isSwitching ? 'opacity-50 cursor-wait' : ''}
         `}
       >
         {/* Org Logo/Icon */}
         <div className="w-8 h-8 rounded-lg bg-[#e1ddd8] dark:bg-[#444] flex items-center justify-center overflow-hidden flex-shrink-0">
-          {currentOrg?.imageUrl || currentOrg?.branding?.logoUrl ? (
+          {currentOrg?.imageUrl ? (
             <Image
-              src={currentOrg.branding?.logoUrl || currentOrg.imageUrl || ''}
+              src={currentOrg.imageUrl}
               alt={currentOrg.name}
               width={32}
               height={32}
@@ -138,10 +138,10 @@ export function OrganizationSwitcher({ compact = false }: OrganizationSwitcherPr
           <>
             <div className="flex-1 text-left min-w-0">
               <div className="text-sm font-medium text-text-primary truncate">
-                {currentOrg?.branding?.appTitle || currentOrg?.name || 'Select Organization'}
+                {currentOrg?.name || 'Select Organization'}
               </div>
-              <div className="text-xs text-text-secondary capitalize">
-                {currentOrg?.membership?.orgRole?.replace('_', ' ') || 'Member'}
+              <div className="text-xs text-text-secondary">
+                {orgsWithUrls.length} organization{orgsWithUrls.length === 1 ? '' : 's'}
               </div>
             </div>
             
@@ -155,53 +155,62 @@ export function OrganizationSwitcher({ compact = false }: OrganizationSwitcherPr
       {/* Dropdown */}
       {isOpen && (
         <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-[#1a1a1a] rounded-xl shadow-lg border border-[#e1ddd8] dark:border-[#333] overflow-hidden z-50">
+          <div className="px-3 py-2 border-b border-[#e1ddd8] dark:border-[#333]">
+            <p className="text-xs text-text-secondary">Switch to another coach</p>
+          </div>
           <div className="py-1 max-h-64 overflow-y-auto">
-            {organizations.map(org => (
-              <button
-                key={org.id}
-                onClick={() => handleSwitch(org.id)}
-                disabled={isSwitching}
-                className={`
-                  w-full flex items-center gap-3 px-3 py-2 text-left
-                  hover:bg-[#f5f3f0] dark:hover:bg-[#333] transition-colors
-                  ${org.isPrimary ? 'bg-[#f5f3f0] dark:bg-[#333]' : ''}
-                `}
-              >
-                {/* Org Logo */}
-                <div className="w-8 h-8 rounded-lg bg-[#e1ddd8] dark:bg-[#444] flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {org.imageUrl || org.branding?.logoUrl ? (
-                    <Image
-                      src={org.branding?.logoUrl || org.imageUrl || ''}
-                      alt={org.name}
-                      width={32}
-                      height={32}
-                      className="w-full h-full object-cover"
-                    />
+            {orgsWithUrls.map(org => {
+              const hostname = window.location.hostname;
+              const isCurrent = (org.customDomain && hostname === org.customDomain) ||
+                                (org.subdomain && hostname === `${org.subdomain}.growthaddicts.app`);
+              
+              return (
+                <button
+                  key={org.organizationId}
+                  onClick={() => handleOrgClick(org)}
+                  className={`
+                    w-full flex items-center gap-3 px-3 py-2 text-left
+                    hover:bg-[#f5f3f0] dark:hover:bg-[#333] transition-colors
+                    ${isCurrent ? 'bg-[#f5f3f0] dark:bg-[#333]' : ''}
+                  `}
+                >
+                  {/* Org Logo */}
+                  <div className="w-8 h-8 rounded-lg bg-[#e1ddd8] dark:bg-[#444] flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {org.imageUrl ? (
+                      <Image
+                        src={org.imageUrl}
+                        alt={org.name}
+                        width={32}
+                        height={32}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Building2 className="w-4 h-4 text-text-secondary" />
+                    )}
+                  </div>
+                  
+                  {/* Org Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-text-primary truncate">
+                      {org.name}
+                    </div>
+                    <div className="text-xs text-text-secondary truncate">
+                      {org.customDomain || `${org.subdomain}.growthaddicts.app`}
+                    </div>
+                  </div>
+                  
+                  {/* Current indicator or external link icon */}
+                  {isCurrent ? (
+                    <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
                   ) : (
-                    <Building2 className="w-4 h-4 text-text-secondary" />
+                    <ExternalLink className="w-4 h-4 text-text-secondary flex-shrink-0" />
                   )}
-                </div>
-                
-                {/* Org Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-text-primary truncate">
-                    {org.branding?.appTitle || org.name}
-                  </div>
-                  <div className="text-xs text-text-secondary capitalize">
-                    {org.membership?.orgRole?.replace('_', ' ') || 'Member'} • {org.membership?.tier || 'Free'}
-                  </div>
-                </div>
-                
-                {/* Check mark for current */}
-                {org.isPrimary && (
-                  <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                )}
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
     </div>
   );
 }
-

@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import type { DiscoverCourse, DiscoverArticle, DiscoverEvent } from '@/types/discover';
-import type { ClerkPublicMetadata } from '@/types';
 
 /**
  * GET /api/programs/[programId]/content
@@ -16,17 +15,15 @@ export async function GET(
   { params }: { params: Promise<{ programId: string }> }
 ) {
   try {
-    const { userId, sessionClaims } = await auth();
+    const { userId } = await auth();
     const { programId } = await params;
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // MULTI-TENANCY: Get effective org ID (domain-based in tenant mode, session-based in platform mode)
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    // MULTI-TENANCY: Get org from tenant domain (null on platform domain)
+    const organizationId = await getEffectiveOrgId();
 
     // Verify user is enrolled in this program
     const enrollmentSnapshot = await adminDb

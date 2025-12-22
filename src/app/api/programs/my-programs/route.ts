@@ -21,7 +21,6 @@ import type {
   ProgramEnrollment, 
   ProgramCohort,
   Squad,
-  ClerkPublicMetadata,
 } from '@/types';
 
 // Minimal member info for avatar display
@@ -70,16 +69,14 @@ function calculateCurrentDayIndex(startDate: string, totalDays: number): number 
 
 export async function GET() {
   try {
-    const { userId, sessionClaims } = await auth();
+    const { userId } = await auth();
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // MULTI-TENANCY: Get effective org ID (domain-based in tenant mode, session-based in platform mode)
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    // MULTI-TENANCY: Get org from tenant domain (null on platform domain)
+    const organizationId = await getEffectiveOrgId();
 
     // Get active enrollments for the user
     let query = adminDb
@@ -87,10 +84,19 @@ export async function GET() {
       .where('userId', '==', userId)
       .where('status', 'in', ['active', 'upcoming']);
     
-    // Filter by organization if active
-    if (organizationId) {
-      query = query.where('organizationId', '==', organizationId);
+    // On platform domain (no orgId), return empty with flag
+    // Users should visit their tenant domain for programs
+    const isPlatformMode = !organizationId;
+    if (isPlatformMode) {
+      return NextResponse.json({
+        success: true,
+        enrollments: [],
+        isPlatformMode: true,
+      });
     }
+    
+    // Filter by organization
+    query = query.where('organizationId', '==', organizationId);
 
     const enrollmentsSnapshot = await query.get();
 
@@ -98,6 +104,7 @@ export async function GET() {
       return NextResponse.json({
         success: true,
         enrollments: [],
+        isPlatformMode: false,
       });
     }
 

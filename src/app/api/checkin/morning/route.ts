@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { updateAlignmentForToday } from '@/lib/alignment';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import type { MorningCheckIn, ClerkPublicMetadata } from '@/types';
+import type { MorningCheckIn } from '@/types';
 
 /**
  * Generate document ID for morning check-in: `${organizationId}_${userId}_${date}`
@@ -17,15 +17,13 @@ function getCheckInDocId(organizationId: string, userId: string, date: string): 
 // MULTI-TENANCY: Fetches check-in for current organization (with legacy fallback)
 export async function GET(request: NextRequest) {
   try {
-    const { userId, sessionClaims } = await auth();
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // MULTI-TENANCY: Get effective org ID
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    // MULTI-TENANCY: Get org from tenant domain
+    const organizationId = await getEffectiveOrgId();
 
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
@@ -65,9 +63,7 @@ export async function POST(_request: NextRequest) {
     }
 
     // MULTI-TENANCY: Get effective org ID
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    const organizationId = await getEffectiveOrgId();
 
     const today = new Date().toISOString().split('T')[0];
     const now = new Date().toISOString();
@@ -138,9 +134,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // MULTI-TENANCY: Get effective org ID
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    const organizationId = await getEffectiveOrgId();
 
     const updates = await request.json();
     const today = new Date().toISOString().split('T')[0];

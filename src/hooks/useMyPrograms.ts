@@ -53,6 +53,9 @@ export interface UseMyProgramsReturn {
   groupSquad: Squad | null;
   hasGroupSquad: boolean;
   
+  // Platform mode (no tenant context)
+  isPlatformMode: boolean;
+  
   // Loading states
   isLoading: boolean;
   error: string | null;
@@ -76,6 +79,7 @@ export function useMyPrograms(): UseMyProgramsReturn {
   const [enrollments, setEnrollments] = useState<EnrolledProgramWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isPlatformMode, setIsPlatformMode] = useState(false);
 
   const fetchEnrollments = useCallback(async () => {
     if (!user) {
@@ -95,6 +99,10 @@ export function useMyPrograms(): UseMyProgramsReturn {
 
       const data = await response.json();
       setEnrollments(data.enrollments || []);
+      
+      // Check if we're in platform mode (no tenant context)
+      // This happens when the API returns empty due to no orgId filter
+      setIsPlatformMode(data.isPlatformMode || false);
     } catch (err) {
       console.error('Error fetching programs:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch programs');
@@ -141,6 +149,8 @@ export function useMyPrograms(): UseMyProgramsReturn {
     
     groupSquad,
     hasGroupSquad: !!groupSquad,
+    
+    isPlatformMode,
     
     isLoading,
     error,

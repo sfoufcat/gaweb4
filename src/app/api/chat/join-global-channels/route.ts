@@ -4,7 +4,6 @@ import { getStreamServerClient } from '@/lib/stream-server';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { getOrgChannels } from '@/lib/org-channels';
 import { ANNOUNCEMENTS_CHANNEL_ID, SOCIAL_CORNER_CHANNEL_ID, SHARE_WINS_CHANNEL_ID } from '@/lib/chat-constants';
-import type { ClerkPublicMetadata } from '@/types';
 
 /**
  * POST /api/chat/join-global-channels
@@ -21,7 +20,7 @@ import type { ClerkPublicMetadata } from '@/types';
  */
 export async function POST() {
   try {
-    const { userId, sessionClaims } = await auth();
+    const { userId } = await auth();
     if (!userId) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
@@ -39,10 +38,8 @@ export async function POST() {
       image: clerkUser.imageUrl,
     });
 
-    // MULTI-TENANCY: Get effective org ID (domain-based in tenant mode, session-based in platform mode)
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    // MULTI-TENANCY: Get org from tenant domain (null on platform domain)
+    const organizationId = await getEffectiveOrgId();
     
     if (organizationId) {
       // User belongs to an org - join org-specific channels

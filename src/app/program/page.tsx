@@ -11,6 +11,7 @@ import { useMenuTitles } from '@/contexts/BrandingContext';
 
 // Components for different sections
 import { ProgramEmptyState } from '@/components/program/ProgramEmptyState';
+import { PlatformEmptyState } from '@/components/program/PlatformEmptyState';
 import { ProgramListView } from '@/components/program/ProgramListView';
 import { ProgramDetailView } from '@/components/program/ProgramDetailView';
 import { SquadTabContent } from '@/components/program/SquadTabContent';
@@ -48,6 +49,7 @@ export default function ProgramHubPage() {
     hasEnrollments,
     hasGroupProgram,
     hasBothPrograms,
+    isPlatformMode,
     isLoading: programsLoading,
   } = useMyPrograms();
   
@@ -128,7 +130,16 @@ export default function ProgramHubPage() {
     );
   }
   
-  // Empty state: no enrollments
+  // Platform mode: show links to tenant domains
+  if (isPlatformMode) {
+    return (
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
+        <PlatformEmptyState />
+      </div>
+    );
+  }
+  
+  // Empty state: no enrollments on tenant domain
   if (!hasEnrollments) {
     return (
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">

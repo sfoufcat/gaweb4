@@ -2,7 +2,6 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { getOrgCoachingPromo, DEFAULT_COACHING_PROMO } from '@/lib/org-channels';
-import type { ClerkPublicMetadata } from '@/types';
 
 /**
  * GET /api/user/org-coaching-promo
@@ -14,15 +13,13 @@ import type { ClerkPublicMetadata } from '@/types';
  */
 export async function GET() {
   try {
-    const { userId, sessionClaims } = await auth();
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // MULTI-TENANCY: Get effective org ID (domain-based in tenant mode, session-based in platform mode)
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    // MULTI-TENANCY: Get org from tenant domain (null on platform domain)
+    const organizationId = await getEffectiveOrgId();
     
     if (!organizationId) {
       // User doesn't belong to an org - return default promo

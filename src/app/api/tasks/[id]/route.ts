@@ -24,9 +24,7 @@ export async function PATCH(
     const body: UpdateTaskRequest = await request.json();
 
     // MULTI-TENANCY: Get effective org ID
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    const organizationId = await getEffectiveOrgId();
 
     // Get the existing task
     const taskRef = adminDb.collection('tasks').doc(id);
@@ -174,9 +172,7 @@ export async function DELETE(
     const { id } = await params;
 
     // MULTI-TENANCY: Get effective org ID
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    const organizationId = await getEffectiveOrgId();
 
     // Get the existing task
     const taskRef = adminDb.collection('tasks').doc(id);

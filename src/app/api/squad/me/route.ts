@@ -231,8 +231,7 @@ export async function GET(request: Request) {
     // In tenant mode (subdomain): uses x-tenant-org-id header from middleware
     // In platform mode: falls back to user's org from Clerk session
     const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || userData?.organizationId || null;
-    const userOrgId = await getEffectiveOrgId(userSessionOrgId);
+    const userOrgId = await getEffectiveOrgId();
     
     // Get squad IDs - support both new dual fields and legacy squadId
     let standardSquadId = userData?.standardSquadId || null;

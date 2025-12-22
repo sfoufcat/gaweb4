@@ -2,7 +2,6 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import type { ClerkPublicMetadata } from '@/types';
 
 /**
  * Helper function to complete a goal and move it to history
@@ -96,15 +95,13 @@ async function completeGoal(userId: string, userRef: FirebaseFirestore.DocumentR
  */
 export async function PATCH(req: Request) {
   try {
-    const { userId, sessionClaims } = await auth();
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // MULTI-TENANCY: Get effective org ID
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    // MULTI-TENANCY: Get org from tenant domain
+    const organizationId = await getEffectiveOrgId();
 
     if (!organizationId) {
       return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
@@ -262,9 +259,7 @@ export async function POST(_req: Request) {
     }
 
     // MULTI-TENANCY: Get effective org ID
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    const organizationId = await getEffectiveOrgId();
 
     if (!organizationId) {
       return NextResponse.json({ error: 'Organization context required' }, { status: 400 });

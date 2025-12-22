@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { summarizeWeeklyFocus } from '@/lib/anthropic';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import type { WeeklyReflectionCheckIn, ClerkPublicMetadata } from '@/types';
+import type { WeeklyReflectionCheckIn } from '@/types';
 
 // Get the week identifier (Monday of the current week)
 function getWeekId(): string {
@@ -26,15 +26,13 @@ function getWeeklyReflectionDocId(organizationId: string, userId: string, weekId
 // MULTI-TENANCY: Fetches reflection for current organization (with legacy fallback)
 export async function GET(request: NextRequest) {
   try {
-    const { userId, sessionClaims } = await auth();
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // MULTI-TENANCY: Get effective org ID
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    // MULTI-TENANCY: Get org from tenant domain
+    const organizationId = await getEffectiveOrgId();
 
     const { searchParams } = new URL(request.url);
     const weekId = searchParams.get('weekId') || getWeekId();
@@ -74,9 +72,7 @@ export async function POST(_request: NextRequest) {
     }
 
     // MULTI-TENANCY: Get effective org ID
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    const organizationId = await getEffectiveOrgId();
 
     const weekId = getWeekId();
     const now = new Date().toISOString();
@@ -165,9 +161,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // MULTI-TENANCY: Get effective org ID
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userSessionOrgId = publicMetadata?.organizationId || null;
-    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+    const organizationId = await getEffectiveOrgId();
 
     const updates = await request.json();
     const weekId = getWeekId();
