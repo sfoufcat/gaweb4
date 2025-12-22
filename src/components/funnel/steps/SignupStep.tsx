@@ -131,8 +131,10 @@ export function SignupStep({
     return () => window.removeEventListener('message', handleMessage);
   }, [isCustomDomain, flowSessionId]);
 
-  // Loading state
-  if (!isLoaded || (isSignedIn && !error)) {
+  // Loading state - only show loader if Clerk is not loaded yet
+  // If user is already signed in, return null and let the useEffect handle linking
+  // The FunnelClient will show its own loading state when isNavigating is true
+  if (!isLoaded) {
     return (
       <div className="min-h-[50vh] w-full flex flex-col items-center justify-center">
         <div className="relative mb-4">
@@ -142,11 +144,15 @@ export function SignupStep({
             style={{ borderTopColor: primaryVar }}
           />
         </div>
-        <p className="text-text-secondary">
-          {isSignedIn ? 'Setting up your account...' : 'Loading...'}
-        </p>
+        <p className="text-text-secondary">Loading...</p>
       </div>
     );
+  }
+
+  // If already signed in and no error, return null - the useEffect will handle
+  // linking the session and calling onComplete, which triggers FunnelClient's loader
+  if (isSignedIn && !error) {
+    return null;
   }
 
   const heading = config.heading || 'Create your account';
