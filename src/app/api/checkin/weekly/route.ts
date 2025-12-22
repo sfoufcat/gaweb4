@@ -23,7 +23,7 @@ function getWeeklyReflectionDocId(organizationId: string, userId: string, weekId
 }
 
 // GET - Fetch current week's reflection
-// MULTI-TENANCY: Fetches reflection for current organization
+// MULTI-TENANCY: Fetches reflection for current organization (with legacy fallback)
 export async function GET(request: NextRequest) {
   try {
     const { userId, sessionClaims } = await auth();
@@ -36,28 +36,27 @@ export async function GET(request: NextRequest) {
     const userSessionOrgId = publicMetadata?.organizationId || null;
     const organizationId = await getEffectiveOrgId(userSessionOrgId);
 
-    if (!organizationId) {
-      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
-    }
-
     const { searchParams } = new URL(request.url);
     const weekId = searchParams.get('weekId') || getWeekId();
 
-    // Try new top-level collection first
-    const docId = getWeeklyReflectionDocId(organizationId, userId, weekId);
-    let checkInDoc = await adminDb.collection('weekly_reflections').doc(docId).get();
+    // Try new top-level collection first if we have organizationId
+    if (organizationId) {
+      const docId = getWeeklyReflectionDocId(organizationId, userId, weekId);
+      const checkInDoc = await adminDb.collection('weekly_reflections').doc(docId).get();
+      if (checkInDoc.exists) {
+        return NextResponse.json({ checkIn: { id: checkInDoc.id, ...checkInDoc.data() } });
+      }
+    }
 
     // Legacy fallback: Check user subcollection
-    if (!checkInDoc.exists) {
-      const legacyRef = adminDb.collection('users').doc(userId).collection('weeklyReflections').doc(weekId);
-      checkInDoc = await legacyRef.get();
+    const legacyRef = adminDb.collection('users').doc(userId).collection('weeklyReflections').doc(weekId);
+    const legacyDoc = await legacyRef.get();
+    
+    if (legacyDoc.exists) {
+      return NextResponse.json({ checkIn: { id: legacyDoc.id, ...legacyDoc.data() } });
     }
 
-    if (!checkInDoc.exists) {
-      return NextResponse.json({ checkIn: null });
-    }
-
-    return NextResponse.json({ checkIn: { id: checkInDoc.id, ...checkInDoc.data() } });
+    return NextResponse.json({ checkIn: null });
   } catch (error) {
     console.error('Error fetching weekly reflection:', error);
     const message = error instanceof Error ? error.message : 'Failed to fetch weekly reflection';
@@ -66,7 +65,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST - Start a new weekly reflection
-// MULTI-TENANCY: Creates reflection scoped to current organization
+// MULTI-TENANCY: Creates reflection scoped to current organization (with legacy fallback)
 export async function POST(_request: NextRequest) {
   try {
     const { userId, sessionClaims } = await auth();
@@ -79,41 +78,67 @@ export async function POST(_request: NextRequest) {
     const userSessionOrgId = publicMetadata?.organizationId || null;
     const organizationId = await getEffectiveOrgId(userSessionOrgId);
 
-    if (!organizationId) {
-      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
-    }
-
     const weekId = getWeekId();
-    const docId = getWeeklyReflectionDocId(organizationId, userId, weekId);
-    const checkInRef = adminDb.collection('weekly_reflections').doc(docId);
-    const existingDoc = await checkInRef.get();
+    const now = new Date().toISOString();
 
-    // If check-in already exists, return it
-    if (existingDoc.exists) {
-      return NextResponse.json({ checkIn: { id: existingDoc.id, ...existingDoc.data() } });
-    }
-
-    // Get user's current goal progress (from org_memberships for multi-tenancy)
+    // Get user's current goal progress
     let currentProgress = 0;
-    const membershipSnapshot = await adminDb.collection('org_memberships')
-      .where('userId', '==', userId)
-      .where('organizationId', '==', organizationId)
-      .limit(1)
-      .get();
+    if (organizationId) {
+      const membershipSnapshot = await adminDb.collection('org_memberships')
+        .where('userId', '==', userId)
+        .where('organizationId', '==', organizationId)
+        .limit(1)
+        .get();
+      
+      if (!membershipSnapshot.empty) {
+        currentProgress = membershipSnapshot.docs[0].data()?.goalProgress || 0;
+      }
+    }
     
-    if (!membershipSnapshot.empty) {
-      currentProgress = membershipSnapshot.docs[0].data()?.goalProgress || 0;
-    } else {
-      // Legacy fallback
+    // Legacy fallback for progress
+    if (currentProgress === 0) {
       const userDoc = await adminDb.collection('users').doc(userId).get();
       currentProgress = userDoc.data()?.goalProgress || 0;
     }
 
-    const now = new Date().toISOString();
-    const newCheckIn: Omit<WeeklyReflectionCheckIn, 'id'> = {
+    // If we have organizationId, use new structure
+    if (organizationId) {
+      const docId = getWeeklyReflectionDocId(organizationId, userId, weekId);
+      const checkInRef = adminDb.collection('weekly_reflections').doc(docId);
+      const existingDoc = await checkInRef.get();
+
+      // If check-in already exists, return it
+      if (existingDoc.exists) {
+        return NextResponse.json({ checkIn: { id: existingDoc.id, ...existingDoc.data() } });
+      }
+
+      const newCheckIn: Omit<WeeklyReflectionCheckIn, 'id'> = {
+        date: weekId,
+        userId,
+        organizationId,
+        onTrackStatus: 'not_sure',
+        progress: currentProgress,
+        previousProgress: currentProgress,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      await checkInRef.set(newCheckIn);
+      return NextResponse.json({ checkIn: { id: docId, ...newCheckIn } }, { status: 201 });
+    }
+
+    // Legacy fallback: Use user subcollection
+    console.warn('[WEEKLY_CHECKIN] No organization context, using legacy structure for user', userId);
+    const legacyRef = adminDb.collection('users').doc(userId).collection('weeklyReflections').doc(weekId);
+    const existingDoc = await legacyRef.get();
+
+    if (existingDoc.exists) {
+      return NextResponse.json({ checkIn: { id: existingDoc.id, ...existingDoc.data() } });
+    }
+
+    const legacyCheckIn = {
       date: weekId,
       userId,
-      organizationId,
       onTrackStatus: 'not_sure',
       progress: currentProgress,
       previousProgress: currentProgress,
@@ -121,9 +146,8 @@ export async function POST(_request: NextRequest) {
       updatedAt: now,
     };
 
-    await checkInRef.set(newCheckIn);
-
-    return NextResponse.json({ checkIn: { id: docId, ...newCheckIn } }, { status: 201 });
+    await legacyRef.set(legacyCheckIn);
+    return NextResponse.json({ checkIn: { id: weekId, ...legacyCheckIn } }, { status: 201 });
   } catch (error) {
     console.error('Error creating weekly reflection:', error);
     const message = error instanceof Error ? error.message : 'Failed to create weekly reflection';
@@ -132,7 +156,7 @@ export async function POST(_request: NextRequest) {
 }
 
 // PATCH - Update weekly reflection progress
-// MULTI-TENANCY: Updates reflection scoped to current organization
+// MULTI-TENANCY: Updates reflection scoped to current organization (with legacy fallback)
 export async function PATCH(request: NextRequest) {
   try {
     const { userId, sessionClaims } = await auth();
@@ -145,28 +169,29 @@ export async function PATCH(request: NextRequest) {
     const userSessionOrgId = publicMetadata?.organizationId || null;
     const organizationId = await getEffectiveOrgId(userSessionOrgId);
 
-    if (!organizationId) {
-      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
-    }
-
     const updates = await request.json();
     const weekId = getWeekId();
     
-    // Try new top-level collection first
-    const docId = getWeeklyReflectionDocId(organizationId, userId, weekId);
-    let checkInRef = adminDb.collection('weekly_reflections').doc(docId);
-    let existingDoc = await checkInRef.get();
+    let checkInRef: FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData> | null = null;
+    let existingDoc: FirebaseFirestore.DocumentSnapshot | null = null;
+
+    // Try new top-level collection first if we have organizationId
+    if (organizationId) {
+      const docId = getWeeklyReflectionDocId(organizationId, userId, weekId);
+      checkInRef = adminDb.collection('weekly_reflections').doc(docId);
+      existingDoc = await checkInRef.get();
+    }
 
     // Legacy fallback: Check user subcollection
-    if (!existingDoc.exists) {
+    if (!existingDoc?.exists) {
       const legacyRef = adminDb.collection('users').doc(userId).collection('weeklyReflections').doc(weekId);
       existingDoc = await legacyRef.get();
       if (existingDoc.exists) {
-        checkInRef = legacyRef as FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>;
+        checkInRef = legacyRef;
       }
     }
 
-    if (!existingDoc.exists) {
+    if (!existingDoc?.exists || !checkInRef) {
       return NextResponse.json({ error: 'Weekly reflection not found' }, { status: 404 });
     }
 
@@ -179,61 +204,59 @@ export async function PATCH(request: NextRequest) {
     // If marking as completed, set completedAt
     if (updates.completedAt === true) {
       updatedData.completedAt = new Date().toISOString();
-      delete updatedData.completedAt; // Remove the boolean flag
       
-      // Save to reflections collection for goal page (org-scoped)
-      const progressChange = (existingData.progress || 0) - (existingData.previousProgress || 0);
-      const reflectionData = {
-        userId,
-        organizationId,
-        goalId: `${organizationId}_${userId}_goal`,
-        type: 'weekly',
-        date: weekId,
-        weekEndDate: new Date().toISOString().split('T')[0],
-        progressChange,
-        onTrackStatus: existingData.onTrackStatus || 'not_sure',
-        whatWentWell: existingData.whatWentWell || '',
-        biggestObstacles: existingData.biggestObstacles || '',
-        nextWeekPlan: existingData.nextWeekPlan || '',
-        publicFocus: existingData.publicFocus || updates.publicFocus || '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      // Save to reflections collection for goal page (org-scoped) - only if we have org context
+      if (organizationId) {
+        const progressChange = (existingData.progress || 0) - (existingData.previousProgress || 0);
+        const reflectionData = {
+          userId,
+          organizationId,
+          goalId: `${organizationId}_${userId}_goal`,
+          type: 'weekly',
+          date: weekId,
+          weekEndDate: new Date().toISOString().split('T')[0],
+          progressChange,
+          onTrackStatus: existingData.onTrackStatus || 'not_sure',
+          whatWentWell: existingData.whatWentWell || '',
+          biggestObstacles: existingData.biggestObstacles || '',
+          nextWeekPlan: existingData.nextWeekPlan || '',
+          publicFocus: existingData.publicFocus || updates.publicFocus || '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
 
-      // Save to top-level reflections collection with org scope
-      await adminDb
-        .collection('reflections')
-        .doc(`${organizationId}_${userId}_weekly_${weekId}`)
-        .set(reflectionData);
+        // Save to top-level reflections collection with org scope
+        await adminDb
+          .collection('reflections')
+          .doc(`${organizationId}_${userId}_weekly_${weekId}`)
+          .set(reflectionData);
 
-      // Update org_membership's publicFocus field for profile display
-      const focusText = existingData.publicFocus || updates.publicFocus;
-      if (focusText) {
-        // Generate AI summary for the weekly focus
-        const { summary: focusSummary } = await summarizeWeeklyFocus(focusText);
-        
-        // Update in org_memberships for multi-tenancy
-        const membershipSnapshot = await adminDb.collection('org_memberships')
-          .where('userId', '==', userId)
-          .where('organizationId', '==', organizationId)
-          .limit(1)
-          .get();
-        
-        if (!membershipSnapshot.empty) {
-          await membershipSnapshot.docs[0].ref.update({
-            publicFocus: focusText,
-            publicFocusSummary: focusSummary,
-            publicFocusUpdatedAt: new Date().toISOString(),
-          });
+        // Update org_membership's publicFocus field for profile display
+        const focusText = existingData.publicFocus || updates.publicFocus;
+        if (focusText) {
+          // Generate AI summary for the weekly focus
+          const { summary: focusSummary } = await summarizeWeeklyFocus(focusText);
+          
+          // Update in org_memberships for multi-tenancy
+          const membershipSnapshot = await adminDb.collection('org_memberships')
+            .where('userId', '==', userId)
+            .where('organizationId', '==', organizationId)
+            .limit(1)
+            .get();
+          
+          if (!membershipSnapshot.empty) {
+            await membershipSnapshot.docs[0].ref.update({
+              publicFocus: focusText,
+              publicFocusSummary: focusSummary,
+              publicFocusUpdatedAt: new Date().toISOString(),
+            });
+          }
         }
       }
-
-      // Update completedAt in weeklyReflections
-      updatedData.completedAt = new Date().toISOString();
     }
 
-    // If updating progress, also update org_membership's goalProgress
-    if (typeof updates.progress === 'number') {
+    // If updating progress, also update org_membership's goalProgress (only with org context)
+    if (typeof updates.progress === 'number' && organizationId) {
       const membershipSnapshot = await adminDb.collection('org_memberships')
         .where('userId', '==', userId)
         .where('organizationId', '==', organizationId)
@@ -247,24 +270,26 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    // If marking goal as complete
+    // If marking goal as complete (only with org context)
     if (updates.goalCompleted === true) {
       updatedData.goalCompleted = true;
       updatedData.completedAt = new Date().toISOString();
       
       // Mark the goal as completed in org_membership (multi-tenancy)
-      const membershipSnapshot = await adminDb.collection('org_memberships')
-        .where('userId', '==', userId)
-        .where('organizationId', '==', organizationId)
-        .limit(1)
-        .get();
-      
-      if (!membershipSnapshot.empty) {
-        await membershipSnapshot.docs[0].ref.update({
-          goalProgress: 100,
-          goalCompletedAt: new Date().toISOString(),
-          goalCompleted: true,
-        });
+      if (organizationId) {
+        const membershipSnapshot = await adminDb.collection('org_memberships')
+          .where('userId', '==', userId)
+          .where('organizationId', '==', organizationId)
+          .limit(1)
+          .get();
+        
+        if (!membershipSnapshot.empty) {
+          await membershipSnapshot.docs[0].ref.update({
+            goalProgress: 100,
+            goalCompletedAt: new Date().toISOString(),
+            goalCompleted: true,
+          });
+        }
       }
     }
 

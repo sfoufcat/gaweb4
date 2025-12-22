@@ -23,7 +23,7 @@ function getEveningCheckInDocId(organizationId: string, userId: string, date: st
 }
 
 // GET - Fetch today's evening check-in
-// MULTI-TENANCY: Fetches check-in for current organization
+// MULTI-TENANCY: Fetches check-in for current organization (with legacy fallback)
 export async function GET(request: NextRequest) {
   try {
     const { userId, sessionClaims } = await auth();
@@ -36,28 +36,27 @@ export async function GET(request: NextRequest) {
     const userSessionOrgId = publicMetadata?.organizationId || null;
     const organizationId = await getEffectiveOrgId(userSessionOrgId);
 
-    if (!organizationId) {
-      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
-    }
-
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
 
-    // Try new top-level collection first
-    const docId = getEveningCheckInDocId(organizationId, userId, date);
-    let checkInDoc = await adminDb.collection('evening_checkins').doc(docId).get();
+    // Try new top-level collection first if we have organizationId
+    if (organizationId) {
+      const docId = getEveningCheckInDocId(organizationId, userId, date);
+      const checkInDoc = await adminDb.collection('evening_checkins').doc(docId).get();
+      if (checkInDoc.exists) {
+        return NextResponse.json({ checkIn: { id: checkInDoc.id, ...checkInDoc.data() } });
+      }
+    }
 
     // Legacy fallback: Check user subcollection
-    if (!checkInDoc.exists) {
-      const legacyRef = adminDb.collection('users').doc(userId).collection('eveningCheckins').doc(date);
-      checkInDoc = await legacyRef.get();
+    const legacyRef = adminDb.collection('users').doc(userId).collection('eveningCheckins').doc(date);
+    const legacyDoc = await legacyRef.get();
+    
+    if (legacyDoc.exists) {
+      return NextResponse.json({ checkIn: { id: legacyDoc.id, ...legacyDoc.data() } });
     }
 
-    if (!checkInDoc.exists) {
-      return NextResponse.json({ checkIn: null });
-    }
-
-    return NextResponse.json({ checkIn: { id: checkInDoc.id, ...checkInDoc.data() } });
+    return NextResponse.json({ checkIn: null });
   } catch (error) {
     console.error('Error fetching evening check-in:', error);
     const message = error instanceof Error ? error.message : 'Failed to fetch evening check-in';
@@ -66,7 +65,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST - Start a new evening check-in
-// MULTI-TENANCY: Creates check-in scoped to current organization
+// MULTI-TENANCY: Creates check-in scoped to current organization (with legacy fallback)
 export async function POST(request: NextRequest) {
   try {
     const { userId, sessionClaims } = await auth();
@@ -79,35 +78,27 @@ export async function POST(request: NextRequest) {
     const userSessionOrgId = publicMetadata?.organizationId || null;
     const organizationId = await getEffectiveOrgId(userSessionOrgId);
 
-    if (!organizationId) {
-      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
-    }
-
     const body = await request.json();
     let { tasksCompleted = 0, tasksTotal = 0 } = body;
 
     const today = new Date().toISOString().split('T')[0];
-    const docId = getEveningCheckInDocId(organizationId, userId, today);
-    const checkInRef = adminDb.collection('evening_checkins').doc(docId);
-    const existingDoc = await checkInRef.get();
+    const now = new Date().toISOString();
 
-    // If check-in already exists, return it
-    if (existingDoc.exists) {
-      return NextResponse.json({ checkIn: { id: existingDoc.id, ...existingDoc.data() } });
-    }
-
-    // Snapshot the current Daily Focus tasks RIGHT NOW before they can move to backlog
-    // MULTI-TENANCY: Only snapshot tasks from current organization
+    // Snapshot the current Daily Focus tasks
     const completedTasksSnapshot: TaskSnapshot[] = [];
     try {
-      const tasksSnapshot = await adminDb
+      let tasksQuery = adminDb
         .collection('tasks')
         .where('userId', '==', userId)
-        .where('organizationId', '==', organizationId)
         .where('date', '==', today)
-        .where('listType', '==', 'focus')
-        .get();
+        .where('listType', '==', 'focus');
       
+      // Add org filter if available
+      if (organizationId) {
+        tasksQuery = tasksQuery.where('organizationId', '==', organizationId);
+      }
+      
+      const tasksSnapshot = await tasksQuery.get();
       const focusTasks: Task[] = [];
       
       tasksSnapshot.forEach((doc) => {
@@ -131,22 +122,55 @@ export async function POST(request: NextRequest) {
       // Continue with passed values if snapshot fails
     }
 
-    const now = new Date().toISOString();
-    const newCheckIn: Omit<EveningCheckIn, 'id'> & { completedTasksSnapshot: TaskSnapshot[] } = {
+    // If we have organizationId, use new structure
+    if (organizationId) {
+      const docId = getEveningCheckInDocId(organizationId, userId, today);
+      const checkInRef = adminDb.collection('evening_checkins').doc(docId);
+      const existingDoc = await checkInRef.get();
+
+      // If check-in already exists, return it
+      if (existingDoc.exists) {
+        return NextResponse.json({ checkIn: { id: existingDoc.id, ...existingDoc.data() } });
+      }
+
+      const newCheckIn: Omit<EveningCheckIn, 'id'> & { completedTasksSnapshot: TaskSnapshot[] } = {
+        date: today,
+        userId,
+        organizationId,
+        emotionalState: 'steady' as EveningEmotionalState,
+        tasksCompleted,
+        tasksTotal,
+        completedTasksSnapshot,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      await checkInRef.set(newCheckIn);
+      return NextResponse.json({ checkIn: { id: docId, ...newCheckIn } }, { status: 201 });
+    }
+
+    // Legacy fallback: Use user subcollection
+    console.warn('[EVENING_CHECKIN] No organization context, using legacy structure for user', userId);
+    const legacyRef = adminDb.collection('users').doc(userId).collection('eveningCheckins').doc(today);
+    const existingDoc = await legacyRef.get();
+
+    if (existingDoc.exists) {
+      return NextResponse.json({ checkIn: { id: existingDoc.id, ...existingDoc.data() } });
+    }
+
+    const legacyCheckIn = {
       date: today,
       userId,
-      organizationId,
       emotionalState: 'steady' as EveningEmotionalState,
       tasksCompleted,
       tasksTotal,
-      completedTasksSnapshot, // Store the snapshot of completed focus tasks
+      completedTasksSnapshot,
       createdAt: now,
       updatedAt: now,
     };
 
-    await checkInRef.set(newCheckIn);
-
-    return NextResponse.json({ checkIn: { id: docId, ...newCheckIn } }, { status: 201 });
+    await legacyRef.set(legacyCheckIn);
+    return NextResponse.json({ checkIn: { id: today, ...legacyCheckIn } }, { status: 201 });
   } catch (error) {
     console.error('Error creating evening check-in:', error);
     const message = error instanceof Error ? error.message : 'Failed to create evening check-in';
@@ -155,7 +179,7 @@ export async function POST(request: NextRequest) {
 }
 
 // PATCH - Update evening check-in progress
-// MULTI-TENANCY: Updates check-in scoped to current organization
+// MULTI-TENANCY: Updates check-in scoped to current organization (with legacy fallback)
 export async function PATCH(request: NextRequest) {
   try {
     const { userId, sessionClaims } = await auth();
@@ -168,28 +192,29 @@ export async function PATCH(request: NextRequest) {
     const userSessionOrgId = publicMetadata?.organizationId || null;
     const organizationId = await getEffectiveOrgId(userSessionOrgId);
 
-    if (!organizationId) {
-      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
-    }
-
     const updates = await request.json();
     const today = new Date().toISOString().split('T')[0];
     
-    // Try new top-level collection first
-    const docId = getEveningCheckInDocId(organizationId, userId, today);
-    let checkInRef = adminDb.collection('evening_checkins').doc(docId);
-    let existingDoc = await checkInRef.get();
+    let checkInRef: FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData> | null = null;
+    let existingDoc: FirebaseFirestore.DocumentSnapshot | null = null;
+
+    // Try new top-level collection first if we have organizationId
+    if (organizationId) {
+      const docId = getEveningCheckInDocId(organizationId, userId, today);
+      checkInRef = adminDb.collection('evening_checkins').doc(docId);
+      existingDoc = await checkInRef.get();
+    }
 
     // Legacy fallback: Check user subcollection
-    if (!existingDoc.exists) {
+    if (!existingDoc?.exists) {
       const legacyRef = adminDb.collection('users').doc(userId).collection('eveningCheckins').doc(today);
       existingDoc = await legacyRef.get();
       if (existingDoc.exists) {
-        checkInRef = legacyRef as FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>;
+        checkInRef = legacyRef;
       }
     }
 
-    if (!existingDoc.exists) {
+    if (!existingDoc?.exists || !checkInRef) {
       return NextResponse.json({ error: 'Evening check-in not found' }, { status: 404 });
     }
 
@@ -202,17 +227,20 @@ export async function PATCH(request: NextRequest) {
     if (updates.completedAt === true) {
       updatedData.completedAt = new Date().toISOString();
       
-      // Snapshot the Daily Focus tasks RIGHT NOW before they can move to backlog
-      // MULTI-TENANCY: Only snapshot tasks from current organization
+      // Snapshot the Daily Focus tasks
       try {
-        const tasksSnapshot = await adminDb
+        let tasksQuery = adminDb
           .collection('tasks')
           .where('userId', '==', userId)
-          .where('organizationId', '==', organizationId)
           .where('date', '==', today)
-          .where('listType', '==', 'focus')
-          .get();
+          .where('listType', '==', 'focus');
         
+        // Add org filter if available
+        if (organizationId) {
+          tasksQuery = tasksQuery.where('organizationId', '==', organizationId);
+        }
+        
+        const tasksSnapshot = await tasksQuery.get();
         const focusTasks: Task[] = [];
         const completedTasksSnapshot: TaskSnapshot[] = [];
         
@@ -232,7 +260,7 @@ export async function PATCH(request: NextRequest) {
         // Update with actual task data at completion time
         updatedData.tasksCompleted = completedTasksSnapshot.length;
         updatedData.tasksTotal = focusTasks.length;
-        updatedData.completedTasksSnapshot = completedTasksSnapshot; // Store snapshot for story display
+        updatedData.completedTasksSnapshot = completedTasksSnapshot;
       } catch (taskError) {
         console.error('Error snapshotting tasks for check-in completion:', taskError);
         // Continue without task data - will fall back to original counts

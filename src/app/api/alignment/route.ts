@@ -32,8 +32,35 @@ export async function GET(request: NextRequest) {
     const userSessionOrgId = publicMetadata?.organizationId || null;
     const organizationId = await getEffectiveOrgId(userSessionOrgId);
 
+    // If no organization context, return empty alignment (backward compatibility during migration)
     if (!organizationId) {
-      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
+      const date = new URL(request.url).searchParams.get('date') || getTodayDate();
+      return NextResponse.json({
+        success: true,
+        alignment: {
+          id: `legacy_${userId}_${date}`,
+          userId,
+          organizationId: '',
+          date,
+          didMorningCheckin: false,
+          didSetTasks: false,
+          didInteractWithSquad: false,
+          hasActiveGoal: false,
+          alignmentScore: 0,
+          fullyAligned: false,
+          streakOnThisDay: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        summary: {
+          id: `legacy_${userId}`,
+          userId,
+          organizationId: '',
+          currentStreak: 0,
+          lastAlignedDate: null,
+          updatedAt: new Date().toISOString(),
+        },
+      });
     }
 
     const { searchParams } = new URL(request.url);
@@ -87,8 +114,15 @@ export async function POST(request: NextRequest) {
     const userSessionOrgId = publicMetadata?.organizationId || null;
     const organizationId = await getEffectiveOrgId(userSessionOrgId);
 
+    // If no organization context, return success without updating (backward compatibility)
     if (!organizationId) {
-      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
+      console.warn('[ALIGNMENT] No organization context for user', userId);
+      return NextResponse.json({
+        success: true,
+        alignment: null,
+        summary: null,
+        warning: 'No organization context - alignment not updated',
+      });
     }
 
     const body = await request.json();

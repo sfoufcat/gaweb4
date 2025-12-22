@@ -7,7 +7,7 @@ import type { CreateHabitRequest, Habit, ClerkPublicMetadata } from '@/types';
 /**
  * GET /api/habits - Fetch all habits for the user
  * 
- * MULTI-TENANCY: Habits are scoped per organization
+ * MULTI-TENANCY: Habits are scoped per organization (with legacy fallback)
  */
 export async function GET() {
   try {
@@ -22,23 +22,22 @@ export async function GET() {
     const userSessionOrgId = publicMetadata?.organizationId || null;
     const organizationId = await getEffectiveOrgId(userSessionOrgId);
 
-    if (!organizationId) {
-      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
+    const allHabits: Habit[] = [];
+
+    // If we have organizationId, fetch org-scoped habits first
+    if (organizationId) {
+      const habitsSnapshot = await adminDb
+        .collection('habits')
+        .where('userId', '==', userId)
+        .where('organizationId', '==', organizationId)
+        .get();
+      
+      habitsSnapshot.forEach((doc) => {
+        allHabits.push({ id: doc.id, ...doc.data() } as Habit);
+      });
     }
 
-    // Fetch all user habits for this organization
-    const habitsSnapshot = await adminDb
-      .collection('habits')
-      .where('userId', '==', userId)
-      .where('organizationId', '==', organizationId)
-      .get();
-    
-    const allHabits: Habit[] = [];
-    habitsSnapshot.forEach((doc) => {
-      allHabits.push({ id: doc.id, ...doc.data() } as Habit);
-    });
-
-    // Legacy fallback: Also check for habits without organizationId (to be migrated)
+    // Legacy fallback: Also fetch habits without organizationId (to be migrated)
     if (allHabits.length === 0) {
       const legacySnapshot = await adminDb
         .collection('habits')
@@ -47,9 +46,12 @@ export async function GET() {
       
       legacySnapshot.forEach((doc) => {
         const data = doc.data();
-        // Only include if no organizationId (legacy data)
-        if (!data.organizationId) {
-          allHabits.push({ id: doc.id, ...data } as Habit);
+        // Only include if no organizationId (legacy data) or matching org
+        if (!data.organizationId || data.organizationId === organizationId) {
+          // Avoid duplicates
+          if (!allHabits.some(h => h.id === doc.id)) {
+            allHabits.push({ id: doc.id, ...data } as Habit);
+          }
         }
       });
     }
