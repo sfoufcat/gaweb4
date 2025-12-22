@@ -3,12 +3,12 @@
 import { useState, useRef } from 'react';
 import Image from 'next/image';
 
-type MediaType = 'image' | 'video' | 'any';
+type MediaType = 'image' | 'video' | 'any' | 'file';
 
 interface MediaUploadProps {
   value: string; // Current URL
   onChange: (url: string) => void;
-  folder: 'events' | 'articles' | 'courses' | 'courses/lessons';
+  folder: 'events' | 'articles' | 'courses' | 'courses/lessons' | 'downloads' | 'links';
   type?: MediaType;
   label?: string;
   required?: boolean;
@@ -19,14 +19,18 @@ interface MediaUploadProps {
 const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 
+const FILE_TYPES = ['application/pdf', 'application/zip', 'application/x-zip-compressed', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+
 const getAcceptedTypes = (type: MediaType) => {
   switch (type) {
     case 'image':
       return IMAGE_TYPES;
     case 'video':
       return VIDEO_TYPES;
+    case 'file':
+      return FILE_TYPES;
     case 'any':
-      return [...IMAGE_TYPES, ...VIDEO_TYPES];
+      return [...IMAGE_TYPES, ...VIDEO_TYPES, ...FILE_TYPES];
   }
 };
 

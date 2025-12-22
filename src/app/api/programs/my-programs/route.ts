@@ -147,7 +147,7 @@ export async function GET() {
 
       // Get squad for group programs
       let squad: Squad | null = null;
-      let squadMembers: SquadMemberPreview[] = [];
+      const squadMembers: SquadMemberPreview[] = [];
       if (enrollment.squadId) {
         const squadDoc = await adminDb.collection('squads').doc(enrollment.squadId).get();
         if (squadDoc.exists) {

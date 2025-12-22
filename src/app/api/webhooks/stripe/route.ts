@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { sendWelcomeEmail } from '@/lib/email';
 import { updateUserBillingInClerk, updateUserCoachingInClerk, type BillingStatus } from '@/lib/admin-utils-clerk';
+import { archiveOldSquadMemberships } from '@/lib/program-engine';
 import type { CoachingStatus, CoachingPlan, FlowSession, Program, ProgramEnrollment, ProgramInvite, NewProgramEnrollmentStatus } from '@/types';
 
 // Coaching product ID - used to identify coaching subscriptions vs membership subscriptions
@@ -857,6 +858,19 @@ async function handleFunnelPaymentSucceeded(paymentIntent: Stripe.PaymentIntent)
   }
 
   await userRef.set(userUpdate, { merge: true });
+
+  // Archive old squad memberships if user was assigned to a new squad
+  if (assignedSquadId) {
+    try {
+      const archiveResult = await archiveOldSquadMemberships(userId, assignedSquadId);
+      if (archiveResult.archivedSquads.length > 0) {
+        console.log(`[STRIPE_WEBHOOK] Archived ${archiveResult.archivedSquads.length} old squad memberships for user ${userId}`);
+      }
+    } catch (archiveErr) {
+      // Non-fatal - user is enrolled and in new squad
+      console.error(`[STRIPE_WEBHOOK] Failed to archive old squads (non-fatal):`, archiveErr);
+    }
+  }
 
   console.log(`[STRIPE_WEBHOOK] Funnel payment processed: User ${userId} enrolled in program ${flowSession.programId}, enrollment ${enrollmentRef.id}`);
 }

@@ -5,6 +5,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import type { FlowSession, ProgramInvite, Program, ProgramEnrollment, NewProgramEnrollmentStatus, ProgramHabitTemplate, FrequencyType } from '@/types';
 import { addUserToOrganization } from '@/lib/clerk-organizations';
 import { assignUserToSquad, updateUserSquadReference } from '@/lib/squad-assignment';
+import { archiveOldSquadMemberships } from '@/lib/program-engine';
 
 /**
  * POST /api/funnel/complete
@@ -264,6 +265,18 @@ export async function POST(req: Request) {
         await updateUserSquadReference(userId, assignedSquadId, true); // Premium squad for paid programs
       } catch (squadRefErr) {
         console.error(`[FUNNEL_COMPLETE] Failed to update squad reference (non-fatal):`, squadRefErr);
+      }
+      
+      // Archive old squad memberships (remove from memberIds but keep in chat)
+      // This ensures the new program's squad shows in Squad tab, and old chats remain accessible
+      try {
+        const archiveResult = await archiveOldSquadMemberships(userId, assignedSquadId);
+        if (archiveResult.archivedSquads.length > 0) {
+          console.log(`[FUNNEL_COMPLETE] Archived ${archiveResult.archivedSquads.length} old squad memberships for user ${userId}`);
+        }
+      } catch (archiveErr) {
+        // Non-fatal - user is enrolled and in new squad, old squads just won't be archived
+        console.error(`[FUNNEL_COMPLETE] Failed to archive old squads (non-fatal):`, archiveErr);
       }
     }
 

@@ -1,11 +1,23 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats } from '@/types';
+import Image from 'next/image';
+import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Edit2, ChevronRight } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Edit2, ChevronRight, UserMinus } from 'lucide-react';
+
+// Enrollment with user info
+interface EnrollmentWithUser extends ProgramEnrollment {
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    imageUrl: string;
+  };
+}
 
 interface CoachProgramsTabProps {
   apiBasePath?: string;
@@ -23,8 +35,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // View mode: 'list' | 'days' | 'cohorts'
-  const [viewMode, setViewMode] = useState<'list' | 'days' | 'cohorts'>('list');
+  // View mode: 'list' | 'days' | 'cohorts' | 'enrollments'
+  const [viewMode, setViewMode] = useState<'list' | 'days' | 'cohorts' | 'enrollments'>('list');
+  
+  // Enrollments state
+  const [programEnrollments, setProgramEnrollments] = useState<EnrollmentWithUser[]>([]);
+  const [loadingEnrollments, setLoadingEnrollments] = useState(false);
+  const [removeConfirmEnrollment, setRemoveConfirmEnrollment] = useState<EnrollmentWithUser | null>(null);
+  const [removingEnrollment, setRemovingEnrollment] = useState(false);
   
   // Modal states
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
@@ -150,6 +168,52 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     }
   }, [apiBasePath]);
 
+  const fetchProgramEnrollments = useCallback(async (programId: string) => {
+    try {
+      setLoadingEnrollments(true);
+
+      const response = await fetch(`${apiBasePath}/${programId}/enrollments`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch enrollments');
+      }
+
+      const data = await response.json();
+      setProgramEnrollments(data.enrollments || []);
+    } catch (err) {
+      console.error('Error fetching enrollments:', err);
+      setProgramEnrollments([]);
+    } finally {
+      setLoadingEnrollments(false);
+    }
+  }, [apiBasePath]);
+
+  const handleRemoveEnrollment = async () => {
+    if (!removeConfirmEnrollment || !selectedProgram) return;
+    
+    try {
+      setRemovingEnrollment(true);
+      
+      const response = await fetch(
+        `${apiBasePath}/${selectedProgram.id}/enrollments/${removeConfirmEnrollment.id}`,
+        { method: 'DELETE' }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to remove user');
+      }
+
+      // Refresh enrollments list
+      await fetchProgramEnrollments(selectedProgram.id);
+      setRemoveConfirmEnrollment(null);
+    } catch (err) {
+      console.error('Error removing enrollment:', err);
+      alert(err instanceof Error ? err.message : 'Failed to remove user');
+    } finally {
+      setRemovingEnrollment(false);
+    }
+  };
+
   useEffect(() => {
     fetchPrograms();
   }, [fetchPrograms]);
@@ -160,6 +224,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       setSelectedDayIndex(1);
     }
   }, [selectedProgram, fetchProgramDetails]);
+
+  // Fetch enrollments when switching to enrollments view
+  useEffect(() => {
+    if (viewMode === 'enrollments' && selectedProgram) {
+      fetchProgramEnrollments(selectedProgram.id);
+    }
+  }, [viewMode, selectedProgram, fetchProgramEnrollments]);
 
   // Load day data when day index changes
   useEffect(() => {
@@ -566,6 +637,16 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     Cohorts
                   </button>
                 )}
+                <button
+                  onClick={() => setViewMode('enrollments')}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-albert ${
+                    viewMode === 'enrollments'
+                      ? 'bg-[#a07855]/10 text-[#a07855]'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
+                  }`}
+                >
+                  Enrollments
+                </button>
               </div>
             </>
           )}
@@ -883,7 +964,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               )}
             </div>
           </div>
-        ) : (
+        ) : viewMode === 'cohorts' ? (
           // Cohorts View (Group programs only)
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -975,8 +1056,169 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               )}
             </div>
           </div>
-        )}
+        ) : viewMode === 'enrollments' ? (
+          // Enrollments View
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                View and manage enrolled users
+              </p>
+              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                {programEnrollments.filter(e => e.status === 'active' || e.status === 'upcoming').length} active
+              </span>
+            </div>
+
+            {loadingEnrollments ? (
+              <div className="text-center py-12">
+                <div className="w-8 h-8 border-4 border-[#a07855] border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-2">Loading enrollments...</p>
+              </div>
+            ) : programEnrollments.length === 0 ? (
+              <div className="text-center py-12 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
+                <Users className="w-12 h-12 text-[#5f5a55] mx-auto mb-3" />
+                <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
+                  No enrollments yet
+                </h3>
+                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                  Share your program invite link to start enrolling users
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {programEnrollments.map((enrollment) => (
+                  <div 
+                    key={enrollment.id}
+                    className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {enrollment.user?.imageUrl ? (
+                          <Image
+                            src={enrollment.user.imageUrl}
+                            alt={`${enrollment.user.firstName} ${enrollment.user.lastName}`}
+                            width={40}
+                            height={40}
+                            className="rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-[#a07855]/20 flex items-center justify-center">
+                            <User className="w-5 h-5 text-[#a07855]" />
+                          </div>
+                        )}
+                        <div>
+                          <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                            {enrollment.user 
+                              ? `${enrollment.user.firstName} ${enrollment.user.lastName}`.trim() || 'Unknown User'
+                              : 'Unknown User'}
+                          </h3>
+                          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                            {enrollment.user?.email || enrollment.userId}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <span className={`px-2 py-0.5 rounded-full text-xs ${
+                            enrollment.status === 'active' 
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                              : enrollment.status === 'upcoming'
+                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                              : enrollment.status === 'completed'
+                              ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                              : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                          }`}>
+                            {enrollment.status}
+                          </span>
+                          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+                            Enrolled {new Date(enrollment.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        {(enrollment.status === 'active' || enrollment.status === 'upcoming') && (
+                          <button
+                            onClick={() => setRemoveConfirmEnrollment(enrollment)}
+                            className="p-2 text-[#5f5a55] hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            title="Remove from program"
+                          >
+                            <UserMinus className="w-5 h-5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : null}
       </div>
+
+      {/* Remove Enrollment Confirmation Modal */}
+      <Transition appear show={removeConfirmEnrollment !== null} as={Fragment}>
+        <Dialog as="div" className="relative z-[60]" onClose={() => setRemoveConfirmEnrollment(null)}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-[#171b22] p-6 shadow-xl transition-all">
+                  <Dialog.Title className="font-albert text-xl text-[#1a1a1a] dark:text-[#f5f5f8] mb-3">
+                    Remove from Program?
+                  </Dialog.Title>
+                  
+                  <p className="text-[15px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed mb-4">
+                    Are you sure you want to remove{' '}
+                    <strong>
+                      {removeConfirmEnrollment?.user 
+                        ? `${removeConfirmEnrollment.user.firstName} ${removeConfirmEnrollment.user.lastName}`.trim()
+                        : 'this user'}
+                    </strong>{' '}
+                    from <strong>{selectedProgram?.name}</strong>?
+                  </p>
+                  <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mb-4">
+                    This will remove them from the program, squad, and chat. This action cannot be undone.
+                  </p>
+
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => setRemoveConfirmEnrollment(null)}
+                      disabled={removingEnrollment}
+                      className="flex-1 border-[#e1ddd8] dark:border-[#262b35]"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleRemoveEnrollment}
+                      disabled={removingEnrollment}
+                      className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                    >
+                      {removingEnrollment ? 'Removing...' : 'Remove'}
+                    </Button>
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
 
       {/* Program Create/Edit Modal */}
       <Transition appear show={isProgramModalOpen} as={Fragment}>

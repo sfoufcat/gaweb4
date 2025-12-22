@@ -5,9 +5,12 @@
  * - User enrollment in programs
  * - Daily task generation from program templates
  * - Program progress tracking
+ * - Squad membership management on enrollment transitions
  */
 
 import { adminDb } from './firebase-admin';
+import { getStreamServerClient } from './stream-server';
+import { FieldValue } from 'firebase-admin/firestore';
 import type { 
   StarterProgram, 
   StarterProgramDay, 
@@ -15,6 +18,7 @@ import type {
   ProgramTaskTemplate,
   Task,
   UserTrack,
+  Squad,
 } from '@/types';
 
 // ============================================================================
@@ -807,5 +811,135 @@ export async function shouldShowProgramCheckIn(userId: string): Promise<{
   }
   
   return { show: false, programId: null, programName: null };
+}
+
+// ============================================================================
+// SQUAD MEMBERSHIP MANAGEMENT
+// ============================================================================
+
+/**
+ * Archive old squad memberships when user joins a new program squad.
+ * 
+ * This removes the user from old squad memberIds (so Squad tab shows new squad)
+ * but keeps them in the Stream chat channel (so they can still message old squadmates).
+ * 
+ * The "pinned" behavior is derived from squad membership - removing from memberIds
+ * effectively "unpins" the old squad chat in the UI.
+ * 
+ * @param userId - User ID
+ * @param newSquadId - The new squad ID (will be excluded from archiving)
+ */
+export async function archiveOldSquadMemberships(
+  userId: string,
+  newSquadId: string
+): Promise<{ archivedSquads: string[] }> {
+  const archivedSquads: string[] = [];
+  
+  try {
+    // Find all squads where user is a member (excluding the new squad)
+    const squadsSnapshot = await adminDb
+      .collection('squads')
+      .where('memberIds', 'array-contains', userId)
+      .get();
+    
+    for (const squadDoc of squadsSnapshot.docs) {
+      if (squadDoc.id === newSquadId) {
+        continue; // Skip the new squad
+      }
+      
+      const squadData = squadDoc.data() as Squad;
+      
+      // Remove user from memberIds array
+      await squadDoc.ref.update({
+        memberIds: FieldValue.arrayRemove(userId),
+        updatedAt: new Date().toISOString(),
+      });
+      
+      archivedSquads.push(squadDoc.id);
+      console.log(`[SQUAD_ARCHIVE] Removed user ${userId} from squad ${squadDoc.id} (${squadData.name}) - kept in chat`);
+    }
+    
+    // Also clean up squadMembers collection (if exists)
+    if (archivedSquads.length > 0) {
+      const squadMembersSnapshot = await adminDb
+        .collection('squadMembers')
+        .where('squadId', 'in', archivedSquads)
+        .where('clerkUserId', '==', userId)
+        .get();
+      
+      const batch = adminDb.batch();
+      squadMembersSnapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+      
+      console.log(`[SQUAD_ARCHIVE] Deleted ${squadMembersSnapshot.size} squadMembers records`);
+    }
+    
+    return { archivedSquads };
+  } catch (error) {
+    console.error('[SQUAD_ARCHIVE] Error archiving old squad memberships:', error);
+    throw error;
+  }
+}
+
+/**
+ * Fully remove a user from a squad and its chat channel.
+ * Used when a coach removes a user from a program - they lose both squad and chat access.
+ * 
+ * @param userId - User ID to remove
+ * @param squadId - Squad ID to remove from
+ */
+export async function removeUserFromSquadEntirely(
+  userId: string,
+  squadId: string
+): Promise<void> {
+  try {
+    const squadDoc = await adminDb.collection('squads').doc(squadId).get();
+    
+    if (!squadDoc.exists) {
+      console.log(`[SQUAD_REMOVE] Squad ${squadId} not found`);
+      return;
+    }
+    
+    const squadData = squadDoc.data() as Squad;
+    
+    // 1. Remove from squad memberIds
+    await squadDoc.ref.update({
+      memberIds: FieldValue.arrayRemove(userId),
+      updatedAt: new Date().toISOString(),
+    });
+    
+    // 2. Delete squadMembers record
+    const squadMembersSnapshot = await adminDb
+      .collection('squadMembers')
+      .where('squadId', '==', squadId)
+      .where('clerkUserId', '==', userId)
+      .get();
+    
+    const batch = adminDb.batch();
+    squadMembersSnapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+    await batch.commit();
+    
+    // 3. Remove from Stream chat channel
+    if (squadData.chatChannelId) {
+      try {
+        const streamClient = await getStreamServerClient();
+        const channel = streamClient.channel('messaging', squadData.chatChannelId);
+        await channel.removeMembers([userId]);
+        console.log(`[SQUAD_REMOVE] Removed user ${userId} from Stream channel ${squadData.chatChannelId}`);
+      } catch (streamError) {
+        console.error('[SQUAD_REMOVE] Error removing from Stream channel:', streamError);
+        // Continue - Firebase removal succeeded
+      }
+    }
+    
+    console.log(`[SQUAD_REMOVE] Fully removed user ${userId} from squad ${squadId} (${squadData.name})`);
+  } catch (error) {
+    console.error('[SQUAD_REMOVE] Error removing user from squad:', error);
+    throw error;
+  }
 }
 
