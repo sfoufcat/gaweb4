@@ -142,6 +142,7 @@ export function SquadHeader({ squad, onSquadUpdated }: SquadHeaderProps) {
   const mockAlignment = useMemo<UserAlignment>(() => ({
     id: 'squad-mock',
     userId: squad.id,
+    organizationId: squad.organizationId || '',
     date: new Date().toISOString().split('T')[0],
     didMorningCheckin: avgAlignment >= 25,
     didSetTasks: avgAlignment >= 50,
@@ -152,14 +153,16 @@ export function SquadHeader({ squad, onSquadUpdated }: SquadHeaderProps) {
     streakOnThisDay: squadStreak,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-  }), [squad.id, squadStreak, avgAlignment]);
+  }), [squad.id, squad.organizationId, squadStreak, avgAlignment]);
 
   const mockSummary = useMemo<UserAlignmentSummary>(() => ({
+    id: `${squad.organizationId || ''}_${squad.id}`,
     userId: squad.id,
+    organizationId: squad.organizationId || '',
     currentStreak: squadStreak,
     lastAlignedDate: new Date().toISOString().split('T')[0],
     updatedAt: new Date().toISOString(),
-  }), [squad.id, squadStreak]);
+  }), [squad.id, squad.organizationId, squadStreak]);
 
   const handleMessageClick = () => {
     if (squad.chatChannelId) {

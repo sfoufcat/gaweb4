@@ -318,10 +318,12 @@ async function getExistingBacklogTasks(
 
 /**
  * Create a task from a program template
+ * Note: organizationId is optional for backward compatibility with legacy StarterProgramEnrollment
  */
 async function createProgramTask(
   userId: string,
   enrollmentId: string,
+  organizationId: string | undefined,
   dayIndex: number,
   template: ProgramTaskTemplate,
   listType: 'focus' | 'backlog',
@@ -330,8 +332,9 @@ async function createProgramTask(
 ): Promise<Task> {
   const now = new Date().toISOString();
   
-  const taskData: Omit<Task, 'id'> = {
+  const taskData = {
     userId,
+    ...(organizationId && { organizationId }),
     title: template.label,
     status: 'pending',
     listType,
@@ -343,7 +346,7 @@ async function createProgramTask(
     programDayIndex: dayIndex,
     createdAt: now,
     updatedAt: now,
-  };
+  } as Omit<Task, 'id'>;
   
   const docRef = await adminDb.collection('tasks').add(taskData);
   console.log(`[PROGRAM_ENGINE] Created program task: "${template.label}" (${listType}) for day ${dayIndex}`);
@@ -515,6 +518,7 @@ export async function syncProgramTasksForToday(
     await createProgramTask(
       userId,
       enrollment.id,
+      (enrollment as { organizationId?: string }).organizationId,
       dayIndex,
       template,
       listType,
@@ -544,6 +548,7 @@ export async function syncProgramTasksForToday(
     await createProgramTask(
       userId,
       enrollment.id,
+      (enrollment as { organizationId?: string }).organizationId,
       dayIndex,
       template,
       'backlog',

@@ -234,9 +234,11 @@ async function createCoachingRelationship(
     console.error(`[PROGRAM_ENROLL] Failed to create coaching chat:`, chatError);
   }
 
-  // Create coaching data record
+  // Create coaching data record with organizationId for multi-tenancy
+  const coachingDocId = `${program.organizationId}_${userId}`;
   const coachingData: Omit<ClientCoachingData, 'id'> = {
     userId,
+    organizationId: program.organizationId,
     coachId,
     coachingPlan: 'monthly', // Default
     startDate: now.split('T')[0],
@@ -255,7 +257,7 @@ async function createCoachingRelationship(
     updatedAt: now,
   };
 
-  await adminDb.collection('client_coaching_data').doc(userId).set(coachingData);
+  await adminDb.collection('clientCoachingData').doc(coachingDocId).set(coachingData);
 
   // Update user with coach assignment
   await adminDb.collection('users').doc(userId).update({

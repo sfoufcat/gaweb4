@@ -199,8 +199,11 @@ async function createCoachingRelationship(
     console.error(`[VERIFY_PAYMENT] Failed to create coaching chat:`, chatError);
   }
 
+  // Create coaching data with organizationId for multi-tenancy
+  const coachingDocId = `${program.organizationId}_${userId}`;
   const coachingData: Omit<ClientCoachingData, 'id'> = {
     userId,
+    organizationId: program.organizationId,
     coachId,
     coachingPlan: 'monthly',
     startDate: now.split('T')[0],
@@ -219,7 +222,7 @@ async function createCoachingRelationship(
     updatedAt: now,
   };
 
-  await adminDb.collection('client_coaching_data').doc(userId).set(coachingData);
+  await adminDb.collection('clientCoachingData').doc(coachingDocId).set(coachingData);
 
   await adminDb.collection('users').doc(userId).update({
     coachId,

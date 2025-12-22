@@ -105,7 +105,7 @@ export async function POST(request: Request) {
     await requireAdmin();
 
     const body = await request.json();
-    const { userId, coachId, coachingPlan } = body;
+    const { userId, coachId, coachingPlan, organizationId } = body;
 
     if (!userId) {
       return NextResponse.json({ error: 'userId is required' }, { status: 400 });
@@ -117,6 +117,10 @@ export async function POST(request: Request) {
 
     if (!coachingPlan || !['monthly', 'quarterly'].includes(coachingPlan)) {
       return NextResponse.json({ error: 'coachingPlan must be monthly or quarterly' }, { status: 400 });
+    }
+
+    if (!organizationId) {
+      return NextResponse.json({ error: 'organizationId is required' }, { status: 400 });
     }
 
     const now = new Date().toISOString();
@@ -147,8 +151,9 @@ export async function POST(request: Request) {
       },
     });
 
-    // Check if coaching data already exists
-    const existingCoachingDoc = await adminDb.collection('clientCoachingData').doc(userId).get();
+    // Check if coaching data already exists (using org-scoped ID)
+    const coachingDocIdCheck = `${organizationId}_${userId}`;
+    const existingCoachingDoc = await adminDb.collection('clientCoachingData').doc(coachingDocIdCheck).get();
 
     // Create or update 1:1 chat channel between coach and client
     let chatChannelId: string | undefined;
@@ -178,19 +183,23 @@ export async function POST(request: Request) {
       }
     }
 
+    // Use org-scoped document ID for multi-tenancy
+    const coachingDocId = `${organizationId}_${userId}`;
+
     if (existingCoachingDoc.exists) {
       // Update existing coaching data
-      await adminDb.collection('clientCoachingData').doc(userId).update({
+      await adminDb.collection('clientCoachingData').doc(coachingDocId).update({
         coachId,
         coachingPlan,
         ...(chatChannelId && { chatChannelId }),
         updatedAt: now,
       });
     } else {
-      // Create new coaching data
+      // Create new coaching data with organizationId for multi-tenancy
       const coachingData: ClientCoachingData = {
-        id: userId,
+        id: coachingDocId,
         userId,
+        organizationId,
         coachId,
         coachingPlan,
         startDate: now,
@@ -209,7 +218,7 @@ export async function POST(request: Request) {
         updatedAt: now,
       };
 
-      await adminDb.collection('clientCoachingData').doc(userId).set(coachingData);
+      await adminDb.collection('clientCoachingData').doc(coachingDocId).set(coachingData);
     }
 
     return NextResponse.json({

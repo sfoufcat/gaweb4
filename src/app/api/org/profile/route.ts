@@ -170,8 +170,8 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({
       success: true,
       profile: {
-        id: updatedDoc.id,
         ...updatedData,
+        id: updatedDoc.id, // Override any id in updatedData with the doc id
       },
     });
   } catch (error) {
@@ -238,10 +238,10 @@ export async function POST(request: NextRequest) {
       userId,
       organizationId,
       orgRole: 'member',
-      tier: 'starter',
+      tier: 'free',
       track: null,
       squadId: null,
-      accessSource: 'invite',
+      accessSource: 'invite_code',
       accessExpiresAt: null,
       inviteCodeUsed: null,
       isActive: true,
