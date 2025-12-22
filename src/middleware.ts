@@ -688,7 +688,15 @@ export default clerkMiddleware(async (auth, request) => {
         // Continue to page - ClerkProvider will sync session client-side
       } else {
         const isReturningUser = request.cookies.get('ga_returning_user')?.value === 'true';
-        const redirectUrl = isReturningUser ? '/sign-in' : '/join/starter-90';
+        
+        // On platform domain: always redirect to sign-in
+        // On tenant domains: redirect new users to join funnel, returning users to sign-in
+        let redirectUrl = '/sign-in';
+        if (isTenantMode && !isReturningUser) {
+          // Only redirect to join funnel on tenant domains (where funnels exist)
+          redirectUrl = '/join/starter-90';
+        }
+        
         return NextResponse.redirect(new URL(redirectUrl, request.url));
       }
     }
