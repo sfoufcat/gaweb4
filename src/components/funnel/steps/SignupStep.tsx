@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth, useClerk, useSignUp } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
@@ -24,19 +24,46 @@ interface SignupStepProps {
   hostname: string;
   flowSessionId: string;
   isFirstStep: boolean;
-  // New props for cross-org detection
+  // Organization context for the funnel
   organizationId?: string;
   organizationName?: string;
+}
+
+// Unified loader component
+function Loader({ branding, message }: { branding: { logoUrl: string; appTitle: string }; message: string }) {
+  return (
+    <div className="fixed inset-0 bg-app-bg flex items-center justify-center">
+      <div className="text-center">
+        {branding.logoUrl && (
+          <Image
+            src={branding.logoUrl}
+            alt={branding.appTitle}
+            width={80}
+            height={80}
+            className="w-16 h-16 lg:w-20 lg:h-20 rounded-full mx-auto mb-6 shadow-lg"
+            unoptimized={branding.logoUrl.startsWith('http')}
+          />
+        )}
+        <div className="relative mb-4 mx-auto w-fit">
+          <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
+          <div 
+            className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin"
+            style={{ borderTopColor: primaryVar }}
+          />
+        </div>
+        <p className="text-text-secondary">{message}</p>
+      </div>
+    </div>
+  );
 }
 
 /**
  * SignupStep - Handles user authentication in a funnel
  * 
- * Modes:
- * 1. Already signed in (same org) → Auto-advance
- * 2. Already signed in (different org) → Show confirmation to join new org
- * 3. Not signed in (regular domain) → Show custom SignUpForm with branding
- * 4. Not signed in (custom domain) → Iframe-based signup
+ * Flow:
+ * 1. Not signed in → Show sign-up form
+ * 2. Already signed in → Show "Join [Coach Name]" confirmation (ALWAYS)
+ * 3. After confirmation → Link session and proceed
  */
 export function SignupStep({
   config,
@@ -57,10 +84,9 @@ export function SignupStep({
   const [error, setError] = useState<string | null>(null);
   const [isLinking, setIsLinking] = useState(false);
   
-  // Cross-organization state
-  const [userOrgId, setUserOrgId] = useState<string | null>(null);
-  const [showCrossOrgConfirm, setShowCrossOrgConfirm] = useState(false);
-  const [checkingOrg, setCheckingOrg] = useState(false);
+  // For signed-in users, we show confirmation immediately (no org check needed)
+  // This simplifies the flow and ensures the confirmation screen always appears
+  const [hasConfirmed, setHasConfirmed] = useState(false);
 
   // Determine if we're on a custom domain (satellite)
   const isCustomDomain = !hostname.includes('growthaddicts.app') && 
@@ -68,10 +94,10 @@ export function SignupStep({
                          !hostname.includes('127.0.0.1');
 
   // Extract subdomain from hostname for iframe
-  const getSubdomain = () => {
+  const getSubdomain = useCallback(() => {
     const match = hostname.match(/^([a-z0-9-]+)\.growthaddicts\.app$/);
     return match ? match[1] : null;
-  };
+  }, [hostname]);
 
   const subdomain = getSubdomain();
 
@@ -79,45 +105,8 @@ export function SignupStep({
     setMounted(true);
   }, []);
 
-  // Fetch user's organization when signed in
-  useEffect(() => {
-    async function checkUserOrg() {
-      if (!isLoaded || !isSignedIn || !userId) return;
-      
-      setCheckingOrg(true);
-      try {
-        // Fetch user's current organization from API
-        const response = await fetch('/api/user/organization');
-        if (response.ok) {
-          const data = await response.json();
-          setUserOrgId(data.organizationId || null);
-          
-          // Check if user is joining a different organization
-          if (organizationId && data.organizationId && data.organizationId !== organizationId) {
-            setShowCrossOrgConfirm(true);
-          } else {
-            // Same org or no org - auto-proceed
-            linkSessionAndContinue();
-          }
-        } else {
-          // No org info - proceed
-          linkSessionAndContinue();
-        }
-      } catch (err) {
-        console.error('Failed to check user org:', err);
-        // On error, just proceed
-        linkSessionAndContinue();
-      } finally {
-        setCheckingOrg(false);
-      }
-    }
-
-    if (isLoaded && isSignedIn && userId && !isLinking) {
-      checkUserOrg();
-    }
-  }, [isLoaded, isSignedIn, userId, organizationId]);
-
-  const linkSessionAndContinue = async () => {
+  // Link session and continue to next step
+  const linkSessionAndContinue = useCallback(async () => {
     if (isLinking) return;
     setIsLinking(true);
     
@@ -141,7 +130,13 @@ export function SignupStep({
       setError(err instanceof Error ? err.message : 'Failed to link your account. Please try again.');
       setIsLinking(false);
     }
-  };
+  }, [isLinking, flowSessionId, onComplete, userId]);
+
+  // Handle confirmation click - user confirms they want to join
+  const handleConfirmJoin = useCallback(() => {
+    setHasConfirmed(true);
+    linkSessionAndContinue();
+  }, [linkSessionAndContinue]);
 
   // Handle OAuth for regular domains
   const handleOAuth = async (provider: 'oauth_google' | 'oauth_apple') => {
@@ -181,8 +176,7 @@ export function SignupStep({
   const handleSignOutAndRetry = async () => {
     try {
       await signOut();
-      setShowCrossOrgConfirm(false);
-      setUserOrgId(null);
+      setHasConfirmed(false);
     } catch (err) {
       console.error('Sign out error:', err);
       setError('Failed to sign out. Please try again.');
@@ -200,7 +194,8 @@ export function SignupStep({
       }
       
       if (event.data.type === 'auth-success') {
-        linkSessionAndContinue();
+        // After iframe auth, user will be signed in - we'll show confirmation
+        // The isSignedIn state will update and trigger confirmation screen
       } else if (event.data.type === 'auth-error') {
         setError(event.data.error || 'Authentication failed');
         setOauthLoading(false);
@@ -209,66 +204,25 @@ export function SignupStep({
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [isCustomDomain, flowSessionId]);
+  }, [isCustomDomain]);
 
-  // Loading state - only show loader if Clerk is not loaded yet
-  if (!isLoaded || checkingOrg) {
-    return (
-      <div className="fixed inset-0 bg-app-bg flex items-center justify-center">
-        <div className="text-center">
-          {branding.logoUrl && (
-            <Image
-              src={branding.logoUrl}
-              alt={branding.appTitle}
-              width={80}
-              height={80}
-              className="w-16 h-16 lg:w-20 lg:h-20 rounded-full mx-auto mb-6 shadow-lg"
-              unoptimized={branding.logoUrl.startsWith('http')}
-            />
-          )}
-          <div className="relative mb-4 mx-auto w-fit">
-            <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
-            <div 
-              className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin"
-              style={{ borderTopColor: primaryVar }}
-            />
-          </div>
-          <p className="text-text-secondary">Loading...</p>
-        </div>
-      </div>
-    );
+  // ============================================
+  // RENDER LOGIC - Unified loading experience
+  // ============================================
+
+  // State 1: Clerk not loaded yet
+  if (!isLoaded) {
+    return <Loader branding={branding} message="Loading..." />;
   }
 
-  // If linking in progress, show loader
+  // State 2: User is signed in and linking in progress
   if (isLinking) {
-    return (
-      <div className="fixed inset-0 bg-app-bg flex items-center justify-center">
-        <div className="text-center">
-          {branding.logoUrl && (
-            <Image
-              src={branding.logoUrl}
-              alt={branding.appTitle}
-              width={80}
-              height={80}
-              className="w-16 h-16 lg:w-20 lg:h-20 rounded-full mx-auto mb-6 shadow-lg"
-              unoptimized={branding.logoUrl.startsWith('http')}
-            />
-          )}
-          <div className="relative mb-4 mx-auto w-fit">
-            <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
-            <div 
-              className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin"
-              style={{ borderTopColor: primaryVar }}
-            />
-          </div>
-          <p className="text-text-secondary">Setting up your account...</p>
-        </div>
-      </div>
-    );
+    return <Loader branding={branding} message="Setting up your account..." />;
   }
 
-  // Cross-organization confirmation screen
-  if (showCrossOrgConfirm && isSignedIn) {
+  // State 3: User is signed in - show confirmation screen (ALWAYS)
+  // This is the key change: we always show confirmation for signed-in users
+  if (isSignedIn && !hasConfirmed) {
     return (
       <div className="fixed inset-0 bg-app-bg overflow-y-auto">
         <div className="min-h-full flex flex-col items-center justify-center px-4 py-8 lg:py-16">
@@ -294,22 +248,24 @@ export function SignupStep({
               Join {organizationName || branding.appTitle}
             </h1>
             <p className="font-sans text-[16px] text-text-secondary leading-[1.6] mb-8">
-              You&apos;re about to join a new community. Your existing accounts will remain active.
+              You&apos;re about to join this program. Click continue to proceed.
             </p>
 
             {/* Actions */}
             <div className="space-y-4">
               <button
-                onClick={linkSessionAndContinue}
-                className="w-full py-4 px-6 rounded-full font-sans font-bold text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+                onClick={handleConfirmJoin}
+                disabled={isLinking}
+                className="w-full py-4 px-6 rounded-full font-sans font-bold text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ backgroundColor: branding.primaryColor || '#a07855' }}
               >
-                Continue to join
+                {isLinking ? 'Setting up...' : 'Continue to join'}
               </button>
               
               <button
                 onClick={handleSignOutAndRetry}
-                className="w-full py-3 px-6 rounded-full font-sans font-medium text-text-secondary hover:text-text-primary transition-colors"
+                disabled={isLinking}
+                className="w-full py-3 px-6 rounded-full font-sans font-medium text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
               >
                 Sign in with different account
               </button>
@@ -331,12 +287,12 @@ export function SignupStep({
     );
   }
 
-  // If already signed in (same org), the useEffect will handle linking
-  // Show linking loader while that happens
-  if (isSignedIn && !error) {
-    return null;
+  // State 4: User confirmed but linking (shouldn't happen often, but handle it)
+  if (isSignedIn && hasConfirmed) {
+    return <Loader branding={branding} message="Setting up your account..." />;
   }
 
+  // State 5: User not signed in - show sign-up form
   const heading = config.heading || 'Create your account';
   const subheading = config.subheading || 'Sign up to continue your journey';
 
@@ -344,7 +300,7 @@ export function SignupStep({
   const subdomainBase = subdomain 
     ? `https://${subdomain}.growthaddicts.app`
     : 'https://growthaddicts.app';
-  const currentOrigin = isCustomDomain ? `https://${hostname}` : window?.location?.origin || '';
+  const currentOrigin = isCustomDomain ? `https://${hostname}` : (typeof window !== 'undefined' ? window.location.origin : '');
   const iframeSrc = `${subdomainBase}/join/embedded?origin=${encodeURIComponent(currentOrigin)}&flowSessionId=${flowSessionId}`;
 
   // Full-page centered layout matching SatelliteSignIn design

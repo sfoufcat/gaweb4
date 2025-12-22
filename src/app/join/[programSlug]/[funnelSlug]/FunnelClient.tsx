@@ -402,16 +402,28 @@ export default function FunnelClient({
     }
   };
 
-  // Loading state
+  // Loading state (initial session load)
   if (isLoading) {
     return (
       <div className="min-h-screen bg-app-bg flex items-center justify-center">
-        <div className="relative">
-          <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
-          <div 
-            className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin" 
-            style={{ borderTopColor: branding.primaryColor }}
-          />
+        <div className="text-center">
+          {branding.logoUrl && (
+            <Image
+              src={branding.logoUrl}
+              alt={branding.appTitle}
+              width={80}
+              height={80}
+              className="w-16 h-16 lg:w-20 lg:h-20 rounded-full mx-auto mb-6 shadow-lg"
+            />
+          )}
+          <div className="relative mb-4 mx-auto w-fit">
+            <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
+            <div 
+              className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin" 
+              style={{ borderTopColor: branding.primaryColor }}
+            />
+          </div>
+          <p className="text-text-secondary">Loading...</p>
         </div>
       </div>
     );
@@ -440,12 +452,21 @@ export default function FunnelClient({
     );
   }
 
-  // Navigating state
+  // Navigating state (completing funnel)
   if (isNavigating) {
     return (
       <div className="min-h-screen bg-app-bg flex items-center justify-center">
         <div className="text-center">
-          <div className="relative mb-4 mx-auto">
+          {branding.logoUrl && (
+            <Image
+              src={branding.logoUrl}
+              alt={branding.appTitle}
+              width={80}
+              height={80}
+              className="w-16 h-16 lg:w-20 lg:h-20 rounded-full mx-auto mb-6 shadow-lg"
+            />
+          )}
+          <div className="relative mb-4 mx-auto w-fit">
             <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
             <div 
               className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin"
@@ -458,25 +479,9 @@ export default function FunnelClient({
     );
   }
 
-  // Check if current step would render null (e.g., SignupStep when user is already signed in)
-  // If so, show the same full-screen loader as isNavigating to avoid layout flash
+  // Render step content
+  // Note: SignupStep now always returns content (confirmation or form), never null
   const stepContent = renderStep();
-  if (!stepContent) {
-    return (
-      <div className="min-h-screen bg-app-bg flex items-center justify-center">
-        <div className="text-center">
-          <div className="relative mb-4 mx-auto">
-            <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
-            <div 
-              className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin"
-              style={{ borderTopColor: branding.primaryColor }}
-            />
-          </div>
-          <p className="text-text-secondary">Setting up your account...</p>
-        </div>
-      </div>
-    );
-  }
 
   // Progress calculation
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
