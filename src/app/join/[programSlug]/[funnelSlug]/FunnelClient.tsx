@@ -438,7 +438,27 @@ export default function FunnelClient({
     return (
       <div className="min-h-screen bg-app-bg flex items-center justify-center">
         <div className="text-center">
-          <div className="relative mb-4">
+          <div className="relative mb-4 mx-auto">
+            <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
+            <div 
+              className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin"
+              style={{ borderTopColor: branding.primaryColor }}
+            />
+          </div>
+          <p className="text-text-secondary">Setting up your account...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if current step would render null (e.g., SignupStep when user is already signed in)
+  // If so, show the same full-screen loader as isNavigating to avoid layout flash
+  const stepContent = renderStep();
+  if (!stepContent) {
+    return (
+      <div className="min-h-screen bg-app-bg flex items-center justify-center">
+        <div className="text-center">
+          <div className="relative mb-4 mx-auto">
             <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
             <div 
               className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin"
@@ -496,19 +516,7 @@ export default function FunnelClient({
           transition={{ duration: 0.3 }}
           className="px-4 pb-8"
         >
-          {renderStep() || (
-            // Show loader if step returns null (e.g., SignupStep when user is already signed in)
-            <div className="min-h-[50vh] w-full flex flex-col items-center justify-center">
-              <div className="relative mb-4">
-                <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
-                <div 
-                  className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin"
-                  style={{ borderTopColor: branding.primaryColor }}
-                />
-              </div>
-              <p className="text-text-secondary">Setting up your account...</p>
-            </div>
-          )}
+          {stepContent}
         </motion.div>
       </AnimatePresence>
     </div>
