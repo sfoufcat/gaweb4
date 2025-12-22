@@ -143,7 +143,7 @@ export async function PATCH(
     // Handle basic fields
     const basicFields = [
       'title', 'coverImageUrl', 'shortDescription', 'category', 'level',
-      'track', 'featured', 'trending'
+      'track', 'programIds', 'featured', 'trending'
     ];
 
     for (const field of basicFields) {

@@ -12,8 +12,8 @@ import type { EnrolledProgramWithDetails } from '@/hooks/useMyPrograms';
  * Displays program cards with:
  * - Cover image with year overlay
  * - Program name and description
- * - Enrolled badge + progress pill
- * - Program overview row (coach info)
+ * - Enrolled badge + progress pill (same height)
+ * - Program overview row (real member avatars + coach info)
  * - "View program details" button
  */
 
@@ -24,7 +24,7 @@ interface ProgramListViewProps {
 
 export function ProgramListView({ enrollments, onSelectProgram }: ProgramListViewProps) {
   return (
-    <div className="space-y-5 px-4">
+    <div className="space-y-5">
       <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
         Your Programs
       </h2>
@@ -48,7 +48,7 @@ interface ProgramListCardProps {
 }
 
 function ProgramListCard({ enrolled, onClick }: ProgramListCardProps) {
-  const { program, progress, squad } = enrolled;
+  const { program, progress, squad, squadMembers } = enrolled;
   const isGroup = program.type === 'group';
 
   // Calculate week progress
@@ -100,21 +100,21 @@ function ProgramListCard({ enrolled, onClick }: ProgramListCardProps) {
           </p>
         )}
 
-        {/* Badges Row: Enrolled + Progress */}
+        {/* Badges Row: Enrolled + Progress - same height */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* Enrolled Badge */}
-          <div className="bg-[rgba(76,175,80,0.2)] px-2 py-1 rounded-[20px]">
-            <span className="font-sans text-[12px] text-[#4caf50] leading-[1.2]">
+          <div className="bg-[rgba(76,175,80,0.15)] h-7 px-3 rounded-full flex items-center">
+            <span className="font-sans text-[13px] font-medium text-[#4caf50] leading-none">
               Enrolled
             </span>
           </div>
 
           {/* Progress Pill */}
-          <div className="bg-white dark:bg-[#11141b] px-2 py-1 rounded-[1000px] flex items-center gap-2">
-            <svg className="w-[15px] h-[13px] text-text-secondary dark:text-[#7d8190]" viewBox="0 0 15 14" fill="none" stroke="currentColor" strokeWidth={1.5}>
+          <div className="bg-white dark:bg-[#11141b] h-7 px-3 rounded-full flex items-center gap-2">
+            <svg className="w-4 h-4 text-text-secondary dark:text-[#7d8190]" viewBox="0 0 15 14" fill="none" stroke="currentColor" strokeWidth={1.5}>
               <path d="M1 9.5V13h3.5V9.5H1zm5-4V13h3.5V5.5H6zm5-4V13h3V1.5h-3z" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <span className="font-sans text-[12px] text-text-secondary dark:text-[#7d8190] leading-[1.2]">
+            <span className="font-sans text-[13px] font-medium text-text-secondary dark:text-[#7d8190] leading-none">
               Week {weekProgress}/{totalWeeks}
             </span>
           </div>
@@ -123,15 +123,34 @@ function ProgramListCard({ enrolled, onClick }: ProgramListCardProps) {
         {/* Program Overview Row */}
         <div className="flex items-center gap-2 py-2">
           {isGroup ? (
-            /* Group: Avatars + members + coach */
+            /* Group: Real member avatars + members + coach */
             <>
-              {/* Stacked Avatars */}
-              <div className="flex items-center -space-x-1.5">
-                {[1, 2, 3].map((i) => (
+              {/* Stacked Avatars - Real member photos */}
+              <div className="flex items-center -space-x-2">
+                {(squadMembers && squadMembers.length > 0 
+                  ? squadMembers.slice(0, 3) 
+                  : [null, null, null]
+                ).map((member, i) => (
                   <div
-                    key={i}
-                    className="w-7 h-7 rounded-full bg-[#d4cfc9] dark:bg-[#7d8190] border-2 border-[#f3f1ef] dark:border-[#171b22]"
-                  />
+                    key={member?.id || i}
+                    className="w-8 h-8 rounded-full border-2 border-[#f3f1ef] dark:border-[#171b22] overflow-hidden bg-[#d4cfc9] dark:bg-[#7d8190]"
+                  >
+                    {member?.imageUrl ? (
+                      <Image
+                        src={member.imageUrl}
+                        alt={`${member.firstName} ${member.lastName}`}
+                        width={32}
+                        height={32}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-xs font-medium text-white">
+                          {member?.firstName?.[0] || '?'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
 
@@ -140,7 +159,7 @@ function ProgramListCard({ enrolled, onClick }: ProgramListCardProps) {
                   Group program
                 </span>
                 <span className="font-sans text-[11px] text-text-secondary dark:text-[#7d8190] leading-[16px] tracking-[0.5px]">
-                  {memberCount > 0 ? `${memberCount} members` : 'With peers'}
+                  {memberCount > 0 ? `${memberCount} member${memberCount !== 1 ? 's' : ''}` : 'With peers'}
                 </span>
               </div>
 

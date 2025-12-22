@@ -24,6 +24,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
+import { ProgramSelector } from '@/components/admin/ProgramSelector';
 
 // Track options for dropdown
 const TRACK_OPTIONS: { value: UserTrack | ''; label: string }[] = [
@@ -80,6 +81,7 @@ function EventFormDialog({
     featured: false,
     category: '',
     track: '' as UserTrack | '',
+    programIds: [] as string[],
     maxAttendees: '',
   });
 
@@ -105,6 +107,7 @@ function EventFormDialog({
         featured: event.featured || false,
         category: event.category || '',
         track: event.track || '',
+        programIds: event.programIds || [],
         maxAttendees: event.maxAttendees?.toString() || '',
       });
     } else {
@@ -128,6 +131,7 @@ function EventFormDialog({
         featured: false,
         category: '',
         track: '',
+        programIds: [],
         maxAttendees: '',
       });
     }
@@ -142,7 +146,8 @@ function EventFormDialog({
         ...formData,
         bulletPoints: formData.bulletPoints.filter(bp => bp.trim()),
         maxAttendees: formData.maxAttendees ? parseInt(formData.maxAttendees) : null,
-        track: formData.track || null, // Convert empty string to null
+        track: formData.track || null, // Convert empty string to null (deprecated)
+        programIds: formData.programIds, // New program association
       };
 
       const url = isEditing 
@@ -449,32 +454,44 @@ function EventFormDialog({
               <div />
             </div>
 
-            {/* Category & Track */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] mb-1 font-albert">Category</label>
-                <input
-                  type="text"
-                  value={formData.category}
-                  onChange={e => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8]"
-                  placeholder="e.g., Habits, Productivity"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] mb-1 font-albert">Track</label>
-                <select
-                  value={formData.track}
-                  onChange={e => setFormData(prev => ({ ...prev, track: e.target.value as UserTrack | '' }))}
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8]"
-                >
-                  {TRACK_OPTIONS.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </div>
+            {/* Category */}
+            <div>
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Category</label>
+              <input
+                type="text"
+                value={formData.category}
+                onChange={e => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                placeholder="e.g., Habits, Productivity"
+              />
             </div>
-            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Track-specific events appear in &quot;For you&quot; sections for users on that track</p>
+
+            {/* Programs (replaces Track) */}
+            <div>
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+                Programs
+              </label>
+              <ProgramSelector
+                value={formData.programIds}
+                onChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
+                placeholder="Select programs for this event..."
+              />
+            </div>
+
+            {/* Track (deprecated) */}
+            <div className="opacity-50">
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Track (deprecated)</label>
+              <select
+                value={formData.track}
+                onChange={e => setFormData(prev => ({ ...prev, track: e.target.value as UserTrack | '' }))}
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+              >
+                {TRACK_OPTIONS.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">Track is deprecated. Use Programs above instead.</p>
+            </div>
 
             {/* Featured */}
             <div className="flex items-center">

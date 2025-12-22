@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -15,10 +15,10 @@ import { ArticleCard } from '@/components/discover/ArticleCard';
  * Matches Figma designs for program detail screens.
  * Shows full details of a single enrolled program:
  * - Header with back arrow, title, description, enrolled badge, progress pill, cover image
- * - Program overview (group: avatars + members + coach; 1:1: phone + next session + coach)
+ * - Program overview (group: real member avatars + members + coach; 1:1: phone + next session + coach)
  * - Next scheduled call card (for 1:1)
  * - Upcoming events (for group)
- * - 3-day focus accordion
+ * - 3-day focus accordion (connected, with real tasks)
  * - Program habits (horizontal scroll)
  * - Courses (horizontal scroll)
  * - Articles
@@ -48,19 +48,26 @@ interface ProgramDownload {
   fileSize?: string;
 }
 
+interface ProgramDayTask {
+  id: string;
+  title: string;
+  type: 'course' | 'article' | 'habit' | 'task' | 'event';
+  completed?: boolean;
+}
+
+interface ProgramDay {
+  dayIndex: number;
+  tasks: ProgramDayTask[];
+}
+
 interface ProgramContent {
   courses: DiscoverCourse[];
   articles: DiscoverArticle[];
   events: DiscoverEvent[];
   links: ProgramLink[];
   downloads: ProgramDownload[];
+  days: ProgramDay[];
   isLoading: boolean;
-}
-
-// 3-day focus mock data - in production this would come from API
-interface DayFocus {
-  day: string;
-  tasks: string[];
 }
 
 export function ProgramDetailView({ 
@@ -69,7 +76,7 @@ export function ProgramDetailView({
   showBackButton = true,
 }: ProgramDetailViewProps) {
   const router = useRouter();
-  const { program, progress, squad } = enrolled;
+  const { program, progress, squad, squadMembers } = enrolled;
   const isGroup = program.type === 'group';
 
   // Program-specific content
@@ -79,18 +86,55 @@ export function ProgramDetailView({
     events: [],
     links: [],
     downloads: [],
+    days: [],
     isLoading: true,
   });
 
-  // 3-day focus accordion state
-  const [expandedDay, setExpandedDay] = useState<string | null>('tomorrow');
+  // 3-day focus accordion state - all collapsed by default
+  const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
 
-  // Mock 3-day focus data - in production, fetch from API
-  const threeDayFocus: DayFocus[] = [
-    { day: 'Today', tasks: [] },
-    { day: 'Tomorrow', tasks: ['Watch module 2 of course', 'Read article', 'Do 10 pushups'] },
-    { day: 'Thursday', tasks: [] },
-  ];
+  // Toggle a day's expansion
+  const toggleDay = (dayIndex: number) => {
+    setExpandedDays(prev => {
+      const next = new Set(prev);
+      if (next.has(dayIndex)) {
+        next.delete(dayIndex);
+      } else {
+        next.add(dayIndex);
+      }
+      return next;
+    });
+  };
+
+  // Calculate which days to show (today, tomorrow, day after)
+  const threeDayFocus = useMemo(() => {
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ...
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    const currentDayIndex = progress.currentDay;
+    
+    return [
+      {
+        dayIndex: currentDayIndex,
+        label: 'Today',
+        tasks: content.days.find(d => d.dayIndex === currentDayIndex)?.tasks || [],
+      },
+      {
+        dayIndex: currentDayIndex + 1,
+        label: 'Tomorrow',
+        tasks: content.days.find(d => d.dayIndex === currentDayIndex + 1)?.tasks || [],
+      },
+      {
+        dayIndex: currentDayIndex + 2,
+        label: dayNames[(dayOfWeek + 2) % 7],
+        tasks: content.days.find(d => d.dayIndex === currentDayIndex + 2)?.tasks || [],
+      },
+    ];
+  }, [progress.currentDay, content.days]);
+
+  // Check if any days have tasks
+  const hasAnyTasks = threeDayFocus.some(day => day.tasks.length > 0);
 
   // Fetch program-specific content
   useEffect(() => {
@@ -105,6 +149,7 @@ export function ProgramDetailView({
             events: data.events || [],
             links: data.links || [],
             downloads: data.downloads || [],
+            days: data.days || [],
             isLoading: false,
           });
         }
@@ -128,10 +173,19 @@ export function ProgramDetailView({
   // Calculate member count from squad (memberIds) or cohort
   const memberCount = squad?.memberIds?.length || 0;
 
+  // Check if there's any content at all
+  const hasContent = 
+    content.courses.length > 0 || 
+    content.articles.length > 0 || 
+    content.events.length > 0 ||
+    content.links.length > 0 ||
+    content.downloads.length > 0 ||
+    (program.defaultHabits && program.defaultHabits.length > 0);
+
   return (
     <div className="space-y-5">
       {/* Header Section */}
-      <div className="px-4 pt-5 space-y-4">
+      <div className="space-y-4">
         {/* Back Arrow + Title */}
         {showBackButton && onBack && (
           <div className="flex items-center gap-2">
@@ -155,27 +209,27 @@ export function ProgramDetailView({
 
         {/* Description */}
         {program.description && (
-          <p className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2] leading-[1.2] tracking-[-0.3px]">
+          <p className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2] leading-[1.4] tracking-[-0.3px]">
             {program.description}
           </p>
         )}
 
-        {/* Badges Row: Enrolled + Progress */}
+        {/* Badges Row: Enrolled + Progress - Both same height */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* Enrolled Badge */}
-          <div className="bg-[rgba(76,175,80,0.2)] px-2 py-1 rounded-[20px]">
-            <span className="font-sans text-[12px] text-[#4caf50] leading-[1.2]">
+          <div className="bg-[rgba(76,175,80,0.15)] h-7 px-3 rounded-full flex items-center">
+            <span className="font-sans text-[13px] font-medium text-[#4caf50] leading-none">
               Enrolled
             </span>
           </div>
 
           {/* Progress Pill */}
-          <div className="bg-[#f3f1ef] dark:bg-[#11141b] px-2 py-1 rounded-[1000px] flex items-center gap-2">
-            <svg className="w-[15px] h-[13px] text-text-secondary dark:text-[#7d8190]" viewBox="0 0 15 14" fill="none" stroke="currentColor" strokeWidth={1.5}>
+          <div className="bg-[#f3f1ef] dark:bg-[#11141b] h-7 px-3 rounded-full flex items-center gap-2">
+            <svg className="w-4 h-4 text-text-secondary dark:text-[#7d8190]" viewBox="0 0 15 14" fill="none" stroke="currentColor" strokeWidth={1.5}>
               <path d="M1 9.5V13h3.5V9.5H1zm5-4V13h3.5V5.5H6zm5-4V13h3V1.5h-3z" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <span className="font-sans text-[12px] text-text-secondary dark:text-[#7d8190] leading-[1.2]">
-              Your progress: Week {weekProgress}/{totalWeeks}
+            <span className="font-sans text-[13px] font-medium text-text-secondary dark:text-[#7d8190] leading-none">
+              Week {weekProgress}/{totalWeeks}
             </span>
           </div>
         </div>
@@ -201,7 +255,7 @@ export function ProgramDetailView({
       </div>
 
       {/* Program Overview Section */}
-      <div className="px-5 py-5 space-y-4">
+      <div className="py-5 space-y-4">
         <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
           Program overview
         </h2>
@@ -210,13 +264,32 @@ export function ProgramDetailView({
           {isGroup ? (
             /* Group Program Overview */
             <>
-              {/* Stacked Avatars */}
-              <div className="flex items-center -space-x-1.5">
-                {[1, 2, 3].map((i) => (
+              {/* Stacked Avatars - Real member photos */}
+              <div className="flex items-center -space-x-2">
+                {(squadMembers && squadMembers.length > 0 
+                  ? squadMembers.slice(0, 3) 
+                  : [null, null, null]
+                ).map((member, i) => (
                   <div
-                    key={i}
-                    className="w-7 h-7 rounded-full bg-[#d4cfc9] dark:bg-[#7d8190] border-2 border-white dark:border-[#05070b]"
-                  />
+                    key={member?.id || i}
+                    className="w-8 h-8 rounded-full border-2 border-white dark:border-[#05070b] overflow-hidden bg-[#d4cfc9] dark:bg-[#7d8190]"
+                  >
+                    {member?.imageUrl ? (
+                      <Image
+                        src={member.imageUrl}
+                        alt={`${member.firstName} ${member.lastName}`}
+                        width={32}
+                        height={32}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-xs font-medium text-white">
+                          {member?.firstName?.[0] || '?'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
 
@@ -226,7 +299,7 @@ export function ProgramDetailView({
                   Group program
                 </span>
                 <span className="font-sans text-[11px] text-text-secondary dark:text-[#7d8190] leading-[16px] tracking-[0.5px]">
-                  {memberCount} members
+                  {memberCount} member{memberCount !== 1 ? 's' : ''}
                 </span>
               </div>
 
@@ -310,13 +383,13 @@ export function ProgramDetailView({
 
       {/* Next Scheduled Call Card (for 1:1 programs) */}
       {!isGroup && (
-        <div className="px-4">
+        <div>
           <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4 space-y-4">
             <h3 className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3]">
               Next scheduled call
             </h3>
             
-            <div className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2] leading-[1.2] tracking-[-0.3px] space-y-2">
+            <div className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2] leading-[1.4] tracking-[-0.3px] space-y-2">
               <p>December 4 · 10:00 AM EST (4:00 PM your time)</p>
               <p>Location: Chat</p>
               <p>Guided by: {program.coachName}</p>
@@ -341,13 +414,11 @@ export function ProgramDetailView({
       {/* Upcoming Events (for group programs) */}
       {isGroup && upcomingEvents.length > 0 && (
         <div className="space-y-4">
-          <div className="px-4">
-            <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
-              Upcoming events
-            </h2>
-          </div>
+          <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
+            Upcoming events
+          </h2>
           
-          <div className="flex gap-2 overflow-x-auto pb-2 px-4 scrollbar-hide">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             {upcomingEvents.slice(0, 5).map((event) => (
               <Link
                 key={event.id}
@@ -366,61 +437,69 @@ export function ProgramDetailView({
         </div>
       )}
 
-      {/* 3 Day Focus Section */}
-      <div className="px-4 space-y-3">
-        <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
-          3 day focus
-        </h2>
+      {/* 3 Day Focus Section - Connected Accordion */}
+      {hasAnyTasks && (
+        <div className="space-y-3">
+          <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
+            3 day focus
+          </h2>
 
-        {threeDayFocus.map((dayFocus) => {
-          const isExpanded = expandedDay === dayFocus.day.toLowerCase();
-          const hasTasks = dayFocus.tasks.length > 0;
+          {/* Single connected accordion container */}
+          <div className="bg-white dark:bg-[#171b22] rounded-[20px] overflow-hidden divide-y divide-[#f3f1ef] dark:divide-[#262b35]">
+            {threeDayFocus.map((dayFocus, idx) => {
+              const isExpanded = expandedDays.has(dayFocus.dayIndex);
+              const hasTasks = dayFocus.tasks.length > 0;
+              const isFirst = idx === 0;
+              const isLast = idx === threeDayFocus.length - 1;
 
-          return (
-            <div
-              key={dayFocus.day}
-              className="bg-white dark:bg-[#171b22] rounded-[20px] overflow-hidden"
-            >
-              <button
-                onClick={() => setExpandedDay(isExpanded ? null : dayFocus.day.toLowerCase())}
-                className="w-full p-4 flex items-center justify-between"
-              >
-                <span className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3]">
-                  {dayFocus.day}
-                </span>
-                {hasTasks && (
-                  isExpanded ? (
-                    <ChevronUp className="w-6 h-6 text-text-secondary dark:text-[#7d8190]" />
-                  ) : (
-                    <ChevronDown className="w-6 h-6 text-text-secondary dark:text-[#7d8190]" />
-                  )
-                )}
-              </button>
+              return (
+                <div key={dayFocus.dayIndex}>
+                  <button
+                    onClick={() => hasTasks && toggleDay(dayFocus.dayIndex)}
+                    className={`w-full p-4 flex items-center justify-between ${
+                      !hasTasks ? 'opacity-50 cursor-default' : 'cursor-pointer hover:bg-[#f9f8f6] dark:hover:bg-[#1a1f28]'
+                    }`}
+                    disabled={!hasTasks}
+                  >
+                    <span className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3]">
+                      {dayFocus.label}
+                    </span>
+                    {hasTasks && (
+                      <ChevronDown 
+                        className={`w-5 h-5 text-text-secondary dark:text-[#7d8190] transition-transform ${
+                          isExpanded ? 'rotate-180' : ''
+                        }`} 
+                      />
+                    )}
+                    {!hasTasks && (
+                      <span className="text-xs text-text-muted dark:text-[#7d8190]">No tasks</span>
+                    )}
+                  </button>
 
-              {isExpanded && hasTasks && (
-                <div className="px-4 pb-4">
-                  <ol className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2] leading-[1.2] tracking-[-0.3px] list-decimal pl-6 space-y-1">
-                    {dayFocus.tasks.map((task, i) => (
-                      <li key={i}>{task}</li>
-                    ))}
-                  </ol>
+                  {isExpanded && hasTasks && (
+                    <div className="px-4 pb-4">
+                      <ol className="font-sans text-[15px] text-text-secondary dark:text-[#b2b6c2] leading-[1.5] tracking-[-0.3px] list-decimal pl-6 space-y-2">
+                        {dayFocus.tasks.map((task, i) => (
+                          <li key={task.id || i}>{task.title}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Program Habits (horizontal scroll) */}
       {program.defaultHabits && program.defaultHabits.length > 0 && (
         <div className="space-y-4">
-          <div className="px-4">
-            <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
-              Program habits
-            </h2>
-          </div>
+          <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
+            Program habits
+          </h2>
           
-          <div className="flex gap-3 overflow-x-auto pb-2 px-4 scrollbar-hide">
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
             {program.defaultHabits.map((habit, index) => {
               // Map frequency to display text
               const frequencyLabel = habit.frequency === 'daily' ? 'Everyday' : 
@@ -449,13 +528,11 @@ export function ProgramDetailView({
       {/* Courses (horizontal scroll) */}
       {content.courses.length > 0 && (
         <div className="space-y-4">
-          <div className="px-4">
-            <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
-              Courses
-            </h2>
-          </div>
+          <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
+            Courses
+          </h2>
           
-          <div className="flex gap-3 overflow-x-auto pb-2 px-4 scrollbar-hide">
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
             {content.courses.map((course) => (
               <Link
                 key={course.id}
@@ -476,7 +553,7 @@ export function ProgramDetailView({
 
       {/* Articles */}
       {content.articles.length > 0 && (
-        <div className="px-4 space-y-3">
+        <div className="space-y-3">
           <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
             Articles
           </h2>
@@ -491,22 +568,22 @@ export function ProgramDetailView({
 
       {/* Links (pill chips) */}
       {content.links.length > 0 && (
-        <div className="px-4 space-y-4">
+        <div className="space-y-4">
           <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
             Links
           </h2>
           
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-2">
             {content.links.map((link) => (
               <a
                 key={link.id}
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="relative bg-white dark:bg-[#171b22] rounded-[100px] px-3 py-1.5 flex items-center gap-1 border border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] transition-colors"
+                className="bg-white dark:bg-[#171b22] rounded-full px-4 py-2 flex items-center gap-2 border border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] transition-colors"
               >
-                <ExternalLink className="w-5 h-5 text-text-secondary dark:text-[#7d8190]" />
-                <span className="font-albert text-[18px] font-semibold text-text-secondary dark:text-[#7d8190] tracking-[-1px] leading-[1.3]">
+                <ExternalLink className="w-4 h-4 text-text-secondary dark:text-[#7d8190]" />
+                <span className="font-sans text-[14px] font-medium text-text-secondary dark:text-[#7d8190]">
                   {link.title}
                 </span>
               </a>
@@ -518,13 +595,11 @@ export function ProgramDetailView({
       {/* Downloads (horizontal scroll) */}
       {content.downloads.length > 0 && (
         <div className="space-y-4">
-          <div className="px-4">
-            <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
-              Downloads
-            </h2>
-          </div>
+          <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
+            Downloads
+          </h2>
           
-          <div className="flex gap-3 overflow-x-auto pb-2 px-4 scrollbar-hide">
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
             {content.downloads.map((download) => (
               <a
                 key={download.id}
@@ -546,7 +621,7 @@ export function ProgramDetailView({
 
       {/* Loading state for content */}
       {content.isLoading && (
-        <div className="px-4 space-y-4">
+        <div className="space-y-4">
           <div className="h-6 w-32 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg animate-pulse" />
           <div className="flex gap-3 overflow-x-auto">
             {[1, 2, 3].map((i) => (
@@ -559,17 +634,11 @@ export function ProgramDetailView({
         </div>
       )}
 
-      {/* Empty state for no content */}
-      {!content.isLoading && 
-       content.courses.length === 0 && 
-       content.articles.length === 0 && 
-       content.events.length === 0 &&
-       content.links.length === 0 &&
-       content.downloads.length === 0 &&
-       (!program.defaultHabits || program.defaultHabits.length === 0) && (
-        <div className="text-center py-8 px-4">
+      {/* No content message - only if completely empty */}
+      {!content.isLoading && !hasContent && !hasAnyTasks && (
+        <div className="text-center py-8">
           <p className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2]">
-            Program content will be available as you progress through the program.
+            No program content available yet.
           </p>
         </div>
       )}

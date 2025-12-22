@@ -96,7 +96,7 @@ export async function PATCH(
       'title', 'coverImageUrl', 'date', 'startTime', 'endTime', 'timezone',
       'locationType', 'locationLabel', 'shortDescription', 'longDescription',
       'bulletPoints', 'additionalInfo', 'zoomLink', 'recordingUrl', 'hostName', 'hostAvatarUrl',
-      'featured', 'category', 'track', 'maxAttendees'
+      'featured', 'category', 'track', 'programIds', 'maxAttendees'
     ];
 
     for (const field of allowedFields) {

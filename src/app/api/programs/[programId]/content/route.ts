@@ -104,6 +104,29 @@ export async function GET(
       ...doc.data(),
     }));
 
+    // Fetch program days (for 3-day focus)
+    // Get the user's enrollment to determine current day
+    const enrollment = enrollmentSnapshot.docs[0].data();
+    const startDate = new Date(enrollment.startedAt);
+    startDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const daysSinceStart = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const currentDayIndex = Math.max(1, daysSinceStart + 1);
+    
+    // Fetch days for today, tomorrow, and day after
+    const dayIndices = [currentDayIndex, currentDayIndex + 1, currentDayIndex + 2];
+    const daysSnapshot = await adminDb
+      .collection('program_days')
+      .where('programId', '==', programId)
+      .where('dayIndex', 'in', dayIndices)
+      .get();
+
+    const days = daysSnapshot.docs.map(doc => ({
+      dayIndex: doc.data().dayIndex,
+      tasks: doc.data().tasks || [],
+    }));
+
     return NextResponse.json({
       success: true,
       courses,
@@ -111,6 +134,7 @@ export async function GET(
       events,
       links,
       downloads,
+      days,
     });
   } catch (error) {
     console.error('[API_PROGRAM_CONTENT_GET_ERROR]', error);
@@ -125,6 +149,7 @@ export async function GET(
         events: [],
         links: [],
         downloads: [],
+        days: [],
       });
     }
     

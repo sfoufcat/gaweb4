@@ -9,6 +9,14 @@ import type {
   Squad,
 } from '@/types';
 
+// Minimal member info for avatar display
+export interface SquadMemberPreview {
+  id: string;
+  firstName: string;
+  lastName: string;
+  imageUrl: string;
+}
+
 /**
  * Enrolled program with full details for display
  */
@@ -20,6 +28,7 @@ export interface EnrolledProgramWithDetails {
   };
   cohort?: ProgramCohort | null;
   squad?: Squad | null;
+  squadMembers?: SquadMemberPreview[];
   progress: {
     currentDay: number;
     totalDays: number;

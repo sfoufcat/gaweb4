@@ -1,0 +1,441 @@
+'use client';
+
+import { useState, useEffect, useMemo } from 'react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { ProgramSelector } from '@/components/admin/ProgramSelector';
+
+interface ProgramLink {
+  id: string;
+  title: string;
+  description?: string;
+  url: string;
+  programId?: string;
+  programIds?: string[];
+  order?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Link Form Dialog
+function LinkFormDialog({
+  link,
+  isOpen,
+  onClose,
+  onSave,
+}: {
+  link: ProgramLink | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  const isEditing = !!link;
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    url: '',
+    programIds: [] as string[],
+    order: 0,
+  });
+
+  useEffect(() => {
+    if (link) {
+      setFormData({
+        title: link.title || '',
+        description: link.description || '',
+        url: link.url || '',
+        programIds: link.programIds || (link.programId ? [link.programId] : []),
+        order: link.order || 0,
+      });
+    } else {
+      setFormData({
+        title: '',
+        description: '',
+        url: '',
+        programIds: [],
+        order: 0,
+      });
+    }
+  }, [link, isOpen]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+
+    try {
+      const url = isEditing 
+        ? `/api/admin/discover/links/${link.id}`
+        : '/api/admin/discover/links';
+      
+      const response = await fetch(url, {
+        method: isEditing ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save link');
+      }
+
+      onSave();
+      onClose();
+    } catch (err) {
+      console.error('Error saving link:', err);
+      alert(err instanceof Error ? err.message : 'Failed to save link');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 overflow-y-auto py-8">
+      <div className="bg-white dark:bg-[#171b22] rounded-2xl w-full max-w-xl mx-4 shadow-xl">
+        <form onSubmit={handleSubmit}>
+          <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]">
+            <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              {isEditing ? 'Edit Link' : 'Create Link'}
+            </h2>
+          </div>
+
+          <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+            {/* Title */}
+            <div>
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Title *</label>
+              <input
+                type="text"
+                required
+                value={formData.title}
+                onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                placeholder="e.g., Program Community"
+              />
+            </div>
+
+            {/* URL */}
+            <div>
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">URL *</label>
+              <input
+                type="url"
+                required
+                value={formData.url}
+                onChange={e => setFormData(prev => ({ ...prev, url: e.target.value }))}
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                placeholder="https://..."
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Description</label>
+              <textarea
+                value={formData.description}
+                onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                rows={3}
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                placeholder="Brief description of the link..."
+              />
+            </div>
+
+            {/* Programs */}
+            <div>
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+                Programs
+              </label>
+              <ProgramSelector
+                value={formData.programIds}
+                onChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
+                placeholder="Select programs for this link..."
+              />
+            </div>
+
+            {/* Order */}
+            <div>
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Display Order</label>
+              <input
+                type="number"
+                value={formData.order}
+                onChange={e => setFormData(prev => ({ ...prev, order: parseInt(e.target.value) || 0 }))}
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+              />
+              <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                Lower numbers appear first.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-6 border-t border-[#e1ddd8] dark:border-[#262b35] flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={saving}
+              className="border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-white/5 font-albert"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={saving}
+              className="bg-[#a07855] hover:bg-[#8c6245] text-white font-albert"
+            >
+              {saving ? 'Saving...' : isEditing ? 'Update Link' : 'Create Link'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+interface AdminLinksSectionProps {
+  apiEndpoint?: string;
+}
+
+export function AdminLinksSection({ apiEndpoint = '/api/admin/discover/links' }: AdminLinksSectionProps) {
+  const [links, setLinks] = useState<ProgramLink[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [linkToEdit, setLinkToEdit] = useState<ProgramLink | null>(null);
+  const [linkToDelete, setLinkToDelete] = useState<ProgramLink | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const fetchLinks = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch(apiEndpoint);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch links');
+      }
+      const data = await response.json();
+      setLinks(data.links || []);
+    } catch (err) {
+      console.error('Error fetching links:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch links');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLinks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const filteredLinks = useMemo(() => {
+    if (!searchQuery.trim()) return links;
+    
+    const query = searchQuery.toLowerCase();
+    return links.filter(link =>
+      link.title.toLowerCase().includes(query) ||
+      link.url.toLowerCase().includes(query)
+    );
+  }, [links, searchQuery]);
+
+  const handleDelete = async () => {
+    if (!linkToDelete) return;
+    
+    try {
+      setDeleteLoading(true);
+      const response = await fetch(`${apiEndpoint}/${linkToDelete.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete link');
+      }
+      
+      await fetchLinks();
+      setLinkToDelete(null);
+    } catch (err) {
+      console.error('Error deleting link:', err);
+      alert(err instanceof Error ? err.message : 'Failed to delete link');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl p-8">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-[#a07855] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Loading links...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl p-8">
+        <div className="text-center text-red-600">
+          <p className="font-albert font-semibold mb-2">Error</p>
+          <p className="font-albert text-sm">{error}</p>
+          <Button onClick={fetchLinks} className="mt-4 bg-[#a07855] hover:bg-[#8c6245] text-white">
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
+        {/* Header */}
+        <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]/50">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Links</h2>
+              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+                {filteredLinks.length} link{filteredLinks.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Search */}
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search links..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-48 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]"
+                />
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#7d8190]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              
+              <Button
+                onClick={() => { setLinkToEdit(null); setIsFormOpen(true); }}
+                className="bg-[#a07855] hover:bg-[#8c6245] text-white font-albert"
+              >
+                + Create Link
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="font-albert">Title</TableHead>
+                <TableHead className="font-albert">URL</TableHead>
+                <TableHead className="font-albert">Order</TableHead>
+                <TableHead className="font-albert text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredLinks.map(link => (
+                <TableRow key={link.id}>
+                  <TableCell className="font-albert font-medium max-w-[200px] truncate">
+                    {link.title}
+                  </TableCell>
+                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] max-w-[300px] truncate">
+                    <a 
+                      href={link.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="hover:text-[#a07855] hover:underline"
+                    >
+                      {link.url}
+                    </a>
+                  </TableCell>
+                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
+                    {link.order || 0}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => { setLinkToEdit(link); setIsFormOpen(true); }}
+                        className="text-[#a07855] hover:text-[#8c6245] hover:bg-[#a07855]/10 font-albert"
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setLinkToDelete(link)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 font-albert"
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        {filteredLinks.length === 0 && (
+          <div className="p-12 text-center">
+            <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">No links found</p>
+          </div>
+        )}
+      </div>
+
+      {/* Link Form Dialog */}
+      <LinkFormDialog
+        link={linkToEdit}
+        isOpen={isFormOpen}
+        onClose={() => { setIsFormOpen(false); setLinkToEdit(null); }}
+        onSave={fetchLinks}
+      />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!linkToDelete} onOpenChange={open => !open && setLinkToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-albert">Delete Link</AlertDialogTitle>
+            <AlertDialogDescription className="font-albert">
+              Are you sure you want to delete &quot;<strong>{linkToDelete?.title}</strong>&quot;? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteLoading} className="font-albert">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleteLoading}
+              className="bg-red-600 hover:bg-red-700 font-albert"
+            >
+              {deleteLoading ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+

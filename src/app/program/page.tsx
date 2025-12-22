@@ -131,7 +131,7 @@ export default function ProgramHubPage() {
   // Empty state: no enrollments
   if (!hasEnrollments) {
     return (
-      <div className="max-w-[600px] lg:max-w-[800px] mx-auto pb-32">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
         <ProgramEmptyState />
       </div>
     );
@@ -140,9 +140,9 @@ export default function ProgramHubPage() {
   // If showing program details view
   if (selectedProgram) {
     return (
-      <div className="max-w-[600px] lg:max-w-[800px] mx-auto pb-32">
-        {/* Top Pill Switcher (still visible in details view) */}
-        <div className="pt-3 mb-6 px-4">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
+        {/* Top Pill Switcher - Full width like Profile */}
+        <div className="mb-6">
           <PillSwitcher
             activeTab={activeTab}
             onTabChange={handleTabChange}
@@ -162,9 +162,9 @@ export default function ProgramHubPage() {
   
   // Main view with tabs
   return (
-    <div className="max-w-[600px] lg:max-w-[800px] mx-auto pb-32">
-      {/* Top Pill Switcher */}
-      <div className="pt-3 mb-6 px-4">
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
+      {/* Top Pill Switcher - Full width like Profile */}
+      <div className="mb-6">
         <PillSwitcher
           activeTab={activeTab}
           onTabChange={handleTabChange}
@@ -201,7 +201,7 @@ export default function ProgramHubPage() {
 
 /**
  * Pill Switcher Component
- * Matches Figma design for top tab navigation
+ * Full-width tabs matching Profile page style
  */
 interface PillSwitcherProps {
   activeTab: TabType;
@@ -219,42 +219,58 @@ function PillSwitcher({
   squadTitle,
 }: PillSwitcherProps) {
   return (
-    <div className="bg-[#f3f1ef] dark:bg-[#11141b] rounded-[40px] p-2 flex gap-2 max-w-[400px]">
+    <div className="bg-[#f3f1ef] dark:bg-[#11141b] rounded-[40px] p-2 flex gap-2 w-full">
       {/* Program Tab */}
       <button
         onClick={() => onTabChange('program')}
-        className={`flex-1 rounded-[32px] px-4 py-2.5 font-albert text-[18px] font-semibold tracking-[-1px] leading-[1.3] transition-all duration-200 ${
+        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-[32px] transition-all ${
           activeTab === 'program'
-            ? 'bg-white dark:bg-[#171b22] text-text-primary dark:text-[#f5f5f8] shadow-[0px_4px_10px_0px_rgba(0,0,0,0.1)] dark:shadow-none'
-            : 'text-text-secondary dark:text-[#7d8190]'
+            ? 'bg-white dark:bg-[#1e222a] shadow-[0px_4px_10px_0px_rgba(0,0,0,0.1)] dark:shadow-none'
+            : 'bg-transparent'
         }`}
       >
-        <div className="flex items-center justify-center gap-2">
-          {/* Chart bar icon */}
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
-          <span>{programTitle}</span>
-        </div>
+        {/* Chart bar icon */}
+        <svg 
+          className={`w-5 h-5 ${activeTab === 'program' ? 'text-text-secondary dark:text-[#b2b6c2]' : 'text-text-secondary dark:text-[#7d8190]'}`} 
+          fill="none" 
+          viewBox="0 0 24 24" 
+          stroke="currentColor" 
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        <span className={`font-albert text-lg font-semibold tracking-[-1px] leading-[1.3] ${
+          activeTab === 'program' ? 'text-text-primary dark:text-[#f5f5f8]' : 'text-text-secondary dark:text-[#7d8190]'
+        }`}>
+          {programTitle}
+        </span>
       </button>
       
-      {/* Squad Tab - Only visible if user has group program with squad */}
+      {/* Squad Tab - Only visible if user has group program */}
       {showSquadTab && (
         <button
           onClick={() => onTabChange('squad')}
-          className={`flex-1 rounded-[32px] px-4 py-2.5 font-albert text-[18px] font-semibold tracking-[-1px] leading-[1.3] transition-all duration-200 ${
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-[32px] transition-all ${
             activeTab === 'squad'
-              ? 'bg-white dark:bg-[#171b22] text-text-primary dark:text-[#f5f5f8] shadow-[0px_4px_10px_0px_rgba(0,0,0,0.1)] dark:shadow-none'
-              : 'text-text-secondary dark:text-[#7d8190]'
+              ? 'bg-white dark:bg-[#1e222a] shadow-[0px_4px_10px_0px_rgba(0,0,0,0.1)] dark:shadow-none'
+              : 'bg-transparent'
           }`}
         >
-          <div className="flex items-center justify-center gap-2">
-            {/* Users group icon */}
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-            <span>{squadTitle}</span>
-          </div>
+          {/* Users group icon */}
+          <svg 
+            className={`w-5 h-5 ${activeTab === 'squad' ? 'text-text-secondary dark:text-[#b2b6c2]' : 'text-text-secondary dark:text-[#7d8190]'}`} 
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor" 
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          <span className={`font-albert text-lg font-semibold tracking-[-1px] leading-[1.3] ${
+            activeTab === 'squad' ? 'text-text-primary dark:text-[#f5f5f8]' : 'text-text-secondary dark:text-[#7d8190]'
+          }`}>
+            {squadTitle}
+          </span>
         </button>
       )}
     </div>

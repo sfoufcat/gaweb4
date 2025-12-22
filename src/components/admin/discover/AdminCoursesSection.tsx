@@ -24,6 +24,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
+import { ProgramSelector } from '@/components/admin/ProgramSelector';
 
 // Track options for dropdown
 const TRACK_OPTIONS: { value: UserTrack | ''; label: string }[] = [
@@ -468,6 +469,7 @@ function CourseFormDialog({
     category: '',
     level: 'Beginner',
     track: '' as UserTrack | '',
+    programIds: [] as string[],
     featured: false,
     trending: false,
     modules: [] as CourseModule[],
@@ -482,6 +484,7 @@ function CourseFormDialog({
         category: course.category || '',
         level: course.level || 'Beginner',
         track: course.track || '',
+        programIds: course.programIds || [],
         featured: course.featured || false,
         trending: course.trending || false,
         modules: course.modules || [],
@@ -494,6 +497,7 @@ function CourseFormDialog({
         category: '',
         level: 'Beginner',
         track: '',
+        programIds: [],
         featured: false,
         trending: false,
         modules: [],
@@ -512,7 +516,8 @@ function CourseFormDialog({
       
       const payload = {
         ...formData,
-        track: formData.track || null, // Convert empty string to null
+        track: formData.track || null, // Convert empty string to null (deprecated)
+        programIds: formData.programIds, // New program association
       };
       
       const response = await fetch(url, {
@@ -664,8 +669,21 @@ function CourseFormDialog({
                   </select>
                 </div>
                 
+                {/* Programs (replaces Track) */}
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Track</label>
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+                    Programs
+                  </label>
+                  <ProgramSelector
+                    value={formData.programIds}
+                    onChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
+                    placeholder="Select programs for this course..."
+                  />
+                </div>
+                
+                {/* Track (deprecated - hidden but preserved for backwards compatibility) */}
+                <div className="col-span-2 opacity-50">
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Track (deprecated)</label>
                   <select
                     value={formData.track}
                     onChange={e => setFormData(prev => ({ ...prev, track: e.target.value as UserTrack | '' }))}
@@ -675,7 +693,7 @@ function CourseFormDialog({
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
-                  <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Track-specific courses appear in &quot;For you&quot; sections for users on that track</p>
+                  <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Track is deprecated. Use Programs above instead.</p>
                 </div>
               </div>
               

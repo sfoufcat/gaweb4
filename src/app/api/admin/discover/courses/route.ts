@@ -139,7 +139,8 @@ export async function POST(request: NextRequest) {
       shortDescription: body.shortDescription,
       category: body.category,
       level: body.level,
-      track: body.track || null, // Track-specific content
+      track: body.track || null, // Track-specific content (deprecated)
+      programIds: Array.isArray(body.programIds) ? body.programIds : [], // New: program association
       featured: body.featured || false,
       trending: body.trending || false,
       modules,

@@ -1745,7 +1745,7 @@ export const DEFAULT_MENU_TITLES: OrgMenuTitles = {
   home: 'Home',
   squad: 'Squad',
   program: 'Program',
-  learn: 'Learn',
+  learn: 'Discover', // Renamed from "Learn" to "Discover"
   chat: 'Chat',
   coach: 'Coach',
 };

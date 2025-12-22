@@ -4,8 +4,10 @@ import { useState } from 'react';
 import { AdminEventsSection } from './AdminEventsSection';
 import { AdminArticlesSection } from './AdminArticlesSection';
 import { AdminCoursesSection } from './AdminCoursesSection';
+import { AdminDownloadsSection } from './AdminDownloadsSection';
+import { AdminLinksSection } from './AdminLinksSection';
 
-type DiscoverSubTab = 'events' | 'articles' | 'courses';
+type DiscoverSubTab = 'events' | 'articles' | 'courses' | 'downloads' | 'links';
 
 interface AdminDiscoverTabProps {
   /** Base API path for multi-tenancy (e.g., '/api/coach/org-discover' for coaches) */
@@ -43,6 +45,24 @@ export function AdminDiscoverTab({ apiBasePath = '/api/admin/discover' }: AdminD
         </svg>
       ),
     },
+    {
+      id: 'downloads',
+      label: 'Downloads',
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+      ),
+    },
+    {
+      id: 'links',
+      label: 'Links',
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+        </svg>
+      ),
+    },
   ];
 
   return (
@@ -50,23 +70,23 @@ export function AdminDiscoverTab({ apiBasePath = '/api/admin/discover' }: AdminD
       {/* Section Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] font-albert">Discover Content</h2>
-          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2] font-albert mt-1">
-            Manage events, articles, and courses for the Discover section
+          <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Discover Content</h2>
+          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+            Manage events, articles, courses, downloads, and links for programs
           </p>
         </div>
       </div>
 
       {/* Sub-tabs */}
-      <div className="flex gap-2 border-b border-[#e1ddd8] dark:border-[#262b35]/50 dark:border-[#262b35]/50 pb-px">
+      <div className="flex gap-2 border-b border-[#e1ddd8] dark:border-[#262b35]/50 pb-px overflow-x-auto">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveSubTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors font-albert ${
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors font-albert whitespace-nowrap ${
               activeSubTab === tab.id
-                ? 'bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35]/50 dark:border-[#262b35]/50 border-b-white dark:border-b-[#171b22] -mb-px text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8]'
-                : 'text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:text-[#f5f5f8] dark:hover:text-[#f5f5f8] hover:bg-white/50 dark:hover:bg-[#171b22]/50'
+                ? 'bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35]/50 border-b-white dark:border-b-[#171b22] -mb-px text-[#1a1a1a] dark:text-[#f5f5f8]'
+                : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] hover:bg-white/50 dark:hover:bg-[#171b22]/50'
             }`}
           >
             {tab.icon}
@@ -80,11 +100,9 @@ export function AdminDiscoverTab({ apiBasePath = '/api/admin/discover' }: AdminD
         {activeSubTab === 'events' && <AdminEventsSection apiEndpoint={`${apiBasePath}/events`} />}
         {activeSubTab === 'articles' && <AdminArticlesSection apiEndpoint={`${apiBasePath}/articles`} />}
         {activeSubTab === 'courses' && <AdminCoursesSection apiEndpoint={`${apiBasePath}/courses`} />}
+        {activeSubTab === 'downloads' && <AdminDownloadsSection apiEndpoint={`${apiBasePath}/downloads`} />}
+        {activeSubTab === 'links' && <AdminLinksSection apiEndpoint={`${apiBasePath}/links`} />}
       </div>
     </div>
   );
 }
-
-
-
-

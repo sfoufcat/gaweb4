@@ -99,7 +99,8 @@ export async function POST(request: NextRequest) {
       hostAvatarUrl: body.hostAvatarUrl || '',
       featured: body.featured || false,
       category: body.category || '',
-      track: body.track || null, // Track-specific content
+      track: body.track || null, // Track-specific content (deprecated)
+      programIds: Array.isArray(body.programIds) ? body.programIds : [], // New: program association
       attendeeIds: [], // Always start empty
       maxAttendees: body.maxAttendees || null,
       createdAt: FieldValue.serverTimestamp(),

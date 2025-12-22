@@ -7,6 +7,7 @@
  * - Program info (name, description, type, etc.)
  * - Cohort info (for group programs)
  * - Squad info (for group programs)
+ * - Squad members (first 5 for avatar display)
  * - Progress (current day, total days, percentage)
  * - Coach info
  */
@@ -21,6 +22,14 @@ import type {
   Squad,
 } from '@/types';
 
+// Minimal member info for avatar display
+interface SquadMemberPreview {
+  id: string;
+  firstName: string;
+  lastName: string;
+  imageUrl: string;
+}
+
 interface EnrolledProgramWithDetails {
   enrollment: ProgramEnrollment;
   program: Program & {
@@ -29,6 +38,7 @@ interface EnrolledProgramWithDetails {
   };
   cohort?: ProgramCohort | null;
   squad?: Squad | null;
+  squadMembers?: SquadMemberPreview[];
   progress: {
     currentDay: number;
     totalDays: number;
@@ -137,10 +147,29 @@ export async function GET() {
 
       // Get squad for group programs
       let squad: Squad | null = null;
+      let squadMembers: SquadMemberPreview[] = [];
       if (enrollment.squadId) {
         const squadDoc = await adminDb.collection('squads').doc(enrollment.squadId).get();
         if (squadDoc.exists) {
           squad = { id: squadDoc.id, ...squadDoc.data() } as Squad;
+          
+          // Fetch first 5 squad members for avatar display
+          const memberIds = squad.memberIds?.slice(0, 5) || [];
+          if (memberIds.length > 0) {
+            try {
+              for (const memberId of memberIds) {
+                const memberUser = await clerk.users.getUser(memberId);
+                squadMembers.push({
+                  id: memberId,
+                  firstName: memberUser.firstName || '',
+                  lastName: memberUser.lastName || '',
+                  imageUrl: memberUser.imageUrl || '',
+                });
+              }
+            } catch (err) {
+              console.error('Error fetching squad members:', err);
+            }
+          }
         }
       }
 
@@ -162,6 +191,7 @@ export async function GET() {
         },
         cohort,
         squad,
+        squadMembers,
         progress: {
           currentDay,
           totalDays: program.lengthDays,
