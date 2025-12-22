@@ -13,24 +13,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { getCurrentUserOrganizationId, isUserOrgAdmin } from '@/lib/clerk-organizations';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { isUserOrgAdmin } from '@/lib/clerk-organizations';
 import { removeUserFromSquadEntirely } from '@/lib/program-engine';
-import type { ProgramEnrollment, Program } from '@/types';
+import type { ProgramEnrollment, Program, ClerkPublicMetadata } from '@/types';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ programId: string; enrollmentId: string }> }
 ) {
   try {
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
     const { programId, enrollmentId } = await params;
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user's organization
-    const organizationId = await getCurrentUserOrganizationId();
+    // MULTI-TENANCY: Get effective org ID (domain-based in tenant mode, session-based in platform mode)
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
     if (!organizationId) {
       return NextResponse.json({ error: 'No organization found' }, { status: 403 });
     }
@@ -98,15 +101,17 @@ export async function DELETE(
   { params }: { params: Promise<{ programId: string; enrollmentId: string }> }
 ) {
   try {
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
     const { programId, enrollmentId } = await params;
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user's organization
-    const organizationId = await getCurrentUserOrganizationId();
+    // MULTI-TENANCY: Get effective org ID (domain-based in tenant mode, session-based in platform mode)
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
     if (!organizationId) {
       return NextResponse.json({ error: 'No organization found' }, { status: 403 });
     }

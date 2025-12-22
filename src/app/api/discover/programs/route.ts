@@ -13,8 +13,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { getCurrentUserOrganizationId } from '@/lib/clerk-organizations';
-import type { Program, ProgramCohort, ProgramEnrollment } from '@/types';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
+import type { Program, ProgramCohort, ProgramEnrollment, ClerkPublicMetadata } from '@/types';
 
 interface DiscoverProgram extends Program {
   coachName: string;
@@ -35,12 +35,14 @@ interface DiscoverProgram extends Program {
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') as 'group' | 'individual' | null;
 
-    // Get user's organization (null if no org = default GA experience)
-    const organizationId = userId ? await getCurrentUserOrganizationId() : null;
+    // MULTI-TENANCY: Get effective org ID (domain-based in tenant mode, session-based in platform mode)
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
 
     // Build query for published programs
     let query: FirebaseFirestore.Query = adminDb

@@ -10,14 +10,17 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { getCurrentUserOrganizationId } from '@/lib/clerk-organizations';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
+import type { ClerkPublicMetadata } from '@/types';
 
 export async function GET() {
   try {
-    const { userId } = await auth();
+    const { sessionClaims } = await auth();
     
-    // Get user's organization (null if no org = default GA experience)
-    const organizationId = userId ? await getCurrentUserOrganizationId() : null;
+    // MULTI-TENANCY: Get effective org ID (domain-based in tenant mode, session-based in platform mode)
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
     
     let query: FirebaseFirestore.Query = adminDb.collection('events');
     

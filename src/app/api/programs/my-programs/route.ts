@@ -15,11 +15,13 @@
 import { NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
 import type { 
   Program, 
   ProgramEnrollment, 
   ProgramCohort,
   Squad,
+  ClerkPublicMetadata,
 } from '@/types';
 
 // Minimal member info for avatar display
@@ -68,11 +70,16 @@ function calculateCurrentDayIndex(startDate: string, totalDays: number): number 
 
 export async function GET() {
   try {
-    const { userId, orgId } = await auth();
+    const { userId, sessionClaims } = await auth();
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // MULTI-TENANCY: Get effective org ID (domain-based in tenant mode, session-based in platform mode)
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
 
     // Get active enrollments for the user
     let query = adminDb
@@ -81,8 +88,8 @@ export async function GET() {
       .where('status', 'in', ['active', 'upcoming']);
     
     // Filter by organization if active
-    if (orgId) {
-      query = query.where('organizationId', '==', orgId);
+    if (organizationId) {
+      query = query.where('organizationId', '==', organizationId);
     }
 
     const enrollmentsSnapshot = await query.get();

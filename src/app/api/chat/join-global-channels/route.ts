@@ -1,9 +1,10 @@
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { getStreamServerClient } from '@/lib/stream-server';
-import { getCurrentUserOrganizationId } from '@/lib/clerk-organizations';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { getOrgChannels } from '@/lib/org-channels';
 import { ANNOUNCEMENTS_CHANNEL_ID, SOCIAL_CORNER_CHANNEL_ID, SHARE_WINS_CHANNEL_ID } from '@/lib/chat-constants';
+import type { ClerkPublicMetadata } from '@/types';
 
 /**
  * POST /api/chat/join-global-channels
@@ -20,7 +21,7 @@ import { ANNOUNCEMENTS_CHANNEL_ID, SOCIAL_CORNER_CHANNEL_ID, SHARE_WINS_CHANNEL_
  */
 export async function POST() {
   try {
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
     if (!userId) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
@@ -38,8 +39,10 @@ export async function POST() {
       image: clerkUser.imageUrl,
     });
 
-    // Check if user belongs to an organization
-    const organizationId = await getCurrentUserOrganizationId();
+    // MULTI-TENANCY: Get effective org ID (domain-based in tenant mode, session-based in platform mode)
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
     
     if (organizationId) {
       // User belongs to an org - join org-specific channels

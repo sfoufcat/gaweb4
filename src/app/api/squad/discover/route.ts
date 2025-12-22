@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { MAX_SQUAD_MEMBERS } from '@/lib/squad-constants';
-import { getCurrentUserOrganizationId } from '@/lib/clerk-organizations';
-import type { Squad, UserTrack } from '@/types';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
+import type { Squad, UserTrack, ClerkPublicMetadata } from '@/types';
 
 interface CoachInfo {
   id: string;
@@ -48,13 +48,14 @@ export async function GET(req: Request) {
     }
 
     // Get user's subscription tier and track from Clerk session
-    const publicMetadata = sessionClaims?.publicMetadata as { tier?: string; track?: UserTrack } | undefined;
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata & { tier?: string; track?: UserTrack } | undefined;
     const userTier = publicMetadata?.tier || 'standard';
     const userTrack = publicMetadata?.track || null;
     const isPremiumUser = userTier === 'premium';
 
-    // Multi-tenancy: Get user's organization (null if no org = default GA experience)
-    const organizationId = await getCurrentUserOrganizationId();
+    // MULTI-TENANCY: Get effective org ID (domain-based in tenant mode, session-based in platform mode)
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search')?.toLowerCase() || '';

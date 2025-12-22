@@ -1,6 +1,8 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
+import type { ClerkPublicMetadata } from '@/types';
 
 /**
  * GET /api/admin/programs
@@ -10,20 +12,25 @@ import { adminDb } from '@/lib/firebase-admin';
  */
 export async function GET() {
   try {
-    const { userId, orgId } = await auth();
+    const { userId, sessionClaims } = await auth();
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!orgId) {
+    // MULTI-TENANCY: Get effective org ID (domain-based in tenant mode, session-based in platform mode)
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const userSessionOrgId = publicMetadata?.organizationId || null;
+    const organizationId = await getEffectiveOrgId(userSessionOrgId);
+
+    if (!organizationId) {
       return NextResponse.json({ error: 'No organization selected' }, { status: 400 });
     }
 
     // Fetch all programs for this organization
     const programsSnapshot = await adminDb
       .collection('programs')
-      .where('organizationId', '==', orgId)
+      .where('organizationId', '==', organizationId)
       .where('isActive', '==', true)
       .orderBy('name', 'asc')
       .get();
