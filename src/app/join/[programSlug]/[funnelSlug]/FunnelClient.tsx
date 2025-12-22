@@ -77,6 +77,10 @@ interface FunnelClientProps {
     appTitle: string;
     primaryColor: string;
   };
+  organization: {
+    id: string;
+    name: string;
+  };
   inviteCode?: string;
   validatedInvite?: {
     paymentStatus: string;
@@ -94,6 +98,7 @@ export default function FunnelClient({
   steps,
   program,
   branding,
+  organization,
   inviteCode,
   validatedInvite,
   hostname,
@@ -348,6 +353,8 @@ export default function FunnelClient({
             config={stepConfig.config as FunnelStepConfigSignup}
             hostname={hostname}
             flowSessionId={sessionId || ''}
+            organizationId={organization.id}
+            organizationName={organization.name}
           />
         );
       

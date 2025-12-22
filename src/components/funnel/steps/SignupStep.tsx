@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth, SignUp, useSignIn, useSignUp } from '@clerk/nextjs';
+import { useAuth, useClerk, useSignUp } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import type { FunnelStepConfigSignup } from '@/types';
+import { SignUpForm, OAuthButton } from '@/components/auth';
 
 // CSS variable helper - uses values set by FunnelClient
 const primaryVar = 'var(--funnel-primary, #a07855)';
-const primaryHoverVar = 'var(--funnel-primary-hover, #8c6245)';
 
 interface SignupStepProps {
   config: FunnelStepConfigSignup;
@@ -18,19 +18,24 @@ interface SignupStepProps {
   branding: {
     logoUrl: string;
     appTitle: string;
+    primaryColor?: string;
   };
   hostname: string;
   flowSessionId: string;
   isFirstStep: boolean;
+  // New props for cross-org detection
+  organizationId?: string;
+  organizationName?: string;
 }
 
 /**
  * SignupStep - Handles user authentication in a funnel
  * 
  * Modes:
- * 1. Already signed in → Auto-advance
- * 2. Regular domain → Inline Clerk SignUp
- * 3. Custom domain → Iframe-based signup
+ * 1. Already signed in (same org) → Auto-advance
+ * 2. Already signed in (different org) → Show confirmation to join new org
+ * 3. Not signed in (regular domain) → Show custom SignUpForm with branding
+ * 4. Not signed in (custom domain) → Iframe-based signup
  */
 export function SignupStep({
   config,
@@ -40,11 +45,21 @@ export function SignupStep({
   hostname,
   flowSessionId,
   isFirstStep,
+  organizationId,
+  organizationName,
 }: SignupStepProps) {
   const { isSignedIn, isLoaded, userId } = useAuth();
+  const { signOut } = useClerk();
+  const { signUp } = useSignUp();
   const [mounted, setMounted] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLinking, setIsLinking] = useState(false);
+  
+  // Cross-organization state
+  const [userOrgId, setUserOrgId] = useState<string | null>(null);
+  const [showCrossOrgConfirm, setShowCrossOrgConfirm] = useState(false);
+  const [checkingOrg, setCheckingOrg] = useState(false);
 
   // Determine if we're on a custom domain (satellite)
   const isCustomDomain = !hostname.includes('growthaddicts.app') && 
@@ -63,15 +78,48 @@ export function SignupStep({
     setMounted(true);
   }, []);
 
-  // Auto-advance if already signed in
+  // Fetch user's organization when signed in
   useEffect(() => {
-    if (isLoaded && isSignedIn && userId) {
-      // Link session to user if not already linked
-      linkSessionAndContinue();
+    async function checkUserOrg() {
+      if (!isLoaded || !isSignedIn || !userId) return;
+      
+      setCheckingOrg(true);
+      try {
+        // Fetch user's current organization from API
+        const response = await fetch('/api/user/organization');
+        if (response.ok) {
+          const data = await response.json();
+          setUserOrgId(data.organizationId || null);
+          
+          // Check if user is joining a different organization
+          if (organizationId && data.organizationId && data.organizationId !== organizationId) {
+            setShowCrossOrgConfirm(true);
+          } else {
+            // Same org or no org - auto-proceed
+            linkSessionAndContinue();
+          }
+        } else {
+          // No org info - proceed
+          linkSessionAndContinue();
+        }
+      } catch (err) {
+        console.error('Failed to check user org:', err);
+        // On error, just proceed
+        linkSessionAndContinue();
+      } finally {
+        setCheckingOrg(false);
+      }
     }
-  }, [isLoaded, isSignedIn, userId]);
+
+    if (isLoaded && isSignedIn && userId && !isLinking) {
+      checkUserOrg();
+    }
+  }, [isLoaded, isSignedIn, userId, organizationId]);
 
   const linkSessionAndContinue = async () => {
+    if (isLinking) return;
+    setIsLinking(true);
+    
     try {
       // Link the flow session to this user
       const response = await fetch('/api/funnel/link-session', {
@@ -90,15 +138,17 @@ export function SignupStep({
     } catch (err) {
       console.error('Failed to link session:', err);
       setError(err instanceof Error ? err.message : 'Failed to link your account. Please try again.');
+      setIsLinking(false);
     }
   };
 
-  // Handle OAuth for custom domains
-  const handleOAuth = (provider: 'oauth_google' | 'oauth_apple') => {
+  // Handle OAuth for regular domains
+  const handleOAuth = async (provider: 'oauth_google' | 'oauth_apple') => {
     setOauthLoading(true);
+    setError(null);
     
     if (isCustomDomain) {
-      // Redirect to subdomain which handles Clerk OAuth via /join/oauth
+      // Custom domain: Redirect to subdomain which handles Clerk OAuth
       const subdomainBase = subdomain 
         ? `https://${subdomain}.growthaddicts.app`
         : 'https://growthaddicts.app';
@@ -106,6 +156,35 @@ export function SignupStep({
       // Return URL with flowSessionId so we can link after auth
       const returnUrl = `https://${hostname}/join/callback?flowSessionId=${flowSessionId}`;
       window.location.href = `${subdomainBase}/join/oauth?provider=${provider}&flowSessionId=${flowSessionId}&returnUrl=${encodeURIComponent(returnUrl)}`;
+    } else {
+      // Regular domain: Use direct OAuth
+      try {
+        if (!signUp) {
+          throw new Error('Sign up not loaded');
+        }
+        await signUp.authenticateWithRedirect({
+          strategy: provider,
+          redirectUrl: '/sso-callback',
+          redirectUrlComplete: `/join/callback?flowSessionId=${flowSessionId}`,
+          unsafeMetadata: { signupDomain: hostname },
+        });
+      } catch (err) {
+        console.error('OAuth error:', err);
+        setError('Failed to start authentication. Please try again.');
+        setOauthLoading(false);
+      }
+    }
+  };
+
+  // Handle signing out to use different account
+  const handleSignOutAndRetry = async () => {
+    try {
+      await signOut();
+      setShowCrossOrgConfirm(false);
+      setUserOrgId(null);
+    } catch (err) {
+      console.error('Sign out error:', err);
+      setError('Failed to sign out. Please try again.');
     }
   };
 
@@ -132,25 +211,127 @@ export function SignupStep({
   }, [isCustomDomain, flowSessionId]);
 
   // Loading state - only show loader if Clerk is not loaded yet
-  // If user is already signed in, return null and let the useEffect handle linking
-  // The FunnelClient will show its own loading state when isNavigating is true
-  if (!isLoaded) {
+  if (!isLoaded || checkingOrg) {
     return (
-      <div className="min-h-[50vh] w-full flex flex-col items-center justify-center">
-        <div className="relative mb-4">
-          <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
-          <div 
-            className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin"
-            style={{ borderTopColor: primaryVar }}
-          />
+      <div className="fixed inset-0 bg-app-bg flex items-center justify-center">
+        <div className="text-center">
+          {branding.logoUrl && (
+            <Image
+              src={branding.logoUrl}
+              alt={branding.appTitle}
+              width={80}
+              height={80}
+              className="w-16 h-16 lg:w-20 lg:h-20 rounded-full mx-auto mb-6 shadow-lg"
+              unoptimized={branding.logoUrl.startsWith('http')}
+            />
+          )}
+          <div className="relative mb-4 mx-auto w-fit">
+            <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
+            <div 
+              className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin"
+              style={{ borderTopColor: primaryVar }}
+            />
+          </div>
+          <p className="text-text-secondary">Loading...</p>
         </div>
-        <p className="text-text-secondary">Loading...</p>
       </div>
     );
   }
 
-  // If already signed in and no error, return null - the useEffect will handle
-  // linking the session and calling onComplete, which triggers FunnelClient's loader
+  // If linking in progress, show loader
+  if (isLinking) {
+    return (
+      <div className="fixed inset-0 bg-app-bg flex items-center justify-center">
+        <div className="text-center">
+          {branding.logoUrl && (
+            <Image
+              src={branding.logoUrl}
+              alt={branding.appTitle}
+              width={80}
+              height={80}
+              className="w-16 h-16 lg:w-20 lg:h-20 rounded-full mx-auto mb-6 shadow-lg"
+              unoptimized={branding.logoUrl.startsWith('http')}
+            />
+          )}
+          <div className="relative mb-4 mx-auto w-fit">
+            <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
+            <div 
+              className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin"
+              style={{ borderTopColor: primaryVar }}
+            />
+          </div>
+          <p className="text-text-secondary">Setting up your account...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Cross-organization confirmation screen
+  if (showCrossOrgConfirm && isSignedIn) {
+    return (
+      <div className="fixed inset-0 bg-app-bg overflow-y-auto">
+        <div className="min-h-full flex flex-col items-center justify-center px-4 py-8 lg:py-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full max-w-md mx-auto text-center"
+          >
+            {/* Logo */}
+            {branding.logoUrl && (
+              <Image
+                src={branding.logoUrl}
+                alt={branding.appTitle}
+                width={96}
+                height={96}
+                className="w-20 h-20 lg:w-24 lg:h-24 rounded-full mx-auto mb-8 shadow-lg"
+                unoptimized={branding.logoUrl.startsWith('http')}
+              />
+            )}
+
+            {/* Heading */}
+            <h1 className="font-albert text-[32px] sm:text-[40px] text-text-primary tracking-[-1.5px] leading-[1.1] mb-4">
+              Join {organizationName || branding.appTitle}
+            </h1>
+            <p className="font-sans text-[16px] text-text-secondary leading-[1.6] mb-8">
+              You&apos;re about to join a new community. Your existing accounts will remain active.
+            </p>
+
+            {/* Actions */}
+            <div className="space-y-4">
+              <button
+                onClick={linkSessionAndContinue}
+                className="w-full py-4 px-6 rounded-full font-sans font-bold text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+                style={{ backgroundColor: branding.primaryColor || '#a07855' }}
+              >
+                Continue to join
+              </button>
+              
+              <button
+                onClick={handleSignOutAndRetry}
+                className="w-full py-3 px-6 rounded-full font-sans font-medium text-text-secondary hover:text-text-primary transition-colors"
+              >
+                Sign in with different account
+              </button>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl"
+              >
+                <p className="text-red-600 text-sm">{error}</p>
+              </motion.div>
+            )}
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  // If already signed in (same org), the useEffect will handle linking
+  // Show linking loader while that happens
   if (isSignedIn && !error) {
     return null;
   }
@@ -158,168 +339,131 @@ export function SignupStep({
   const heading = config.heading || 'Create your account';
   const subheading = config.subheading || 'Sign up to continue your journey';
 
-  // Custom domain: Show iframe-based signup
-  if (isCustomDomain && mounted) {
-    const subdomainBase = subdomain 
-      ? `https://${subdomain}.growthaddicts.app`
-      : 'https://growthaddicts.app';
-    const currentOrigin = `https://${hostname}`;
-    const iframeSrc = `${subdomainBase}/join/embedded?origin=${encodeURIComponent(currentOrigin)}&flowSessionId=${flowSessionId}`;
+  // Construct URLs for iframe
+  const subdomainBase = subdomain 
+    ? `https://${subdomain}.growthaddicts.app`
+    : 'https://growthaddicts.app';
+  const currentOrigin = isCustomDomain ? `https://${hostname}` : window?.location?.origin || '';
+  const iframeSrc = `${subdomainBase}/join/embedded?origin=${encodeURIComponent(currentOrigin)}&flowSessionId=${flowSessionId}`;
 
-    return (
-      <div className="w-full max-w-xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
-        >
-          <h1 className="font-albert text-[28px] sm:text-[36px] text-text-primary tracking-[-1.5px] leading-[1.15] mb-3">
-            {heading}
-          </h1>
-          <p className="text-text-secondary">{subheading}</p>
-        </motion.div>
+  // Full-page centered layout matching SatelliteSignIn design
+  return (
+    <div className="fixed inset-0 bg-app-bg overflow-y-auto">
+      <div className="min-h-full flex flex-col items-center justify-center px-4 py-8 lg:py-16">
+        <div className="w-full max-w-xl mx-auto">
+          {/* Header with Coach Branding */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-10 lg:mb-12"
+          >
+            {branding.logoUrl && (
+              <Image 
+                src={branding.logoUrl} 
+                alt={branding.appTitle} 
+                width={80}
+                height={80}
+                className="w-16 h-16 lg:w-20 lg:h-20 rounded-full mx-auto mb-6 shadow-lg"
+                unoptimized={branding.logoUrl.startsWith('http')}
+              />
+            )}
+            <h1 className="font-albert text-[38px] sm:text-[46px] lg:text-[56px] text-text-primary tracking-[-2px] leading-[1.1] mb-5 lg:mb-6">
+              {heading}
+            </h1>
+            <p className="font-sans text-[16px] lg:text-[18px] text-text-secondary leading-[1.6] max-w-md mx-auto">
+              {subheading}
+            </p>
+          </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white/80 backdrop-blur-sm border border-[#e1ddd8]/60 rounded-2xl p-6 shadow-lg"
-        >
-          {/* OAuth Buttons */}
-          {config.showSocialLogin !== false && (
-            <>
-              <div className="space-y-3">
-                <button
-                  onClick={() => handleOAuth('oauth_google')}
-                  disabled={oauthLoading}
-                  className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white border border-[#e1ddd8] rounded-xl text-text-primary font-medium hover:bg-[#faf8f6] transition-colors disabled:opacity-50"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                  </svg>
-                  {oauthLoading ? 'Redirecting...' : 'Continue with Google'}
-                </button>
-              </div>
+          {/* Auth Container */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="w-full max-w-lg mx-auto"
+          >
+            <div className="bg-white/80 backdrop-blur-sm border border-[#e1ddd8]/60 rounded-3xl p-8 shadow-lg">
+              {/* OAuth Button */}
+              {config.showSocialLogin !== false && (
+                <>
+                  <div className="space-y-3">
+                    <OAuthButton
+                      provider="google"
+                      onClick={() => handleOAuth('oauth_google')}
+                      disabled={false}
+                      loading={oauthLoading}
+                    />
+                  </div>
 
-              <div className="flex items-center gap-4 my-6">
-                <div className="flex-1 h-px bg-[#e1ddd8]" />
-                <span className="text-sm text-text-muted">or</span>
-                <div className="flex-1 h-px bg-[#e1ddd8]" />
-              </div>
-            </>
+                  {/* Divider */}
+                  <div className="flex items-center gap-4 my-8">
+                    <div className="flex-1 h-px bg-[#e1ddd8]" />
+                    <span className="font-sans text-sm text-text-secondary">or</span>
+                    <div className="flex-1 h-px bg-[#e1ddd8]" />
+                  </div>
+                </>
+              )}
+
+              {/* Email/Password Form */}
+              {isCustomDomain && mounted ? (
+                // Custom domain: Use iframe
+                <iframe
+                  src={iframeSrc}
+                  className="w-full border-0 outline-none"
+                  style={{ height: '420px' }}
+                  scrolling="no"
+                  allow="clipboard-write"
+                  title="Sign Up"
+                />
+              ) : (
+                // Regular domain: Use SignUpForm directly
+                <SignUpForm
+                  embedded={true}
+                  origin=""
+                  redirectUrl={`/join/callback?flowSessionId=${flowSessionId}`}
+                  hideOAuth={true}
+                />
+              )}
+            </div>
+          </motion.div>
+
+          {/* Error */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl text-center max-w-lg mx-auto"
+            >
+              <p className="text-red-600 text-sm">{error}</p>
+            </motion.div>
           )}
 
-          {/* Iframe for email/password */}
-          <iframe
-            src={iframeSrc}
-            className="w-full border-0 outline-none"
-            style={{ height: '420px' }}
-            scrolling="no"
-            allow="clipboard-write"
-            title="Sign Up"
-          />
-        </motion.div>
-
-        {/* Error */}
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl text-center"
-          >
-            <p className="text-red-600 text-sm">{error}</p>
-          </motion.div>
-        )}
-
-        {/* Back button */}
-        {!isFirstStep && onBack && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="mt-6 text-center"
-          >
-            <button
-              onClick={onBack}
-              className="text-text-secondary hover:text-text-primary transition-colors"
+          {/* Back button */}
+          {!isFirstStep && onBack && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="mt-8 text-center"
             >
-              ← Go back
-            </button>
-          </motion.div>
-        )}
+              <button
+                onClick={onBack}
+                className="text-text-secondary hover:text-text-primary transition-colors font-sans"
+              >
+                ← Go back
+              </button>
+            </motion.div>
+          )}
+
+          {/* Sign in link for existing users */}
+          <p className="text-center mt-8 lg:mt-10 font-sans text-[15px] text-text-secondary">
+            Already have an account?{' '}
+            <a href="/sign-in" className="text-[#a07855] hover:text-[#8a6649] font-medium">
+              Sign in
+            </a>
+          </p>
+        </div>
       </div>
-    );
-  }
-
-  // Regular domain: Use Clerk SignUp component
-  return (
-    <div className="w-full max-w-xl mx-auto">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-8"
-      >
-        <h1 className="font-albert text-[28px] sm:text-[36px] text-text-primary tracking-[-1.5px] leading-[1.15] mb-3">
-          {heading}
-        </h1>
-        <p className="text-text-secondary">{subheading}</p>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="flex justify-center"
-      >
-        <SignUp
-          appearance={{
-            elements: {
-              rootBox: 'w-full max-w-md',
-              card: 'shadow-none border border-[#e1ddd8] rounded-2xl',
-              headerTitle: 'hidden',
-              headerSubtitle: 'hidden',
-              socialButtonsBlockButton: 'border-[#e1ddd8] hover:bg-[#faf8f6]',
-              formFieldInput: 'border-[#e1ddd8] focus:border-[#a07855] focus:ring-[#a07855]',
-              formButtonPrimary: 'bg-[#a07855] hover:bg-[#8c6245]',
-              footerAction: 'hidden',
-            },
-          }}
-          signInUrl="/sign-in"
-          redirectUrl={`/join/callback?flowSessionId=${flowSessionId}`}
-        />
-      </motion.div>
-
-      {/* Error */}
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl text-center"
-        >
-          <p className="text-red-600 text-sm">{error}</p>
-        </motion.div>
-      )}
-
-      {/* Back button */}
-      {!isFirstStep && onBack && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="mt-6 text-center"
-        >
-          <button
-            onClick={onBack}
-            className="text-text-secondary hover:text-text-primary transition-colors"
-          >
-            ← Go back
-          </button>
-        </motion.div>
-      )}
     </div>
   );
 }
-

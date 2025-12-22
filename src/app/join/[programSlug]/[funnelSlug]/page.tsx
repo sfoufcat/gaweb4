@@ -140,6 +140,10 @@ export default async function FunnelPage({ params, searchParams }: FunnelPagePro
         appTitle,
         primaryColor,
       }}
+      organization={{
+        id: funnel.organizationId,
+        name: appTitle, // Use appTitle as org display name
+      }}
       inviteCode={inviteCode}
       validatedInvite={validatedInvite}
       hostname={hostname}

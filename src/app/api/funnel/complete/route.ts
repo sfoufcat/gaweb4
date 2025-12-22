@@ -3,6 +3,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { FlowSession, ProgramInvite, Program, ProgramEnrollment, NewProgramEnrollmentStatus } from '@/types';
+import { addUserToOrganization } from '@/lib/clerk-organizations';
 
 /**
  * POST /api/funnel/complete
@@ -234,6 +235,18 @@ export async function POST(req: Request) {
     }
 
     await userRef.set(userUpdate, { merge: true });
+
+    // Add user to the Clerk organization as a member
+    // This gives them proper org membership for access control
+    if (session.organizationId) {
+      try {
+        await addUserToOrganization(userId, session.organizationId, 'org:member');
+        console.log(`[FUNNEL_COMPLETE] Added user ${userId} to organization ${session.organizationId}`);
+      } catch (orgError) {
+        // Log but don't fail - user is still enrolled in the program
+        console.error(`[FUNNEL_COMPLETE] Failed to add user to org (non-fatal):`, orgError);
+      }
+    }
 
     console.log(`[FUNNEL_COMPLETE] User ${userId} enrolled in program ${session.programId}, enrollment ${enrollmentRef.id}`);
 
