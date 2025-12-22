@@ -30,7 +30,7 @@ export default function UpgradeSquadPage() {
         <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pt-8 pb-16">
           {/* Back button for mobile */}
           <Link 
-            href="/squad"
+            href="/program?tab=squad"
             className="lg:hidden flex items-center gap-2 text-text-secondary mb-6 hover:text-text-primary transition-colors"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

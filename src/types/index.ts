@@ -1671,6 +1671,7 @@ export interface OrgBrandingColors {
 export interface OrgMenuTitles {
   home: string;                // Default: "Home"
   squad: string;               // Default: "Squad" - can be "Cohort", "Team", "Group", etc.
+  program: string;             // Default: "Program" - can be "Journey", "Path", etc.
   learn: string;               // Default: "Learn" - can be "Discover", "Content", etc.
   chat: string;                // Default: "Chat" - can be "Messages", "Community", etc.
   coach: string;               // Default: "Coach" - can be "Mentor", "Guide", etc.
@@ -1743,6 +1744,7 @@ export const DEFAULT_LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gaw
 export const DEFAULT_MENU_TITLES: OrgMenuTitles = {
   home: 'Home',
   squad: 'Squad',
+  program: 'Program',
   learn: 'Learn',
   chat: 'Chat',
   coach: 'Coach',

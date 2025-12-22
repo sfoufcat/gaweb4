@@ -131,7 +131,7 @@ export default function InvitePage() {
         // Handle already a member of target squad
         if (data.alreadyMember) {
           setState('already_member');
-          setTimeout(() => router.push('/squad?joined=true'), 2000);
+          setTimeout(() => router.push('/program?tab=squad&joined=true'), 2000);
           return;
         }
 
@@ -147,7 +147,7 @@ export default function InvitePage() {
       // Redirect to squad page after a short delay
       // Add ?joined=true to force the squad page to refetch data
       setTimeout(() => {
-        router.push('/squad?joined=true');
+        router.push('/program?tab=squad&joined=true');
       }, 2000);
     } catch (err) {
       console.error('Join error:', err);
@@ -407,7 +407,7 @@ export default function InvitePage() {
                       Switch to {tokenPayload.squadName}
                     </button>
                     <button
-                      onClick={() => router.push('/squad')}
+                      onClick={() => router.push('/program?tab=squad')}
                       className="w-full bg-white border border-[#e1ddd8] text-text-primary font-sans font-bold text-[16px] py-4 px-6 rounded-[32px] hover:bg-[#faf8f6] active:scale-[0.98] transition-all"
                     >
                       Keep Current Squad

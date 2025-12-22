@@ -161,10 +161,10 @@ export function SquadInviteCards({
         </div>
       )}
 
-      {/* Card 2: Join Premium Squad - for premium users viewing standard squad without a premium squad */}
+      {/* Card 2: Find Premium Program - for premium users viewing standard squad without a premium squad */}
       {showJoinPremiumSquadCard && (
         <Link
-          href="/squad?discover=premium"
+          href="/discover"
           className="group block bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#2d2520] dark:to-[#251d18] border border-[#FFE4CC] dark:border-[#4a3d35] rounded-[20px] p-5 hover:shadow-lg hover:border-[#FF8A65]/40 dark:hover:border-[#FF8A65]/40 transition-all duration-300"
         >
           <div className="flex items-start gap-4">
@@ -183,16 +183,16 @@ export function SquadInviteCards({
               </div>
               
               <h3 className="font-albert font-semibold text-[18px] text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px] mb-1">
-                Join a premium {squadLower} with coaching
+                Find a premium program with coaching
               </h3>
               
               <p className="font-albert text-[14px] text-text-secondary dark:text-[#b2b6c2] leading-[1.4] mb-3">
-                As a premium member, you can also join a premium {squadLower} with weekly coaching calls and expert guidance. Find one now!
+                As a premium member, you can join a program with weekly coaching calls and expert guidance. Discover programs now!
               </p>
 
               {/* CTA */}
               <div className="flex items-center gap-2 text-[#FF6B6B] font-albert font-semibold text-[14px] group-hover:gap-3 transition-all">
-                <span>Find premium {squadLower}s</span>
+                <span>Discover programs</span>
                 <ArrowRight className="w-4 h-4" />
               </div>
             </div>

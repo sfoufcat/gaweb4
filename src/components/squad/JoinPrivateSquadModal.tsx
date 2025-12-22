@@ -13,6 +13,9 @@ import {
 /**
  * JoinPrivateSquadModal Component
  * 
+ * @deprecated Replaced by Program Enrollment flow. Users now get squads automatically
+ * when enrolling in a group program. Invite codes may still be used for program invites.
+ * 
  * Modal for joining a private squad via invite code.
  */
 

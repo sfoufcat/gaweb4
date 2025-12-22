@@ -5,6 +5,9 @@ import { SquadDiscovery } from './SquadDiscovery';
 /**
  * SquadEmptyState Component
  * 
+ * @deprecated Replaced by Program Enrollment flow. Users now get squads automatically
+ * when enrolling in a group program. Use `ProgramEmptyState` instead.
+ * 
  * Displays when user is not yet assigned to a squad.
  * Now renders the Squad Discovery page instead of static waiting state.
  * 

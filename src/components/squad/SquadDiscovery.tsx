@@ -20,6 +20,9 @@ import type { Squad, UserTier } from '@/types';
 /**
  * SquadDiscovery Component
  * 
+ * @deprecated Replaced by Program Enrollment flow. Users now get squads automatically
+ * when enrolling in a group program. Use `/discover` for program discovery instead.
+ * 
  * Main discovery page for users without a squad.
  * Shows squads based on user subscription tier:
  * - Premium users: See premium squads, can only join private squads via invite code

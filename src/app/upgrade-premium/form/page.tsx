@@ -211,7 +211,7 @@ export default function PremiumUpgradeFormPage() {
       // Redirect to squad page after a brief delay
       // Add upgraded=true query param to trigger the squad choice modal
       setTimeout(() => {
-        router.push('/squad?upgraded=true');
+        router.push('/program?tab=squad&upgraded=true');
       }, 2500);
 
     } catch (err) {

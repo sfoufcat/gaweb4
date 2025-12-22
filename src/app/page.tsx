@@ -1845,7 +1845,7 @@ export default function Dashboard() {
                 
                 {/* Go to Squad */}
                 <Link
-                  href="/squad"
+                  href="/program?tab=squad"
                   className="flex items-center gap-1.5 px-4 py-2.5 bg-[#a07855] hover:bg-[#8c6245] text-white rounded-full font-albert font-semibold text-[14px] transition-all hover:scale-[1.02]"
                 >
                   Go to squad
@@ -1856,7 +1856,7 @@ export default function Dashboard() {
           </div>
         ) : (
           // User has no squad - show CTA to find one
-          <Link href="/squad" className="block">
+          <Link href="/program" className="block">
             <div className="bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#1a1512] dark:to-[#181310] border border-[#FFE4CC] dark:border-[#3d3530] rounded-[20px] p-5 hover:shadow-lg hover:border-[#a07855]/40 dark:hover:border-[#b8896a]/40 transition-all duration-300 group">
               <div className="flex items-center gap-4">
                 {/* Icon */}

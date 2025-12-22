@@ -481,8 +481,8 @@ function SquadChannelHeader({ onBack }: { onBack?: () => void }) {
             </svg>
           </button>
           
-          {/* Squad Avatar + Name - Clickable to /squad */}
-          <Link href="/squad" className="flex items-center gap-2.5 min-w-0 hover:opacity-80 transition-opacity">
+          {/* Squad Avatar + Name - Clickable to /program?tab=squad */}
+          <Link href="/program?tab=squad" className="flex items-center gap-2.5 min-w-0 hover:opacity-80 transition-opacity">
             {/* Squad Avatar */}
             {channelImage ? (
               <Image 

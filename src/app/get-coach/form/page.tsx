@@ -165,9 +165,9 @@ export default function CoachingIntakeFormPage() {
 
       setSuccess(true);
       
-      // Redirect to mycoach page after a brief delay
+      // Redirect to program page after a brief delay
       setTimeout(() => {
-        router.push('/squad');
+        router.push('/program');
       }, 2500);
 
     } catch (err) {

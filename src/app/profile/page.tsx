@@ -180,7 +180,7 @@ export default function ProfilePage() {
                     const pendingSquadRedirect = sessionStorage.getItem('pendingSquadRedirect');
                     if (pendingSquadRedirect) {
                       sessionStorage.removeItem('pendingSquadRedirect');
-                      router.push('/squad?joined=true');
+                      router.push('/program?tab=squad&joined=true');
                     } else {
                       router.push('/onboarding/journey-started');
                     }
@@ -201,7 +201,7 @@ export default function ProfilePage() {
                     const pendingSquadRedirect = sessionStorage.getItem('pendingSquadRedirect');
                     if (pendingSquadRedirect) {
                       sessionStorage.removeItem('pendingSquadRedirect');
-                      router.push('/squad?joined=true');
+                      router.push('/program?tab=squad&joined=true');
                     } else {
                       router.push('/onboarding/journey-started');
                     }
@@ -232,7 +232,7 @@ export default function ProfilePage() {
                   const pendingSquadRedirect = sessionStorage.getItem('pendingSquadRedirect');
                   if (pendingSquadRedirect) {
                     sessionStorage.removeItem('pendingSquadRedirect');
-                    router.push('/squad?joined=true');
+                    router.push('/program?tab=squad&joined=true');
                   } else {
                     router.push('/onboarding/journey-started');
                   }
@@ -253,7 +253,7 @@ export default function ProfilePage() {
                   const pendingSquadRedirect = sessionStorage.getItem('pendingSquadRedirect');
                   if (pendingSquadRedirect) {
                     sessionStorage.removeItem('pendingSquadRedirect');
-                    router.push('/squad?joined=true');
+                    router.push('/program?tab=squad&joined=true');
                   } else {
                     router.push('/onboarding/journey-started');
                   }

@@ -49,8 +49,8 @@ export function UpgradeSquadChoiceModal({
       onChoiceMade?.('keep_both');
       onClose();
       
-      // Navigate to squad discovery with premium filter
-      router.push('/squad?discover=premium');
+      // Navigate to program discovery to find a new program
+      router.push('/discover');
     } catch (error) {
       console.error('Error handling choice:', error);
     } finally {
@@ -78,8 +78,8 @@ export function UpgradeSquadChoiceModal({
       onChoiceMade?.('premium_only');
       onClose();
       
-      // Navigate to squad discovery with premium filter
-      router.push('/squad?discover=premium');
+      // Navigate to program discovery to find a new program
+      router.push('/discover');
     } catch (error) {
       console.error('Error leaving squad:', error);
       alert(error instanceof Error ? error.message : 'Failed to leave squad');

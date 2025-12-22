@@ -15,6 +15,9 @@ import type { SquadVisibility } from '@/types';
 /**
  * CreateSquadModal Component
  * 
+ * @deprecated Replaced by Program Enrollment flow. Squads are now created automatically
+ * when users enroll in a group program. Manual squad creation is no longer supported.
+ * 
  * Modal for creating a new squad with name, description, timezone, and visibility.
  */
 

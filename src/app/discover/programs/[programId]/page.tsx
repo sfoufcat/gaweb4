@@ -415,7 +415,7 @@ export default function ProgramDetailPage() {
             {/* Go to Program Button (when enrolled) */}
             {enrollment && (
               <Button
-                onClick={() => router.push('/')}
+                onClick={() => router.push('/program')}
                 className="w-full py-4 text-lg bg-[#a07855] hover:bg-[#8c6245] text-white"
               >
                 Go to My Programs

@@ -1,0 +1,282 @@
+'use client';
+
+// Force dynamic rendering for this page
+export const dynamic = 'force-dynamic';
+
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useUser } from '@clerk/nextjs';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useMyPrograms } from '@/hooks/useMyPrograms';
+import { useSquad } from '@/hooks/useSquad';
+import { useMenuTitles } from '@/contexts/BrandingContext';
+
+// Components for different sections
+import { ProgramEmptyState } from '@/components/program/ProgramEmptyState';
+import { ProgramListView } from '@/components/program/ProgramListView';
+import { ProgramDetailView } from '@/components/program/ProgramDetailView';
+import { SquadTabContent } from '@/components/program/SquadTabContent';
+
+/**
+ * Program Hub Page
+ * 
+ * Main tab that replaces the old Squad tab. Contains:
+ * - Top pill switcher: Program | Squad (Squad only visible for group programs)
+ * - Program tab: Shows enrolled programs (1 or 2) with details
+ * - Squad tab: Shows squad members, invite cards, and "View squad stats" button
+ * 
+ * Routes:
+ * - /program - Program tab (default)
+ * - /program?tab=squad - Squad tab
+ * - /program?programId=xxx - Program details view
+ */
+
+type TabType = 'program' | 'squad';
+
+export default function ProgramHubPage() {
+  const { user, isLoaded: userLoaded } = useUser();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  
+  // Customizable menu titles
+  const { squad: squadTitle, program: programTitle } = useMenuTitles();
+  
+  // Program data
+  const { 
+    enrollments,
+    groupProgram,
+    individualProgram,
+    hasEnrollments,
+    hasGroupProgram,
+    hasBothPrograms,
+    hasGroupSquad,
+    isLoading: programsLoading,
+  } = useMyPrograms();
+  
+  // Squad data (for Squad tab)
+  const {
+    squad,
+    members,
+    stats,
+    isLoadingStats,
+    fetchStatsTabData,
+    refetch: refetchSquad,
+  } = useSquad();
+  
+  // Local state
+  const [mounted, setMounted] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('program');
+  const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
+  
+  // Determine if Squad tab should be visible (only for group programs)
+  const showSquadTab = hasGroupProgram && hasGroupSquad;
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  // Read initial tab and programId from URL
+  useEffect(() => {
+    const tabParam = searchParams.get('tab') as TabType | null;
+    const programIdParam = searchParams.get('programId');
+    
+    if (tabParam === 'squad' && showSquadTab) {
+      setActiveTab('squad');
+    } else {
+      setActiveTab('program');
+    }
+    
+    if (programIdParam) {
+      setSelectedProgramId(programIdParam);
+    }
+  }, [searchParams, showSquadTab]);
+  
+  // Handle tab change
+  const handleTabChange = useCallback((tab: TabType) => {
+    setActiveTab(tab);
+    setSelectedProgramId(null); // Clear selected program when switching tabs
+    
+    // Update URL without navigation
+    const newUrl = tab === 'squad' ? '/program?tab=squad' : '/program';
+    router.replace(newUrl, { scroll: false });
+    
+    if (tab === 'squad') {
+      // Lazy load stats data when switching to Squad tab
+      fetchStatsTabData();
+    }
+  }, [router, fetchStatsTabData]);
+  
+  // Handle program selection
+  const handleSelectProgram = useCallback((programId: string) => {
+    setSelectedProgramId(programId);
+    router.replace(`/program?programId=${programId}`, { scroll: false });
+  }, [router]);
+  
+  // Handle back from program details
+  const handleBackFromDetails = useCallback(() => {
+    setSelectedProgramId(null);
+    router.replace('/program', { scroll: false });
+  }, [router]);
+  
+  // Get selected program details
+  const selectedProgram = useMemo(() => {
+    if (!selectedProgramId) return null;
+    return enrollments.find(e => e.program.id === selectedProgramId) || null;
+  }, [selectedProgramId, enrollments]);
+  
+  // Loading state
+  const isLoading = !userLoaded || !mounted || programsLoading;
+  
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-text-primary" />
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center text-center px-4">
+        <p className="text-text-secondary">Please sign in to view your programs.</p>
+      </div>
+    );
+  }
+  
+  // Empty state: no enrollments
+  if (!hasEnrollments) {
+    return (
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32">
+        <ProgramEmptyState />
+      </div>
+    );
+  }
+  
+  // If showing program details view
+  if (selectedProgram) {
+    return (
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32">
+        {/* Top Pill Switcher (still visible in details view) */}
+        <div className="pt-3 mb-6">
+          <PillSwitcher
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            showSquadTab={showSquadTab}
+            programTitle={programTitle}
+            squadTitle={squadTitle}
+          />
+        </div>
+        
+        <ProgramDetailView 
+          program={selectedProgram}
+          onBack={handleBackFromDetails}
+        />
+      </div>
+    );
+  }
+  
+  // Main view with tabs
+  return (
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32">
+      {/* Top Pill Switcher */}
+      <div className="pt-3 mb-6">
+        <PillSwitcher
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          showSquadTab={showSquadTab}
+          programTitle={programTitle}
+          squadTitle={squadTitle}
+        />
+      </div>
+      
+      {/* Tab Content */}
+      {activeTab === 'program' ? (
+        <div>
+          {hasBothPrograms ? (
+            // User has 2 programs - show list view
+            <ProgramListView 
+              enrollments={enrollments}
+              onSelectProgram={handleSelectProgram}
+            />
+          ) : (
+            // User has 1 program - show details directly
+            <ProgramDetailView 
+              program={groupProgram || individualProgram!}
+              showBackButton={false}
+            />
+          )}
+        </div>
+      ) : (
+        // Squad tab
+        <SquadTabContent
+          squad={squad}
+          members={members}
+          stats={stats}
+          isLoadingStats={isLoadingStats}
+          onRefetch={refetchSquad}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Pill Switcher Component
+ */
+interface PillSwitcherProps {
+  activeTab: TabType;
+  onTabChange: (tab: TabType) => void;
+  showSquadTab: boolean;
+  programTitle: string;
+  squadTitle: string;
+}
+
+function PillSwitcher({ 
+  activeTab, 
+  onTabChange, 
+  showSquadTab,
+  programTitle,
+  squadTitle,
+}: PillSwitcherProps) {
+  return (
+    <div className="bg-[#f3f1ef] dark:bg-[#11141b] rounded-[40px] p-2 flex gap-2">
+      {/* Program Tab */}
+      <button
+        onClick={() => onTabChange('program')}
+        className={`flex-1 rounded-[32px] px-4 py-2 font-albert text-[18px] font-semibold tracking-[-1px] leading-[1.3] transition-all duration-200 ${
+          activeTab === 'program'
+            ? 'bg-white dark:bg-[#171b22] text-text-primary dark:text-[#f5f5f8] shadow-[0px_4px_10px_0px_rgba(0,0,0,0.1)] dark:shadow-none'
+            : 'text-text-secondary dark:text-[#7d8190]'
+        }`}
+      >
+        <div className="flex items-center justify-center gap-2">
+          {/* Chart bar icon */}
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          <span>{programTitle}</span>
+        </div>
+      </button>
+      
+      {/* Squad Tab - Only visible if user has group program with squad */}
+      {showSquadTab && (
+        <button
+          onClick={() => onTabChange('squad')}
+          className={`flex-1 rounded-[32px] px-4 py-2 font-albert text-[18px] font-semibold tracking-[-1px] leading-[1.3] transition-all duration-200 ${
+            activeTab === 'squad'
+              ? 'bg-white dark:bg-[#171b22] text-text-primary dark:text-[#f5f5f8] shadow-[0px_4px_10px_0px_rgba(0,0,0,0.1)] dark:shadow-none'
+              : 'text-text-secondary dark:text-[#7d8190]'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            {/* Users group icon */}
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <span>{squadTitle}</span>
+          </div>
+        </button>
+      )}
+    </div>
+  );
+}
+
