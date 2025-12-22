@@ -104,6 +104,34 @@ export async function POST(req: Request) {
 
     const program = programDoc.data() as Program;
 
+    // Check for duplicate enrollment - user can only be enrolled once per program
+    // This prevents duplicate enrollments when user goes through funnel multiple times
+    const existingActiveEnrollment = await adminDb
+      .collection('program_enrollments')
+      .where('userId', '==', userId)
+      .where('programId', '==', session.programId)
+      .where('status', 'in', ['active', 'upcoming'])
+      .limit(1)
+      .get();
+
+    if (!existingActiveEnrollment.empty) {
+      console.log(`[FUNNEL_COMPLETE] User ${userId} already enrolled in program ${session.programId}, returning existing enrollment`);
+      
+      // Mark flow session as completed to prevent confusion
+      if (!session.completedAt) {
+        await sessionRef.update({
+          completedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      
+      return NextResponse.json({
+        success: true,
+        alreadyEnrolled: true,
+        enrollment: { id: existingActiveEnrollment.docs[0].id, ...existingActiveEnrollment.docs[0].data() },
+      });
+    }
+
     // Handle invite if present
     let invite: ProgramInvite | null = null;
     let targetSquadId: string | null = null;

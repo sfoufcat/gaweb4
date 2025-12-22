@@ -874,6 +874,36 @@ export async function archiveOldSquadMemberships(
       await batch.commit();
       
       console.log(`[SQUAD_ARCHIVE] Deleted ${squadMembersSnapshot.size} squadMembers records`);
+      
+      // Clear user's squad references for archived squads
+      // This ensures the old squad doesn't show as pinned in chat
+      const userRef = adminDb.collection('users').doc(userId);
+      const userDoc = await userRef.get();
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        const updateData: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+        
+        // Clear premium/standard/legacy squad ID if it matches an archived squad
+        for (const archivedSquadId of archivedSquads) {
+          if (userData?.premiumSquadId === archivedSquadId) {
+            updateData.premiumSquadId = null;
+            console.log(`[SQUAD_ARCHIVE] Clearing premiumSquadId ${archivedSquadId} from user ${userId}`);
+          }
+          if (userData?.standardSquadId === archivedSquadId) {
+            updateData.standardSquadId = null;
+            console.log(`[SQUAD_ARCHIVE] Clearing standardSquadId ${archivedSquadId} from user ${userId}`);
+          }
+          if (userData?.squadId === archivedSquadId) {
+            updateData.squadId = null;
+            console.log(`[SQUAD_ARCHIVE] Clearing squadId ${archivedSquadId} from user ${userId}`);
+          }
+        }
+        
+        // Only update if we have fields to clear
+        if (Object.keys(updateData).length > 1) {
+          await userRef.update(updateData);
+        }
+      }
     }
     
     return { archivedSquads };
@@ -933,6 +963,33 @@ export async function removeUserFromSquadEntirely(
       } catch (streamError) {
         console.error('[SQUAD_REMOVE] Error removing from Stream channel:', streamError);
         // Continue - Firebase removal succeeded
+      }
+    }
+    
+    // 4. Clear user's squad references
+    // This ensures the squad doesn't show as pinned in chat
+    const userRef = adminDb.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+    if (userDoc.exists) {
+      const userData = userDoc.data();
+      const updateData: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+      
+      if (userData?.premiumSquadId === squadId) {
+        updateData.premiumSquadId = null;
+        console.log(`[SQUAD_REMOVE] Clearing premiumSquadId from user ${userId}`);
+      }
+      if (userData?.standardSquadId === squadId) {
+        updateData.standardSquadId = null;
+        console.log(`[SQUAD_REMOVE] Clearing standardSquadId from user ${userId}`);
+      }
+      if (userData?.squadId === squadId) {
+        updateData.squadId = null;
+        console.log(`[SQUAD_REMOVE] Clearing squadId from user ${userId}`);
+      }
+      
+      // Only update if we have fields to clear
+      if (Object.keys(updateData).length > 1) {
+        await userRef.update(updateData);
       }
     }
     
