@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { FlowSession, ProgramInvite, Program, ProgramEnrollment, NewProgramEnrollmentStatus } from '@/types';
 import { addUserToOrganization } from '@/lib/clerk-organizations';
+import { assignUserToSquad, updateUserSquadReference } from '@/lib/squad-assignment';
 
 /**
  * POST /api/funnel/complete
@@ -124,7 +125,7 @@ export async function POST(req: Request) {
     }
 
     // For group programs, find or assign squad/cohort
-    const assignedSquadId: string | null = targetSquadId;
+    let assignedSquadId: string | null = targetSquadId;
     let assignedCohortId: string | null = targetCohortId;
 
     if (program.type === 'group' && !assignedCohortId) {
@@ -149,8 +150,28 @@ export async function POST(req: Request) {
       }
     }
 
-    // TODO: Auto-assign to squad within cohort if not specified
-    // This would involve finding a squad with available capacity
+    // Auto-assign to squad for group programs
+    // This finds an existing squad with capacity or creates a new one
+    if (program.type === 'group') {
+      try {
+        const squadResult = await assignUserToSquad({
+          userId,
+          programId: session.programId,
+          cohortId: assignedCohortId,
+          organizationId: session.organizationId,
+          program,
+          targetSquadId,
+        });
+        
+        if (squadResult.squadId) {
+          assignedSquadId = squadResult.squadId;
+          console.log(`[FUNNEL_COMPLETE] Assigned user ${userId} to squad ${assignedSquadId} (new: ${squadResult.isNewSquad})`);
+        }
+      } catch (squadErr) {
+        // Non-fatal - user is still enrolled, just not in a squad yet
+        console.error(`[FUNNEL_COMPLETE] Failed to assign squad (non-fatal):`, squadErr);
+      }
+    }
 
     // Determine enrollment status
     let enrollmentStatus: NewProgramEnrollmentStatus = 'active';
@@ -235,6 +256,16 @@ export async function POST(req: Request) {
     }
 
     await userRef.set(userUpdate, { merge: true });
+
+    // Update user's squad reference if assigned
+    // This is done separately to properly handle premium vs standard squad fields
+    if (assignedSquadId) {
+      try {
+        await updateUserSquadReference(userId, assignedSquadId, true); // Premium squad for paid programs
+      } catch (squadRefErr) {
+        console.error(`[FUNNEL_COMPLETE] Failed to update squad reference (non-fatal):`, squadRefErr);
+      }
+    }
 
     // Add user to the Clerk organization as a member
     // This gives them proper org membership for access control

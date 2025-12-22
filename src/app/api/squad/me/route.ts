@@ -2,11 +2,14 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getSquadStatsWithCache } from '@/lib/squad-alignment';
-import type { Squad, SquadMember, SquadStats } from '@/types';
+import type { Squad, SquadMember, SquadStats, ClerkPublicMetadata } from '@/types';
 
 /**
  * GET /api/squad/me
  * Gets the current user's squad(s), members, and optionally stats.
+ * 
+ * MULTI-TENANCY: Only returns squads that belong to the user's current organization.
+ * Squads from other tenants are filtered out to prevent cross-tenant data leakage.
  * 
  * DUAL SQUAD SUPPORT:
  * Premium users can be in both a standard squad and a premium squad.
@@ -40,9 +43,17 @@ interface SquadData {
   stats: SquadStats | null;
 }
 
-// Helper function to fetch squad data and members
+/**
+ * Helper function to fetch squad data and members
+ * 
+ * @param squadId - The squad ID to fetch
+ * @param userOrgId - User's current organization ID for multi-tenancy filtering
+ * @param includeStats - Whether to include alignment stats
+ * @param clerk - Clerk client instance
+ */
 async function fetchSquadData(
   squadId: string | null | undefined,
+  userOrgId: string | null,
   includeStats: boolean,
   clerk: Awaited<ReturnType<typeof clerkClient>>
 ): Promise<SquadData> {
@@ -58,6 +69,18 @@ async function fetchSquadData(
   }
 
   const squadData = squadDoc.data();
+  
+  // MULTI-TENANCY CHECK: Only return squad if it belongs to user's current organization
+  // If squad has no organizationId (legacy data), allow it for backward compatibility
+  // If user has no organizationId, they can only see squads without an org (legacy behavior)
+  const squadOrgId = squadData?.organizationId || null;
+  
+  if (squadOrgId && userOrgId && squadOrgId !== userOrgId) {
+    // Squad belongs to a different organization - don't return it
+    console.log(`[SQUAD_ME] Filtering out squad ${squadId} (org: ${squadOrgId}) - user org: ${userOrgId}`);
+    return { squad: null, members: [], stats: null };
+  }
+  
   const coachId = squadData?.coachId || null;
 
   // Only fetch stats if requested (for instant load, skip this)
@@ -76,6 +99,7 @@ async function fetchSquadData(
     inviteCode: squadData?.inviteCode || undefined,
     isPremium: squadData?.isPremium || false,
     coachId: coachId,
+    organizationId: squadOrgId || undefined,
     createdAt: squadData?.createdAt || new Date().toISOString(),
     updatedAt: squadData?.updatedAt || new Date().toISOString(),
     // Stats values - null when includeStats=false (loading state)
@@ -188,7 +212,7 @@ async function fetchSquadData(
 
 export async function GET(request: Request) {
   try {
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
     
     // Parse query params
     const { searchParams } = new URL(request.url);
@@ -198,9 +222,19 @@ export async function GET(request: Request) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
+    // Get user's current organizationId for multi-tenancy filtering
+    // First try from session claims (most reliable for current session)
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    let userOrgId = publicMetadata?.organizationId || null;
+    
     // Get user document to find squad IDs
     const userDoc = await adminDb.collection('users').doc(userId).get();
     const userData = userDoc.exists ? userDoc.data() : null;
+    
+    // Fallback: get organizationId from user document if not in session
+    if (!userOrgId && userData?.organizationId) {
+      userOrgId = userData.organizationId;
+    }
     
     // Get squad IDs - support both new dual fields and legacy squadId
     let standardSquadId = userData?.standardSquadId || null;
@@ -221,6 +255,7 @@ export async function GET(request: Request) {
     
     // Also check squadMembers collection for any memberships not in user doc
     // This handles edge cases where user doc wasn't updated but membership exists
+    // MULTI-TENANCY: Only find memberships in squads belonging to user's current org
     if (!standardSquadId || !premiumSquadId) {
       const membershipSnapshot = await adminDb.collection('squadMembers')
         .where('userId', '==', userId)
@@ -231,6 +266,13 @@ export async function GET(request: Request) {
         const squadDoc = await adminDb.collection('squads').doc(memberData.squadId).get();
         if (squadDoc.exists) {
           const squadData = squadDoc.data();
+          const squadOrgId = squadData?.organizationId || null;
+          
+          // Skip squads from other organizations
+          if (squadOrgId && userOrgId && squadOrgId !== userOrgId) {
+            continue;
+          }
+          
           if (squadData?.isPremium && !premiumSquadId) {
             premiumSquadId = memberData.squadId;
           } else if (!squadData?.isPremium && !standardSquadId) {
@@ -255,10 +297,10 @@ export async function GET(request: Request) {
     // Initialize Clerk client once for both squad fetches
     const clerk = await clerkClient();
 
-    // Fetch both squads in parallel
+    // Fetch both squads in parallel (with org filtering)
     const [premiumData, standardData] = await Promise.all([
-      fetchSquadData(premiumSquadId, includeStats, clerk),
-      fetchSquadData(standardSquadId, includeStats, clerk),
+      fetchSquadData(premiumSquadId, userOrgId, includeStats, clerk),
+      fetchSquadData(standardSquadId, userOrgId, includeStats, clerk),
     ]);
 
     return NextResponse.json({
