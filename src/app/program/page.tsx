@@ -48,7 +48,6 @@ export default function ProgramHubPage() {
     hasEnrollments,
     hasGroupProgram,
     hasBothPrograms,
-    hasGroupSquad,
     isLoading: programsLoading,
   } = useMyPrograms();
   

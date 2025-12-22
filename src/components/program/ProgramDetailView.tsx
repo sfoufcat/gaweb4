@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Phone, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import type { EnrolledProgramWithDetails } from '@/hooks/useMyPrograms';
 import type { DiscoverCourse, DiscoverArticle, DiscoverEvent } from '@/types/discover';
-import { CourseCard } from '@/components/discover/CourseCard';
 import { ArticleCard } from '@/components/discover/ArticleCard';
 
 /**
@@ -70,7 +69,7 @@ export function ProgramDetailView({
   showBackButton = true,
 }: ProgramDetailViewProps) {
   const router = useRouter();
-  const { program, progress, cohort, enrollment, squad } = enrolled;
+  const { program, progress, squad } = enrolled;
   const isGroup = program.type === 'group';
 
   // Program-specific content
@@ -126,8 +125,8 @@ export function ProgramDetailView({
   // Get upcoming events
   const upcomingEvents = content.events.filter(e => new Date(e.date) >= new Date());
 
-  // Calculate member count from squad or cohort
-  const memberCount = squad?.memberCount || cohort?.memberCount || 0;
+  // Calculate member count from squad (memberIds) or cohort
+  const memberCount = squad?.memberIds?.length || 0;
 
   return (
     <div className="space-y-5">

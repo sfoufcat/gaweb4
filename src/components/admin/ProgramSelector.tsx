@@ -1,16 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Check, ChevronsUpDown, X } from 'lucide-react';
+import { Check, ChevronDown, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
 import {
   Popover,
   PopoverContent,
@@ -49,6 +41,7 @@ export function ProgramSelector({
   const [open, setOpen] = useState(false);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Fetch programs on mount
   useEffect(() => {
@@ -77,11 +70,17 @@ export function ProgramSelector({
     }
   };
 
-  const removeProgram = (programId: string) => {
+  const removeProgram = (programId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     onChange(value.filter(id => id !== programId));
   };
 
   const selectedPrograms = programs.filter(p => value.includes(p.id));
+  
+  // Filter programs by search term
+  const filteredPrograms = programs.filter(p => 
+    p.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className={className}>
@@ -91,10 +90,10 @@ export function ProgramSelector({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between h-auto min-h-[40px] font-normal"
+            className="w-full justify-between h-auto min-h-[40px] font-normal text-left"
           >
             {selectedPrograms.length > 0 ? (
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1 flex-1">
                 {selectedPrograms.map(program => (
                   <span
                     key={program.id}
@@ -103,10 +102,7 @@ export function ProgramSelector({
                     {program.name}
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeProgram(program.id);
-                      }}
+                      onClick={(e) => removeProgram(program.id, e)}
                       className="hover:bg-black/10 dark:hover:bg-white/10 rounded-full p-0.5"
                     >
                       <X className="h-3 w-3" />
@@ -119,46 +115,55 @@ export function ProgramSelector({
                 {loading ? 'Loading programs...' : placeholder}
               </span>
             )}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-full p-0" align="start">
-          <Command>
-            <CommandInput placeholder="Search programs..." />
-            <CommandList>
-              <CommandEmpty>
-                {loading ? 'Loading...' : 'No programs found.'}
-              </CommandEmpty>
-              <CommandGroup>
-                {programs.map(program => (
-                  <CommandItem
-                    key={program.id}
-                    value={program.name}
-                    onSelect={() => toggleProgram(program.id)}
-                    className="cursor-pointer"
+        <PopoverContent className="w-[300px] p-0" align="start">
+          <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
+            <input
+              type="text"
+              placeholder="Search programs..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8]"
+            />
+          </div>
+          <div className="max-h-[200px] overflow-y-auto p-1">
+            {loading ? (
+              <div className="p-4 text-center text-sm text-text-secondary dark:text-[#7d8190]">
+                Loading...
+              </div>
+            ) : filteredPrograms.length === 0 ? (
+              <div className="p-4 text-center text-sm text-text-secondary dark:text-[#7d8190]">
+                {searchTerm ? 'No programs found.' : 'No programs available.'}
+              </div>
+            ) : (
+              filteredPrograms.map(program => (
+                <button
+                  key={program.id}
+                  type="button"
+                  onClick={() => toggleProgram(program.id)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] cursor-pointer text-left"
+                >
+                  <div
+                    className={`flex h-4 w-4 items-center justify-center rounded border flex-shrink-0 ${
+                      value.includes(program.id)
+                        ? 'bg-[#a07855] border-[#a07855]'
+                        : 'border-gray-300 dark:border-gray-600'
+                    }`}
                   >
-                    <div className="flex items-center gap-2 flex-1">
-                      <div
-                        className={`flex h-4 w-4 items-center justify-center rounded border ${
-                          value.includes(program.id)
-                            ? 'bg-[#a07855] border-[#a07855]'
-                            : 'border-gray-300 dark:border-gray-600'
-                        }`}
-                      >
-                        {value.includes(program.id) && (
-                          <Check className="h-3 w-3 text-white" />
-                        )}
-                      </div>
-                      <span>{program.name}</span>
-                      <span className="ml-auto text-xs text-text-secondary dark:text-[#7d8190]">
-                        {program.type === 'group' ? 'Group' : '1:1'}
-                      </span>
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
+                    {value.includes(program.id) && (
+                      <Check className="h-3 w-3 text-white" />
+                    )}
+                  </div>
+                  <span className="flex-1 text-[#1a1a1a] dark:text-[#f5f5f8]">{program.name}</span>
+                  <span className="text-xs text-text-secondary dark:text-[#7d8190]">
+                    {program.type === 'group' ? 'Group' : '1:1'}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
         </PopoverContent>
       </Popover>
 
@@ -169,4 +174,3 @@ export function ProgramSelector({
     </div>
   );
 }
-

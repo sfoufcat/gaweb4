@@ -16,7 +16,7 @@ import { useMenuTitles } from '@/contexts/BrandingContext';
  */
 export function ProgramEmptyState() {
   const router = useRouter();
-  const { program: programTitle, programLower } = useMenuTitles();
+  const { programLower } = useMenuTitles();
 
   return (
     <div className="relative flex flex-col items-center justify-center py-20 px-4 min-h-[60vh]">

@@ -380,10 +380,10 @@ async function createHabitsFromProgramDefaults(
       frequencyType = 'daily';
       frequencyValue = 1;
     } else if (template.frequency === 'weekday') {
-      frequencyType = 'specific_days';
+      frequencyType = 'weekly_specific_days';
       frequencyValue = [1, 2, 3, 4, 5]; // Mon-Fri
     } else if (template.frequency === 'custom') {
-      frequencyType = 'specific_days';
+      frequencyType = 'weekly_specific_days';
       frequencyValue = [1, 3, 5]; // Mon, Wed, Fri default
     }
 

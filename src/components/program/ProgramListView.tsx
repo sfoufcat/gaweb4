@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { ArrowRight, Users, User, Phone } from 'lucide-react';
+import { ArrowRight, Phone } from 'lucide-react';
 import type { EnrolledProgramWithDetails } from '@/hooks/useMyPrograms';
 
 /**
@@ -48,15 +48,15 @@ interface ProgramListCardProps {
 }
 
 function ProgramListCard({ enrolled, onClick }: ProgramListCardProps) {
-  const { program, progress, cohort, squad } = enrolled;
+  const { program, progress, squad } = enrolled;
   const isGroup = program.type === 'group';
 
   // Calculate week progress
   const weekProgress = Math.ceil(progress.currentDay / 7);
   const totalWeeks = Math.ceil(progress.totalDays / 7);
 
-  // Member count from squad or cohort
-  const memberCount = squad?.memberCount || cohort?.memberCount || 0;
+  // Member count from squad memberIds
+  const memberCount = squad?.memberIds?.length || 0;
 
   return (
     <div className="bg-[#f3f1ef] dark:bg-[#171b22] rounded-[20px] overflow-hidden p-2">

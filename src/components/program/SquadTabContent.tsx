@@ -83,15 +83,15 @@ export function SquadTabContent() {
   }
 
   // Get members who have shared their mood
-  const membersWithMood = members.filter(m => m.mood);
+  const membersWithMood = members.filter(m => m.moodState);
 
-  // Mood emoji mapping
+  // Mood emoji mapping (based on MoodState type: 'energized' | 'confident' | 'neutral' | 'uncertain' | 'stuck')
   const moodEmojis: Record<string, string> = {
-    great: '😊',
-    good: '🙂',
-    okay: '😐',
-    struggling: '😔',
-    bad: '😢',
+    energized: '🔥',
+    confident: '😊',
+    neutral: '😐',
+    uncertain: '😕',
+    stuck: '😔',
   };
 
   return (
@@ -167,9 +167,9 @@ export function SquadTabContent() {
               <div key={member.id} className="flex items-center gap-3">
                 {/* Member Avatar */}
                 <div className="w-8 h-8 rounded-full overflow-hidden bg-[#f3f1ef] dark:bg-[#262b35] flex-shrink-0">
-                  {member.avatarUrl ? (
+                  {member.imageUrl ? (
                     <Image
-                      src={member.avatarUrl}
+                      src={member.imageUrl}
                       alt={member.firstName}
                       width={32}
                       height={32}
@@ -193,10 +193,10 @@ export function SquadTabContent() {
                 <div className="flex-1 h-3 bg-[#f3f1ef] dark:bg-[#11141b] rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all ${
-                      member.mood === 'great' ? 'bg-[#4caf50] w-full' :
-                      member.mood === 'good' ? 'bg-[#8bc34a] w-4/5' :
-                      member.mood === 'okay' ? 'bg-[#ffeb3b] w-3/5' :
-                      member.mood === 'struggling' ? 'bg-[#ff9800] w-2/5' :
+                      member.moodState === 'energized' ? 'bg-[#4caf50] w-full' :
+                      member.moodState === 'confident' ? 'bg-[#8bc34a] w-4/5' :
+                      member.moodState === 'neutral' ? 'bg-[#ffeb3b] w-3/5' :
+                      member.moodState === 'uncertain' ? 'bg-[#ff9800] w-2/5' :
                       'bg-[#f44336] w-1/5'
                     }`}
                   />
@@ -204,7 +204,7 @@ export function SquadTabContent() {
 
                 {/* Mood Emoji */}
                 <span className="text-lg flex-shrink-0">
-                  {moodEmojis[member.mood || 'okay']}
+                  {moodEmojis[member.moodState || 'neutral']}
                 </span>
               </div>
             ))}
