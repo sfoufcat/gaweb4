@@ -553,6 +553,24 @@ export default clerkMiddleware(async (auth, request) => {
     },
   });
   
+  // ==========================================================================
+  // TENANT COOKIE MANAGEMENT (with proper isolation)
+  // ==========================================================================
+  
+  // Check if existing cookie matches current context to prevent branding leakage
+  // between different tenants or from tenant to platform domain
+  const existingCookie = request.cookies.get('ga_tenant_context');
+  let existingOrgId: string | null = null;
+  
+  if (existingCookie) {
+    try {
+      const existing = JSON.parse(existingCookie.value);
+      existingOrgId = existing.orgId || null;
+    } catch {
+      // Invalid cookie, will be replaced
+    }
+  }
+  
   if (isTenantMode && tenantOrgId) {
     // Also set headers on response for client-side access if needed
     response.headers.set('x-tenant-org-id', tenantOrgId);
@@ -562,6 +580,7 @@ export default clerkMiddleware(async (auth, request) => {
     
     // Set branding cookie for SSR access (JSON-encoded, httpOnly for security)
     // This allows Server Components to read branding without additional API calls
+    // Always set the cookie to ensure correct tenant context (handles switching between tenants)
     const brandingData = tenantConfigData?.branding || DEFAULT_TENANT_BRANDING;
     const coachingPromoData = tenantConfigData?.coachingPromo; // May be undefined
     const tenantCookieData = {
@@ -571,6 +590,11 @@ export default clerkMiddleware(async (auth, request) => {
       coachingPromo: coachingPromoData,
     };
     
+    // Log when replacing a different tenant's cookie (for debugging)
+    if (existingOrgId && existingOrgId !== tenantOrgId) {
+      console.log(`[MIDDLEWARE] Replacing tenant cookie: ${existingOrgId} -> ${tenantOrgId}`);
+    }
+    
     response.cookies.set('ga_tenant_context', JSON.stringify(tenantCookieData), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -579,8 +603,18 @@ export default clerkMiddleware(async (auth, request) => {
       maxAge: 60 * 60 * 24, // 24 hours - will be refreshed on each request
     });
   } else {
-    // Platform mode - clear tenant cookie if exists
-    response.cookies.delete('ga_tenant_context');
+    // Platform mode - force-clear tenant cookie by setting to empty with immediate expiration
+    // This is more reliable than cookies.delete() which may not work across subdomains
+    if (existingCookie) {
+      console.log(`[MIDDLEWARE] Clearing tenant cookie on platform domain (was: ${existingOrgId})`);
+    }
+    response.cookies.set('ga_tenant_context', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 0, // Immediate expiration - forces browser to delete
+    });
   }
   
   // ==========================================================================
