@@ -255,7 +255,7 @@ export interface HabitProgress {
 export type HabitStatus = 'active' | 'completed' | 'archived';
 
 // Source of the habit - used to track how the habit was created
-export type HabitSource = 'track_default' | 'user';
+export type HabitSource = 'track_default' | 'program_default' | 'user';
 
 export interface Habit {
   id: string;

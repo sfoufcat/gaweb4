@@ -16,7 +16,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 export default function SquadPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   useEffect(() => {
     // Build redirect URL
     let redirectUrl = '/program?tab=squad';
@@ -30,11 +30,11 @@ export default function SquadPage() {
     // Redirect to the new program hub with squad tab
     router.replace(redirectUrl);
   }, [router, searchParams]);
-  
+
   // Show a brief loading state while redirecting
-  return (
-    <div className="flex items-center justify-center min-h-[50vh]">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-text-primary" />
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-text-primary" />
     </div>
   );
 }

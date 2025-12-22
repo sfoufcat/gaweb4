@@ -104,7 +104,8 @@ export async function PATCH(
     // Only update fields that are provided
     const allowedFields = [
       'title', 'coverImageUrl', 'content', 'authorName', 'authorTitle',
-      'authorAvatarUrl', 'authorBio', 'publishedAt', 'category', 'articleType', 'track', 'featured', 'trending'
+      'authorAvatarUrl', 'authorBio', 'publishedAt', 'category', 'articleType', 
+      'track', 'programIds', 'featured', 'trending'
     ];
 
     for (const field of allowedFields) {

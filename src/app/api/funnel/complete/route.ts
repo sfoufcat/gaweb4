@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { FlowSession, ProgramInvite, Program, ProgramEnrollment, NewProgramEnrollmentStatus } from '@/types';
+import type { FlowSession, ProgramInvite, Program, ProgramEnrollment, NewProgramEnrollmentStatus, ProgramHabitTemplate, FrequencyType } from '@/types';
 import { addUserToOrganization } from '@/lib/clerk-organizations';
 import { assignUserToSquad, updateUserSquadReference } from '@/lib/squad-assignment';
 
@@ -281,6 +281,22 @@ export async function POST(req: Request) {
 
     console.log(`[FUNNEL_COMPLETE] User ${userId} enrolled in program ${session.programId}, enrollment ${enrollmentRef.id}`);
 
+    // Create habits from program defaults
+    if (program.defaultHabits && program.defaultHabits.length > 0) {
+      try {
+        const habitIds = await createHabitsFromProgramDefaults(
+          userId,
+          session.organizationId,
+          session.programId,
+          program.defaultHabits
+        );
+        console.log(`[FUNNEL_COMPLETE] Created ${habitIds.length} habits for user ${userId} from program defaults`);
+      } catch (habitErr) {
+        // Non-fatal - user is still enrolled
+        console.error(`[FUNNEL_COMPLETE] Failed to create habits (non-fatal):`, habitErr);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       enrollment: {
@@ -318,5 +334,86 @@ function extractUserDataFromSession(data: Record<string, unknown>): Record<strin
   if (data.supportNeeds) userFields.supportNeeds = data.supportNeeds;
 
   return userFields;
+}
+
+/**
+ * Create habits from program default habits
+ * 
+ * This creates actual habit documents for the user based on the program's
+ * defaultHabits templates. Only creates up to 3 habits (respects habit limit).
+ */
+async function createHabitsFromProgramDefaults(
+  userId: string,
+  organizationId: string,
+  programId: string,
+  defaultHabits: ProgramHabitTemplate[]
+): Promise<string[]> {
+  const now = new Date().toISOString();
+  const habitIds: string[] = [];
+
+  // Check existing habit count for user in this org
+  const existingSnapshot = await adminDb
+    .collection('habits')
+    .where('userId', '==', userId)
+    .where('organizationId', '==', organizationId)
+    .where('archived', '==', false)
+    .get();
+
+  const existingCount = existingSnapshot.size;
+  const maxHabits = 3;
+  const spotsAvailable = Math.max(0, maxHabits - existingCount);
+
+  if (spotsAvailable === 0) {
+    console.log(`[FUNNEL_COMPLETE] User ${userId} already has ${existingCount} habits, skipping default creation`);
+    return habitIds;
+  }
+
+  // Only create as many as we have room for
+  const habitsToCreate = defaultHabits.slice(0, spotsAvailable);
+
+  for (const template of habitsToCreate) {
+    // Map frequency to the Habit format
+    let frequencyType: FrequencyType = 'daily';
+    let frequencyValue: number | number[] = 1;
+
+    if (template.frequency === 'daily') {
+      frequencyType = 'daily';
+      frequencyValue = 1;
+    } else if (template.frequency === 'weekday') {
+      frequencyType = 'specific_days';
+      frequencyValue = [1, 2, 3, 4, 5]; // Mon-Fri
+    } else if (template.frequency === 'custom') {
+      frequencyType = 'specific_days';
+      frequencyValue = [1, 3, 5]; // Mon, Wed, Fri default
+    }
+
+    const habitData = {
+      userId,
+      organizationId,
+      text: template.title,
+      linkedRoutine: template.description || null,
+      frequencyType,
+      frequencyValue,
+      reminder: null,
+      targetRepetitions: null,
+      progress: {
+        currentCount: 0,
+        lastCompletedDate: null,
+        completionDates: [],
+        skipDates: [],
+      },
+      archived: false,
+      status: 'active',
+      source: 'program_default' as const,
+      programId, // Link habit to its source program
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const docRef = await adminDb.collection('habits').add(habitData);
+    habitIds.push(docRef.id);
+  }
+
+  return habitIds;
 }
 

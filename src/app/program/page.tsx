@@ -7,7 +7,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useMyPrograms } from '@/hooks/useMyPrograms';
-import { useSquad } from '@/hooks/useSquad';
 import { useMenuTitles } from '@/contexts/BrandingContext';
 
 // Components for different sections
@@ -19,7 +18,8 @@ import { SquadTabContent } from '@/components/program/SquadTabContent';
 /**
  * Program Hub Page
  * 
- * Main tab that replaces the old Squad tab. Contains:
+ * Matches Figma designs for the main Program tab.
+ * Contains:
  * - Top pill switcher: Program | Squad (Squad only visible for group programs)
  * - Program tab: Shows enrolled programs (1 or 2) with details
  * - Squad tab: Shows squad members, invite cards, and "View squad stats" button
@@ -52,23 +52,15 @@ export default function ProgramHubPage() {
     isLoading: programsLoading,
   } = useMyPrograms();
   
-  // Squad data (for Squad tab)
-  const {
-    squad,
-    members,
-    stats,
-    isLoadingStats,
-    fetchStatsTabData,
-    refetch: refetchSquad,
-  } = useSquad();
-  
   // Local state
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('program');
   const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
   
-  // Determine if Squad tab should be visible (only for group programs)
-  const showSquadTab = hasGroupProgram && hasGroupSquad;
+  // Determine if Squad tab should be visible
+  // Show tab if user has a group program (even if squad not created yet)
+  // SquadTabContent handles the empty/pending squad state
+  const showSquadTab = hasGroupProgram;
   
   useEffect(() => {
     setMounted(true);
@@ -98,12 +90,7 @@ export default function ProgramHubPage() {
     // Update URL without navigation
     const newUrl = tab === 'squad' ? '/program?tab=squad' : '/program';
     router.replace(newUrl, { scroll: false });
-    
-    if (tab === 'squad') {
-      // Lazy load stats data when switching to Squad tab
-      fetchStatsTabData();
-    }
-  }, [router, fetchStatsTabData]);
+  }, [router]);
   
   // Handle program selection
   const handleSelectProgram = useCallback((programId: string) => {
@@ -145,7 +132,7 @@ export default function ProgramHubPage() {
   // Empty state: no enrollments
   if (!hasEnrollments) {
     return (
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32">
+      <div className="max-w-[600px] lg:max-w-[800px] mx-auto pb-32">
         <ProgramEmptyState />
       </div>
     );
@@ -154,9 +141,9 @@ export default function ProgramHubPage() {
   // If showing program details view
   if (selectedProgram) {
     return (
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32">
+      <div className="max-w-[600px] lg:max-w-[800px] mx-auto pb-32">
         {/* Top Pill Switcher (still visible in details view) */}
-        <div className="pt-3 mb-6">
+        <div className="pt-3 mb-6 px-4">
           <PillSwitcher
             activeTab={activeTab}
             onTabChange={handleTabChange}
@@ -176,9 +163,9 @@ export default function ProgramHubPage() {
   
   // Main view with tabs
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32">
+    <div className="max-w-[600px] lg:max-w-[800px] mx-auto pb-32">
       {/* Top Pill Switcher */}
-      <div className="pt-3 mb-6">
+      <div className="pt-3 mb-6 px-4">
         <PillSwitcher
           activeTab={activeTab}
           onTabChange={handleTabChange}
@@ -206,14 +193,8 @@ export default function ProgramHubPage() {
           )}
         </div>
       ) : (
-        // Squad tab
-        <SquadTabContent
-          squad={squad}
-          members={members}
-          stats={stats}
-          isLoadingStats={isLoadingStats}
-          onRefetch={refetchSquad}
-        />
+        // Squad tab - self-sufficient component
+        <SquadTabContent />
       )}
     </div>
   );
@@ -221,6 +202,7 @@ export default function ProgramHubPage() {
 
 /**
  * Pill Switcher Component
+ * Matches Figma design for top tab navigation
  */
 interface PillSwitcherProps {
   activeTab: TabType;
@@ -238,11 +220,11 @@ function PillSwitcher({
   squadTitle,
 }: PillSwitcherProps) {
   return (
-    <div className="bg-[#f3f1ef] dark:bg-[#11141b] rounded-[40px] p-2 flex gap-2">
+    <div className="bg-[#f3f1ef] dark:bg-[#11141b] rounded-[40px] p-2 flex gap-2 max-w-[400px]">
       {/* Program Tab */}
       <button
         onClick={() => onTabChange('program')}
-        className={`flex-1 rounded-[32px] px-4 py-2 font-albert text-[18px] font-semibold tracking-[-1px] leading-[1.3] transition-all duration-200 ${
+        className={`flex-1 rounded-[32px] px-4 py-2.5 font-albert text-[18px] font-semibold tracking-[-1px] leading-[1.3] transition-all duration-200 ${
           activeTab === 'program'
             ? 'bg-white dark:bg-[#171b22] text-text-primary dark:text-[#f5f5f8] shadow-[0px_4px_10px_0px_rgba(0,0,0,0.1)] dark:shadow-none'
             : 'text-text-secondary dark:text-[#7d8190]'
@@ -261,7 +243,7 @@ function PillSwitcher({
       {showSquadTab && (
         <button
           onClick={() => onTabChange('squad')}
-          className={`flex-1 rounded-[32px] px-4 py-2 font-albert text-[18px] font-semibold tracking-[-1px] leading-[1.3] transition-all duration-200 ${
+          className={`flex-1 rounded-[32px] px-4 py-2.5 font-albert text-[18px] font-semibold tracking-[-1px] leading-[1.3] transition-all duration-200 ${
             activeTab === 'squad'
               ? 'bg-white dark:bg-[#171b22] text-text-primary dark:text-[#f5f5f8] shadow-[0px_4px_10px_0px_rgba(0,0,0,0.1)] dark:shadow-none'
               : 'text-text-secondary dark:text-[#7d8190]'
@@ -279,4 +261,3 @@ function PillSwitcher({
     </div>
   );
 }
-

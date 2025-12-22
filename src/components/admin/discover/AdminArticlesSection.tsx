@@ -24,6 +24,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
+import { ProgramSelector } from '@/components/admin/ProgramSelector';
 
 // Track options for dropdown
 const TRACK_OPTIONS: { value: UserTrack | ''; label: string }[] = [
@@ -72,6 +73,7 @@ function ArticleFormDialog({
     category: '',
     articleType: 'playbook' as 'playbook' | 'trend' | 'caseStudy',
     track: '' as UserTrack | '',
+    programIds: [] as string[],
     featured: false,
     trending: false,
   });
@@ -90,6 +92,7 @@ function ArticleFormDialog({
         category: article.category || '',
         articleType: article.articleType || 'playbook',
         track: article.track || '',
+        programIds: article.programIds || [],
         featured: article.featured || false,
         trending: article.trending || false,
       });
@@ -107,6 +110,7 @@ function ArticleFormDialog({
         category: '',
         articleType: 'playbook',
         track: '',
+        programIds: [],
         featured: false,
         trending: false,
       });
@@ -121,7 +125,8 @@ function ArticleFormDialog({
       const payload = {
         ...formData,
         publishedAt: formData.publishedAt ? new Date(formData.publishedAt).toISOString() : new Date().toISOString(),
-        track: formData.track || null, // Convert empty string to null
+        track: formData.track || null, // Convert empty string to null (deprecated)
+        programIds: formData.programIds, // New program association
       };
 
       const url = isEditing 
@@ -284,7 +289,19 @@ function ArticleFormDialog({
                 </select>
               </div>
             </div>
-            <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#7d8190] font-albert">Track-specific articles appear in &quot;For you&quot; sections for users on that track</p>
+            <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#7d8190] font-albert">Track is deprecated. Use Programs below for content targeting.</p>
+
+            {/* Program Association */}
+            <div>
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+                Programs
+              </label>
+              <ProgramSelector
+                value={formData.programIds}
+                onChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
+                placeholder="Select programs for this article..."
+              />
+            </div>
 
             {/* Content with Rich Text Editor */}
             <RichTextEditor

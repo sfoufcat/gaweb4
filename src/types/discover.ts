@@ -26,7 +26,10 @@ export type DiscoverEvent = {
   // For public Discover
   featured?: boolean;    // if true, shown in "Upcoming events" section
   category?: string;     // optional category tag
-  track?: UserTrack | null;  // Track-specific content (e.g., content_creator, saas)
+  /** @deprecated Use programIds instead. Track-based filtering is being phased out. */
+  track?: UserTrack | null;
+  /** Program IDs this content belongs to. Used for program-scoped content delivery. */
+  programIds?: string[];
   organizationId?: string;   // Clerk Organization ID for multi-tenancy
   // Participants
   attendeeIds: string[]; // user IDs who RSVPed
@@ -60,7 +63,10 @@ export type DiscoverArticle = {
   readingTimeMinutes?: number;
   category?: string;
   articleType?: ArticleType; // playbook, trend, or caseStudy
-  track?: UserTrack | null;  // Track-specific content (e.g., content_creator, saas)
+  /** @deprecated Use programIds instead. Track-based filtering is being phased out. */
+  track?: UserTrack | null;
+  /** Program IDs this content belongs to. Used for program-scoped content delivery. */
+  programIds?: string[];
   organizationId?: string;   // Clerk Organization ID for multi-tenancy
   featured?: boolean;    // for Recommended section
   trending?: boolean;    // for Trending section
@@ -98,7 +104,10 @@ export type DiscoverCourse = {
   totalDurationMinutes?: number;
   totalLessons?: number;
   totalModules?: number;
-  track?: UserTrack | null;  // Track-specific content (e.g., content_creator, saas)
+  /** @deprecated Use programIds instead. Track-based filtering is being phased out. */
+  track?: UserTrack | null;
+  /** Program IDs this content belongs to. Used for program-scoped content delivery. */
+  programIds?: string[];
   organizationId?: string;   // Clerk Organization ID for multi-tenancy
   featured?: boolean;    // for Recommended or main Courses section
   trending?: boolean;    // for Trending section

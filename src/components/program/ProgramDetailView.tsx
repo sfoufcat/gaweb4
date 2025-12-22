@@ -4,22 +4,27 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Users, User, Calendar, Clock, ChevronRight, BookOpen, FileText, ExternalLink, Download } from 'lucide-react';
+import { ArrowLeft, Phone, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import type { EnrolledProgramWithDetails } from '@/hooks/useMyPrograms';
 import type { DiscoverCourse, DiscoverArticle, DiscoverEvent } from '@/types/discover';
 import { CourseCard } from '@/components/discover/CourseCard';
 import { ArticleCard } from '@/components/discover/ArticleCard';
-import { EventCard } from '@/components/discover/EventCard';
 
 /**
  * ProgramDetailView Component
  * 
+ * Matches Figma designs for program detail screens.
  * Shows full details of a single enrolled program:
- * - Header with program info and progress
- * - Coach info
- * - Next session / upcoming events (for group programs)
- * - Program habits (3-day focus)
- * - Program content sections (courses, articles, downloads, links)
+ * - Header with back arrow, title, description, enrolled badge, progress pill, cover image
+ * - Program overview (group: avatars + members + coach; 1:1: phone + next session + coach)
+ * - Next scheduled call card (for 1:1)
+ * - Upcoming events (for group)
+ * - 3-day focus accordion
+ * - Program habits (horizontal scroll)
+ * - Courses (horizontal scroll)
+ * - Articles
+ * - Links (pill chips)
+ * - Downloads
  */
 
 interface ProgramDetailViewProps {
@@ -53,13 +58,19 @@ interface ProgramContent {
   isLoading: boolean;
 }
 
+// 3-day focus mock data - in production this would come from API
+interface DayFocus {
+  day: string;
+  tasks: string[];
+}
+
 export function ProgramDetailView({ 
   program: enrolled, 
   onBack,
   showBackButton = true,
 }: ProgramDetailViewProps) {
   const router = useRouter();
-  const { program, progress, cohort, enrollment } = enrolled;
+  const { program, progress, cohort, enrollment, squad } = enrolled;
   const isGroup = program.type === 'group';
 
   // Program-specific content
@@ -71,6 +82,16 @@ export function ProgramDetailView({
     downloads: [],
     isLoading: true,
   });
+
+  // 3-day focus accordion state
+  const [expandedDay, setExpandedDay] = useState<string | null>('tomorrow');
+
+  // Mock 3-day focus data - in production, fetch from API
+  const threeDayFocus: DayFocus[] = [
+    { day: 'Today', tasks: [] },
+    { day: 'Tomorrow', tasks: ['Watch module 2 of course', 'Read article', 'Do 10 pushups'] },
+    { day: 'Thursday', tasks: [] },
+  ];
 
   // Fetch program-specific content
   useEffect(() => {
@@ -98,36 +119,70 @@ export function ProgramDetailView({
     fetchContent();
   }, [program.id]);
 
-  // Format date helper
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric' 
-    });
-  };
+  // Format week progress
+  const weekProgress = Math.ceil(progress.currentDay / 7);
+  const totalWeeks = Math.ceil(progress.totalDays / 7);
 
   // Get upcoming events
   const upcomingEvents = content.events.filter(e => new Date(e.date) >= new Date());
 
-  return (
-    <div className="space-y-6">
-      {/* Back Button */}
-      {showBackButton && onBack && (
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-text-secondary dark:text-[#7d8190] hover:text-text-primary dark:hover:text-[#f5f5f8] transition-colors mb-4"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span className="font-albert text-[16px] font-medium">Back to programs</span>
-        </button>
-      )}
+  // Calculate member count from squad or cohort
+  const memberCount = squad?.memberCount || cohort?.memberCount || 0;
 
-      {/* Program Header Card */}
-      <div className="bg-white dark:bg-[#171b22] rounded-[24px] overflow-hidden">
+  return (
+    <div className="space-y-5">
+      {/* Header Section */}
+      <div className="px-4 pt-5 space-y-4">
+        {/* Back Arrow + Title */}
+        {showBackButton && onBack && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onBack}
+              className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#171b22] transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-text-primary dark:text-[#f5f5f8]" />
+            </button>
+            <h1 className="font-albert text-[36px] font-normal text-text-primary dark:text-[#f5f5f8] tracking-[-2px] leading-[1.2]">
+              {program.name}
+            </h1>
+          </div>
+        )}
+
+        {!showBackButton && (
+          <h1 className="font-albert text-[36px] font-normal text-text-primary dark:text-[#f5f5f8] tracking-[-2px] leading-[1.2]">
+            {program.name}
+          </h1>
+        )}
+
+        {/* Description */}
+        {program.description && (
+          <p className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2] leading-[1.2] tracking-[-0.3px]">
+            {program.description}
+          </p>
+        )}
+
+        {/* Badges Row: Enrolled + Progress */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Enrolled Badge */}
+          <div className="bg-[rgba(76,175,80,0.2)] px-2 py-1 rounded-[20px]">
+            <span className="font-sans text-[12px] text-[#4caf50] leading-[1.2]">
+              Enrolled
+            </span>
+          </div>
+
+          {/* Progress Pill */}
+          <div className="bg-[#f3f1ef] dark:bg-[#11141b] px-2 py-1 rounded-[1000px] flex items-center gap-2">
+            <svg className="w-[15px] h-[13px] text-text-secondary dark:text-[#7d8190]" viewBox="0 0 15 14" fill="none" stroke="currentColor" strokeWidth={1.5}>
+              <path d="M1 9.5V13h3.5V9.5H1zm5-4V13h3.5V5.5H6zm5-4V13h3V1.5h-3z" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span className="font-sans text-[12px] text-text-secondary dark:text-[#7d8190] leading-[1.2]">
+              Your progress: Week {weekProgress}/{totalWeeks}
+            </span>
+          </div>
+        </div>
+
         {/* Cover Image */}
-        <div className="relative h-[200px] w-full bg-[#f3f1ef] dark:bg-[#262b35]">
+        <div className="relative h-[220px] w-full rounded-[20px] overflow-hidden bg-[#f3f1ef] dark:bg-[#262b35]">
           {program.coverImageUrl ? (
             <Image
               src={program.coverImageUrl}
@@ -138,319 +193,352 @@ export function ProgramDetailView({
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              {isGroup ? (
-                <Users className="w-16 h-16 text-[#d4cfc9] dark:text-[#7d8190]" />
-              ) : (
-                <User className="w-16 h-16 text-[#d4cfc9] dark:text-[#7d8190]" />
-              )}
-            </div>
-          )}
-
-          {/* Progress overlay at bottom */}
-          <div className="absolute bottom-0 left-0 right-0 h-2 bg-black/20">
-            <div
-              className="h-full bg-white dark:bg-[#f5f5f8] transition-all"
-              style={{ width: `${progress.percentage}%` }}
-            />
-          </div>
-
-          {/* Program type badge */}
-          <div className="absolute top-4 left-4">
-            <div
-              className={`rounded-full px-4 py-1.5 flex items-center gap-2 ${
-                isGroup
-                  ? 'bg-blue-500/90 backdrop-blur-sm'
-                  : 'bg-purple-500/90 backdrop-blur-sm'
-              }`}
-            >
-              {isGroup ? (
-                <Users className="w-4 h-4 text-white" />
-              ) : (
-                <User className="w-4 h-4 text-white" />
-              )}
-              <span className="font-sans text-[14px] font-medium text-white">
-                {isGroup ? 'Group Program' : '1:1 Coaching'}
+              <span className="font-albert text-[48px] font-bold text-[#d4cfc9] dark:text-[#7d8190]">
+                {program.name[0]}
               </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-6">
-          {/* Title */}
-          <h1 className="font-albert text-[28px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.2] mb-2">
-            {program.name}
-          </h1>
-
-          {/* Coach info */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] overflow-hidden">
-              {program.coachImageUrl ? (
-                <Image
-                  src={program.coachImageUrl}
-                  alt={program.coachName}
-                  width={40}
-                  height={40}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <span className="font-albert font-semibold text-sm text-text-secondary dark:text-[#7d8190]">
-                    {program.coachName[0]}
-                  </span>
-                </div>
-              )}
-            </div>
-            <div>
-              <p className="font-albert text-[16px] font-medium text-text-primary dark:text-[#f5f5f8]">
-                {program.coachName}
-              </p>
-              <p className="font-sans text-[13px] text-text-secondary dark:text-[#b2b6c2]">
-                Your coach
-              </p>
-            </div>
-          </div>
-
-          {/* Progress Stats */}
-          <div className="grid grid-cols-3 gap-4 py-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-            <div className="text-center">
-              <p className="font-albert text-[24px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px]">
-                {progress.currentDay}
-              </p>
-              <p className="font-sans text-[12px] text-text-secondary dark:text-[#b2b6c2]">
-                Current Day
-              </p>
-            </div>
-            <div className="text-center border-x border-[#e1ddd8] dark:border-[#262b35]">
-              <p className="font-albert text-[24px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px]">
-                {progress.totalDays}
-              </p>
-              <p className="font-sans text-[12px] text-text-secondary dark:text-[#b2b6c2]">
-                Total Days
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="font-albert text-[24px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px]">
-                {progress.percentage}%
-              </p>
-              <p className="font-sans text-[12px] text-text-secondary dark:text-[#b2b6c2]">
-                Complete
-              </p>
-            </div>
-          </div>
-
-          {/* Cohort info if applicable */}
-          {cohort && (
-            <div className="flex items-center gap-2 mt-4 py-3 px-4 bg-[#f3f1ef] dark:bg-[#11141b] rounded-[12px]">
-              <Calendar className="w-4 h-4 text-text-secondary dark:text-[#7d8190]" />
-              <span className="font-sans text-[14px] text-text-secondary dark:text-[#b2b6c2]">
-                {cohort.name}
-              </span>
-              {cohort.startDate && (
-                <>
-                  <span className="text-text-muted dark:text-[#7d8190]">·</span>
-                  <span className="font-sans text-[14px] text-text-secondary dark:text-[#b2b6c2]">
-                    Started {formatDate(cohort.startDate)}
-                  </span>
-                </>
-              )}
             </div>
           )}
         </div>
       </div>
 
-      {/* Program Description */}
-      {program.description && (
-        <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-5">
-          <h2 className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px] mb-3">
-            About this program
-          </h2>
-          <p className="font-sans text-[15px] text-text-secondary dark:text-[#b2b6c2] leading-[1.6]">
-            {program.description}
-          </p>
-        </div>
-      )}
+      {/* Program Overview Section */}
+      <div className="px-5 py-5 space-y-4">
+        <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
+          Program overview
+        </h2>
 
-      {/* Upcoming Events / Sessions (for group programs) */}
-      {isGroup && upcomingEvents.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="font-albert text-[20px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px]">
-            Upcoming Sessions
-          </h2>
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-            {upcomingEvents.slice(0, 4).map((event) => (
-              <EventCard key={event.id} event={event} />
-            ))}
-          </div>
-        </div>
-      )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {isGroup ? (
+            /* Group Program Overview */
+            <>
+              {/* Stacked Avatars */}
+              <div className="flex items-center -space-x-1.5">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="w-7 h-7 rounded-full bg-[#d4cfc9] dark:bg-[#7d8190] border-2 border-white dark:border-[#05070b]"
+                  />
+                ))}
+              </div>
 
-      {/* Schedule 1:1 Session (for individual programs) */}
-      {!isGroup && (
-        <button
-          onClick={() => router.push('/my-coach')}
-          className="w-full bg-[#2c2520] dark:bg-[#f5f5f8] text-white dark:text-[#05070b] rounded-[16px] p-5 flex items-center justify-between hover:scale-[1.01] active:scale-[0.99] transition-all"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-white/10 dark:bg-[#05070b]/10 flex items-center justify-center">
-              <Calendar className="w-6 h-6" />
-            </div>
-            <div className="text-left">
-              <p className="font-albert text-[18px] font-semibold tracking-[-0.5px]">
-                Schedule your next session
-              </p>
-              <p className="font-sans text-[14px] opacity-80">
-                Book a 1:1 call with {program.coachName}
-              </p>
-            </div>
-          </div>
-          <ChevronRight className="w-6 h-6 opacity-60" />
-        </button>
-      )}
+              {/* Group Info */}
+              <div className="flex flex-col ml-1">
+                <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px] tracking-[0.1px]">
+                  Group program
+                </span>
+                <span className="font-sans text-[11px] text-text-secondary dark:text-[#7d8190] leading-[16px] tracking-[0.5px]">
+                  {memberCount} members
+                </span>
+              </div>
 
-      {/* Program Habits */}
-      {program.defaultHabits && program.defaultHabits.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="font-albert text-[20px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px]">
-              Program Habits
-            </h2>
-            <Link
-              href="/habits"
-              className="font-albert text-[14px] text-text-secondary dark:text-[#7d8190] hover:text-text-primary dark:hover:text-[#f5f5f8] transition-colors"
-            >
-              View all →
-            </Link>
-          </div>
-          <div className="space-y-2">
-            {program.defaultHabits.slice(0, 3).map((habit, index) => (
-              <Link
-                key={index}
-                href={`/habits`}
-                className="block bg-white dark:bg-[#171b22] rounded-[16px] p-4 hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] transition-colors"
-              >
-                <p className="font-albert text-[16px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px]">
-                  {habit.title}
-                </p>
-                {habit.description && (
-                  <p className="font-sans text-[13px] text-text-secondary dark:text-[#b2b6c2] mt-1">
-                    {habit.description}
-                  </p>
+              {/* Coach Avatar */}
+              <div className="w-[38px] h-[38px] rounded-full overflow-hidden bg-[#f3f1ef] dark:bg-[#262b35] ml-2">
+                {program.coachImageUrl ? (
+                  <Image
+                    src={program.coachImageUrl}
+                    alt={program.coachName}
+                    width={38}
+                    height={38}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <span className="font-albert font-semibold text-sm text-text-secondary dark:text-[#7d8190]">
+                      {program.coachName[0]}
+                    </span>
+                  </div>
                 )}
+              </div>
+
+              {/* Coach Info */}
+              <div className="flex flex-col">
+                <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px] tracking-[0.1px]">
+                  {program.coachName}
+                </span>
+                <span className="font-sans text-[11px] text-text-secondary dark:text-[#7d8190] leading-[16px] tracking-[0.5px]">
+                  Program coach
+                </span>
+              </div>
+            </>
+          ) : (
+            /* 1:1 Program Overview */
+            <>
+              {/* Phone Icon */}
+              <Phone className="w-6 h-6 text-text-primary dark:text-[#f5f5f8]" />
+
+              {/* Next Session Info */}
+              <div className="flex flex-col ml-1" style={{ width: '162px' }}>
+                <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px] tracking-[0.1px]">
+                  Next session
+                </span>
+                <span className="font-sans text-[11px] text-text-secondary dark:text-[#7d8190] leading-[16px] tracking-[0.5px]">
+                  December 4 · 4:00PM
+                </span>
+              </div>
+
+              {/* Coach Avatar */}
+              <div className="w-[38px] h-[38px] rounded-full overflow-hidden bg-[#f3f1ef] dark:bg-[#262b35]">
+                {program.coachImageUrl ? (
+                  <Image
+                    src={program.coachImageUrl}
+                    alt={program.coachName}
+                    width={38}
+                    height={38}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <span className="font-albert font-semibold text-sm text-text-secondary dark:text-[#7d8190]">
+                      {program.coachName[0]}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Coach Info */}
+              <div className="flex flex-col">
+                <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px] tracking-[0.1px]">
+                  {program.coachName}
+                </span>
+                <span className="font-sans text-[11px] text-text-secondary dark:text-[#7d8190] leading-[16px] tracking-[0.5px]">
+                  One-on-one coach
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Next Scheduled Call Card (for 1:1 programs) */}
+      {!isGroup && (
+        <div className="px-4">
+          <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4 space-y-4">
+            <h3 className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3]">
+              Next scheduled call
+            </h3>
+            
+            <div className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2] leading-[1.2] tracking-[-0.3px] space-y-2">
+              <p>December 4 · 10:00 AM EST (4:00 PM your time)</p>
+              <p>Location: Chat</p>
+              <p>Guided by: {program.coachName}</p>
+            </div>
+
+            {/* Add to calendar button */}
+            <button className="w-full bg-white dark:bg-[#171b22] border border-[rgba(215,210,204,0.5)] rounded-[32px] px-4 py-4 font-bold text-[16px] text-[#2c2520] dark:text-[#f5f5f8] leading-[1.4] tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all">
+              Add to calendar
+            </button>
+
+            {/* Go to chat button */}
+            <button
+              onClick={() => router.push('/chat')}
+              className="w-full bg-[#a07855] border border-[rgba(215,210,204,0.5)] rounded-[32px] px-4 py-4 font-bold text-[16px] text-white leading-[1.4] tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all"
+            >
+              Go to chat
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Upcoming Events (for group programs) */}
+      {isGroup && upcomingEvents.length > 0 && (
+        <div className="space-y-4">
+          <div className="px-4">
+            <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
+              Upcoming events
+            </h2>
+          </div>
+          
+          <div className="flex gap-2 overflow-x-auto pb-2 px-4 scrollbar-hide">
+            {upcomingEvents.slice(0, 5).map((event) => (
+              <Link
+                key={event.id}
+                href={`/discover/events/${event.id}`}
+                className="flex-shrink-0 w-[180px] bg-white dark:bg-[#171b22] rounded-[20px] p-4 hover:shadow-lg transition-shadow"
+              >
+                <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[1.2]">
+                  {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, {event.startTime}
+                </span>
+                <p className="font-albert text-[18px] font-semibold text-text-secondary dark:text-[#b2b6c2] tracking-[-1px] leading-[1.3] mt-2 line-clamp-2 h-[45px] overflow-hidden">
+                  {event.title}
+                </p>
               </Link>
             ))}
           </div>
         </div>
       )}
 
-      {/* Program Content - Courses */}
+      {/* 3 Day Focus Section */}
+      <div className="px-4 space-y-3">
+        <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
+          3 day focus
+        </h2>
+
+        {threeDayFocus.map((dayFocus) => {
+          const isExpanded = expandedDay === dayFocus.day.toLowerCase();
+          const hasTasks = dayFocus.tasks.length > 0;
+
+          return (
+            <div
+              key={dayFocus.day}
+              className="bg-white dark:bg-[#171b22] rounded-[20px] overflow-hidden"
+            >
+              <button
+                onClick={() => setExpandedDay(isExpanded ? null : dayFocus.day.toLowerCase())}
+                className="w-full p-4 flex items-center justify-between"
+              >
+                <span className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3]">
+                  {dayFocus.day}
+                </span>
+                {hasTasks && (
+                  isExpanded ? (
+                    <ChevronUp className="w-6 h-6 text-text-secondary dark:text-[#7d8190]" />
+                  ) : (
+                    <ChevronDown className="w-6 h-6 text-text-secondary dark:text-[#7d8190]" />
+                  )
+                )}
+              </button>
+
+              {isExpanded && hasTasks && (
+                <div className="px-4 pb-4">
+                  <ol className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2] leading-[1.2] tracking-[-0.3px] list-decimal pl-6 space-y-1">
+                    {dayFocus.tasks.map((task, i) => (
+                      <li key={i}>{task}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Program Habits (horizontal scroll) */}
+      {program.defaultHabits && program.defaultHabits.length > 0 && (
+        <div className="space-y-4">
+          <div className="px-4">
+            <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
+              Program habits
+            </h2>
+          </div>
+          
+          <div className="flex gap-3 overflow-x-auto pb-2 px-4 scrollbar-hide">
+            {program.defaultHabits.map((habit, index) => {
+              // Map frequency to display text
+              const frequencyLabel = habit.frequency === 'daily' ? 'Everyday' : 
+                habit.frequency === 'weekday' ? '5 times a week' : 
+                '3 times a week';
+
+              return (
+                <Link
+                  key={index}
+                  href="/habits"
+                  className="flex-shrink-0 w-[180px] bg-[rgba(255,255,255,0.7)] dark:bg-[#171b22] rounded-[20px] p-4 hover:shadow-lg transition-shadow"
+                >
+                  <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[1.2]">
+                    {frequencyLabel}
+                  </span>
+                  <p className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3] mt-2.5 line-clamp-2">
+                    {habit.title}
+                  </p>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Courses (horizontal scroll) */}
       {content.courses.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="font-albert text-[20px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px]">
+        <div className="space-y-4">
+          <div className="px-4">
+            <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
               Courses
             </h2>
-            <Link
-              href="/discover?tab=courses"
-              className="font-albert text-[14px] text-text-secondary dark:text-[#7d8190] hover:text-text-primary dark:hover:text-[#f5f5f8] transition-colors flex items-center gap-1"
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>See all</span>
-            </Link>
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+          
+          <div className="flex gap-3 overflow-x-auto pb-2 px-4 scrollbar-hide">
             {content.courses.map((course) => (
-              <CourseCard key={course.id} course={course} />
+              <Link
+                key={course.id}
+                href={`/discover/courses/${course.id}`}
+                className="flex-shrink-0 w-[180px] bg-[rgba(255,255,255,0.7)] dark:bg-[#171b22] rounded-[20px] p-4 hover:shadow-lg transition-shadow"
+              >
+                <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[1.2]">
+                  {course.category || 'Course'}
+                </span>
+                <p className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3] mt-6 line-clamp-2">
+                  {course.title}
+                </p>
+              </Link>
             ))}
           </div>
         </div>
       )}
 
-      {/* Program Content - Articles */}
+      {/* Articles */}
       {content.articles.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="font-albert text-[20px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px]">
-              Articles & Resources
-            </h2>
-            <Link
-              href="/discover?tab=articles"
-              className="font-albert text-[14px] text-text-secondary dark:text-[#7d8190] hover:text-text-primary dark:hover:text-[#f5f5f8] transition-colors flex items-center gap-1"
-            >
-              <FileText className="w-4 h-4" />
-              <span>See all</span>
-            </Link>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            {content.articles.slice(0, 4).map((article) => (
+        <div className="px-4 space-y-3">
+          <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
+            Articles
+          </h2>
+          
+          <div className="space-y-2">
+            {content.articles.slice(0, 3).map((article) => (
               <ArticleCard key={article.id} article={article} variant="grid" />
             ))}
           </div>
         </div>
       )}
 
-      {/* Program Content - Links */}
+      {/* Links (pill chips) */}
       {content.links.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="font-albert text-[20px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px]">
-            Useful Links
+        <div className="px-4 space-y-4">
+          <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
+            Links
           </h2>
-          <div className="space-y-2">
+          
+          <div className="flex flex-wrap gap-1">
             {content.links.map((link) => (
               <a
                 key={link.id}
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 bg-white dark:bg-[#171b22] rounded-[16px] p-4 hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] transition-colors"
+                className="relative bg-white dark:bg-[#171b22] rounded-[100px] px-3 py-1.5 flex items-center gap-1 border border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] transition-colors"
               >
-                <div className="w-10 h-10 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center">
-                  <ExternalLink className="w-5 h-5 text-text-secondary dark:text-[#7d8190]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-albert text-[16px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px] truncate">
-                    {link.title}
-                  </p>
-                  {link.description && (
-                    <p className="font-sans text-[13px] text-text-secondary dark:text-[#b2b6c2] truncate">
-                      {link.description}
-                    </p>
-                  )}
-                </div>
-                <ChevronRight className="w-5 h-5 text-text-secondary dark:text-[#7d8190] flex-shrink-0" />
+                <ExternalLink className="w-5 h-5 text-text-secondary dark:text-[#7d8190]" />
+                <span className="font-albert text-[18px] font-semibold text-text-secondary dark:text-[#7d8190] tracking-[-1px] leading-[1.3]">
+                  {link.title}
+                </span>
               </a>
             ))}
           </div>
         </div>
       )}
 
-      {/* Program Content - Downloads */}
+      {/* Downloads (horizontal scroll) */}
       {content.downloads.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="font-albert text-[20px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px]">
-            Downloads
-          </h2>
-          <div className="space-y-2">
+        <div className="space-y-4">
+          <div className="px-4">
+            <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
+              Downloads
+            </h2>
+          </div>
+          
+          <div className="flex gap-3 overflow-x-auto pb-2 px-4 scrollbar-hide">
             {content.downloads.map((download) => (
               <a
                 key={download.id}
                 href={download.fileUrl}
                 download
-                className="flex items-center gap-3 bg-white dark:bg-[#171b22] rounded-[16px] p-4 hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] transition-colors"
+                className="flex-shrink-0 w-[180px] bg-[rgba(255,255,255,0.7)] dark:bg-[#171b22] rounded-[20px] p-4 hover:shadow-lg transition-shadow"
               >
-                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                  <Download className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-albert text-[16px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px] truncate">
-                    {download.title}
-                  </p>
-                  <p className="font-sans text-[13px] text-text-secondary dark:text-[#b2b6c2]">
-                    {download.fileType && <span className="uppercase">{download.fileType}</span>}
-                    {download.fileSize && <span> · {download.fileSize}</span>}
-                  </p>
-                </div>
-                <Download className="w-5 h-5 text-text-secondary dark:text-[#7d8190] flex-shrink-0" />
+                <span className="font-sans text-[12px] text-text-muted dark:text-[#7d8190] leading-[1.2]">
+                  {download.fileType?.toUpperCase() || 'File'}
+                </span>
+                <p className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3] mt-6 line-clamp-2">
+                  {download.title}
+                </p>
               </a>
             ))}
           </div>
@@ -459,13 +547,13 @@ export function ProgramDetailView({
 
       {/* Loading state for content */}
       {content.isLoading && (
-        <div className="space-y-4">
+        <div className="px-4 space-y-4">
           <div className="h-6 w-32 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg animate-pulse" />
           <div className="flex gap-3 overflow-x-auto">
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="w-[180px] h-[180px] flex-shrink-0 bg-white dark:bg-[#171b22] rounded-[20px] animate-pulse"
+                className="w-[180px] h-[120px] flex-shrink-0 bg-white dark:bg-[#171b22] rounded-[20px] animate-pulse"
               />
             ))}
           </div>
@@ -478,8 +566,9 @@ export function ProgramDetailView({
        content.articles.length === 0 && 
        content.events.length === 0 &&
        content.links.length === 0 &&
-       content.downloads.length === 0 && (
-        <div className="text-center py-8">
+       content.downloads.length === 0 &&
+       (!program.defaultHabits || program.defaultHabits.length === 0) && (
+        <div className="text-center py-8 px-4">
           <p className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2]">
             Program content will be available as you progress through the program.
           </p>
@@ -488,4 +577,3 @@ export function ProgramDetailView({
     </div>
   );
 }
-
