@@ -180,9 +180,11 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
       ]);
 
       // Handle user data
+      let fetchedUser: UserData | null = null;
       if (userResponse.ok) {
         const userData = await userResponse.json();
-        setUser(userData.user);
+        fetchedUser = userData.user;
+        setUser(fetchedUser);
       } else {
         // Try to get basic info from org-users if user endpoint fails
         const orgUsersResponse = await fetch('/api/coach/org-users');
@@ -190,20 +192,28 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
           const orgUsersData = await orgUsersResponse.json();
           const foundUser = orgUsersData.users?.find((u: UserData) => u.id === clientId);
           if (foundUser) {
+            fetchedUser = foundUser;
             setUser(foundUser);
           }
         }
       }
 
-      // Handle coaching data - 404 means no coaching, which is fine
+      // Determine if user has ACTIVE coaching based on their status, not document existence
+      // This prevents showing coaching UI for users who had coaching data created but no active subscription
+      const userHasActiveCoaching = 
+        fetchedUser?.coachingStatus === 'active' || 
+        fetchedUser?.coaching === true;
+
+      // Handle coaching data - still load it if it exists, but only enable editing if user has active coaching
       if (coachingResponse.ok) {
         const data = await coachingResponse.json();
         setCoachingData(data.data);
         setCoach(data.coach);
-        setHasCoaching(true);
+        // Only set hasCoaching=true if user actually has active coaching subscription
+        setHasCoaching(userHasActiveCoaching);
 
-        // Initialize edit states
-        if (data.data) {
+        // Initialize edit states (only matters if hasCoaching is true)
+        if (data.data && userHasActiveCoaching) {
           setFocusAreas(data.data.focusAreas || []);
           setActionItems(data.data.actionItems || []);
           setResources(data.data.resources || []);
@@ -246,7 +256,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
           }
         }
       } else if (coachingResponse.status === 404) {
-        // User doesn't have coaching - this is expected for non-coaching users
+        // No coaching data document exists
         setHasCoaching(false);
         setCoachingData(null);
       } else {
