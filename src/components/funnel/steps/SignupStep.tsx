@@ -134,7 +134,7 @@ export function SignupStep({
   // Loading state
   if (!isLoaded || (isSignedIn && !error)) {
     return (
-      <div className="w-full max-w-xl mx-auto flex flex-col items-center justify-center min-h-[300px]">
+      <div className="min-h-[50vh] w-full flex flex-col items-center justify-center">
         <div className="relative mb-4">
           <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
           <div 

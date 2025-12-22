@@ -53,6 +53,15 @@ export async function POST(req: Request) {
 
     const session = sessionDoc.data() as FlowSession;
 
+    // Check if session has been linked to a user
+    if (!session.userId) {
+      console.error(`[FUNNEL_COMPLETE] Session ${flowSessionId} not linked to any user`);
+      return NextResponse.json(
+        { error: 'Session not linked to user. Please sign up again.' },
+        { status: 400 }
+      );
+    }
+
     // Verify session belongs to this user
     if (session.userId !== userId) {
       return NextResponse.json(
@@ -166,9 +175,9 @@ export async function POST(req: Request) {
       organizationId: session.organizationId,
       cohortId: assignedCohortId,
       squadId: assignedSquadId,
-      stripePaymentIntentId: stripePaymentIntentId || undefined,
-      stripeCheckoutSessionId: stripeCheckoutSessionId || undefined,
-      paidAt: stripePaymentIntentId ? now : undefined,
+      stripePaymentIntentId: stripePaymentIntentId || null,
+      stripeCheckoutSessionId: stripeCheckoutSessionId || null,
+      paidAt: stripePaymentIntentId ? now : null,
       amountPaid: invite?.paymentStatus === 'pre_paid' ? 0 : (program.priceInCents || 0),
       status: enrollmentStatus,
       startedAt,
@@ -239,8 +248,9 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error('[FUNNEL_COMPLETE]', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to complete funnel' },
+      { error: `Failed to complete funnel: ${errorMessage}` },
       { status: 500 }
     );
   }
