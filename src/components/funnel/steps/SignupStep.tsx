@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth, useClerk, useSignUp } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
+import Link from 'next/link';
 import type { FunnelStepConfigSignup } from '@/types';
 import { SignUpForm, OAuthButton } from '@/components/auth';
 
@@ -458,9 +459,9 @@ export function SignupStep({
           {/* Sign in link for existing users */}
           <p className="text-center mt-8 lg:mt-10 font-sans text-[15px] text-text-secondary">
             Already have an account?{' '}
-            <a href="/sign-in" className="text-[#a07855] hover:text-[#8a6649] font-medium">
+            <Link href="/sign-in" className="text-[#a07855] hover:text-[#8a6649] font-medium">
               Sign in
-            </a>
+            </Link>
           </p>
         </div>
       </div>
