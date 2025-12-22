@@ -687,17 +687,9 @@ export default clerkMiddleware(async (auth, request) => {
         console.log('[MIDDLEWARE] Skipping auth redirect for satellite session sync');
         // Continue to page - ClerkProvider will sync session client-side
       } else {
-        const isReturningUser = request.cookies.get('ga_returning_user')?.value === 'true';
-        
-        // On platform domain: always redirect to sign-in
-        // On tenant domains: redirect new users to join funnel, returning users to sign-in
-        let redirectUrl = '/sign-in';
-        if (isTenantMode && !isReturningUser) {
-          // Only redirect to join funnel on tenant domains (where funnels exist)
-          redirectUrl = '/join/starter-90';
-        }
-        
-        return NextResponse.redirect(new URL(redirectUrl, request.url));
+        // Always redirect unauthenticated users to sign-in
+        // Funnels should only be accessed via explicit funnel links (e.g., /join/program-slug/funnel-slug)
+        return NextResponse.redirect(new URL('/sign-in', request.url));
       }
     }
   }
