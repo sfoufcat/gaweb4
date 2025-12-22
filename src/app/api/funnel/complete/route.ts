@@ -175,15 +175,15 @@ export async function POST(req: Request) {
       organizationId: session.organizationId,
       cohortId: assignedCohortId,
       squadId: assignedSquadId,
-      stripePaymentIntentId: stripePaymentIntentId || null,
-      stripeCheckoutSessionId: stripeCheckoutSessionId || null,
-      paidAt: stripePaymentIntentId ? now : null,
       amountPaid: invite?.paymentStatus === 'pre_paid' ? 0 : (program.priceInCents || 0),
       status: enrollmentStatus,
       startedAt,
       lastAssignedDayIndex: 0,
       createdAt: now,
       updatedAt: now,
+      // Only add optional payment fields if they have values
+      ...(stripePaymentIntentId && { stripePaymentIntentId, paidAt: now }),
+      ...(stripeCheckoutSessionId && { stripeCheckoutSessionId }),
     };
 
     const enrollmentRef = await adminDb.collection('program_enrollments').add(enrollmentData);
