@@ -141,7 +141,7 @@ export function OrganizationSwitcher({ compact = false }: OrganizationSwitcherPr
                 {currentOrg?.branding?.appTitle || currentOrg?.name || 'Select Organization'}
               </div>
               <div className="text-xs text-text-secondary capitalize">
-                {currentOrg?.membership.orgRole.replace('_', ' ')}
+                {currentOrg?.membership?.orgRole?.replace('_', ' ') || 'Member'}
               </div>
             </div>
             
@@ -188,7 +188,7 @@ export function OrganizationSwitcher({ compact = false }: OrganizationSwitcherPr
                     {org.branding?.appTitle || org.name}
                   </div>
                   <div className="text-xs text-text-secondary capitalize">
-                    {org.membership.orgRole.replace('_', ' ')} • {org.membership.tier}
+                    {org.membership?.orgRole?.replace('_', ' ') || 'Member'} • {org.membership?.tier || 'Free'}
                   </div>
                 </div>
                 

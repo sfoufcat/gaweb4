@@ -3,7 +3,7 @@ import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
-import { ensureCoachHasOrganization, getCurrentUserOrganizationId } from '@/lib/clerk-organizations';
+import { ensureCoachHasOrganization } from '@/lib/clerk-organizations';
 import { syncTenantToEdgeConfig, type TenantBrandingData } from '@/lib/tenant-edge-config';
 import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, UserRole } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES } from '@/types';
@@ -39,16 +39,13 @@ export async function GET(request: Request) {
       organizationId = tenantOrgId;
       console.log(`[ORG_BRANDING_GET] Using tenant org from header: ${organizationId}`);
     } else if (requestedOrgId) {
-      // Priority 2: Explicit org ID requested
+      // Priority 2: Explicit org ID requested (only if explicitly passed)
       organizationId = requestedOrgId;
-    } else {
-      // Priority 3: Try to get current user's organization (requires auth)
-      const { userId } = await auth();
-      
-      if (userId) {
-        organizationId = await getCurrentUserOrganizationId();
-      }
     }
+    // NOTE: We intentionally do NOT fall back to the user's organization here.
+    // On the platform domain (app.growthaddicts.app), we want default branding.
+    // User-specific branding should only appear on tenant domains where
+    // x-tenant-org-id header is set by the middleware.
 
     // If still no org ID, return default branding
     if (!organizationId) {
