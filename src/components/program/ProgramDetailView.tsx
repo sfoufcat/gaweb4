@@ -325,7 +325,7 @@ export function ProgramDetailView({
           <div className="space-y-2">
             {program.defaultHabits.slice(0, 3).map((habit, index) => (
               <Link
-                key={habit.id || index}
+                key={index}
                 href={`/habits`}
                 className="block bg-white dark:bg-[#171b22] rounded-[16px] p-4 hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] transition-colors"
               >
