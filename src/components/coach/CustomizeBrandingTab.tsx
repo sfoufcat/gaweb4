@@ -133,7 +133,9 @@ export function CustomizeBrandingTab() {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('/api/org/branding');
+      // Use forCoach=true to fetch the authenticated coach's organization branding
+      // This ensures coaches see their saved branding on the platform domain
+      const response = await fetch('/api/org/branding?forCoach=true');
       if (!response.ok) {
         throw new Error('Failed to fetch branding settings');
       }

@@ -15,7 +15,7 @@ import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_M
  * Resolution priority:
  * 1. x-tenant-org-id header (set by middleware for tenant domains) - NO AUTH REQUIRED
  * 2. Query param orgId (for specific org lookup)
- * 3. Current authenticated user's organization
+ * 3. Query param forCoach=true (for coach dashboard on platform domain) - AUTH REQUIRED
  * 4. Default branding
  * 
  * This endpoint is public for GET requests when on a tenant domain,
@@ -42,10 +42,25 @@ export async function GET(request: Request) {
       // Priority 2: Explicit org ID requested (only if explicitly passed)
       organizationId = requestedOrgId;
     }
-    // NOTE: We intentionally do NOT fall back to the user's organization here.
-    // On the platform domain (app.growthaddicts.com), we want default branding.
+    
+    // Priority 3: Coach dashboard mode - fetch authenticated coach's org branding
+    // This allows coaches to see/edit their branding from the platform domain
+    const forCoach = searchParams.get('forCoach') === 'true';
+    if (!organizationId && forCoach) {
+      const { userId, sessionClaims } = await auth();
+      if (userId) {
+        const publicMetadata = sessionClaims?.publicMetadata as { role?: UserRole } | undefined;
+        if (canAccessCoachDashboard(publicMetadata?.role)) {
+          organizationId = await ensureCoachHasOrganization(userId);
+          console.log(`[ORG_BRANDING_GET] Using coach's org from auth: ${organizationId}`);
+        }
+      }
+    }
+    
+    // NOTE: Without forCoach=true, we do NOT fall back to the user's organization.
+    // On the platform domain (app.growthaddicts.com), we want default branding for regular users.
     // User-specific branding should only appear on tenant domains where
-    // x-tenant-org-id header is set by the middleware.
+    // x-tenant-org-id header is set by the middleware, OR when forCoach=true for the coach dashboard.
 
     // If still no org ID, return default branding
     if (!organizationId) {
