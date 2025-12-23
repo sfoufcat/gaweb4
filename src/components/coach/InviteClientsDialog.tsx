@@ -449,7 +449,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                       <div className="flex-1 space-y-2">
                         <div className="h-5 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
                         <div className="h-4 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-                      </div>
+                </div>
                       <div className="h-8 w-8 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
                     </div>
                   </div>

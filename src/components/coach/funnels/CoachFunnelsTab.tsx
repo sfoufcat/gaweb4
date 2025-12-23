@@ -264,7 +264,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
                   <div className="h-8 w-8 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
                 </div>
               </div>
-            </div>
+          </div>
           ))}
         </div>
       )}

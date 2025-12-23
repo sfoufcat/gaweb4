@@ -99,7 +99,7 @@ export function useDashboard() {
     try {
       // Only show loading state on initial fetch, not background refetches
       if (isInitial) {
-        setIsLoading(true);
+      setIsLoading(true);
       }
       setError(null);
       

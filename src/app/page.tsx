@@ -641,36 +641,7 @@ export default function Dashboard() {
   }, [user, isLoaded, router]);
 
   if (!isLoaded || !mounted) {
-    return (
-      <div className="p-4 space-y-6 animate-pulse">
-        {/* Header skeleton */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
-            <div className="space-y-2">
-              <div className="h-5 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-              <div className="h-4 w-20 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-            </div>
-          </div>
-          <div className="w-12 h-12 rounded-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
-        </div>
-        {/* Date skeleton */}
-        <div className="h-3 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-        {/* Headline skeleton */}
-        <div className="h-9 w-3/4 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-        {/* Section cards skeleton */}
-        <div className="space-y-4">
-          <div className="bg-white dark:bg-surface rounded-[20px] p-4 space-y-3">
-            <div className="h-5 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-            <div className="h-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
-          </div>
-          <div className="bg-white dark:bg-surface rounded-[20px] p-4 space-y-3">
-            <div className="h-5 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-            <div className="h-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   if (!user) {
@@ -1372,40 +1343,40 @@ export default function Dashboard() {
           </>
         ) : (
           <>
-            {/* Mobile: Horizontal Scroll-Snap Carousel */}
-            <div 
-              ref={carouselRef}
-              onScroll={handleCarouselScroll}
-              className="lg:hidden overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4" 
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-            >
-              <div className="flex gap-3" style={{ width: 'max-content' }}>
-                {/* Dynamic cards based on state */}
-                {cardOrder.map((cardType) => renderCard(cardType, true))}
-              </div>
-            </div>
+        {/* Mobile: Horizontal Scroll-Snap Carousel */}
+        <div 
+          ref={carouselRef}
+          onScroll={handleCarouselScroll}
+          className="lg:hidden overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4" 
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          <div className="flex gap-3" style={{ width: 'max-content' }}>
+            {/* Dynamic cards based on state */}
+            {cardOrder.map((cardType) => renderCard(cardType, true))}
+          </div>
+        </div>
 
-            {/* Carousel Dots - Mobile only */}
-            <div className="lg:hidden flex justify-center gap-2 mt-3">
-              {[0, 1, 2].map((index) => (
-                <button
-                  key={index}
-                  onClick={() => scrollToIndex(index)}
-                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                    carouselIndex === index 
-                      ? 'bg-text-primary w-6' 
-                      : 'bg-text-primary/30 hover:bg-text-primary/50'
-                  }`}
-                  aria-label={`Go to slide ${index + 1}`}
-                />
-              ))}
-            </div>
+        {/* Carousel Dots - Mobile only */}
+        <div className="lg:hidden flex justify-center gap-2 mt-3">
+          {[0, 1, 2].map((index) => (
+            <button
+              key={index}
+              onClick={() => scrollToIndex(index)}
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                carouselIndex === index 
+                  ? 'bg-text-primary w-6' 
+                  : 'bg-text-primary/30 hover:bg-text-primary/50'
+              }`}
+              aria-label={`Go to slide ${index + 1}`}
+            />
+          ))}
+        </div>
 
-            {/* Desktop: 3-Column Grid */}
-            <div className="hidden lg:grid lg:grid-cols-3 gap-4">
-              {/* Dynamic cards based on state */}
-              {cardOrder.map((cardType) => renderCard(cardType, false))}
-            </div>
+        {/* Desktop: 3-Column Grid */}
+        <div className="hidden lg:grid lg:grid-cols-3 gap-4">
+          {/* Dynamic cards based on state */}
+          {cardOrder.map((cardType) => renderCard(cardType, false))}
+        </div>
           </>
         )}
       </div>
@@ -1421,8 +1392,8 @@ export default function Dashboard() {
           <div className="bg-white dark:bg-surface rounded-[20px] p-4 space-y-3 animate-pulse">
             {[1, 2, 3].map((i) => (
               <div key={i} className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
-                <div className="flex-1 h-5 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                <div className="w-5 h-5 rounded-full bg-text-primary/10" />
+                <div className="flex-1 h-5 bg-text-primary/10 rounded" />
               </div>
             ))}
           </div>
@@ -1490,12 +1461,12 @@ export default function Dashboard() {
             {[1, 2].map((i) => (
               <div key={i} className="bg-white dark:bg-surface rounded-[20px] p-4 flex gap-3">
                 <div className="flex-1 space-y-2">
-                  <div className="h-5 w-3/4 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-                  <div className="h-3 w-1/2 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                  <div className="h-5 w-3/4 bg-text-primary/10 rounded" />
+                  <div className="h-3 w-1/2 bg-text-primary/10 rounded" />
                 </div>
                 <div className="space-y-1 text-right">
-                  <div className="h-3 w-12 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded ml-auto" />
-                  <div className="h-3 w-8 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded ml-auto" />
+                  <div className="h-3 w-12 bg-text-primary/10 rounded ml-auto" />
+                  <div className="h-3 w-8 bg-text-primary/10 rounded ml-auto" />
                 </div>
               </div>
             ))}

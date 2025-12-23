@@ -31,9 +31,9 @@ export function ProgramCarousel({ enrollments, isLoading }: ProgramCarouselProps
             key={i}
             className="flex-shrink-0 w-[260px] bg-white dark:bg-surface rounded-[20px] p-4 animate-pulse"
           >
-            <div className="w-full h-32 rounded-xl bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 mb-3" />
-            <div className="h-5 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded w-3/4 mb-2" />
-            <div className="h-4 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded w-1/2" />
+            <div className="w-full h-32 rounded-xl bg-text-primary/10 mb-3" />
+            <div className="h-5 bg-text-primary/10 rounded w-3/4 mb-2" />
+            <div className="h-4 bg-text-primary/5 rounded w-1/2" />
           </div>
         ))}
       </div>

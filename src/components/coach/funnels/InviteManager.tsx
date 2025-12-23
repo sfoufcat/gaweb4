@@ -245,7 +245,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
                 </div>
               </div>
               <div className="h-6 w-16 bg-[#e1ddd8]/50 rounded-full" />
-            </div>
+          </div>
           ))}
         </div>
       )}
