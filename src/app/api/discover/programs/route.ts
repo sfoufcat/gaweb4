@@ -93,9 +93,9 @@ export async function GET(request: NextRequest) {
               organizationId: data.organizationId,
             });
             
-            // Find the member with super_coach orgRole
+            // Find the member with super_coach orgRole (stored in membership publicMetadata)
             const coachMember = memberships.data.find(m => {
-              const metadata = m.publicUserData?.publicMetadata as { orgRole?: string } | undefined;
+              const metadata = m.publicMetadata as { orgRole?: string } | undefined;
               return metadata?.orgRole === 'super_coach';
             });
             
