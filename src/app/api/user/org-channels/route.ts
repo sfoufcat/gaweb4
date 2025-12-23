@@ -22,10 +22,11 @@ export async function GET() {
     const organizationId = await getEffectiveOrgId();
     
     if (!organizationId) {
-      // User doesn't belong to an org - return empty channels
+      // Platform mode - no tenant context, return empty channels with flag
       return NextResponse.json({
         channels: [],
         organizationId: null,
+        isPlatformMode: true,
       });
     }
 
@@ -35,6 +36,7 @@ export async function GET() {
     return NextResponse.json({
       channels,
       organizationId,
+      isPlatformMode: false,
     });
   } catch (error) {
     console.error('[USER_ORG_CHANNELS_ERROR]', error);

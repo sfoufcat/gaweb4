@@ -681,20 +681,6 @@ function CourseFormDialog({
                   />
                 </div>
                 
-                {/* Track (deprecated - hidden but preserved for backwards compatibility) */}
-                <div className="col-span-2 opacity-50">
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Track (deprecated)</label>
-                  <select
-                    value={formData.track}
-                    onChange={e => setFormData(prev => ({ ...prev, track: e.target.value as UserTrack | '' }))}
-                    className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert"
-                  >
-                    {TRACK_OPTIONS.map(option => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                  <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Track is deprecated. Use Programs above instead.</p>
-                </div>
               </div>
               
               <div className="flex gap-6">

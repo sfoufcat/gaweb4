@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getSquadStatsWithCache } from '@/lib/squad-alignment';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import type { Squad, SquadMember, SquadStats, ClerkPublicMetadata } from '@/types';
+import type { Squad, SquadMember, SquadStats } from '@/types';
 
 /**
  * GET /api/squad/me
@@ -72,13 +72,18 @@ async function fetchSquadData(
   const squadData = squadDoc.data();
   
   // MULTI-TENANCY CHECK: Only return squad if it belongs to user's current organization
-  // If squad has no organizationId (legacy data), allow it for backward compatibility
-  // If user has no organizationId, they can only see squads without an org (legacy behavior)
   const squadOrgId = squadData?.organizationId || null;
   
+  // Case 1: Squad has an org, user has an org, but they don't match - filter out
   if (squadOrgId && userOrgId && squadOrgId !== userOrgId) {
-    // Squad belongs to a different organization - don't return it
     console.log(`[SQUAD_ME] Filtering out squad ${squadId} (org: ${squadOrgId}) - user org: ${userOrgId}`);
+    return { squad: null, members: [], stats: null };
+  }
+  
+  // Case 2: User has no org context (platform mode) but squad belongs to an org - filter out
+  // This prevents cross-tenant data leakage when on platform domain
+  if (!userOrgId && squadOrgId) {
+    console.log(`[SQUAD_ME] Filtering out squad ${squadId} (org: ${squadOrgId}) - user has no org context (platform mode)`);
     return { squad: null, members: [], stats: null };
   }
   
@@ -213,7 +218,7 @@ async function fetchSquadData(
 
 export async function GET(request: Request) {
   try {
-    const { userId, sessionClaims } = await auth();
+    const { userId } = await auth();
     
     // Parse query params
     const { searchParams } = new URL(request.url);
@@ -223,15 +228,29 @@ export async function GET(request: Request) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
+    // MULTI-TENANCY: Get effective org ID
+    // In tenant mode (subdomain): uses x-tenant-org-id header from middleware
+    // In platform mode: returns null (no tenant context)
+    const userOrgId = await getEffectiveOrgId();
+    
+    // PLATFORM MODE: If no org context, return empty state immediately
+    // Squads are tenant-specific - they shouldn't appear on the platform domain
+    if (!userOrgId) {
+      console.log('[SQUAD_ME] Platform mode (no orgId) - returning empty state');
+      return NextResponse.json({
+        premiumSquad: null,
+        premiumMembers: [],
+        premiumStats: null,
+        standardSquad: null,
+        standardMembers: [],
+        standardStats: null,
+        isPlatformMode: true,
+      });
+    }
+
     // Get user document to find squad IDs
     const userDoc = await adminDb.collection('users').doc(userId).get();
     const userData = userDoc.exists ? userDoc.data() : null;
-    
-    // MULTI-TENANCY: Get effective org ID
-    // In tenant mode (subdomain): uses x-tenant-org-id header from middleware
-    // In platform mode: falls back to user's org from Clerk session
-    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const userOrgId = await getEffectiveOrgId();
     
     // Get squad IDs - support both new dual fields and legacy squadId
     let standardSquadId = userData?.standardSquadId || null;
@@ -267,6 +286,11 @@ export async function GET(request: Request) {
           
           // Skip squads from other organizations
           if (squadOrgId && userOrgId && squadOrgId !== userOrgId) {
+            continue;
+          }
+          
+          // Skip org-scoped squads when user has no org context (platform mode)
+          if (!userOrgId && squadOrgId) {
             continue;
           }
           

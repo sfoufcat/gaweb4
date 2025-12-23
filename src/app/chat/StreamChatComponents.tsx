@@ -689,6 +689,7 @@ function ChatContent({
   const [orgChannels, setOrgChannels] = useState<OrgChannel[]>([]);
   const [orgChannelsLoading, setOrgChannelsLoading] = useState(false);
   const [hasOrgChannels, setHasOrgChannels] = useState(false);
+  const [isPlatformMode, setIsPlatformMode] = useState(false);
   const [orgChannelUnreads, setOrgChannelUnreads] = useState<Record<string, number>>({});
   const [orgChannelLastMessages, setOrgChannelLastMessages] = useState<Record<string, Date | null>>({});
   
@@ -703,6 +704,9 @@ function ChatContent({
         const response = await fetch('/api/user/org-channels');
         if (response.ok) {
           const data = await response.json();
+          // Track platform mode to suppress squad/org-specific channels
+          setIsPlatformMode(data.isPlatformMode || false);
+          
           if (data.channels && data.channels.length > 0) {
             setOrgChannels(data.channels);
             setHasOrgChannels(true);
@@ -1112,7 +1116,8 @@ function ChatContent({
           {/* Main Tab Content */}
           <div className={`absolute inset-0 overflow-y-auto ${activeTab === 'main' ? 'block' : 'hidden'}`}>
             {/* Coach: Multiple Squad Chats - Show all squads the coach manages */}
-            {isCoach && isCoachSquadsLoading && (
+            {/* Don't show on platform domain - coach squads are tenant-specific */}
+            {isCoach && !isPlatformMode && isCoachSquadsLoading && (
               <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
                 <div className="flex items-center gap-3 p-2 rounded-lg">
                   <div className="w-10 h-10 rounded-full bg-[#e1ddd8] dark:bg-[#262b35] animate-pulse flex-shrink-0" />
@@ -1125,7 +1130,7 @@ function ChatContent({
             )}
             
             {/* Coach: Render all coach squad chats */}
-            {isCoach && !isCoachSquadsLoading && coachSquads.length > 0 && (
+            {isCoach && !isPlatformMode && !isCoachSquadsLoading && coachSquads.length > 0 && (
               <>
                 {coachSquads.map((coachSquad) => {
                   if (!coachSquad.chatChannelId) return null;
@@ -1156,7 +1161,8 @@ function ChatContent({
             )}
             
             {/* Regular User: Squad Chat(s) - Show skeleton while loading */}
-            {!isCoach && isSquadLoading && (
+            {/* Don't show squad chats on platform domain - they are tenant-specific */}
+            {!isCoach && !isPlatformMode && isSquadLoading && (
               <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
                 <div className="flex items-center gap-3 p-2 rounded-lg">
                   {/* Avatar skeleton */}
@@ -1171,7 +1177,7 @@ function ChatContent({
             )}
             
             {/* Regular User: Premium Squad Chat (shown first if exists) */}
-            {!isCoach && !isSquadLoading && premiumSquadChannelId && (
+            {!isCoach && !isPlatformMode && !isSquadLoading && premiumSquadChannelId && (
               <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
                 <SpecialChannelItem
                   avatarUrl={premiumSquad?.avatarUrl}
@@ -1192,7 +1198,7 @@ function ChatContent({
             )}
             
             {/* Regular User: Standard Squad Chat */}
-            {!isCoach && !isSquadLoading && standardSquadChannelId && (
+            {!isCoach && !isPlatformMode && !isSquadLoading && standardSquadChannelId && (
               <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
                 <SpecialChannelItem
                   avatarUrl={standardSquad?.avatarUrl}
@@ -1213,7 +1219,7 @@ function ChatContent({
             )}
             
             {/* Fallback: Legacy squad channel (for users not yet migrated to dual fields) */}
-            {!isCoach && !isSquadLoading && squadChannelId && !premiumSquadChannelId && !standardSquadChannelId && (
+            {!isCoach && !isPlatformMode && !isSquadLoading && squadChannelId && !premiumSquadChannelId && !standardSquadChannelId && (
               <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
                 <SpecialChannelItem
                   avatarUrl={squad?.avatarUrl}
@@ -1234,7 +1240,8 @@ function ChatContent({
             )}
 
             {/* Orphan Squad Channels - Previous squads with unread messages */}
-            {orphanSquadChannels.map((channel) => {
+            {/* Don't show on platform domain - these are tenant-specific */}
+            {!isPlatformMode && orphanSquadChannels.map((channel) => {
               const channelData = channel.data as Record<string, unknown> | undefined;
               const channelName = (channelData?.name as string) || 'Previous Squad';
               const channelImage = channelData?.image as string | undefined;
@@ -1373,7 +1380,8 @@ function ChatContent({
             )}
 
             {/* Coaching Chat - Only show when user has coaching and coach is assigned */}
-            {hasCoaching && coachingChannelId && (
+            {/* Don't show on platform domain - coaching is tenant-specific */}
+            {!isPlatformMode && hasCoaching && coachingChannelId && (
               <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
                 <SpecialChannelItem
                   avatarUrl={coach?.imageUrl}
@@ -1394,7 +1402,8 @@ function ChatContent({
             )}
 
             {/* Orphan Coaching Channels - Previous coaching chats with unread messages */}
-            {orphanCoachingChannels.map((channel) => {
+            {/* Don't show on platform domain - these are tenant-specific */}
+            {!isPlatformMode && orphanCoachingChannels.map((channel) => {
               const channelData = channel.data as Record<string, unknown> | undefined;
               const channelName = (channelData?.name as string) || 'Previous Coach';
               const channelImage = channelData?.image as string | undefined;
@@ -1420,7 +1429,8 @@ function ChatContent({
             })}
 
             {/* Get Your Personal Coach - Promo Item (only show if user doesn't have coaching and promo is visible) */}
-            {!hasCoaching && coachingPromo.isVisible && (
+            {/* Don't show on platform domain */}
+            {!isPlatformMode && !hasCoaching && coachingPromo.isVisible && (
               <div className="p-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
                 <CoachPromoItem 
                   title={coachingPromo.title}

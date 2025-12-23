@@ -262,34 +262,19 @@ function ArticleFormDialog({
             </div>
 
             {/* Article Type & Track */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] mb-1 font-albert">Article Type *</label>
-                <select
-                  required
-                  value={formData.articleType}
-                  onChange={e => setFormData(prev => ({ ...prev, articleType: e.target.value as 'playbook' | 'trend' | 'caseStudy' }))}
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8]"
-                >
-                  <option value="playbook">Playbook</option>
-                  <option value="trend">Trend</option>
-                  <option value="caseStudy">Case Study</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] mb-1 font-albert">Track</label>
-                <select
-                  value={formData.track}
-                  onChange={e => setFormData(prev => ({ ...prev, track: e.target.value as UserTrack | '' }))}
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8]"
-                >
-                  {TRACK_OPTIONS.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] mb-1 font-albert">Article Type *</label>
+              <select
+                required
+                value={formData.articleType}
+                onChange={e => setFormData(prev => ({ ...prev, articleType: e.target.value as 'playbook' | 'trend' | 'caseStudy' }))}
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8]"
+              >
+                <option value="playbook">Playbook</option>
+                <option value="trend">Trend</option>
+                <option value="caseStudy">Case Study</option>
+              </select>
             </div>
-            <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#7d8190] font-albert">Track is deprecated. Use Programs below for content targeting.</p>
 
             {/* Program Association */}
             <div>

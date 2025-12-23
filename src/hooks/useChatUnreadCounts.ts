@@ -157,6 +157,17 @@ export function useChatUnreadCounts() {
       calculateCounts();
     };
 
+    const handleRemovedFromChannel = (event: Event) => {
+      // When user is removed from a channel, remove it from activeChannels and recalculate
+      if (event.channel_id && event.channel_type) {
+        const cid = `${event.channel_type}:${event.channel_id}`;
+        // The channel should be automatically removed from activeChannels by Stream SDK
+        // but we force a recalculation to update the UI immediately
+        setTimeout(() => calculateCounts(), 100);
+        console.log(`[useChatUnreadCounts] Removed from channel: ${cid}`);
+      }
+    };
+
     // Subscribe to events
     client.on('message.new', handleNewMessage);
     client.on('message.read', handleMessageRead);
@@ -164,6 +175,7 @@ export function useChatUnreadCounts() {
     client.on('notification.message_new', handleNewMessage);
     client.on('channel.visible', handleChannelVisible);
     client.on('notification.added_to_channel', handleAddedToChannel);
+    client.on('notification.removed_from_channel', handleRemovedFromChannel);
     client.on('channel.updated', handleChannelUpdated);
 
     // Periodic refresh as fallback (every 30 seconds)
@@ -179,6 +191,7 @@ export function useChatUnreadCounts() {
       client.off('notification.message_new', handleNewMessage);
       client.off('channel.visible', handleChannelVisible);
       client.off('notification.added_to_channel', handleAddedToChannel);
+      client.off('notification.removed_from_channel', handleRemovedFromChannel);
       client.off('channel.updated', handleChannelUpdated);
       
       if (refreshIntervalRef.current) {

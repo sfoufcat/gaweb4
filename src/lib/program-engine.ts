@@ -864,7 +864,7 @@ export async function archiveOldSquadMemberships(
       const squadMembersSnapshot = await adminDb
         .collection('squadMembers')
         .where('squadId', 'in', archivedSquads)
-        .where('clerkUserId', '==', userId)
+        .where('userId', '==', userId)
         .get();
       
       const batch = adminDb.batch();
@@ -944,7 +944,7 @@ export async function removeUserFromSquadEntirely(
     const squadMembersSnapshot = await adminDb
       .collection('squadMembers')
       .where('squadId', '==', squadId)
-      .where('clerkUserId', '==', userId)
+      .where('userId', '==', userId)
       .get();
     
     const batch = adminDb.batch();
