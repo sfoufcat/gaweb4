@@ -827,6 +827,18 @@ async function seedTemplates() {
   
   for (const templateData of TEMPLATES) {
     try {
+      // Check if template already exists by slug
+      const existingQuery = await db
+        .collection('program_templates')
+        .where('slug', '==', templateData.slug)
+        .limit(1)
+        .get();
+
+      if (!existingQuery.empty) {
+        console.log(`⏭️  Skipping existing template: ${templateData.name}`);
+        continue;
+      }
+
       console.log(`📦 Creating template: ${templateData.name}`);
       
       // Create template document
