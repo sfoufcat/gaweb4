@@ -140,7 +140,7 @@ export async function PUT(
     
     return NextResponse.json({
       success: true,
-      template: { id: templateId, ...currentData, ...updates },
+      template: { ...currentData, ...updates, id: templateId },
     });
     
   } catch (error) {
