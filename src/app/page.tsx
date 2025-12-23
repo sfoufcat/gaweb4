@@ -145,6 +145,9 @@ export default function Dashboard() {
   // Get discover recommendation for the discover card
   const { recommendation: discoverRecommendation, isLoading: discoverLoading } = useDiscoverRecommendation();
   
+  // Unified loading state for card carousel - wait for all card data to prevent reordering
+  const carouselDataLoading = checkInLoading || programPromptLoading || discoverLoading;
+  
   // Starter Program state for task sync and completion
   const { 
     hasEnrollment,
@@ -1041,21 +1044,7 @@ export default function Dashboard() {
       ? "w-[calc(100vw-32px)] flex-shrink-0 snap-center h-[200px] rounded-[32px] overflow-hidden relative bg-gradient-to-br from-violet-500 to-purple-600 flex flex-col justify-center items-center"
       : "h-[200px] rounded-[32px] overflow-hidden relative bg-gradient-to-br from-violet-500 to-purple-600 p-6 flex flex-col justify-center items-center hover:scale-[1.02] transition-transform cursor-pointer";
     
-    // Show skeleton while loading
-    if (discoverLoading) {
-      return (
-        <div key="discover" className={baseClasses}>
-          <div className="absolute inset-0 bg-black/10" />
-          <div className="relative z-10 px-6 w-full">
-            <div className="w-20 h-5 bg-white/20 rounded-full mb-3 mx-auto animate-pulse" />
-            <div className="w-3/4 h-7 bg-white/20 rounded-lg mb-2 mx-auto animate-pulse" />
-            <div className="w-full h-4 bg-white/15 rounded-lg mx-auto animate-pulse" />
-          </div>
-        </div>
-      );
-    }
-    
-    // Don't render if no recommendation
+    // Don't render while loading or if no recommendation
     if (!discoverRecommendation) {
       return null;
     }
@@ -1144,24 +1133,7 @@ export default function Dashboard() {
       ? "w-[calc(100vw-32px)] flex-shrink-0 snap-center h-[200px] rounded-[32px] overflow-hidden relative bg-gradient-to-br from-rose-500 to-pink-600 flex flex-col justify-center items-center"
       : "h-[200px] rounded-[32px] overflow-hidden relative bg-gradient-to-br from-rose-500 to-pink-600 p-6 flex flex-col justify-center items-center";
     
-    // Show skeleton while loading
-    if (programPromptLoading) {
-      return (
-        <div key="track" className={baseClasses}>
-          <div className="absolute inset-0 bg-black/10" />
-          <div className="relative z-10 px-6 text-center w-full">
-            {/* Skeleton badge */}
-            <div className="inline-block w-20 h-5 bg-white/20 rounded-full mb-3 animate-pulse" />
-            {/* Skeleton title */}
-            <div className="w-3/4 h-7 bg-white/20 rounded-lg mb-2 mx-auto animate-pulse" />
-            {/* Skeleton description */}
-            <div className="w-full h-4 bg-white/15 rounded-lg mx-auto animate-pulse" />
-          </div>
-        </div>
-      );
-    }
-    
-    // Don't render if no prompt available
+    // Don't render while loading or if no prompt available
     if (!programPrompt) {
       return null;
     }
@@ -1363,40 +1335,79 @@ export default function Dashboard() {
 
       {/* DYNAMIC WIDGET CAROUSEL (Mobile) / GRID (Desktop) */}
       <div data-tour="dynamic-section" className="relative mb-6">
-        {/* Mobile: Horizontal Scroll-Snap Carousel */}
-        <div 
-          ref={carouselRef}
-          onScroll={handleCarouselScroll}
-          className="lg:hidden overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4" 
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
-          <div className="flex gap-3" style={{ width: 'max-content' }}>
-            {/* Dynamic cards based on state */}
-            {cardOrder.map((cardType) => renderCard(cardType, true))}
-          </div>
-        </div>
+        {carouselDataLoading ? (
+          <>
+            {/* Mobile: Skeleton Carousel */}
+            <div className="lg:hidden overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <div className="flex gap-3" style={{ width: 'max-content' }}>
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="w-[calc(100vw-32px)] flex-shrink-0 snap-center h-[200px] rounded-[32px] bg-surface animate-pulse">
+                    <div className="h-full flex flex-col justify-center items-center px-6">
+                      <div className="w-20 h-5 bg-text-primary/10 rounded-full mb-3" />
+                      <div className="w-3/4 h-7 bg-text-primary/10 rounded-lg mb-2" />
+                      <div className="w-full h-4 bg-text-primary/5 rounded-lg" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Mobile: Skeleton Dots */}
+            <div className="lg:hidden flex justify-center gap-2 mt-3">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className={`h-2 rounded-full bg-text-primary/20 ${i === 0 ? 'w-6' : 'w-2'}`} />
+              ))}
+            </div>
+            {/* Desktop: Skeleton Grid */}
+            <div className="hidden lg:grid lg:grid-cols-3 gap-4">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="h-[200px] rounded-[32px] bg-surface animate-pulse">
+                  <div className="h-full flex flex-col justify-center items-center px-6">
+                    <div className="w-20 h-5 bg-text-primary/10 rounded-full mb-3" />
+                    <div className="w-3/4 h-7 bg-text-primary/10 rounded-lg mb-2" />
+                    <div className="w-full h-4 bg-text-primary/5 rounded-lg" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Mobile: Horizontal Scroll-Snap Carousel */}
+            <div 
+              ref={carouselRef}
+              onScroll={handleCarouselScroll}
+              className="lg:hidden overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4" 
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              <div className="flex gap-3" style={{ width: 'max-content' }}>
+                {/* Dynamic cards based on state */}
+                {cardOrder.map((cardType) => renderCard(cardType, true))}
+              </div>
+            </div>
 
-        {/* Carousel Dots - Mobile only */}
-        <div className="lg:hidden flex justify-center gap-2 mt-3">
-          {[0, 1, 2].map((index) => (
-            <button
-              key={index}
-              onClick={() => scrollToIndex(index)}
-              className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                carouselIndex === index 
-                  ? 'bg-text-primary w-6' 
-                  : 'bg-text-primary/30 hover:bg-text-primary/50'
-              }`}
-              aria-label={`Go to slide ${index + 1}`}
-            />
-          ))}
-        </div>
+            {/* Carousel Dots - Mobile only */}
+            <div className="lg:hidden flex justify-center gap-2 mt-3">
+              {[0, 1, 2].map((index) => (
+                <button
+                  key={index}
+                  onClick={() => scrollToIndex(index)}
+                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                    carouselIndex === index 
+                      ? 'bg-text-primary w-6' 
+                      : 'bg-text-primary/30 hover:bg-text-primary/50'
+                  }`}
+                  aria-label={`Go to slide ${index + 1}`}
+                />
+              ))}
+            </div>
 
-        {/* Desktop: 3-Column Grid */}
-        <div className="hidden lg:grid lg:grid-cols-3 gap-4">
-          {/* Dynamic cards based on state */}
-          {cardOrder.map((cardType) => renderCard(cardType, false))}
-        </div>
+            {/* Desktop: 3-Column Grid */}
+            <div className="hidden lg:grid lg:grid-cols-3 gap-4">
+              {/* Dynamic cards based on state */}
+              {cardOrder.map((cardType) => renderCard(cardType, false))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* DAILY FOCUS SECTION */}
