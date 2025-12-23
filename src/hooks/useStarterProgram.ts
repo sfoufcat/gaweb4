@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
+import useSWR from 'swr';
 import { useUser } from '@clerk/nextjs';
 import type { UserTrack, StarterProgramEnrollment } from '@/types';
 
@@ -22,6 +23,13 @@ interface ProgramInfo {
   description?: string;
   lengthDays: number;
   track: UserTrack;
+}
+
+interface EnrollmentResponse {
+  hasEnrollment: boolean;
+  enrollment: StarterProgramEnrollment | null;
+  program: ProgramInfo | null;
+  progress: ProgramProgress | null;
 }
 
 interface SyncResult {
@@ -76,6 +84,11 @@ interface UseStarterProgramReturn {
 /**
  * Hook for managing Starter Program state and actions
  * 
+ * Uses SWR for:
+ * - Instant loading from cache on return visits
+ * - Background revalidation without showing skeleton
+ * - Automatic deduplication of requests
+ * 
  * This hook provides:
  * - Enrollment state and progress
  * - Program sync functionality (creates daily tasks)
@@ -100,58 +113,24 @@ interface UseStarterProgramReturn {
 export function useStarterProgram(): UseStarterProgramReturn {
   const { user, isLoaded } = useUser();
   
-  // State
-  const [hasEnrollment, setHasEnrollment] = useState(false);
-  const [enrollment, setEnrollment] = useState<StarterProgramEnrollment | null>(null);
-  const [program, setProgram] = useState<ProgramInfo | null>(null);
-  const [progress, setProgress] = useState<ProgramProgress | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const cacheKey = user ? '/api/programs/enrollment' : null;
   
-  // Fetch enrollment data
-  const fetchEnrollment = useCallback(async () => {
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      setError(null);
-      const response = await fetch('/api/programs/enrollment');
-      
+  const { data, error, isLoading, mutate } = useSWR<EnrollmentResponse>(
+    cacheKey,
+    async (url: string) => {
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Failed to fetch enrollment');
       }
-
-      const data = await response.json();
-      
-      setHasEnrollment(data.hasEnrollment || false);
-      setEnrollment(data.enrollment || null);
-      setProgram(data.program || null);
-      setProgress(data.progress || null);
-    } catch (err) {
-      console.error('Error fetching enrollment:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch enrollment');
-    } finally {
-      setIsLoading(false);
+      return response.json();
+    },
+    {
+      // Cache for 2 minutes
+      dedupingInterval: 2 * 60 * 1000,
+      // Revalidate on focus but don't show loading
+      revalidateOnFocus: true,
     }
-  }, [user]);
-
-  // Initialize on mount
-  useEffect(() => {
-    if (!isLoaded) return;
-
-    if (!user) {
-      setHasEnrollment(false);
-      setEnrollment(null);
-      setProgram(null);
-      setProgress(null);
-      setIsLoading(false);
-      return;
-    }
-
-    fetchEnrollment();
-  }, [isLoaded, user, fetchEnrollment]);
+  );
 
   // Sync program tasks for today
   const syncTasks = useCallback(async (): Promise<SyncResult> => {
@@ -180,9 +159,9 @@ export function useStarterProgram(): UseStarterProgramReturn {
 
       const result = await response.json();
       
-      // Update progress if tasks were created
+      // Update cache if tasks were created
       if (result.tasksCreated > 0) {
-        await fetchEnrollment();
+        mutate();
       }
 
       return {
@@ -202,41 +181,42 @@ export function useStarterProgram(): UseStarterProgramReturn {
         message: err instanceof Error ? err.message : 'Sync failed',
       };
     }
-  }, [user, fetchEnrollment]);
+  }, [user, mutate]);
 
   // Computed values - now use program name instead of track
   const programBadge = useMemo(() => {
-    if (!hasEnrollment || enrollment?.status !== 'active' || !program?.name) {
+    if (!data?.hasEnrollment || data?.enrollment?.status !== 'active' || !data?.program?.name) {
       return null;
     }
-    return `${program.name} Program`;
-  }, [hasEnrollment, enrollment?.status, program?.name]);
+    return `${data.program.name} Program`;
+  }, [data?.hasEnrollment, data?.enrollment?.status, data?.program?.name]);
 
   const habitLabel = useMemo(() => {
     return 'Habits';
   }, []);
 
   const trackDisplayName = useMemo(() => {
-    return program?.name || 'Program';
-  }, [program?.name]);
+    return data?.program?.name || 'Program';
+  }, [data?.program?.name]);
 
   const isLastDay = useMemo(() => {
-    if (!progress || !program) return false;
-    return progress.currentDay >= program.lengthDays;
-  }, [progress, program]);
+    if (!data?.progress || !data?.program) return false;
+    return data.progress.currentDay >= data.program.lengthDays;
+  }, [data?.progress, data?.program]);
 
   const isCompleted = useMemo(() => {
-    return enrollment?.status === 'completed';
-  }, [enrollment?.status]);
+    return data?.enrollment?.status === 'completed';
+  }, [data?.enrollment?.status]);
 
   return {
     // State
-    hasEnrollment,
-    enrollment,
-    program,
-    progress,
-    isLoading,
-    error,
+    hasEnrollment: data?.hasEnrollment ?? false,
+    enrollment: data?.enrollment ?? null,
+    program: data?.program ?? null,
+    progress: data?.progress ?? null,
+    // Only show loading on INITIAL fetch (when no data exists)
+    isLoading: !isLoaded || (isLoading && !data),
+    error: error?.message ?? null,
     
     // Computed
     programBadge,
@@ -246,7 +226,7 @@ export function useStarterProgram(): UseStarterProgramReturn {
     isCompleted,
     
     // Actions
-    refresh: fetchEnrollment,
+    refresh: () => mutate(),
     syncTasks,
   };
 }
@@ -319,6 +299,3 @@ export function getProgramStartInfo(createdAt: string): {
     startsTomorrow,
   };
 }
-
-
-

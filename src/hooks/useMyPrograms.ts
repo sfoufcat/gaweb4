@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import useSWR from 'swr';
 import { useUser } from '@clerk/nextjs';
 import type { 
   Program, 
@@ -36,6 +36,11 @@ export interface EnrolledProgramWithDetails {
   };
 }
 
+interface MyProgramsResponse {
+  enrollments: EnrolledProgramWithDetails[];
+  isPlatformMode?: boolean;
+}
+
 export interface UseMyProgramsReturn {
   // Enrollment data
   enrollments: EnrolledProgramWithDetails[];
@@ -67,6 +72,11 @@ export interface UseMyProgramsReturn {
 /**
  * Hook for fetching user's enrolled programs (both group and individual)
  * 
+ * Uses SWR for:
+ * - Instant loading from cache on return visits
+ * - Background revalidation without showing skeleton
+ * - Automatic deduplication of requests
+ * 
  * Returns:
  * - groupProgram: User's active group program enrollment (max 1)
  * - individualProgram: User's active 1:1 program enrollment (max 1)
@@ -76,65 +86,35 @@ export interface UseMyProgramsReturn {
 export function useMyPrograms(): UseMyProgramsReturn {
   const { user, isLoaded } = useUser();
   
-  const [enrollments, setEnrollments] = useState<EnrolledProgramWithDetails[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isPlatformMode, setIsPlatformMode] = useState(false);
-
-  const fetchEnrollments = useCallback(async () => {
-    if (!user) {
-      setEnrollments([]);
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      setError(null);
-      const response = await fetch('/api/programs/my-programs');
-      
+  const cacheKey = user ? '/api/programs/my-programs' : null;
+  
+  const { data, error, isLoading, mutate } = useSWR<MyProgramsResponse>(
+    cacheKey,
+    async (url: string) => {
+      const response = await fetch(url);
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to fetch programs');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch programs');
       }
-
-      const data = await response.json();
-      setEnrollments(data.enrollments || []);
-      
-      // Check if we're in platform mode (no tenant context)
-      // This happens when the API returns empty due to no orgId filter
-      setIsPlatformMode(data.isPlatformMode || false);
-    } catch (err) {
-      console.error('Error fetching programs:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch programs');
-      setEnrollments([]);
-    } finally {
-      setIsLoading(false);
+      return response.json();
+    },
+    {
+      // Cache for 2 minutes, program data doesn't change frequently
+      dedupingInterval: 2 * 60 * 1000,
+      // Revalidate on focus but don't show loading
+      revalidateOnFocus: true,
     }
-  }, [user]);
+  );
 
-  useEffect(() => {
-    if (!isLoaded) return;
-
-    if (!user) {
-      setEnrollments([]);
-      setIsLoading(false);
-      return;
-    }
-
-    fetchEnrollments();
-  }, [isLoaded, user, fetchEnrollments]);
-
+  const enrollments = data?.enrollments ?? [];
+  const isPlatformMode = data?.isPlatformMode ?? false;
+  
   // Derive group and individual programs
   const groupProgram = enrollments.find(e => e.program.type === 'group') || null;
   const individualProgram = enrollments.find(e => e.program.type === 'individual') || null;
   
   // Get squad from group program
   const groupSquad = groupProgram?.squad || null;
-
-  const refresh = useCallback(async () => {
-    setIsLoading(true);
-    await fetchEnrollments();
-  }, [fetchEnrollments]);
 
   return {
     enrollments,
@@ -152,9 +132,9 @@ export function useMyPrograms(): UseMyProgramsReturn {
     
     isPlatformMode,
     
-    isLoading,
-    error,
-    refresh,
+    // Only show loading on INITIAL fetch (when no data exists)
+    isLoading: !isLoaded || (isLoading && !data),
+    error: error?.message ?? null,
+    refresh: () => mutate(),
   };
 }
-

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import useSWR from 'swr';
 import { useUser } from '@clerk/nextjs';
 import type { Habit, MorningCheckIn, EveningCheckIn, Task, Squad, SquadMember } from '@/types';
 
@@ -81,69 +81,44 @@ const initialData: DashboardData = {
 
 /**
  * Unified dashboard hook that fetches ALL homepage data in a single request
- * Replaces 10+ separate API calls with one optimized endpoint
+ * Uses SWR for:
+ * - Instant loading from cache on return visits
+ * - Background revalidation without showing skeleton
+ * - Automatic deduplication of requests
  */
 export function useDashboard() {
   const { user, isLoaded } = useUser();
-  const [data, setData] = useState<DashboardData>(initialData);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const fetchedRef = useRef(false);
-
-  const fetchDashboard = useCallback(async (isInitial = false) => {
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      // Only show loading state on initial fetch, not background refetches
-      if (isInitial) {
-      setIsLoading(true);
-      }
-      setError(null);
-      
-      const today = new Date().toISOString().split('T')[0];
-      const response = await fetch(`/api/dashboard?date=${today}`);
-      
+  
+  const today = new Date().toISOString().split('T')[0];
+  const cacheKey = user ? `/api/dashboard?date=${today}` : null;
+  
+  const { data, error, isLoading, mutate } = useSWR<DashboardData>(
+    cacheKey,
+    async (url: string) => {
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Failed to fetch dashboard data');
       }
-      
-      const result = await response.json();
-      setData(result);
-    } catch (err) {
-      console.error('[useDashboard] Error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard');
-    } finally {
-      setIsLoading(false);
+      return response.json();
+    },
+    {
+      // Cache for 1 minute, data changes frequently
+      dedupingInterval: 60 * 1000,
+      // Don't show loading state on focus, just refresh in background
+      revalidateOnFocus: true,
+      // Fallback data while loading
+      fallbackData: initialData,
     }
-  }, [user]);
+  );
 
-  // Initial fetch - show loading state
-  useEffect(() => {
-    if (isLoaded && user && !fetchedRef.current) {
-      fetchedRef.current = true;
-      fetchDashboard(true);
-    }
-  }, [isLoaded, user, fetchDashboard]);
-
-  // Refetch on window focus - background refresh, no loading state
-  useEffect(() => {
-    const handleFocus = () => {
-      if (isLoaded && user) {
-        fetchDashboard(false);
-      }
-    };
-
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [isLoaded, user, fetchDashboard]);
+  // Use cached data or fallback
+  const dashboardData = data ?? initialData;
 
   return {
-    ...data,
-    isLoading,
-    error,
-    refetch: fetchDashboard,
+    ...dashboardData,
+    // Only show loading on INITIAL fetch (when no data exists)
+    isLoading: !isLoaded || (isLoading && !data),
+    error: error?.message ?? null,
+    refetch: () => mutate(),
   };
 }

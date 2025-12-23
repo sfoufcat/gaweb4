@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
+import useSWR from 'swr';
 import { useUser } from '@clerk/nextjs';
 import type { StarterProgramEnrollment, StarterProgram } from '@/types';
 
@@ -9,6 +10,13 @@ interface ProgramProgress {
   totalDays: number;
   percentage: number;
   lastAssignedDay: number;
+}
+
+interface EnrollmentResponse {
+  hasEnrollment: boolean;
+  enrollment: StarterProgramEnrollment | null;
+  program: Pick<StarterProgram, 'id' | 'name' | 'slug' | 'description' | 'lengthDays' | 'track'> | null;
+  progress: ProgramProgress | null;
 }
 
 interface UseProgramEnrollmentReturn {
@@ -33,6 +41,11 @@ interface UseProgramEnrollmentReturn {
 /**
  * Hook for accessing the current user's program enrollment
  * 
+ * Uses SWR for:
+ * - Instant loading from cache on return visits
+ * - Background revalidation without showing skeleton
+ * - Automatic deduplication of requests
+ * 
  * Usage:
  * ```tsx
  * const { hasEnrollment, program, progress, syncTasks } = useProgramEnrollment();
@@ -44,57 +57,25 @@ interface UseProgramEnrollmentReturn {
  */
 export function useProgramEnrollment(): UseProgramEnrollmentReturn {
   const { user, isLoaded } = useUser();
-  const [hasEnrollment, setHasEnrollment] = useState(false);
-  const [enrollment, setEnrollment] = useState<StarterProgramEnrollment | null>(null);
-  const [program, setProgram] = useState<UseProgramEnrollmentReturn['program']>(null);
-  const [progress, setProgress] = useState<ProgramProgress | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Fetch enrollment data
-  const fetchEnrollment = useCallback(async () => {
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      setError(null);
-      const response = await fetch('/api/programs/enrollment');
-      
+  
+  const cacheKey = user ? '/api/programs/enrollment' : null;
+  
+  const { data, error, isLoading, mutate } = useSWR<EnrollmentResponse>(
+    cacheKey,
+    async (url: string) => {
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Failed to fetch enrollment');
       }
-
-      const data = await response.json();
-      
-      setHasEnrollment(data.hasEnrollment || false);
-      setEnrollment(data.enrollment || null);
-      setProgram(data.program || null);
-      setProgress(data.progress || null);
-    } catch (err) {
-      console.error('Error fetching enrollment:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch enrollment');
-    } finally {
-      setIsLoading(false);
+      return response.json();
+    },
+    {
+      // Cache for 2 minutes
+      dedupingInterval: 2 * 60 * 1000,
+      // Revalidate on focus but don't show loading
+      revalidateOnFocus: true,
     }
-  }, [user]);
-
-  // Initialize on mount
-  useEffect(() => {
-    if (!isLoaded) return;
-
-    if (!user) {
-      setHasEnrollment(false);
-      setEnrollment(null);
-      setProgram(null);
-      setProgress(null);
-      setIsLoading(false);
-      return;
-    }
-
-    fetchEnrollment();
-  }, [isLoaded, user, fetchEnrollment]);
+  );
 
   // Sync program tasks for today
   const syncTasks = useCallback(async (): Promise<{ tasksCreated: number; currentDayIndex: number }> => {
@@ -110,9 +91,9 @@ export function useProgramEnrollment(): UseProgramEnrollmentReturn {
 
       const result = await response.json();
       
-      // Update progress if tasks were created
+      // Update cache if tasks were created
       if (result.tasksCreated > 0) {
-        await fetchEnrollment();
+        mutate();
       }
 
       return {
@@ -123,19 +104,17 @@ export function useProgramEnrollment(): UseProgramEnrollmentReturn {
       console.error('Error syncing tasks:', err);
       throw err;
     }
-  }, [fetchEnrollment]);
+  }, [mutate]);
 
   return {
-    hasEnrollment,
-    enrollment,
-    program,
-    progress,
-    isLoading,
-    error,
-    refresh: fetchEnrollment,
+    hasEnrollment: data?.hasEnrollment ?? false,
+    enrollment: data?.enrollment ?? null,
+    program: data?.program ?? null,
+    progress: data?.progress ?? null,
+    // Only show loading on INITIAL fetch (when no data exists)
+    isLoading: !isLoaded || (isLoading && !data),
+    error: error?.message ?? null,
+    refresh: () => mutate(),
     syncTasks,
   };
 }
-
-
-

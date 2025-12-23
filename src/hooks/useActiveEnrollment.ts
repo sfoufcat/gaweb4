@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import useSWR from 'swr';
 import { useUser } from '@clerk/nextjs';
 
 interface ProgramInfo {
@@ -29,6 +29,13 @@ interface EnrollmentInfo {
   updatedAt: string;
 }
 
+interface EnrollmentResponse {
+  hasEnrollment: boolean;
+  enrollment: EnrollmentInfo | null;
+  program: ProgramInfo | null;
+  progress: EnrollmentProgress | null;
+}
+
 interface UseActiveEnrollmentReturn {
   /** Whether user has an active enrollment */
   hasEnrollment: boolean;
@@ -48,74 +55,42 @@ interface UseActiveEnrollmentReturn {
 
 /**
  * Hook to fetch the current user's active program enrollment
+ * 
+ * Uses SWR for:
+ * - Instant loading from cache on return visits
+ * - Background revalidation without showing skeleton
+ * - Automatic deduplication of requests
  */
 export function useActiveEnrollment(): UseActiveEnrollmentReturn {
   const { user, isLoaded } = useUser();
-  const [hasEnrollment, setHasEnrollment] = useState(false);
-  const [enrollment, setEnrollment] = useState<EnrollmentInfo | null>(null);
-  const [program, setProgram] = useState<ProgramInfo | null>(null);
-  const [progress, setProgress] = useState<EnrollmentProgress | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchEnrollment = useCallback(async () => {
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      setError(null);
-      const response = await fetch('/api/programs/enrollment');
-      
+  
+  const cacheKey = user ? '/api/programs/enrollment' : null;
+  
+  const { data, error, isLoading, mutate } = useSWR<EnrollmentResponse>(
+    cacheKey,
+    async (url: string) => {
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Failed to fetch enrollment');
       }
-
-      const data = await response.json();
-      
-      setHasEnrollment(data.hasEnrollment || false);
-      setEnrollment(data.enrollment || null);
-      setProgram(data.program || null);
-      setProgress(data.progress || null);
-    } catch (err) {
-      console.error('Error fetching enrollment:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch enrollment');
-    } finally {
-      setIsLoading(false);
+      return response.json();
+    },
+    {
+      // Cache for 2 minutes
+      dedupingInterval: 2 * 60 * 1000,
+      // Revalidate on focus but don't show loading
+      revalidateOnFocus: true,
     }
-  }, [user]);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-
-    if (!user) {
-      setHasEnrollment(false);
-      setEnrollment(null);
-      setProgram(null);
-      setProgress(null);
-      setIsLoading(false);
-      return;
-    }
-
-    fetchEnrollment();
-  }, [isLoaded, user, fetchEnrollment]);
-
-  const refresh = useCallback(async () => {
-    setIsLoading(true);
-    await fetchEnrollment();
-  }, [fetchEnrollment]);
+  );
 
   return {
-    hasEnrollment,
-    enrollment,
-    program,
-    progress,
-    isLoading,
-    error,
-    refresh,
+    hasEnrollment: data?.hasEnrollment ?? false,
+    enrollment: data?.enrollment ?? null,
+    program: data?.program ?? null,
+    progress: data?.progress ?? null,
+    // Only show loading on INITIAL fetch (when no data exists)
+    isLoading: !isLoaded || (isLoading && !data),
+    error: error?.message ?? null,
+    refresh: () => mutate(),
   };
 }
-
-
-
