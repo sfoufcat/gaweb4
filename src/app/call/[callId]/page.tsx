@@ -44,6 +44,59 @@ function stopTrackedMediaStreams() {
 }
 
 /**
+ * Stop all local participant tracks from the call's state.
+ * This catches streams that may not be tracked in our module-level array.
+ */
+function stopAllLocalTracks(call: Call | null) {
+  if (!call) return;
+  
+  console.log('[stopAllLocalTracks] Stopping local participant tracks...');
+  
+  try {
+    // Get tracks from call's local participant state
+    const localParticipant = call.state?.localParticipant;
+    if (localParticipant) {
+      // Stop audio stream tracks
+      if (localParticipant.audioStream) {
+        localParticipant.audioStream.getTracks().forEach(track => {
+          if (track.readyState === 'live') {
+            console.log('[stopAllLocalTracks] Stopping audio track:', track.label);
+            track.stop();
+          }
+        });
+      }
+      // Stop video stream tracks
+      if (localParticipant.videoStream) {
+        localParticipant.videoStream.getTracks().forEach(track => {
+          if (track.readyState === 'live') {
+            console.log('[stopAllLocalTracks] Stopping video track:', track.label);
+            track.stop();
+          }
+        });
+      }
+    }
+  } catch (e) {
+    console.log('[stopAllLocalTracks] Error stopping local tracks:', e);
+  }
+  
+  // Also try to stop any tracks from the publisher state (internal SDK state)
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const publisher = (call as any).publisher;
+    if (publisher?.mediaStream) {
+      publisher.mediaStream.getTracks().forEach((track: MediaStreamTrack) => {
+        if (track.readyState === 'live') {
+          console.log('[stopAllLocalTracks] Stopping publisher track:', track.kind, track.label);
+          track.stop();
+        }
+      });
+    }
+  } catch (_e) { /* ignore - publisher may not be accessible */ }
+  
+  console.log('[stopAllLocalTracks] Local tracks cleanup complete');
+}
+
+/**
  * Comprehensive cleanup of a call's media resources.
  * Uses SDK methods properly and stops all tracked streams.
  */
@@ -51,7 +104,15 @@ async function cleanupCallMedia(call: Call | null): Promise<void> {
   console.log('[cleanupCallMedia] Starting cleanup...');
   
   if (call) {
-    // 1. First disable camera and microphone through SDK (this releases the streams properly)
+    // 1. First, stop publishing to immediately release media (this is the key step!)
+    try {
+      console.log('[cleanupCallMedia] Stopping publish...');
+      await call.stopPublish();
+    } catch (e) {
+      console.log('[cleanupCallMedia] stopPublish error (may not be publishing):', e);
+    }
+    
+    // 2. Disable camera and microphone through SDK
     try {
       console.log('[cleanupCallMedia] Disabling camera...');
       await call.camera.disable();
@@ -66,7 +127,10 @@ async function cleanupCallMedia(call: Call | null): Promise<void> {
       console.log('[cleanupCallMedia] Microphone disable error (may already be disabled):', e);
     }
     
-    // 2. Stop any streams from the SDK's camera/microphone state
+    // 3. Stop all local participant tracks (catches SDK internal streams)
+    stopAllLocalTracks(call);
+    
+    // 4. Stop any streams from the SDK's camera/microphone state
     try {
       const cameraStream = call.camera?.state?.mediaStream;
       if (cameraStream) {
@@ -91,7 +155,7 @@ async function cleanupCallMedia(call: Call | null): Promise<void> {
       }
     } catch (_e) { /* ignore */ }
     
-    // 3. Leave the call
+    // 5. Leave the call
     try {
       console.log('[cleanupCallMedia] Leaving call...');
       await call.leave();
@@ -100,7 +164,7 @@ async function cleanupCallMedia(call: Call | null): Promise<void> {
     }
   }
   
-  // 4. Stop any additional tracked streams (belt and suspenders)
+  // 6. Stop any additional tracked streams (belt and suspenders)
   stopTrackedMediaStreams();
   
   console.log('[cleanupCallMedia] Cleanup complete');
@@ -253,27 +317,39 @@ export default function CallPage() {
     console.log('[CallPage] handleLeave called');
 
     try {
-      // Send the call message first
-      await sendCallMessage();
+      // Send the call message first (non-blocking)
+      sendCallMessage().catch(console.error);
 
-      // Use proper SDK-based cleanup
+      // Use proper SDK-based cleanup (includes stopPublish, disable, and leave)
       await cleanupCallMedia(call);
+
+      // Mark as cleaned up before clearing state
+      hasCleanedUp.current = true;
 
       // Clear call state - this unmounts StreamCall component
       setCall(null);
       setActiveCall(null);
-      hasCleanedUp.current = true;
 
       // Wait for React to process the state update and unmount components
-      // Using 500ms to ensure SDK has fully released media resources
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Using 750ms to ensure SDK has fully released media resources
+      await new Promise(resolve => setTimeout(resolve, 750));
+
+      // Final verification - stop any remaining tracks that might still be active
+      stopTrackedMediaStreams();
+      if (call) {
+        stopAllLocalTracks(call);
+      }
 
       // Now navigate
       router.push('/chat');
     } catch (err) {
       console.error('[CallPage] Error during leave:', err);
-      // Even on error, perform cleanup and navigate away
+      // Even on error, perform aggressive cleanup and navigate away
+      hasCleanedUp.current = true;
       stopTrackedMediaStreams();
+      if (call) {
+        stopAllLocalTracks(call);
+      }
       setCall(null);
       setActiveCall(null);
       router.push('/chat');
@@ -369,11 +445,16 @@ export default function CallPage() {
         console.log('[CallPage] Unmount cleanup...');
         hasCleanedUp.current = true;
         
+        // Stop all local participant tracks first (most thorough)
+        stopAllLocalTracks(callRef);
+        
         // Stop tracked streams synchronously
         stopTrackedMediaStreams();
 
         // SDK cleanup (async but we don't wait)
         if (callRef) {
+          // Stop publishing first to release media immediately
+          callRef.stopPublish().catch(() => {});
           callRef.camera.disable().catch(() => {});
           callRef.microphone.disable().catch(() => {});
           callRef.leave().catch(() => {});
@@ -399,10 +480,15 @@ export default function CallPage() {
   useEffect(() => {
     const handleBeforeUnload = () => {
       console.log('[CallPage] beforeunload cleanup...');
+      // Stop all local participant tracks first (most thorough)
+      stopAllLocalTracks(call);
+      
       // Synchronous cleanup for beforeunload
       stopTrackedMediaStreams();
       
       if (call) {
+        // Stop publishing first to release media immediately
+        call.stopPublish().catch(() => {});
         call.camera.disable().catch(() => {});
         call.microphone.disable().catch(() => {});
         call.leave().catch(() => {});

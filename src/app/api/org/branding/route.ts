@@ -117,8 +117,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Forbidden: Coach access required' }, { status: 403 });
     }
 
-    // Ensure user has an organization
-    const organizationId = await ensureCoachHasOrganization(userId);
+    // Determine which organization to save branding for
+    // Priority 1: Use tenant org ID from middleware (on tenant domains like app.porepower.com)
+    // Priority 2: Use user's personal org (on platform domain like app.growthaddicts.com)
+    const headersList = await headers();
+    const tenantOrgId = headersList.get('x-tenant-org-id');
+    
+    let organizationId: string;
+    
+    if (tenantOrgId) {
+      // On tenant domain - use tenant's org ID
+      // The user must be the owner/admin of this org (verified by middleware + coach access check)
+      organizationId = tenantOrgId;
+      console.log(`[ORG_BRANDING_POST] Using tenant org from header: ${organizationId}`);
+    } else {
+      // On platform domain - use user's personal org
+      organizationId = await ensureCoachHasOrganization(userId);
+      console.log(`[ORG_BRANDING_POST] Using user's org: ${organizationId}`);
+    }
 
     // Parse request body
     const body = await request.json();
