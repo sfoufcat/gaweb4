@@ -71,6 +71,9 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
     errors: Array<{ index: number; error: string }>;
   } | null>(null);
 
+  // Copy feedback state
+  const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
+
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -328,7 +331,8 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
     if (program && funnel) {
       const url = `${window.location.origin}/join/${program.slug}/${funnel.slug}?invite=${invite.id}`;
       navigator.clipboard.writeText(url);
-      alert('Link copied!');
+      setCopiedInviteId(invite.id);
+      setTimeout(() => setCopiedInviteId(null), 2000);
     }
   };
 
@@ -609,9 +613,19 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                               <button
                                 onClick={() => copyInviteLink(invite)}
                                 className="p-2 hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-                                title="Copy invite link"
+                                title={copiedInviteId === invite.id ? "Copied!" : "Copy invite link"}
                               >
-                                <Copy className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                                {copiedInviteId === invite.id ? (
+                                  <motion.div
+                                    initial={{ scale: 0.5 }}
+                                    animate={{ scale: 1 }}
+                                    transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                                  >
+                                    <Check className="w-4 h-4 text-green-500" />
+                                  </motion.div>
+                                ) : (
+                                  <Copy className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                                )}
                               </button>
                               {!invite.usedBy && (
                                 <button

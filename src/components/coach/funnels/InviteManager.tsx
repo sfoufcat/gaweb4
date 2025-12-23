@@ -50,6 +50,9 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
     errors: Array<{ index: number; error: string }>;
   } | null>(null);
 
+  // Copy feedback state
+  const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
+
   const fetchInvites = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -172,7 +175,8 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
     if (program && funnel) {
       const url = `${window.location.origin}/join/${program.slug}/${funnel.slug}?invite=${invite.id}`;
       navigator.clipboard.writeText(url);
-      alert('Link copied!');
+      setCopiedInviteId(invite.id);
+      setTimeout(() => setCopiedInviteId(null), 2000);
     }
   };
 
@@ -297,9 +301,19 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
                 <button
                   onClick={() => copyInviteLink(invite)}
                   className="p-2 hover:bg-[#f5f3f0] rounded-lg transition-colors"
-                  title="Copy invite link"
+                  title={copiedInviteId === invite.id ? "Copied!" : "Copy invite link"}
                 >
-                  <Copy className="w-4 h-4 text-text-secondary" />
+                  {copiedInviteId === invite.id ? (
+                    <motion.div
+                      initial={{ scale: 0.5 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                    >
+                      <Check className="w-4 h-4 text-green-500" />
+                    </motion.div>
+                  ) : (
+                    <Copy className="w-4 h-4 text-text-secondary" />
+                  )}
                 </button>
                 {!invite.usedBy && (
                   <button
