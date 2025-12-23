@@ -202,14 +202,13 @@ export function BrandingProvider({
   // Initialize on mount
   useEffect(() => {
     setMounted(true);
-    // ALWAYS fetch from API to ensure we have fresh data from Firestore
-    // This is important because:
-    // 1. Edge Config might not be updated (missing env vars)
-    // 2. Cookie might have stale data from a previous session
-    // 3. User might have just saved branding and refreshed the page
-    // The API route fetches directly from Firestore which is always authoritative
-    fetchBranding();
-  }, [fetchBranding]);
+    // Only fetch from API if SSR branding wasn't provided
+    // SSR branding comes from Edge Config (via cookie set by middleware) and is authoritative
+    // Fetching again would cause a flash if Edge Config differs from Firestore
+    if (!hadInitialBranding) {
+      fetchBranding();
+    }
+  }, [fetchBranding, hadInitialBranding]);
 
   // Apply CSS when effective branding changes
   useEffect(() => {
