@@ -111,24 +111,11 @@ export default function ProgramHubPage() {
     return enrollments.find(e => e.program.id === selectedProgramId) || null;
   }, [selectedProgramId, enrollments]);
   
-  // Loading state - show skeleton
+  // Loading state - return null, let ProgramDetailView handle skeleton
   const isLoading = !userLoaded || !mounted || programsLoading;
   
   if (isLoading) {
-    return (
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4 animate-pulse">
-        {/* Tab switcher skeleton */}
-        <div className="h-14 w-full bg-gray-200 dark:bg-gray-800 rounded-[40px] mb-6" />
-        {/* Cover image skeleton */}
-        <div className="h-[220px] w-full bg-gray-200 dark:bg-gray-800 rounded-[20px] mb-4" />
-        {/* Title skeleton */}
-        <div className="h-8 w-2/3 bg-gray-200 dark:bg-gray-800 rounded mb-2" />
-        <div className="h-4 w-full bg-gray-100 dark:bg-gray-900 rounded mb-1" />
-        <div className="h-4 w-3/4 bg-gray-100 dark:bg-gray-900 rounded mb-4" />
-        {/* Progress skeleton */}
-        <div className="h-7 w-24 bg-gray-200 dark:bg-gray-800 rounded-full" />
-      </div>
-    );
+    return null;
   }
   
   if (!user) {

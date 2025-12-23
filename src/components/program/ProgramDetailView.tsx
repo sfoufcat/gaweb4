@@ -182,6 +182,43 @@ export function ProgramDetailView({
     content.downloads.length > 0 ||
     (program.defaultHabits && program.defaultHabits.length > 0);
 
+  // Show full-page skeleton while content is loading
+  if (content.isLoading) {
+    return (
+      <div className="space-y-5 animate-pulse">
+        {/* Title skeleton */}
+        <div className="h-10 w-2/3 bg-gray-200 dark:bg-gray-800 rounded" />
+        {/* Description skeleton */}
+        <div className="space-y-2">
+          <div className="h-4 w-full bg-gray-100 dark:bg-gray-900 rounded" />
+          <div className="h-4 w-3/4 bg-gray-100 dark:bg-gray-900 rounded" />
+        </div>
+        {/* Progress pill skeleton */}
+        <div className="h-7 w-28 bg-gray-200 dark:bg-gray-800 rounded-full" />
+        {/* Cover image skeleton */}
+        <div className="h-[220px] w-full bg-gray-200 dark:bg-gray-800 rounded-[20px]" />
+        {/* Overview section skeleton */}
+        <div className="flex items-center gap-4">
+          <div className="flex -space-x-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-800 border-2 border-white dark:border-gray-900" />
+            ))}
+          </div>
+          <div className="h-4 w-32 bg-gray-100 dark:bg-gray-900 rounded" />
+        </div>
+        {/* Content cards skeleton */}
+        <div className="space-y-4 pt-4">
+          <div className="h-6 w-32 bg-gray-200 dark:bg-gray-800 rounded" />
+          <div className="flex gap-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="w-[180px] h-[120px] flex-shrink-0 bg-gray-100 dark:bg-gray-900 rounded-[20px]" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       {/* Header Section */}
@@ -619,20 +656,6 @@ export function ProgramDetailView({
         </div>
       )}
 
-      {/* Loading state for content */}
-      {content.isLoading && (
-        <div className="space-y-4">
-          <div className="h-6 w-32 bg-text-primary/10 rounded-lg animate-pulse" />
-          <div className="flex gap-3 overflow-x-auto">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="w-[180px] h-[120px] flex-shrink-0 bg-text-primary/5 rounded-[20px] animate-pulse"
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* No content message - only if completely empty */}
       {!content.isLoading && !hasContent && !hasAnyTasks && (
