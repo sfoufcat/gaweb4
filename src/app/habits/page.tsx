@@ -20,6 +20,9 @@ export default function GrowingHabitsPage() {
   const [isLoadingArchived, setIsLoadingArchived] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const [deleteConfirmHabitId, setDeleteConfirmHabitId] = useState<string | null>(null);
+  const [restoreHabitId, setRestoreHabitId] = useState<string | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   // Fetch archived habits when component mounts
   useEffect(() => {
@@ -148,6 +151,47 @@ export default function GrowingHabitsPage() {
     }
   };
 
+  // Handle restore habit
+  const handleRestoreHabit = async (habitId: string) => {
+    setIsRestoring(true);
+    setRestoreError(null);
+    
+    try {
+      const response = await fetch(`/api/habits/${habitId}/restore`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.limitReached) {
+          setRestoreError('You already have 3 active habits. Archive one first to restore this habit.');
+          return;
+        }
+        throw new Error(data.error || 'Failed to restore habit');
+      }
+
+      // Remove from archived list and close modal
+      setArchivedHabits(prev => prev.filter(h => h.id !== habitId));
+      setRestoreHabitId(null);
+    } catch (error) {
+      console.error('Failed to restore habit:', error);
+      setRestoreError('Failed to restore habit. Please try again.');
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  // Check if habit is archived (from archivedHabits list)
+  const isArchivedHabit = (habit: Habit): boolean => {
+    return archivedHabits.some(h => h.id === habit.id);
+  };
+
+  // Get the habit being restored
+  const habitToRestore = restoreHabitId 
+    ? archivedHabits.find(h => h.id === restoreHabitId) 
+    : null;
+
   if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-app-bg">
@@ -258,11 +302,17 @@ export default function GrowingHabitsPage() {
                     'bg-white dark:bg-[#171b22]'
                   } rounded-[20px] p-4 flex gap-3 w-full relative`}
                 >
-                  {/* Main content - clickable only if in active tab */}
+                  {/* Main content - clickable for active habits OR archived habits (restore) */}
                   <div 
-                    onClick={isInCompletedTab ? undefined : () => handleHabitClick(habit)}
+                    onClick={
+                      isInCompletedTab 
+                        ? (isArchivedHabit(habit) ? () => { setRestoreHabitId(habit.id); setRestoreError(null); } : undefined)
+                        : () => handleHabitClick(habit)
+                    }
                     className={`flex gap-3 flex-1 ${
-                      isInCompletedTab ? 'cursor-default' : 'cursor-pointer hover:scale-[1.01] transition-all'
+                      isInCompletedTab 
+                        ? (isArchivedHabit(habit) ? 'cursor-pointer hover:scale-[1.01] transition-all' : 'cursor-default')
+                        : 'cursor-pointer hover:scale-[1.01] transition-all'
                     }`}
                   >
                     {/* Circular Progress Chart */}
@@ -395,6 +445,65 @@ export default function GrowingHabitsPage() {
                 className="flex-1 py-3 px-6 rounded-full font-sans text-[14px] font-medium bg-red-500 text-white hover:bg-red-600 transition-colors"
               >
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Restore Habit Modal */}
+      {restoreHabitId && habitToRestore && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#171b22] rounded-[24px] p-6 max-w-[400px] w-full animate-in fade-in zoom-in-95 duration-200">
+            {/* Icon */}
+            <div className="w-14 h-14 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-7 h-7 text-earth-900 dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </div>
+            
+            <h3 className="font-albert text-[24px] text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3] mb-2 text-center">
+              Restore habit?
+            </h3>
+            
+            <p className="font-albert text-[16px] font-semibold text-earth-900 dark:text-[#b8896a] tracking-[-0.5px] text-center mb-2">
+              {habitToRestore.text}
+            </p>
+            
+            <p className="font-sans text-[14px] text-text-secondary dark:text-[#b2b6c2] leading-[1.4] mb-6 text-center">
+              This habit will be moved back to your active habits. Your progress will be preserved.
+            </p>
+
+            {/* Error message */}
+            {restoreError && (
+              <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+                <p className="font-sans text-[13px] text-amber-800 dark:text-amber-200 text-center">
+                  {restoreError}
+                </p>
+              </div>
+            )}
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setRestoreHabitId(null); setRestoreError(null); }}
+                disabled={isRestoring}
+                className="flex-1 py-3 px-6 rounded-full font-sans text-[14px] font-medium bg-[#f3f1ef] dark:bg-[#1e222a] text-text-primary dark:text-[#f5f5f8] hover:bg-[#e8e0d5] dark:hover:bg-[#262b35] transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleRestoreHabit(restoreHabitId)}
+                disabled={isRestoring}
+                className="flex-1 py-3 px-6 rounded-full font-sans text-[14px] font-medium bg-earth-900 dark:bg-[#b8896a] text-white hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isRestoring ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Restoring...
+                  </>
+                ) : (
+                  'Restore'
+                )}
               </button>
             </div>
           </div>

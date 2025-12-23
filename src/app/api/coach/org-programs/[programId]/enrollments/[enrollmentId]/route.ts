@@ -200,7 +200,30 @@ export async function DELETE(
       }
     }
 
-    console.log(`[COACH_ENROLLMENT_DELETE] Coach ${userId} removed user ${enrolledUserId} from program ${programId}`);
+    // 5. Delete program-created habits for this user (hard delete since they're kicked out)
+    let habitsDeleted = 0;
+    try {
+      const habitsSnapshot = await adminDb
+        .collection('habits')
+        .where('userId', '==', enrolledUserId)
+        .where('programId', '==', programId)
+        .where('source', '==', 'program_default')
+        .get();
+
+      if (!habitsSnapshot.empty) {
+        const batch = adminDb.batch();
+        for (const habitDoc of habitsSnapshot.docs) {
+          batch.delete(habitDoc.ref);
+        }
+        await batch.commit();
+        habitsDeleted = habitsSnapshot.size;
+        console.log(`[COACH_ENROLLMENT_DELETE] Deleted ${habitsDeleted} program habits for user ${enrolledUserId}`);
+      }
+    } catch (habitErr) {
+      console.error(`[COACH_ENROLLMENT_DELETE] Failed to delete habits (non-fatal):`, habitErr);
+    }
+
+    console.log(`[COACH_ENROLLMENT_DELETE] Coach ${userId} removed user ${enrolledUserId} from program ${programId}, deleted ${habitsDeleted} habits`);
 
     return NextResponse.json({
       success: true,

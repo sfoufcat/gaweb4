@@ -315,7 +315,7 @@ export async function GET(request: Request) {
     // =========================================================================
     // PROCESS SQUAD DATA
     // =========================================================================
-    let squads: { premium: { squad: Squad | null; members: SquadMember[] }; standard: { squad: Squad | null; members: SquadMember[] } } = {
+    const squads: { premium: { squad: Squad | null; members: SquadMember[] }; standard: { squad: Squad | null; members: SquadMember[] } } = {
       premium: { squad: null, members: [] },
       standard: { squad: null, members: [] },
     };

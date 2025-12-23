@@ -202,14 +202,14 @@ export function BrandingProvider({
   // Initialize on mount
   useEffect(() => {
     setMounted(true);
-    // Fetch from API if:
-    // 1. No initial branding provided (platform mode, no cookie), OR
-    // 2. Initial branding is default (tenant mode but Edge Config didn't have custom branding)
-    // This ensures custom branding loads even when Edge Config isn't populated
-    if (!hadInitialBranding || initialIsDefault) {
-      fetchBranding();
-    }
-  }, [fetchBranding, hadInitialBranding, initialIsDefault]);
+    // ALWAYS fetch from API to ensure we have fresh data from Firestore
+    // This is important because:
+    // 1. Edge Config might not be updated (missing env vars)
+    // 2. Cookie might have stale data from a previous session
+    // 3. User might have just saved branding and refreshed the page
+    // The API route fetches directly from Firestore which is always authoritative
+    fetchBranding();
+  }, [fetchBranding]);
 
   // Apply CSS when effective branding changes
   useEffect(() => {

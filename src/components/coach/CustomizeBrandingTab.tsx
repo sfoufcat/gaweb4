@@ -49,6 +49,7 @@ export function CustomizeBrandingTab() {
   const [appTitle, setAppTitle] = useState(DEFAULT_APP_TITLE);
   const [colors, setColors] = useState<OrgBrandingColors>(DEFAULT_BRANDING_COLORS);
   const [menuTitles, setMenuTitles] = useState<OrgMenuTitles>(DEFAULT_MENU_TITLES);
+  const [menuIcons, setMenuIcons] = useState<OrgMenuIcons>(DEFAULT_MENU_ICONS);
   
   // UI state
   const [loading, setLoading] = useState(true);
@@ -148,6 +149,10 @@ export function CustomizeBrandingTab() {
       setMenuTitles({
         ...DEFAULT_MENU_TITLES,
         ...(branding.menuTitles || {}),
+      });
+      setMenuIcons({
+        ...DEFAULT_MENU_ICONS,
+        ...(branding.menuIcons || {}),
       });
     } catch (err) {
       console.error('Error fetching branding:', err);
@@ -666,15 +671,17 @@ export function CustomizeBrandingTab() {
     if (!originalBranding) return;
     
     const originalMenuTitles = originalBranding.menuTitles || DEFAULT_MENU_TITLES;
+    const originalMenuIcons = originalBranding.menuIcons || DEFAULT_MENU_ICONS;
     const changed = 
       logoUrl !== originalBranding.logoUrl ||
       horizontalLogoUrl !== (originalBranding.horizontalLogoUrl || null) ||
       appTitle !== originalBranding.appTitle ||
       JSON.stringify(colors) !== JSON.stringify(originalBranding.colors) ||
-      JSON.stringify(menuTitles) !== JSON.stringify(originalMenuTitles);
+      JSON.stringify(menuTitles) !== JSON.stringify(originalMenuTitles) ||
+      JSON.stringify(menuIcons) !== JSON.stringify(originalMenuIcons);
     
     setHasChanges(changed);
-  }, [logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles, originalBranding]);
+  }, [logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles, menuIcons, originalBranding]);
 
   // Build preview branding object
   const getPreviewBranding = useCallback((): OrgBranding => {
@@ -686,10 +693,11 @@ export function CustomizeBrandingTab() {
       appTitle,
       colors,
       menuTitles,
+      menuIcons,
       createdAt: originalBranding?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-  }, [logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles, originalBranding]);
+  }, [logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles, menuIcons, originalBranding]);
 
   // Toggle preview mode
   const handleTogglePreview = () => {
@@ -705,7 +713,7 @@ export function CustomizeBrandingTab() {
     if (isPreviewMode) {
       setPreviewMode(true, getPreviewBranding());
     }
-  }, [logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles, isPreviewMode, setPreviewMode, getPreviewBranding]);
+  }, [logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles, menuIcons, isPreviewMode, setPreviewMode, getPreviewBranding]);
 
   // Handle logo upload
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -812,6 +820,7 @@ export function CustomizeBrandingTab() {
     setAppTitle(DEFAULT_APP_TITLE);
     setColors(DEFAULT_BRANDING_COLORS);
     setMenuTitles(DEFAULT_MENU_TITLES);
+    setMenuIcons(DEFAULT_MENU_ICONS);
   };
 
   // Revert changes
@@ -824,6 +833,10 @@ export function CustomizeBrandingTab() {
       setMenuTitles({
         ...DEFAULT_MENU_TITLES,
         ...(originalBranding.menuTitles || {}),
+      });
+      setMenuIcons({
+        ...DEFAULT_MENU_ICONS,
+        ...(originalBranding.menuIcons || {}),
       });
     }
   };
@@ -843,6 +856,7 @@ export function CustomizeBrandingTab() {
           appTitle,
           colors,
           menuTitles,
+          menuIcons,
         }),
       });
 
@@ -1069,85 +1083,135 @@ export function CustomizeBrandingTab() {
         </p>
       </div>
 
-      {/* Menu Titles Section */}
+      {/* Menu Titles & Icons Section */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-2">
           <Type className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Menu Titles</h3>
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Menu Titles & Icons</h3>
         </div>
         <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mb-4">
-          Customize how navigation items are labeled throughout your app.
+          Customize how navigation items are labeled and their icons throughout your app.
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Home Title */}
-          <div>
-            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
-              Home
-            </label>
-            <input
-              type="text"
-              value={menuTitles.home}
-              onChange={(e) => setMenuTitles(prev => ({ ...prev, home: e.target.value }))}
-              placeholder="e.g., Dashboard, Start"
-              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+        <div className="space-y-4">
+          {/* Home */}
+          <div className="flex items-start gap-3">
+            <IconPicker
+              value={menuIcons.home}
+              onChange={(value) => setMenuIcons(prev => ({ ...prev, home: value }))}
             />
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+                Home
+              </label>
+              <input
+                type="text"
+                value={menuTitles.home}
+                onChange={(e) => setMenuTitles(prev => ({ ...prev, home: e.target.value }))}
+                placeholder="e.g., Dashboard, Start"
+                className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+              />
+            </div>
           </div>
 
-          {/* Squad Title */}
-          <div>
-            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
-              Squad
-            </label>
-            <input
-              type="text"
-              value={menuTitles.squad}
-              onChange={(e) => setMenuTitles(prev => ({ ...prev, squad: e.target.value }))}
-              placeholder="e.g., Cohort, Team, Group"
-              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+          {/* Program */}
+          <div className="flex items-start gap-3">
+            <IconPicker
+              value={menuIcons.program}
+              onChange={(value) => setMenuIcons(prev => ({ ...prev, program: value }))}
             />
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+                Program
+              </label>
+              <input
+                type="text"
+                value={menuTitles.program}
+                onChange={(e) => setMenuTitles(prev => ({ ...prev, program: e.target.value }))}
+                placeholder="e.g., Journey, Path, Course"
+                className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+              />
+            </div>
           </div>
 
-          {/* Learn Title */}
-          <div>
-            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
-              Learn
-            </label>
-            <input
-              type="text"
-              value={menuTitles.learn}
-              onChange={(e) => setMenuTitles(prev => ({ ...prev, learn: e.target.value }))}
-              placeholder="e.g., Discover, Content, Resources"
-              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+          {/* Squad */}
+          <div className="flex items-start gap-3">
+            <IconPicker
+              value={menuIcons.squad}
+              onChange={(value) => setMenuIcons(prev => ({ ...prev, squad: value }))}
             />
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+                Squad
+              </label>
+              <input
+                type="text"
+                value={menuTitles.squad}
+                onChange={(e) => setMenuTitles(prev => ({ ...prev, squad: e.target.value }))}
+                placeholder="e.g., Cohort, Team, Group"
+                className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+              />
+            </div>
           </div>
 
-          {/* Chat Title */}
-          <div>
-            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
-              Chat
-            </label>
-            <input
-              type="text"
-              value={menuTitles.chat}
-              onChange={(e) => setMenuTitles(prev => ({ ...prev, chat: e.target.value }))}
-              placeholder="e.g., Messages, Community"
-              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+          {/* Discover */}
+          <div className="flex items-start gap-3">
+            <IconPicker
+              value={menuIcons.learn}
+              onChange={(value) => setMenuIcons(prev => ({ ...prev, learn: value }))}
             />
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+                Discover
+              </label>
+              <input
+                type="text"
+                value={menuTitles.learn}
+                onChange={(e) => setMenuTitles(prev => ({ ...prev, learn: e.target.value }))}
+                placeholder="e.g., Learn, Content, Resources"
+                className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+              />
+            </div>
           </div>
 
-          {/* Coach Title */}
-          <div>
-            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
-              Coach
-            </label>
-            <input
-              type="text"
-              value={menuTitles.coach}
-              onChange={(e) => setMenuTitles(prev => ({ ...prev, coach: e.target.value }))}
-              placeholder="e.g., Mentor, Guide, Support"
-              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+          {/* Chat */}
+          <div className="flex items-start gap-3">
+            <IconPicker
+              value={menuIcons.chat}
+              onChange={(value) => setMenuIcons(prev => ({ ...prev, chat: value }))}
             />
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+                Chat
+              </label>
+              <input
+                type="text"
+                value={menuTitles.chat}
+                onChange={(e) => setMenuTitles(prev => ({ ...prev, chat: e.target.value }))}
+                placeholder="e.g., Messages, Community"
+                className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+              />
+            </div>
+          </div>
+
+          {/* Coach */}
+          <div className="flex items-start gap-3">
+            <IconPicker
+              value={menuIcons.coach}
+              onChange={(value) => setMenuIcons(prev => ({ ...prev, coach: value }))}
+            />
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+                Coach
+              </label>
+              <input
+                type="text"
+                value={menuTitles.coach}
+                onChange={(e) => setMenuTitles(prev => ({ ...prev, coach: e.target.value }))}
+                placeholder="e.g., Mentor, Guide, Support"
+                className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+              />
+            </div>
           </div>
         </div>
         

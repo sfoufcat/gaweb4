@@ -174,7 +174,10 @@ export async function POST(request: Request) {
     // Save to Firestore
     await brandingRef.set(brandingData, { merge: true });
 
-    console.log(`[ORG_BRANDING_POST] Updated branding for org ${organizationId}`);
+    console.log(`[ORG_BRANDING_POST] Updated branding for org ${organizationId}`, {
+      menuTitles: brandingData.menuTitles,
+      menuIcons: brandingData.menuIcons,
+    });
 
     // Sync to Edge Config for fast tenant resolution
     try {

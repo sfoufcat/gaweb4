@@ -41,6 +41,7 @@ async function handleCronRequest(request: NextRequest) {
       graceNotificationsSent: 0,
       squadsClosed: 0,
       enrollmentsCompleted: 0,
+      habitsArchived: 0,
       errors: 0,
     };
 
@@ -178,15 +179,21 @@ async function handleCronRequest(request: NextRequest) {
         endDate.setDate(endDate.getDate() + program.lengthDays);
 
         if (endDate <= today) {
+          const now = new Date().toISOString();
+          
           // Program has ended, mark as completed
           await enrollmentDoc.ref.update({
             status: 'completed',
-            completedAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            completedAt: now,
+            updatedAt: now,
           });
 
+          // Archive program-created habits for this user
+          const archivedCount = await archiveProgramHabits(enrollment.userId, enrollment.programId, now);
+          stats.habitsArchived += archivedCount;
+
           stats.enrollmentsCompleted++;
-          console.log(`[PROGRAM_LIFECYCLE] Completed enrollment ${enrollmentDoc.id}`);
+          console.log(`[PROGRAM_LIFECYCLE] Completed enrollment ${enrollmentDoc.id}, archived ${archivedCount} habits`);
         }
       } catch (error) {
         console.error(`[PROGRAM_LIFECYCLE] Error processing enrollment ${enrollmentDoc.id}:`, error);
@@ -211,15 +218,21 @@ async function handleCronRequest(request: NextRequest) {
 
         const cohort = cohortDoc.data() as ProgramCohort;
         if (cohort.status === 'completed') {
+          const now = new Date().toISOString();
+          
           // Cohort ended, mark enrollment as completed
           await enrollmentDoc.ref.update({
             status: 'completed',
-            completedAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            completedAt: now,
+            updatedAt: now,
           });
 
+          // Archive program-created habits for this user
+          const archivedCount = await archiveProgramHabits(enrollment.userId, enrollment.programId, now);
+          stats.habitsArchived += archivedCount;
+
           stats.enrollmentsCompleted++;
-          console.log(`[PROGRAM_LIFECYCLE] Completed group enrollment ${enrollmentDoc.id}`);
+          console.log(`[PROGRAM_LIFECYCLE] Completed group enrollment ${enrollmentDoc.id}, archived ${archivedCount} habits`);
         }
       } catch (error) {
         console.error(`[PROGRAM_LIFECYCLE] Error processing group enrollment ${enrollmentDoc.id}:`, error);
@@ -327,6 +340,48 @@ async function sendSquadClosingMessage(chatChannelId: string | undefined): Promi
   } catch (error) {
     console.error(`[PROGRAM_LIFECYCLE] Error sending closing message:`, error);
     // Don't throw - we still want to close the squad
+  }
+}
+
+/**
+ * Archive program-created habits for a user when their program completes
+ * Only archives habits that were created from program defaults (source: 'program_default')
+ */
+async function archiveProgramHabits(
+  userId: string,
+  programId: string,
+  timestamp: string
+): Promise<number> {
+  try {
+    const habitsSnapshot = await adminDb
+      .collection('habits')
+      .where('userId', '==', userId)
+      .where('programId', '==', programId)
+      .where('source', '==', 'program_default')
+      .where('archived', '==', false)
+      .get();
+
+    if (habitsSnapshot.empty) {
+      return 0;
+    }
+
+    const batch = adminDb.batch();
+    for (const habitDoc of habitsSnapshot.docs) {
+      batch.update(habitDoc.ref, {
+        archived: true,
+        archivedAt: timestamp,
+        archivedReason: 'program_completed',
+        updatedAt: timestamp,
+      });
+    }
+    await batch.commit();
+
+    console.log(`[PROGRAM_LIFECYCLE] Archived ${habitsSnapshot.size} habits for user ${userId} from program ${programId}`);
+    return habitsSnapshot.size;
+  } catch (error) {
+    console.error(`[PROGRAM_LIFECYCLE] Error archiving habits for user ${userId}:`, error);
+    // Don't throw - we still want to continue with other operations
+    return 0;
   }
 }
 
