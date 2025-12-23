@@ -5,11 +5,82 @@
  * 
  * Called by middleware to resolve tenant from subdomain or custom domain.
  * This API has access to Firebase Admin SDK, which edge middleware does not.
+ * 
+ * Returns organizationId, subdomain, and branding data for the middleware
+ * to build the tenant cookie correctly (even when Edge Config is unavailable).
  */
 
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import type { OrgDomain, OrgCustomDomain } from '@/types';
+import type { OrgDomain, OrgCustomDomain, OrgBranding } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS } from '@/types';
+import type { TenantBrandingData, TenantCoachingPromoData } from '@/lib/tenant-edge-config';
+
+/**
+ * Fetch branding data for an organization from Firestore
+ */
+async function getOrgBranding(organizationId: string): Promise<TenantBrandingData> {
+  try {
+    const brandingDoc = await adminDb.collection('org_branding').doc(organizationId).get();
+    
+    if (brandingDoc.exists) {
+      const data = brandingDoc.data() as OrgBranding;
+      return {
+        logoUrl: data.logoUrl ?? DEFAULT_LOGO_URL,
+        horizontalLogoUrl: data.horizontalLogoUrl ?? null,
+        appTitle: data.appTitle ?? DEFAULT_APP_TITLE,
+        colors: data.colors ?? DEFAULT_BRANDING_COLORS,
+        menuTitles: data.menuTitles ?? DEFAULT_MENU_TITLES,
+        menuIcons: data.menuIcons ?? DEFAULT_MENU_ICONS,
+      };
+    }
+    
+    // Return default branding if no custom branding exists
+    return {
+      logoUrl: DEFAULT_LOGO_URL,
+      horizontalLogoUrl: null,
+      appTitle: DEFAULT_APP_TITLE,
+      colors: DEFAULT_BRANDING_COLORS,
+      menuTitles: DEFAULT_MENU_TITLES,
+      menuIcons: DEFAULT_MENU_ICONS,
+    };
+  } catch (error) {
+    console.error('[TENANT_RESOLVE] Error fetching branding:', error);
+    // Return default branding on error
+    return {
+      logoUrl: DEFAULT_LOGO_URL,
+      horizontalLogoUrl: null,
+      appTitle: DEFAULT_APP_TITLE,
+      colors: DEFAULT_BRANDING_COLORS,
+      menuTitles: DEFAULT_MENU_TITLES,
+      menuIcons: DEFAULT_MENU_ICONS,
+    };
+  }
+}
+
+/**
+ * Fetch coaching promo data for an organization from Firestore
+ */
+async function getOrgCoachingPromo(organizationId: string): Promise<TenantCoachingPromoData | undefined> {
+  try {
+    const promoDoc = await adminDb.collection('org_coaching_promo').doc(organizationId).get();
+    
+    if (promoDoc.exists) {
+      const data = promoDoc.data();
+      return {
+        title: data?.title || 'Get your personal coach',
+        subtitle: data?.subtitle || 'Work with a performance psychologist 1:1',
+        imageUrl: data?.imageUrl || '',
+        isVisible: data?.isVisible ?? true,
+      };
+    }
+    
+    return undefined;
+  } catch (error) {
+    console.error('[TENANT_RESOLVE] Error fetching coaching promo:', error);
+    return undefined;
+  }
+}
 
 export async function GET(request: Request) {
   // Only allow internal requests (from middleware)
@@ -56,12 +127,18 @@ export async function GET(request: Request) {
         ? null 
         : (customDomainSnapshot.docs[0].data() as OrgCustomDomain).domain;
       
+      // Fetch branding data for the middleware to build the cookie
+      const branding = await getOrgBranding(data.organizationId);
+      const coachingPromo = await getOrgCoachingPromo(data.organizationId);
+      
       return NextResponse.json({
         found: true,
         organizationId: data.organizationId,
         subdomain: data.subdomain,
         isCustomDomain: false,
         verifiedCustomDomain,  // For subdomain -> custom domain redirect
+        branding,
+        coachingPromo,
       });
     } else if (domain) {
       // Resolve by custom domain
@@ -89,11 +166,18 @@ export async function GET(request: Request) {
         ? '' 
         : (orgDomainSnapshot.docs[0].data() as OrgDomain).subdomain;
       
+      // Fetch branding data for the middleware to build the cookie
+      const branding = await getOrgBranding(customDomainData.organizationId);
+      const coachingPromo = await getOrgCoachingPromo(customDomainData.organizationId);
+      
       return NextResponse.json({
         found: true,
         organizationId: customDomainData.organizationId,
         subdomain,
         isCustomDomain: true,
+        verifiedCustomDomain: domain,
+        branding,
+        coachingPromo,
       });
     }
     

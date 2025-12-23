@@ -4,7 +4,8 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { ensureCoachHasOrganization } from '@/lib/clerk-organizations';
-import { syncTenantToEdgeConfig, type TenantBrandingData } from '@/lib/tenant-edge-config';
+import { syncTenantToEdgeConfig, setTenantByCustomDomain, buildTenantConfigData, type TenantBrandingData } from '@/lib/tenant-edge-config';
+import type { OrgCustomDomain } from '@/types';
 import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, UserRole, OrgRole } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS } from '@/types';
 
@@ -213,28 +214,56 @@ export async function POST(request: Request) {
 
     // Sync to Edge Config for fast tenant resolution
     try {
-      // Get subdomain and custom domain from org_domains
+      // Build branding data for Edge Config
+      const edgeBranding: TenantBrandingData = {
+        logoUrl: brandingData.logoUrl,
+        horizontalLogoUrl: brandingData.horizontalLogoUrl,
+        appTitle: brandingData.appTitle,
+        colors: brandingData.colors,
+        menuTitles: brandingData.menuTitles || DEFAULT_MENU_TITLES,
+        menuIcons: brandingData.menuIcons || DEFAULT_MENU_ICONS,
+      };
+      
+      // Get subdomain from org_domains
       const domainDoc = await adminDb.collection('org_domains').doc(organizationId).get();
       const domainData = domainDoc.data();
+      const subdomain = domainData?.subdomain;
       
-      if (domainData?.subdomain) {
-        const edgeBranding: TenantBrandingData = {
-          logoUrl: brandingData.logoUrl,
-          horizontalLogoUrl: brandingData.horizontalLogoUrl,
-          appTitle: brandingData.appTitle,
-          colors: brandingData.colors,
-          menuTitles: brandingData.menuTitles || DEFAULT_MENU_TITLES,
-          menuIcons: brandingData.menuIcons || DEFAULT_MENU_ICONS,
-        };
-        
+      // Get verified custom domain from org_custom_domains
+      const customDomainSnapshot = await adminDb
+        .collection('org_custom_domains')
+        .where('organizationId', '==', organizationId)
+        .where('status', '==', 'verified')
+        .limit(1)
+        .get();
+      
+      const verifiedCustomDomain = customDomainSnapshot.empty 
+        ? null 
+        : (customDomainSnapshot.docs[0].data() as OrgCustomDomain).domain;
+      
+      if (subdomain) {
+        // Has subdomain - sync with both subdomain and custom domain keys
         await syncTenantToEdgeConfig(
           organizationId,
-          domainData.subdomain,
+          subdomain,
           edgeBranding,
-          domainData.verifiedCustomDomain || undefined
+          verifiedCustomDomain || undefined
         );
-        
-        console.log(`[ORG_BRANDING_POST] Synced branding to Edge Config for subdomain: ${domainData.subdomain}`);
+        console.log(`[ORG_BRANDING_POST] Synced branding to Edge Config for subdomain: ${subdomain}${verifiedCustomDomain ? ` and custom domain: ${verifiedCustomDomain}` : ''}`);
+      } else if (verifiedCustomDomain) {
+        // Custom-domain-only org - sync with custom domain key only
+        // Generate a fallback subdomain from org ID for the data structure
+        const fallbackSubdomain = `org-${organizationId.substring(0, 8)}`;
+        const configData = buildTenantConfigData(
+          organizationId,
+          fallbackSubdomain,
+          edgeBranding,
+          verifiedCustomDomain
+        );
+        await setTenantByCustomDomain(verifiedCustomDomain, configData);
+        console.log(`[ORG_BRANDING_POST] Synced branding to Edge Config for custom domain: ${verifiedCustomDomain}`);
+      } else {
+        console.log(`[ORG_BRANDING_POST] No subdomain or verified custom domain found for org ${organizationId} - skipping Edge Config sync`);
       }
     } catch (edgeError) {
       // Log but don't fail the request - Edge Config is optimization, not critical

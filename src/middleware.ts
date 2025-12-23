@@ -298,6 +298,9 @@ async function resolveTenantFromEdgeConfig(
 /**
  * Fallback: Resolve tenant via API when Edge Config is empty/not available
  * This ensures new tenants work before Edge Config is populated
+ * 
+ * The API now returns branding data, which we use to build configData
+ * for the middleware to set the correct branding cookie.
  */
 async function resolveTenantFromApi(
   subdomain?: string,
@@ -321,10 +324,21 @@ async function resolveTenantFromApi(
     
     const data = await response.json();
     if (data.organizationId) {
+      // Build configData from API response for branding cookie
+      const configData: TenantConfigData | undefined = data.branding ? {
+        organizationId: data.organizationId,
+        subdomain: data.subdomain || subdomain || '',
+        branding: data.branding,
+        coachingPromo: data.coachingPromo,
+        verifiedCustomDomain: data.verifiedCustomDomain,
+        updatedAt: new Date().toISOString(),
+      } : undefined;
+      
       return { 
         orgId: data.organizationId, 
         subdomain: data.subdomain || subdomain || '',
         verifiedCustomDomain: data.verifiedCustomDomain || undefined,
+        configData,
       };
     }
     
