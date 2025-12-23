@@ -338,10 +338,19 @@ export function AdminDownloadsSection({ apiEndpoint = '/api/admin/discover/downl
 
   if (loading) {
     return (
-      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl p-8">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#a07855] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Loading downloads...</p>
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl p-6 animate-pulse">
+        <div className="flex items-center justify-between mb-6">
+          <div className="h-6 w-28 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+          <div className="h-10 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-[#faf8f6] dark:bg-[#11141b] rounded-xl p-4 space-y-3">
+              <div className="w-10 h-10 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg" />
+              <div className="h-5 w-3/4 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              <div className="h-4 w-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+            </div>
+          ))}
         </div>
       </div>
     );
