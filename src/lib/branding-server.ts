@@ -17,12 +17,13 @@
  */
 
 import { cookies } from 'next/headers';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons } from '@/types';
 import { 
   DEFAULT_BRANDING_COLORS, 
   DEFAULT_APP_TITLE, 
   DEFAULT_LOGO_URL, 
-  DEFAULT_MENU_TITLES 
+  DEFAULT_MENU_TITLES,
+  DEFAULT_MENU_ICONS,
 } from '@/types';
 import { 
   DEFAULT_TENANT_COACHING_PROMO,
@@ -45,6 +46,7 @@ export interface TenantCookieData {
     appTitle: string;
     colors: OrgBrandingColors;
     menuTitles: OrgMenuTitles;
+    menuIcons: OrgMenuIcons;
   };
   coachingPromo?: TenantCoachingPromoData;
 }
@@ -78,6 +80,7 @@ function getDefaultBranding(): OrgBranding {
     appTitle: DEFAULT_APP_TITLE,
     colors: DEFAULT_BRANDING_COLORS,
     menuTitles: DEFAULT_MENU_TITLES,
+    menuIcons: DEFAULT_MENU_ICONS,
     createdAt: now,
     updatedAt: now,
   };
@@ -148,6 +151,7 @@ export async function getServerBranding(): Promise<ServerBranding> {
     appTitle: tenantData.branding.appTitle || DEFAULT_APP_TITLE,
     colors: tenantData.branding.colors || DEFAULT_BRANDING_COLORS,
     menuTitles: tenantData.branding.menuTitles || DEFAULT_MENU_TITLES,
+    menuIcons: tenantData.branding.menuIcons || DEFAULT_MENU_ICONS,
     createdAt: now,
     updatedAt: now,
   };
