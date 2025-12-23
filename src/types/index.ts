@@ -1585,9 +1585,12 @@ export interface OrgMembership {
   createdAt: string;                   // ISO timestamp
   updatedAt: string;                   // ISO timestamp
   
-  // Access control fields
-  hasActiveAccess: boolean;            // Whether user can access org (derived from program/squad membership)
-  accessReason: UserAccessReason;      // Why user has access (program, squad, coach_assigned, staff, none)
+  // Access control fields (optional - computed/synced fields)
+  // SECURITY: These are cached values synced by syncAccessStatus(). When checking access:
+  //   SAFE:   if (hasActiveAccess === true)  // undefined = denied
+  //   UNSAFE: if (hasActiveAccess !== false) // undefined would allow access!
+  hasActiveAccess?: boolean;           // Whether user can access org (derived from program/squad membership)
+  accessReason?: UserAccessReason;     // Why user has access (program, squad, coach_assigned, staff, none)
   
   // ============================================
   // PROFILE FIELDS (per-organization)
@@ -1694,12 +1697,12 @@ export interface OrgSettings {
   autoJoinSquadId: string | null;      // Auto-assign new members to this squad
   welcomeMessage: string | null;       // Custom welcome message for new members
   
-  // Coach platform subscription
-  coachTier: CoachTier;                // Coach's platform tier (starter, pro, scale)
-  coachSubscriptionId: string | null;  // FK to coach_subscriptions collection
+  // Coach platform subscription (optional - not all orgs have coach subscriptions)
+  coachTier?: CoachTier;               // Coach's platform tier (starter, pro, scale)
+  coachSubscriptionId?: string | null; // FK to coach_subscriptions collection
   
-  // Default funnel for non-members
-  defaultFunnelId: string | null;      // Funnel to redirect users without access
+  // Default funnel for non-members (optional)
+  defaultFunnelId?: string | null;     // Funnel to redirect users without access
   
   createdAt: string;                   // ISO timestamp
   updatedAt: string;                   // ISO timestamp

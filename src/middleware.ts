@@ -775,9 +775,17 @@ export default clerkMiddleware(async (auth, request) => {
       // TODO: Add fast-access check when hasActiveAccess is synced to session claims
       // For now, let the request through and let the API/page do the full check
       
+      // SECURITY NOTE: When implementing hasActiveAccess checks, ALWAYS use safe patterns:
+      //   SAFE:   if (hasOrgAccess !== true) { deny }  // undefined = denied
+      //   SAFE:   if (!hasOrgAccess) { deny }          // undefined is falsy = denied
+      //   UNSAFE: if (hasOrgAccess !== false) { allow } // undefined !== false = allowed!
+      //
+      // The hasActiveAccess field is optional and may be undefined on older records.
+      // Always treat undefined as "no access" (deny by default).
+      
       // Example future implementation:
       // const hasOrgAccess = publicMetadata?.orgAccessMap?.[tenantOrgId]?.hasActiveAccess;
-      // if (!hasOrgAccess) {
+      // if (hasOrgAccess !== true) {  // SAFE: undefined or false = denied
       //   // Redirect to org's default funnel
       //   const funnelUrl = await getOrgDefaultFunnelUrl(tenantOrgId);
       //   return NextResponse.redirect(new URL(funnelUrl || '/sign-in?access=required', request.url));
