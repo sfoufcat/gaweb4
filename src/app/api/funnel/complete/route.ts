@@ -93,6 +93,14 @@ export async function POST(req: Request) {
       }
     }
 
+    // Verify this is a program funnel (not a squad funnel)
+    if (!session.programId) {
+      return NextResponse.json(
+        { error: 'This endpoint is for program funnels only. Use /api/funnel/complete-squad for squad funnels.' },
+        { status: 400 }
+      );
+    }
+
     // Get program details
     const programDoc = await adminDb.collection('programs').doc(session.programId).get();
     if (!programDoc.exists) {

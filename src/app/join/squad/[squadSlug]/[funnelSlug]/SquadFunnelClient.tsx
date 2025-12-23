@@ -322,6 +322,7 @@ export default function SquadFunnelClient({
   // Render current step
   const renderStep = () => {
     const stepConfig = currentStep.config as FunnelStepConfig;
+    const isFirstStep = currentStepIndex === 0;
     const commonProps = {
       step: currentStep,
       data,
@@ -329,13 +330,23 @@ export default function SquadFunnelClient({
       onBack: currentStepIndex > 0 ? handleBack : undefined,
       branding,
       isNavigating,
+      isFirstStep,
     };
 
     switch (currentStep.type) {
       case 'question':
         return <QuestionStep {...commonProps} config={stepConfig.config as FunnelStepConfigQuestion} />;
       case 'signup':
-        return <SignupStep {...commonProps} config={stepConfig.config as FunnelStepConfigSignup} />;
+        return (
+          <SignupStep 
+            {...commonProps} 
+            config={stepConfig.config as FunnelStepConfigSignup}
+            hostname={hostname}
+            flowSessionId={sessionId || ''}
+            organizationId={organization.id}
+            organizationName={organization.name}
+          />
+        );
       case 'payment':
         return (
           <PaymentStep 
@@ -343,17 +354,11 @@ export default function SquadFunnelClient({
             config={stepConfig.config as FunnelStepConfigPayment}
             // For squad funnels, pass squad info instead of program
             program={{
-              id: squad.id,
               name: squad.name,
-              description: squad.description,
               priceInCents: 0, // Will be configured per funnel/squad
               currency: 'usd',
             }}
-            organization={organization}
-            funnel={funnel}
-            sessionId={sessionId}
-            inviteCode={inviteCode}
-            hostname={hostname}
+            skipPayment={false}
           />
         );
       case 'goal_setting':
@@ -364,11 +369,18 @@ export default function SquadFunnelClient({
         return <AnalyzingStep {...commonProps} config={stepConfig.config as FunnelStepConfigAnalyzing} />;
       case 'plan_reveal':
       case 'transformation':
-        return <PlanRevealStep {...commonProps} config={stepConfig.config as FunnelStepConfigPlanReveal} data={data} />;
+        return (
+          <PlanRevealStep 
+            {...commonProps} 
+            config={stepConfig.config as FunnelStepConfigPlanReveal} 
+            data={data}
+            program={{ name: squad.name, lengthDays: 90 }}
+          />
+        );
       case 'info':
         return <InfoStep {...commonProps} config={stepConfig.config as FunnelStepConfigInfo} />;
       case 'success':
-        return <SuccessStep {...commonProps} config={stepConfig.config as FunnelStepConfigSuccess} />;
+        return <SuccessStep {...commonProps} config={stepConfig.config as FunnelStepConfigSuccess} program={{ name: squad.name }} />;
       default:
         return <div className="p-8 text-center">Unknown step type: {currentStep.type}</div>;
     }

@@ -737,6 +737,12 @@ async function handleFunnelPaymentSucceeded(paymentIntent: Stripe.PaymentIntent)
     return;
   }
 
+  // Verify this is a program funnel
+  if (!flowSession.programId) {
+    console.error(`[STRIPE_WEBHOOK] Flow session ${flowSessionId} has no programId - may be a squad funnel`);
+    return;
+  }
+
   // Get program details
   const programDoc = await adminDb.collection('programs').doc(flowSession.programId).get();
   if (!programDoc.exists) {

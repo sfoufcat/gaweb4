@@ -125,8 +125,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // Calculate platform fee (default 10%)
-    const platformFeePercent = orgSettings?.platformFeePercent ?? 10;
+    // Calculate platform fee (default 1%)
+    const platformFeePercent = orgSettings?.platformFeePercent ?? 1;
     const applicationFeeAmount = Math.round(priceInCents * (platformFeePercent / 100));
 
     // Get or create Stripe customer on the Connected account

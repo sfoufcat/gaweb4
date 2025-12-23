@@ -337,8 +337,8 @@ export default function CoachPlanPage() {
         >
           {PLANS.map((plan) => {
             const isCurrentPlan = currentTier === plan.id;
-            const isDowngrade = currentTier && 
-              ['starter', 'pro', 'scale'].indexOf(plan.id) <= ['starter', 'pro', 'scale'].indexOf(currentTier);
+            const isDowngrade = !!(currentTier && 
+              ['starter', 'pro', 'scale'].indexOf(plan.id) <= ['starter', 'pro', 'scale'].indexOf(currentTier));
             const isSelected = selectedPlan === plan.id;
 
             return (

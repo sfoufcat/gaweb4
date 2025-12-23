@@ -77,7 +77,7 @@ export async function GET() {
     } = {
       stripeConnectStatus: (settings?.stripeConnectStatus as StripeConnectStatus) || 'not_connected',
       stripeConnectAccountId: settings?.stripeConnectAccountId || null,
-      platformFeePercent: settings?.platformFeePercent ?? 10,
+      platformFeePercent: settings?.platformFeePercent ?? 1,
     };
     
     // If connected, get account details from Stripe
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
           defaultTrack: null,
           stripeConnectAccountId: accountId,
           stripeConnectStatus: 'pending' as StripeConnectStatus,
-          platformFeePercent: 10,
+          platformFeePercent: 1,
           requireApproval: false,
           autoJoinSquadId: null,
           welcomeMessage: null,

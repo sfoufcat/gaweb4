@@ -174,7 +174,8 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
     setOpenMenuId(null);
   };
 
-  const getProgramName = (programId: string) => {
+  const getProgramName = (programId: string | null | undefined) => {
+    if (!programId) return 'Squad Funnel';
     const program = programs.find(p => p.id === programId);
     return program?.name || 'Unknown Program';
   };

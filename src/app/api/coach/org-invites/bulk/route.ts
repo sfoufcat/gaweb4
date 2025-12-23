@@ -56,9 +56,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Funnel not in your organization' }, { status: 403 });
     }
 
-    // Get program for email
-    const programDoc = await adminDb.collection('programs').doc(funnel.programId).get();
-    const program = programDoc.exists ? (programDoc.data() as Program) : null;
+    // Get program for email (only if funnel targets a program)
+    let program: Program | null = null;
+    if (funnel.programId) {
+      const programDoc = await adminDb.collection('programs').doc(funnel.programId).get();
+      program = programDoc.exists ? (programDoc.data() as Program) : null;
+    }
 
     // Validate and dedupe entries
     const validEntries: BulkInviteEntry[] = [];

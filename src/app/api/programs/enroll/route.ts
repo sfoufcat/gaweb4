@@ -385,7 +385,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate platform fee
-    const platformFeePercent = orgSettings?.platformFeePercent ?? 10;
+    const platformFeePercent = orgSettings?.platformFeePercent ?? 1;
     const applicationFeeAmount = Math.round(program.priceInCents * (platformFeePercent / 100));
 
     // Build success/cancel URLs

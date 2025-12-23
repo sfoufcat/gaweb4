@@ -337,7 +337,8 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
     ? programs.find(p => p.id === selectedFunnel.programId) 
     : undefined;
 
-  const getProgramName = (programId: string) => {
+  const getProgramName = (programId: string | null | undefined) => {
+    if (!programId) return 'Squad Funnel';
     return programs.find(p => p.id === programId)?.name || 'Unknown Program';
   };
 

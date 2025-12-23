@@ -519,7 +519,7 @@ async function createDefaultOrgSettings(organizationId: string): Promise<void> {
     defaultTrack: null,
     stripeConnectAccountId: null,
     stripeConnectStatus: 'not_connected',
-    platformFeePercent: 10,
+    platformFeePercent: 1,
     requireApproval: false,
     autoJoinSquadId: null,
     welcomeMessage: null,

@@ -1718,7 +1718,7 @@ export const DEFAULT_ORG_SETTINGS: Omit<OrgSettings, 'id' | 'organizationId' | '
   defaultTrack: null,
   stripeConnectAccountId: null,
   stripeConnectStatus: 'not_connected',
-  platformFeePercent: 10, // Default 10% platform fee
+  platformFeePercent: 1, // Platform fee: 1% of all coach payments
   requireApproval: false,
   autoJoinSquadId: null,
   welcomeMessage: null,
@@ -2187,7 +2187,7 @@ export interface FunnelStep {
 export interface FlowSession {
   id: string;
   funnelId: string;
-  programId: string;
+  programId?: string | null;      // Optional for squad-type funnels
   organizationId: string;
   
   // User linking
@@ -2221,7 +2221,7 @@ export interface FlowSession {
 export interface ProgramInvite {
   id: string;                    // Short code (e.g., "ABC123")
   funnelId: string;
-  programId: string;
+  programId?: string | null;     // Optional for squad-type funnels
   organizationId: string;
   
   // Creator

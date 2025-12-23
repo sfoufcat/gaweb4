@@ -93,7 +93,7 @@ export const TIER_PERMISSIONS: Record<CoachTier, Record<PermissionKey, Permissio
     // Platform features
     custom_domain: false,
     email_whitelabel: false,
-    stripe_connect: false,
+    stripe_connect: true,  // All tiers can accept payments via Stripe Connect
     // Funnel steps - Starter gets basic steps + question/input/goal but NOT identity
     funnel_step_identity: false,
     funnel_step_analyzing: false,
