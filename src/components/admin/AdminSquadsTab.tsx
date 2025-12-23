@@ -39,6 +39,8 @@ interface AdminSquadsTabProps {
   onSelectSquad?: (squadId: string) => void;
   /** API endpoint for fetching coaches (default: /api/admin/coaches, use /api/coach/org-coaches for org context) */
   coachesApiEndpoint?: string;
+  /** API endpoint for fetching programs (default: /api/admin/programs, use /api/coach/org-programs for org context) */
+  programsApiEndpoint?: string;
 }
 
 export function AdminSquadsTab({ 
@@ -46,6 +48,7 @@ export function AdminSquadsTab({
   apiEndpoint = '/api/admin/squads', 
   onSelectSquad,
   coachesApiEndpoint = '/api/admin/coaches',
+  programsApiEndpoint = '/api/admin/programs',
 }: AdminSquadsTabProps) {
   const [squads, setSquads] = useState<SquadWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -332,6 +335,7 @@ export function AdminSquadsTab({
           onSave={handleSquadSaved}
           apiBasePath={apiEndpoint}
           coachesApiEndpoint={coachesApiEndpoint}
+          programsApiEndpoint={programsApiEndpoint}
         />
       )}
 

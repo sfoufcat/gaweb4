@@ -5,20 +5,44 @@
  * Or: npx tsx scripts/seed-templates.ts
  * 
  * Seeds 10 fully-built program templates with complete content
+ * 
+ * Prerequisites:
+ * - Firebase CLI logged in (firebase login)
+ * - GOOGLE_APPLICATION_CREDENTIALS env var set, OR
+ * - Running on Google Cloud with default credentials
  */
 
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Load environment variables from .env.local if it exists
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+
+import { initializeApp, cert, getApps, applicationDefault } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
 // Initialize Firebase Admin
 if (!getApps().length) {
-  initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
+  // Try service account credentials first, fall back to application default
+  const hasServiceAccount = process.env.FIREBASE_PROJECT_ID && 
+                            process.env.FIREBASE_CLIENT_EMAIL && 
+                            process.env.FIREBASE_PRIVATE_KEY;
+  
+  if (hasServiceAccount) {
+    initializeApp({
+      credential: cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      }),
+    });
+  } else {
+    // Use application default credentials (works if logged into Firebase CLI or on GCP)
+    initializeApp({
+      credential: applicationDefault(),
+      projectId: 'gawebdev2-3191a',
+    });
+  }
 }
 
 const db = getFirestore();

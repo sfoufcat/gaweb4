@@ -264,6 +264,7 @@ export default function CoachPage() {
                 }
                 onSelectSquad={(squadId) => setSelectedSquadIdForView(squadId)}
                 coachesApiEndpoint={(role === 'coach' || orgRole === 'super_coach') ? '/api/coach/org-coaches' : '/api/admin/coaches'}
+                programsApiEndpoint={(role === 'coach' || orgRole === 'super_coach') ? '/api/coach/org-programs' : '/api/admin/programs'}
               />
             )}
           </TabsContent>
