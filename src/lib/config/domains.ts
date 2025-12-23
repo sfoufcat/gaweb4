@@ -2,13 +2,13 @@
  * Domain Configuration
  * 
  * Centralized domain configuration for the multi-tenant architecture.
- * This file makes it easy to switch from growthaddicts.app to growthaddicts.com
+ * This file makes it easy to manage domain configuration (now using growthaddicts.com)
  * by changing a single value.
  * 
  * Domain Structure:
- * - Marketing: growthaddicts.app (or growthaddicts.com) - public marketing site
- * - Platform Admin: app.growthaddicts.app - super admin management
- * - Tenant: {org}.growthaddicts.app or custom domains - coach instances
+ * - Marketing: growthaddicts.com - public marketing site
+ * - Platform Admin: app.growthaddicts.com - super admin management
+ * - Tenant: {org}.growthaddicts.com or custom domains - coach instances
  */
 
 // =============================================================================
@@ -18,7 +18,7 @@
 /**
  * Base domain - change this to switch to growthaddicts.com
  */
-export const BASE_DOMAIN = 'growthaddicts.app';
+export const BASE_DOMAIN = 'growthaddicts.com';
 
 /**
  * Alternative/legacy domains that should also be recognized
@@ -26,6 +26,7 @@ export const BASE_DOMAIN = 'growthaddicts.app';
  */
 export const LEGACY_DOMAINS = [
   'pro.growthaddicts.com',
+  'growthaddicts.app',  // Legacy domain after migration to .com
 ];
 
 // =============================================================================
@@ -68,7 +69,7 @@ export const DEV_HOSTS = [
 
 /**
  * Pattern to match tenant subdomains
- * Captures the subdomain from URLs like "acme.growthaddicts.app"
+ * Captures the subdomain from URLs like "acme.growthaddicts.com"
  */
 export const TENANT_SUBDOMAIN_PATTERN = new RegExp(
   `^([a-z0-9-]+)\\.${BASE_DOMAIN.replace('.', '\\.')}$`

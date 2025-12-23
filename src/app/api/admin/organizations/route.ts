@@ -112,7 +112,7 @@ export async function GET() {
           domain: cd.domain,
           status: cd.status,
         })),
-        tenantUrl: subdomain ? `https://${subdomain}.growthaddicts.app` : null,
+        tenantUrl: subdomain ? `https://${subdomain}.growthaddicts.com` : null,
       };
     });
 

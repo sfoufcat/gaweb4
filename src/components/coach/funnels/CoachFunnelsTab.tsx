@@ -23,6 +23,12 @@ import { FunnelStepsEditor } from './FunnelStepsEditor';
 
 type ViewMode = 'list' | 'editing';
 
+interface Squad {
+  id: string;
+  name: string;
+  slug?: string;
+}
+
 interface CoachFunnelsTabProps {
   /** Optional program ID to filter funnels by */
   programId?: string;
@@ -31,6 +37,7 @@ interface CoachFunnelsTabProps {
 export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   const [funnels, setFunnels] = useState<Funnel[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
+  const [squads, setSquads] = useState<Squad[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -78,10 +85,22 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
     }
   }, []);
 
+  const fetchSquads = useCallback(async () => {
+    try {
+      const response = await fetch('/api/coach/org-squads');
+      if (!response.ok) throw new Error('Failed to fetch squads');
+      const data = await response.json();
+      setSquads(data.squads || []);
+    } catch (err) {
+      console.error('Failed to fetch squads:', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchFunnels();
     fetchPrograms();
-  }, [fetchFunnels, fetchPrograms]);
+    fetchSquads();
+  }, [fetchFunnels, fetchPrograms, fetchSquads]);
 
   const handleToggleActive = async (funnel: Funnel) => {
     try {
@@ -398,6 +417,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
         <FunnelEditorDialog
           mode="create"
           programs={programs}
+          squads={squads}
           onClose={() => setShowCreateDialog(false)}
           onSaved={() => {
             setShowCreateDialog(false);
@@ -412,6 +432,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
           mode="edit"
           funnel={funnelToEdit}
           programs={programs}
+          squads={squads}
           onClose={() => {
             setShowEditDialog(false);
             setFunnelToEdit(null);

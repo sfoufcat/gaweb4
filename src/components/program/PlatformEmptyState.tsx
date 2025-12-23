@@ -16,7 +16,7 @@ interface TenantDomain {
 /**
  * PlatformEmptyState Component
  * 
- * Shown on the platform domain (app.growthaddicts.app) when user tries to access
+ * Shown on the platform domain (app.growthaddicts.com) when user tries to access
  * tenant-specific features like Programs or Squad.
  * 
  * Displays a message explaining they need to visit their coach's domain,
@@ -118,7 +118,7 @@ export function PlatformEmptyState() {
                       {domain.name}
                     </div>
                     <div className="text-sm text-text-secondary truncate">
-                      {domain.customDomain || `${domain.subdomain}.growthaddicts.app`}
+                      {domain.customDomain || `${domain.subdomain}.growthaddicts.com`}
                     </div>
                   </div>
                   

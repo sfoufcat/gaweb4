@@ -91,7 +91,7 @@ export async function createOrganizationForCoach(
     // Auto-create subdomain in org_domains (for multi-tenant routing)
     try {
       await createOrgDomainEntry(organization.id, orgSlug);
-      console.log(`[CLERK_ORGS] Created subdomain ${orgSlug} for organization ${organization.id}`);
+      console.log(`[CLERK_ORGS] Created subdomain ${orgSlug}.growthaddicts.com for organization ${organization.id}`);
     } catch (domainError) {
       // Log but don't fail - subdomain can be set up later via coach dashboard
       console.error(`[CLERK_ORGS] Failed to create subdomain for ${organization.id}:`, domainError);
@@ -473,7 +473,7 @@ async function createOrgDomainEntry(organizationId: string, subdomain: string): 
   await adminDb.collection('org_domains').add({
     organizationId,
     subdomain: normalizedSubdomain,
-    primaryDomain: `${normalizedSubdomain}.growthaddicts.app`,
+    primaryDomain: `${normalizedSubdomain}.growthaddicts.com`,
     createdAt: now,
     updatedAt: now,
   });

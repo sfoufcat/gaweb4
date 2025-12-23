@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
-import type { Funnel } from '@/types';
+import type { Funnel, FunnelTargetType } from '@/types';
 
 /**
  * GET /api/coach/org-funnels
@@ -9,6 +9,8 @@ import type { Funnel } from '@/types';
  * 
  * Query params:
  * - programId?: string (filter by program)
+ * - squadId?: string (filter by squad)
+ * - targetType?: 'program' | 'squad' (filter by target type)
  */
 export async function GET(req: Request) {
   try {
@@ -16,6 +18,8 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const programId = searchParams.get('programId');
+    const squadId = searchParams.get('squadId');
+    const targetType = searchParams.get('targetType') as FunnelTargetType | null;
 
     // Build query
     let query = adminDb
@@ -24,6 +28,12 @@ export async function GET(req: Request) {
 
     if (programId) {
       query = query.where('programId', '==', programId);
+    }
+    if (squadId) {
+      query = query.where('squadId', '==', squadId);
+    }
+    if (targetType) {
+      query = query.where('targetType', '==', targetType);
     }
 
     const snapshot = await query.orderBy('createdAt', 'desc').get();
@@ -47,7 +57,9 @@ export async function GET(req: Request) {
  * Body:
  * - name: string
  * - slug: string
- * - programId: string
+ * - targetType: 'program' | 'squad' (default: 'program')
+ * - programId?: string (required if targetType is 'program')
+ * - squadId?: string (required if targetType is 'squad')
  * - description?: string
  * - accessType?: 'public' | 'invite_only'
  * - isDefault?: boolean
@@ -57,7 +69,16 @@ export async function POST(req: Request) {
     const { organizationId } = await requireCoachWithOrg();
 
     const body = await req.json();
-    const { name, slug, programId, description, accessType = 'public', isDefault = false } = body;
+    const { 
+      name, 
+      slug, 
+      targetType = 'program' as FunnelTargetType,
+      programId, 
+      squadId,
+      description, 
+      accessType = 'public', 
+      isDefault = false 
+    } = body;
 
     // Validate required fields
     if (!name?.trim()) {
@@ -66,8 +87,18 @@ export async function POST(req: Request) {
     if (!slug?.trim()) {
       return NextResponse.json({ error: 'Slug is required' }, { status: 400 });
     }
-    if (!programId) {
+
+    // Validate target type
+    if (!['program', 'squad'].includes(targetType)) {
+      return NextResponse.json({ error: 'Invalid target type' }, { status: 400 });
+    }
+
+    // Validate target ID based on type
+    if (targetType === 'program' && !programId) {
       return NextResponse.json({ error: 'Program ID is required' }, { status: 400 });
+    }
+    if (targetType === 'squad' && !squadId) {
+      return NextResponse.json({ error: 'Squad ID is required' }, { status: 400 });
     }
 
     // Validate slug format
@@ -78,36 +109,51 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check slug uniqueness within program
+    // Get target ID for uniqueness check
+    const targetId = targetType === 'program' ? programId : squadId;
+    const targetField = targetType === 'program' ? 'programId' : 'squadId';
+
+    // Check slug uniqueness within target
     const existingSlug = await adminDb
       .collection('funnels')
-      .where('programId', '==', programId)
+      .where(targetField, '==', targetId)
       .where('slug', '==', slug)
       .limit(1)
       .get();
 
     if (!existingSlug.empty) {
       return NextResponse.json(
-        { error: 'A funnel with this slug already exists for this program' },
+        { error: `A funnel with this slug already exists for this ${targetType}` },
         { status: 400 }
       );
     }
 
-    // Verify program belongs to this organization
-    const programDoc = await adminDb.collection('programs').doc(programId).get();
-    if (!programDoc.exists) {
-      return NextResponse.json({ error: 'Program not found' }, { status: 404 });
-    }
-    const programData = programDoc.data();
-    if (programData?.organizationId !== organizationId) {
-      return NextResponse.json({ error: 'Program not in your organization' }, { status: 403 });
+    // Verify target belongs to this organization
+    if (targetType === 'program') {
+      const programDoc = await adminDb.collection('programs').doc(programId).get();
+      if (!programDoc.exists) {
+        return NextResponse.json({ error: 'Program not found' }, { status: 404 });
+      }
+      const programData = programDoc.data();
+      if (programData?.organizationId !== organizationId) {
+        return NextResponse.json({ error: 'Program not in your organization' }, { status: 403 });
+      }
+    } else {
+      const squadDoc = await adminDb.collection('squads').doc(squadId).get();
+      if (!squadDoc.exists) {
+        return NextResponse.json({ error: 'Squad not found' }, { status: 404 });
+      }
+      const squadData = squadDoc.data();
+      if (squadData?.organizationId !== organizationId) {
+        return NextResponse.json({ error: 'Squad not in your organization' }, { status: 403 });
+      }
     }
 
-    // If this is being set as default, unset any existing default
+    // If this is being set as default, unset any existing default for the target
     if (isDefault) {
       const existingDefaults = await adminDb
         .collection('funnels')
-        .where('programId', '==', programId)
+        .where(targetField, '==', targetId)
         .where('isDefault', '==', true)
         .get();
 
@@ -121,7 +167,9 @@ export async function POST(req: Request) {
     const now = new Date().toISOString();
     const funnelData: Omit<Funnel, 'id'> = {
       organizationId,
-      programId,
+      targetType,
+      programId: targetType === 'program' ? programId : null,
+      squadId: targetType === 'squad' ? squadId : null,
       slug: slug.toLowerCase(),
       name: name.trim(),
       description: description?.trim() || undefined,
@@ -136,7 +184,7 @@ export async function POST(req: Request) {
 
     const funnelRef = await adminDb.collection('funnels').add(funnelData);
 
-    console.log(`[COACH_ORG_FUNNELS] Created funnel ${funnelRef.id} for org ${organizationId}`);
+    console.log(`[COACH_ORG_FUNNELS] Created ${targetType} funnel ${funnelRef.id} for org ${organizationId}`);
 
     return NextResponse.json({
       success: true,

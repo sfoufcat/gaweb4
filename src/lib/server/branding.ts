@@ -71,11 +71,11 @@ async function getBrandingFromCookie(): Promise<ServerBranding | null> {
  * First tries cookie (fast, set by middleware from KV).
  * Falls back to Firestore lookup if cookie not available.
  * Returns default branding if:
- * - Hostname is the platform domain (growthaddicts.app)
+ * - Hostname is the platform domain (growthaddicts.com)
  * - Organization not found
  * - No custom branding set
  * 
- * @param hostname - The hostname from the request (e.g., "cyberked.com" or "coach.growthaddicts.app")
+ * @param hostname - The hostname from the request (e.g., "cyberked.com" or "coach.growthaddicts.com")
  * @returns ServerBranding object with logo URLs and app title
  */
 export async function getBrandingForDomain(hostname: string): Promise<ServerBranding> {

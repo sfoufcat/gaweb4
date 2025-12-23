@@ -42,14 +42,14 @@ export default function TenantNotFoundPage() {
         {/* Actions */}
         <div className="space-y-3">
           <Link
-            href="https://growthaddicts.app"
+            href="https://growthaddicts.com"
             className="block w-full px-6 py-3 bg-[#a07855] hover:bg-[#8c6245] text-white font-medium rounded-xl transition-colors font-albert"
           >
             Go to GrowthAddicts
           </Link>
           
           <Link
-            href="https://growthaddicts.app/start"
+            href="https://growthaddicts.com/start"
             className="block w-full px-6 py-3 border border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#f5f2ef] dark:hover:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium rounded-xl transition-colors font-albert"
           >
             Become a Coach
@@ -59,11 +59,12 @@ export default function TenantNotFoundPage() {
         {/* Help text */}
         <p className="mt-8 text-sm text-[#8c8c8c] dark:text-[#7d8190] font-albert">
           If you believe this is an error, please contact{' '}
-          <a href="mailto:support@growthaddicts.app" className="text-[#a07855] dark:text-[#b8896a] hover:underline">
-            support@growthaddicts.app
+          <a href="mailto:support@growthaddicts.com" className="text-[#a07855] dark:text-[#b8896a] hover:underline">
+            support@growthaddicts.com
           </a>
         </p>
       </div>
     </div>
   );
 }
+

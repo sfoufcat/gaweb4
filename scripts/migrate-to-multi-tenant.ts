@@ -188,18 +188,18 @@ async function createPlatformOrgDomain(organizationId: string): Promise<void> {
   const domainData = {
     organizationId,
     subdomain: PLATFORM_SUBDOMAIN,
-    primaryDomain: `${PLATFORM_SUBDOMAIN}.growthaddicts.app`,
+    primaryDomain: `${PLATFORM_SUBDOMAIN}.growthaddicts.com`,
     createdAt: now,
     updatedAt: now,
   };
   
   if (isDryRun) {
-    log(`Would create platform org domain: ${PLATFORM_SUBDOMAIN}.growthaddicts.app`);
+    log(`Would create platform org domain: ${PLATFORM_SUBDOMAIN}.growthaddicts.com`);
     return;
   }
   
   await db.collection('org_domains').add(domainData);
-  log(`Created platform org domain: ${PLATFORM_SUBDOMAIN}.growthaddicts.app`, 'success');
+  log(`Created platform org domain: ${PLATFORM_SUBDOMAIN}.growthaddicts.com`, 'success');
 }
 
 async function migrateExistingUsers(platformOrgId: string): Promise<void> {

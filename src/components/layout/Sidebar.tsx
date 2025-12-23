@@ -10,6 +10,8 @@ import type { UserRole, OrgRole } from '@/types';
 import { useChatUnreadCounts } from '@/hooks/useChatUnreadCounts';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 import { OrganizationSwitcher } from './OrganizationSwitcher';
+import { useMyPrograms } from '@/hooks/useMyPrograms';
+import { useSquad } from '@/hooks/useSquad';
 
 // Custom hook for scroll direction detection
 function useScrollDirection() {
@@ -47,6 +49,16 @@ export function Sidebar() {
   const { totalUnread } = useChatUnreadCounts();
   const { scrollDirection, isAtTop } = useScrollDirection();
   const { logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles, isDefault, accentLightIsDark, accentDarkIsDark: _accentDarkIsDark } = useBrandingValues();
+  
+  // Squad and program state for navigation visibility
+  const { hasEnrollments } = useMyPrograms();
+  const { hasStandardSquad } = useSquad();
+  
+  // Navigation visibility logic:
+  // - Program: Show if user has enrollments OR has no standard squad (empty state)
+  // - Squad: Show ONLY if user has a standard squad (coach-created standalone)
+  const showProgramNav = hasEnrollments || !hasStandardSquad;
+  const showSquadNav = hasStandardSquad;
   
   const isActive = (path: string) => pathname === path;
   
@@ -103,27 +115,48 @@ export function Sidebar() {
     }
   }, [router, showMyCoach, showCoachDashboard, showAdminPanel, showEditorPanel]);
   
+  // Home nav item - always visible
+  const homeNavItem = { name: menuTitles.home, path: '/', icon: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+    </svg>
+  )};
+
+  // Program nav item - visible if has enrollments OR no standard squad
+  const programNavItem = { name: menuTitles.program, path: '/program', dataTour: 'program-nav', icon: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    </svg>
+  )};
+
+  // Squad nav item - visible ONLY if user has a standard squad
+  const squadNavItem = { name: menuTitles.squad, path: '/squad', icon: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+    </svg>
+  )};
+
+  // Learn nav item - always visible
+  const learnNavItem = { name: menuTitles.learn, path: '/discover', icon: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+    </svg>
+  )};
+
+  // Chat nav item - always visible
+  const chatNavItem = { name: menuTitles.chat, path: '/chat', icon: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+    </svg>
+  )};
+
+  // Build base nav items with conditional Program and Squad visibility
   const baseNavItems = [
-    { name: menuTitles.home, path: '/', icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-      </svg>
-    )},
-    { name: menuTitles.program, path: '/program', dataTour: 'program-nav', icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-      </svg>
-    )},
-    { name: menuTitles.learn, path: '/discover', icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-      </svg>
-    )},
-    { name: menuTitles.chat, path: '/chat', icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-      </svg>
-    )},
+    homeNavItem,
+    ...(showProgramNav ? [programNavItem] : []),
+    ...(showSquadNav ? [squadNavItem] : []),
+    learnNavItem,
+    chatNavItem,
   ];
 
   // My Coach item - visible for coaching subscribers and super_admin

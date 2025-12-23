@@ -41,7 +41,7 @@ export async function GET() {
       subdomain: orgDomain?.subdomain || null,
       primaryDomain: orgDomain?.primaryDomain || null,
       tenantUrl: orgDomain?.subdomain 
-        ? `https://${orgDomain.subdomain}.growthaddicts.app`
+        ? `https://${orgDomain.subdomain}.growthaddicts.com`
         : null,
       customDomains: customDomains.map(d => ({
         id: d.id,
@@ -114,7 +114,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({
         success: true,
         subdomain: normalizedSubdomain,
-        tenantUrl: `https://${normalizedSubdomain}.growthaddicts.app`,
+        tenantUrl: `https://${normalizedSubdomain}.growthaddicts.com`,
         message: 'No change needed',
       });
     }
@@ -174,7 +174,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({
       success: true,
       subdomain: normalizedSubdomain,
-      tenantUrl: `https://${normalizedSubdomain}.growthaddicts.app`,
+      tenantUrl: `https://${normalizedSubdomain}.growthaddicts.com`,
     });
   } catch (error) {
     console.error('[COACH_ORG_DOMAIN_PATCH] Error:', error);

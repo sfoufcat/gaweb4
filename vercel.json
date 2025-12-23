@@ -28,5 +28,25 @@
       "path": "/api/notifications/cron/program-lifecycle",
       "schedule": "0 6 * * *"
     }
+  ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "growthaddicts.app" }],
+      "destination": "https://growthaddicts.com/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.growthaddicts.app" }],
+      "destination": "https://growthaddicts.com/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "app.growthaddicts.app" }],
+      "destination": "https://app.growthaddicts.com/:path*",
+      "permanent": true
+    }
   ]
 }

@@ -24,7 +24,7 @@ import type { OrgBranding } from '@/types';
 // Can use same secret or a different one
 const WEBHOOK_SECRET = process.env.CLERK_EMAIL_WEBHOOK_SECRET || process.env.CLERK_WEBHOOK_SECRET;
 
-const PLATFORM_DEFAULT_SENDER = 'Growth Addicts <notifications@growthaddicts.app>';
+const PLATFORM_DEFAULT_SENDER = 'Growth Addicts <notifications@growthaddicts.com>';
 const PLATFORM_FALLBACK_SENDER = 'Growth Addicts <hi@updates.growthaddicts.com>';
 
 // =============================================================================

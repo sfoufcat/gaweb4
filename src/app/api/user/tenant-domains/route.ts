@@ -62,7 +62,7 @@ export async function GET() {
         if (customDomain) {
           tenantUrl = `https://${customDomain}`;
         } else if (subdomain) {
-          tenantUrl = `https://${subdomain}.growthaddicts.app`;
+          tenantUrl = `https://${subdomain}.growthaddicts.com`;
         }
         
         tenantDomains.push({

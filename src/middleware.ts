@@ -30,8 +30,8 @@ interface ClerkPublicMetadata {
 // DOMAIN CONFIGURATION (Inline for Edge Runtime compatibility)
 // =============================================================================
 
-// Base domain - change this to switch to growthaddicts.com in the future
-const BASE_DOMAIN = 'growthaddicts.app';
+// Base domain - migrated to growthaddicts.com
+const BASE_DOMAIN = 'growthaddicts.com';
 const PLATFORM_ADMIN_DOMAIN = `app.${BASE_DOMAIN}`;
 const MARKETING_DOMAIN = BASE_DOMAIN;
 
@@ -42,6 +42,9 @@ const PLATFORM_DOMAINS = [
   PLATFORM_ADMIN_DOMAIN,             // Platform admin domain
   'pro.growthaddicts.com',           // Legacy domain
   'www.pro.growthaddicts.com',       // Legacy www variant
+  'growthaddicts.app',               // Legacy domain after .com migration
+  'www.growthaddicts.app',           // Legacy www variant
+  'app.growthaddicts.app',           // Legacy platform admin domain
 ];
 
 // Development hosts treated as platform mode
@@ -93,6 +96,17 @@ function parseHost(hostname: string): ParsedHost {
   if (proSubdomainMatch) {
     const subdomain = proSubdomainMatch[1];
     if (subdomain === 'www') {
+      return { type: 'platform', hostname: normalizedHost };
+    }
+    return { type: 'subdomain', hostname: normalizedHost, subdomain };
+  }
+  
+  // Check for subdomain of growthaddicts.app (legacy after .com migration)
+  // This is a fallback - redirects should happen before this, but this ensures tenant resolution works
+  const legacyAppSubdomainMatch = normalizedHost.match(/^([a-z0-9-]+)\.growthaddicts\.app$/);
+  if (legacyAppSubdomainMatch) {
+    const subdomain = legacyAppSubdomainMatch[1];
+    if (subdomain === 'www' || subdomain === 'app') {
       return { type: 'platform', hostname: normalizedHost };
     }
     return { type: 'subdomain', hostname: normalizedHost, subdomain };
@@ -390,6 +404,25 @@ export default clerkMiddleware(async (auth, request) => {
   }
   
   // ==========================================================================
+  // LEGACY DOMAIN REDIRECT (growthaddicts.app -> growthaddicts.com)
+  // ==========================================================================
+  
+  // Redirect legacy .app subdomains to .com subdomains (permanent redirect for SEO)
+  const normalizedHostname = hostname.toLowerCase().split(':')[0];
+  const legacySubdomainMatch = normalizedHostname.match(/^([a-z0-9-]+)\.growthaddicts\.app$/);
+  if (legacySubdomainMatch) {
+    const subdomain = legacySubdomainMatch[1];
+    // Skip www/app as these are handled by vercel.json redirects
+    if (subdomain !== 'www' && subdomain !== 'app') {
+      const newUrl = new URL(request.url);
+      newUrl.host = `${subdomain}.growthaddicts.com`;
+      newUrl.port = '';
+      console.log(`[MIDDLEWARE] Redirecting legacy subdomain ${subdomain}.growthaddicts.app to ${subdomain}.growthaddicts.com`);
+      return NextResponse.redirect(newUrl, 301);
+    }
+  }
+  
+  // ==========================================================================
   // TENANT RESOLUTION
   // ==========================================================================
   
@@ -521,7 +554,7 @@ export default clerkMiddleware(async (auth, request) => {
       pathname.startsWith('/sso-callback');
     
     // If user is authenticated and tries to access app routes on marketing domain,
-    // they should be on a tenant domain or app.growthaddicts.app
+    // they should be on a tenant domain or app.growthaddicts.com
     // For now, allow this but in the future could redirect to their primary org
   }
   
@@ -716,8 +749,42 @@ export default clerkMiddleware(async (auth, request) => {
   const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
   const role = publicMetadata?.role;
 
-  // BILLING CHECK: For authenticated users on protected app routes
-  if (userId && requiresBilling(request)) {
+  // ==========================================================================
+  // USER ACCESS CHECK (Multi-Tenant)
+  // ==========================================================================
+  
+  // In tenant mode, users need "active access" to use the app.
+  // Active access is granted by:
+  // 1. Active program enrollment
+  // 2. Active squad membership
+  // 3. Coach-assigned access
+  // 4. Staff roles (coach, super_coach, admin)
+  //
+  // The hasActiveAccess field is stored in org_memberships and should be
+  // synced to a fast-access store (cookie/session) when it changes.
+  // For now, API routes/pages do the actual check against Firestore.
+  //
+  // When user doesn't have access, redirect to org's default funnel.
+  
+  if (isTenantMode && userId && requiresBilling(request)) {
+    if (!isStaffRole(role)) {
+      // In tenant mode, the billing check is different - we check org-level access
+      // The actual hasActiveAccess check happens in API routes since it requires Firestore
+      // Middleware just does a fast pre-check using session claims
+      
+      // TODO: Add fast-access check when hasActiveAccess is synced to session claims
+      // For now, let the request through and let the API/page do the full check
+      
+      // Example future implementation:
+      // const hasOrgAccess = publicMetadata?.orgAccessMap?.[tenantOrgId]?.hasActiveAccess;
+      // if (!hasOrgAccess) {
+      //   // Redirect to org's default funnel
+      //   const funnelUrl = await getOrgDefaultFunnelUrl(tenantOrgId);
+      //   return NextResponse.redirect(new URL(funnelUrl || '/sign-in?access=required', request.url));
+      // }
+    }
+  } else if (userId && requiresBilling(request)) {
+    // PLATFORM MODE BILLING CHECK: For authenticated users on protected app routes
     if (!isStaffRole(role)) {
       const billingStatus = publicMetadata?.billingStatus;
       const billingPeriodEnd = publicMetadata?.billingPeriodEnd;

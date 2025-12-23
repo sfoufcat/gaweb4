@@ -90,7 +90,8 @@ export function SignupStep({
   const [hasConfirmed, setHasConfirmed] = useState(false);
 
   // Determine if we're on a custom domain (satellite)
-  const isCustomDomain = !hostname.includes('growthaddicts.app') && 
+  const isCustomDomain = !hostname.includes('growthaddicts.com') && 
+                         !hostname.includes('growthaddicts.app') &&
                          !hostname.includes('localhost') &&
                          !hostname.includes('127.0.0.1');
 
@@ -147,8 +148,8 @@ export function SignupStep({
     if (isCustomDomain) {
       // Custom domain: Redirect to subdomain which handles Clerk OAuth
       const subdomainBase = subdomain 
-        ? `https://${subdomain}.growthaddicts.app`
-        : 'https://growthaddicts.app';
+        ? `https://${subdomain}.growthaddicts.com`
+        : 'https://growthaddicts.com';
       
       // Return URL with flowSessionId so we can link after auth
       const returnUrl = `https://${hostname}/join/callback?flowSessionId=${flowSessionId}`;
@@ -190,7 +191,7 @@ export function SignupStep({
 
     const handleMessage = (event: MessageEvent) => {
       // Validate origin
-      if (!event.origin.includes('growthaddicts.app')) {
+      if (!event.origin.includes('growthaddicts.com') && !event.origin.includes('growthaddicts.app')) {
         return;
       }
       
@@ -299,8 +300,8 @@ export function SignupStep({
 
   // Construct URLs for iframe
   const subdomainBase = subdomain 
-    ? `https://${subdomain}.growthaddicts.app`
-    : 'https://growthaddicts.app';
+    ? `https://${subdomain}.growthaddicts.com`
+    : 'https://growthaddicts.com';
   const currentOrigin = isCustomDomain ? `https://${hostname}` : (typeof window !== 'undefined' ? window.location.origin : '');
   const iframeSrc = `${subdomainBase}/join/embedded?origin=${encodeURIComponent(currentOrigin)}&flowSessionId=${flowSessionId}`;
 

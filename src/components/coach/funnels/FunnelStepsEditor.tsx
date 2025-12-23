@@ -16,10 +16,12 @@ import {
   Loader2,
   Sparkles,
   Info,
-  CheckCircle
+  CheckCircle,
+  Lock
 } from 'lucide-react';
-import type { FunnelStep, FunnelStepType } from '@/types';
+import type { FunnelStep, FunnelStepType, CoachTier } from '@/types';
 import { StepConfigEditor } from './StepConfigEditor';
+import { canUseFunnelStep, TIER_PRICING } from '@/lib/coach-permissions';
 
 interface FunnelStepsEditorProps {
   funnelId: string;
@@ -108,10 +110,29 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
   
   // Edit step
   const [editingStep, setEditingStep] = useState<FunnelStep | null>(null);
+  
+  // Coach tier for permission checks
+  const [coachTier, setCoachTier] = useState<CoachTier>('starter');
 
   useEffect(() => {
     setMounted(true);
     return () => setMounted(false);
+  }, []);
+
+  // Fetch coach tier
+  useEffect(() => {
+    async function fetchTier() {
+      try {
+        const response = await fetch('/api/coach/subscription');
+        if (response.ok) {
+          const data = await response.json();
+          setCoachTier(data.tier || 'starter');
+        }
+      } catch (err) {
+        console.error('Failed to fetch coach tier:', err);
+      }
+    }
+    fetchTier();
   }, []);
 
   const fetchSteps = useCallback(async () => {
@@ -362,18 +383,30 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
                   {(Object.keys(STEP_TYPE_INFO) as FunnelStepType[]).map((type) => {
                     const info = STEP_TYPE_INFO[type];
                     const Icon = info.icon;
+                    const isAllowed = canUseFunnelStep(coachTier, type);
+                    const requiredTier = !isAllowed ? 'pro' : null;
                     
                     return (
                       <button
                         key={type}
-                        onClick={() => handleAddStep(type)}
-                        disabled={isSaving}
-                        className="p-4 border border-[#e1ddd8] rounded-xl hover:border-[#a07855] hover:bg-[#faf8f6] transition-colors text-left disabled:opacity-50"
+                        onClick={() => isAllowed && handleAddStep(type)}
+                        disabled={isSaving || !isAllowed}
+                        className={`p-4 border rounded-xl transition-colors text-left relative ${
+                          isAllowed 
+                            ? 'border-[#e1ddd8] hover:border-[#a07855] hover:bg-[#faf8f6] disabled:opacity-50'
+                            : 'border-[#e1ddd8] bg-[#fafafa] cursor-not-allowed opacity-70'
+                        }`}
                       >
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${info.color}`}>
+                        {!isAllowed && (
+                          <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-[#f5f2ed] rounded text-[10px] font-medium text-text-secondary">
+                            <Lock className="w-3 h-3" />
+                            {TIER_PRICING[requiredTier as CoachTier]?.name}
+                          </div>
+                        )}
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${info.color} ${!isAllowed ? 'opacity-50' : ''}`}>
                           <Icon className="w-5 h-5" />
                         </div>
-                        <p className="font-medium text-text-primary text-sm">{info.label}</p>
+                        <p className={`font-medium text-sm ${isAllowed ? 'text-text-primary' : 'text-text-secondary'}`}>{info.label}</p>
                         <p className="text-xs text-text-muted">{info.description}</p>
                       </button>
                     );

@@ -22,7 +22,7 @@ import type { OrgBranding, FirebaseUser } from '@/types';
 
 // Platform default senders
 export const PLATFORM_DEFAULT_SENDER = 'Growth Addicts <hi@updates.growthaddicts.com>';
-export const PLATFORM_AUTH_SENDER = 'Growth Addicts <notifications@growthaddicts.app>';
+export const PLATFORM_AUTH_SENDER = 'Growth Addicts <notifications@growthaddicts.com>';
 
 // App URL for links in emails
 export const APP_BASE_URL = process.env.APP_BASE_URL || 'https://pro.growthaddicts.com';

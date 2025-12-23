@@ -121,7 +121,7 @@ export async function PATCH(
         
         if (existingOrgId && existingSubdomain && !subdomain) {
           // Re-promotion: reuse existing subdomain
-          tenantUrl = `https://${existingSubdomain}.growthaddicts.app`;
+          tenantUrl = `https://${existingSubdomain}.growthaddicts.com`;
           console.log(`[ADMIN_USER_ROLE] Re-promoted coach ${targetUserId} with existing subdomain ${existingSubdomain}`);
         } else if (subdomain) {
           const normalizedSubdomain = subdomain.toLowerCase();
@@ -137,7 +137,7 @@ export async function PATCH(
           }
           // If same subdomain, nothing to do
           
-          tenantUrl = `https://${normalizedSubdomain}.growthaddicts.app`;
+          tenantUrl = `https://${normalizedSubdomain}.growthaddicts.com`;
         }
       } catch (orgError) {
         // Log but don't fail the role update - org can be created later

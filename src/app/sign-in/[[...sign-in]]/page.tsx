@@ -39,7 +39,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   const isPopup = params.popup === '1';
   const popupOrigin = params.origin || '';
   
-  // Check if this is a satellite domain (custom domain, not growthaddicts.app)
+  // Check if this is a satellite domain (custom domain, not growthaddicts.com/app)
   const domainWithoutPort = hostname.split(':')[0];
   const isSatellite = domainWithoutPort && 
     !domainWithoutPort.includes('growthaddicts') && 

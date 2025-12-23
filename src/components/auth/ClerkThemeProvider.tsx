@@ -5,7 +5,7 @@ import { dark } from '@clerk/themes';
 import { useEffect, useState, useMemo } from 'react';
 
 const STORAGE_KEY = 'ga-theme';
-const PRIMARY_DOMAIN = 'https://growthaddicts.app';
+const PRIMARY_DOMAIN = 'https://growthaddicts.com';
 
 // Custom dark theme variables to match app design
 const darkAppearance = {
@@ -130,7 +130,7 @@ export function ClerkThemeProvider({
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
   
-  // Detect satellite domain (custom domains that aren't growthaddicts.app or localhost)
+  // Detect satellite domain (custom domains that aren't growthaddicts.com/app or localhost)
   const domainWithoutPort = hostname.split(':')[0];
   const isSatellite = Boolean(
     domainWithoutPort && 

@@ -74,7 +74,7 @@ async function findOrCreateSquad(
     timezone: 'UTC',
     memberIds: [],
     inviteCode,
-    isPremium: false, // Can be upgraded later
+    isPremium: true, // Program squads are always premium
     coachId: null,
     organizationId: program.organizationId,
     programId: program.id,

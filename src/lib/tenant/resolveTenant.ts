@@ -36,7 +36,7 @@ export async function resolveTenant(
         type: 'tenant',
         tenant: {
           ...tenant,
-          hostname: `${devOverride}.growthaddicts.app`, // Synthetic hostname
+          hostname: `${devOverride}.growthaddicts.com`, // Synthetic hostname
         },
       };
     }
@@ -227,14 +227,14 @@ export async function createOrgDomain(
   const domainData: Omit<OrgDomain, 'id'> = {
     organizationId,
     subdomain: normalized,
-    primaryDomain: `${normalized}.growthaddicts.app`,
+    primaryDomain: `${normalized}.growthaddicts.com`,
     createdAt: now,
     updatedAt: now,
   };
   
   const docRef = await adminDb.collection('org_domains').add(domainData);
   
-  console.log(`[TENANT] Created org domain: ${normalized}.growthaddicts.app -> org:${organizationId}`);
+  console.log(`[TENANT] Created org domain: ${normalized}.growthaddicts.com -> org:${organizationId}`);
   
   return {
     id: docRef.id,
@@ -269,11 +269,11 @@ export async function updateOrgSubdomain(
   const docRef = snapshot.docs[0].ref;
   await docRef.update({
     subdomain: normalized,
-    primaryDomain: `${normalized}.growthaddicts.app`,
+    primaryDomain: `${normalized}.growthaddicts.com`,
     updatedAt: now,
   });
   
-  console.log(`[TENANT] Updated org subdomain: ${normalized}.growthaddicts.app -> org:${organizationId}`);
+  console.log(`[TENANT] Updated org subdomain: ${normalized}.growthaddicts.com -> org:${organizationId}`);
 }
 
 /**

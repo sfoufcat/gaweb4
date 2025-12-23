@@ -18,6 +18,7 @@ import { AdminPremiumUpgradeFormsTab } from '@/components/admin/AdminPremiumUpgr
 import { AdminCoachingIntakeFormsTab } from '@/components/admin/AdminCoachingIntakeFormsTab';
 import { CoachFunnelsTab } from '@/components/coach/funnels';
 import { CoachProgramsTab } from '@/components/coach/programs';
+import { CoachPlanTab } from '@/components/coach/CoachPlanTab';
 
 /**
  * Coach Dashboard Page
@@ -32,8 +33,8 @@ import { CoachProgramsTab } from '@/components/coach/programs';
  */
 
 // Valid tab values
-type CoachTab = 'clients' | 'squads' | 'programs' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'channels' | 'customize';
-const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'discover', 'upgrade-forms', 'coaching-forms', 'funnels', 'channels', 'customize'];
+type CoachTab = 'clients' | 'squads' | 'programs' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'channels' | 'customize' | 'plan';
+const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'discover', 'upgrade-forms', 'coaching-forms', 'funnels', 'channels', 'customize', 'plan'];
 
 export default function CoachPage() {
   const router = useRouter();
@@ -182,6 +183,12 @@ export default function CoachPage() {
                 >
                   Customize & Settings
                 </TabsTrigger>
+                <TabsTrigger 
+                  value="plan"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Plan & Billing
+                </TabsTrigger>
               </>
             )}
           </TabsList>
@@ -304,6 +311,11 @@ export default function CoachPage() {
           {/* Customize Branding Tab */}
           <TabsContent value="customize">
             <CustomizeBrandingTab />
+          </TabsContent>
+
+          {/* Plan & Billing Tab */}
+          <TabsContent value="plan">
+            <CoachPlanTab />
           </TabsContent>
         </Tabs>
       </div>

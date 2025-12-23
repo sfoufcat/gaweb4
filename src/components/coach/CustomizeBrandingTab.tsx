@@ -451,7 +451,7 @@ export function CustomizeBrandingTab() {
         
         // Seamless session handoff
         const targetUrl = `https://${data.domain.domain}/coach/customize`;
-        const syncUrl = `https://growthaddicts.app/auth/sync?target=${encodeURIComponent(targetUrl)}`;
+        const syncUrl = `https://growthaddicts.com/auth/sync?target=${encodeURIComponent(targetUrl)}`;
         
         setTimeout(() => {
           window.location.href = syncUrl;
@@ -1249,7 +1249,7 @@ export function CustomizeBrandingTab() {
                     className="flex-1 px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
                   />
                   <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert whitespace-nowrap">
-                    .growthaddicts.app
+                    .growthaddicts.com
                   </span>
                 </div>
                 <button
@@ -1273,10 +1273,10 @@ export function CustomizeBrandingTab() {
                 <div className="flex items-center gap-2 p-3 bg-[#a07855]/10 dark:bg-[#b8896a]/10 rounded-xl">
                   <Link2 className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
                   <span className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert font-mono">
-                    https://{currentSubdomain}.growthaddicts.app
+                    https://{currentSubdomain}.growthaddicts.com
                   </span>
                   <a
-                    href={`https://${currentSubdomain}.growthaddicts.app`}
+                    href={`https://${currentSubdomain}.growthaddicts.com`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="ml-auto text-[#a07855] dark:text-[#b8896a] hover:opacity-70 transition-opacity"

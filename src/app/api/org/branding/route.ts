@@ -43,7 +43,7 @@ export async function GET(request: Request) {
       organizationId = requestedOrgId;
     }
     // NOTE: We intentionally do NOT fall back to the user's organization here.
-    // On the platform domain (app.growthaddicts.app), we want default branding.
+    // On the platform domain (app.growthaddicts.com), we want default branding.
     // User-specific branding should only appear on tenant domains where
     // x-tenant-org-id header is set by the middleware.
 

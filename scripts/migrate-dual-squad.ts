@@ -17,7 +17,8 @@
  * --verbose     Show detailed progress
  */
 
-import { initializeApp, cert, getApps, App } from 'firebase-admin/app';
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import type { App } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
 // Initialize Firebase Admin if not already initialized

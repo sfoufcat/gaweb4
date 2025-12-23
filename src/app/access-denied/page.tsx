@@ -51,7 +51,7 @@ export default function AccessDeniedPage() {
         {/* Actions */}
         <div className="space-y-3">
           <Link
-            href="https://growthaddicts.app"
+            href="https://growthaddicts.com"
             className="block w-full px-6 py-3 bg-[#a07855] hover:bg-[#8c6245] text-white font-medium rounded-xl transition-colors font-albert"
           >
             Go to My Dashboard
@@ -67,7 +67,7 @@ export default function AccessDeniedPage() {
         {/* Help text */}
         <p className="mt-8 text-sm text-[#8c8c8c] dark:text-[#7d8190] font-albert">
           Need access? Contact the organization administrator or{' '}
-          <a href="mailto:support@growthaddicts.app" className="text-[#a07855] dark:text-[#b8896a] hover:underline">
+          <a href="mailto:support@growthaddicts.com" className="text-[#a07855] dark:text-[#b8896a] hover:underline">
             reach out to support
           </a>
         </p>
@@ -75,3 +75,4 @@ export default function AccessDeniedPage() {
     </div>
   );
 }
+

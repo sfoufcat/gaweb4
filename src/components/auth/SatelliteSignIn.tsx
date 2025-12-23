@@ -34,8 +34,8 @@ export function SatelliteSignIn({ subdomain, customDomain, logoUrl, appTitle }: 
   // Construct URLs
   const currentOrigin = `https://${customDomain}`;
   const subdomainBase = subdomain 
-    ? `https://${subdomain}.growthaddicts.app`
-    : 'https://growthaddicts.app';
+    ? `https://${subdomain}.growthaddicts.com`
+    : 'https://growthaddicts.com';
   const iframeSrc = `${subdomainBase}/sign-in/embedded?origin=${encodeURIComponent(currentOrigin)}`;
 
   // Handle OAuth - redirect to subdomain which handles Clerk OAuth
@@ -51,7 +51,7 @@ export function SatelliteSignIn({ subdomain, customDomain, logoUrl, appTitle }: 
     // Listen for postMessage from iframe (email/password auth success)
     const handleMessage = (event: MessageEvent) => {
       // Validate origin - must be from subdomain or primary domain
-      if (!event.origin.includes('growthaddicts.app')) {
+      if (!event.origin.includes('growthaddicts.com') && !event.origin.includes('growthaddicts.app')) {
         return;
       }
       

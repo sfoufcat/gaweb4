@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
     
     // Use primary domain for Stripe account links (must be registered in Stripe Dashboard)
     // Store the original domain to redirect back after completion
-    const primaryDomain = process.env.NEXT_PUBLIC_APP_URL || 'https://growthaddicts.app';
+    const primaryDomain = process.env.NEXT_PUBLIC_APP_URL || 'https://growthaddicts.com';
     const returnDomain = request.headers.get('origin') || primaryDomain;
     
     let accountId = settings?.stripeConnectAccountId;

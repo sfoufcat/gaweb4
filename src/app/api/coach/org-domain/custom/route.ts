@@ -104,10 +104,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid domain format' }, { status: 400 });
     }
     
-    // Don't allow growthaddicts.app subdomains as custom domains
-    if (normalizedDomain.endsWith('.growthaddicts.app') || normalizedDomain.endsWith('.growthaddicts.com')) {
+    // Don't allow growthaddicts.com/app subdomains as custom domains
+    if (normalizedDomain.endsWith('.growthaddicts.com') || normalizedDomain.endsWith('.growthaddicts.app')) {
       return NextResponse.json({ 
-        error: 'Cannot add growthaddicts.app/com domains as custom domains. Use the subdomain setting instead.' 
+        error: 'Cannot add growthaddicts.com/app domains as custom domains. Use the subdomain setting instead.' 
       }, { status: 400 });
     }
     

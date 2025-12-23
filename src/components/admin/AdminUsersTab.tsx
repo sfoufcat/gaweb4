@@ -1103,7 +1103,7 @@ export function AdminUsersTab({
                         disabled={subdomainLoading}
                       />
                       <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert whitespace-nowrap">
-                        .growthaddicts.app
+                        .growthaddicts.com
                       </span>
                     </div>
                     {subdomainError && (
@@ -1120,7 +1120,7 @@ export function AdminUsersTab({
                         Tenant URL Preview:
                       </p>
                       <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert font-mono">
-                        https://{subdomain.toLowerCase()}.growthaddicts.app
+                        https://{subdomain.toLowerCase()}.growthaddicts.com
                       </p>
                     </div>
                   )}

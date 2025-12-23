@@ -30,6 +30,70 @@ export type UserTier = 'free' | 'standard' | 'premium';
 export type CoachingStatus = 'none' | 'active' | 'canceled' | 'past_due';
 export type CoachingPlan = 'monthly' | 'quarterly' | null;
 
+// =============================================================================
+// COACH SUBSCRIPTION TIERS
+// =============================================================================
+
+/**
+ * Coach tier levels for platform subscription
+ * - starter: $49/mo - 15 clients, 2 programs, 3 squads
+ * - pro: $129/mo - 150 clients, 10 programs, 25 squads, custom domain, Stripe Connect
+ * - scale: $299/mo - 500 clients, 50 programs, 100 squads, all features
+ */
+export type CoachTier = 'starter' | 'pro' | 'scale';
+
+/**
+ * Coach subscription status
+ */
+export type CoachSubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | 'none';
+
+/**
+ * Coach subscription record
+ * Stored in Firestore: coach_subscriptions/{id}
+ * 
+ * Tracks a coach's platform subscription for their organization.
+ */
+export interface CoachSubscription {
+  id: string;
+  organizationId: string;           // Clerk Organization ID
+  tier: CoachTier;
+  status: CoachSubscriptionStatus;
+  
+  // Stripe subscription info
+  stripeSubscriptionId: string | null;
+  stripeCustomerId: string | null;
+  currentPeriodStart: string | null;  // ISO timestamp
+  currentPeriodEnd: string | null;    // ISO timestamp
+  cancelAtPeriodEnd: boolean;
+  
+  // Manual billing support (for enterprise/special deals)
+  manualBilling: boolean;
+  manualExpiresAt: string | null;     // ISO date when manual access expires
+  
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Default coach subscription values
+ */
+export const DEFAULT_COACH_SUBSCRIPTION: Omit<CoachSubscription, 'id' | 'organizationId' | 'createdAt' | 'updatedAt'> = {
+  tier: 'starter',
+  status: 'none',
+  stripeSubscriptionId: null,
+  stripeCustomerId: null,
+  currentPeriodStart: null,
+  currentPeriodEnd: null,
+  cancelAtPeriodEnd: false,
+  manualBilling: false,
+  manualExpiresAt: null,
+};
+
+/**
+ * User access reason - why a user has access to an org
+ */
+export type UserAccessReason = 'program' | 'squad' | 'coach_assigned' | 'staff' | 'none';
+
 // Clerk Public Metadata Type (for type assertions with sessionClaims)
 // This is the SINGLE SOURCE OF TRUTH for user access control
 // NOTE: Multi-org architecture - tier/track/orgRole are now per-org in Firestore org_memberships
@@ -1521,6 +1585,10 @@ export interface OrgMembership {
   createdAt: string;                   // ISO timestamp
   updatedAt: string;                   // ISO timestamp
   
+  // Access control fields
+  hasActiveAccess: boolean;            // Whether user can access org (derived from program/squad membership)
+  accessReason: UserAccessReason;      // Why user has access (program, squad, coach_assigned, staff, none)
+  
   // ============================================
   // PROFILE FIELDS (per-organization)
   // These fields allow users to have different profiles per org
@@ -1625,6 +1693,14 @@ export interface OrgSettings {
   requireApproval: boolean;            // Whether new signups need coach approval
   autoJoinSquadId: string | null;      // Auto-assign new members to this squad
   welcomeMessage: string | null;       // Custom welcome message for new members
+  
+  // Coach platform subscription
+  coachTier: CoachTier;                // Coach's platform tier (starter, pro, scale)
+  coachSubscriptionId: string | null;  // FK to coach_subscriptions collection
+  
+  // Default funnel for non-members
+  defaultFunnelId: string | null;      // Funnel to redirect users without access
+  
   createdAt: string;                   // ISO timestamp
   updatedAt: string;                   // ISO timestamp
 }
@@ -1643,6 +1719,9 @@ export const DEFAULT_ORG_SETTINGS: Omit<OrgSettings, 'id' | 'organizationId' | '
   requireApproval: false,
   autoJoinSquadId: null,
   welcomeMessage: null,
+  coachTier: 'starter',
+  coachSubscriptionId: null,
+  defaultFunnelId: null,
 };
 
 /**
@@ -1798,7 +1877,7 @@ export type CustomDomainStatus = 'pending' | 'verified' | 'failed';
 export interface OrgDomain {
   id: string;                    // Auto-generated document ID
   organizationId: string;        // Clerk Organization ID (unique)
-  subdomain: string;             // e.g., "acme" for acme.growthaddicts.app (unique, lowercase)
+  subdomain: string;             // e.g., "acme" for acme.growthaddicts.com (unique, lowercase)
   primaryDomain?: string;        // Display domain (subdomain or verified custom domain)
   createdAt: string;             // ISO timestamp
   updatedAt: string;             // ISO timestamp
@@ -1932,13 +2011,22 @@ export type FunnelAccessType = 'public' | 'invite_only';
 export type InvitePaymentStatus = 'required' | 'pre_paid' | 'free';
 
 /**
+ * Funnel target type - what the funnel enrolls users into
+ */
+export type FunnelTargetType = 'program' | 'squad';
+
+/**
  * Funnel - Coach-created user acquisition flow
  * Stored in Firestore 'funnels' collection
  */
 export interface Funnel {
   id: string;
   organizationId: string;        // Clerk Organization ID (multi-tenant)
-  programId: string;             // Which program this enrolls users in
+  
+  // Target - funnel can target either a program or a squad
+  targetType: FunnelTargetType;  // What this funnel enrolls users into
+  programId: string | null;      // Program ID (when targetType = 'program')
+  squadId: string | null;        // Squad ID (when targetType = 'squad')
   
   // Identification
   slug: string;                  // URL-friendly identifier
@@ -1946,7 +2034,7 @@ export interface Funnel {
   description?: string;          // Optional description
   
   // Settings
-  isDefault: boolean;            // Default funnel for the program
+  isDefault: boolean;            // Default funnel for the target (program or squad)
   isActive: boolean;             // Whether funnel is accepting users
   accessType: FunnelAccessType;  // Public or invite-only
   defaultPaymentStatus: InvitePaymentStatus; // Default for invites

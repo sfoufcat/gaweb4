@@ -2,13 +2,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
-import type { Funnel, Program } from '@/types';
+import { X, Layers, UsersRound } from 'lucide-react';
+import type { Funnel, Program, FunnelTargetType } from '@/types';
+
+interface Squad {
+  id: string;
+  name: string;
+  slug?: string;
+}
 
 interface FunnelEditorDialogProps {
   mode: 'create' | 'edit';
   funnel?: Funnel;
   programs: Program[];
+  squads?: Squad[];
   onClose: () => void;
   onSaved: () => void;
 }
@@ -16,7 +23,8 @@ interface FunnelEditorDialogProps {
 export function FunnelEditorDialog({ 
   mode, 
   funnel, 
-  programs, 
+  programs,
+  squads = [],
   onClose, 
   onSaved 
 }: FunnelEditorDialogProps) {
@@ -32,7 +40,9 @@ export function FunnelEditorDialog({
   const [formData, setFormData] = useState({
     name: funnel?.name || '',
     slug: funnel?.slug || '',
+    targetType: (funnel?.targetType || 'program') as FunnelTargetType,
     programId: funnel?.programId || '',
+    squadId: funnel?.squadId || '',
     description: funnel?.description || '',
     accessType: funnel?.accessType || 'public',
     isDefault: funnel?.isDefault || false,
@@ -62,8 +72,13 @@ export function FunnelEditorDialog({
       if (!/^[a-z0-9-]+$/.test(formData.slug)) {
         throw new Error('Slug can only contain lowercase letters, numbers, and hyphens');
       }
-      if (!formData.programId) {
+      
+      // Validate target selection
+      if (formData.targetType === 'program' && !formData.programId) {
         throw new Error('Please select a program');
+      }
+      if (formData.targetType === 'squad' && !formData.squadId) {
+        throw new Error('Please select a squad');
       }
 
       let response: Response;
@@ -89,7 +104,9 @@ export function FunnelEditorDialog({
           body: JSON.stringify({
             name: formData.name,
             slug: formData.slug,
-            programId: formData.programId,
+            targetType: formData.targetType,
+            programId: formData.targetType === 'program' ? formData.programId : null,
+            squadId: formData.targetType === 'squad' ? formData.squadId : null,
             description: formData.description || null,
             accessType: formData.accessType,
             isDefault: formData.isDefault,
@@ -135,26 +152,95 @@ export function FunnelEditorDialog({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Program (only for create) */}
+          {/* Target Type Toggle (only for create) */}
           {mode === 'create' && (
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">
-                Program *
-              </label>
-              <select
-                value={formData.programId}
-                onChange={(e) => setFormData(prev => ({ ...prev, programId: e.target.value }))}
-                className="w-full px-4 py-2 bg-white border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
-                required
-              >
-                <option value="">Select a program</option>
-                {programs.map(program => (
-                  <option key={program.id} value={program.id}>
-                    {program.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <>
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-2">
+                  Funnel Target *
+                </label>
+                <div className="flex gap-2 p-1 bg-[#f5f3f0] rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, targetType: 'program', squadId: '' }))}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                      formData.targetType === 'program'
+                        ? 'bg-white text-text-primary shadow-sm'
+                        : 'text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    <Layers className="w-4 h-4" />
+                    Program
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, targetType: 'squad', programId: '' }))}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                      formData.targetType === 'squad'
+                        ? 'bg-white text-text-primary shadow-sm'
+                        : 'text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    <UsersRound className="w-4 h-4" />
+                    Squad
+                  </button>
+                </div>
+                <p className="text-xs text-text-muted mt-2">
+                  {formData.targetType === 'program'
+                    ? 'Enroll users in a program through this funnel'
+                    : 'Add users directly to a squad through this funnel'}
+                </p>
+              </div>
+
+              {/* Program Selector (when targetType is program) */}
+              {formData.targetType === 'program' && (
+                <div>
+                  <label className="block text-sm font-medium text-text-primary mb-2">
+                    Program *
+                  </label>
+                  <select
+                    value={formData.programId}
+                    onChange={(e) => setFormData(prev => ({ ...prev, programId: e.target.value }))}
+                    className="w-full px-4 py-2 bg-white border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+                    required={formData.targetType === 'program'}
+                  >
+                    <option value="">Select a program</option>
+                    {programs.map(program => (
+                      <option key={program.id} value={program.id}>
+                        {program.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Squad Selector (when targetType is squad) */}
+              {formData.targetType === 'squad' && (
+                <div>
+                  <label className="block text-sm font-medium text-text-primary mb-2">
+                    Squad *
+                  </label>
+                  <select
+                    value={formData.squadId}
+                    onChange={(e) => setFormData(prev => ({ ...prev, squadId: e.target.value }))}
+                    className="w-full px-4 py-2 bg-white border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+                    required={formData.targetType === 'squad'}
+                  >
+                    <option value="">Select a squad</option>
+                    {squads.map(squad => (
+                      <option key={squad.id} value={squad.id}>
+                        {squad.name}
+                      </option>
+                    ))}
+                  </select>
+                  {squads.length === 0 && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      No squads available. Create a squad first.
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
           )}
 
           {/* Name */}
@@ -178,8 +264,8 @@ export function FunnelEditorDialog({
               URL Slug *
             </label>
             <div className="flex items-center">
-              <span className="px-3 py-2 bg-[#f5f3f0] border border-r-0 border-[#e1ddd8] rounded-l-lg text-text-muted text-sm">
-                /join/[program]/
+              <span className="px-3 py-2 bg-[#f5f3f0] border border-r-0 border-[#e1ddd8] rounded-l-lg text-text-muted text-sm whitespace-nowrap">
+                {formData.targetType === 'squad' ? '/join/squad/[slug]/' : '/join/[program]/'}
               </span>
               <input
                 type="text"
@@ -254,10 +340,14 @@ export function FunnelEditorDialog({
                 onChange={(e) => setFormData(prev => ({ ...prev, isDefault: e.target.checked }))}
                 className="rounded text-[#a07855] focus:ring-[#a07855]"
               />
-              <span className="text-text-primary">Set as default funnel for this program</span>
+              <span className="text-text-primary">
+                Set as default funnel for this {formData.targetType}
+              </span>
             </label>
             <p className="text-xs text-text-muted mt-1 ml-6">
-              The default funnel is used when users visit /join/[program] without specifying a funnel
+              {formData.targetType === 'squad'
+                ? 'The default funnel is used when users visit /join/squad/[slug] without specifying a funnel'
+                : 'The default funnel is used when users visit /join/[program] without specifying a funnel'}
             </p>
           </div>
 
