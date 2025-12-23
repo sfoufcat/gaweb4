@@ -6,22 +6,24 @@ import { motion } from 'framer-motion';
 import { X, Plus, Trash2, GripVertical } from 'lucide-react';
 import type { FunnelStep, FunnelStepType, FunnelQuestionOption } from '@/types';
 import { nanoid } from 'nanoid';
+import { MediaUpload } from '@/components/admin/MediaUpload';
 
 interface StepConfigEditorProps {
   step: FunnelStep;
   onClose: () => void;
-  onSave: (config: unknown) => void;
+  onSave: (config: unknown, name?: string) => void;
 }
 
 export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProps) {
   const [config, setConfig] = useState<Record<string, unknown>>(
     ((step.config as unknown) as { config: Record<string, unknown> })?.config || {}
   );
+  const [stepName, setStepName] = useState(step.name || '');
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
     setIsSaving(true);
-    await onSave(config);
+    await onSave(config, stepName.trim() || undefined);
     setIsSaving(false);
   };
 
@@ -85,7 +87,21 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+          {/* Step Name - shown for all step types */}
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-2">Step Name</label>
+            <input
+              type="text"
+              value={stepName}
+              onChange={(e) => setStepName(e.target.value)}
+              className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+              placeholder={`e.g., "${step.type.replace(/_/g, ' ')} - Main"`}
+            />
+            <p className="text-xs text-text-muted mt-1">A custom name to help you identify this step</p>
+          </div>
+
+          {/* Step-specific config */}
           {renderConfigEditor()}
         </div>
 
@@ -182,33 +198,104 @@ function QuestionConfigEditor({ config, onChange }: { config: Record<string, unk
         <p className="text-xs text-text-muted mt-1">This is the key used to store the answer</p>
       </div>
 
+      {/* Scale customization - only show for scale type */}
+      {config.questionType === 'scale' && (
+        <>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-2">Scale Min</label>
+              <input
+                type="number"
+                value={config.scaleMin as number || 1}
+                onChange={(e) => onChange({ ...config, scaleMin: parseInt(e.target.value) || 1 })}
+                className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+                min={0}
+                max={10}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-2">Scale Max</label>
+              <input
+                type="number"
+                value={config.scaleMax as number || 10}
+                onChange={(e) => onChange({ ...config, scaleMax: parseInt(e.target.value) || 10 })}
+                className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+                min={1}
+                max={20}
+              />
+            </div>
+          </div>
+          <p className="text-xs text-text-muted -mt-4">Number of scale points: {((config.scaleMax as number || 10) - (config.scaleMin as number || 1) + 1)}</p>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-2">Start Label</label>
+              <input
+                type="text"
+                value={(config.scaleLabels as { min?: string; max?: string })?.min || ''}
+                onChange={(e) => onChange({ 
+                  ...config, 
+                  scaleLabels: { 
+                    ...((config.scaleLabels as { min?: string; max?: string }) || {}),
+                    min: e.target.value 
+                  }
+                })}
+                className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+                placeholder="e.g., Strongly disagree"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-2">End Label</label>
+              <input
+                type="text"
+                value={(config.scaleLabels as { min?: string; max?: string })?.max || ''}
+                onChange={(e) => onChange({ 
+                  ...config, 
+                  scaleLabels: { 
+                    ...((config.scaleLabels as { min?: string; max?: string }) || {}),
+                    max: e.target.value 
+                  }
+                })}
+                className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+                placeholder="e.g., Strongly agree"
+              />
+            </div>
+          </div>
+        </>
+      )}
+
       {(config.questionType === 'single_choice' || config.questionType === 'multi_choice' || !config.questionType) && (
         <div>
           <label className="block text-sm font-medium text-text-primary mb-2">Options</label>
-          <div className="space-y-2">
+          <div className="space-y-4">
             {options.map((option) => (
-              <div key={option.id} className="flex items-center gap-2">
-                <GripVertical className="w-4 h-4 text-text-muted cursor-grab" />
-                <input
-                  type="text"
-                  value={option.label}
-                  onChange={(e) => updateOption(option.id, { label: e.target.value })}
-                  className="flex-1 px-3 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] text-sm"
-                  placeholder="Option label"
-                />
-                <input
-                  type="text"
-                  value={option.emoji || ''}
-                  onChange={(e) => updateOption(option.id, { emoji: e.target.value })}
-                  className="w-16 px-3 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] text-sm text-center"
-                  placeholder="😀"
-                />
-                <button
-                  onClick={() => removeOption(option.id)}
-                  className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  <Trash2 className="w-4 h-4 text-red-500" />
-                </button>
+              <div key={option.id} className="border border-[#e1ddd8] rounded-lg p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <GripVertical className="w-4 h-4 text-text-muted cursor-grab flex-shrink-0" />
+                  <input
+                    type="text"
+                    value={option.label}
+                    onChange={(e) => updateOption(option.id, { label: e.target.value })}
+                    className="flex-1 px-3 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] text-sm"
+                    placeholder="Option label (emojis allowed)"
+                  />
+                  <button
+                    onClick={() => removeOption(option.id)}
+                    className="p-2 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </button>
+                </div>
+                {/* Optional image upload */}
+                <div className="pl-6">
+                  <MediaUpload
+                    value={option.imageUrl || ''}
+                    onChange={(url) => updateOption(option.id, { imageUrl: url })}
+                    folder="programs"
+                    type="image"
+                    label="Option Image (optional)"
+                  />
+                </div>
               </div>
             ))}
             <button
@@ -219,6 +306,7 @@ function QuestionConfigEditor({ config, onChange }: { config: Record<string, unk
               Add Option
             </button>
           </div>
+          <p className="text-xs text-text-muted mt-2">Options with images display as cards in a grid layout</p>
         </div>
       )}
     </div>
@@ -395,8 +483,34 @@ function IdentityConfigEditor({ config, onChange }: { config: Record<string, unk
 }
 
 // Analyzing Config Editor
+interface Testimonial {
+  name: string;
+  text: string;
+  imageUrl?: string;
+}
+
 function AnalyzingConfigEditor({ config, onChange }: { config: Record<string, unknown>; onChange: (c: Record<string, unknown>) => void }) {
   const messages = (config.messages as string[]) || [];
+  const testimonials = (config.testimonials as Testimonial[]) || [];
+
+  const addTestimonial = () => {
+    if (testimonials.length >= 3) return; // Max 3 testimonials
+    const newTestimonial: Testimonial = {
+      name: '',
+      text: '',
+    };
+    onChange({ ...config, testimonials: [...testimonials, newTestimonial] });
+  };
+
+  const updateTestimonial = (index: number, updates: Partial<Testimonial>) => {
+    const updated = [...testimonials];
+    updated[index] = { ...updated[index], ...updates };
+    onChange({ ...config, testimonials: updated });
+  };
+
+  const removeTestimonial = (index: number) => {
+    onChange({ ...config, testimonials: testimonials.filter((_, i) => i !== index) });
+  };
 
   return (
     <div className="space-y-6">
@@ -421,6 +535,76 @@ function AnalyzingConfigEditor({ config, onChange }: { config: Record<string, un
           placeholder="One message per line..."
         />
         <p className="text-xs text-text-muted mt-1">These cycle through during the animation</p>
+      </div>
+
+      {/* Testimonials Section */}
+      <div className="pt-4 border-t border-[#e1ddd8]">
+        <div className="flex items-center justify-between mb-4">
+          <label className="block text-sm font-medium text-text-primary">Testimonials</label>
+          {testimonials.length < 3 && (
+            <button
+              onClick={addTestimonial}
+              className="text-sm text-[#a07855] hover:text-[#8c6245] font-medium"
+            >
+              + Add testimonial
+            </button>
+          )}
+        </div>
+        
+        {testimonials.length === 0 ? (
+          <p className="text-sm text-text-muted">Add testimonials to display below the analyzing animation.</p>
+        ) : (
+          <div className="space-y-4">
+            {testimonials.map((testimonial, index) => (
+              <div key={index} className="border border-[#e1ddd8] rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-text-secondary">Testimonial {index + 1}</span>
+                  <button
+                    onClick={() => removeTestimonial(index)}
+                    className="text-red-500 hover:text-red-600 text-sm"
+                  >
+                    Remove
+                  </button>
+                </div>
+                
+                <div>
+                  <label className="block text-xs text-text-muted mb-1">Name</label>
+                  <input
+                    type="text"
+                    value={testimonial.name}
+                    onChange={(e) => updateTestimonial(index, { name: e.target.value })}
+                    className="w-full px-3 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] text-sm"
+                    placeholder="John D."
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-xs text-text-muted mb-1">Quote</label>
+                  <textarea
+                    value={testimonial.text}
+                    onChange={(e) => updateTestimonial(index, { text: e.target.value })}
+                    className="w-full px-3 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] text-sm resize-none"
+                    rows={2}
+                    placeholder="This program changed my life..."
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-xs text-text-muted mb-1">Avatar Image (optional)</label>
+                  <MediaUpload
+                    value={testimonial.imageUrl || ''}
+                    onChange={(url) => updateTestimonial(index, { imageUrl: url })}
+                    folder="programs"
+                    type="image"
+                    label="Avatar"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        <p className="text-xs text-text-muted mt-2">Up to 3 testimonials. These appear below the analyzing animation.</p>
       </div>
     </div>
   );
@@ -506,13 +690,13 @@ function InfoConfigEditor({ config, onChange }: { config: Record<string, unknown
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-text-primary mb-2">Image URL (optional)</label>
-        <input
-          type="text"
+        <label className="block text-sm font-medium text-text-primary mb-2">Image (optional)</label>
+        <MediaUpload
           value={config.imageUrl as string || ''}
-          onChange={(e) => onChange({ ...config, imageUrl: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
-          placeholder="https://..."
+          onChange={(url) => onChange({ ...config, imageUrl: url })}
+          folder="programs"
+          type="image"
+          label="Image"
         />
       </div>
 

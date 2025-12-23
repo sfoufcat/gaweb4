@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft } from 'lucide-react';
 import { useTypewriter } from '@/hooks/useTypewriter';
 import type { FunnelStepConfigIdentity } from '@/types';
 
@@ -121,7 +122,18 @@ export function IdentityStep({
   const promptText = config.promptText || "I am becoming...";
 
   return (
-    <div className="w-full max-w-xl lg:max-w-2xl mx-auto">
+    <div className="w-full max-w-xl lg:max-w-2xl mx-auto relative">
+      {/* Back button at top-left */}
+      {!isFirstStep && onBack && (
+        <button
+          onClick={onBack}
+          className="absolute -top-2 left-0 p-2 rounded-full hover:bg-[#f5f3f0] transition-colors"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="w-5 h-5 text-text-secondary" />
+        </button>
+      )}
+
       {/* Header */}
       <motion.h1 
         className="font-albert text-[28px] sm:text-[36px] lg:text-[42px] text-text-primary tracking-[-1.5px] leading-[1.15] mb-4 text-center"
@@ -278,22 +290,12 @@ export function IdentityStep({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}
-        className="flex gap-3"
       >
-        {!isFirstStep && onBack && (
-          <button
-            onClick={onBack}
-            className="px-6 py-3 text-text-secondary hover:text-text-primary transition-colors"
-          >
-            Back
-          </button>
-        )}
-        
         {!isValidated && !suggestion ? (
           <button
             onClick={handleValidate}
             disabled={!isButtonEnabled || isValidating}
-            className="flex-1 py-3 px-6 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full py-3 px-6 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             style={{ backgroundColor: primaryVar }}
             onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = primaryHoverVar)}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = primaryVar}
@@ -308,7 +310,7 @@ export function IdentityStep({
             )}
           </button>
         ) : isValidated ? (
-          <div className="flex-1 flex gap-3">
+          <div className="flex gap-3">
             <button
               onClick={() => {
                 setIsValidated(false);

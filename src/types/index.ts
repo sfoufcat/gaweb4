@@ -1971,6 +1971,7 @@ export interface FunnelQuestionOption {
   label: string;
   value: string;
   emoji?: string;
+  imageUrl?: string;            // Optional image for visual choice cards
   description?: string;
   order: number;
 }
@@ -2020,9 +2021,16 @@ export interface FunnelStepConfigIdentity {
   promptText?: string;           // Custom prompt (e.g., "I am becoming...")
 }
 
+export interface FunnelTestimonial {
+  name: string;
+  text: string;
+  imageUrl?: string;
+}
+
 export interface FunnelStepConfigAnalyzing {
   durationMs: number;            // How long to show (e.g., 3000)
   messages?: string[];           // Messages to cycle through
+  testimonials?: FunnelTestimonial[]; // Optional testimonials to show during analyzing
 }
 
 export interface FunnelStepConfigPlanReveal {
@@ -2067,6 +2075,7 @@ export interface FunnelStep {
   funnelId: string;
   order: number;                 // 0-indexed order
   type: FunnelStepType;
+  name?: string;                 // Custom name for coach differentiation
   config: FunnelStepConfig;
   
   // Conditional display

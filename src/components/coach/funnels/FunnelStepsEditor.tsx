@@ -203,13 +203,13 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
     }
   };
 
-  const handleSaveStepConfig = async (stepId: string, config: unknown) => {
+  const handleSaveStepConfig = async (stepId: string, config: unknown, name?: string) => {
     try {
       setIsSaving(true);
       const response = await fetch(`/api/coach/org-funnels/${funnelId}/steps/${stepId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config }),
+        body: JSON.stringify({ config, name }),
       });
 
       if (!response.ok) throw new Error('Failed to save step');
@@ -285,8 +285,12 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
 
                     {/* Step info */}
                     <div className="flex-1">
-                      <p className="font-medium text-text-primary">{typeInfo?.label || step.type}</p>
-                      <p className="text-sm text-text-secondary">{typeInfo?.description}</p>
+                      <p className="font-medium text-text-primary">
+                        {step.name || typeInfo?.label || step.type}
+                      </p>
+                      <p className="text-sm text-text-secondary">
+                        {step.name ? typeInfo?.label : typeInfo?.description}
+                      </p>
                     </div>
 
                     {/* Actions */}
@@ -396,7 +400,7 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
         <StepConfigEditor
           step={editingStep}
           onClose={() => setEditingStep(null)}
-          onSave={(config) => handleSaveStepConfig(editingStep.id, config)}
+          onSave={(config, name) => handleSaveStepConfig(editingStep.id, config, name)}
         />
       )}
     </div>

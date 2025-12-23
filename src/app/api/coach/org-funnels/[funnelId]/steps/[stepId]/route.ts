@@ -81,7 +81,7 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { type, config, showIf } = body;
+    const { type, config, showIf, name } = body;
 
     const now = new Date().toISOString();
     const updates: Partial<FunnelStep> = {
@@ -96,6 +96,10 @@ export async function PUT(
     }
     if (showIf !== undefined) {
       updates.showIf = showIf || undefined;
+    }
+    // Handle name - can be set or cleared
+    if (name !== undefined) {
+      updates.name = name || undefined; // Clear if empty string
     }
 
     await stepRef.update(updates);

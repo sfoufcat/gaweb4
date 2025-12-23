@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { ArrowLeft } from 'lucide-react';
+import Image from 'next/image';
 import type { FunnelStepConfigQuestion, FunnelQuestionOption } from '@/types';
 
 // CSS variable helper - uses values set by FunnelClient
@@ -90,12 +92,25 @@ export function QuestionStep({
   const fieldName = config.fieldName || preset?.fieldName || 'answer';
   const isMultiChoice = config.questionType === 'multi_choice' || fieldName === 'supportNeeds';
 
-  const [selected, setSelected] = useState<string | string[]>(
-    isMultiChoice 
-      ? (data[fieldName] as string[] || [])
-      : (data[fieldName] as string || '')
-  );
-  const [textInput, setTextInput] = useState(data[fieldName] as string || '');
+  // Initialize state with proper type checking to prevent data leakage between question types
+  const getInitialSelected = (): string | string[] => {
+    const stored = data[fieldName];
+    if (isMultiChoice) {
+      return Array.isArray(stored) ? stored : [];
+    }
+    // For single choice and scale, only accept string values
+    return typeof stored === 'string' ? stored : '';
+  };
+
+  const getInitialTextInput = (): string => {
+    // Only initialize text input if this is a text question AND stored value is a string (not number from scale)
+    if (config.questionType !== 'text') return '';
+    const stored = data[fieldName];
+    return typeof stored === 'string' && isNaN(Number(stored)) ? stored : '';
+  };
+
+  const [selected, setSelected] = useState<string | string[]>(getInitialSelected);
+  const [textInput, setTextInput] = useState(getInitialTextInput);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleOptionClick = (value: string) => {
@@ -141,7 +156,18 @@ export function QuestionStep({
   // Render text input
   if (config.questionType === 'text') {
     return (
-      <div className="w-full max-w-xl mx-auto">
+      <div className="w-full max-w-xl mx-auto relative">
+        {/* Back button at top-left */}
+        {!isFirstStep && onBack && (
+          <button
+            onClick={onBack}
+            className="absolute -top-2 left-0 p-2 rounded-full hover:bg-[#f5f3f0] transition-colors"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="w-5 h-5 text-text-secondary" />
+          </button>
+        )}
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -182,20 +208,12 @@ export function QuestionStep({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="mt-8 flex gap-3"
+          className="mt-8"
         >
-          {!isFirstStep && onBack && (
-            <button
-              onClick={onBack}
-              className="px-6 py-3 text-text-secondary hover:text-text-primary transition-colors"
-            >
-              Back
-            </button>
-          )}
           <button
             onClick={handleContinue}
             disabled={!canContinue() || isSubmitting}
-            className="flex-1 py-3 px-6 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full py-3 px-6 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             style={{ backgroundColor: primaryVar }}
             onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = primaryHoverVar)}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = primaryVar}
@@ -214,7 +232,18 @@ export function QuestionStep({
     const values = Array.from({ length: max - min + 1 }, (_, i) => min + i);
 
     return (
-      <div className="w-full max-w-xl mx-auto">
+      <div className="w-full max-w-xl mx-auto relative">
+        {/* Back button at top-left */}
+        {!isFirstStep && onBack && (
+          <button
+            onClick={onBack}
+            className="absolute -top-2 left-0 p-2 rounded-full hover:bg-[#f5f3f0] transition-colors"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="w-5 h-5 text-text-secondary" />
+          </button>
+        )}
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -264,20 +293,12 @@ export function QuestionStep({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="mt-8 flex gap-3"
+          className="mt-8"
         >
-          {!isFirstStep && onBack && (
-            <button
-              onClick={onBack}
-              className="px-6 py-3 text-text-secondary hover:text-text-primary transition-colors"
-            >
-              Back
-            </button>
-          )}
           <button
             onClick={handleContinue}
             disabled={!canContinue() || isSubmitting}
-            className="flex-1 py-3 px-6 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full py-3 px-6 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             style={{ backgroundColor: primaryVar }}
             onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = primaryHoverVar)}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = primaryVar}
@@ -289,9 +310,23 @@ export function QuestionStep({
     );
   }
 
+  // Check if any option has an image
+  const hasImageOptions = options.some(o => o.imageUrl);
+
   // Render choice options (single or multi)
   return (
-    <div className="w-full max-w-xl mx-auto">
+    <div className="w-full max-w-xl mx-auto relative">
+      {/* Back button at top-left */}
+      {!isFirstStep && onBack && (
+        <button
+          onClick={onBack}
+          className="absolute -top-2 left-0 p-2 rounded-full hover:bg-[#f5f3f0] transition-colors"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="w-5 h-5 text-text-secondary" />
+        </button>
+      )}
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -308,92 +343,148 @@ export function QuestionStep({
         )}
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.1 }}
-        className="space-y-3"
-      >
-        {options.sort((a, b) => a.order - b.order).map((option, index) => {
-          const isSelected = isMultiChoice
-            ? (selected as string[]).includes(option.value)
-            : selected === option.value;
+      {/* Image cards layout: grid on desktop, 2x2 on mobile */}
+      {hasImageOptions ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="grid grid-cols-2 gap-3 sm:gap-4"
+        >
+          {options.sort((a, b) => a.order - b.order).map((option, index) => {
+            const isSelected = isMultiChoice
+              ? (selected as string[]).includes(option.value)
+              : selected === option.value;
 
-          return (
-            <motion.button
-              key={option.id}
-              onClick={() => handleOptionClick(option.value)}
-              className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                isSelected
-                  ? 'bg-[#faf8f6]'
-                  : 'border-[#e1ddd8] bg-white hover:border-[#d4d0cb]'
-              }`}
-              style={isSelected ? { borderColor: primaryVar } : undefined}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + index * 0.05 }}
-            >
-              <div className="flex items-center gap-4">
-                {option.emoji && (
-                  <span className="text-2xl">{option.emoji}</span>
-                )}
-                <div className="flex-1">
-                  <p className="font-medium text-text-primary">{option.label}</p>
-                  {option.description && (
-                    <p className="text-sm text-text-secondary mt-0.5">{option.description}</p>
+            return (
+              <motion.button
+                key={option.id}
+                onClick={() => handleOptionClick(option.value)}
+                className={`relative p-3 sm:p-4 rounded-xl border-2 text-center transition-all ${
+                  isSelected
+                    ? 'bg-[#faf8f6]'
+                    : 'border-[#e1ddd8] bg-white hover:border-[#d4d0cb]'
+                }`}
+                style={isSelected ? { borderColor: primaryVar } : undefined}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + index * 0.05 }}
+              >
+                {/* Selection indicator */}
+                <div 
+                  className={`absolute top-2 right-2 w-5 h-5 rounded-full border-2 ${
+                    isSelected ? '' : 'border-[#d4d0cb]'
+                  }`}
+                  style={isSelected ? { borderColor: primaryVar, backgroundColor: primaryVar } : undefined}
+                >
+                  {isSelected && (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="w-2 h-2 rounded-full bg-white" />
+                    </div>
                   )}
                 </div>
-                {isMultiChoice ? (
-                  <div 
-                    className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                      isSelected ? '' : 'border-[#d4d0cb]'
-                    }`}
-                    style={isSelected ? { borderColor: primaryVar, backgroundColor: primaryVar } : undefined}
-                  >
-                    {isSelected && (
-                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </div>
-                ) : (
-                  <div 
-                    className={`w-5 h-5 rounded-full border-2 ${
-                      isSelected ? '' : 'border-[#d4d0cb]'
-                    }`}
-                    style={isSelected ? { borderColor: primaryVar, backgroundColor: primaryVar } : undefined}
-                  >
-                    {isSelected && (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-full bg-white" />
-                      </div>
-                    )}
+
+                {/* Image */}
+                {option.imageUrl && (
+                  <div className="w-full aspect-square rounded-lg overflow-hidden mb-3">
+                    <Image
+                      src={option.imageUrl}
+                      alt={option.label}
+                      width={200}
+                      height={200}
+                      className="w-full h-full object-cover"
+                      unoptimized={option.imageUrl.startsWith('http')}
+                    />
                   </div>
                 )}
-              </div>
-            </motion.button>
-          );
-        })}
-      </motion.div>
+
+                {/* Label */}
+                <p className="font-medium text-text-primary text-sm sm:text-base">{option.label}</p>
+              </motion.button>
+            );
+          })}
+        </motion.div>
+      ) : (
+        /* Standard vertical list layout */
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="space-y-3"
+        >
+          {options.sort((a, b) => a.order - b.order).map((option, index) => {
+            const isSelected = isMultiChoice
+              ? (selected as string[]).includes(option.value)
+              : selected === option.value;
+
+            return (
+              <motion.button
+                key={option.id}
+                onClick={() => handleOptionClick(option.value)}
+                className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                  isSelected
+                    ? 'bg-[#faf8f6]'
+                    : 'border-[#e1ddd8] bg-white hover:border-[#d4d0cb]'
+                }`}
+                style={isSelected ? { borderColor: primaryVar } : undefined}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + index * 0.05 }}
+              >
+                <div className="flex items-center gap-4">
+                  {option.emoji && (
+                    <span className="text-2xl">{option.emoji}</span>
+                  )}
+                  <div className="flex-1">
+                    <p className="font-medium text-text-primary">{option.label}</p>
+                    {option.description && (
+                      <p className="text-sm text-text-secondary mt-0.5">{option.description}</p>
+                    )}
+                  </div>
+                  {isMultiChoice ? (
+                    <div 
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                        isSelected ? '' : 'border-[#d4d0cb]'
+                      }`}
+                      style={isSelected ? { borderColor: primaryVar, backgroundColor: primaryVar } : undefined}
+                    >
+                      {isSelected && (
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                  ) : (
+                    <div 
+                      className={`w-5 h-5 rounded-full border-2 ${
+                        isSelected ? '' : 'border-[#d4d0cb]'
+                      }`}
+                      style={isSelected ? { borderColor: primaryVar, backgroundColor: primaryVar } : undefined}
+                    >
+                      {isSelected && (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <div className="w-2 h-2 rounded-full bg-white" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </motion.button>
+            );
+          })}
+        </motion.div>
+      )}
 
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
-        className="mt-8 flex gap-3"
+        className="mt-8"
       >
-        {!isFirstStep && onBack && (
-          <button
-            onClick={onBack}
-            className="px-6 py-3 text-text-secondary hover:text-text-primary transition-colors"
-          >
-            Back
-          </button>
-        )}
         <button
           onClick={handleContinue}
           disabled={!canContinue() || isSubmitting}
-          className="flex-1 py-3 px-6 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="w-full py-3 px-6 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           style={{ backgroundColor: primaryVar }}
           onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = primaryHoverVar)}
           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = primaryVar}

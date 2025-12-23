@@ -9,7 +9,7 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, CreditCard, Check } from 'lucide-react';
+import { Lock, CreditCard, Check, ArrowLeft } from 'lucide-react';
 import type { FunnelStepConfigPayment } from '@/types';
 
 // CSS variable helper - uses values set by FunnelClient
@@ -274,7 +274,18 @@ export function PaymentStep({
   // Error state
   if (error) {
     return (
-      <div className="w-full max-w-xl mx-auto text-center">
+      <div className="w-full max-w-xl mx-auto text-center relative">
+        {/* Back button at top-left */}
+        {!isFirstStep && onBack && (
+          <button
+            onClick={onBack}
+            className="absolute -top-2 left-0 p-2 rounded-full hover:bg-[#f5f3f0] transition-colors"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="w-5 h-5 text-text-secondary" />
+          </button>
+        )}
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -295,14 +306,6 @@ export function PaymentStep({
           >
             Try Again
           </button>
-          {!isFirstStep && onBack && (
-            <button
-              onClick={onBack}
-              className="block mx-auto mt-4 text-text-secondary hover:text-text-primary transition-colors"
-            >
-              ← Go back
-            </button>
-          )}
         </motion.div>
       </div>
     );
@@ -311,7 +314,18 @@ export function PaymentStep({
   const heading = config.heading || 'Complete your enrollment';
 
   return (
-    <div className="w-full max-w-xl mx-auto">
+    <div className="w-full max-w-xl mx-auto relative">
+      {/* Back button at top-left */}
+      {!isFirstStep && onBack && (
+        <button
+          onClick={onBack}
+          className="absolute -top-2 left-0 p-2 rounded-full hover:bg-[#f5f3f0] transition-colors"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="w-5 h-5 text-text-secondary" />
+        </button>
+      )}
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -353,23 +367,6 @@ export function PaymentStep({
               features={config.features}
             />
           </Elements>
-        </motion.div>
-      )}
-
-      {/* Back button */}
-      {!isFirstStep && onBack && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="mt-6 text-center"
-        >
-          <button
-            onClick={onBack}
-            className="text-text-secondary hover:text-text-primary transition-colors"
-          >
-            ← Go back
-          </button>
         </motion.div>
       )}
     </div>

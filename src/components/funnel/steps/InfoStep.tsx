@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
+import { ArrowLeft } from 'lucide-react';
 import type { FunnelStepConfigInfo } from '@/types';
 
 // CSS variable helper - uses values set by FunnelClient
@@ -31,7 +32,18 @@ export function InfoStep({
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto">
+    <div className="w-full max-w-xl mx-auto relative">
+      {/* Back button at top-left */}
+      {!isFirstStep && onBack && (
+        <button
+          onClick={onBack}
+          className="absolute -top-2 left-0 p-2 rounded-full hover:bg-[#f5f3f0] transition-colors"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="w-5 h-5 text-text-secondary" />
+        </button>
+      )}
+
       {config.imageUrl && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -65,20 +77,11 @@ export function InfoStep({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="flex gap-3"
       >
-        {!isFirstStep && onBack && (
-          <button
-            onClick={onBack}
-            className="px-6 py-3 text-text-secondary hover:text-text-primary transition-colors"
-          >
-            Back
-          </button>
-        )}
         <button
           onClick={handleContinue}
           disabled={isSubmitting}
-          className="flex-1 py-3 px-6 text-white rounded-xl font-medium disabled:opacity-50 transition-colors"
+          className="w-full py-3 px-6 text-white rounded-xl font-medium disabled:opacity-50 transition-colors"
           style={{ backgroundColor: primaryVar }}
           onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = primaryHoverVar)}
           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = primaryVar}

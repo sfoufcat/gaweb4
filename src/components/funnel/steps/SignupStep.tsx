@@ -5,6 +5,7 @@ import { useAuth, useClerk, useSignUp } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import type { FunnelStepConfigSignup } from '@/types';
 import { SignUpForm, OAuthButton } from '@/components/auth';
 
@@ -306,6 +307,17 @@ export function SignupStep({
   // Full-page centered layout matching SatelliteSignIn design
   return (
     <div className="fixed inset-0 bg-app-bg overflow-y-auto">
+      {/* Back button at top-left */}
+      {!isFirstStep && onBack && (
+        <button
+          onClick={onBack}
+          className="absolute top-6 left-6 p-2 rounded-full hover:bg-[#f5f3f0] transition-colors z-10"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="w-5 h-5 text-text-secondary" />
+        </button>
+      )}
+
       <div className="min-h-full flex flex-col items-center justify-center px-4 py-8 lg:py-16">
         <div className="w-full max-w-xl mx-auto">
           {/* Header with Coach Branding */}
@@ -392,23 +404,6 @@ export function SignupStep({
               className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl text-center max-w-lg mx-auto"
             >
               <p className="text-red-600 text-sm">{error}</p>
-            </motion.div>
-          )}
-
-          {/* Back button */}
-          {!isFirstStep && onBack && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="mt-8 text-center"
-            >
-              <button
-                onClick={onBack}
-                className="text-text-secondary hover:text-text-primary transition-colors font-sans"
-              >
-                ← Go back
-              </button>
             </motion.div>
           )}
 

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { FunnelStepConfigAnalyzing } from '@/types';
+import Image from 'next/image';
+import type { FunnelStepConfigAnalyzing, FunnelTestimonial } from '@/types';
 
 // CSS variable helper - uses values set by FunnelClient
 const primaryVar = 'var(--funnel-primary, #a07855)';
@@ -20,6 +21,47 @@ interface AnalyzingStepProps {
   data: Record<string, unknown>;
 }
 
+// Testimonial Card Component
+function TestimonialCard({ testimonial, delay }: { testimonial: FunnelTestimonial; delay: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay }}
+      className="bg-white border border-[#e1ddd8] rounded-xl p-4 shadow-sm"
+    >
+      <div className="flex items-start gap-3">
+        {/* Avatar */}
+        <div className="flex-shrink-0">
+          {testimonial.imageUrl ? (
+            <Image
+              src={testimonial.imageUrl}
+              alt={testimonial.name}
+              width={40}
+              height={40}
+              className="w-10 h-10 rounded-full object-cover"
+              unoptimized={testimonial.imageUrl.startsWith('http')}
+            />
+          ) : (
+            <div 
+              className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium"
+              style={{ backgroundColor: primaryVar }}
+            >
+              {testimonial.name.charAt(0).toUpperCase()}
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-text-primary leading-relaxed">"{testimonial.text}"</p>
+          <p className="text-xs text-text-muted mt-2">— {testimonial.name}</p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export function AnalyzingStep({
   config,
   onComplete,
@@ -28,6 +70,7 @@ export function AnalyzingStep({
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const messages: string[] = config.messages?.length ? config.messages : DEFAULT_MESSAGES;
   const duration = config.durationMs || 3000;
+  const testimonials = config.testimonials || [];
 
   useEffect(() => {
     // Cycle through messages
@@ -114,6 +157,19 @@ export function AnalyzingStep({
           <p className="text-sm text-text-muted">Your goal:</p>
           <p className="text-text-primary font-medium">{data.goal}</p>
         </motion.div>
+      )}
+
+      {/* Testimonials */}
+      {testimonials.length > 0 && (
+        <div className="mt-8 w-full space-y-3">
+          {testimonials.map((testimonial, index) => (
+            <TestimonialCard 
+              key={index} 
+              testimonial={testimonial} 
+              delay={0.8 + index * 0.2}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
