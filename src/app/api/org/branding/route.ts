@@ -5,7 +5,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { ensureCoachHasOrganization } from '@/lib/clerk-organizations';
 import { syncTenantToEdgeConfig, type TenantBrandingData } from '@/lib/tenant-edge-config';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, UserRole } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, UserRole, OrgRole } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS } from '@/types';
 
 /**
@@ -49,8 +49,8 @@ export async function GET(request: Request) {
     if (!organizationId && forCoach) {
       const { userId, sessionClaims } = await auth();
       if (userId) {
-        const publicMetadata = sessionClaims?.publicMetadata as { role?: UserRole } | undefined;
-        if (canAccessCoachDashboard(publicMetadata?.role)) {
+        const publicMetadata = sessionClaims?.publicMetadata as { role?: UserRole; orgRole?: OrgRole } | undefined;
+        if (canAccessCoachDashboard(publicMetadata?.role, publicMetadata?.orgRole)) {
           organizationId = await ensureCoachHasOrganization(userId);
           console.log(`[ORG_BRANDING_GET] Using coach's org from auth: ${organizationId}`);
         }
@@ -108,11 +108,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user has coach/admin access
-    const publicMetadata = sessionClaims?.publicMetadata as { role?: UserRole } | undefined;
+    // Check if user has coach/admin access (check both global role and org role)
+    const publicMetadata = sessionClaims?.publicMetadata as { role?: UserRole; orgRole?: OrgRole } | undefined;
     const role = publicMetadata?.role;
+    const orgRole = publicMetadata?.orgRole;
 
-    if (!canAccessCoachDashboard(role)) {
+    if (!canAccessCoachDashboard(role, orgRole)) {
       return NextResponse.json({ error: 'Forbidden: Coach access required' }, { status: 403 });
     }
 
