@@ -116,8 +116,30 @@ export default function ProgramHubPage() {
   
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-text-primary" />
+      <div className="p-4 space-y-6 animate-pulse">
+        {/* Header skeleton */}
+        <div className="space-y-2">
+          <div className="h-8 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+          <div className="h-4 w-64 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+        </div>
+        {/* Program card skeleton */}
+        <div className="bg-white dark:bg-surface rounded-[20px] overflow-hidden">
+          <div className="h-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+          <div className="p-4 space-y-3">
+            <div className="h-6 w-3/4 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+            <div className="flex gap-2">
+              <div className="h-5 w-20 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+              <div className="h-5 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+            </div>
+            <div className="h-2 w-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+          </div>
+        </div>
+        {/* Tabs skeleton */}
+        <div className="flex gap-2 border-b border-[#e1ddd8]/50 dark:border-[#272d38]/50 pb-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-8 w-20 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+          ))}
+        </div>
       </div>
     );
   }

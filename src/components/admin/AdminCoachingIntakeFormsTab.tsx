@@ -86,10 +86,30 @@ export function AdminCoachingIntakeFormsTab({ apiEndpoint = '/api/admin/coaching
 
   if (loading) {
     return (
-      <div className="bg-white/60 dark:bg-[#171b22]/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 dark:border-[#262b35]/50 rounded-2xl p-8">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#4CAF50] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2] font-albert">Loading forms...</p>
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl p-6 animate-pulse">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="space-y-2">
+            <div className="h-6 w-40 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+            <div className="h-4 w-60 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+          </div>
+        </div>
+        {/* Form cards skeleton */}
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-[#faf8f6] dark:bg-[#11141b] rounded-xl p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+                  <div className="space-y-2">
+                    <div className="h-5 w-44 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                    <div className="h-4 w-28 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                  </div>
+                </div>
+                <div className="h-8 w-20 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );

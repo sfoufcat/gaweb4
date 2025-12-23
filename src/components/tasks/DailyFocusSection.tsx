@@ -336,8 +336,13 @@ export function DailyFocusSection({
             )}
           </div>
         </div>
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-text-primary" />
+        <div className="bg-white dark:bg-surface rounded-[20px] p-4 space-y-3 animate-pulse">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="w-5 h-5 rounded-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+              <div className="flex-1 h-5 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+            </div>
+          ))}
         </div>
       </div>
     );

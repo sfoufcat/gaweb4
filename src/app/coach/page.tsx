@@ -87,10 +87,36 @@ export default function CoachPage() {
   // Loading state
   if (!isLoaded || !mounted) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#faf8f6] to-[#f5f2ed] dark:from-[#05070b] dark:to-[#11141b]">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Loading...</p>
+      <div className="min-h-screen bg-gradient-to-br from-[#faf8f6] to-[#f5f2ed] dark:from-[#05070b] dark:to-[#11141b] p-6 animate-pulse">
+        {/* Header skeleton */}
+        <div className="mb-8">
+          <div className="h-8 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded mb-2" />
+          <div className="h-4 w-64 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+        </div>
+        {/* Tabs skeleton */}
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-9 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg flex-shrink-0" />
+          ))}
+        </div>
+        {/* Content skeleton */}
+        <div className="space-y-4">
+          <div className="bg-white/60 dark:bg-[#171b22]/60 border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="h-6 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              <div className="h-10 w-28 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
+            </div>
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-4 py-4 border-b border-[#e1ddd8]/30 dark:border-[#262b35]/30 last:border-0">
+                <div className="w-12 h-12 rounded-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-5 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                  <div className="h-4 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                </div>
+                <div className="h-6 w-20 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
