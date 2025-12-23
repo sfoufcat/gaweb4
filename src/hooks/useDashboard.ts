@@ -90,14 +90,17 @@ export function useDashboard() {
   const [error, setError] = useState<string | null>(null);
   const fetchedRef = useRef(false);
 
-  const fetchDashboard = useCallback(async () => {
+  const fetchDashboard = useCallback(async (isInitial = false) => {
     if (!user) {
       setIsLoading(false);
       return;
     }
 
     try {
-      setIsLoading(true);
+      // Only show loading state on initial fetch, not background refetches
+      if (isInitial) {
+        setIsLoading(true);
+      }
       setError(null);
       
       const today = new Date().toISOString().split('T')[0];
@@ -117,19 +120,19 @@ export function useDashboard() {
     }
   }, [user]);
 
-  // Initial fetch
+  // Initial fetch - show loading state
   useEffect(() => {
     if (isLoaded && user && !fetchedRef.current) {
       fetchedRef.current = true;
-      fetchDashboard();
+      fetchDashboard(true);
     }
   }, [isLoaded, user, fetchDashboard]);
 
-  // Refetch on window focus
+  // Refetch on window focus - background refresh, no loading state
   useEffect(() => {
     const handleFocus = () => {
       if (isLoaded && user) {
-        fetchDashboard();
+        fetchDashboard(false);
       }
     };
 
