@@ -617,9 +617,30 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
   if (loading) {
     return (
-      <div className="text-center py-12">
-        <div className="w-12 h-12 border-4 border-[#a07855] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Loading programs...</p>
+      <div className="space-y-6 animate-pulse">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-6 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+            <div className="h-4 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+          </div>
+          <div className="h-10 w-36 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
+        </div>
+        {/* Program cards skeleton */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+              <div className="h-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+              <div className="p-4 space-y-3">
+                <div className="h-5 w-3/4 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                <div className="flex gap-2">
+                  <div className="h-5 w-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+                  <div className="h-5 w-20 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -887,8 +908,16 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             {/* Day Content */}
             <div className="flex-1 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6">
               {loadingDetails ? (
-                <div className="text-center py-8">
-                  <div className="w-8 h-8 border-4 border-[#a07855] border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <div className="space-y-6 animate-pulse">
+                  <div className="h-6 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                  <div className="space-y-2">
+                    <div className="h-4 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                    <div className="h-10 w-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-4 w-28 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                    <div className="h-24 w-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg" />
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -1149,9 +1178,19 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             </div>
 
             {loadingEnrollments ? (
-              <div className="text-center py-12">
-                <div className="w-8 h-8 border-4 border-[#a07855] border-t-transparent rounded-full animate-spin mx-auto"></div>
-                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-2">Loading enrollments...</p>
+              <div className="space-y-2 animate-pulse">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                        <div className="h-3 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                      </div>
+                      <div className="h-6 w-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : programEnrollments.length === 0 ? (
               <div className="text-center py-12 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
@@ -1254,9 +1293,20 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             )}
 
             {loadingDetails ? (
-              <div className="text-center py-12">
-                <div className="w-8 h-8 border-4 border-[#a07855] border-t-transparent rounded-full animate-spin mx-auto"></div>
-                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-2">Loading...</p>
+              <div className="space-y-6 animate-pulse">
+                {/* Landing page form skeleton */}
+                <div className="space-y-4">
+                  <div className="h-4 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                  <div className="h-10 w-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg" />
+                </div>
+                <div className="space-y-4">
+                  <div className="h-4 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                  <div className="h-32 w-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg" />
+                </div>
+                <div className="space-y-4">
+                  <div className="h-4 w-28 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                  <div className="h-48 w-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg" />
+                </div>
               </div>
             ) : (
               <ProgramLandingPageEditor

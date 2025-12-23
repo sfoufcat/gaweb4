@@ -67,11 +67,25 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Loading coaching clients...</p>
+      <div className="space-y-4 animate-pulse">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="h-7 w-40 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+          <div className="h-10 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
         </div>
+        {/* Client rows skeleton */}
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="bg-white/60 dark:bg-[#171b22]/60 border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+              <div className="flex-1 space-y-2">
+                <div className="h-5 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                <div className="h-4 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              </div>
+              <div className="h-6 w-20 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

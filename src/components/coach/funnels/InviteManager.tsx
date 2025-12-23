@@ -234,11 +234,19 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
 
       {/* Loading */}
       {isLoading && (
-        <div className="flex justify-center py-8">
-          <div className="relative">
-            <div className="w-8 h-8 rounded-full border-2 border-[#e1ddd8]" />
-            <div className="absolute inset-0 w-8 h-8 rounded-full border-2 border-transparent border-t-[#a07855] animate-spin" />
-          </div>
+        <div className="space-y-2 animate-pulse">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center justify-between p-4 bg-white border border-[#e1ddd8] rounded-xl">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-lg bg-[#e1ddd8]/50" />
+                <div className="space-y-2">
+                  <div className="h-4 w-40 bg-[#e1ddd8]/50 rounded" />
+                  <div className="h-3 w-24 bg-[#e1ddd8]/50 rounded" />
+                </div>
+              </div>
+              <div className="h-6 w-16 bg-[#e1ddd8]/50 rounded-full" />
+            </div>
+          ))}
         </div>
       )}
 

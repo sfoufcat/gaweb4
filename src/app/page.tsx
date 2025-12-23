@@ -639,8 +639,33 @@ export default function Dashboard() {
 
   if (!isLoaded || !mounted) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-text-primary" />
+      <div className="p-4 space-y-6 animate-pulse">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+            <div className="space-y-2">
+              <div className="h-5 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              <div className="h-4 w-20 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+            </div>
+          </div>
+          <div className="w-12 h-12 rounded-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+        </div>
+        {/* Date skeleton */}
+        <div className="h-3 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+        {/* Headline skeleton */}
+        <div className="h-9 w-3/4 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+        {/* Section cards skeleton */}
+        <div className="space-y-4">
+          <div className="bg-white dark:bg-surface rounded-[20px] p-4 space-y-3">
+            <div className="h-5 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+            <div className="h-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
+          </div>
+          <div className="bg-white dark:bg-surface rounded-[20px] p-4 space-y-3">
+            <div className="h-5 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+            <div className="h-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -1382,8 +1407,13 @@ export default function Dashboard() {
               Daily Focus
             </h2>
           </div>
-          <div className="bg-white dark:bg-surface rounded-[20px] h-[200px] flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-text-primary" />
+          <div className="bg-white dark:bg-surface rounded-[20px] p-4 space-y-3 animate-pulse">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+                <div className="flex-1 h-5 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              </div>
+            ))}
           </div>
         </div>
       ) : shouldHideDailyFocus ? (
@@ -1445,8 +1475,19 @@ export default function Dashboard() {
         </div>
 
         {habitsLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-text-primary" />
+          <div className="space-y-2 animate-pulse">
+            {[1, 2].map((i) => (
+              <div key={i} className="bg-white dark:bg-surface rounded-[20px] p-4 flex gap-3">
+                <div className="flex-1 space-y-2">
+                  <div className="h-5 w-3/4 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                  <div className="h-3 w-1/2 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                </div>
+                <div className="space-y-1 text-right">
+                  <div className="h-3 w-12 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded ml-auto" />
+                  <div className="h-3 w-8 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded ml-auto" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : displayHabits.length === 0 ? (
           <div className="bg-white dark:bg-surface rounded-[20px] p-6 text-center">

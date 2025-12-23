@@ -487,10 +487,44 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#a07855] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[#5f5a55] font-albert">Loading client data...</p>
+      <div className="space-y-6 animate-pulse">
+        {/* Back button skeleton */}
+        <div className="h-5 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+        {/* Client header skeleton */}
+        <div className="bg-white/80 dark:bg-[#171b22]/80 border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-3xl p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+            <div className="w-20 h-20 rounded-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+            <div className="flex-1 space-y-3">
+              <div className="h-6 w-40 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              <div className="h-4 w-56 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              <div className="flex gap-2">
+                <div className="h-6 w-20 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+                <div className="h-6 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* Stats cards skeleton */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white/80 dark:bg-[#171b22]/80 border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-4">
+              <div className="h-4 w-20 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded mb-2" />
+              <div className="h-8 w-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+            </div>
+          ))}
+        </div>
+        {/* Activity section skeleton */}
+        <div className="bg-white/80 dark:bg-[#171b22]/80 border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6 space-y-4">
+          <div className="h-5 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                <div className="h-3 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );

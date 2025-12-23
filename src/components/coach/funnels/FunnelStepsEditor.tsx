@@ -423,10 +423,24 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="relative">
-          <div className="w-8 h-8 rounded-full border-2 border-[#e1ddd8]" />
-          <div className="absolute inset-0 w-8 h-8 rounded-full border-2 border-transparent border-t-[#a07855] animate-spin" />
+      <div className="space-y-2 animate-pulse">
+        <div className="bg-white border border-[#e1ddd8] rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-[#e1ddd8] bg-[#faf8f6]">
+            <div className="h-4 w-20 bg-[#e1ddd8]/50 rounded" />
+          </div>
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="p-4 border-b border-[#e1ddd8] last:border-b-0">
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 bg-[#e1ddd8]/50 rounded" />
+                <div className="w-8 h-8 rounded-lg bg-[#e1ddd8]/50" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-32 bg-[#e1ddd8]/50 rounded" />
+                  <div className="h-3 w-24 bg-[#e1ddd8]/50 rounded" />
+                </div>
+                <div className="h-8 w-8 bg-[#e1ddd8]/50 rounded" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );

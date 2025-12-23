@@ -234,8 +234,24 @@ export function CoachPlanTab() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="w-10 h-10 border-4 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin" />
+      <div className="space-y-6 animate-pulse">
+        {/* Plan card skeleton */}
+        <div className="bg-white/60 dark:bg-[#171b22]/60 border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
+          <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <div className="h-7 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                <div className="h-4 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              </div>
+              <div className="h-10 w-36 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
+            </div>
+          </div>
+          <div className="p-6 space-y-4">
+            <div className="h-4 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+            <div className="h-3 w-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+            <div className="h-3 w-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+          </div>
+        </div>
       </div>
     );
   }

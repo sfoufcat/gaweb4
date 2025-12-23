@@ -885,11 +885,27 @@ export function CustomizeBrandingTab() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Loading branding settings...</p>
+      <div className="space-y-6 animate-pulse">
+        {/* Header skeleton */}
+        <div className="bg-white/60 dark:bg-[#171b22]/60 border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
+          <div className="flex items-start justify-between">
+            <div className="space-y-2">
+              <div className="h-6 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              <div className="h-4 w-72 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+            </div>
+            <div className="h-10 w-28 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+          </div>
         </div>
+        {/* Form sections skeleton */}
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="bg-white/60 dark:bg-[#171b22]/60 border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6 space-y-4">
+            <div className="h-5 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="h-10 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
+              <div className="h-10 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
@@ -1297,8 +1313,18 @@ export function CustomizeBrandingTab() {
         </p>
         
         {domainSettingsLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="w-8 h-8 border-3 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin"></div>
+          <div className="space-y-6 animate-pulse">
+            <div className="space-y-3">
+              <div className="h-4 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              <div className="flex gap-3">
+                <div className="h-10 flex-1 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
+                <div className="h-10 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="h-4 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              <div className="h-10 w-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
+            </div>
           </div>
         ) : (
           <div className="space-y-6">
@@ -1629,8 +1655,21 @@ export function CustomizeBrandingTab() {
         </p>
         
         {emailDomainLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="w-8 h-8 border-3 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin"></div>
+          <div className="space-y-4 animate-pulse">
+            {/* Status card skeleton */}
+            <div className="flex items-center gap-3 p-4 rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
+              <div className="w-5 h-5 rounded-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                <div className="h-3 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              </div>
+            </div>
+            {/* DNS records skeleton */}
+            <div className="space-y-2">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-lg" />
+              ))}
+            </div>
           </div>
         ) : emailSettings.domain ? (
           // Domain configured - show status and DNS records
@@ -1891,8 +1930,16 @@ export function CustomizeBrandingTab() {
         </p>
         
         {stripeConnectLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="w-8 h-8 border-3 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin"></div>
+          <div className="space-y-4 animate-pulse">
+            {/* Status card skeleton */}
+            <div className="flex items-center gap-3 p-4 rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
+              <div className="w-5 h-5 rounded-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-36 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                <div className="h-3 w-56 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              </div>
+            </div>
+            <div className="h-10 w-40 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
           </div>
         ) : (
           <div className="space-y-4">
@@ -2020,8 +2067,16 @@ export function CustomizeBrandingTab() {
         </p>
         
         {emailDefaultsLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="w-8 h-8 border-3 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin"></div>
+          <div className="space-y-1 animate-pulse">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+                <div className="space-y-2">
+                  <div className="h-4 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                  <div className="h-3 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                </div>
+                <div className="w-12 h-7 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+              </div>
+            ))}
           </div>
         ) : (
           <div className="space-y-1">

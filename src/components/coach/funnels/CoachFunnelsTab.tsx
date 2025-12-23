@@ -248,11 +248,24 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
 
       {/* Loading state */}
       {isLoading && (
-        <div className="flex items-center justify-center py-12">
-          <div className="relative">
-            <div className="w-8 h-8 rounded-full border-2 border-[#e1ddd8]" />
-            <div className="absolute inset-0 w-8 h-8 rounded-full border-2 border-transparent border-t-[#a07855] animate-spin" />
-          </div>
+        <div className="space-y-3 animate-pulse">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white border border-[#e1ddd8] rounded-xl p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+                  <div className="space-y-2">
+                    <div className="h-5 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                    <div className="h-4 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-6 w-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+                  <div className="h-8 w-8 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

@@ -166,9 +166,41 @@ export function TemplateGallery({ onSelectTemplate, onBack, onClose }: TemplateG
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 py-6">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 text-[#a07855] dark:text-[#b8896a] animate-spin mb-4" />
-            <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Loading templates...</p>
+          <div className="space-y-8 animate-pulse">
+            {/* Featured section skeleton */}
+            <div className="space-y-4">
+              <div className="h-6 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+                {[1, 2].map((i) => (
+                  <div key={i} className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+                    <div className="h-40 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+                    <div className="p-4 space-y-3">
+                      <div className="h-5 w-3/4 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                      <div className="h-4 w-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                      <div className="flex gap-2">
+                        <div className="h-5 w-16 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+                        <div className="h-5 w-20 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* All templates grid skeleton */}
+            <div className="space-y-4">
+              <div className="h-6 w-28 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+                    <div className="h-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+                    <div className="p-4 space-y-2">
+                      <div className="h-4 w-3/4 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                      <div className="h-3 w-1/2 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-20">

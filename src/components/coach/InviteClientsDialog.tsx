@@ -441,11 +441,19 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
           <div className="flex-1 overflow-y-auto p-6">
             {/* Loading */}
             {isLoading && (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <Loader2 className="w-8 h-8 text-[#a07855] dark:text-[#b8896a] animate-spin mx-auto mb-3" />
-                  <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Loading...</p>
-                </div>
+              <div className="space-y-4 animate-pulse">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="bg-[#faf8f6] dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-5 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                        <div className="h-4 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                      </div>
+                      <div className="h-8 w-8 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
