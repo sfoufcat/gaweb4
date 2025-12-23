@@ -60,9 +60,10 @@ interface IconPickerProps {
   onChange: (value: string) => void;
   label?: string;
   className?: string;
+  compact?: boolean; // Compact mode - just icon + chevron, no label text
 }
 
-export function IconPicker({ value, onChange, label, className = '' }: IconPickerProps) {
+export function IconPicker({ value, onChange, label, className = '', compact = false }: IconPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'icons' | 'emoji'>('icons');
   const [customEmoji, setCustomEmoji] = useState('');
@@ -125,14 +126,18 @@ export function IconPicker({ value, onChange, label, className = '' }: IconPicke
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert hover:border-[#a07855] dark:hover:border-[#b8896a] transition-colors w-full"
+        className={`flex items-center gap-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert hover:border-[#a07855] dark:hover:border-[#b8896a] transition-colors ${
+          compact ? 'px-3 py-3' : 'px-4 py-3 w-full'
+        }`}
       >
         <span className="flex items-center justify-center w-6 h-6">
           {renderPreview()}
         </span>
-        <span className="flex-1 text-left text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-          {isEmoji(value) ? 'Custom emoji' : AVAILABLE_ICONS.find(i => i.id === value)?.name || 'Select icon'}
-        </span>
+        {!compact && (
+          <span className="flex-1 text-left text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+            {isEmoji(value) ? 'Custom emoji' : AVAILABLE_ICONS.find(i => i.id === value)?.name || 'Select icon'}
+          </span>
+        )}
         <svg className={`w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>

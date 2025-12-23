@@ -31,6 +31,8 @@ export default async function FunnelPage({ params, searchParams }: FunnelPagePro
   // Resolve tenant (organization) from hostname
   const tenantResult = await resolveTenant(hostname, null, null);
   const organizationId = tenantResult.type === 'tenant' ? tenantResult.tenant.organizationId : null;
+  // Extract subdomain for custom domain auth iframe (needed by SignupStep)
+  const tenantSubdomain = tenantResult.type === 'tenant' ? tenantResult.tenant.subdomain : null;
 
   // Get branding
   const branding = await getBrandingForDomain(hostname);
@@ -147,6 +149,7 @@ export default async function FunnelPage({ params, searchParams }: FunnelPagePro
       inviteCode={inviteCode}
       validatedInvite={validatedInvite}
       hostname={hostname}
+      tenantSubdomain={tenantSubdomain}
     />
   );
 }

@@ -28,6 +28,8 @@ interface SignupStepProps {
   // Organization context for the funnel
   organizationId?: string;
   organizationName?: string;
+  // Subdomain for custom domain auth iframe (resolved from tenant)
+  tenantSubdomain?: string | null;
 }
 
 // User state types for the 3 cases
@@ -90,6 +92,7 @@ export function SignupStep({
   isFirstStep,
   organizationId,
   organizationName,
+  tenantSubdomain,
 }: SignupStepProps) {
   const { isSignedIn, isLoaded, userId } = useAuth();
   const { user } = useUser();
@@ -116,13 +119,19 @@ export function SignupStep({
                          !hostname.includes('localhost') &&
                          !hostname.includes('127.0.0.1');
 
-  // Extract subdomain from hostname for iframe
-  const getSubdomain = useCallback(() => {
-    const match = hostname.match(/^([a-z0-9-]+)\.growthaddicts\.app$/);
-    return match ? match[1] : null;
+  // Get subdomain for auth iframe:
+  // - Custom domains: use tenantSubdomain passed from server-side tenant resolution
+  // - Regular domains: extract from hostname pattern
+  const getSubdomainFromHostname = useCallback(() => {
+    // Try .com first (current domain), then .app (legacy)
+    const comMatch = hostname.match(/^([a-z0-9-]+)\.growthaddicts\.com$/);
+    if (comMatch) return comMatch[1];
+    const appMatch = hostname.match(/^([a-z0-9-]+)\.growthaddicts\.app$/);
+    return appMatch ? appMatch[1] : null;
   }, [hostname]);
 
-  const subdomain = getSubdomain();
+  // For custom domains, use the passed tenantSubdomain; otherwise extract from hostname
+  const subdomain = isCustomDomain ? (tenantSubdomain || null) : getSubdomainFromHostname();
 
   useEffect(() => {
     setMounted(true);

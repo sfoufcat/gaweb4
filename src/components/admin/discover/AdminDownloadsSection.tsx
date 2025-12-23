@@ -44,12 +44,14 @@ function DownloadFormDialog({
   onClose,
   onSave,
   uploadEndpoint,
+  apiEndpoint,
 }: {
   download: ProgramDownload | null;
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
   uploadEndpoint: string;
+  apiEndpoint: string;
 }) {
   const isEditing = !!download;
   const [saving, setSaving] = useState(false);
@@ -90,8 +92,8 @@ function DownloadFormDialog({
 
     try {
       const url = isEditing 
-        ? `/api/admin/discover/downloads/${download.id}`
-        : '/api/admin/discover/downloads';
+        ? `${apiEndpoint}/${download.id}`
+        : apiEndpoint;
       
       const response = await fetch(url, {
         method: isEditing ? 'PATCH' : 'POST',
@@ -470,6 +472,7 @@ export function AdminDownloadsSection({ apiEndpoint = '/api/admin/discover/downl
         onClose={() => { setIsFormOpen(false); setDownloadToEdit(null); }}
         onSave={fetchDownloads}
         uploadEndpoint={uploadEndpoint}
+        apiEndpoint={apiEndpoint}
       />
 
       {/* Delete Confirmation */}

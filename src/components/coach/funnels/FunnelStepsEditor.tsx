@@ -19,6 +19,7 @@ import {
   CheckCircle,
   Lock
 } from 'lucide-react';
+// Note: Lock is still used in the Add Step modal for tier-gated steps
 import type { FunnelStep, FunnelStepType, CoachTier, Funnel, Program, Squad } from '@/types';
 import { StepConfigEditor } from './StepConfigEditor';
 import { canUseFunnelStep, TIER_PRICING } from '@/lib/coach-permissions';
@@ -256,34 +257,20 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
     }
   }, [isLoading, funnel]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Separate fixed and custom steps
-  const fixedSteps = steps.filter(s => FIXED_STEP_TYPES.includes(s.type));
-  const customSteps = steps.filter(s => !FIXED_STEP_TYPES.includes(s.type));
+  // Get all steps sorted by order, filtering out payment if not paid
+  const sortableSteps = steps
+    .filter(s => !(s.type === 'payment' && !isPaid))
+    .sort((a, b) => a.order - b.order);
 
-  const handleReorder = async (reorderedCustomSteps: FunnelStep[]) => {
-    // Reconstruct full step list: custom steps + fixed steps at their positions
-    // Fixed steps maintain their relative positions (signup before payment before success)
-    const signupStep = fixedSteps.find(s => s.type === 'signup');
-    const paymentStep = fixedSteps.find(s => s.type === 'payment');
-    const successStep = fixedSteps.find(s => s.type === 'success');
-    
-    // Build final order: custom steps, then signup, then payment (if paid), then success
-    const finalSteps: FunnelStep[] = [
-      ...reorderedCustomSteps,
-    ];
-    
-    if (signupStep) finalSteps.push(signupStep);
-    if (paymentStep && isPaid) finalSteps.push(paymentStep);
-    if (successStep) finalSteps.push(successStep);
-    
-    // Assign new order values
-    const stepsWithOrder = finalSteps.map((step, index) => ({
+  const handleReorder = async (reorderedSteps: FunnelStep[]) => {
+    // Save the full reordered list directly - all steps can be rearranged freely
+    const stepsWithOrder = reorderedSteps.map((step, index) => ({
       id: step.id,
       order: index,
     }));
     
     // Optimistic update
-    setSteps(finalSteps.map((s, i) => ({ ...s, order: i })));
+    setSteps(reorderedSteps.map((s, i) => ({ ...s, order: i })));
 
     // Save new order
     try {
@@ -311,8 +298,8 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
       // Default config based on type
       const defaultConfig = getDefaultConfigForType(type);
       
-      // Insert before fixed steps (signup, payment, success)
-      const insertOrder = customSteps.length;
+      // Insert at the end of the current steps
+      const insertOrder = sortableSteps.length;
 
       const response = await fetch(`/api/coach/org-funnels/${funnelId}/steps`, {
         method: 'POST',
@@ -375,28 +362,18 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
     }
   };
 
-  const renderStepRow = (step: FunnelStep, isFixed: boolean, showDragHandle: boolean = true) => {
+  const renderStepRow = (step: FunnelStep) => {
     const typeInfo = STEP_TYPE_INFO[step.type];
     const Icon = typeInfo?.icon || Info;
-    
-    // Don't show payment step if not paid
-    if (step.type === 'payment' && !isPaid) {
-      return null;
-    }
+    const isRequired = FIXED_STEP_TYPES.includes(step.type);
 
     return (
-      <div className={`p-4 bg-white hover:bg-[#faf8f6] transition-colors ${isFixed ? 'border-l-2 border-l-[#a07855]/30' : ''}`}>
+      <div className="p-4 bg-white hover:bg-[#faf8f6] transition-colors">
         <div className="flex items-center gap-4">
-          {/* Drag handle or lock icon */}
-          {showDragHandle && !isFixed ? (
-            <div className="cursor-grab active:cursor-grabbing">
-              <GripVertical className="w-5 h-5 text-text-muted" />
-            </div>
-          ) : (
-            <div className="w-5 flex items-center justify-center">
-              <Lock className="w-4 h-4 text-text-muted/50" />
-            </div>
-          )}
+          {/* Drag handle - shown for all steps */}
+          <div className="cursor-grab active:cursor-grabbing">
+            <GripVertical className="w-5 h-5 text-text-muted" />
+          </div>
 
           {/* Step icon */}
           <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${typeInfo?.color || 'bg-gray-100 text-gray-600'}`}>
@@ -409,7 +386,7 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
               <p className="font-medium text-text-primary">
                 {step.name || typeInfo?.label || step.type}
               </p>
-              {isFixed && (
+              {isRequired && (
                 <span className="px-1.5 py-0.5 text-[10px] font-medium bg-[#f5f3f0] text-text-muted rounded">
                   Required
                 </span>
@@ -429,7 +406,7 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
             >
               <Pencil className="w-4 h-4 text-text-secondary" />
             </button>
-            {!isFixed && (
+            {!isRequired && (
               <button
                 onClick={() => handleDeleteStep(step.id, step.type)}
                 className="p-2 hover:bg-red-50 rounded-lg transition-colors"
@@ -463,19 +440,14 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
     );
   }
 
-  // Get fixed steps in correct order
-  const signupStep = fixedSteps.find(s => s.type === 'signup');
-  const paymentStep = fixedSteps.find(s => s.type === 'payment');
-  const successStep = fixedSteps.find(s => s.type === 'success');
-
   return (
     <div className="space-y-6">
-      {/* Custom steps list with drag and drop */}
+      {/* All steps list with drag and drop */}
       <div className="bg-white border border-[#e1ddd8] rounded-xl overflow-hidden">
         <div className="p-4 border-b border-[#e1ddd8] bg-[#faf8f6]">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-text-primary">
-              {steps.length} {steps.length === 1 ? 'step' : 'steps'}
+              {sortableSteps.length} {sortableSteps.length === 1 ? 'step' : 'steps'}
             </span>
             {isSaving && (
               <span className="text-xs text-text-muted flex items-center gap-1">
@@ -486,23 +458,23 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
           </div>
         </div>
 
-        {/* Custom steps (draggable) */}
-        {customSteps.length === 0 ? (
+        {/* All steps (draggable) */}
+        {sortableSteps.length === 0 ? (
           <div className="p-6 text-center border-b border-[#e1ddd8]">
-            <p className="text-text-secondary text-sm">No custom steps yet. Add questions or other steps above the required steps.</p>
+            <p className="text-text-secondary text-sm">No steps yet. Add steps to build your funnel.</p>
           </div>
         ) : (
-          <Reorder.Group axis="y" values={customSteps} onReorder={handleReorder} className="divide-y divide-[#e1ddd8]">
-            {customSteps.map((step) => (
+          <Reorder.Group axis="y" values={sortableSteps} onReorder={handleReorder} className="divide-y divide-[#e1ddd8]">
+            {sortableSteps.map((step) => (
               <Reorder.Item key={step.id} value={step}>
-                {renderStepRow(step, false, true)}
+                {renderStepRow(step)}
               </Reorder.Item>
             ))}
           </Reorder.Group>
         )}
 
         {/* Add step button */}
-        <div className="p-4 border-b border-[#e1ddd8]">
+        <div className="p-4">
           <button
             onClick={() => setShowAddStep(true)}
             className="w-full py-3 border-2 border-dashed border-[#e1ddd8] rounded-xl text-text-secondary hover:border-[#a07855] hover:text-[#a07855] transition-colors flex items-center justify-center gap-2"
@@ -510,18 +482,6 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
             <Plus className="w-4 h-4" />
             Add Step
           </button>
-        </div>
-
-        {/* Fixed/Required steps section */}
-        <div className="bg-[#faf8f6]/50">
-          <div className="px-4 py-2 border-b border-[#e1ddd8]">
-            <p className="text-xs font-medium text-text-muted uppercase tracking-wide">Required Steps</p>
-          </div>
-          <div className="divide-y divide-[#e1ddd8]">
-            {signupStep && renderStepRow(signupStep, true, false)}
-            {isPaid && paymentStep && renderStepRow(paymentStep, true, false)}
-            {successStep && renderStepRow(successStep, true, false)}
-          </div>
         </div>
       </div>
 

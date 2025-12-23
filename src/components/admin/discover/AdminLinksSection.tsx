@@ -40,11 +40,13 @@ function LinkFormDialog({
   isOpen,
   onClose,
   onSave,
+  apiEndpoint,
 }: {
   link: ProgramLink | null;
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
+  apiEndpoint: string;
 }) {
   const isEditing = !!link;
   const [saving, setSaving] = useState(false);
@@ -82,8 +84,8 @@ function LinkFormDialog({
 
     try {
       const url = isEditing 
-        ? `/api/admin/discover/links/${link.id}`
-        : '/api/admin/discover/links';
+        ? `${apiEndpoint}/${link.id}`
+        : apiEndpoint;
       
       const response = await fetch(url, {
         method: isEditing ? 'PATCH' : 'POST',
@@ -412,6 +414,7 @@ export function AdminLinksSection({ apiEndpoint = '/api/admin/discover/links' }:
         isOpen={isFormOpen}
         onClose={() => { setIsFormOpen(false); setLinkToEdit(null); }}
         onSave={fetchLinks}
+        apiEndpoint={apiEndpoint}
       />
 
       {/* Delete Confirmation */}
