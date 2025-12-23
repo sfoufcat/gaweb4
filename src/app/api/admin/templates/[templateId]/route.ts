@@ -104,7 +104,7 @@ export async function PUT(
     // Handle status changes
     const { action, ...updateData } = body;
     
-    let updates: Partial<ProgramTemplate> = {
+    const updates: Partial<ProgramTemplate> = {
       ...updateData,
       updatedAt: now,
     };

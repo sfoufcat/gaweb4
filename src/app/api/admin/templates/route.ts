@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     
     console.log('[ADMIN_TEMPLATES] Fetching templates', { status, category });
     
-    let query = adminDb.collection('program_templates').orderBy('createdAt', 'desc');
+    const query = adminDb.collection('program_templates').orderBy('createdAt', 'desc');
     
     // We'll filter in memory to avoid composite index requirements
     const snapshot = await query.get();

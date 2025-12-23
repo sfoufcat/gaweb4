@@ -12,8 +12,6 @@ import {
 import { Button } from '@/components/ui/button';
 import type { ProgramTemplate, TemplateCategory, TemplateStatus } from '@/types';
 
-interface AdminTemplatesTabProps {}
-
 type FilterStatus = 'all' | TemplateStatus;
 
 const STATUS_STYLES: Record<TemplateStatus, { bg: string; text: string; icon: React.ComponentType<{ className?: string }> }> = {
@@ -32,7 +30,7 @@ const CATEGORY_LABELS: Record<TemplateCategory, string> = {
   relationships: 'Relationships',
 };
 
-export function AdminTemplatesTab({}: AdminTemplatesTabProps) {
+export function AdminTemplatesTab() {
   const [templates, setTemplates] = useState<ProgramTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
