@@ -235,7 +235,7 @@ export function ProgramDetailView({
         </div>
 
         {/* Cover Image */}
-        <div className="relative h-[220px] w-full rounded-[20px] overflow-hidden bg-surface">
+        <div className="relative h-[220px] w-full rounded-[20px] overflow-hidden bg-gray-200 dark:bg-gray-800">
           {program.coverImageUrl ? (
             <Image
               src={program.coverImageUrl}
@@ -304,7 +304,7 @@ export function ProgramDetailView({
               </div>
 
               {/* Coach Avatar */}
-              <div className="w-[38px] h-[38px] rounded-full overflow-hidden bg-surface ml-2">
+              <div className="w-[38px] h-[38px] rounded-full overflow-hidden bg-gray-200 dark:bg-gray-800 ml-2">
                 {program.coachImageUrl ? (
                   <Image
                     src={program.coachImageUrl}
@@ -349,7 +349,7 @@ export function ProgramDetailView({
               </div>
 
               {/* Coach Avatar */}
-              <div className="w-[38px] h-[38px] rounded-full overflow-hidden bg-surface">
+              <div className="w-[38px] h-[38px] rounded-full overflow-hidden bg-gray-200 dark:bg-gray-800">
                 {program.coachImageUrl ? (
                   <Image
                     src={program.coachImageUrl}
