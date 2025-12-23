@@ -46,6 +46,29 @@ interface ProgramDetailData {
   } | null;
   canEnroll: boolean;
   cannotEnrollReason?: string;
+  branding?: {
+    accentLight: string;
+    accentDark: string;
+  };
+}
+
+// Helper function to adjust color brightness
+function adjustColorBrightness(hex: string, percent: number): string {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const amt = Math.round(2.55 * percent);
+  const R = Math.min(255, Math.max(0, (num >> 16) + amt));
+  const G = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amt));
+  const B = Math.min(255, Math.max(0, (num & 0x0000FF) + amt));
+  return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`;
+}
+
+// Helper to convert hex to rgba
+function hexToRgba(hex: string, alpha: number): string {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const r = (num >> 16) & 255;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 // Icon mapping for features
@@ -195,8 +218,14 @@ export default function ProgramDetailPage() {
     );
   }
 
-  const { program, cohorts, enrollment, canEnroll, cannotEnrollReason, totalEnrollments, days } = data;
+  const { program, cohorts, enrollment, canEnroll, cannotEnrollReason, totalEnrollments, days, branding } = data;
   const selectedCohort = cohorts?.find(c => c.id === selectedCohortId);
+  
+  // Use coach's branding colors or defaults
+  const accentLight = branding?.accentLight || '#a07855';
+  const accentDark = branding?.accentDark || '#b8896a';
+  // Derived hover color (slightly darker)
+  const accentLightHover = branding?.accentLight ? adjustColorBrightness(branding.accentLight, -15) : '#8c6245';
 
   // Get curriculum days if showCurriculum is enabled
   const curriculumDays = program.showCurriculum && days 
@@ -208,7 +237,10 @@ export default function ProgramDetailPage() {
       {/* Hero Section */}
       <div className="relative">
         {/* Cover Image */}
-        <div className="h-[280px] sm:h-[360px] w-full bg-gradient-to-br from-[#a07855]/30 to-[#8c6245]/10 relative">
+        <div 
+          className="h-[280px] sm:h-[360px] w-full relative"
+          style={{ background: `linear-gradient(to bottom right, ${hexToRgba(accentLight, 0.3)}, ${hexToRgba(accentLightHover, 0.1)})` }}
+        >
           {program.coverImageUrl ? (
             <Image
               src={program.coverImageUrl}
@@ -218,11 +250,14 @@ export default function ProgramDetailPage() {
               priority
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#a07855]/20 to-[#8c6245]/10">
+            <div 
+              className="w-full h-full flex items-center justify-center"
+              style={{ background: `linear-gradient(to bottom right, ${hexToRgba(accentLight, 0.2)}, ${hexToRgba(accentLightHover, 0.1)})` }}
+            >
               {program.type === 'group' ? (
-                <Users className="w-24 h-24 text-[#a07855]/30" />
+                <Users className="w-24 h-24" style={{ color: hexToRgba(accentLight, 0.3) }} />
               ) : (
-                <User className="w-24 h-24 text-[#a07855]/30" />
+                <User className="w-24 h-24" style={{ color: hexToRgba(accentLight, 0.3) }} />
               )}
             </div>
           )}
@@ -264,9 +299,15 @@ export default function ProgramDetailPage() {
             {/* Main Info Card */}
             <div className="bg-white dark:bg-[#171b22] rounded-3xl shadow-xl p-6 sm:p-8 border border-[#e1ddd8] dark:border-[#262b35]">
               {/* Badge */}
-              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#a07855]/10 to-[#8c6245]/10 rounded-full px-4 py-2 mb-4">
-                <Star className="w-5 h-5 text-[#a07855]" />
-                <span className="font-albert text-[14px] font-semibold bg-gradient-to-r from-[#a07855] to-[#8c6245] bg-clip-text text-transparent">
+              <div 
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2 mb-4"
+                style={{ background: `linear-gradient(to right, ${hexToRgba(accentLight, 0.1)}, ${hexToRgba(accentLightHover, 0.1)})` }}
+              >
+                <Star className="w-5 h-5" style={{ color: accentLight }} />
+                <span 
+                  className="font-albert text-[14px] font-semibold bg-clip-text text-transparent"
+                  style={{ backgroundImage: `linear-gradient(to right, ${accentLight}, ${accentLightHover})` }}
+                >
                   {program.type === 'group' ? 'Cohort-Based Program' : 'Personal Coaching'}
                 </span>
               </div>
@@ -308,7 +349,10 @@ export default function ProgramDetailPage() {
                     className="rounded-full border-2 border-white dark:border-[#262b35] shadow-md"
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] flex items-center justify-center border-2 border-white dark:border-[#262b35] shadow-md">
+                  <div 
+                    className="w-16 h-16 rounded-full flex items-center justify-center border-2 border-white dark:border-[#262b35] shadow-md"
+                    style={{ background: `linear-gradient(to bottom right, ${accentLight}, ${accentLightHover})` }}
+                  >
                     <span className="text-white font-albert font-bold text-xl">
                       {program.coachName.charAt(0).toUpperCase()}
                     </span>
@@ -346,8 +390,11 @@ export default function ProgramDetailPage() {
                 <div className="space-y-4">
                   {program.keyOutcomes.map((outcome, index) => (
                     <div key={index} className="flex items-start gap-4">
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-r from-[#a07855]/10 to-[#8c6245]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <Check className="w-4 h-4 text-[#a07855]" />
+                      <div 
+                        className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                        style={{ background: `linear-gradient(to right, ${hexToRgba(accentLight, 0.1)}, ${hexToRgba(accentLightHover, 0.1)})` }}
+                      >
+                        <Check className="w-4 h-4" style={{ color: accentLight }} />
                       </div>
                       <span className="font-albert text-[16px] text-text-primary leading-[1.5]">
                         {outcome}
@@ -369,8 +416,11 @@ export default function ProgramDetailPage() {
                     const IconComponent = feature.icon ? featureIcons[feature.icon] || Star : Star;
                     return (
                       <div key={index} className="flex items-start gap-4 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-[#a07855]/10 to-[#8c6245]/10 flex items-center justify-center flex-shrink-0">
-                          <IconComponent className="w-5 h-5 text-[#a07855]" />
+                        <div 
+                          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                          style={{ background: `linear-gradient(to right, ${hexToRgba(accentLight, 0.1)}, ${hexToRgba(accentLightHover, 0.1)})` }}
+                        >
+                          <IconComponent className="w-5 h-5" style={{ color: accentLight }} />
                         </div>
                         <div>
                           <div className="font-albert font-semibold text-[15px] text-text-primary">
@@ -398,8 +448,11 @@ export default function ProgramDetailPage() {
                 <div className="space-y-3">
                   {curriculumDays.slice(0, 10).map((day) => (
                     <div key={day.id} className="flex items-center gap-4 p-3 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
-                      <div className="w-10 h-10 rounded-lg bg-[#a07855]/10 flex items-center justify-center flex-shrink-0">
-                        <span className="font-albert font-semibold text-[14px] text-[#a07855]">
+                      <div 
+                        className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: hexToRgba(accentLight, 0.1) }}
+                      >
+                        <span className="font-albert font-semibold text-[14px]" style={{ color: accentLight }}>
                           {day.dayIndex}
                         </span>
                       </div>
@@ -445,7 +498,10 @@ export default function ProgramDetailPage() {
                         &quot;{testimonial.text}&quot;
                       </p>
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] flex items-center justify-center text-white font-albert font-semibold text-[14px]">
+                        <div 
+                          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-albert font-semibold text-[14px]"
+                          style={{ background: `linear-gradient(to bottom right, ${accentLight}, ${accentLightHover})` }}
+                        >
                           {testimonial.author.charAt(0).toUpperCase()}
                         </div>
                         <div>
@@ -502,13 +558,19 @@ export default function ProgramDetailPage() {
             <div className="bg-white dark:bg-[#171b22] rounded-3xl shadow-xl p-6 sm:p-8 border border-[#e1ddd8] dark:border-[#262b35]">
               {/* Program badge */}
               <div className="flex items-center justify-center gap-2 mb-6">
-                <div className="flex items-center gap-2 bg-gradient-to-r from-[#a07855]/10 to-[#8c6245]/10 rounded-full px-4 py-2">
+                <div 
+                  className="flex items-center gap-2 rounded-full px-4 py-2"
+                  style={{ background: `linear-gradient(to right, ${hexToRgba(accentLight, 0.1)}, ${hexToRgba(accentLightHover, 0.1)})` }}
+                >
                   {program.type === 'group' ? (
-                    <Users className="w-5 h-5 text-[#a07855]" />
+                    <Users className="w-5 h-5" style={{ color: accentLight }} />
                   ) : (
-                    <User className="w-5 h-5 text-[#a07855]" />
+                    <User className="w-5 h-5" style={{ color: accentLight }} />
                   )}
-                  <span className="font-albert text-[14px] font-semibold bg-gradient-to-r from-[#a07855] to-[#8c6245] bg-clip-text text-transparent">
+                  <span 
+                    className="font-albert text-[14px] font-semibold bg-clip-text text-transparent"
+                    style={{ backgroundImage: `linear-gradient(to right, ${accentLight}, ${accentLightHover})` }}
+                  >
                     {program.type === 'group' ? 'Group Program' : '1:1 Coaching'}
                   </span>
                 </div>
@@ -529,7 +591,10 @@ export default function ProgramDetailPage() {
               </div>
 
               {/* Duration callout */}
-              <div className="bg-gradient-to-r from-[#a07855]/10 to-[#8c6245]/10 rounded-xl p-3 mb-6 text-center">
+              <div 
+                className="rounded-xl p-3 mb-6 text-center"
+                style={{ background: `linear-gradient(to right, ${hexToRgba(accentLight, 0.1)}, ${hexToRgba(accentLightHover, 0.1)})` }}
+              >
                 <p className="font-albert text-[14px] text-text-primary">
                   <span className="font-semibold">{program.lengthDays}-day</span> transformation program
                 </p>
@@ -565,12 +630,16 @@ export default function ProgramDetailPage() {
                         onClick={() => cohort.isAvailableToUser && setSelectedCohortId(cohort.id)}
                         disabled={!cohort.isAvailableToUser}
                         className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                          selectedCohortId === cohort.id
-                            ? 'border-[#a07855] bg-[#a07855]/5'
-                            : cohort.isAvailableToUser
-                            ? 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855]/50'
-                            : 'border-[#e1ddd8] dark:border-[#262b35] opacity-50 cursor-not-allowed'
+                          !cohort.isAvailableToUser 
+                            ? 'border-[#e1ddd8] dark:border-[#262b35] opacity-50 cursor-not-allowed'
+                            : 'border-[#e1ddd8] dark:border-[#262b35]'
                         }`}
+                        style={selectedCohortId === cohort.id ? {
+                          borderColor: accentLight,
+                          backgroundColor: hexToRgba(accentLight, 0.05)
+                        } : cohort.isAvailableToUser ? {
+                          borderColor: undefined,
+                        } : undefined}
                       >
                         <div className="flex items-center justify-between">
                           <div>
@@ -595,7 +664,7 @@ export default function ProgramDetailPage() {
                                   </div>
                                 ) : null}
                                 {selectedCohortId === cohort.id && (
-                                  <Check className="w-5 h-5 text-[#a07855] mt-1 ml-auto" />
+                                  <Check className="w-5 h-5 mt-1 ml-auto" style={{ color: accentLight }} />
                                 )}
                               </>
                             ) : (
@@ -639,7 +708,11 @@ export default function ProgramDetailPage() {
                 <Button
                   onClick={handleEnroll}
                   disabled={!canEnroll || enrolling || (program.type === 'group' && !selectedCohortId)}
-                  className="w-full py-4 text-[17px] bg-gradient-to-r from-[#a07855] to-[#8c6245] hover:from-[#8c6245] hover:to-[#7d5c3e] text-white disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#a07855]/20 rounded-2xl font-semibold"
+                  className="w-full py-4 text-[17px] text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-2xl font-semibold transition-all"
+                  style={{ 
+                    background: `linear-gradient(to right, ${accentLight}, ${accentLightHover})`,
+                    boxShadow: `0 10px 15px -3px ${hexToRgba(accentLight, 0.2)}`
+                  }}
                 >
                   {enrolling ? (
                     <>
@@ -657,7 +730,11 @@ export default function ProgramDetailPage() {
               ) : (
                 <Button
                   onClick={() => router.push('/program')}
-                  className="w-full py-4 text-[17px] bg-gradient-to-r from-[#a07855] to-[#8c6245] hover:from-[#8c6245] hover:to-[#7d5c3e] text-white shadow-lg shadow-[#a07855]/20 rounded-2xl font-semibold"
+                  className="w-full py-4 text-[17px] text-white rounded-2xl font-semibold transition-all"
+                  style={{ 
+                    background: `linear-gradient(to right, ${accentLight}, ${accentLightHover})`,
+                    boxShadow: `0 10px 15px -3px ${hexToRgba(accentLight, 0.2)}`
+                  }}
                 >
                   Go to My Programs
                   <ChevronRight className="w-5 h-5 ml-2" />
@@ -684,36 +761,6 @@ export default function ProgramDetailPage() {
         </div>
       </div>
 
-      {/* Bottom CTA */}
-      {!enrollment && (
-        <div className="bg-[#1a1a1a] pt-16 pb-32 md:pb-16 rounded-t-[32px] mx-0">
-          <div className="max-w-[600px] mx-auto px-4 text-center">
-            <h2 className="font-albert text-[28px] sm:text-[32px] font-semibold text-white mb-4 tracking-[-1px]">
-              Ready to start your journey?
-            </h2>
-            <p className="font-albert text-[16px] text-white/70 mb-8">
-              Join {program.name} and transform your potential into results.
-            </p>
-            <Button
-              onClick={handleEnroll}
-              disabled={!canEnroll || enrolling || (program.type === 'group' && !selectedCohortId)}
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-[#a07855] to-[#8c6245] hover:from-[#8c6245] hover:to-[#7d5c3e] text-white py-4 px-8 rounded-3xl font-albert text-[17px] font-semibold transition-all duration-200 shadow-lg shadow-[#a07855]/30 disabled:opacity-50"
-            >
-              {enrolling ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Processing...
-                </>
-              ) : !isSignedIn ? (
-                'Sign in to get started'
-              ) : (
-                `Enroll Now${program.priceInCents > 0 ? ` - ${formatPrice(program.priceInCents)}` : ''}`
-              )}
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* Success Modal */}
       <AlertDialog open={successModal.open} onOpenChange={(open) => {
         if (!open) {
@@ -739,7 +786,8 @@ export default function ProgramDetailPage() {
                 setSuccessModal({ open: false, message: '' });
                 window.location.reload();
               }}
-              className="bg-[#a07855] hover:bg-[#8c6245] text-white"
+              className="text-white"
+              style={{ backgroundColor: accentLight }}
             >
               Continue
             </AlertDialogAction>
@@ -766,7 +814,8 @@ export default function ProgramDetailPage() {
           <AlertDialogFooter>
             <AlertDialogAction 
               onClick={() => setErrorModal({ open: false, message: '' })}
-              className="bg-[#a07855] hover:bg-[#8c6245] text-white"
+              className="text-white"
+              style={{ backgroundColor: accentLight }}
             >
               Try Again
             </AlertDialogAction>

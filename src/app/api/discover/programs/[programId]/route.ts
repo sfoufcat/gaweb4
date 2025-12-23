@@ -10,7 +10,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
-import type { Program, ProgramCohort, ProgramEnrollment, ProgramDay } from '@/types';
+import type { Program, ProgramCohort, ProgramEnrollment, ProgramDay, OrgBranding } from '@/types';
+import { DEFAULT_BRANDING_COLORS } from '@/types';
 
 interface CohortWithAvailability extends ProgramCohort {
   spotsRemaining: number;
@@ -235,6 +236,32 @@ export async function GET(
         .sort((a, b) => a.dayIndex - b.dayIndex);
     }
 
+    // Get organization branding (accent colors)
+    let branding = {
+      accentLight: DEFAULT_BRANDING_COLORS.accentLight,
+      accentDark: DEFAULT_BRANDING_COLORS.accentDark,
+    };
+    
+    try {
+      const brandingDoc = await adminDb
+        .collection('org_branding')
+        .doc(programData.organizationId)
+        .get();
+      
+      if (brandingDoc.exists) {
+        const brandingData = brandingDoc.data() as OrgBranding;
+        if (brandingData.colors) {
+          branding = {
+            accentLight: brandingData.colors.accentLight || DEFAULT_BRANDING_COLORS.accentLight,
+            accentDark: brandingData.colors.accentDark || DEFAULT_BRANDING_COLORS.accentDark,
+          };
+        }
+      }
+    } catch (err) {
+      console.error('[DISCOVER_PROGRAM_GET] Error fetching branding:', err);
+      // Use default branding
+    }
+
     return NextResponse.json({ 
       program,
       cohorts: programData.type === 'group' ? cohorts : undefined,
@@ -248,6 +275,7 @@ export async function GET(
       } : null,
       canEnroll,
       cannotEnrollReason,
+      branding,
     });
   } catch (error) {
     console.error('[DISCOVER_PROGRAM_GET] Error:', error);
