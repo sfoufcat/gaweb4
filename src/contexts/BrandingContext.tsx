@@ -1,14 +1,12 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { useUser } from '@clerk/nextjs';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, UserRole, OrgRole } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS } from '@/types';
 import { 
   DEFAULT_TENANT_COACHING_PROMO, 
   type TenantCoachingPromoData 
 } from '@/lib/tenant-edge-config';
-import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 
 /**
  * Calculate relative luminance of a hex color
@@ -142,9 +140,6 @@ export function BrandingProvider({
   initialCoachingPromo,
   initialIsDefault = true,
 }: BrandingProviderProps) {
-  // Get user info to detect if they're a coach (for fetching their custom branding)
-  const { user, isLoaded: isUserLoaded } = useUser();
-  
   // Initialize with SSR branding if provided, otherwise default
   const [branding, setBranding] = useState<OrgBranding>(
     initialBranding || getDefaultBranding()
@@ -164,13 +159,11 @@ export function BrandingProvider({
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [previewBranding, setPreviewBranding] = useState<OrgBranding | null>(null);
 
-  // Fetch branding from API
-  // forCoach=true will authenticate and fetch the coach's organization branding
-  const fetchBranding = useCallback(async (forCoach = false) => {
+  // Fetch branding from API (fallback for when SSR branding is not available)
+  const fetchBranding = useCallback(async () => {
     try {
       setIsLoading(true);
-      const url = forCoach ? '/api/org/branding?forCoach=true' : '/api/org/branding';
-      const response = await fetch(url);
+      const response = await fetch('/api/org/branding');
       
       // Check content type to avoid parsing HTML as JSON
       const contentType = response.headers.get('content-type');
@@ -206,31 +199,23 @@ export function BrandingProvider({
     }
   }, []);
 
-  // Initialize on mount - wait for user auth to detect if they're a coach
+  // Initialize on mount
+  // Trust SSR branding from middleware - it handles tenant vs platform domain correctly
+  // Only fetch as fallback if no SSR branding was provided
   useEffect(() => {
     setMounted(true);
     
-    // Wait for user auth to load so we know if they're a coach
-    if (!isUserLoaded) {
+    // If SSR branding was provided (from tenant cookie), use it as-is
+    // This covers both tenant domains (custom branding) and platform domain (default branding)
+    // The middleware is the source of truth for which branding to show
+    if (hadInitialBranding) {
       return;
     }
     
-    // Check if user is a coach/admin
-    const role = user?.publicMetadata?.role as UserRole | undefined;
-    const orgRole = user?.publicMetadata?.orgRole as OrgRole | undefined;
-    const isCoach = canAccessCoachDashboard(role, orgRole);
-
-    // Skip fetch if we have SSR branding, UNLESS:
-    // We have default branding (isDefault=true) AND the user is a coach
-    // In that case, we want to fetch their custom branding even on the platform domain
-    if (hadInitialBranding) {
-      if (!isDefault || !isCoach) {
-        return;
-      }
-    }
-    
-    fetchBranding(isCoach);
-  }, [fetchBranding, hadInitialBranding, isUserLoaded, user, isDefault]);
+    // No SSR branding - fetch from API as fallback
+    // This is rare and only happens if middleware didn't set the cookie
+    fetchBranding();
+  }, [fetchBranding, hadInitialBranding]);
 
   // Apply CSS when effective branding changes
   useEffect(() => {
@@ -268,12 +253,12 @@ export function BrandingProvider({
   }, []);
 
   // Refetch branding - automatically uses forCoach if user is a coach
+  // Refetch branding from API
+  // Note: This refetches without forCoach - for coach-specific branding, 
+  // components like CustomizeBrandingTab have their own fetch logic
   const refetch = useCallback(async () => {
-    const role = user?.publicMetadata?.role as UserRole | undefined;
-    const orgRole = user?.publicMetadata?.orgRole as OrgRole | undefined;
-    const isCoach = canAccessCoachDashboard(role, orgRole);
-    await fetchBranding(isCoach);
-  }, [fetchBranding, user]);
+    await fetchBranding();
+  }, [fetchBranding]);
 
   // Calculate effective branding
   const effectiveBranding = useMemo(() => {
