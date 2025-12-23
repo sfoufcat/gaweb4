@@ -566,8 +566,8 @@ export default function CoachPlanPage() {
         >
           <p className="font-sans text-[14px] text-text-secondary">
             Questions? Contact us at{' '}
-            <a href="mailto:support@growthaddicts.app" className="text-[#a07855] underline underline-offset-2">
-              support@growthaddicts.app
+            <a href="mailto:hello@growthaddicts.com" className="text-[#a07855] underline underline-offset-2">
+              hello@growthaddicts.com
             </a>
           </p>
         </motion.div>

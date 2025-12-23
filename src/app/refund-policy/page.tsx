@@ -117,7 +117,7 @@ export default function RefundPolicyPage() {
                 To request a refund under our 30-day guarantee:
               </p>
               <ol className="list-decimal pl-6 space-y-2 font-sans text-[15px] text-text-secondary">
-                <li>Email us at <a href="mailto:support@growthaddicts.com" className="text-[#a07855] hover:underline">support@growthaddicts.com</a> with the subject line &quot;30-Day Guarantee Refund Request&quot;</li>
+                <li>Email us at <a href="mailto:hello@growthaddicts.com" className="text-[#a07855] hover:underline">hello@growthaddicts.com</a> with the subject line &quot;30-Day Guarantee Refund Request&quot;</li>
                 <li>Include your account email address and the date of your subscription</li>
                 <li>Briefly explain why you feel you haven&apos;t made progress despite completing the program</li>
                 <li>Our team will review your account activity and respond within 3-5 business days</li>
@@ -133,7 +133,7 @@ export default function RefundPolicyPage() {
                 You can cancel your subscription at any time:
               </p>
               <ul className="list-disc pl-6 space-y-2 font-sans text-[15px] text-text-secondary">
-                <li><strong>How to cancel:</strong> Visit your account settings and click &quot;Cancel Subscription&quot;, or email us at support@growthaddicts.com</li>
+                <li><strong>How to cancel:</strong> Visit your account settings and click &quot;Cancel Subscription&quot;, or email us at hello@growthaddicts.com</li>
                 <li><strong>Effective date:</strong> Cancellation takes effect at the end of your current billing period</li>
                 <li><strong>Access after cancellation:</strong> You&apos;ll retain full access to all features until your subscription period ends</li>
                 <li><strong>No partial refunds:</strong> We do not provide refunds for partial months of service after the 30-day guarantee period</li>
@@ -190,8 +190,8 @@ export default function RefundPolicyPage() {
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed">
                 For any questions about refunds or cancellations, please contact us at{' '}
-                <a href="mailto:support@growthaddicts.com" className="text-[#a07855] hover:underline">
-                  support@growthaddicts.com
+                <a href="mailto:hello@growthaddicts.com" className="text-[#a07855] hover:underline">
+                  hello@growthaddicts.com
                 </a>
               </p>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed mt-4 mb-4">

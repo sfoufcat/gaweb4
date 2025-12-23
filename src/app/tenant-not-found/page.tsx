@@ -59,8 +59,8 @@ export default function TenantNotFoundPage() {
         {/* Help text */}
         <p className="mt-8 text-sm text-[#8c8c8c] dark:text-[#7d8190] font-albert">
           If you believe this is an error, please contact{' '}
-          <a href="mailto:support@growthaddicts.com" className="text-[#a07855] dark:text-[#b8896a] hover:underline">
-            support@growthaddicts.com
+          <a href="mailto:hello@growthaddicts.com" className="text-[#a07855] dark:text-[#b8896a] hover:underline">
+            hello@growthaddicts.com
           </a>
         </p>
       </div>
