@@ -2,12 +2,14 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
-import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment } from '@/types';
+import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment, ProgramFeature, ProgramTestimonial, ProgramFAQ } from '@/types';
+import { ProgramLandingPageEditor } from './ProgramLandingPageEditor';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Edit2, ChevronRight, UserMinus } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Edit2, ChevronRight, UserMinus, FileText, LayoutTemplate } from 'lucide-react';
 import { MediaUpload } from '@/components/admin/MediaUpload';
+import { NewProgramModal } from './NewProgramModal';
 
 // Enrollment with user info
 interface EnrollmentWithUser extends ProgramEnrollment {
@@ -36,8 +38,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // View mode: 'list' | 'days' | 'cohorts' | 'enrollments'
-  const [viewMode, setViewMode] = useState<'list' | 'days' | 'cohorts' | 'enrollments'>('list');
+  // View mode: 'list' | 'days' | 'cohorts' | 'enrollments' | 'landing'
+  const [viewMode, setViewMode] = useState<'list' | 'days' | 'cohorts' | 'enrollments' | 'landing'>('list');
   
   // Enrollments state
   const [programEnrollments, setProgramEnrollments] = useState<EnrollmentWithUser[]>([]);
@@ -47,6 +49,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   
   // Modal states
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
+  const [isNewProgramModalOpen, setIsNewProgramModalOpen] = useState(false);
   const [isCohortModalOpen, setIsCohortModalOpen] = useState(false);
   const [editingProgram, setEditingProgram] = useState<Program | null>(null);
   const [editingCohort, setEditingCohort] = useState<ProgramCohort | null>(null);
@@ -110,6 +113,25 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     habits: [],
   });
   
+  // Landing page form
+  const [landingPageFormData, setLandingPageFormData] = useState<{
+    coachBio: string;
+    keyOutcomes: string[];
+    features: ProgramFeature[];
+    testimonials: ProgramTestimonial[];
+    faqs: ProgramFAQ[];
+    showEnrollmentCount: boolean;
+    showCurriculum: boolean;
+  }>({
+    coachBio: '',
+    keyOutcomes: [],
+    features: [],
+    testimonials: [],
+    faqs: [],
+    showEnrollmentCount: false,
+    showCurriculum: false,
+  });
+  
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deleteConfirmProgram, setDeleteConfirmProgram] = useState<Program | null>(null);
@@ -161,6 +183,20 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         });
       } else {
         setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [] });
+      }
+      
+      // Load landing page data from program
+      const program = data.program as Program;
+      if (program) {
+        setLandingPageFormData({
+          coachBio: program.coachBio || '',
+          keyOutcomes: program.keyOutcomes || [],
+          features: program.features || [],
+          testimonials: program.testimonials || [],
+          faqs: program.faqs || [],
+          showEnrollmentCount: program.showEnrollmentCount || false,
+          showCurriculum: program.showCurriculum || false,
+        });
       }
     } catch (err) {
       console.error('Error fetching program details:', err);
@@ -420,6 +456,38 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     }
   };
 
+  const handleSaveLandingPage = async () => {
+    if (!selectedProgram) return;
+    
+    try {
+      setSaving(true);
+      setSaveError(null);
+
+      const response = await fetch(`${apiBasePath}/${selectedProgram.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(landingPageFormData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save landing page');
+      }
+
+      // Refresh program data
+      await fetchPrograms();
+      if (data.program) {
+        setSelectedProgram(data.program);
+      }
+    } catch (err) {
+      console.error('Error saving landing page:', err);
+      setSaveError(err instanceof Error ? err.message : 'Failed to save landing page');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleDeleteProgram = async () => {
     if (!deleteConfirmProgram) return;
     
@@ -587,7 +655,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 </p>
               </div>
               <Button 
-                onClick={() => handleOpenProgramModal()}
+                onClick={() => setIsNewProgramModalOpen(true)}
                 className="bg-[#a07855] hover:bg-[#8c6245] text-white flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
@@ -647,6 +715,17 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   }`}
                 >
                   Enrollments
+                </button>
+                <button
+                  onClick={() => setViewMode('landing')}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
+                    viewMode === 'landing'
+                      ? 'bg-[#a07855]/10 text-[#a07855]'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Landing Page
                 </button>
               </div>
             </>
@@ -760,16 +839,16 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             {programs.length === 0 && (
               <div className="col-span-full text-center py-12">
                 <div className="w-16 h-16 bg-[#a07855]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Plus className="w-8 h-8 text-[#a07855]" />
+                  <LayoutTemplate className="w-8 h-8 text-[#a07855]" />
                 </div>
                 <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                   No programs yet
                 </h3>
                 <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-4">
-                  Create your first program to start enrolling clients
+                  Choose from templates or build from scratch
                 </p>
                 <Button 
-                  onClick={() => handleOpenProgramModal()}
+                  onClick={() => setIsNewProgramModalOpen(true)}
                   className="bg-[#a07855] hover:bg-[#8c6245] text-white"
                 >
                   Create Program
@@ -1148,6 +1227,42 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+        ) : viewMode === 'landing' ? (
+          // Landing Page Editor
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                  Customize your program landing page with compelling content
+                </p>
+              </div>
+              <Button 
+                onClick={handleSaveLandingPage}
+                disabled={saving}
+                className="bg-[#a07855] hover:bg-[#8c6245] text-white flex items-center gap-2"
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+
+            {saveError && (
+              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-sm text-red-600 dark:text-red-400 font-albert">{saveError}</p>
+              </div>
+            )}
+
+            {loadingDetails ? (
+              <div className="text-center py-12">
+                <div className="w-8 h-8 border-4 border-[#a07855] border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-2">Loading...</p>
+              </div>
+            ) : (
+              <ProgramLandingPageEditor
+                formData={landingPageFormData}
+                onChange={setLandingPageFormData}
+              />
             )}
           </div>
         ) : null}
@@ -1740,6 +1855,46 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           </div>
         </Dialog>
       </Transition>
+
+      {/* New Program Modal (Template Selection) */}
+      <NewProgramModal
+        isOpen={isNewProgramModalOpen}
+        onClose={() => setIsNewProgramModalOpen(false)}
+        onCreateFromScratch={() => {
+          setIsNewProgramModalOpen(false);
+          setEditingProgram(null);
+          setProgramFormData({
+            name: '',
+            type: 'group',
+            description: '',
+            coverImageUrl: '',
+            lengthDays: 30,
+            priceInCents: 0,
+            currency: 'usd',
+            squadCapacity: 10,
+            coachInSquads: true,
+            isActive: true,
+            isPublished: false,
+            defaultHabits: [],
+          });
+          setIsProgramModalOpen(true);
+        }}
+        onProgramCreated={(programId) => {
+          fetchPrograms();
+          // Select the new program
+          const selectProgram = async () => {
+            const response = await fetch(`${apiBasePath}/${programId}`);
+            if (response.ok) {
+              const data = await response.json();
+              setSelectedProgram(data.program);
+              setProgramDays(data.days || []);
+              setProgramCohorts(data.cohorts || []);
+              setViewMode('days');
+            }
+          };
+          selectProgram();
+        }}
+      />
     </>
   );
 }

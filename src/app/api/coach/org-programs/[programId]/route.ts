@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { Program, ProgramDay, ProgramCohort, ProgramHabitTemplate } from '@/types';
+import type { Program, ProgramDay, ProgramCohort, ProgramHabitTemplate, ProgramFeature, ProgramTestimonial, ProgramFAQ } from '@/types';
 
 export async function GET(
   request: NextRequest,
@@ -215,6 +215,80 @@ export async function PUT(
         }
       }
       updateData.defaultHabits = defaultHabits.length > 0 ? defaultHabits : null;
+    }
+
+    // Handle landing page content fields
+    if (body.coachBio !== undefined) {
+      updateData.coachBio = body.coachBio?.trim() || null;
+    }
+
+    if (body.keyOutcomes !== undefined) {
+      const keyOutcomes: string[] = [];
+      if (Array.isArray(body.keyOutcomes)) {
+        for (const outcome of body.keyOutcomes) {
+          if (typeof outcome === 'string' && outcome.trim()) {
+            keyOutcomes.push(outcome.trim());
+          }
+        }
+      }
+      updateData.keyOutcomes = keyOutcomes.length > 0 ? keyOutcomes : null;
+    }
+
+    if (body.features !== undefined) {
+      const features: ProgramFeature[] = [];
+      if (Array.isArray(body.features)) {
+        for (const feature of body.features) {
+          if (feature.title?.trim()) {
+            features.push({
+              icon: feature.icon || undefined,
+              title: feature.title.trim(),
+              description: feature.description?.trim() || undefined,
+            });
+          }
+        }
+      }
+      updateData.features = features.length > 0 ? features : null;
+    }
+
+    if (body.testimonials !== undefined) {
+      const testimonials: ProgramTestimonial[] = [];
+      if (Array.isArray(body.testimonials)) {
+        for (const testimonial of body.testimonials) {
+          if (testimonial.text?.trim() && testimonial.author?.trim()) {
+            testimonials.push({
+              text: testimonial.text.trim(),
+              author: testimonial.author.trim(),
+              role: testimonial.role?.trim() || undefined,
+              imageUrl: testimonial.imageUrl || undefined,
+              rating: typeof testimonial.rating === 'number' ? Math.min(5, Math.max(1, testimonial.rating)) : undefined,
+            });
+          }
+        }
+      }
+      updateData.testimonials = testimonials.length > 0 ? testimonials : null;
+    }
+
+    if (body.faqs !== undefined) {
+      const faqs: ProgramFAQ[] = [];
+      if (Array.isArray(body.faqs)) {
+        for (const faq of body.faqs) {
+          if (faq.question?.trim() && faq.answer?.trim()) {
+            faqs.push({
+              question: faq.question.trim(),
+              answer: faq.answer.trim(),
+            });
+          }
+        }
+      }
+      updateData.faqs = faqs.length > 0 ? faqs : null;
+    }
+
+    if (body.showEnrollmentCount !== undefined) {
+      updateData.showEnrollmentCount = body.showEnrollmentCount === true;
+    }
+
+    if (body.showCurriculum !== undefined) {
+      updateData.showCurriculum = body.showCurriculum === true;
     }
 
     await adminDb.collection('programs').doc(programId).update(updateData);

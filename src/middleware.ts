@@ -713,14 +713,14 @@ export default clerkMiddleware(async (auth, request) => {
   if (!userId) {
     // If user is visiting root and not authenticated, redirect to sign-in or join
     if (pathname === '/') {
-      const fromAuth = request.nextUrl.searchParams.get('from_auth') === '1';
-      
-      // On custom domains coming from auth, let the page load so ClerkProvider can sync the session
-      if (isCustomDomain && fromAuth) {
-        console.log('[MIDDLEWARE] Skipping auth redirect for satellite session sync');
-        // Continue to page - ClerkProvider will sync session client-side
+      // On custom domains (satellite domains), skip the auth redirect entirely
+      // ClerkProvider will sync the session client-side from the primary domain (subdomain)
+      // If user is truly not authenticated, the client-side will redirect to sign-in
+      if (isCustomDomain) {
+        console.log('[MIDDLEWARE] Custom domain - skipping auth redirect for session sync');
+        // Continue to page - ClerkProvider will handle auth check client-side
       } else {
-        // Always redirect unauthenticated users to sign-in
+        // On platform/subdomain: redirect unauthenticated users to sign-in
         // Funnels should only be accessed via explicit funnel links (e.g., /join/program-slug/funnel-slug)
         return NextResponse.redirect(new URL('/sign-in', request.url));
       }

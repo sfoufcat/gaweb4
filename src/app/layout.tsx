@@ -77,6 +77,7 @@ export default async function RootLayout({
       hostname={hostname}
       logoUrl={getBestLogoUrl(ssrBranding.branding)}
       appTitle={ssrBranding.branding.appTitle}
+      subdomain={ssrBranding.subdomain}
     >
       <html lang="en" className="h-full" suppressHydrationWarning>
         <head>

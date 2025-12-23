@@ -15,6 +15,7 @@ import { AdminCoachingClientsTab } from '@/components/admin/AdminCoachingClients
 import { AdminStartFlowTab } from '@/components/admin/AdminStartFlowTab';
 import { AdminTracksAndProgramsTab } from '@/components/admin/tracks-programs';
 import { AdminOrganizationsTab } from '@/components/admin/AdminOrganizationsTab';
+import { AdminTemplatesTab } from '@/components/admin/AdminTemplatesTab';
 import type { ClerkPublicMetadata } from '@/types';
 
 export default function AdminPage() {
@@ -134,6 +135,12 @@ export default function AdminPage() {
                 >
                   Tracks & Programs
                 </TabsTrigger>
+                <TabsTrigger 
+                  value="templates"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Templates
+                </TabsTrigger>
               </>
             )}
           </TabsList>
@@ -177,6 +184,9 @@ export default function AdminPage() {
               </TabsContent>
               <TabsContent value="tracks-programs">
                 <AdminTracksAndProgramsTab />
+              </TabsContent>
+              <TabsContent value="templates">
+                <AdminTemplatesTab />
               </TabsContent>
             </>
           )}

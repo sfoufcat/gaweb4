@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
-import type { Program, ProgramCohort, ProgramEnrollment } from '@/types';
+import type { Program, ProgramCohort, ProgramEnrollment, ProgramDay } from '@/types';
 
 interface CohortWithAvailability extends ProgramCohort {
   spotsRemaining: number;
@@ -39,7 +39,7 @@ export async function GET(
       return NextResponse.json({ error: 'Program not found' }, { status: 404 });
     }
 
-    // Get coach info
+    // Get coach info - find the super_coach user from the organization
     let coachName = 'Coach';
     let coachImageUrl: string | undefined;
     let coachBio: string | undefined;
@@ -47,12 +47,36 @@ export async function GET(
     try {
       const { clerkClient } = await import('@clerk/nextjs/server');
       const clerk = await clerkClient();
-      const org = await clerk.organizations.getOrganization({ 
-        organizationId: programData.organizationId 
+      
+      // Get organization members to find the super_coach (the actual coach user)
+      const memberships = await clerk.organizations.getOrganizationMembershipList({
+        organizationId: programData.organizationId,
       });
-      coachName = org.name || 'Coach';
-      coachImageUrl = org.imageUrl || undefined;
-    } catch {
+      
+      // Find the member with super_coach orgRole
+      const coachMember = memberships.data.find(m => {
+        const metadata = m.publicUserData?.publicMetadata as { orgRole?: string } | undefined;
+        return metadata?.orgRole === 'super_coach';
+      });
+      
+      if (coachMember?.publicUserData?.userId) {
+        // Get the actual coach user's details
+        const coachUser = await clerk.users.getUser(coachMember.publicUserData.userId);
+        coachName = `${coachUser.firstName || ''} ${coachUser.lastName || ''}`.trim() || 'Coach';
+        coachImageUrl = coachUser.imageUrl || undefined;
+      } else {
+        // Fallback to first admin member if no super_coach found
+        const adminMember = memberships.data.find(m => 
+          m.role === 'org:admin' && m.publicUserData?.userId
+        );
+        if (adminMember?.publicUserData?.userId) {
+          const adminUser = await clerk.users.getUser(adminMember.publicUserData.userId);
+          coachName = `${adminUser.firstName || ''} ${adminUser.lastName || ''}`.trim() || 'Coach';
+          coachImageUrl = adminUser.imageUrl || undefined;
+        }
+      }
+    } catch (err) {
+      console.error('[DISCOVER_PROGRAM_GET] Error fetching coach info:', err);
       // Fallback to generic coach name
     }
 
@@ -184,9 +208,38 @@ export async function GET(
       coachBio,
     };
 
+    // Get total enrollments count for social proof (if showEnrollmentCount is enabled)
+    let totalEnrollments = 0;
+    if (programData.showEnrollmentCount) {
+      const enrollmentCount = await adminDb
+        .collection('program_enrollments')
+        .where('programId', '==', programId)
+        .count()
+        .get();
+      totalEnrollments = enrollmentCount.data().count;
+    }
+
+    // Get program days for curriculum preview (if showCurriculum is enabled)
+    let days: ProgramDay[] = [];
+    if (programData.showCurriculum) {
+      const daysSnapshot = await adminDb
+        .collection('program_days')
+        .where('programId', '==', programId)
+        .get();
+      
+      days = daysSnapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        } as ProgramDay))
+        .sort((a, b) => a.dayIndex - b.dayIndex);
+    }
+
     return NextResponse.json({ 
       program,
       cohorts: programData.type === 'group' ? cohorts : undefined,
+      days: programData.showCurriculum ? days : undefined,
+      totalEnrollments: programData.showEnrollmentCount ? totalEnrollments : undefined,
       enrollment: existingEnrollment ? {
         id: existingEnrollment.id,
         status: existingEnrollment.status,

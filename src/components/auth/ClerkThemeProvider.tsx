@@ -5,7 +5,7 @@ import { dark } from '@clerk/themes';
 import { useEffect, useState, useMemo } from 'react';
 
 const STORAGE_KEY = 'ga-theme';
-const PRIMARY_DOMAIN = 'https://growthaddicts.com';
+const PLATFORM_DOMAIN = 'https://growthaddicts.com';
 
 // Custom dark theme variables to match app design
 const darkAppearance = {
@@ -119,6 +119,7 @@ interface ClerkThemeProviderProps {
   hostname?: string;
   logoUrl?: string;
   appTitle?: string;
+  subdomain?: string | null;  // Tenant subdomain for satellite domain session sync
 }
 
 export function ClerkThemeProvider({ 
@@ -126,6 +127,7 @@ export function ClerkThemeProvider({
   hostname = '',
   logoUrl,
   appTitle,
+  subdomain,
 }: ClerkThemeProviderProps) {
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -207,10 +209,17 @@ export function ClerkThemeProvider({
   // When isSatellite is true, we pass all satellite config together
   // When false, we spread an empty object (no satellite props)
   // 
-  // For satellite domains, after sign-in on primary domain, redirect back to the custom domain
-  // This ensures users who go directly to custom domains can still sign in
+  // For satellite domains (custom domains), Clerk session lives on the primary domain.
+  // The primary domain should be the tenant's SUBDOMAIN (not the platform domain),
+  // because each tenant has their own Clerk organization on their subdomain.
   const satelliteProps = useMemo(() => {
     if (!isSatellite) return {};
+    
+    // Use tenant's subdomain as primary domain if available, otherwise fall back to platform
+    // This is critical: custom domain sessions sync FROM the subdomain, not the platform
+    const primaryDomain = subdomain 
+      ? `https://${subdomain}.growthaddicts.com`
+      : PLATFORM_DOMAIN;
     
     // Build redirect URL - after sign-in, return to the original custom domain
     const redirectParam = currentUrl ? `?redirect_url=${encodeURIComponent(currentUrl)}` : '';
@@ -218,10 +227,10 @@ export function ClerkThemeProvider({
     return {
       isSatellite: true as const,
       domain: domainWithoutPort,
-      signInUrl: `${PRIMARY_DOMAIN}/sign-in${redirectParam}`,
-      signUpUrl: `${PRIMARY_DOMAIN}/join/starter-90${redirectParam}`,
+      signInUrl: `${primaryDomain}/sign-in${redirectParam}`,
+      signUpUrl: `${primaryDomain}/join/starter-90${redirectParam}`,
     };
-  }, [isSatellite, domainWithoutPort, currentUrl]);
+  }, [isSatellite, domainWithoutPort, currentUrl, subdomain]);
 
   return (
     <ClerkProvider 

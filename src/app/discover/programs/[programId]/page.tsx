@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useAuth, useOrganization } from '@clerk/nextjs';
-import { BackButton, SectionHeader } from '@/components/discover';
+import Link from 'next/link';
+import { useAuth } from '@clerk/nextjs';
+import { BackButton } from '@/components/discover';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -16,10 +17,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { 
-  Users, User, Calendar, Clock, DollarSign, Check, 
-  ChevronRight, AlertCircle, Loader2, CheckCircle, XCircle
+  Users, User, Calendar, Clock, Check, 
+  ChevronRight, AlertCircle, Loader2, CheckCircle, XCircle,
+  Star, Video, MessageCircle, Book, Target, Zap, Heart,
+  ChevronDown
 } from 'lucide-react';
-import type { Program, ProgramCohort } from '@/types';
+import type { Program, ProgramCohort, ProgramDay, ProgramFeature, ProgramTestimonial, ProgramFAQ } from '@/types';
 
 interface CohortWithAvailability extends ProgramCohort {
   spotsRemaining: number;
@@ -31,9 +34,10 @@ interface ProgramDetailData {
   program: Program & {
     coachName: string;
     coachImageUrl?: string;
-    coachBio?: string;
   };
   cohorts?: CohortWithAvailability[];
+  days?: ProgramDay[];
+  totalEnrollments?: number;
   enrollment: {
     id: string;
     status: string;
@@ -44,11 +48,24 @@ interface ProgramDetailData {
   cannotEnrollReason?: string;
 }
 
+// Icon mapping for features
+const featureIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  'video': Video,
+  'users': Users,
+  'message-circle': MessageCircle,
+  'book': Book,
+  'target': Target,
+  'calendar': Calendar,
+  'check-circle': CheckCircle,
+  'zap': Zap,
+  'heart': Heart,
+  'star': Star,
+};
+
 export default function ProgramDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { isSignedIn } = useAuth();
-  const { organization } = useOrganization();
   
   const programId = params.programId as string;
   
@@ -178,15 +195,20 @@ export default function ProgramDetailPage() {
     );
   }
 
-  const { program, cohorts, enrollment, canEnroll, cannotEnrollReason } = data;
+  const { program, cohorts, enrollment, canEnroll, cannotEnrollReason, totalEnrollments, days } = data;
   const selectedCohort = cohorts?.find(c => c.id === selectedCohortId);
 
+  // Get curriculum days if showCurriculum is enabled
+  const curriculumDays = program.showCurriculum && days 
+    ? days.filter(d => d.title).sort((a, b) => a.dayIndex - b.dayIndex)
+    : [];
+
   return (
-    <div className="min-h-screen pb-32">
-      {/* Header with cover image */}
+    <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b]">
+      {/* Hero Section */}
       <div className="relative">
         {/* Cover Image */}
-        <div className="h-[200px] sm:h-[280px] w-full bg-gradient-to-br from-[#a07855]/30 to-[#8c6245]/10 relative">
+        <div className="h-[280px] sm:h-[360px] w-full bg-gradient-to-br from-[#a07855]/30 to-[#8c6245]/10 relative">
           {program.coverImageUrl ? (
             <Image
               src={program.coverImageUrl}
@@ -196,15 +218,15 @@ export default function ProgramDetailPage() {
               priority
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#a07855]/20 to-[#8c6245]/10">
               {program.type === 'group' ? (
-                <Users className="w-20 h-20 text-[#a07855]/30" />
+                <Users className="w-24 h-24 text-[#a07855]/30" />
               ) : (
-                <User className="w-20 h-20 text-[#a07855]/30" />
+                <User className="w-24 h-24 text-[#a07855]/30" />
               )}
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
         </div>
 
         {/* Back button overlay */}
@@ -214,7 +236,7 @@ export default function ProgramDetailPage() {
 
         {/* Type badge */}
         <div className="absolute top-4 right-4">
-          <span className={`px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-1.5 backdrop-blur-sm ${
+          <span className={`px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 backdrop-blur-md shadow-lg ${
             program.type === 'group' 
               ? 'bg-blue-500/90 text-white'
               : 'bg-purple-500/90 text-white'
@@ -234,205 +256,463 @@ export default function ProgramDetailPage() {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="px-4 sm:px-8 -mt-16 relative z-10">
-        <div className="max-w-3xl mx-auto">
-          {/* Main Card */}
-          <div className="bg-white dark:bg-[#171b22] rounded-2xl shadow-xl p-6 sm:p-8">
-            {/* Title & Price */}
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-[-1px] mb-2">
-                  {program.name}
-                </h1>
-                <div className="flex items-center gap-2 text-[#5f5a55] dark:text-[#b2b6c2]">
-                  <Clock className="w-4 h-4" />
+      {/* Main Content */}
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 -mt-24 relative z-10 pb-32">
+        <div className="grid lg:grid-cols-5 gap-8 lg:gap-12 items-start">
+          {/* Left Column - Program Info */}
+          <div className="lg:col-span-3 space-y-8">
+            {/* Main Info Card */}
+            <div className="bg-white dark:bg-[#171b22] rounded-3xl shadow-xl p-6 sm:p-8 border border-[#e1ddd8] dark:border-[#262b35]">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#a07855]/10 to-[#8c6245]/10 rounded-full px-4 py-2 mb-4">
+                <Star className="w-5 h-5 text-[#a07855]" />
+                <span className="font-albert text-[14px] font-semibold bg-gradient-to-r from-[#a07855] to-[#8c6245] bg-clip-text text-transparent">
+                  {program.type === 'group' ? 'Cohort-Based Program' : 'Personal Coaching'}
+                </span>
+              </div>
+
+              {/* Title */}
+              <h1 className="font-albert text-[28px] sm:text-[36px] lg:text-[42px] font-semibold text-text-primary leading-[1.1] tracking-[-2px] mb-4">
+                {program.name}
+              </h1>
+
+              {/* Meta info */}
+              <div className="flex flex-wrap items-center gap-4 mb-6 text-text-secondary">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
                   <span className="font-albert">{program.lengthDays} days</span>
                 </div>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  {formatPrice(program.priceInCents)}
-                </div>
-                {program.priceInCents > 0 && (
-                  <div className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                    one-time payment
+                {program.showEnrollmentCount && totalEnrollments && totalEnrollments > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    <span className="font-albert">{totalEnrollments} enrolled</span>
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Coach */}
-            <div className="flex items-center gap-3 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl mb-6">
-              {program.coachImageUrl ? (
-                <Image
-                  src={program.coachImageUrl}
-                  alt={program.coachName}
-                  width={48}
-                  height={48}
-                  className="rounded-full"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-[#a07855]/20 flex items-center justify-center">
-                  <User className="w-6 h-6 text-[#a07855]" />
-                </div>
-              )}
-              <div>
-                <div className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  {program.coachName}
-                </div>
-                <div className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                  Your Coach
-                </div>
-              </div>
-            </div>
-
-            {/* Description */}
-            {program.description && (
-              <div className="mb-6">
-                <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                  About this program
-                </h2>
-                <p className="text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed whitespace-pre-line">
+              {/* Description */}
+              {program.description && (
+                <p className="font-albert text-[16px] sm:text-[18px] text-text-secondary leading-[1.6] mb-6">
                   {program.description}
                 </p>
-              </div>
-            )}
+              )}
 
-            {/* Enrollment Status */}
-            {enrollment && (
-              <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
-                <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
-                  <Check className="w-5 h-5" />
-                  <span className="font-semibold font-albert">
-                    {enrollment.status === 'active' ? 'You\'re enrolled!' : 'Enrollment confirmed'}
-                  </span>
-                </div>
-                {enrollment.status === 'upcoming' && (
-                  <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                    Your program starts on {formatDate(enrollment.startedAt)}
-                  </p>
+              {/* Coach Card */}
+              <div className="flex items-center gap-4 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-2xl">
+                {program.coachImageUrl ? (
+                  <Image
+                    src={program.coachImageUrl}
+                    alt={program.coachName}
+                    width={64}
+                    height={64}
+                    className="rounded-full border-2 border-white dark:border-[#262b35] shadow-md"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] flex items-center justify-center border-2 border-white dark:border-[#262b35] shadow-md">
+                    <span className="text-white font-albert font-bold text-xl">
+                      {program.coachName.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
                 )}
+                <div>
+                  <div className="font-semibold text-[18px] text-text-primary font-albert">
+                    {program.coachName}
+                  </div>
+                  <div className="text-sm text-text-secondary font-albert">
+                    Your Coach
+                  </div>
+                </div>
               </div>
-            )}
 
-            {/* Cohort Selection for Group Programs */}
-            {program.type === 'group' && cohorts && cohorts.length > 0 && !enrollment && (
-              <div className="mb-6">
-                <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
-                  Select a cohort
+              {/* Coach Bio */}
+              {program.coachBio && (
+                <div className="mt-6 pt-6 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                  <h2 className="font-albert text-lg font-semibold text-text-primary mb-3">
+                    About Your Coach
+                  </h2>
+                  <p className="font-albert text-[15px] text-text-secondary leading-[1.6] whitespace-pre-line">
+                    {program.coachBio}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Key Outcomes */}
+            {program.keyOutcomes && program.keyOutcomes.length > 0 && (
+              <div className="bg-white dark:bg-[#171b22] rounded-3xl shadow-lg p-6 sm:p-8 border border-[#e1ddd8] dark:border-[#262b35]">
+                <h2 className="font-albert text-[22px] sm:text-[26px] font-semibold text-text-primary mb-6 tracking-[-1px]">
+                  What you&apos;ll learn
                 </h2>
-                <div className="space-y-2">
-                  {cohorts.map((cohort) => (
-                    <button
-                      key={cohort.id}
-                      onClick={() => cohort.isAvailableToUser && setSelectedCohortId(cohort.id)}
-                      disabled={!cohort.isAvailableToUser}
-                      className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                        selectedCohortId === cohort.id
-                          ? 'border-[#a07855] bg-[#a07855]/5'
-                          : cohort.isAvailableToUser
-                          ? 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855]/50'
-                          : 'border-[#e1ddd8] dark:border-[#262b35] opacity-50 cursor-not-allowed'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                            {cohort.name}
-                          </div>
-                          <div className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] flex items-center gap-2 mt-1">
-                            <Calendar className="w-4 h-4" />
-                            {formatDate(cohort.startDate)} - {formatDate(cohort.endDate)}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          {cohort.isAvailableToUser ? (
-                            <>
-                              {cohort.spotsRemaining > 0 && cohort.spotsRemaining !== -1 ? (
-                                <div className="text-sm text-green-600 dark:text-green-400">
-                                  {cohort.spotsRemaining} spots left
-                                </div>
-                              ) : cohort.spotsRemaining === -1 ? (
-                                <div className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                                  Open enrollment
-                                </div>
-                              ) : null}
-                              {selectedCohortId === cohort.id && (
-                                <Check className="w-5 h-5 text-[#a07855] mt-1 ml-auto" />
-                              )}
-                            </>
-                          ) : (
-                            <div className="text-sm text-red-500">
-                              {cohort.unavailableReason || 'Unavailable'}
-                            </div>
-                          )}
-                        </div>
+                <div className="space-y-4">
+                  {program.keyOutcomes.map((outcome, index) => (
+                    <div key={index} className="flex items-start gap-4">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-r from-[#a07855]/10 to-[#8c6245]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Check className="w-4 h-4 text-[#a07855]" />
                       </div>
-                    </button>
+                      <span className="font-albert text-[16px] text-text-primary leading-[1.5]">
+                        {outcome}
+                      </span>
+                    </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Individual Program Info */}
-            {program.type === 'individual' && !enrollment && (
-              <div className="mb-6 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
-                <div className="flex items-center gap-2 text-[#1a1a1a] dark:text-[#f5f5f8]">
-                  <Calendar className="w-5 h-5 text-green-500" />
-                  <span className="font-semibold font-albert">Start anytime</span>
+            {/* Features / What's Included */}
+            {program.features && program.features.length > 0 && (
+              <div className="bg-white dark:bg-[#171b22] rounded-3xl shadow-lg p-6 sm:p-8 border border-[#e1ddd8] dark:border-[#262b35]">
+                <h2 className="font-albert text-[22px] sm:text-[26px] font-semibold text-text-primary mb-6 tracking-[-1px]">
+                  What&apos;s included
+                </h2>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {program.features.map((feature: ProgramFeature, index: number) => {
+                    const IconComponent = feature.icon ? featureIcons[feature.icon] || Star : Star;
+                    return (
+                      <div key={index} className="flex items-start gap-4 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-[#a07855]/10 to-[#8c6245]/10 flex items-center justify-center flex-shrink-0">
+                          <IconComponent className="w-5 h-5 text-[#a07855]" />
+                        </div>
+                        <div>
+                          <div className="font-albert font-semibold text-[15px] text-text-primary">
+                            {feature.title}
+                          </div>
+                          {feature.description && (
+                            <div className="font-albert text-[13px] text-text-secondary mt-1">
+                              {feature.description}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
-                  This is a 1:1 coaching program. You'll work directly with your coach at your own pace.
+              </div>
+            )}
+
+            {/* Curriculum Preview */}
+            {curriculumDays.length > 0 && (
+              <div className="bg-white dark:bg-[#171b22] rounded-3xl shadow-lg p-6 sm:p-8 border border-[#e1ddd8] dark:border-[#262b35]">
+                <h2 className="font-albert text-[22px] sm:text-[26px] font-semibold text-text-primary mb-6 tracking-[-1px]">
+                  Program Curriculum
+                </h2>
+                <div className="space-y-3">
+                  {curriculumDays.slice(0, 10).map((day) => (
+                    <div key={day.id} className="flex items-center gap-4 p-3 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
+                      <div className="w-10 h-10 rounded-lg bg-[#a07855]/10 flex items-center justify-center flex-shrink-0">
+                        <span className="font-albert font-semibold text-[14px] text-[#a07855]">
+                          {day.dayIndex}
+                        </span>
+                      </div>
+                      <span className="font-albert text-[15px] text-text-primary">
+                        {day.title}
+                      </span>
+                    </div>
+                  ))}
+                  {curriculumDays.length > 10 && (
+                    <p className="text-center text-sm text-text-secondary font-albert pt-2">
+                      + {curriculumDays.length - 10} more days
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Testimonials */}
+            {program.testimonials && program.testimonials.length > 0 && (
+              <div className="bg-white dark:bg-[#171b22] rounded-3xl shadow-lg p-6 sm:p-8 border border-[#e1ddd8] dark:border-[#262b35]">
+                <h2 className="font-albert text-[22px] sm:text-[26px] font-semibold text-text-primary mb-6 tracking-[-1px]">
+                  What others are saying
+                </h2>
+                <div className="space-y-6">
+                  {program.testimonials.map((testimonial: ProgramTestimonial, index: number) => (
+                    <div key={index} className="p-5 bg-[#faf8f6] dark:bg-[#11141b] rounded-2xl">
+                      {/* Stars */}
+                      {testimonial.rating && (
+                        <div className="flex items-center gap-1 mb-3">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-5 h-5 ${
+                                star <= testimonial.rating!
+                                  ? 'text-[#FFB800] fill-[#FFB800]'
+                                  : 'text-[#d1ccc5] dark:text-[#7d8190]'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                      <p className="font-albert text-[15px] text-text-secondary leading-[1.6] italic mb-4">
+                        &quot;{testimonial.text}&quot;
+                      </p>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] flex items-center justify-center text-white font-albert font-semibold text-[14px]">
+                          {testimonial.author.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-albert text-[14px] font-medium text-text-primary">
+                            {testimonial.author}
+                          </p>
+                          {testimonial.role && (
+                            <p className="font-albert text-[12px] text-text-secondary">
+                              {testimonial.role}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* FAQs */}
+            {program.faqs && program.faqs.length > 0 && (
+              <div className="bg-white dark:bg-[#171b22] rounded-3xl shadow-lg p-6 sm:p-8 border border-[#e1ddd8] dark:border-[#262b35]">
+                <h2 className="font-albert text-[22px] sm:text-[26px] font-semibold text-text-primary mb-6 tracking-[-1px]">
+                  Frequently asked questions
+                </h2>
+                <div className="space-y-3">
+                  {program.faqs.map((faq: ProgramFAQ, index: number) => (
+                    <details
+                      key={index}
+                      className="group bg-[#faf8f6] dark:bg-[#11141b] rounded-xl overflow-hidden"
+                    >
+                      <summary className="flex items-center justify-between p-4 cursor-pointer list-none">
+                        <span className="font-albert text-[15px] font-medium text-text-primary pr-4">
+                          {faq.question}
+                        </span>
+                        <ChevronDown
+                          className="w-5 h-5 text-text-secondary flex-shrink-0 transition-transform group-open:rotate-180"
+                        />
+                      </summary>
+                      <div className="px-4 pb-4">
+                        <p className="font-albert text-[14px] text-text-secondary leading-[1.6]">
+                          {faq.answer}
+                        </p>
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column - Pricing Card (Sticky) */}
+          <div className="lg:col-span-2 lg:sticky lg:top-6">
+            <div className="bg-white dark:bg-[#171b22] rounded-3xl shadow-xl p-6 sm:p-8 border border-[#e1ddd8] dark:border-[#262b35]">
+              {/* Program badge */}
+              <div className="flex items-center justify-center gap-2 mb-6">
+                <div className="flex items-center gap-2 bg-gradient-to-r from-[#a07855]/10 to-[#8c6245]/10 rounded-full px-4 py-2">
+                  {program.type === 'group' ? (
+                    <Users className="w-5 h-5 text-[#a07855]" />
+                  ) : (
+                    <User className="w-5 h-5 text-[#a07855]" />
+                  )}
+                  <span className="font-albert text-[14px] font-semibold bg-gradient-to-r from-[#a07855] to-[#8c6245] bg-clip-text text-transparent">
+                    {program.type === 'group' ? 'Group Program' : '1:1 Coaching'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Price */}
+              <div className="text-center mb-6">
+                <div className="flex items-baseline justify-center gap-1">
+                  <span className="font-albert text-[48px] font-bold text-text-primary tracking-[-2px]">
+                    {formatPrice(program.priceInCents)}
+                  </span>
+                </div>
+                {program.priceInCents > 0 && (
+                  <p className="font-albert text-[14px] text-text-secondary mt-1">
+                    one-time payment
+                  </p>
+                )}
+              </div>
+
+              {/* Duration callout */}
+              <div className="bg-gradient-to-r from-[#a07855]/10 to-[#8c6245]/10 rounded-xl p-3 mb-6 text-center">
+                <p className="font-albert text-[14px] text-text-primary">
+                  <span className="font-semibold">{program.lengthDays}-day</span> transformation program
                 </p>
               </div>
-            )}
 
-            {/* Cannot Enroll Reason */}
-            {!canEnroll && cannotEnrollReason && !enrollment && (
-              <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
-                <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
-                  <AlertCircle className="w-5 h-5" />
-                  <span className="font-semibold font-albert">{cannotEnrollReason}</span>
+              {/* Enrolled Status */}
+              {enrollment && (
+                <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+                  <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
+                    <CheckCircle className="w-5 h-5" />
+                    <span className="font-semibold font-albert">
+                      {enrollment.status === 'active' ? 'You\'re enrolled!' : 'Enrollment confirmed'}
+                    </span>
+                  </div>
+                  {enrollment.status === 'upcoming' && (
+                    <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                      Starts {formatDate(enrollment.startedAt)}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Cohort Selection */}
+              {program.type === 'group' && cohorts && cohorts.length > 0 && !enrollment && (
+                <div className="mb-6">
+                  <h3 className="font-albert text-sm font-semibold text-text-primary mb-3">
+                    Select a cohort
+                  </h3>
+                  <div className="space-y-2">
+                    {cohorts.map((cohort) => (
+                      <button
+                        key={cohort.id}
+                        onClick={() => cohort.isAvailableToUser && setSelectedCohortId(cohort.id)}
+                        disabled={!cohort.isAvailableToUser}
+                        className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                          selectedCohortId === cohort.id
+                            ? 'border-[#a07855] bg-[#a07855]/5'
+                            : cohort.isAvailableToUser
+                            ? 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855]/50'
+                            : 'border-[#e1ddd8] dark:border-[#262b35] opacity-50 cursor-not-allowed'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-semibold text-text-primary font-albert text-[15px]">
+                              {cohort.name}
+                            </div>
+                            <div className="text-sm text-text-secondary flex items-center gap-2 mt-1">
+                              <Calendar className="w-3.5 h-3.5" />
+                              {formatDate(cohort.startDate)} - {formatDate(cohort.endDate)}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            {cohort.isAvailableToUser ? (
+                              <>
+                                {cohort.spotsRemaining > 0 && cohort.spotsRemaining !== -1 ? (
+                                  <div className="text-sm text-green-600 dark:text-green-400 font-medium">
+                                    {cohort.spotsRemaining} spots left
+                                  </div>
+                                ) : cohort.spotsRemaining === -1 ? (
+                                  <div className="text-sm text-text-secondary">
+                                    Open enrollment
+                                  </div>
+                                ) : null}
+                                {selectedCohortId === cohort.id && (
+                                  <Check className="w-5 h-5 text-[#a07855] mt-1 ml-auto" />
+                                )}
+                              </>
+                            ) : (
+                              <div className="text-sm text-red-500">
+                                {cohort.unavailableReason || 'Unavailable'}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Individual Program Info */}
+              {program.type === 'individual' && !enrollment && (
+                <div className="mb-6 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
+                  <div className="flex items-center gap-2 text-text-primary">
+                    <Calendar className="w-5 h-5 text-green-500" />
+                    <span className="font-semibold font-albert">Start anytime</span>
+                  </div>
+                  <p className="text-sm text-text-secondary mt-1">
+                    Work directly with your coach at your own pace.
+                  </p>
+                </div>
+              )}
+
+              {/* Cannot Enroll Reason */}
+              {!canEnroll && cannotEnrollReason && !enrollment && (
+                <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+                  <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+                    <AlertCircle className="w-5 h-5" />
+                    <span className="font-semibold font-albert text-sm">{cannotEnrollReason}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* CTA Button */}
+              {!enrollment ? (
+                <Button
+                  onClick={handleEnroll}
+                  disabled={!canEnroll || enrolling || (program.type === 'group' && !selectedCohortId)}
+                  className="w-full py-4 text-[17px] bg-gradient-to-r from-[#a07855] to-[#8c6245] hover:from-[#8c6245] hover:to-[#7d5c3e] text-white disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#a07855]/20 rounded-2xl font-semibold"
+                >
+                  {enrolling ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : !isSignedIn ? (
+                    'Sign in to enroll'
+                  ) : program.priceInCents === 0 ? (
+                    'Enroll for free'
+                  ) : (
+                    `Enroll for ${formatPrice(program.priceInCents)}`
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => router.push('/program')}
+                  className="w-full py-4 text-[17px] bg-gradient-to-r from-[#a07855] to-[#8c6245] hover:from-[#8c6245] hover:to-[#7d5c3e] text-white shadow-lg shadow-[#a07855]/20 rounded-2xl font-semibold"
+                >
+                  Go to My Programs
+                  <ChevronRight className="w-5 h-5 ml-2" />
+                </Button>
+              )}
+
+              {/* Trust badges */}
+              <div className="flex items-center justify-center gap-4 mt-6 pt-6 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                <div className="flex items-center gap-2 text-text-secondary">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  <span className="font-albert text-[12px]">Secure checkout</span>
+                </div>
+                <div className="flex items-center gap-2 text-text-secondary">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="font-albert text-[12px]">Full access</span>
                 </div>
               </div>
-            )}
-
-            {/* Enroll Button */}
-            {!enrollment && (
-              <Button
-                onClick={handleEnroll}
-                disabled={!canEnroll || enrolling || (program.type === 'group' && !selectedCohortId)}
-                className="w-full py-4 text-lg bg-[#a07855] hover:bg-[#8c6245] text-white disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {enrolling ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : !isSignedIn ? (
-                  'Sign in to enroll'
-                ) : program.priceInCents === 0 ? (
-                  'Enroll for free'
-                ) : (
-                  `Enroll for ${formatPrice(program.priceInCents)}`
-                )}
-              </Button>
-            )}
-
-            {/* Go to Program Button (when enrolled) */}
-            {enrollment && (
-              <Button
-                onClick={() => router.push('/program')}
-                className="w-full py-4 text-lg bg-[#a07855] hover:bg-[#8c6245] text-white"
-              >
-                Go to My Programs
-                <ChevronRight className="w-5 h-5 ml-2" />
-              </Button>
-            )}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Bottom CTA */}
+      {!enrollment && (
+        <div className="bg-[#1a1a1a] pt-16 pb-32 md:pb-16 rounded-t-[32px] mx-0">
+          <div className="max-w-[600px] mx-auto px-4 text-center">
+            <h2 className="font-albert text-[28px] sm:text-[32px] font-semibold text-white mb-4 tracking-[-1px]">
+              Ready to start your journey?
+            </h2>
+            <p className="font-albert text-[16px] text-white/70 mb-8">
+              Join {program.name} and transform your potential into results.
+            </p>
+            <Button
+              onClick={handleEnroll}
+              disabled={!canEnroll || enrolling || (program.type === 'group' && !selectedCohortId)}
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-[#a07855] to-[#8c6245] hover:from-[#8c6245] hover:to-[#7d5c3e] text-white py-4 px-8 rounded-3xl font-albert text-[17px] font-semibold transition-all duration-200 shadow-lg shadow-[#a07855]/30 disabled:opacity-50"
+            >
+              {enrolling ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Processing...
+                </>
+              ) : !isSignedIn ? (
+                'Sign in to get started'
+              ) : (
+                `Enroll Now${program.priceInCents > 0 ? ` - ${formatPrice(program.priceInCents)}` : ''}`
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Success Modal */}
       <AlertDialog open={successModal.open} onOpenChange={(open) => {
@@ -496,4 +776,3 @@ export default function ProgramDetailPage() {
     </div>
   );
 }
-

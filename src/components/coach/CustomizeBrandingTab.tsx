@@ -451,7 +451,7 @@ export function CustomizeBrandingTab() {
         
         // Seamless session handoff
         const targetUrl = `https://${data.domain.domain}/coach/customize`;
-        const syncUrl = `https://growthaddicts.com/auth/sync?target=${encodeURIComponent(targetUrl)}`;
+        const syncUrl = `https://app.growthaddicts.com/auth/sync?target=${encodeURIComponent(targetUrl)}`;
         
         setTimeout(() => {
           window.location.href = syncUrl;

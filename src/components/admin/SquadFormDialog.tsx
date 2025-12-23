@@ -3,21 +3,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { Globe, Lock, Copy, RefreshCw } from 'lucide-react';
-import type { Squad, FirebaseUser, SquadMember, SquadVisibility, UserTrack } from '@/types';
-
-// Track options for squad categorization
-// Note: Using 'all_tracks' as value instead of empty string because shadcn Select doesn't handle empty values
-const TRACK_OPTIONS: { value: string; label: string }[] = [
-  { value: 'all_tracks', label: 'All tracks (visible to everyone)' },
-  { value: 'content_creator', label: 'Content Creator' },
-  { value: 'saas', label: 'SaaS Founder' },
-  { value: 'coach_consultant', label: 'Coach / Consultant' },
-  { value: 'ecom', label: 'E-Commerce' },
-  { value: 'agency', label: 'Agency Owner' },
-  { value: 'community_builder', label: 'Community Builder' },
-  { value: 'general', label: 'General Entrepreneur' },
-];
+import type { Squad, FirebaseUser, SquadMember, SquadVisibility } from '@/types';
+import { MediaUpload } from '@/components/admin/MediaUpload';
 import { Button } from '@/components/ui/button';
+
+// Program type for dropdown
+interface ProgramOption {
+  id: string;
+  name: string;
+  type: string;
+  slug: string;
+}
 import {
   AlertDialog,
   AlertDialogContent,
@@ -51,6 +47,10 @@ interface SquadFormDialogProps {
   apiBasePath?: string;
   /** API endpoint for fetching coaches (default: /api/admin/coaches, use /api/coach/org-coaches for org context) */
   coachesApiEndpoint?: string;
+  /** API endpoint for fetching programs (default: /api/admin/programs, use /api/coach/org-programs for org context) */
+  programsApiEndpoint?: string;
+  /** Custom upload endpoint URL for squad images (defaults to /api/admin/upload-media) */
+  uploadEndpoint?: string;
 }
 
 // Popular timezones for quick selection
@@ -77,6 +77,8 @@ export function SquadFormDialog({
   onSave, 
   apiBasePath = '/api/admin/squads',
   coachesApiEndpoint = '/api/admin/coaches',
+  programsApiEndpoint = '/api/admin/programs',
+  uploadEndpoint = '/api/admin/upload-media',
 }: SquadFormDialogProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -84,12 +86,17 @@ export function SquadFormDialog({
   const [visibility, setVisibility] = useState<SquadVisibility>('public');
   const [timezone, setTimezone] = useState('UTC');
   const [inviteCode, setInviteCode] = useState('');
-  const [isPremium, setIsPremium] = useState(false);
   const [coachId, setCoachId] = useState('');
-  const [trackId, setTrackId] = useState<UserTrack | 'all_tracks'>('all_tracks');
   const [loading, setLoading] = useState(false);
   const [regeneratingCode, setRegeneratingCode] = useState(false);
   const [coaches, setCoaches] = useState<FirebaseUser[]>([]);
+  
+  // Program attachment state
+  const [attachToProgram, setAttachToProgram] = useState(false);
+  const [programId, setProgramId] = useState<string | null>(null);
+  const [capacity, setCapacity] = useState<number | ''>('');
+  const [priceInCents, setPriceInCents] = useState<number | ''>('');
+  const [programs, setPrograms] = useState<ProgramOption[]>([]);
 
   // Member management state
   const [members, setMembers] = useState<SquadMember[]>([]);
@@ -109,10 +116,12 @@ export function SquadFormDialog({
       setVisibility(squad.visibility || 'public');
       setTimezone(squad.timezone || 'UTC');
       setInviteCode(squad.inviteCode || '');
-      setIsPremium(squad.isPremium);
       setCoachId(squad.coachId || '');
-      // Use 'all_tracks' as the value for squads without a track (null)
-      setTrackId(squad.trackId || 'all_tracks');
+      // Program attachment
+      setAttachToProgram(!!squad.programId);
+      setProgramId(squad.programId || null);
+      setCapacity(squad.capacity || '');
+      setPriceInCents(squad.priceInCents || '');
     } else {
       setName('');
       setDescription('');
@@ -120,9 +129,11 @@ export function SquadFormDialog({
       setVisibility('public');
       setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
       setInviteCode('');
-      setIsPremium(false);
       setCoachId('');
-      setTrackId('all_tracks');
+      setAttachToProgram(false);
+      setProgramId(null);
+      setCapacity('');
+      setPriceInCents('');
       setMembers([]);
     }
   }, [squad]);
@@ -142,6 +153,22 @@ export function SquadFormDialog({
     };
     fetchCoaches();
   }, [coachesApiEndpoint]);
+
+  // Fetch programs for attachment dropdown
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      try {
+        const response = await fetch(programsApiEndpoint);
+        if (response.ok) {
+          const data = await response.json();
+          setPrograms(data.programs || []);
+        }
+      } catch (err) {
+        console.error('Error fetching programs:', err);
+      }
+    };
+    fetchPrograms();
+  }, [programsApiEndpoint]);
 
   const fetchMembers = useCallback(async () => {
     if (!squad) return;
@@ -336,8 +363,8 @@ export function SquadFormDialog({
       return;
     }
 
-    if (isPremium && !coachId) {
-      alert('Premium squads require a coach');
+    if (attachToProgram && !programId) {
+      alert('Please select a program to attach to');
       return;
     }
 
@@ -356,9 +383,13 @@ export function SquadFormDialog({
           avatarUrl: avatarUrl.trim() || undefined,
           visibility,
           timezone,
-          isPremium,
           coachId: coachId || null,
-          trackId: trackId === 'all_tracks' ? null : trackId, // null means visible to all tracks
+          // Program attachment
+          programId: attachToProgram ? programId : null,
+          capacity: attachToProgram && capacity !== '' ? Number(capacity) : null,
+          // Pricing
+          priceInCents: priceInCents !== '' ? Number(priceInCents) : 0,
+          currency: 'usd',
         }),
       });
 
@@ -534,85 +565,136 @@ export function SquadFormDialog({
             </p>
           </div>
 
-          {/* Track Selection */}
+          {/* Squad Picture */}
+          <MediaUpload
+            value={avatarUrl}
+            onChange={setAvatarUrl}
+            folder="squads"
+            type="image"
+            label="Squad Picture"
+            uploadEndpoint={uploadEndpoint}
+          />
+
+          {/* Coach Selection */}
           <div>
-            <label htmlFor="trackId" className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-              Track
+            <label htmlFor="coach" className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+              Coach
             </label>
-            <Select value={trackId} onValueChange={(val) => setTrackId(val as UserTrack | 'all_tracks')}>
+            <Select value={coachId || 'none'} onValueChange={(val) => setCoachId(val === 'none' ? '' : val)}>
               <SelectTrigger className="w-full font-albert">
-                <SelectValue placeholder="Select track (optional)" />
+                <SelectValue placeholder="Select a coach (optional)" />
               </SelectTrigger>
               <SelectContent>
-                {TRACK_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value} className="font-albert">
-                    {option.label}
+                <SelectItem value="none" className="font-albert">No coach assigned</SelectItem>
+                {coaches.map((coach) => (
+                  <SelectItem key={coach.id} value={coach.id} className="font-albert">
+                    {coach.name || `${coach.firstName} ${coach.lastName}`} ({coach.email})
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
-              Squads with a track are shown to users in that track first
+              Optional: Assign a coach to lead this squad
             </p>
           </div>
 
-          {/* Avatar URL */}
-          <div>
-            <label htmlFor="avatarUrl" className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-              Avatar URL
-            </label>
-            <input
-              id="avatarUrl"
-              type="url"
-              value={avatarUrl}
-              onChange={(e) => setAvatarUrl(e.target.value)}
-              placeholder="https://example.com/avatar.jpg"
-              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert"
-            />
-            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
-              Optional: URL to squad profile picture
-            </p>
-          </div>
-
-          {/* Premium Toggle */}
-          <div className="flex items-center gap-2">
-            <input
-              id="isPremium"
-              type="checkbox"
-              checked={isPremium}
-              onChange={(e) => setIsPremium(e.target.checked)}
-              className="w-4 h-4 text-[#a07855] border-[#e1ddd8] dark:border-[#262b35] rounded focus:ring-[#a07855]"
-            />
-            <label htmlFor="isPremium" className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-              Premium Squad
-            </label>
-          </div>
-
-          {/* Coach Selection */}
-          {isPremium && (
-            <div>
-              <label htmlFor="coach" className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-                Coach *
+          {/* Attach to Program */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <input
+                id="attachToProgram"
+                type="checkbox"
+                checked={attachToProgram}
+                onChange={(e) => {
+                  setAttachToProgram(e.target.checked);
+                  if (!e.target.checked) {
+                    setProgramId(null);
+                    setCapacity('');
+                  }
+                }}
+                className="w-4 h-4 text-[#a07855] border-[#e1ddd8] dark:border-[#262b35] rounded focus:ring-[#a07855]"
+              />
+              <label htmlFor="attachToProgram" className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                Attach squad to program
               </label>
-              <Select value={coachId} onValueChange={setCoachId}>
-                <SelectTrigger className="w-full font-albert">
-                  <SelectValue placeholder="Select a coach" />
-                </SelectTrigger>
-                <SelectContent>
-                  {coaches.map((coach) => (
-                    <SelectItem key={coach.id} value={coach.id} className="font-albert">
-                      {coach.name || `${coach.firstName} ${coach.lastName}`} ({coach.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {coaches.length === 0 && (
-                <p className="text-xs text-red-600 mt-1 font-albert">
-                  No coaches available. Create a coach user first.
-                </p>
-              )}
             </div>
-          )}
+            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+              Attached squads become part of a program and are used until the capacity is reached
+            </p>
+
+            {/* Program Selection (conditional) */}
+            {attachToProgram && (
+              <>
+                <div>
+                  <label htmlFor="programId" className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+                    Program *
+                  </label>
+                  <Select value={programId || ''} onValueChange={setProgramId}>
+                    <SelectTrigger className="w-full font-albert">
+                      <SelectValue placeholder="Select a program" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {programs.map((program) => (
+                        <SelectItem key={program.id} value={program.id} className="font-albert">
+                          {program.name} ({program.type})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {programs.length === 0 && (
+                    <p className="text-xs text-red-600 mt-1 font-albert">
+                      No programs available. Create a program first.
+                    </p>
+                  )}
+                </div>
+
+                {/* Squad Cap */}
+                <div>
+                  <label htmlFor="capacity" className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+                    Squad Cap
+                  </label>
+                  <input
+                    id="capacity"
+                    type="number"
+                    min={1}
+                    value={capacity}
+                    onChange={(e) => setCapacity(e.target.value ? Number(e.target.value) : '')}
+                    placeholder="e.g., 10"
+                    className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert"
+                  />
+                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
+                    Maximum number of members in this squad
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Price to Join */}
+          <div>
+            <label htmlFor="priceInCents" className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+              Price to Join (USD)
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5f5a55] dark:text-[#b2b6c2] font-albert">$</span>
+              <input
+                id="priceInCents"
+                type="number"
+                min={0}
+                step={1}
+                value={priceInCents !== '' ? (priceInCents / 100).toFixed(2) : ''}
+                onChange={(e) => {
+                  const dollars = parseFloat(e.target.value);
+                  setPriceInCents(isNaN(dollars) ? '' : Math.round(dollars * 100));
+                }}
+                placeholder="0.00"
+                className="w-full pl-7 pr-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert"
+              />
+            </div>
+            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
+              Set to 0 for free squads. Used in funnel payment flows.
+            </p>
+          </div>
 
           {/* Members Section - Only show when editing */}
           {squad && (
@@ -751,7 +833,7 @@ export function SquadFormDialog({
             </Button>
             <Button
               type="submit"
-              disabled={loading || (isPremium && !coachId)}
+              disabled={loading || (attachToProgram && !programId)}
               className="bg-[#a07855] hover:bg-[#8c6245] text-white font-albert"
             >
               {loading ? 'Saving...' : squad ? 'Update Squad' : 'Create Squad'}

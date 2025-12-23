@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth, useClerk, useSignUp } from '@clerk/nextjs';
+import { useAuth, useClerk, useSignUp, useUser } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CheckCircle } from 'lucide-react';
 import type { FunnelStepConfigSignup } from '@/types';
 import { SignUpForm, OAuthButton } from '@/components/auth';
 
@@ -28,6 +28,20 @@ interface SignupStepProps {
   // Organization context for the funnel
   organizationId?: string;
   organizationName?: string;
+}
+
+// User state types for the 3 cases
+type UserState = 'new' | 'same_tenant' | 'different_tenant' | 'checking';
+
+interface MembershipCheckResult {
+  isMember: boolean;
+  inDifferentOrg: boolean;
+  userInfo: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    imageUrl: string;
+  } | null;
 }
 
 // Unified loader component
@@ -61,10 +75,10 @@ function Loader({ branding, message }: { branding: { logoUrl: string; appTitle: 
 /**
  * SignupStep - Handles user authentication in a funnel
  * 
- * Flow:
- * 1. Not signed in → Show sign-up form
- * 2. Already signed in → Show "Join [Coach Name]" confirmation (ALWAYS)
- * 3. After confirmation → Link session and proceed
+ * 3 User Cases:
+ * 1. New User - Show sign-up form (normal flow)
+ * 2. Same Tenant - User exists in this org → "Welcome back!" with auto-continue after 2s
+ * 3. Different Tenant - User exists but in different org → "Continue as" or "Use different account"
  */
 export function SignupStep({
   config,
@@ -78,6 +92,7 @@ export function SignupStep({
   organizationName,
 }: SignupStepProps) {
   const { isSignedIn, isLoaded, userId } = useAuth();
+  const { user } = useUser();
   const { signOut } = useClerk();
   const { signUp } = useSignUp();
   const [mounted, setMounted] = useState(false);
@@ -85,9 +100,15 @@ export function SignupStep({
   const [error, setError] = useState<string | null>(null);
   const [isLinking, setIsLinking] = useState(false);
   
-  // For signed-in users, we show confirmation immediately (no org check needed)
-  // This simplifies the flow and ensures the confirmation screen always appears
+  // User state detection
+  const [userState, setUserState] = useState<UserState>('checking');
+  const [membershipInfo, setMembershipInfo] = useState<MembershipCheckResult | null>(null);
+  
+  // For signed-in users confirmation
   const [hasConfirmed, setHasConfirmed] = useState(false);
+  
+  // Auto-continue countdown for same_tenant
+  const [autoCountdown, setAutoCountdown] = useState(2);
 
   // Determine if we're on a custom domain (satellite)
   const isCustomDomain = !hostname.includes('growthaddicts.com') && 
@@ -106,6 +127,69 @@ export function SignupStep({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Check user membership status when signed in
+  useEffect(() => {
+    async function checkMembership() {
+      if (!isLoaded) return;
+      
+      if (!isSignedIn) {
+        setUserState('new');
+        return;
+      }
+      
+      if (!organizationId) {
+        // No org context, treat as different tenant case
+        setUserState('different_tenant');
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/funnel/check-membership?orgId=${organizationId}`);
+        if (!response.ok) {
+          throw new Error('Failed to check membership');
+        }
+        
+        const result: MembershipCheckResult = await response.json();
+        setMembershipInfo(result);
+        
+        if (result.isMember) {
+          setUserState('same_tenant');
+        } else if (result.inDifferentOrg) {
+          setUserState('different_tenant');
+        } else {
+          // User is signed in but not in any org yet - treat as different_tenant for confirmation
+          setUserState('different_tenant');
+        }
+      } catch (err) {
+        console.error('Membership check failed:', err);
+        // On error, default to different_tenant for manual confirmation
+        setUserState('different_tenant');
+      }
+    }
+    
+    checkMembership();
+  }, [isLoaded, isSignedIn, organizationId]);
+
+  // Auto-continue for same_tenant users after countdown
+  useEffect(() => {
+    if (userState !== 'same_tenant' || hasConfirmed) return;
+    
+    const timer = setInterval(() => {
+      setAutoCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          // Auto-confirm and continue
+          setHasConfirmed(true);
+          linkSessionAndContinue();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [userState, hasConfirmed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Link session and continue to next step
   const linkSessionAndContinue = useCallback(async () => {
@@ -179,6 +263,8 @@ export function SignupStep({
     try {
       await signOut();
       setHasConfirmed(false);
+      setUserState('new');
+      setMembershipInfo(null);
     } catch (err) {
       console.error('Sign out error:', err);
       setError('Failed to sign out. Please try again.');
@@ -209,11 +295,11 @@ export function SignupStep({
   }, [isCustomDomain]);
 
   // ============================================
-  // RENDER LOGIC - Unified loading experience
+  // RENDER LOGIC - Handle 3 user cases
   // ============================================
 
-  // State 1: Clerk not loaded yet
-  if (!isLoaded) {
+  // State 1: Clerk not loaded yet or checking membership
+  if (!isLoaded || userState === 'checking') {
     return <Loader branding={branding} message="Loading..." />;
   }
 
@@ -222,9 +308,85 @@ export function SignupStep({
     return <Loader branding={branding} message="Setting up your account..." />;
   }
 
-  // State 3: User is signed in - show confirmation screen (ALWAYS)
-  // This is the key change: we always show confirmation for signed-in users
-  if (isSignedIn && !hasConfirmed) {
+  // ============================================
+  // CASE 2: Same Tenant - "Welcome back!" with auto-continue
+  // ============================================
+  if (userState === 'same_tenant' && isSignedIn && !hasConfirmed) {
+    const displayName = user?.firstName || membershipInfo?.userInfo?.firstName || 'there';
+    
+    return (
+      <div className="fixed inset-0 bg-app-bg overflow-y-auto">
+        <div className="min-h-full flex flex-col items-center justify-center px-4 py-8 lg:py-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full max-w-md mx-auto text-center"
+          >
+            {/* Success Icon */}
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+              className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6"
+            >
+              <CheckCircle className="w-10 h-10 text-green-600" />
+            </motion.div>
+
+            {/* Heading */}
+            <h1 className="font-albert text-[32px] sm:text-[40px] text-text-primary tracking-[-1.5px] leading-[1.1] mb-4">
+              Welcome back, {displayName}!
+            </h1>
+            <p className="font-sans text-[16px] text-text-secondary leading-[1.6] mb-8">
+              You&apos;re already a member. Continuing automatically...
+            </p>
+
+            {/* Auto-continue indicator */}
+            <div className="flex items-center justify-center gap-2 text-text-muted">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-sm">Continuing in {autoCountdown}s</span>
+            </div>
+
+            {/* Manual continue button */}
+            <button
+              onClick={handleConfirmJoin}
+              className="mt-6 w-full py-4 px-6 rounded-full font-sans font-bold text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+              style={{ backgroundColor: branding.primaryColor || '#a07855' }}
+            >
+              Continue now
+            </button>
+
+            {/* Use different account */}
+            <button
+              onClick={handleSignOutAndRetry}
+              className="mt-4 w-full py-3 px-6 rounded-full font-sans font-medium text-text-secondary hover:text-text-primary transition-colors"
+            >
+              Use a different account
+            </button>
+
+            {/* Error */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl"
+              >
+                <p className="text-red-600 text-sm">{error}</p>
+              </motion.div>
+            )}
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================
+  // CASE 3: Different Tenant - "Continue as" or "Use different account"
+  // ============================================
+  if (userState === 'different_tenant' && isSignedIn && !hasConfirmed) {
+    const displayName = user?.firstName || membershipInfo?.userInfo?.firstName || '';
+    const displayEmail = user?.primaryEmailAddress?.emailAddress || membershipInfo?.userInfo?.email || '';
+    const displayImage = user?.imageUrl || membershipInfo?.userInfo?.imageUrl || '';
+    
     return (
       <div className="fixed inset-0 bg-app-bg overflow-y-auto">
         <div className="min-h-full flex flex-col items-center justify-center px-4 py-8 lg:py-16">
@@ -250,8 +412,38 @@ export function SignupStep({
               Join {organizationName || branding.appTitle}
             </h1>
             <p className="font-sans text-[16px] text-text-secondary leading-[1.6] mb-8">
-              You&apos;re about to join this program. Click continue to proceed.
+              Continue with your existing account or use a different one.
             </p>
+
+            {/* Current user card */}
+            <div className="bg-white border border-[#e1ddd8] rounded-2xl p-4 mb-6">
+              <div className="flex items-center gap-4">
+                {displayImage ? (
+                  <Image
+                    src={displayImage}
+                    alt={displayName}
+                    width={48}
+                    height={48}
+                    className="w-12 h-12 rounded-full"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-[#f5f3f0] flex items-center justify-center">
+                    <span className="text-lg font-medium text-text-primary">
+                      {displayName?.[0] || displayEmail?.[0] || '?'}
+                    </span>
+                  </div>
+                )}
+                <div className="flex-1 text-left">
+                  {displayName && (
+                    <p className="font-medium text-text-primary">{displayName}</p>
+                  )}
+                  {displayEmail && (
+                    <p className="text-sm text-text-secondary">{displayEmail}</p>
+                  )}
+                </div>
+              </div>
+            </div>
 
             {/* Actions */}
             <div className="space-y-4">
@@ -261,15 +453,15 @@ export function SignupStep({
                 className="w-full py-4 px-6 rounded-full font-sans font-bold text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ backgroundColor: branding.primaryColor || '#a07855' }}
               >
-                {isLinking ? 'Setting up...' : 'Continue to join'}
+                {isLinking ? 'Setting up...' : `Continue as ${displayName || displayEmail}`}
               </button>
               
               <button
                 onClick={handleSignOutAndRetry}
                 disabled={isLinking}
-                className="w-full py-3 px-6 rounded-full font-sans font-medium text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
+                className="w-full py-3 px-6 rounded-full font-sans font-medium text-text-secondary hover:text-text-primary transition-colors border border-[#e1ddd8] disabled:opacity-50"
               >
-                Sign in with different account
+                Sign up with a different account
               </button>
             </div>
 
@@ -289,12 +481,14 @@ export function SignupStep({
     );
   }
 
-  // State 4: User confirmed but linking (shouldn't happen often, but handle it)
+  // State: User confirmed but linking (shouldn't happen often, but handle it)
   if (isSignedIn && hasConfirmed) {
     return <Loader branding={branding} message="Setting up your account..." />;
   }
 
-  // State 5: User not signed in - show sign-up form
+  // ============================================
+  // CASE 1: New User - Show sign-up form
+  // ============================================
   const heading = config.heading || 'Create your account';
   const subheading = config.subheading || 'Sign up to continue your journey';
 

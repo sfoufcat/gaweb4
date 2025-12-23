@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAdmin } from '@/lib/admin-utils-clerk';
 import { getStreamServerClient } from '@/lib/stream-server';
-import type { Squad, UserTrack, SquadVisibility } from '@/types';
+import type { Squad, SquadVisibility } from '@/types';
 
 interface SquadWithDetails extends Squad {
   coachName?: string;
@@ -124,24 +124,21 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { name, description, avatarUrl, visibility, timezone, isPremium, coachId, trackId } = body as {
+    const { name, description, avatarUrl, visibility, timezone, coachId, programId, capacity, priceInCents, currency } = body as {
       name: string;
       description?: string;
       avatarUrl?: string;
       visibility?: SquadVisibility;
       timezone?: string;
-      isPremium?: boolean;
       coachId?: string | null;
-      trackId?: UserTrack | null;
+      programId?: string | null;
+      capacity?: number | null;
+      priceInCents?: number;
+      currency?: string;
     };
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Squad name is required' }, { status: 400 });
-    }
-
-    // Validate premium squad requirements
-    if (isPremium && !coachId) {
-      return NextResponse.json({ error: 'Premium squads require a coach' }, { status: 400 });
     }
 
     // Generate invite code for private squads
@@ -175,9 +172,12 @@ export async function POST(req: Request) {
       timezone: timezone || 'UTC',
       memberIds: [],
       inviteCode: inviteCode || undefined,
-      isPremium: !!isPremium,
+      isPremium: false, // Premium flag deprecated - use programId instead
       coachId: coachId || null,
-      trackId: trackId || null, // null means visible to all tracks
+      programId: programId || null, // Attach to program
+      capacity: capacity || null, // Squad cap
+      priceInCents: priceInCents || 0, // Price to join
+      currency: currency || 'usd',
       organizationId, // Multi-tenancy: scope to creator's organization
       createdAt: now,
       updatedAt: now,
@@ -231,9 +231,12 @@ export async function POST(req: Request) {
       timezone: timezone || 'UTC',
       memberIds: [],
       inviteCode,
-      isPremium: !!isPremium,
+      isPremium: false,
       coachId: coachId || null,
-      trackId: trackId || null,
+      programId: programId || null,
+      capacity: capacity || undefined,
+      priceInCents: priceInCents || 0,
+      currency: currency || 'usd',
       chatChannelId: channelId,
       createdAt: now,
       updatedAt: now,

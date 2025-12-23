@@ -197,6 +197,14 @@ export default function SquadFunnelClient({
     }
   }, [sessionId]);
 
+  // Check if success step should be skipped
+  const getSuccessStepConfig = useCallback(() => {
+    const successStep = steps.find(s => s.type === 'success');
+    if (!successStep) return null;
+    const stepConfig = successStep.config as FunnelStepConfig;
+    return stepConfig.config as FunnelStepConfigSuccess;
+  }, [steps]);
+
   // Handle step completion
   const handleStepComplete = useCallback(async (stepData: Record<string, unknown>) => {
     const newData = { ...data, ...stepData };
@@ -207,7 +215,7 @@ export default function SquadFunnelClient({
       data: stepData,
     });
 
-    // Find next step (skip payment if pre-paid)
+    // Find next step (skip payment if pre-paid, skip success if configured)
     let nextIndex = currentStepIndex + 1;
     
     while (nextIndex < steps.length) {
@@ -219,20 +227,31 @@ export default function SquadFunnelClient({
         continue;
       }
       
+      // Skip success step if skipSuccessPage is enabled
+      if (nextStep.type === 'success') {
+        const successConfig = getSuccessStepConfig();
+        if (successConfig?.skipSuccessPage) {
+          // Complete funnel and redirect immediately
+          await completeFunnel(newData, successConfig.skipSuccessRedirect);
+          return;
+        }
+      }
+      
       break;
     }
 
     if (nextIndex >= steps.length) {
       // Complete the funnel - add to squad
-      await completeFunnel(newData);
+      const successConfig = getSuccessStepConfig();
+      await completeFunnel(newData, successConfig?.skipSuccessRedirect);
     } else {
       setCurrentStepIndex(nextIndex);
       await updateSession({ currentStepIndex: nextIndex });
     }
-  }, [data, currentStepIndex, steps, skipPayment, updateSession]);
+  }, [data, currentStepIndex, steps, skipPayment, updateSession, getSuccessStepConfig]);
 
   // Complete funnel and add user to squad
-  const completeFunnel = async (finalData: FlowSessionData) => {
+  const completeFunnel = async (finalData: FlowSessionData, customRedirect?: string) => {
     try {
       const response = await fetch('/api/funnel/complete-squad', {
         method: 'POST',
@@ -255,8 +274,9 @@ export default function SquadFunnelClient({
       // Clear session
       localStorage.removeItem(`funnel_session_${funnel.id}`);
 
-      // Redirect to dashboard
-      router.push('/?joined=squad');
+      // Redirect to custom URL or dashboard
+      const redirectUrl = customRedirect || '/?joined=squad';
+      router.push(redirectUrl);
     } catch (err) {
       console.error('Failed to complete funnel:', err);
       setError(err instanceof Error ? err.message : 'Failed to complete');

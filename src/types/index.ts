@@ -554,6 +554,111 @@ export type ProgramType = 'group' | 'individual';
 export type NewProgramEnrollmentStatus = 'upcoming' | 'active' | 'completed' | 'stopped';
 
 /**
+ * Program feature for landing page
+ */
+export interface ProgramFeature {
+  icon?: string; // Lucide icon name (e.g., 'video', 'users', 'message-circle')
+  title: string;
+  description?: string;
+}
+
+/**
+ * Program testimonial for landing page
+ */
+export interface ProgramTestimonial {
+  text: string;
+  author: string;
+  role?: string; // e.g., "Program graduate 2024"
+  imageUrl?: string;
+  rating?: number; // 1-5 stars
+}
+
+/**
+ * Program FAQ for landing page
+ */
+export interface ProgramFAQ {
+  question: string;
+  answer: string;
+}
+
+// ============================================================================
+// PROGRAM TEMPLATES - Pre-built programs coaches can clone
+// ============================================================================
+
+/**
+ * Template category for filtering in gallery
+ */
+export type TemplateCategory = 'business' | 'habits' | 'mindset' | 'health' | 'productivity' | 'relationships';
+
+/**
+ * Template status for admin review workflow
+ */
+export type TemplateStatus = 'draft' | 'pending_review' | 'published' | 'rejected';
+
+/**
+ * Program Template - Pre-built program that coaches can clone
+ * Stored in Firestore 'program_templates' collection
+ */
+export interface ProgramTemplate {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  previewDescription: string; // Marketing copy for template gallery
+  coverImageUrl?: string;
+  
+  // Classification
+  category: TemplateCategory;
+  tags: string[];
+  lengthDays: number;
+  type: ProgramType; // 'group' | 'individual'
+  
+  // Defaults
+  suggestedPriceInCents: number;
+  defaultHabits: ProgramHabitTemplate[];
+  
+  // Landing Page Content (copied to program on clone)
+  keyOutcomes?: string[];              // "What you'll achieve" bullet points
+  features?: ProgramFeature[];         // "What's included" cards with icons
+  testimonials?: ProgramTestimonial[]; // Sample testimonials (coach replaces)
+  faqs?: ProgramFAQ[];                 // Common FAQs for this program type
+  showEnrollmentCount?: boolean;       // Default LP setting
+  showCurriculum?: boolean;            // Default LP setting
+  
+  // Engagement metrics
+  usageCount: number;
+  featured: boolean;
+  
+  // Source tracking
+  createdBy: 'platform' | string; // 'platform' or coach userId
+  creatorName?: string;
+  sourceOrganizationId?: string;
+  
+  // Status
+  status: TemplateStatus;
+  isPublished: boolean;
+  
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Template Day - Day content for a program template
+ * Stored in Firestore 'template_days' collection
+ */
+export interface TemplateDay {
+  id: string;
+  templateId: string;
+  dayIndex: number; // 1-based: 1..lengthDays
+  title?: string; // Optional title/theme (e.g., "Define Your Niche")
+  summary?: string; // 1-2 lines description
+  dailyPrompt?: string; // Encouragement/explanation for the day
+  tasks: ProgramTaskTemplate[];
+  habits?: ProgramHabitTemplate[]; // Optional habits (typically Day 1)
+}
+
+/**
  * Program - Coach-defined content template
  * Replaces the Track + StarterProgram concepts
  * Stored in Firestore 'programs' collection
@@ -587,6 +692,15 @@ export interface Program {
   // Status
   isActive: boolean; // Whether program can accept enrollments
   isPublished: boolean; // Whether visible in Discover
+  
+  // Landing Page Content (all optional - coaches can toggle these on/off)
+  coachBio?: string; // About the coach section
+  keyOutcomes?: string[]; // "What you'll learn" bullet points
+  features?: ProgramFeature[]; // "What's included" feature cards
+  testimonials?: ProgramTestimonial[]; // Social proof
+  faqs?: ProgramFAQ[]; // Frequently asked questions
+  showEnrollmentCount?: boolean; // Show "X students enrolled" badge
+  showCurriculum?: boolean; // Show program day titles as curriculum preview
   
   // Metadata
   createdAt: string;
@@ -814,6 +928,9 @@ export interface Squad {
   programId?: string | null; // FK to programs collection
   cohortId?: string | null; // FK to program_cohorts collection
   capacity?: number; // Max members (overrides program's squadCapacity if set)
+  // Pricing (for standalone squads with payment)
+  priceInCents?: number; // Squad join price (0 = free)
+  currency?: string; // Currency code (default 'usd')
   // Auto-created squad info
   isAutoCreated?: boolean; // True if created automatically by enrollment system
   squadNumber?: number; // Sequential number within cohort (e.g., 1, 2, 3)
@@ -2143,6 +2260,8 @@ export interface FunnelStepConfigSuccess {
   body?: string;
   showConfetti?: boolean;
   redirectDelay?: number;        // ms before redirect to dashboard
+  skipSuccessPage?: boolean;     // Skip success page and redirect immediately
+  skipSuccessRedirect?: string;  // Custom redirect URL (default: homepage)
 }
 
 export type FunnelStepConfig = 

@@ -212,6 +212,14 @@ export default function FunnelClient({
     }
   }, [sessionId]);
 
+  // Check if success step should be skipped
+  const getSuccessStepConfig = useCallback(() => {
+    const successStep = steps.find(s => s.type === 'success');
+    if (!successStep) return null;
+    const stepConfig = successStep.config as FunnelStepConfig;
+    return stepConfig.config as FunnelStepConfigSuccess;
+  }, [steps]);
+
   // Handle step completion
   const handleStepComplete = useCallback(async (stepData: Record<string, unknown>) => {
     // Merge step data
@@ -224,7 +232,7 @@ export default function FunnelClient({
       data: stepData,
     });
 
-    // Find next step (skip payment if pre-paid)
+    // Find next step (skip payment if pre-paid, skip success if configured)
     let nextIndex = currentStepIndex + 1;
     
     while (nextIndex < steps.length) {
@@ -234,6 +242,16 @@ export default function FunnelClient({
       if (nextStep.type === 'payment' && skipPayment) {
         nextIndex++;
         continue;
+      }
+      
+      // Skip success step if skipSuccessPage is enabled
+      if (nextStep.type === 'success') {
+        const successConfig = getSuccessStepConfig();
+        if (successConfig?.skipSuccessPage) {
+          // Complete funnel and redirect immediately
+          await completeFunnel(newData, successConfig.skipSuccessRedirect);
+          return;
+        }
       }
       
       // Check conditional display
@@ -267,14 +285,15 @@ export default function FunnelClient({
 
     // Check if funnel is complete
     if (nextIndex >= steps.length) {
-      await completeFunnel(newData);
+      const successConfig = getSuccessStepConfig();
+      await completeFunnel(newData, successConfig?.skipSuccessRedirect);
       return;
     }
 
     // Move to next step
     setCurrentStepIndex(nextIndex);
     await updateSession({ currentStepIndex: nextIndex });
-  }, [currentStepIndex, data, steps, skipPayment, updateSession]);
+  }, [currentStepIndex, data, steps, skipPayment, updateSession, getSuccessStepConfig]);
 
   // Handle going back
   const handleBack = useCallback(() => {
@@ -286,7 +305,7 @@ export default function FunnelClient({
   }, [currentStepIndex, updateSession]);
 
   // Complete funnel and enroll
-  const completeFunnel = async (finalData: FlowSessionData) => {
+  const completeFunnel = async (finalData: FlowSessionData, customRedirect?: string) => {
     setIsNavigating(true);
     
     try {
@@ -309,8 +328,9 @@ export default function FunnelClient({
       // Clear session from localStorage
       localStorage.removeItem(`funnel_session_${funnel.id}`);
 
-      // Redirect to dashboard or success page
-      router.push('/');
+      // Redirect to custom URL or dashboard
+      const redirectUrl = customRedirect || '/';
+      router.push(redirectUrl);
     } catch (err) {
       console.error('Failed to complete funnel:', err);
       setError(err instanceof Error ? err.message : 'Failed to complete enrollment');

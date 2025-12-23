@@ -79,18 +79,41 @@ export async function GET(request: NextRequest) {
       programsSnapshot.docs.map(async (doc) => {
         const data = doc.data() as Program;
         
-        // Get coach info (from Clerk organization)
+        // Get coach info - find the super_coach user from the organization
         let coachName = 'Coach';
         let coachImageUrl: string | undefined;
         
         try {
-          // Try to get organization info for coach display
           if (data.organizationId) {
             const { clerkClient } = await import('@clerk/nextjs/server');
             const clerk = await clerkClient();
-            const org = await clerk.organizations.getOrganization({ organizationId: data.organizationId });
-            coachName = org.name || 'Coach';
-            coachImageUrl = org.imageUrl || undefined;
+            
+            // Get organization members to find the super_coach (the actual coach user)
+            const memberships = await clerk.organizations.getOrganizationMembershipList({
+              organizationId: data.organizationId,
+            });
+            
+            // Find the member with super_coach orgRole
+            const coachMember = memberships.data.find(m => {
+              const metadata = m.publicUserData?.publicMetadata as { orgRole?: string } | undefined;
+              return metadata?.orgRole === 'super_coach';
+            });
+            
+            if (coachMember?.publicUserData?.userId) {
+              const coachUser = await clerk.users.getUser(coachMember.publicUserData.userId);
+              coachName = `${coachUser.firstName || ''} ${coachUser.lastName || ''}`.trim() || 'Coach';
+              coachImageUrl = coachUser.imageUrl || undefined;
+            } else {
+              // Fallback to first admin member
+              const adminMember = memberships.data.find(m => 
+                m.role === 'org:admin' && m.publicUserData?.userId
+              );
+              if (adminMember?.publicUserData?.userId) {
+                const adminUser = await clerk.users.getUser(adminMember.publicUserData.userId);
+                coachName = `${adminUser.firstName || ''} ${adminUser.lastName || ''}`.trim() || 'Coach';
+                coachImageUrl = adminUser.imageUrl || undefined;
+              }
+            }
           }
         } catch {
           // Fallback to generic coach name

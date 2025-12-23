@@ -716,52 +716,95 @@ function InfoConfigEditor({ config, onChange }: { config: Record<string, unknown
 
 // Success Config Editor
 function SuccessConfigEditor({ config, onChange }: { config: Record<string, unknown>; onChange: (c: Record<string, unknown>) => void }) {
+  const skipSuccessPage = config.skipSuccessPage as boolean || false;
+  
   return (
     <div className="space-y-6">
-      <div>
-        <label className="flex items-center gap-2 cursor-pointer">
+      {/* Skip success page option */}
+      <div className="p-4 bg-[#faf8f6] rounded-lg border border-[#e1ddd8]">
+        <label className="flex items-start gap-3 cursor-pointer">
           <input
             type="checkbox"
-            checked={config.showConfetti !== false}
-            onChange={(e) => onChange({ ...config, showConfetti: e.target.checked })}
-            className="rounded text-[#a07855] focus:ring-[#a07855]"
+            checked={skipSuccessPage}
+            onChange={(e) => onChange({ ...config, skipSuccessPage: e.target.checked })}
+            className="rounded text-[#a07855] focus:ring-[#a07855] mt-0.5"
           />
-          <span className="text-text-primary">Show confetti animation</span>
+          <div>
+            <span className="text-text-primary font-medium">Skip success page</span>
+            <p className="text-xs text-text-muted mt-1">
+              Redirect users directly to homepage after completing the funnel
+            </p>
+          </div>
         </label>
+        
+        {skipSuccessPage && (
+          <div className="mt-4 pl-6">
+            <label className="block text-sm font-medium text-text-primary mb-2">
+              Custom Redirect URL (optional)
+            </label>
+            <input
+              type="text"
+              value={config.skipSuccessRedirect as string || ''}
+              onChange={(e) => onChange({ ...config, skipSuccessRedirect: e.target.value })}
+              className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+              placeholder="/ (homepage)"
+            />
+            <p className="text-xs text-text-muted mt-1">
+              Leave empty to redirect to homepage. Use relative paths like /dashboard
+            </p>
+          </div>
+        )}
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-text-primary mb-2">Redirect Delay (ms)</label>
-        <input
-          type="number"
-          value={config.redirectDelay as number || 3000}
-          onChange={(e) => onChange({ ...config, redirectDelay: parseInt(e.target.value) || 3000 })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
-        />
-        <p className="text-xs text-text-muted mt-1">Time before redirecting to dashboard</p>
-      </div>
+      {/* Only show customization options if not skipping */}
+      {!skipSuccessPage && (
+        <>
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={config.showConfetti !== false}
+                onChange={(e) => onChange({ ...config, showConfetti: e.target.checked })}
+                className="rounded text-[#a07855] focus:ring-[#a07855]"
+              />
+              <span className="text-text-primary">Show confetti animation</span>
+            </label>
+          </div>
 
-      <div>
-        <label className="block text-sm font-medium text-text-primary mb-2">Custom Heading</label>
-        <input
-          type="text"
-          value={config.heading as string || ''}
-          onChange={(e) => onChange({ ...config, heading: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
-          placeholder="Welcome to [Program]! 🎉"
-        />
-      </div>
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-2">Redirect Delay (ms)</label>
+            <input
+              type="number"
+              value={config.redirectDelay as number || 3000}
+              onChange={(e) => onChange({ ...config, redirectDelay: parseInt(e.target.value) || 3000 })}
+              className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+            />
+            <p className="text-xs text-text-muted mt-1">Time before redirecting to dashboard</p>
+          </div>
 
-      <div>
-        <label className="block text-sm font-medium text-text-primary mb-2">Custom Body</label>
-        <textarea
-          value={config.body as string || ''}
-          onChange={(e) => onChange({ ...config, body: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] resize-none"
-          rows={2}
-          placeholder="You're all set! Taking you to your dashboard..."
-        />
-      </div>
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-2">Custom Heading</label>
+            <input
+              type="text"
+              value={config.heading as string || ''}
+              onChange={(e) => onChange({ ...config, heading: e.target.value })}
+              className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+              placeholder="Welcome to [Program]! 🎉"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-2">Custom Body</label>
+            <textarea
+              value={config.body as string || ''}
+              onChange={(e) => onChange({ ...config, body: e.target.value })}
+              className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] resize-none"
+              rows={2}
+              placeholder="You're all set! Taking you to your dashboard..."
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

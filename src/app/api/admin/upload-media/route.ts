@@ -64,7 +64,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    if (!folder || !['events', 'articles', 'courses', 'courses/lessons', 'images', 'programs'].includes(folder)) {
+    if (!folder || !['events', 'articles', 'courses', 'courses/lessons', 'images', 'programs', 'squads'].includes(folder)) {
       return NextResponse.json({ error: 'Invalid folder specified' }, { status: 400 });
     }
 

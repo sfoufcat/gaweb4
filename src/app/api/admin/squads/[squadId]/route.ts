@@ -41,12 +41,7 @@ export async function PATCH(
 
     const existingData = squadDoc.data();
     const body = await req.json();
-    const { name, description, avatarUrl, visibility, timezone, isPremium, coachId, trackId } = body;
-
-    // Validate premium squad requirements
-    if (isPremium && !coachId) {
-      return NextResponse.json({ error: 'Premium squads require a coach' }, { status: 400 });
-    }
+    const { name, description, avatarUrl, visibility, timezone, coachId, programId, capacity, priceInCents, currency } = body;
 
     // Build update data
     const updateData: Record<string, unknown> = {
@@ -74,9 +69,11 @@ export async function PATCH(
       }
     }
     if (timezone !== undefined) updateData.timezone = timezone;
-    if (isPremium !== undefined) updateData.isPremium = isPremium;
     if (coachId !== undefined) updateData.coachId = coachId || null;
-    if (trackId !== undefined) updateData.trackId = trackId || null;
+    if (programId !== undefined) updateData.programId = programId || null;
+    if (capacity !== undefined) updateData.capacity = capacity || null;
+    if (priceInCents !== undefined) updateData.priceInCents = priceInCents;
+    if (currency !== undefined) updateData.currency = currency || 'usd';
 
     // Update squad
     await squadRef.update(updateData);
