@@ -1924,6 +1924,7 @@ export interface OrgBranding {
   appTitle: string;              // App title shown in sidebar (default: "Growth Addicts")
   colors: OrgBrandingColors;
   menuTitles?: OrgMenuTitles;    // Customizable menu titles (optional, uses defaults if not set)
+  menuIcons?: OrgMenuIcons;      // Customizable menu icons/emojis (optional, uses defaults if not set)
   emailSettings?: OrgEmailSettings; // Whitelabel email settings (optional)
   createdAt: string;             // ISO timestamp
   updatedAt: string;             // ISO timestamp
@@ -1947,6 +1948,31 @@ export const DEFAULT_MENU_TITLES: OrgMenuTitles = {
   learn: 'Discover', // Renamed from "Learn" to "Discover"
   chat: 'Chat',
   coach: 'Coach',
+};
+
+/**
+ * Customizable menu icons for an organization
+ * Allows coaches to select icons or emojis for navigation items
+ * Icon values can be:
+ * - A predefined icon name (e.g., 'home', 'rocket', 'search')
+ * - An emoji string (e.g., '🏠', '🚀', '🔍')
+ */
+export interface OrgMenuIcons {
+  home: string;
+  squad: string;
+  program: string;
+  learn: string;     // Discover
+  chat: string;
+  coach: string;
+}
+
+export const DEFAULT_MENU_ICONS: OrgMenuIcons = {
+  home: 'home',
+  squad: 'users',
+  program: 'rocket',
+  learn: 'search',   // Magnifying glass for Discover
+  chat: 'message',
+  coach: 'user',
 };
 
 export const DEFAULT_EMAIL_SETTINGS: OrgEmailSettings = {

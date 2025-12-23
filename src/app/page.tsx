@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useHabits } from '@/hooks/useHabits';
 import { useAlignment } from '@/hooks/useAlignment';
+import { useDashboard } from '@/hooks/useDashboard';
 import { useCurrentUserStoryAvailability } from '@/hooks/useUserStoryAvailability';
 import { useStoryViewTracking, useStoryViewStatus } from '@/hooks/useStoryViewTracking';
 import { HabitCheckInModal } from '@/components/habits/HabitCheckInModal';
@@ -26,6 +27,8 @@ import { useWeeklyFocus } from '@/hooks/useWeeklyFocus';
 import { useHomeTutorial } from '@/hooks/useHomeTutorial';
 import { HomeTutorialOverlay } from '@/components/tutorial';
 import { useMenuTitles } from '@/contexts/BrandingContext';
+import { ProgramCarousel } from '@/components/home/ProgramCarousel';
+import { SquadCarousel } from '@/components/home/SquadCarousel';
 
 /**
  * Homepage / Dashboard
@@ -44,13 +47,6 @@ export default function Dashboard() {
   const [greeting, setGreeting] = useState('Good evening');
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
-  const [morningCheckIn, setMorningCheckIn] = useState<MorningCheckIn | null>(null);
-  const [checkInLoading, setCheckInLoading] = useState(true);
-  const [eveningCheckIn, setEveningCheckIn] = useState<EveningCheckIn | null>(null);
-  const [eveningCheckInLoading, setEveningCheckInLoading] = useState(true);
-  const [focusTasks, setFocusTasks] = useState<Task[]>([]);
-  const [tasksLoading, setTasksLoading] = useState(true);
-  const [weeklyReflection, setWeeklyReflection] = useState<{ completedAt?: string } | null>(null);
   const [userCreatedAt, setUserCreatedAt] = useState<string | null>(null);
   
   // Program completion check-in state
@@ -61,26 +57,27 @@ export default function Dashboard() {
   const [showAllHabits, setShowAllHabits] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
   
-  // Program enrollments state (for My Programs section)
-  const [programEnrollments, setProgramEnrollments] = useState<{
-    active: Array<{
-      id: string;
-      programId: string;
-      program: { id: string; name: string; type: 'group' | 'individual'; lengthDays: number; coverImageUrl?: string };
-      cohort?: { id: string; name: string; startDate: string; endDate: string };
-      progress: { currentDay: number; totalDays: number; percentComplete: number; daysRemaining: number };
-      status: string;
-    }>;
-    upcoming: Array<{
-      id: string;
-      programId: string;
-      program: { id: string; name: string; type: 'group' | 'individual'; lengthDays: number; coverImageUrl?: string };
-      cohort?: { id: string; name: string; startDate: string; endDate: string };
-      progress: { currentDay: number; totalDays: number; percentComplete: number; daysRemaining: number };
-      status: string;
-    }>;
-  }>({ active: [], upcoming: [] });
-  const [enrollmentsLoading, setEnrollmentsLoading] = useState(true);
+  // ==========================================================================
+  // UNIFIED DASHBOARD DATA - Single API call for all homepage data
+  // ==========================================================================
+  const {
+    checkIns: dashboardCheckIns,
+    tasks: dashboardTasks,
+    programEnrollments,
+    squads: dashboardSquads,
+    isLoading: dashboardLoading,
+    refetch: refetchDashboard,
+  } = useDashboard();
+  
+  // Map dashboard data to existing variable names for compatibility
+  const morningCheckIn = dashboardCheckIns?.morning as MorningCheckIn | null;
+  const eveningCheckIn = dashboardCheckIns?.evening as EveningCheckIn | null;
+  const weeklyReflection = dashboardCheckIns?.weekly as { completedAt?: string } | null;
+  const focusTasks = dashboardTasks?.focus || [];
+  const checkInLoading = dashboardLoading;
+  const eveningCheckInLoading = dashboardLoading;
+  const tasksLoading = dashboardLoading;
+  const enrollmentsLoading = dashboardLoading;
   
   // Helper: Check if today is the user's first day (based on createdAt in local timezone)
   const isUserFirstDay = useCallback((createdAt: string | null): boolean => {
@@ -401,119 +398,7 @@ export default function Dashboard() {
     else setGreeting('Good evening');
   }, []);
 
-  // Fetch morning check-in status
-  useEffect(() => {
-    async function fetchCheckInStatus() {
-      if (!user) {
-        setCheckInLoading(false);
-        return;
-      }
-      
-      try {
-        const today = new Date().toISOString().split('T')[0];
-        const response = await fetch(`/api/checkin/morning?date=${today}`);
-        const data = await response.json();
-        
-        if (response.ok && data.checkIn) {
-          setMorningCheckIn(data.checkIn);
-        }
-      } catch (error) {
-        console.error('Error fetching check-in status:', error);
-      } finally {
-        setCheckInLoading(false);
-      }
-    }
-    
-    if (isLoaded) {
-      fetchCheckInStatus();
-    }
-
-    // Also refetch when window gains focus (in case user completes check-in)
-    const handleFocus = () => {
-      if (isLoaded && user) {
-        fetchCheckInStatus();
-      }
-    };
-    window.addEventListener('focus', handleFocus);
-    
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [user, isLoaded]);
-
-  // Fetch evening check-in status
-  useEffect(() => {
-    async function fetchEveningCheckInStatus() {
-      if (!user) {
-        setEveningCheckInLoading(false);
-        return;
-      }
-      
-      try {
-        const today = new Date().toISOString().split('T')[0];
-        const response = await fetch(`/api/checkin/evening?date=${today}`, { cache: 'no-store' });
-        const data = await response.json();
-        
-        if (response.ok && data.checkIn) {
-          setEveningCheckIn(data.checkIn);
-        }
-      } catch (error) {
-        console.error('Error fetching evening check-in status:', error);
-      } finally {
-        setEveningCheckInLoading(false);
-      }
-    }
-    
-    if (isLoaded) {
-      fetchEveningCheckInStatus();
-    }
-
-    // Also refetch when window gains focus
-    const handleFocus = () => {
-      if (isLoaded && user) {
-        fetchEveningCheckInStatus();
-      }
-    };
-    window.addEventListener('focus', handleFocus);
-    
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [user, isLoaded]);
-
-  // Fetch weekly reflection status
-  useEffect(() => {
-    async function fetchWeeklyReflectionStatus() {
-      if (!user) return;
-      
-      try {
-        const response = await fetch('/api/checkin/weekly');
-        const data = await response.json();
-        
-        if (response.ok && data.checkIn) {
-          setWeeklyReflection(data.checkIn);
-        }
-      } catch (error) {
-        console.error('Error fetching weekly reflection status:', error);
-      }
-    }
-    
-    if (isLoaded) {
-      fetchWeeklyReflectionStatus();
-    }
-
-    // Also refetch when window gains focus
-    const handleFocus = () => {
-      if (isLoaded && user) {
-        fetchWeeklyReflectionStatus();
-      }
-    };
-    window.addEventListener('focus', handleFocus);
-    
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [user, isLoaded]);
+  // Check-ins, tasks, enrollments are now fetched via unified useDashboard hook
 
   // Sync program tasks after morning check-in is completed
   // This creates tasks from the user's active starter program if needed
@@ -562,107 +447,17 @@ export default function Dashboard() {
     }
   }, [programIsCompleted, hasShownCompletionModal, program]);
 
-  // Fetch today's tasks to check focus task completion
+  // Handle program check-in modal from unified dashboard data
   useEffect(() => {
-    async function fetchTodaysTasks() {
-      if (!user) {
-        setTasksLoading(false);
-        return;
-      }
-      
-      try {
-        const today = new Date().toISOString().split('T')[0];
-        const response = await fetch(`/api/tasks?date=${today}`);
-        const data = await response.json();
-        
-        if (response.ok && data.tasks) {
-          // Filter to only focus tasks
-          const focus = data.tasks.filter((task: Task) => task.listType === 'focus');
-          setFocusTasks(focus);
-        }
-      } catch (error) {
-        console.error('Error fetching tasks:', error);
-      } finally {
-        setTasksLoading(false);
-      }
+    if (!dashboardLoading && dashboardCheckIns?.program?.show) {
+      setShowProgramCheckIn(true);
+      setProgramCheckInData({
+        programId: dashboardCheckIns.program.programId,
+        programName: dashboardCheckIns.program.programName,
+      });
+      setShowProgramCheckInModal(true);
     }
-    
-    if (isLoaded) {
-      fetchTodaysTasks();
-    }
-
-    // Also refetch when window gains focus
-    const handleFocus = () => {
-      if (isLoaded && user) {
-        fetchTodaysTasks();
-      }
-    };
-    window.addEventListener('focus', handleFocus);
-    
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [isLoaded, user]);
-
-  // Fetch program check-in status
-  useEffect(() => {
-    async function fetchProgramCheckInStatus() {
-      if (!user) return;
-      
-      try {
-        const response = await fetch('/api/programs/checkin');
-        const data = await response.json();
-        
-        if (response.ok && data.show) {
-          setShowProgramCheckIn(true);
-          setProgramCheckInData({
-            programId: data.programId,
-            programName: data.programName,
-          });
-          // Auto-open modal on first visit
-          setShowProgramCheckInModal(true);
-        } else {
-          setShowProgramCheckIn(false);
-          setProgramCheckInData(null);
-        }
-      } catch (error) {
-        console.error('Error fetching program check-in status:', error);
-      }
-    }
-    
-    if (isLoaded && user) {
-      fetchProgramCheckInStatus();
-    }
-  }, [user, isLoaded]);
-
-  // Fetch program enrollments for My Programs section
-  useEffect(() => {
-    async function fetchProgramEnrollments() {
-      if (!user) {
-        setEnrollmentsLoading(false);
-        return;
-      }
-      
-      try {
-        const response = await fetch('/api/programs/my-enrollments');
-        if (response.ok) {
-          const data = await response.json();
-          setProgramEnrollments({
-            active: data.activeEnrollments || [],
-            upcoming: data.upcomingEnrollments || [],
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching program enrollments:', error);
-      } finally {
-        setEnrollmentsLoading(false);
-      }
-    }
-    
-    if (isLoaded && user) {
-      fetchProgramEnrollments();
-    }
-  }, [user, isLoaded]);
+  }, [dashboardLoading, dashboardCheckIns?.program]);
 
   useEffect(() => {
     async function fetchUserData() {
@@ -1774,255 +1569,34 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* My Squad Section */}
+      {/* My Program Section - Horizontal Carousel */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-albert text-[24px] text-text-primary leading-[1.3] tracking-[-1.5px]">
+            My Program
+          </h2>
+          <Link href="/discover" className="font-sans text-[12px] text-accent-secondary leading-[1.2]">
+            Discover more
+          </Link>
+        </div>
+        <ProgramCarousel 
+          enrollments={[...programEnrollments.active, ...programEnrollments.upcoming]}
+          isLoading={enrollmentsLoading}
+        />
+      </div>
+
+      {/* My Cohort Section - Horizontal Carousel */}
       <div data-tour="my-squad" className="mt-8">
         <h2 className="font-albert text-[24px] text-text-primary leading-[1.3] tracking-[-1.5px] mb-3">
           {mySquadTitle}
         </h2>
-        
-        {squadLoading ? (
-          <div className="bg-white dark:bg-surface rounded-[20px] p-5 animate-pulse">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
-              <div className="flex-1">
-                <div className="h-5 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded w-1/3 mb-2" />
-                <div className="h-4 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded w-1/4" />
-              </div>
-            </div>
-          </div>
-        ) : squad ? (
-          // User has a squad - show squad card
-          <div className="bg-white dark:bg-surface rounded-[20px] p-5">
-            <div className="flex items-center gap-4">
-              {/* Squad Avatar */}
-              <div className="w-14 h-14 rounded-full overflow-hidden bg-gradient-to-br from-[#F5E6A8] to-[#EDD96C] flex items-center justify-center flex-shrink-0">
-                {squad.avatarUrl ? (
-                  <Image src={squad.avatarUrl} alt={squad.name} width={56} height={56} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="font-albert font-bold text-xl text-[#4A5D54]">
-                    {squad.name[0]}
-                  </span>
-                )}
-              </div>
-
-              {/* Squad Info */}
-              <div className="flex-1 min-w-0">
-                <h3 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px] truncate">
-                  {squad.name}
-                </h3>
-                <div className="flex items-center gap-1.5 text-text-secondary">
-                  <Users className="w-4 h-4" />
-                  <span className="font-albert text-[14px]">
-                    {members.length}<span className="hidden sm:inline"> {members.length === 1 ? 'member' : 'members'}</span>
-                  </span>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {/* Message Icon */}
-                {squad.chatChannelId && (
-                  <Link
-                    href={`/chat?channel=${squad.chatChannelId}`}
-                    className="w-11 h-11 rounded-full bg-[#f3f1ef] dark:bg-[#181d28] flex items-center justify-center hover:bg-[#e9e5e0] dark:hover:bg-[#272d38] transition-colors"
-                    aria-label="Open squad chat"
-                  >
-                    <svg
-                      className="w-5 h-5 text-text-primary"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={1.5}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"
-                      />
-                    </svg>
-                  </Link>
-                )}
-                
-                {/* Go to Squad */}
-                <Link
-                  href="/program?tab=squad"
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-[#a07855] hover:bg-[#8c6245] text-white rounded-full font-albert font-semibold text-[14px] transition-all hover:scale-[1.02]"
-                >
-                  Go to squad
-                  <ChevronRight className="w-4 h-4" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        ) : (
-          // User has no squad - show CTA to find one
-          <Link href="/program" className="block">
-            <div className="bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#1a1512] dark:to-[#181310] border border-[#FFE4CC] dark:border-[#3d3530] rounded-[20px] p-5 hover:shadow-lg hover:border-[#a07855]/40 dark:hover:border-[#b8896a]/40 transition-all duration-300 group">
-              <div className="flex items-center gap-4">
-                {/* Icon */}
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#F5E6A8] to-[#EDD96C] dark:from-[#8c6245] dark:to-[#a07855] flex items-center justify-center flex-shrink-0">
-                  <Users className="w-7 h-7 text-[#4A5D54] dark:text-white" />
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px] mb-1">
-                    Find your squad
-                  </h3>
-                  <p className="font-albert text-[14px] text-text-secondary leading-[1.4]">
-                    Join a community of growth-minded people and stay accountable together.
-                  </p>
-                </div>
-
-                {/* Arrow */}
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#a07855] dark:bg-[#b8896a] flex items-center justify-center group-hover:bg-[#8c6245] dark:group-hover:bg-[#a07855] group-hover:scale-105 transition-all">
-                  <ChevronRight className="w-5 h-5 text-white" />
-                </div>
-              </div>
-            </div>
-          </Link>
-        )}
+        <SquadCarousel 
+          premiumSquad={dashboardSquads?.premium || { squad: null, members: [] }}
+          standardSquad={dashboardSquads?.standard || { squad: null, members: [] }}
+          isLoading={squadLoading}
+          squadTitle={mySquadTitle}
+        />
       </div>
-
-      {/* My Programs Section */}
-      {(programEnrollments.active.length > 0 || programEnrollments.upcoming.length > 0) && (
-        <div className="mt-8">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-albert text-[24px] text-text-primary leading-[1.3] tracking-[-1.5px]">
-              My Programs
-            </h2>
-            <Link href="/discover" className="font-sans text-[12px] text-accent-secondary leading-[1.2]">
-              Discover more
-            </Link>
-          </div>
-          
-          {enrollmentsLoading ? (
-            <div className="bg-white dark:bg-surface rounded-[20px] p-5 animate-pulse">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
-                <div className="flex-1">
-                  <div className="h-5 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded w-1/3 mb-2" />
-                  <div className="h-4 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded w-1/4" />
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {/* Active Programs */}
-              {programEnrollments.active.map((enrollment) => (
-                <Link
-                  key={enrollment.id}
-                  href={`/discover/programs/${enrollment.programId}`}
-                  className="block bg-white dark:bg-surface rounded-[20px] p-5 hover:shadow-lg transition-all"
-                >
-                  <div className="flex items-center gap-4">
-                    {/* Program Image */}
-                    <div className="w-14 h-14 rounded-xl overflow-hidden bg-gradient-to-br from-[#a07855]/20 to-[#8c6245]/10 flex items-center justify-center flex-shrink-0">
-                      {enrollment.program.coverImageUrl ? (
-                        <Image 
-                          src={enrollment.program.coverImageUrl} 
-                          alt={enrollment.program.name} 
-                          width={56} 
-                          height={56} 
-                          className="w-full h-full object-cover" 
-                        />
-                      ) : enrollment.program.type === 'group' ? (
-                        <Users className="w-6 h-6 text-[#a07855]" />
-                      ) : (
-                        <User className="w-6 h-6 text-[#a07855]" />
-                      )}
-                    </div>
-
-                    {/* Program Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-albert font-semibold text-[16px] text-text-primary tracking-[-0.5px] truncate">
-                          {enrollment.program.name}
-                        </h3>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                          enrollment.program.type === 'group'
-                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                            : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                        }`}>
-                          {enrollment.program.type === 'group' ? 'Group' : '1:1'}
-                        </span>
-                      </div>
-                      {enrollment.cohort && (
-                        <p className="font-sans text-[12px] text-text-secondary mb-2">
-                          {enrollment.cohort.name}
-                        </p>
-                      )}
-                      {/* Progress bar */}
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 h-1.5 bg-[#e1ddd8] dark:bg-[#272d38] rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-[#a07855] rounded-full transition-all"
-                            style={{ width: `${enrollment.progress.percentComplete}%` }}
-                          />
-                        </div>
-                        <span className="font-sans text-[11px] text-text-muted">
-                          Day {enrollment.progress.currentDay}/{enrollment.progress.totalDays}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Arrow */}
-                    <ChevronRight className="w-5 h-5 text-text-muted flex-shrink-0" />
-                  </div>
-                </Link>
-              ))}
-
-              {/* Upcoming Programs */}
-              {programEnrollments.upcoming.map((enrollment) => (
-                <Link
-                  key={enrollment.id}
-                  href={`/discover/programs/${enrollment.programId}`}
-                  className="block bg-white/70 dark:bg-surface/70 rounded-[20px] p-5 border border-[#e1ddd8]/50 dark:border-[#272d38]/50 hover:shadow-lg transition-all"
-                >
-                  <div className="flex items-center gap-4">
-                    {/* Program Image */}
-                    <div className="w-14 h-14 rounded-xl overflow-hidden bg-gradient-to-br from-[#a07855]/20 to-[#8c6245]/10 flex items-center justify-center flex-shrink-0 opacity-70">
-                      {enrollment.program.coverImageUrl ? (
-                        <Image 
-                          src={enrollment.program.coverImageUrl} 
-                          alt={enrollment.program.name} 
-                          width={56} 
-                          height={56} 
-                          className="w-full h-full object-cover" 
-                        />
-                      ) : enrollment.program.type === 'group' ? (
-                        <Users className="w-6 h-6 text-[#a07855]" />
-                      ) : (
-                        <User className="w-6 h-6 text-[#a07855]" />
-                      )}
-                    </div>
-
-                    {/* Program Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-albert font-semibold text-[16px] text-text-primary tracking-[-0.5px] truncate">
-                          {enrollment.program.name}
-                        </h3>
-                        <span className="px-2 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 rounded-full text-[10px] font-medium">
-                          Upcoming
-                        </span>
-                      </div>
-                      {enrollment.cohort && (
-                        <p className="font-sans text-[12px] text-text-secondary">
-                          {enrollment.cohort.name} · Starts {new Date(enrollment.cohort.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Arrow */}
-                    <ChevronRight className="w-5 h-5 text-text-muted flex-shrink-0" />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Habit Check-In Modal */}
       {selectedHabit && (

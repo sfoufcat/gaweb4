@@ -1,8 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS } from '@/types';
 import { 
   DEFAULT_TENANT_COACHING_PROMO, 
   type TenantCoachingPromoData 
@@ -87,6 +87,7 @@ function getDefaultBranding(): OrgBranding {
     appTitle: DEFAULT_APP_TITLE,
     colors: DEFAULT_BRANDING_COLORS,
     menuTitles: DEFAULT_MENU_TITLES,
+    menuIcons: DEFAULT_MENU_ICONS,
     createdAt: now,
     updatedAt: now,
   };
@@ -306,12 +307,19 @@ export function useBrandingValues() {
     ...effectiveBranding.menuTitles,
   };
   
+  // Merge menu icons with defaults to ensure all fields are present
+  const menuIcons: OrgMenuIcons = {
+    ...DEFAULT_MENU_ICONS,
+    ...effectiveBranding.menuIcons,
+  };
+  
   return {
     logoUrl: effectiveBranding.logoUrl || DEFAULT_LOGO_URL,
     horizontalLogoUrl: effectiveBranding.horizontalLogoUrl || null,
     appTitle: effectiveBranding.appTitle || DEFAULT_APP_TITLE,
     colors: effectiveBranding.colors,
     menuTitles,
+    menuIcons,
     isPreviewMode,
     isDefault,
     // Smart contrast helpers

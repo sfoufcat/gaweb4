@@ -5,8 +5,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { ensureCoachHasOrganization } from '@/lib/clerk-organizations';
 import { syncTenantToEdgeConfig, type TenantBrandingData } from '@/lib/tenant-edge-config';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, UserRole } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, UserRole } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS } from '@/types';
 
 /**
  * GET /api/org/branding
@@ -106,7 +106,7 @@ export async function POST(request: Request) {
 
     // Parse request body
     const body = await request.json();
-    const { logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles } = body as Partial<OrgBranding>;
+    const { logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles, menuIcons } = body as Partial<OrgBranding>;
 
     // Get existing branding or create new
     const brandingRef = adminDb.collection('org_branding').doc(organizationId);
@@ -137,6 +137,13 @@ export async function POST(request: Request) {
             ...menuTitles,
           } as OrgMenuTitles
         }),
+        ...(menuIcons !== undefined && { 
+          menuIcons: {
+            ...DEFAULT_MENU_ICONS,
+            ...existing.menuIcons,
+            ...menuIcons,
+          } as OrgMenuIcons
+        }),
         updatedAt: now,
       };
     } else {
@@ -154,6 +161,10 @@ export async function POST(request: Request) {
         menuTitles: {
           ...DEFAULT_MENU_TITLES,
           ...menuTitles,
+        },
+        menuIcons: {
+          ...DEFAULT_MENU_ICONS,
+          ...menuIcons,
         },
         createdAt: now,
         updatedAt: now,
@@ -178,6 +189,7 @@ export async function POST(request: Request) {
           appTitle: brandingData.appTitle,
           colors: brandingData.colors,
           menuTitles: brandingData.menuTitles || DEFAULT_MENU_TITLES,
+          menuIcons: brandingData.menuIcons || DEFAULT_MENU_ICONS,
         };
         
         await syncTenantToEdgeConfig(
@@ -217,6 +229,7 @@ function getDefaultBranding(organizationId?: string): OrgBranding {
     appTitle: DEFAULT_APP_TITLE,
     colors: DEFAULT_BRANDING_COLORS,
     menuTitles: DEFAULT_MENU_TITLES,
+    menuIcons: DEFAULT_MENU_ICONS,
     createdAt: now,
     updatedAt: now,
   };

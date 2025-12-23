@@ -13,8 +13,8 @@
  */
 
 import { get } from '@vercel/edge-config';
-import type { OrgBrandingColors, OrgMenuTitles } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES } from '@/types';
+import type { OrgBrandingColors, OrgMenuTitles, OrgMenuIcons } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS } from '@/types';
 
 // =============================================================================
 // TYPES
@@ -29,6 +29,7 @@ export interface TenantBrandingData {
   appTitle: string;
   colors: OrgBrandingColors;
   menuTitles: OrgMenuTitles;
+  menuIcons: OrgMenuIcons;
 }
 
 /**
@@ -63,6 +64,7 @@ export const DEFAULT_TENANT_BRANDING: TenantBrandingData = {
   appTitle: DEFAULT_APP_TITLE,
   colors: DEFAULT_BRANDING_COLORS,
   menuTitles: DEFAULT_MENU_TITLES,
+  menuIcons: DEFAULT_MENU_ICONS,
 };
 
 /**
@@ -238,6 +240,7 @@ export function buildTenantConfigData(
       appTitle: branding?.appTitle ?? DEFAULT_TENANT_BRANDING.appTitle,
       colors: branding?.colors ?? DEFAULT_TENANT_BRANDING.colors,
       menuTitles: branding?.menuTitles ?? DEFAULT_TENANT_BRANDING.menuTitles,
+      menuIcons: branding?.menuIcons ?? DEFAULT_TENANT_BRANDING.menuIcons,
     },
     coachingPromo: coachingPromo ? {
       title: coachingPromo.title ?? DEFAULT_TENANT_COACHING_PROMO.title,

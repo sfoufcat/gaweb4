@@ -1,73 +1,146 @@
 'use client';
 
-import useSWR from 'swr';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
-import type { FirebaseUser, Habit, Task } from '@/types';
+import type { Habit, MorningCheckIn, EveningCheckIn, Task, Squad, SquadMember } from '@/types';
 
-interface DashboardData {
-  user: FirebaseUser | null;
+export interface ProgramEnrollmentWithDetails {
+  id: string;
+  programId: string;
+  program: {
+    id: string;
+    name: string;
+    type: 'group' | 'individual';
+    lengthDays: number;
+    coverImageUrl?: string;
+  };
+  cohort?: {
+    id: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+  };
+  progress: {
+    currentDay: number;
+    totalDays: number;
+    percentComplete: number;
+    daysRemaining: number;
+  };
+  status: string;
+}
+
+export interface DashboardData {
+  user: Record<string, unknown> | null;
   habits: Habit[];
   tasks: {
     focus: Task[];
     backlog: Task[];
   };
+  checkIns: {
+    morning: MorningCheckIn | null;
+    evening: EveningCheckIn | null;
+    weekly: { id: string; completedAt?: string } | null;
+    program: {
+      show: boolean;
+      programId: string | null;
+      programName: string | null;
+    };
+  };
+  programEnrollments: {
+    active: ProgramEnrollmentWithDetails[];
+    upcoming: ProgramEnrollmentWithDetails[];
+  };
+  squads: {
+    premium: { squad: Squad | null; members: SquadMember[] };
+    standard: { squad: Squad | null; members: SquadMember[] };
+  };
   date: string;
+  weekId: string;
+  organizationId: string | null;
 }
 
-interface UseDashboardReturn {
-  data: DashboardData | null;
-  loading: boolean;
-  error: string | null;
-  refetch: () => Promise<void>;
-}
+const initialData: DashboardData = {
+  user: null,
+  habits: [],
+  tasks: { focus: [], backlog: [] },
+  checkIns: {
+    morning: null,
+    evening: null,
+    weekly: null,
+    program: { show: false, programId: null, programName: null },
+  },
+  programEnrollments: { active: [], upcoming: [] },
+  squads: {
+    premium: { squad: null, members: [] },
+    standard: { squad: null, members: [] },
+  },
+  date: '',
+  weekId: '',
+  organizationId: null,
+};
 
 /**
- * Custom hook to fetch all dashboard data in one request
- * 
- * Uses SWR for:
- * - Instant loading from cache on return visits
- * - Background revalidation for fresh data
- * - Automatic deduplication of requests
+ * Unified dashboard hook that fetches ALL homepage data in a single request
+ * Replaces 10+ separate API calls with one optimized endpoint
  */
-export function useDashboard(): UseDashboardReturn {
+export function useDashboard() {
   const { user, isLoaded } = useUser();
-  
-  // Generate date-specific cache key
-  const date = new Date().toISOString().split('T')[0];
-  
-  // Only fetch if user is authenticated
-  // Using user ID in key ensures cache is per-user
-  const cacheKey = user ? `/api/dashboard?date=${date}&uid=${user.id}` : null;
-  
-  const { data, error, isLoading, mutate } = useSWR<DashboardData>(
-    cacheKey,
-    // Custom fetcher that strips the uid param (it's just for cache key uniqueness)
-    async (key: string) => {
-      const url = key.replace(/&uid=[^&]+/, '');
-      const response = await fetch(url);
+  const [data, setData] = useState<DashboardData>(initialData);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const fetchedRef = useRef(false);
+
+  const fetchDashboard = useCallback(async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const today = new Date().toISOString().split('T')[0];
+      const response = await fetch(`/api/dashboard?date=${today}`);
+      
       if (!response.ok) {
         throw new Error('Failed to fetch dashboard data');
       }
-      return response.json();
-    },
-    {
-      // Keep data fresh for 2 minutes before revalidating
-      dedupingInterval: 2 * 60 * 1000,
-      // Don't retry too aggressively
-      errorRetryCount: 2,
+      
+      const result = await response.json();
+      setData(result);
+    } catch (err) {
+      console.error('[useDashboard] Error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard');
+    } finally {
+      setIsLoading(false);
     }
-  );
+  }, [user]);
 
-  // Refetch function that triggers SWR revalidation
-  const refetch = async () => {
-    await mutate();
-  };
+  // Initial fetch
+  useEffect(() => {
+    if (isLoaded && user && !fetchedRef.current) {
+      fetchedRef.current = true;
+      fetchDashboard();
+    }
+  }, [isLoaded, user, fetchDashboard]);
+
+  // Refetch on window focus
+  useEffect(() => {
+    const handleFocus = () => {
+      if (isLoaded && user) {
+        fetchDashboard();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [isLoaded, user, fetchDashboard]);
 
   return {
-    data: data ?? null,
-    // Show loading only on initial load (when no cached data exists)
-    loading: !isLoaded || (isLoading && !data),
-    error: error?.message ?? null,
-    refetch,
+    ...data,
+    isLoading,
+    error,
+    refetch: fetchDashboard,
   };
 }
