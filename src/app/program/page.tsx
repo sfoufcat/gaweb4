@@ -111,38 +111,11 @@ export default function ProgramHubPage() {
     return enrollments.find(e => e.program.id === selectedProgramId) || null;
   }, [selectedProgramId, enrollments]);
   
-  // Loading state - show skeleton while data loads
+  // Loading state - return null, ProgramDetailView has its own skeleton
   const isLoading = !userLoaded || !mounted || programsLoading;
   
   if (isLoading) {
-    return (
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4 animate-pulse">
-        {/* Header skeleton */}
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-9 h-9 rounded-full bg-text-primary/10" />
-          <div className="h-6 w-32 bg-text-primary/10 rounded" />
-        </div>
-        {/* Title and description skeleton */}
-        <div className="space-y-2 mb-4">
-          <div className="h-8 w-2/3 bg-text-primary/10 rounded" />
-          <div className="h-4 w-full bg-text-primary/5 rounded" />
-          <div className="h-4 w-3/4 bg-text-primary/5 rounded" />
-        </div>
-        {/* Progress pill skeleton */}
-        <div className="h-7 w-24 bg-text-primary/10 rounded-full mb-4" />
-        {/* Cover image skeleton */}
-        <div className="h-[220px] w-full bg-text-primary/5 rounded-[20px] mb-6" />
-        {/* Content cards skeleton */}
-        <div className="space-y-4">
-          <div className="h-6 w-40 bg-text-primary/10 rounded" />
-          <div className="flex gap-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="w-[180px] h-[120px] flex-shrink-0 bg-text-primary/5 rounded-[20px]" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
   
   if (!user) {
