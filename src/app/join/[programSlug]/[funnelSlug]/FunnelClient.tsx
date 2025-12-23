@@ -425,28 +425,28 @@ export default function FunnelClient({
     }
   };
 
-  // Loading state (initial session load)
+  // Loading state (initial session load) - show skeleton
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-app-bg flex items-center justify-center">
-        <div className="text-center">
-          {branding.logoUrl && (
-            <Image
-              src={branding.logoUrl}
-              alt={branding.appTitle}
-              width={80}
-              height={80}
-              className="w-16 h-16 lg:w-20 lg:h-20 rounded-full mx-auto mb-6 shadow-lg"
-            />
-          )}
-          <div className="relative mb-4 mx-auto w-fit">
-            <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
-            <div 
-              className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin" 
-              style={{ borderTopColor: branding.primaryColor }}
-            />
+      <div className="min-h-screen bg-app-bg">
+        <div className="max-w-2xl mx-auto px-4 py-8 animate-pulse">
+          {/* Logo skeleton */}
+          <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full bg-text-primary/10 mx-auto mb-6" />
+          {/* Title skeleton */}
+          <div className="h-8 w-3/4 bg-text-primary/10 rounded mx-auto mb-4" />
+          {/* Description skeleton */}
+          <div className="space-y-2 mb-8">
+            <div className="h-4 w-full bg-text-primary/5 rounded mx-auto" />
+            <div className="h-4 w-2/3 bg-text-primary/5 rounded mx-auto" />
           </div>
-          <p className="text-text-secondary">Loading...</p>
+          {/* Form fields skeleton */}
+          <div className="space-y-4 mb-8">
+            <div className="h-12 w-full bg-text-primary/5 rounded-xl" />
+            <div className="h-12 w-full bg-text-primary/5 rounded-xl" />
+            <div className="h-12 w-full bg-text-primary/5 rounded-xl" />
+          </div>
+          {/* Button skeleton */}
+          <div className="h-14 w-full bg-text-primary/10 rounded-full" />
         </div>
       </div>
     );

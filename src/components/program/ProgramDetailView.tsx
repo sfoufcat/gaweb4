@@ -622,12 +622,12 @@ export function ProgramDetailView({
       {/* Loading state for content */}
       {content.isLoading && (
         <div className="space-y-4">
-          <div className="h-6 w-32 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg animate-pulse" />
+          <div className="h-6 w-32 bg-text-primary/10 rounded-lg animate-pulse" />
           <div className="flex gap-3 overflow-x-auto">
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="w-[180px] h-[120px] flex-shrink-0 bg-white dark:bg-[#171b22] rounded-[20px] animate-pulse"
+                className="w-[180px] h-[120px] flex-shrink-0 bg-text-primary/5 rounded-[20px] animate-pulse"
               />
             ))}
           </div>

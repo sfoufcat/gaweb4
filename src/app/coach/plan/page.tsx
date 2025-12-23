@@ -2,10 +2,10 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Check, 
   Users, 
@@ -18,9 +18,15 @@ import {
   ArrowRight,
   Sparkles,
   Shield,
-  X
+  X,
+  Lock
 } from 'lucide-react';
 import Image from 'next/image';
+import { loadStripe } from '@stripe/stripe-js';
+import {
+  EmbeddedCheckout,
+  EmbeddedCheckoutProvider,
+} from '@stripe/react-stripe-js';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 import type { CoachTier } from '@/types';
 import { 
@@ -29,6 +35,9 @@ import {
   formatLimitValue,
   getNextTier,
 } from '@/lib/coach-permissions';
+
+// Initialize Stripe outside component to avoid recreation on each render
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 // =============================================================================
 // PLAN DEFINITIONS
@@ -69,10 +78,10 @@ const PLANS: Plan[] = [
       { text: 'Courses, Events & Articles', included: true },
       { text: 'Basic funnel steps', included: true },
       { text: 'Custom funnel branding', included: true },
+      { text: 'Stripe Connect (accept payments)', included: true },
       { text: 'Advanced funnel steps (Identity, Analyzing)', included: false },
       { text: 'Custom domain', included: false },
       { text: 'Email whitelabeling', included: false },
-      { text: 'Stripe Connect', included: false },
     ],
     tag: 'START HERE',
   },
@@ -93,7 +102,6 @@ const PLANS: Plan[] = [
       { text: 'Advanced funnel steps', included: true, highlight: true },
       { text: 'Custom domain', included: true, highlight: true },
       { text: 'Email whitelabeling', included: true, highlight: true },
-      { text: 'Stripe Connect (keep your revenue)', included: true, highlight: true },
       { text: 'Advanced analytics', included: false },
       { text: 'A/B testing', included: false },
     ],
@@ -160,6 +168,11 @@ export default function CoachPlanPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentTier, setCurrentTier] = useState<CoachTier | null>(null);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
+  
+  // Embedded checkout state
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [checkoutPlan, setCheckoutPlan] = useState<CoachTier | null>(null);
 
   // Fetch current subscription status
   useEffect(() => {
@@ -219,10 +232,14 @@ export default function CoachPlanPage() {
         throw new Error(data.error || 'Failed to create checkout session');
       }
 
-      if (data.url) {
-        window.location.href = data.url;
+      if (data.clientSecret) {
+        // Open embedded checkout modal
+        setClientSecret(data.clientSecret);
+        setCheckoutPlan(selectedPlan);
+        setShowCheckout(true);
+        setIsLoading(false);
       } else {
-        throw new Error('No checkout URL received');
+        throw new Error('No checkout session received');
       }
     } catch (err) {
       console.error('Checkout error:', err);
@@ -230,6 +247,12 @@ export default function CoachPlanPage() {
       setIsLoading(false);
     }
   };
+
+  const handleCloseCheckout = useCallback(() => {
+    setShowCheckout(false);
+    setClientSecret(null);
+    setCheckoutPlan(null);
+  }, []);
 
   const handleManageSubscription = async () => {
     setIsLoading(true);
@@ -572,6 +595,72 @@ export default function CoachPlanPage() {
           </p>
         </motion.div>
       </div>
+
+      {/* Embedded Checkout Modal */}
+      <AnimatePresence>
+        {showCheckout && clientSecret && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) handleCloseCheckout();
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-lg bg-white dark:bg-[#1a1e26] rounded-[24px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#313746]">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-[#a07855] to-[#c9a07a] rounded-xl flex items-center justify-center">
+                    <CreditCard className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="font-albert text-[18px] font-semibold text-text-primary tracking-[-0.5px]">
+                      Subscribe to {checkoutPlan ? TIER_PRICING[checkoutPlan].name : 'Plan'}
+                    </h2>
+                    <p className="font-sans text-[13px] text-text-secondary">
+                      {checkoutPlan && `$${(TIER_PRICING[checkoutPlan].monthly / 100).toFixed(0)}/month`}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleCloseCheckout}
+                  className="p-2 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+                >
+                  <X className="w-5 h-5 text-text-secondary" />
+                </button>
+              </div>
+
+              {/* Checkout Content */}
+              <div className="flex-1 overflow-y-auto p-6">
+                <EmbeddedCheckoutProvider
+                  stripe={stripePromise}
+                  options={{ clientSecret }}
+                >
+                  <EmbeddedCheckout />
+                </EmbeddedCheckoutProvider>
+              </div>
+
+              {/* Security Badge */}
+              <div className="px-6 py-4 border-t border-[#e1ddd8] dark:border-[#313746] bg-[#f9f8f7] dark:bg-[#171b22]">
+                <div className="flex items-center justify-center gap-2 text-text-secondary">
+                  <Lock className="w-4 h-4" />
+                  <span className="font-sans text-[12px]">
+                    Secured by Stripe. Your payment info is encrypted.
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

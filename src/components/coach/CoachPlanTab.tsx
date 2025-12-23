@@ -240,16 +240,16 @@ export function CoachPlanTab() {
           <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]">
             <div className="flex items-center justify-between">
               <div className="space-y-2">
-                <div className="h-7 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-                <div className="h-4 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
+                <div className="h-7 w-32 bg-text-primary/10 rounded" />
+                <div className="h-4 w-48 bg-text-primary/10 rounded" />
               </div>
-              <div className="h-10 w-36 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-xl" />
+              <div className="h-10 w-36 bg-text-primary/10 rounded-xl" />
             </div>
           </div>
           <div className="p-6 space-y-4">
-            <div className="h-4 w-24 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
-            <div className="h-3 w-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
-            <div className="h-3 w-full bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+            <div className="h-4 w-24 bg-text-primary/10 rounded" />
+            <div className="h-3 w-full bg-text-primary/5 rounded-full" />
+            <div className="h-3 w-full bg-text-primary/5 rounded-full" />
           </div>
         </div>
       </div>

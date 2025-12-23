@@ -106,13 +106,13 @@ export async function POST(req: Request) {
       }
     }
 
-    // Build checkout session params
+    // Build checkout session params for embedded checkout
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://growthaddicts.app';
     
-    // For upgrades, use subscription update mode
-    // For new subscriptions, use standard checkout
+    // Use embedded checkout mode for in-page payment experience
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'subscription',
+      ui_mode: 'embedded',
       customer: customerId || undefined,
       customer_email: customerId ? undefined : email,
       line_items: [
@@ -121,8 +121,7 @@ export async function POST(req: Request) {
           quantity: 1,
         },
       ],
-      success_url: `${baseUrl}/coach?tab=plan&success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/coach/plan?canceled=true`,
+      return_url: `${baseUrl}/coach?tab=plan&success=true&session_id={CHECKOUT_SESSION_ID}`,
       metadata: {
         userId,
         organizationId,
@@ -142,9 +141,9 @@ export async function POST(req: Request) {
 
     const session = await stripe.checkout.sessions.create(sessionParams);
 
-    console.log(`[COACH_CHECKOUT] Created session ${session.id} for org ${organizationId}, tier ${tier}`);
+    console.log(`[COACH_CHECKOUT] Created embedded checkout session ${session.id} for org ${organizationId}, tier ${tier}`);
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ clientSecret: session.client_secret });
   } catch (error) {
     console.error('[COACH_CHECKOUT]', error);
     const message = error instanceof Error ? error.message : 'Failed to create checkout session';

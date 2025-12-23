@@ -1926,7 +1926,7 @@ export function CustomizeBrandingTab() {
         
         <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mb-6 font-albert">
           Connect your Stripe account to receive payments directly from your clients. 
-          A {stripeAccountDetails.platformFeePercent ?? 10}% platform fee applies to each transaction.
+          Regular Stripe fees apply + 1% platform fee on each transaction.
         </p>
         
         {stripeConnectLoading ? (
