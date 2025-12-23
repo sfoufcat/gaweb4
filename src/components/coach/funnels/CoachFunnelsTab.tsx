@@ -14,7 +14,8 @@ import {
   Eye,
   EyeOff,
   Link2,
-  Users
+  Users,
+  Check
 } from 'lucide-react';
 import type { Funnel, Program } from '@/types';
 import { FunnelEditorDialog } from './FunnelEditorDialog';
@@ -43,6 +44,9 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   
   // Dropdown menu state
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  
+  // Copy link feedback state
+  const [copiedFunnelId, setCopiedFunnelId] = useState<string | null>(null);
 
   const fetchFunnels = useCallback(async () => {
     try {
@@ -145,7 +149,8 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
     if (program) {
       const url = `${window.location.origin}/join/${program.slug}/${funnel.slug}`;
       navigator.clipboard.writeText(url);
-      alert('Link copied to clipboard!');
+      setCopiedFunnelId(funnel.id);
+      setTimeout(() => setCopiedFunnelId(null), 2000);
     }
     setOpenMenuId(null);
   };
@@ -302,9 +307,13 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
                   <button
                     onClick={() => copyFunnelLink(funnel)}
                     className="p-2 hover:bg-[#f5f3f0] rounded-lg transition-colors"
-                    title="Copy link"
+                    title={copiedFunnelId === funnel.id ? "Copied!" : "Copy link"}
                   >
-                    <Link2 className="w-4 h-4 text-text-secondary" />
+                    {copiedFunnelId === funnel.id ? (
+                      <Check className="w-4 h-4 text-green-600" />
+                    ) : (
+                      <Link2 className="w-4 h-4 text-text-secondary" />
+                    )}
                   </button>
 
                   {/* More menu */}

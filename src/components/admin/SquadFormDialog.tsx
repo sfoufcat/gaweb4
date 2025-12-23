@@ -148,7 +148,7 @@ export function SquadFormDialog({
     
     try {
       setMembersLoading(true);
-      const response = await fetch(`/api/admin/squads/${squad.id}/members`);
+      const response = await fetch(`${apiBasePath}/${squad.id}/members`);
       if (response.ok) {
         const data = await response.json();
         setMembers(data.members || []);
@@ -158,7 +158,7 @@ export function SquadFormDialog({
     } finally {
       setMembersLoading(false);
     }
-  }, [squad]);
+  }, [squad, apiBasePath]);
 
   // Fetch members when editing a squad
   useEffect(() => {
@@ -224,7 +224,7 @@ export function SquadFormDialog({
     setAddingUserId(null);
     
     try {
-      const response = await fetch(`/api/admin/squads/${squad.id}/members`, {
+      const response = await fetch(`${apiBasePath}/${squad.id}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, roleInSquad: 'member' }),
@@ -259,7 +259,7 @@ export function SquadFormDialog({
     
     try {
       const response = await fetch(
-        `/api/admin/squads/${squad.id}/members?userId=${userId}`,
+        `${apiBasePath}/${squad.id}/members?userId=${userId}`,
         { method: 'DELETE' }
       );
 
@@ -308,7 +308,7 @@ export function SquadFormDialog({
 
     try {
       setRegeneratingCode(true);
-      const response = await fetch(`/api/admin/squads/${squad.id}/regenerate-code`, {
+      const response = await fetch(`${apiBasePath}/${squad.id}/regenerate-code`, {
         method: 'POST',
       });
 

@@ -1,22 +1,33 @@
 import { clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireAdmin } from '@/lib/admin-utils-clerk';
+import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { getStreamServerClient } from '@/lib/stream-server';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { SquadMember, SquadRoleInSquad } from '@/types';
 
 /**
- * GET /api/admin/squads/[squadId]/members
- * Get all members of a squad (admin only)
+ * GET /api/coach/org-squads/[squadId]/members
+ * Get all members of a squad (coach only - must belong to coach's org)
  */
 export async function GET(
   req: Request,
   context: { params: Promise<{ squadId: string }> }
 ) {
   try {
-    await requireAdmin();
+    const { organizationId } = await requireCoachWithOrg();
     const { squadId } = await context.params;
+
+    // Verify squad belongs to coach's organization
+    const squadDoc = await adminDb.collection('squads').doc(squadId).get();
+    if (!squadDoc.exists) {
+      return NextResponse.json({ error: 'Squad not found' }, { status: 404 });
+    }
+    
+    const squadData = squadDoc.data();
+    if (squadData?.organizationId !== organizationId) {
+      return NextResponse.json({ error: 'Squad does not belong to your organization' }, { status: 403 });
+    }
 
     // Fetch all members of this squad
     const membersSnapshot = await adminDb.collection('squadMembers')
@@ -67,7 +78,7 @@ export async function GET(
 
     return NextResponse.json({ members });
   } catch (error) {
-    console.error('[ADMIN_SQUAD_MEMBERS_GET_ERROR]', error);
+    console.error('[COACH_SQUAD_MEMBERS_GET_ERROR]', error);
     const message = error instanceof Error ? error.message : 'Internal Error';
     
     if (message === 'Unauthorized') {
@@ -82,15 +93,15 @@ export async function GET(
 }
 
 /**
- * POST /api/admin/squads/[squadId]/members
- * Add a user to a squad (admin only)
+ * POST /api/coach/org-squads/[squadId]/members
+ * Add a user to a squad (coach only - must belong to coach's org)
  */
 export async function POST(
   req: Request,
   context: { params: Promise<{ squadId: string }> }
 ) {
   try {
-    await requireAdmin();
+    const { organizationId } = await requireCoachWithOrg();
     const { squadId } = await context.params;
     const body = await req.json();
     const { userId, roleInSquad = 'member' } = body as { userId: string; roleInSquad?: SquadRoleInSquad };
@@ -99,10 +110,15 @@ export async function POST(
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    // Check if squad exists
+    // Verify squad belongs to coach's organization
     const squadDoc = await adminDb.collection('squads').doc(squadId).get();
     if (!squadDoc.exists) {
       return NextResponse.json({ error: 'Squad not found' }, { status: 404 });
+    }
+    
+    const squadData = squadDoc.data();
+    if (squadData?.organizationId !== organizationId) {
+      return NextResponse.json({ error: 'Squad does not belong to your organization' }, { status: 403 });
     }
 
     // Check if user exists
@@ -111,21 +127,15 @@ export async function POST(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Check if user is already in a squad
+    // Check if user is already in this squad (duplicate check)
     const existingMembership = await adminDb.collection('squadMembers')
+      .where('squadId', '==', squadId)
       .where('userId', '==', userId)
       .limit(1)
       .get();
 
     if (!existingMembership.empty) {
-      const existingSquadId = existingMembership.docs[0].data().squadId;
-      if (existingSquadId === squadId) {
-        return NextResponse.json({ error: 'User is already in this squad' }, { status: 400 });
-      } else {
-        return NextResponse.json({ 
-          error: 'User is already in another squad. Remove them from their current squad first.' 
-        }, { status: 400 });
-      }
+      return NextResponse.json({ error: 'User is already in this squad' }, { status: 400 });
     }
 
     // Create the membership
@@ -154,7 +164,6 @@ export async function POST(
     }
 
     // Add user to the squad's Stream Chat channel
-    const squadData = squadDoc.data();
     if (squadData?.chatChannelId) {
       try {
         const streamClient = await getStreamServerClient();
@@ -182,7 +191,7 @@ export async function POST(
       member: { id: memberRef.id, ...memberData } 
     });
   } catch (error) {
-    console.error('[ADMIN_SQUAD_MEMBERS_POST_ERROR]', error);
+    console.error('[COACH_SQUAD_MEMBERS_POST_ERROR]', error);
     const message = error instanceof Error ? error.message : 'Internal Error';
     
     if (message === 'Unauthorized') {
@@ -197,8 +206,8 @@ export async function POST(
 }
 
 /**
- * DELETE /api/admin/squads/[squadId]/members
- * Remove a user from a squad (admin only)
+ * DELETE /api/coach/org-squads/[squadId]/members
+ * Remove a user from a squad (coach only - must belong to coach's org)
  * Uses query param: ?userId=xxx
  */
 export async function DELETE(
@@ -206,13 +215,24 @@ export async function DELETE(
   context: { params: Promise<{ squadId: string }> }
 ) {
   try {
-    await requireAdmin();
+    const { organizationId } = await requireCoachWithOrg();
     const { squadId } = await context.params;
     const url = new URL(req.url);
     const userId = url.searchParams.get('userId');
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+    }
+
+    // Verify squad belongs to coach's organization
+    const squadDoc = await adminDb.collection('squads').doc(squadId).get();
+    if (!squadDoc.exists) {
+      return NextResponse.json({ error: 'Squad not found' }, { status: 404 });
+    }
+    
+    const squadData = squadDoc.data();
+    if (squadData?.organizationId !== organizationId) {
+      return NextResponse.json({ error: 'Squad does not belong to your organization' }, { status: 403 });
     }
 
     // Find the membership
@@ -229,9 +249,6 @@ export async function DELETE(
     const memberDoc = membershipSnapshot.docs[0];
 
     // Check if this user is the squad's coach
-    const squadDoc = await adminDb.collection('squads').doc(squadId).get();
-    const squadData = squadDoc.data();
-
     if (squadData?.coachId === userId) {
       // Clear the coach from the squad
       await adminDb.collection('squads').doc(squadId).update({
@@ -263,7 +280,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('[ADMIN_SQUAD_MEMBERS_DELETE_ERROR]', error);
+    console.error('[COACH_SQUAD_MEMBERS_DELETE_ERROR]', error);
     const message = error instanceof Error ? error.message : 'Internal Error';
     
     if (message === 'Unauthorized') {
