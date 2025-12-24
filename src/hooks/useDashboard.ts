@@ -119,6 +119,6 @@ export function useDashboard() {
     // Only show loading on INITIAL fetch (when no data exists)
     isLoading: !isLoaded || (isLoading && !data),
     error: error?.message ?? null,
-    refetch: () => mutate(),
+    refetch: async () => { await mutate(); },
   };
 }

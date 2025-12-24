@@ -16,6 +16,8 @@ export default function EditHabitPage({ params }: { params: Promise<{ id: string
   const [habit, setHabit] = useState<Habit | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -65,13 +67,13 @@ export default function EditHabitPage({ params }: { params: Promise<{ id: string
     }
   };
 
-  const handleArchive = async () => {
-    if (!confirm('Are you sure you want to mark this habit as complete and archive it?')) {
-      return;
-    }
+  const handleArchive = () => {
+    setShowArchiveModal(true);
+  };
 
+  const confirmArchive = async () => {
     setError('');
-    setIsSubmitting(true);
+    setIsArchiving(true);
 
     try {
       const response = await fetch(`/api/habits/${id}/archive`, {
@@ -86,7 +88,8 @@ export default function EditHabitPage({ params }: { params: Promise<{ id: string
     } catch (err) {
       setError('Failed to archive habit. Please try again.');
       console.error('Archive habit error:', err);
-      setIsSubmitting(false);
+      setIsArchiving(false);
+      setShowArchiveModal(false);
     }
   };
 
@@ -172,6 +175,56 @@ export default function EditHabitPage({ params }: { params: Promise<{ id: string
           />
         </div>
       </div>
+
+      {/* Archive Habit Confirmation Modal */}
+      {showArchiveModal && habit && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#171b22] rounded-[24px] p-6 max-w-[400px] w-full animate-in fade-in zoom-in-95 duration-200">
+            {/* Icon */}
+            <div className="w-14 h-14 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-7 h-7 text-earth-900 dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            
+            <h3 className="font-albert text-[24px] text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3] mb-2 text-center">
+              Complete & Archive?
+            </h3>
+            
+            <p className="font-albert text-[16px] font-semibold text-earth-900 dark:text-[#b8896a] tracking-[-0.5px] text-center mb-2">
+              {habit.text}
+            </p>
+            
+            <p className="font-sans text-[14px] text-text-secondary dark:text-[#b2b6c2] leading-[1.4] mb-6 text-center">
+              This habit will be marked as complete and moved to your archived habits. You can restore it anytime.
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowArchiveModal(false)}
+                disabled={isArchiving}
+                className="flex-1 py-3 px-6 rounded-full font-sans text-[14px] font-medium bg-[#f3f1ef] dark:bg-[#1e222a] text-text-primary dark:text-[#f5f5f8] hover:bg-[#e8e0d5] dark:hover:bg-[#262b35] transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmArchive}
+                disabled={isArchiving}
+                className="flex-1 py-3 px-6 rounded-full font-sans text-[14px] font-medium bg-earth-900 dark:bg-[#b8896a] text-white hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isArchiving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Archiving...
+                  </>
+                ) : (
+                  'Complete'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

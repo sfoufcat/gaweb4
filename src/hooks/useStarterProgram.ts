@@ -226,7 +226,7 @@ export function useStarterProgram(): UseStarterProgramReturn {
     isCompleted,
     
     // Actions
-    refresh: () => mutate(),
+    refresh: async () => { await mutate(); },
     syncTasks,
   };
 }
