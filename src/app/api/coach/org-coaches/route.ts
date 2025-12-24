@@ -35,16 +35,23 @@ export async function GET() {
 
     const client = await clerkClient();
     
-    // Get organization members
+    // Get organization members with their native Clerk roles
     const memberships = await client.organizations.getOrganizationMembershipList({
       organizationId,
       limit: 500,
     });
 
-    // Get user IDs from memberships
-    const memberUserIds = memberships.data
-      .map(m => m.publicUserData?.userId)
-      .filter((id): id is string => !!id);
+    // Build a map of userId -> native Clerk org role (org:admin, org:member, etc.)
+    const nativeOrgRoles = new Map<string, string>();
+    const memberUserIds: string[] = [];
+    
+    for (const membership of memberships.data) {
+      const userId = membership.publicUserData?.userId;
+      if (userId) {
+        memberUserIds.push(userId);
+        nativeOrgRoles.set(userId, membership.role);
+      }
+    }
 
     if (memberUserIds.length === 0) {
       return NextResponse.json({
@@ -74,14 +81,30 @@ export async function GET() {
     // Combine both sets
     const combinedUsers = [...orgUsers, ...metadataOrgUsers];
 
-    // Filter to only users who can be coaches (orgRole: super_coach or coach)
+    // Filter to only users who can be coaches
+    // Check BOTH: publicMetadata.orgRole AND Clerk's native org:admin role
     const coaches: OrgCoach[] = combinedUsers
       .filter((user) => {
         const metadata = user.publicMetadata as ClerkUserMetadata;
-        return isOrgCoach(metadata?.orgRole);
+        const nativeRole = nativeOrgRoles.get(user.id);
+        
+        // User is a coach if:
+        // 1. They have orgRole of 'super_coach' or 'coach' in metadata, OR
+        // 2. They are an org:admin in Clerk's native organization system
+        return isOrgCoach(metadata?.orgRole) || nativeRole === 'org:admin';
       })
       .map((user) => {
         const metadata = user.publicMetadata as ClerkUserMetadata;
+        const nativeRole = nativeOrgRoles.get(user.id);
+        
+        // Determine effective orgRole:
+        // - If org:admin in Clerk, treat as super_coach
+        // - Otherwise use metadata.orgRole
+        let effectiveOrgRole: OrgRole = metadata?.orgRole || 'member';
+        if (nativeRole === 'org:admin') {
+          effectiveOrgRole = 'super_coach';
+        }
+        
         return {
           id: user.id,
           email: user.emailAddresses[0]?.emailAddress || '',
@@ -89,7 +112,7 @@ export async function GET() {
           lastName: user.lastName || '',
           name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unnamed User',
           imageUrl: user.imageUrl || '',
-          orgRole: metadata?.orgRole || 'member',
+          orgRole: effectiveOrgRole,
         };
       });
 
