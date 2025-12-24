@@ -19,10 +19,9 @@ import type { Squad } from '@/types';
  * POST /api/squad/join-by-invite
  * Join a squad using an invite code or token.
  * 
- * DUAL SQUAD SUPPORT:
- * - Premium users can join BOTH a standard squad AND a premium squad via invite
- * - Standard users can only join standard squads
- * - If joining same type as current squad, must leave first (or forceSwitch)
+ * MULTI-SQUAD SUPPORT:
+ * - Users can be in multiple squads (e.g., program squad + standalone squad)
+ * - No tier-based restrictions - access controlled by squad/program pricing
  * 
  * Supports both:
  * - Short codes (8 alphanumeric chars) - stored in Firestore
@@ -30,18 +29,17 @@ import type { Squad } from '@/types';
  * 
  * Body:
  * - token: string (required) - The invite code or JWT token
- * - forceSwitch: boolean (optional) - If true, leave current squad of same type and join new one
  */
 export async function POST(req: Request) {
   try {
-    const { userId, sessionClaims } = await auth();
+    const { userId } = await auth();
     
     if (!userId) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
     const body = await req.json();
-    const { token, forceSwitch = false } = body as { token: string; forceSwitch?: boolean };
+    const { token } = body as { token: string };
 
     if (!token) {
       return NextResponse.json({ error: 'Invite token is required' }, { status: 400 });
@@ -85,77 +83,35 @@ export async function POST(req: Request) {
     }
 
     const squad = squadDoc.data() as Squad;
-    const isTargetSquadPremium = squad.isPremium;
-
-    // Get user tier from Clerk session
-    const publicMetadata = sessionClaims?.publicMetadata as { tier?: string } | undefined;
-    const userTier = publicMetadata?.tier || 'standard';
-    const isPremiumUser = userTier === 'premium';
-
-    // Premium squad enforcement - standard users cannot join premium squads
-    if (isTargetSquadPremium && !isPremiumUser) {
-      return NextResponse.json({ 
-        error: 'PREMIUM_REQUIRED',
-        squadName: squad.name,
-        squadId: payload.inviterSquadId,
-        message: 'This is a premium squad. Upgrade to premium to join.',
-      }, { status: 403 });
-    }
+    // Use hasCoach if available, fall back to isPremium for migration
+    const squadHasCoach = squad.hasCoach ?? squad.isPremium ?? false;
 
     // Check user's existing squad memberships
     const userDoc = await adminDb.collection('users').doc(userId).get();
     const userData = userDoc.exists ? userDoc.data() : null;
     
-    // Get current squad IDs (support both new fields and legacy)
-    let currentStandardSquadId = userData?.standardSquadId || null;
-    let currentPremiumSquadId = userData?.premiumSquadId || null;
+    // Get current squad IDs (support new squadIds array, legacy fields)
+    const currentSquadIds: string[] = userData?.squadIds || [];
     
-    // Fallback for legacy squadId
-    if (!currentStandardSquadId && !currentPremiumSquadId && userData?.squadId) {
-      const legacySquadDoc = await adminDb.collection('squads').doc(userData.squadId).get();
-      if (legacySquadDoc.exists) {
-        const legacySquadData = legacySquadDoc.data();
-        if (legacySquadData?.isPremium) {
-          currentPremiumSquadId = userData.squadId;
-        } else {
-          currentStandardSquadId = userData.squadId;
-        }
+    // Fallback for legacy fields
+    if (currentSquadIds.length === 0) {
+      if (userData?.standardSquadId) currentSquadIds.push(userData.standardSquadId);
+      if (userData?.premiumSquadId && userData.premiumSquadId !== userData.standardSquadId) {
+        currentSquadIds.push(userData.premiumSquadId);
+      }
+      if (userData?.squadId && !currentSquadIds.includes(userData.squadId)) {
+        currentSquadIds.push(userData.squadId);
       }
     }
 
-    // Determine the relevant current squad ID based on target squad type
-    const relevantCurrentSquadId = isTargetSquadPremium ? currentPremiumSquadId : currentStandardSquadId;
-    const squadTypeLabel = isTargetSquadPremium ? 'premium' : 'standard';
-
     // Check if already in the target squad
-    if (relevantCurrentSquadId === payload.inviterSquadId) {
+    if (currentSquadIds.includes(payload.inviterSquadId)) {
       return NextResponse.json({ 
         success: true, 
         alreadyMember: true,
         squadId: payload.inviterSquadId,
-        squadType: squadTypeLabel,
+        hasCoach: squadHasCoach,
       });
-    }
-
-    // Check if user already has a squad of the same type
-    if (relevantCurrentSquadId) {
-      if (!forceSwitch) {
-        // Get current squad info for the confirmation dialog
-        const currentSquadDoc = await adminDb.collection('squads').doc(relevantCurrentSquadId).get();
-        const currentSquadName = currentSquadDoc.exists ? currentSquadDoc.data()?.name : `your current ${squadTypeLabel} squad`;
-        
-        return NextResponse.json({ 
-          error: 'ALREADY_IN_SQUAD',
-          currentSquadId: relevantCurrentSquadId,
-          currentSquadName,
-          newSquadName: squad.name,
-          squadType: squadTypeLabel,
-          message: `You are already in "${currentSquadName}". Do you want to leave and join "${squad.name}"?`
-        }, { status: 409 }); // 409 Conflict
-      }
-      
-      // forceSwitch is true - leave current squad of same type first
-      await leaveSquad(userId, relevantCurrentSquadId, isTargetSquadPremium);
     }
 
     // Check if squad is at capacity
@@ -186,7 +142,7 @@ export async function POST(req: Request) {
         success: true, 
         alreadyMember: true,
         squadId: payload.inviterSquadId,
-        squadType: squadTypeLabel,
+        hasCoach: squadHasCoach,
       });
     }
 
@@ -212,24 +168,17 @@ export async function POST(req: Request) {
       updatedAt: now,
     });
 
-    // Update user's squad field based on squad type and store referral tracking data
+    // Update user's squad membership - add to squadIds array
+    const updatedSquadIds = [...currentSquadIds, payload.inviterSquadId];
     const userUpdate: Record<string, unknown> = {
+      squadIds: updatedSquadIds,
       invitedBy: payload.inviterUserId,
       inviteCode: isShortCode(token) ? token.toUpperCase() : token.substring(0, 20) + '...',
       invitedAt: now,
       updatedAt: now,
+      // Keep legacy fields in sync for backward compatibility
+      squadId: payload.inviterSquadId,
     };
-    
-    if (isTargetSquadPremium) {
-      userUpdate.premiumSquadId = payload.inviterSquadId;
-    } else {
-      userUpdate.standardSquadId = payload.inviterSquadId;
-    }
-    
-    // Also update legacy squadId for backward compatibility if user has no squads yet
-    if (!currentStandardSquadId && !currentPremiumSquadId) {
-      userUpdate.squadId = payload.inviterSquadId;
-    }
     
     await adminDb.collection('users').doc(userId).update(userUpdate);
 
@@ -280,7 +229,7 @@ export async function POST(req: Request) {
       success: true,
       squadId: payload.inviterSquadId,
       squadName: squad.name,
-      squadType: squadTypeLabel,
+      hasCoach: squadHasCoach,
     });
   } catch (error) {
     console.error('[SQUAD_JOIN_BY_INVITE_ERROR]', error);
@@ -290,9 +239,9 @@ export async function POST(req: Request) {
 
 /**
  * Helper function to leave a squad
- * Updates the appropriate squad ID field based on squad type
+ * Removes squad from user's squadIds array
  */
-async function leaveSquad(userId: string, squadId: string, isPremiumSquad: boolean): Promise<void> {
+async function leaveSquad(userId: string, squadId: string): Promise<void> {
   const now = new Date().toISOString();
   
   // Get squad
@@ -332,18 +281,23 @@ async function leaveSquad(userId: string, squadId: string, isPremiumSquad: boole
     }
   }
   
-  // Clear the appropriate squad ID field
-  const userUpdate: Record<string, unknown> = { updatedAt: now };
-  if (isPremiumSquad) {
-    userUpdate.premiumSquadId = null;
-  } else {
-    userUpdate.standardSquadId = null;
-  }
-  // Also clear legacy squadId if it matches
+  // Remove from user's squadIds array
   const userDoc = await adminDb.collection('users').doc(userId).get();
-  if (userDoc.exists && userDoc.data()?.squadId === squadId) {
-    userUpdate.squadId = null;
+  if (userDoc.exists) {
+    const userData = userDoc.data();
+    const currentSquadIds: string[] = userData?.squadIds || [];
+    const updatedSquadIds = currentSquadIds.filter(id => id !== squadId);
+    
+    const userUpdate: Record<string, unknown> = { 
+      squadIds: updatedSquadIds,
+      updatedAt: now,
+    };
+    
+    // Clear legacy fields if they match
+    if (userData?.squadId === squadId) userUpdate.squadId = null;
+    if (userData?.standardSquadId === squadId) userUpdate.standardSquadId = null;
+    if (userData?.premiumSquadId === squadId) userUpdate.premiumSquadId = null;
+    
+    await adminDb.collection('users').doc(userId).update(userUpdate);
   }
-  
-  await adminDb.collection('users').doc(userId).update(userUpdate);
 }

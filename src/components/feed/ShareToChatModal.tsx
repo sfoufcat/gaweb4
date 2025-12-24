@@ -103,7 +103,7 @@ export function ShareToChatModal({ postUrl, onClose, onSuccess }: ShareToChatMod
     
     if (!name && isDM && otherMember?.user) {
       // Stream Chat user properties - cast to access custom fields
-      const userData = otherMember.user as Record<string, unknown>;
+      const userData = otherMember.user as unknown as Record<string, unknown>;
       name = (otherMember.user.name as string) || 
              `${(userData.firstName as string) || ''} ${(userData.lastName as string) || ''}`.trim() || 
              'User';

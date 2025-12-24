@@ -22,8 +22,13 @@ export type UserTrack =
   | 'community_builder'
   | 'general'; // Legacy fallback
 
-// User Tier Types (for subscription/access level - does NOT include coaching)
-// Coaching is a separate product, not a membership tier
+/**
+ * @deprecated UserTier is deprecated. Access is now controlled by:
+ * - Program enrollment (priceInCents gates access)
+ * - Squad membership (priceInCents gates access)
+ * - Coach manual assignment
+ * This type is kept only for backward compatibility during migration.
+ */
 export type UserTier = 'free' | 'standard' | 'premium';
 
 // Coaching Status Types (separate from membership tier)
@@ -96,15 +101,18 @@ export type UserAccessReason = 'program' | 'squad' | 'coach_assigned' | 'staff' 
 
 // Clerk Public Metadata Type (for type assertions with sessionClaims)
 // This is the SINGLE SOURCE OF TRUTH for user access control
-// NOTE: Multi-org architecture - tier/track/orgRole are now per-org in Firestore org_memberships
+// NOTE: Multi-org architecture - track/orgRole are now per-org in Firestore org_memberships
 export interface ClerkPublicMetadata {
   role?: UserRole;                    // Platform role (for super_admins only)
   primaryOrganizationId?: string;     // Last active / default organization
   // Legacy fields - kept for backward compatibility during migration
   // track field REMOVED - tracks fully deprecated
-  tier?: UserTier;                    // @deprecated - now per-org in org_memberships
-  orgRole?: OrgRole;                  // @deprecated - now per-org in org_memberships
-  organizationId?: string;            // @deprecated - use primaryOrganizationId
+  /** @deprecated UserTier is deprecated - access controlled by program/squad membership */
+  tier?: UserTier;
+  /** @deprecated Use org_memberships collection instead */
+  orgRole?: OrgRole;
+  /** @deprecated Use primaryOrganizationId instead */
+  organizationId?: string;
   // Coaching fields (separate from membership tier)
   coaching?: boolean;         // Legacy flag - true if has active coaching
   coachingStatus?: CoachingStatus;  // Detailed coaching status
@@ -215,13 +223,17 @@ export interface FirebaseUser extends ClerkUser {
   // NOTE: role is NOW stored in Clerk publicMetadata, not Firebase
   // Access via: user.publicMetadata?.role
   
-  // Squad membership - Dual squad support for premium users
-  // Premium users can be in both a standard and premium squad simultaneously
-  squadId?: string | null; // @deprecated - Legacy field, use standardSquadId/premiumSquadId instead
-  standardSquadId?: string | null; // Standard (non-premium) squad membership
-  premiumSquadId?: string | null; // Premium squad membership (requires premium tier)
+  // Squad membership - users can be in multiple squads (program squad + standalone)
+  squadIds?: string[]; // Array of squad IDs user belongs to
+  /** @deprecated Use squadIds instead */
+  squadId?: string | null;
+  /** @deprecated Use squadIds instead */
+  standardSquadId?: string | null;
+  /** @deprecated Use squadIds instead */
+  premiumSquadId?: string | null;
   
-  tier?: UserTier; // User subscription tier (defaults to 'standard')
+  /** @deprecated UserTier is deprecated - access controlled by program/squad pricing */
+  tier?: UserTier;
   // track field removed - tracks deprecated in favor of Programs
   
   // Referral tracking (set when user joins via invite link)
@@ -892,7 +904,8 @@ export interface ProgramHabitTemplate {
 export type SquadRoleInSquad = 'member' | 'coach';
 export type MoodState = 'energized' | 'confident' | 'neutral' | 'uncertain' | 'stuck';
 export type SquadVisibility = 'public' | 'private';
-export type SquadType = 'premium' | 'standard'; // For dual squad membership
+/** @deprecated SquadType is deprecated - use hasCoach boolean instead */
+export type SquadType = 'premium' | 'standard';
 
 export interface Squad {
   id: string;
@@ -903,8 +916,10 @@ export interface Squad {
   timezone?: string; // IANA timezone e.g. "Europe/Amsterdam" - defaults to "UTC"
   memberIds?: string[]; // Array of member user IDs (excludes coach)
   inviteCode?: string; // e.g. "GA-XY29Q8" - required for private squads
-  isPremium: boolean;
-  coachId: string | null; // Required if premium
+  hasCoach: boolean; // Whether squad has a coach (determines call scheduling mode)
+  /** @deprecated Use hasCoach instead */
+  isPremium?: boolean;
+  coachId: string | null; // Set if hasCoach is true
   organizationId?: string; // Clerk Organization ID for multi-tenancy (coach's organization)
   createdAt: string;
   updatedAt: string;
@@ -917,7 +932,7 @@ export interface Squad {
   cachedMemberAlignments?: Record<string, { alignmentScore: number; currentStreak: number }>;
   cachedAt?: string; // Date string (YYYY-MM-DD) when cache was last updated
   cachedAtTimestamp?: string; // ISO timestamp for TTL checking (5-minute freshness)
-  // Premium squad call fields
+  // Coach-scheduled call fields (only used when hasCoach: true)
   nextCallDateTime?: string | null; // ISO 8601 timestamp (stored in UTC)
   nextCallTimezone?: string | null; // IANA timezone e.g. "America/New_York"
   nextCallLocation?: string | null; // e.g. "Squad chat", "Zoom", a URL
@@ -1388,7 +1403,7 @@ export type CoachingNotificationType =
   | 'coaching_call_1h'
   | 'coaching_call_live';
 
-// Standard Squad Call Types (for non-premium squads)
+// Standard Squad Call Types (for squads without coach - member-proposed calls)
 export type StandardSquadCallStatus = 'pending' | 'confirmed' | 'canceled';
 export type StandardSquadCallProposalType = 'new' | 'edit' | 'delete';
 
@@ -1428,11 +1443,13 @@ export interface SquadCallVote {
 export type SquadCallJobType = 'notification_24h' | 'notification_1h' | 'notification_live' | 'email_24h' | 'email_1h';
 
 export interface SquadCallScheduledJob {
-  id: string; // Format: `${squadId}_${callId}_${jobType}` or `${squadId}_premium_${jobType}`
+  id: string; // Format: `${squadId}_${callId}_${jobType}` or `${squadId}_coach_${jobType}`
   squadId: string;
   squadName: string;
-  isPremiumSquad: boolean;
-  callId?: string; // For standard squads
+  hasCoach: boolean; // Whether squad has a coach (determines call scheduling mode)
+  /** @deprecated Use hasCoach instead */
+  isPremiumSquad?: boolean;
+  callId?: string; // For squads without coach (member-proposed calls)
   jobType: SquadCallJobType;
   scheduledTime: string; // ISO timestamp when job should execute
   callDateTime: string; // ISO timestamp of the call
@@ -1696,10 +1713,14 @@ export interface OrgMembership {
   userId: string;                      // Clerk user ID
   organizationId: string;              // Clerk Organization ID
   orgRole: OrgRole;                    // Role within this org (super_coach, coach, member)
-  tier: UserTier;                      // Access tier within THIS org
+  /** @deprecated UserTier is deprecated - access controlled by program/squad membership */
+  tier?: UserTier;
   track: UserTrack | null;             // Business track within this org
-  squadId: string | null;              // Squad within this org
-  premiumSquadId?: string | null;      // Premium squad within this org (for premium tier users)
+  squadIds?: string[];                 // Squads within this org (supports multiple)
+  /** @deprecated Use squadIds instead */
+  squadId?: string | null;
+  /** @deprecated Use squadIds instead */
+  premiumSquadId?: string | null;
   accessSource: OrgAccessSource;       // How access was granted
   accessExpiresAt: string | null;      // For manual/external billing - ISO date when access expires
   inviteCodeUsed: string | null;       // Invite code that granted access (if applicable)
@@ -1769,7 +1790,8 @@ export interface OrgInviteCode {
   organizationId: string;              // Clerk Organization ID
   createdByUserId: string;             // Coach who created the code
   name?: string;                       // Optional friendly name (e.g., "Q1 2024 Cohort")
-  tier: UserTier;                      // Tier to grant (standard, premium)
+  /** @deprecated UserTier is deprecated - access controlled by program/squad membership */
+  tier?: UserTier;
   track: UserTrack | null;             // Track to assign (null = user chooses)
   squadId: string | null;              // Squad to join (null = no squad)
   accessDurationDays: number | null;   // Days of access (null = indefinite/until next billing)
@@ -1811,7 +1833,8 @@ export interface OrgSettings {
   organizationId: string;              // Clerk Organization ID
   billingMode: OrgBillingMode;         // How users are billed
   allowExternalBilling: boolean;       // Whether coaches can manually grant access
-  defaultTier: UserTier;               // Default tier for new members (usually 'standard')
+  /** @deprecated UserTier is deprecated - access controlled by program/squad membership */
+  defaultTier?: UserTier;
   defaultTrack: UserTrack | null;      // Default track for new members (null = user chooses)
   stripeConnectAccountId: string | null; // For coach billing mode
   stripeConnectStatus: StripeConnectStatus; // Status of Stripe Connect account
@@ -1840,7 +1863,6 @@ export interface OrgSettings {
 export const DEFAULT_ORG_SETTINGS: Omit<OrgSettings, 'id' | 'organizationId' | 'createdAt' | 'updatedAt'> = {
   billingMode: 'platform',
   allowExternalBilling: true,
-  defaultTier: 'standard',
   defaultTrack: null,
   stripeConnectAccountId: null,
   stripeConnectStatus: 'not_connected',

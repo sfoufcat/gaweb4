@@ -234,7 +234,7 @@ async function createNewSquad(params: CreateNewSquadParams): Promise<string | nu
       visibility: 'private', // Auto-created squads are private
       timezone: 'UTC',
       memberIds: [userId],
-      isPremium: true, // Assume paid programs get premium squads
+      hasCoach: true, // Paid programs get coached squads
       coachId: null, // Will be assigned by coach later
       organizationId,
       programId,

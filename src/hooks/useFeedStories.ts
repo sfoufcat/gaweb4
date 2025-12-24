@@ -74,8 +74,8 @@ export function useFeedStories(squadMembers: SquadMember[]): UseFeedStoriesRetur
               const response = await fetch(`/api/stories?userId=${userId}`);
               if (response.ok) {
                 const data = await response.json();
-                // User has story if they have user-posted stories or if they have any story data
-                results.set(userId, (data.stories?.length || 0) > 0);
+                // User has story if API says so (includes both user-posted AND auto-generated)
+                results.set(userId, data.hasStory === true);
               } else {
                 results.set(userId, false);
               }
@@ -152,7 +152,8 @@ export function useCurrentUserHasStory(): { hasStory: boolean; isLoading: boolea
         const response = await fetch(`/api/stories?userId=${user.id}`);
         if (response.ok) {
           const data = await response.json();
-          setHasStory((data.stories?.length || 0) > 0);
+          // hasStory includes both user-posted AND auto-generated stories
+          setHasStory(data.hasStory === true);
         }
       } catch {
         setHasStory(false);

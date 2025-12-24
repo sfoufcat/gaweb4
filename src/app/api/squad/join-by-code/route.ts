@@ -11,12 +11,16 @@ import type { Squad } from '@/types';
  * POST /api/squad/join-by-code
  * Join a squad using an invite code (for private squads).
  * 
+ * MULTI-SQUAD SUPPORT:
+ * - Users can be in multiple squads (e.g., program squad + standalone squad)
+ * - No tier-based restrictions - access controlled by squad/program pricing
+ * 
  * Body:
  * - code: string (required) - The invite code (e.g., "GA-XY29Q8")
  */
 export async function POST(req: Request) {
   try {
-    const { userId, sessionClaims } = await auth();
+    const { userId } = await auth();
     
     if (!userId) {
       return new NextResponse('Unauthorized', { status: 401 });
@@ -32,20 +36,23 @@ export async function POST(req: Request) {
     // Normalize the code
     const normalizedCode = code.trim().toUpperCase();
 
-    // Check if user is already in a squad (still need Firebase for squadId)
+    // Check user's existing squad memberships
     const userDoc = await adminDb.collection('users').doc(userId).get();
-    if (userDoc.exists && userDoc.data()?.squadId) {
-      return NextResponse.json({ 
-        error: 'You are already in a squad. Leave your current squad first.' 
-      }, { status: 400 });
+    const userData = userDoc.exists ? userDoc.data() : null;
+    
+    // Get current squad IDs (support new squadIds array, legacy fields)
+    const currentSquadIds: string[] = userData?.squadIds || [];
+    
+    // Fallback for legacy fields
+    if (currentSquadIds.length === 0) {
+      if (userData?.standardSquadId) currentSquadIds.push(userData.standardSquadId);
+      if (userData?.premiumSquadId && userData.premiumSquadId !== userData.standardSquadId) {
+        currentSquadIds.push(userData.premiumSquadId);
+      }
+      if (userData?.squadId && !currentSquadIds.includes(userData.squadId)) {
+        currentSquadIds.push(userData.squadId);
+      }
     }
-
-    // Get user tier from Clerk session (SINGLE SOURCE OF TRUTH - no DB call needed for tier)
-    // Note: Coaching is NOT a tier - it's a separate product. Only standard/premium/free are tiers.
-    const publicMetadata = sessionClaims?.publicMetadata as { tier?: string } | undefined;
-    const userTier = publicMetadata?.tier || 'standard';
-    // Premium users can join premium squads - coaching status doesn't affect squad tier requirements
-    const isPremiumUser = userTier === 'premium';
 
     // Find squad by invite code
     const squadsSnapshot = await adminDb.collection('squads')
@@ -61,18 +68,13 @@ export async function POST(req: Request) {
     const squadId = squadDoc.id;
     const squad = squadDoc.data() as Squad;
     const squadRef = adminDb.collection('squads').doc(squadId);
+    
+    // Use hasCoach if available, fall back to isPremium for migration
+    const squadHasCoach = squad.hasCoach ?? squad.isPremium ?? false;
 
-    // Validate tier compatibility for private squad joining
-    // Premium users can only join premium squads, standard users can only join standard squads
-    if (isPremiumUser && !squad.isPremium) {
-      return NextResponse.json({ 
-        error: 'Premium users can only join premium squads.' 
-      }, { status: 403 });
-    }
-    if (!isPremiumUser && squad.isPremium) {
-      return NextResponse.json({ 
-        error: 'This is a premium squad. Upgrade to premium to access premium squads.' 
-      }, { status: 403 });
+    // Check if already in the target squad
+    if (currentSquadIds.includes(squadId)) {
+      return NextResponse.json({ error: 'You are already a member of this squad' }, { status: 400 });
     }
 
     // Check if squad is at capacity
@@ -113,8 +115,11 @@ export async function POST(req: Request) {
       updatedAt: now,
     });
 
-    // Update user's squadId
+    // Update user's squad membership - add to squadIds array
+    const updatedSquadIds = [...currentSquadIds, squadId];
     await adminDb.collection('users').doc(userId).update({
+      squadIds: updatedSquadIds,
+      // Keep legacy field in sync for backward compatibility
       squadId,
       updatedAt: now,
     });
@@ -162,6 +167,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ 
       success: true,
       squadName: squad.name,
+      hasCoach: squadHasCoach,
     });
   } catch (error) {
     console.error('[SQUAD_JOIN_BY_CODE_ERROR]', error);

@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
 
 export async function POST(req: Request) {
   try {
@@ -51,6 +52,21 @@ export async function POST(req: Request) {
       },
       { merge: true }
     );
+
+    // MULTI-TENANCY: Also update org_memberships if user is in an org
+    // This ensures identity changes appear immediately on profile (org data takes priority)
+    const organizationId = await getEffectiveOrgId();
+    if (organizationId) {
+      const membershipRef = adminDb.collection('org_memberships').doc(`${organizationId}_${userId}`);
+      const membershipDoc = await membershipRef.get();
+      
+      if (membershipDoc.exists) {
+        await membershipRef.update({
+          identity: trimmedStatement,
+          updatedAt: now,
+        });
+      }
+    }
 
     return NextResponse.json({
       success: true,

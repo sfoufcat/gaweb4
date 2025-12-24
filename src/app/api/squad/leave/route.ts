@@ -2,24 +2,23 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getStreamServerClient } from '@/lib/stream-server';
-import type { Squad, SquadType } from '@/types';
+import type { Squad } from '@/types';
 
 /**
  * POST /api/squad/leave
  * Leave a squad.
  * 
- * DUAL SQUAD SUPPORT:
- * - Accepts optional `type` parameter ('premium' | 'standard') to specify which squad to leave
- * - If no type specified, will leave the squad matching the squadId (for backward compatibility)
+ * MULTI-SQUAD SUPPORT:
+ * - Users can be in multiple squads
+ * - Must specify squadId to leave a specific squad
  * 
- * Body (optional):
- * - type: 'premium' | 'standard' - Which squad type to leave
- * - squadId: string - Specific squad ID to leave (for backward compatibility)
+ * Body:
+ * - squadId: string (required) - Specific squad ID to leave
  * 
  * Removes user from:
  * - squad.memberIds array
  * - squadMembers collection
- * - user.standardSquadId or user.premiumSquadId (based on squad type)
+ * - user.squadIds array
  * - Stream Chat channel
  */
 export async function POST(req: Request) {
@@ -30,94 +29,56 @@ export async function POST(req: Request) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    // Parse request body (optional)
-    let requestedType: SquadType | null = null;
+    // Parse request body
     let requestedSquadId: string | null = null;
     
     try {
       const body = await req.json();
-      requestedType = body.type || null;
       requestedSquadId = body.squadId || null;
     } catch {
-      // Body is optional, ignore parsing errors
+      // Body parsing error
     }
 
     // Get user's current squad info
     const userDoc = await adminDb.collection('users').doc(userId).get();
     const userData = userDoc.exists ? userDoc.data() : null;
     
-    // Get current squad IDs
-    let standardSquadId = userData?.standardSquadId || null;
-    let premiumSquadId = userData?.premiumSquadId || null;
-    const legacySquadId = userData?.squadId || null;
+    // Get current squad IDs (support new squadIds array, legacy fields)
+    const currentSquadIds: string[] = userData?.squadIds || [];
     
-    // Handle legacy squadId if new fields not set
-    if (!standardSquadId && !premiumSquadId && legacySquadId) {
-      const legacySquadDoc = await adminDb.collection('squads').doc(legacySquadId).get();
-      if (legacySquadDoc.exists) {
-        const legacySquadData = legacySquadDoc.data();
-        if (legacySquadData?.isPremium) {
-          premiumSquadId = legacySquadId;
-        } else {
-          standardSquadId = legacySquadId;
-        }
+    // Fallback for legacy fields
+    if (currentSquadIds.length === 0) {
+      if (userData?.standardSquadId) currentSquadIds.push(userData.standardSquadId);
+      if (userData?.premiumSquadId && userData.premiumSquadId !== userData.standardSquadId) {
+        currentSquadIds.push(userData.premiumSquadId);
+      }
+      if (userData?.squadId && !currentSquadIds.includes(userData.squadId)) {
+        currentSquadIds.push(userData.squadId);
       }
     }
 
     // Determine which squad to leave
     let squadIdToLeave: string | null = null;
-    let isPremiumSquad = false;
     
     if (requestedSquadId) {
       // Specific squad ID requested - verify user is actually in it
-      if (requestedSquadId === premiumSquadId) {
-        squadIdToLeave = premiumSquadId;
-        isPremiumSquad = true;
-      } else if (requestedSquadId === standardSquadId) {
-        squadIdToLeave = standardSquadId;
-        isPremiumSquad = false;
-      } else if (requestedSquadId === legacySquadId) {
-        squadIdToLeave = legacySquadId;
-        // Determine if it's premium
-        const squadDoc = await adminDb.collection('squads').doc(legacySquadId).get();
-        isPremiumSquad = squadDoc.exists && squadDoc.data()?.isPremium;
+      if (currentSquadIds.includes(requestedSquadId)) {
+        squadIdToLeave = requestedSquadId;
       }
-    } else if (requestedType) {
-      // Squad type requested
-      if (requestedType === 'premium' && premiumSquadId) {
-        squadIdToLeave = premiumSquadId;
-        isPremiumSquad = true;
-      } else if (requestedType === 'standard' && standardSquadId) {
-        squadIdToLeave = standardSquadId;
-        isPremiumSquad = false;
-      }
-    } else {
-      // No type specified - for backward compatibility, check squadMembers collection
-      // or use the first available squad
-      const membershipSnapshot = await adminDb.collection('squadMembers')
-        .where('userId', '==', userId)
-        .limit(1)
-        .get();
-      
-      if (!membershipSnapshot.empty) {
-        squadIdToLeave = membershipSnapshot.docs[0].data().squadId;
-        // Determine if it's premium
-        const squadDoc = await adminDb.collection('squads').doc(squadIdToLeave!).get();
-        isPremiumSquad = squadDoc.exists && squadDoc.data()?.isPremium;
-      } else if (premiumSquadId) {
-        squadIdToLeave = premiumSquadId;
-        isPremiumSquad = true;
-      } else if (standardSquadId) {
-        squadIdToLeave = standardSquadId;
-        isPremiumSquad = false;
-      }
+    } else if (currentSquadIds.length === 1) {
+      // Only one squad - leave it
+      squadIdToLeave = currentSquadIds[0];
+    } else if (currentSquadIds.length > 1) {
+      // Multiple squads but no specific one requested
+      return NextResponse.json({ 
+        error: 'You are in multiple squads. Please specify which squad to leave.',
+        squads: currentSquadIds,
+      }, { status: 400 });
     }
 
     if (!squadIdToLeave) {
       return NextResponse.json({ 
-        error: requestedType 
-          ? `You are not in a ${requestedType} squad` 
-          : 'You are not in a squad' 
+        error: 'You are not in a squad or the specified squad' 
       }, { status: 400 });
     }
 
@@ -127,21 +88,23 @@ export async function POST(req: Request) {
 
     if (!squadDoc.exists) {
       // Squad was deleted, just clear user's squad fields
-      const userUpdate: Record<string, unknown> = { updatedAt: new Date().toISOString() };
-      if (isPremiumSquad) {
-        userUpdate.premiumSquadId = null;
-      } else {
-        userUpdate.standardSquadId = null;
-      }
-      if (legacySquadId === squadIdToLeave) {
-        userUpdate.squadId = null;
-      }
+      const updatedSquadIds = currentSquadIds.filter(id => id !== squadIdToLeave);
+      const userUpdate: Record<string, unknown> = { 
+        squadIds: updatedSquadIds,
+        updatedAt: new Date().toISOString(),
+      };
+      // Clear legacy fields if they match
+      if (userData?.squadId === squadIdToLeave) userUpdate.squadId = null;
+      if (userData?.standardSquadId === squadIdToLeave) userUpdate.standardSquadId = null;
+      if (userData?.premiumSquadId === squadIdToLeave) userUpdate.premiumSquadId = null;
+      
       await adminDb.collection('users').doc(userId).update(userUpdate);
-      return NextResponse.json({ success: true, squadType: isPremiumSquad ? 'premium' : 'standard' });
+      return NextResponse.json({ success: true });
     }
 
     const squad = squadDoc.data() as Squad;
-    isPremiumSquad = squad.isPremium; // Use actual squad data as source of truth
+    // Use hasCoach if available, fall back to isPremium for migration
+    const squadHasCoach = squad.hasCoach ?? squad.isPremium ?? false;
 
     // Check if user is the coach - coaches can't leave (must be removed by admin)
     if (squad.coachId === userId) {
@@ -171,17 +134,15 @@ export async function POST(req: Request) {
       batch.delete(doc.ref);
     });
 
-    // Clear the appropriate user squad field
-    const userUpdate: Record<string, unknown> = { updatedAt: now };
-    if (isPremiumSquad) {
-      userUpdate.premiumSquadId = null;
-    } else {
-      userUpdate.standardSquadId = null;
-    }
-    // Also clear legacy squadId if it matches
-    if (legacySquadId === squadIdToLeave) {
-      userUpdate.squadId = null;
-    }
+    // Remove from user's squadIds array and clear legacy fields if they match
+    const updatedSquadIds = currentSquadIds.filter(id => id !== squadIdToLeave);
+    const userUpdate: Record<string, unknown> = { 
+      squadIds: updatedSquadIds,
+      updatedAt: now,
+    };
+    if (userData?.squadId === squadIdToLeave) userUpdate.squadId = null;
+    if (userData?.standardSquadId === squadIdToLeave) userUpdate.standardSquadId = null;
+    if (userData?.premiumSquadId === squadIdToLeave) userUpdate.premiumSquadId = null;
     
     batch.update(adminDb.collection('users').doc(userId), userUpdate);
 
@@ -220,7 +181,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ 
       success: true,
-      squadType: isPremiumSquad ? 'premium' : 'standard',
+      hasCoach: squadHasCoach,
     });
   } catch (error) {
     console.error('[SQUAD_LEAVE_ERROR]', error);

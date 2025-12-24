@@ -53,8 +53,11 @@ export function ProfileHeader({
   const profession = user.profession;
   const company = user.company;
   const location = user.location;
-  // For own profile, fallback to Clerk's imageUrl. For other profiles, only use Firebase data.
-  const avatarUrl = user.avatarUrl || user.imageUrl || (isOwnProfile ? clerkUser?.imageUrl : undefined);
+  // For own profile, Clerk is the source of truth for profile pictures.
+  // For other profiles, use Firebase data since we don't have their Clerk user object.
+  const avatarUrl = isOwnProfile 
+    ? (clerkUser?.imageUrl || user.avatarUrl || user.imageUrl)
+    : (user.avatarUrl || user.imageUrl);
   
   // User info for StoryAvatar
   const storyUserInfo = {

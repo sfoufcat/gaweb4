@@ -106,9 +106,12 @@ export function SquadView({ squadId, showCoachBadge = false }: SquadViewProps) {
   // Check if current user is actually the coach of this squad (NOT just admin access)
   const isActualCoach = squad?.coachId === user?.id;
 
-  // Find coach info from members for premium squads
+  // Determine if squad has a coach (use hasCoach, fallback to isPremium for migration)
+  const squadHasCoach = squad?.hasCoach ?? squad?.isPremium ?? false;
+  
+  // Find coach info from members for squads with coaches
   const coachInfo: CoachInfo | undefined = useMemo(() => {
-    if (!squad?.isPremium || !members.length) return undefined;
+    if (!squadHasCoach || !members.length) return undefined;
     const coach = members.find(m => m.roleInSquad === 'coach');
     if (!coach) return undefined;
     return {
@@ -116,7 +119,7 @@ export function SquadView({ squadId, showCoachBadge = false }: SquadViewProps) {
       lastName: coach.lastName,
       imageUrl: coach.imageUrl,
     };
-  }, [squad?.isPremium, members]);
+  }, [squadHasCoach, members]);
 
   if (!userLoaded || !mounted) {
     return (
@@ -183,8 +186,8 @@ export function SquadView({ squadId, showCoachBadge = false }: SquadViewProps) {
         )}
       </div>
 
-      {/* Squad Call Card */}
-      {squad.isPremium ? (
+      {/* Squad Call Card - show coach-scheduled or member-proposed based on hasCoach */}
+      {squadHasCoach ? (
         <NextSquadCallCard 
           squad={squad} 
           isCoach={showCoachBadge && isActualCoach}
@@ -236,12 +239,12 @@ export function SquadView({ squadId, showCoachBadge = false }: SquadViewProps) {
       {activeTab === 'squad' ? (
         <div>
           {/* Member List */}
-          <SquadMemberList members={members} isPremium={squad.isPremium} />
+          <SquadMemberList members={members} hasCoach={squadHasCoach} />
 
           {/* Invite Cards - only show in non-coach view */}
           {!squadId && (
             <SquadInviteCards 
-              isPremium={squad.isPremium} 
+              hasCoach={squadHasCoach} 
               inviteCode={squad.inviteCode}
               squadName={squad.name}
               visibility={squad.visibility}

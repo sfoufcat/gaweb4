@@ -9,9 +9,11 @@ import { useSquad } from '@/hooks/useSquad';
 import { useFeedStories } from '@/hooks/useFeedStories';
 import { FeedList } from '@/components/feed/FeedList';
 import { CreatePostModal } from '@/components/feed/CreatePostModal';
+import { CreateStoryModal } from '@/components/feed/CreateStoryModal';
 import { ShareSheet } from '@/components/feed/ShareSheet';
 import { ReportModal } from '@/components/feed/ReportModal';
 import { StoriesRow } from '@/components/feed/StoriesRow';
+import { FeedSidebar } from '@/components/feed/FeedSidebar';
 import { StoryPlayer } from '@/components/stories/StoryPlayer';
 import { useUserStories } from '@/hooks/useUserStories';
 
@@ -39,7 +41,8 @@ export default function FeedPage() {
     removePost,
   } = useFeed();
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreatePostModal, setShowCreatePostModal] = useState(false);
+  const [showCreateStoryModal, setShowCreateStoryModal] = useState(false);
   const [selectedPostForShare, setSelectedPostForShare] = useState<string | null>(null);
   const [selectedPostForReport, setSelectedPostForReport] = useState<string | null>(null);
   const [selectedStoryUserId, setSelectedStoryUserId] = useState<string | null>(null);
@@ -58,7 +61,7 @@ export default function FeedPage() {
   // Handle post creation
   const handlePostCreated = useCallback((post: FeedPost) => {
     addPost(post);
-    setShowCreateModal(false);
+    setShowCreatePostModal(false);
   }, [addPost]);
 
   // Handle share
@@ -121,7 +124,7 @@ export default function FeedPage() {
           <StoriesRow 
             storyUsers={storyUsers}
             isLoading={isLoadingSquad || isLoadingStories}
-            onCreateStory={() => setShowCreateModal(true)}
+            onCreateStory={() => setShowCreateStoryModal(true)}
             onViewStory={(userId) => {
               setSelectedStoryUserId(userId);
             }}
@@ -129,10 +132,13 @@ export default function FeedPage() {
         </div>
       </section>
 
-      {/* Main Content */}
+      {/* Main Content with Sidebar */}
       <section className="px-4 py-4">
-        {/* Create post card */}
-        <div className="bg-white dark:bg-[#171b22] rounded-[20px] border border-[#e1ddd8]/50 dark:border-[#262b35] p-4 mb-6 max-w-2xl">
+        <div className="flex gap-6">
+          {/* Left: Main Feed */}
+          <div className="flex-1 min-w-0">
+            {/* Create post card */}
+            <div className="bg-white dark:bg-[#171b22] rounded-[20px] border border-[#e1ddd8]/50 dark:border-[#262b35] p-4 mb-6 max-w-2xl">
               <div className="flex items-center gap-3">
                 {/* Avatar */}
                 <div className="w-10 h-10 rounded-full overflow-hidden bg-[#f5f3f0] dark:bg-[#262b35] flex-shrink-0">
@@ -153,7 +159,7 @@ export default function FeedPage() {
 
                 {/* Input placeholder button */}
                 <button
-                  onClick={() => setShowCreateModal(true)}
+                  onClick={() => setShowCreatePostModal(true)}
                   className="flex-1 text-left px-4 py-2.5 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[15px] text-text-secondary hover:bg-[#ebe7e2] dark:hover:bg-[#262b35] transition-colors"
                 >
                   What&apos;s on your mind?
@@ -161,7 +167,7 @@ export default function FeedPage() {
 
                 {/* Quick image button */}
                 <button
-                  onClick={() => setShowCreateModal(true)}
+                  onClick={() => setShowCreatePostModal(true)}
                   className="p-2.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
                 >
                   <svg className="w-5 h-5 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -171,27 +177,32 @@ export default function FeedPage() {
               </div>
             </div>
 
-          {/* Feed list */}
-          <div className="max-w-2xl">
-            <FeedList
-              posts={posts}
-              isLoading={isLoading}
-              isValidating={isValidating}
-              hasMore={hasMore}
-              isEmpty={isEmpty}
-              onLoadMore={loadMore}
-              onLike={optimisticLike}
-              onBookmark={optimisticBookmark}
-              onShare={handleShare}
-              onDelete={handleDelete}
-              onReport={handleReport}
-            />
+            {/* Feed list */}
+            <div className="max-w-2xl">
+              <FeedList
+                posts={posts}
+                isLoading={isLoading}
+                isValidating={isValidating}
+                hasMore={hasMore}
+                isEmpty={isEmpty}
+                onLoadMore={loadMore}
+                onLike={optimisticLike}
+                onBookmark={optimisticBookmark}
+                onShare={handleShare}
+                onDelete={handleDelete}
+                onReport={handleReport}
+              />
+            </div>
           </div>
+
+          {/* Right: Sidebar (desktop only) */}
+          <FeedSidebar />
+        </div>
       </section>
 
       {/* Floating create button (mobile) */}
       <button
-        onClick={() => setShowCreateModal(true)}
+        onClick={() => setShowCreatePostModal(true)}
         className="fixed bottom-24 right-4 lg:hidden w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
         style={{ backgroundColor: accentColor }}
       >
@@ -202,9 +213,19 @@ export default function FeedPage() {
 
       {/* Create post modal */}
       <CreatePostModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        isOpen={showCreatePostModal}
+        onClose={() => setShowCreatePostModal(false)}
         onPostCreated={handlePostCreated}
+      />
+
+      {/* Create story modal */}
+      <CreateStoryModal
+        isOpen={showCreateStoryModal}
+        onClose={() => setShowCreateStoryModal(false)}
+        onStoryCreated={() => {
+          // Refresh stories after creation
+          // The refetch will happen automatically on next view
+        }}
       />
 
       {/* Share sheet */}

@@ -3,7 +3,7 @@
  * 
  * This module handles scheduling and sending notifications/emails for squad calls.
  * 
- * For both premium and standard squads, we send:
+ * For both coached and non-coached squads, we send:
  * - Notification: 24 hours before the call
  * - Notification: 1 hour before the call
  * - Notification: When the call goes live (at start time)
@@ -33,18 +33,18 @@ const APP_URL = APP_BASE_URL;
  * 
  * @param squadId - The squad ID
  * @param squadName - The squad name
- * @param isPremiumSquad - Whether this is a premium squad
+ * @param hasCoach - Whether this squad has a coach (coach schedules calls)
  * @param callDateTime - ISO timestamp of the call
  * @param callTimezone - IANA timezone
  * @param callLocation - Location/link for the call
  * @param callTitle - Title of the call
  * @param chatChannelId - Optional chat channel ID
- * @param callId - Optional call document ID (for standard squads)
+ * @param callId - Optional call document ID (for non-coached squads)
  */
 export async function scheduleSquadCallJobs({
   squadId,
   squadName,
-  isPremiumSquad,
+  hasCoach,
   callDateTime,
   callTimezone,
   callLocation,
@@ -54,7 +54,7 @@ export async function scheduleSquadCallJobs({
 }: {
   squadId: string;
   squadName: string;
-  isPremiumSquad: boolean;
+  hasCoach: boolean;
   callDateTime: string;
   callTimezone: string;
   callLocation: string;
@@ -89,15 +89,16 @@ export async function scheduleSquadCallJobs({
       continue;
     }
 
-    const jobId = isPremiumSquad 
-      ? `${squadId}_premium_${type}`
+    const jobId = hasCoach 
+      ? `${squadId}_coach_${type}`
       : `${squadId}_${callId}_${type}`;
 
     const jobData: SquadCallScheduledJob = {
       id: jobId,
       squadId,
       squadName,
-      isPremiumSquad,
+      hasCoach,
+      isPremiumSquad: hasCoach, // Keep for backward compatibility
       ...(callId && { callId }),
       jobType: type,
       scheduledTime: time.toISOString(),
@@ -114,7 +115,7 @@ export async function scheduleSquadCallJobs({
     await adminDb.collection('squadCallScheduledJobs').doc(jobId).set(jobData, { merge: false });
   }
 
-  console.log(`[SQUAD_CALL_JOBS] Scheduled jobs for squad ${squadId} (${isPremiumSquad ? 'premium' : 'standard'})`);
+  console.log(`[SQUAD_CALL_JOBS] Scheduled jobs for squad ${squadId} (${hasCoach ? 'coach-scheduled' : 'member-proposed'})`);
 }
 
 /**
@@ -123,11 +124,11 @@ export async function scheduleSquadCallJobs({
  */
 export async function cancelSquadCallJobs({
   squadId,
-  isPremiumSquad,
+  hasCoach,
   callId,
 }: {
   squadId: string;
-  isPremiumSquad: boolean;
+  hasCoach: boolean;
   callId?: string;
 }): Promise<void> {
   const jobTypes: SquadCallJobType[] = [
@@ -139,14 +140,14 @@ export async function cancelSquadCallJobs({
   ];
 
   for (const type of jobTypes) {
-    const jobId = isPremiumSquad 
-      ? `${squadId}_premium_${type}`
+    const jobId = hasCoach 
+      ? `${squadId}_coach_${type}`
       : `${squadId}_${callId}_${type}`;
 
     await adminDb.collection('squadCallScheduledJobs').doc(jobId).delete().catch(() => {});
   }
 
-  console.log(`[SQUAD_CALL_JOBS] Canceled jobs for squad ${squadId} (${isPremiumSquad ? 'premium' : 'standard'})`);
+  console.log(`[SQUAD_CALL_JOBS] Canceled jobs for squad ${squadId} (${hasCoach ? 'coach-scheduled' : 'member-proposed'})`);
 }
 
 // ============================================================================
@@ -427,7 +428,7 @@ export async function executeSquadCallJob(job: SquadCallScheduledJob): Promise<{
           await sendSquadCallNotification({
             userId,
             jobType: job.jobType,
-            isPremium: job.isPremiumSquad,
+            hasCoach: job.hasCoach ?? job.isPremiumSquad,
             callDateTime: job.callDateTime,
             callTimezone: job.callTimezone,
           });
@@ -435,7 +436,7 @@ export async function executeSquadCallJob(job: SquadCallScheduledJob): Promise<{
           await sendSquadCallEmail({
             userId,
             jobType: job.jobType,
-            isPremium: job.isPremiumSquad,
+            hasCoach: job.hasCoach ?? job.isPremiumSquad,
             callDateTime: job.callDateTime,
             callTimezone: job.callTimezone,
           });
@@ -544,8 +545,10 @@ export async function processSquadCallScheduledJobs(): Promise<{
  * Validate that a job is still valid (call hasn't been rescheduled or canceled)
  */
 async function validateJobStillValid(job: SquadCallScheduledJob): Promise<boolean> {
-  if (job.isPremiumSquad) {
-    // For premium squads, check the squad document
+  // Use hasCoach if available, fall back to isPremiumSquad for migration
+  const hasCoach = job.hasCoach ?? job.isPremiumSquad ?? false;
+  if (hasCoach) {
+    // For coach-scheduled calls, check the squad document
     const squadDoc = await adminDb.collection('squads').doc(job.squadId).get();
     if (!squadDoc.exists) return false;
 

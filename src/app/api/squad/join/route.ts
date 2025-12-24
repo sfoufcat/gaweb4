@@ -11,17 +11,16 @@ import type { Squad } from '@/types';
  * POST /api/squad/join
  * Join a public squad by ID.
  * 
- * DUAL SQUAD SUPPORT:
- * - Premium users can join BOTH a standard squad AND a premium squad
- * - Standard users can only join standard squads
- * - Users can only have one squad of each type
+ * MULTI-SQUAD SUPPORT:
+ * - Users can be in multiple squads (e.g., program squad + standalone squad)
+ * - No tier-based restrictions - access controlled by squad/program pricing
  * 
  * Body:
  * - squadId: string (required)
  */
 export async function POST(req: Request) {
   try {
-    const { userId, sessionClaims } = await auth();
+    const { userId } = await auth();
     
     if (!userId) {
       return new NextResponse('Unauthorized', { status: 401 });
@@ -34,12 +33,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Squad ID is required' }, { status: 400 });
     }
 
-    // Get user tier from Clerk session (SINGLE SOURCE OF TRUTH)
-    const publicMetadata = sessionClaims?.publicMetadata as { tier?: string } | undefined;
-    const userTier = publicMetadata?.tier || 'standard';
-    const isPremiumUser = userTier === 'premium';
-
-    // Get the squad first to determine its type
+    // Get the squad
     const squadRef = adminDb.collection('squads').doc(squadId);
     const squadDoc = await squadRef.get();
 
@@ -48,7 +42,8 @@ export async function POST(req: Request) {
     }
 
     const squad = squadDoc.data() as Squad;
-    const isTargetSquadPremium = squad.isPremium;
+    // Use hasCoach if available, fall back to isPremium for migration
+    const squadHasCoach = squad.hasCoach ?? squad.isPremium ?? false;
 
     // Verify squad is public
     if (squad.visibility !== 'public') {
@@ -61,43 +56,23 @@ export async function POST(req: Request) {
     const userDoc = await adminDb.collection('users').doc(userId).get();
     const userData = userDoc.exists ? userDoc.data() : null;
     
-    // Get current squad IDs (support both new fields and legacy)
-    let currentStandardSquadId = userData?.standardSquadId || null;
-    let currentPremiumSquadId = userData?.premiumSquadId || null;
+    // Get current squad IDs (support new squadIds array, legacy fields)
+    const currentSquadIds: string[] = userData?.squadIds || [];
     
-    // Fallback for legacy squadId
-    if (!currentStandardSquadId && !currentPremiumSquadId && userData?.squadId) {
-      const legacySquadDoc = await adminDb.collection('squads').doc(userData.squadId).get();
-      if (legacySquadDoc.exists) {
-        const legacySquadData = legacySquadDoc.data();
-        if (legacySquadData?.isPremium) {
-          currentPremiumSquadId = userData.squadId;
-        } else {
-          currentStandardSquadId = userData.squadId;
-        }
+    // Fallback for legacy fields
+    if (currentSquadIds.length === 0) {
+      if (userData?.standardSquadId) currentSquadIds.push(userData.standardSquadId);
+      if (userData?.premiumSquadId && userData.premiumSquadId !== userData.standardSquadId) {
+        currentSquadIds.push(userData.premiumSquadId);
+      }
+      if (userData?.squadId && !currentSquadIds.includes(userData.squadId)) {
+        currentSquadIds.push(userData.squadId);
       }
     }
 
-    // Validate based on target squad type
-    if (isTargetSquadPremium) {
-      // Joining a premium squad
-      if (!isPremiumUser) {
-        return NextResponse.json({ 
-          error: 'This is a premium squad. Upgrade to premium to access premium squads.' 
-        }, { status: 403 });
-      }
-      if (currentPremiumSquadId) {
-        return NextResponse.json({ 
-          error: 'You are already in a premium squad. Leave your current premium squad first.' 
-        }, { status: 400 });
-      }
-    } else {
-      // Joining a standard squad
-      if (currentStandardSquadId) {
-        return NextResponse.json({ 
-          error: 'You are already in a standard squad. Leave your current standard squad first.' 
-        }, { status: 400 });
-      }
+    // Check if already in the target squad
+    if (currentSquadIds.includes(squadId)) {
+      return NextResponse.json({ error: 'You are already a member of this squad' }, { status: 400 });
     }
 
     // Check if squad is at capacity
@@ -108,7 +83,7 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // Check if already a member
+    // Check if already a member in memberIds array
     if (memberIds.includes(userId)) {
       return NextResponse.json({ error: 'You are already a member of this squad' }, { status: 400 });
     }
@@ -138,17 +113,14 @@ export async function POST(req: Request) {
       updatedAt: now,
     });
 
-    // Update user's squad field based on squad type
-    const userUpdate: Record<string, unknown> = { updatedAt: now };
-    if (isTargetSquadPremium) {
-      userUpdate.premiumSquadId = squadId;
-    } else {
-      userUpdate.standardSquadId = squadId;
-    }
-    // Also update legacy squadId for backward compatibility if user has no squads yet
-    if (!currentStandardSquadId && !currentPremiumSquadId) {
-      userUpdate.squadId = squadId;
-    }
+    // Update user's squad membership - add to squadIds array
+    const updatedSquadIds = [...currentSquadIds, squadId];
+    const userUpdate: Record<string, unknown> = { 
+      squadIds: updatedSquadIds,
+      updatedAt: now,
+      // Keep legacy field in sync for backward compatibility
+      squadId: squadId,
+    };
     
     await adminDb.collection('users').doc(userId).update(userUpdate);
 
@@ -194,7 +166,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ 
       success: true,
-      squadType: isTargetSquadPremium ? 'premium' : 'standard',
+      hasCoach: squadHasCoach,
     });
   } catch (error) {
     console.error('[SQUAD_JOIN_ERROR]', error);

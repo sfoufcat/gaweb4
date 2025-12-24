@@ -10,16 +10,16 @@ import { SquadCallEditForm } from './SquadCallEditForm';
 /**
  * NextSquadCallCard Component
  * 
- * Displays the next scheduled squad call for premium squads.
+ * Displays the next scheduled squad call for squads with coaches.
  * Shows:
  * - Date & time in squad timezone and user's local timezone
  * - Location (e.g., "Squad chat", "Zoom")
- * - Guided by: Coach name + profile picture (premium only)
+ * - Guided by: Coach name + profile picture
  * - "Add to calendar" button (downloads .ics file)
  * - "Go to chat" button
  * - Edit button (for coaches only)
  * 
- * Only renders for premium squads with isPremium === true.
+ * Only renders for squads with hasCoach === true.
  */
 
 export interface CoachInfo {
@@ -116,8 +116,10 @@ export function NextSquadCallCard({ squad, isCoach = false, onCallUpdated, coach
     };
   }, [squad.nextCallDateTime, callTimezone, userTimezone, sameTimezone]);
   
-  // Only show for premium squads - must be after all hooks
-  if (!squad.isPremium) {
+  // Only show for squads with a coach - must be after all hooks
+  // Use hasCoach if available, fall back to isPremium for migration
+  const hasCoach = squad.hasCoach ?? squad.isPremium ?? false;
+  if (!hasCoach) {
     return null;
   }
   

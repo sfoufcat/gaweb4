@@ -10,13 +10,13 @@ import { CallSuggestionModal } from './CallSuggestionModal';
 /**
  * StandardSquadCallCard Component
  * 
- * Displays the squad call card for standard (non-premium) squads.
+ * Displays the squad call card for squads without coaches.
  * Supports voting-based call confirmation:
  * - State A: No call - "Suggest a call" prompt
  * - State B: Pending call - Voting UI with yes/no buttons
- * - State C: Confirmed call - Similar to premium with ICS download
+ * - State C: Confirmed call - Similar to coach-scheduled with ICS download
  * 
- * Only renders for non-premium squads.
+ * Only renders for squads where hasCoach === false.
  */
 
 interface StandardSquadCallCardProps {
@@ -189,8 +189,10 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
     }
   };
 
-  // Don't render for premium squads
-  if (squad.isPremium) {
+  // Don't render for squads with coaches
+  // Use hasCoach if available, fall back to isPremium for migration
+  const hasCoach = squad.hasCoach ?? squad.isPremium ?? false;
+  if (hasCoach) {
     return null;
   }
 

@@ -28,22 +28,24 @@ function generateInviteCode(): string {
  * - timezone: string (required)
  * - visibility: 'public' | 'private' (required)
  * - trackId?: UserTrack | null (optional - null means visible to all tracks)
+ * - hasCoach?: boolean (optional - whether squad has coach scheduling)
  */
 export async function POST(req: Request) {
   try {
-    const { userId, sessionClaims } = await auth();
+    const { userId } = await auth();
     
     if (!userId) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
     const body = await req.json();
-    const { name, description, timezone, visibility, trackId } = body as {
+    const { name, description, timezone, visibility, trackId, hasCoach = false } = body as {
       name: string;
       description?: string;
       timezone: string;
       visibility: SquadVisibility;
       trackId?: UserTrack | null;
+      hasCoach?: boolean;
     };
 
     // Validation
@@ -57,23 +59,6 @@ export async function POST(req: Request) {
 
     if (!visibility || !['public', 'private'].includes(visibility)) {
       return NextResponse.json({ error: 'Invalid visibility' }, { status: 400 });
-    }
-
-    // Check if user is already in a squad (still need Firebase for squadId)
-    const userDoc = await adminDb.collection('users').doc(userId).get();
-    if (userDoc.exists && userDoc.data()?.squadId) {
-      return NextResponse.json({ error: 'You are already in a squad' }, { status: 400 });
-    }
-
-    // Check user tier from Clerk session (SINGLE SOURCE OF TRUTH - no DB call needed for tier)
-    // Note: Coaching is NOT a tier - it's a separate product. Only standard/premium/free are tiers.
-    const publicMetadata = sessionClaims?.publicMetadata as { tier?: string } | undefined;
-    const userTier = publicMetadata?.tier || 'standard';
-    // Premium users cannot create squads - they join pre-made premium squads
-    if (userTier === 'premium') {
-      return NextResponse.json({ 
-        error: 'Premium users cannot create squads. Please use an invite code to join a premium squad.' 
-      }, { status: 403 });
     }
 
     // Generate invite code for private squads (also for public as optional)
@@ -101,7 +86,8 @@ export async function POST(req: Request) {
       timezone,
       memberIds: [userId],
       inviteCode,
-      isPremium: false,
+      hasCoach: hasCoach, // Whether squad has coach-scheduled calls
+      isPremium: hasCoach, // Keep for backward compatibility
       coachId: null,
       trackId: trackId || null, // null means visible to all tracks
       createdAt: now,
@@ -148,9 +134,14 @@ export async function POST(req: Request) {
       updatedAt: now,
     });
 
-    // Update user's squadId
+    // Update user's squad membership - add to squadIds array
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    const userData = userDoc.exists ? userDoc.data() : {};
+    const currentSquadIds: string[] = userData?.squadIds || [];
+    
     await adminDb.collection('users').doc(userId).update({
-      squadId,
+      squadIds: [...currentSquadIds, squadId],
+      squadId, // Keep legacy field in sync
       updatedAt: now,
     });
 

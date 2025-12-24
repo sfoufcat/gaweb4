@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { LogOut, Copy, Check, Star, ArrowRight } from 'lucide-react';
-import { useAuth } from '@clerk/nextjs';
+import { LogOut, Copy, Check } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,18 +17,19 @@ import { SquadInviteDialog } from './SquadInviteDialog';
 import { MAX_SQUAD_MEMBERS } from '@/lib/squad-constants';
 import { useMenuTitles } from '@/contexts/BrandingContext';
 
-type InviteSquadType = 'private' | 'public' | 'premium';
+type InviteSquadType = 'private' | 'public' | 'coached';
 
 interface SquadInviteCardsProps {
+  hasCoach?: boolean;
+  /** @deprecated Use hasCoach instead */
   isPremium?: boolean;
   inviteCode?: string;
   squadName?: string;
   visibility?: 'public' | 'private';
   memberCount?: number;
   onLeaveSquad?: () => void;
-  // New props for dual squad support
-  hasPremiumSquad?: boolean;
-  hasStandardSquad?: boolean;
+  // Squad ID for leave functionality
+  squadId?: string;
 }
 
 /**
@@ -37,28 +37,25 @@ interface SquadInviteCardsProps {
  * 
  * Cards at bottom of Squad tab:
  * 1. "Invite friends to your squad"
- * 2. "Upgrade to a Premium Squad" (for standard users, hidden if squad is already premium)
- * 3. "Join a Premium Squad" (for premium users viewing standard squad who don't have a premium squad yet)
+ * 2. "Upgrade to a Coached Squad" (for users in non-coached squads)
  * 
  * Plus invite code (if private) on bottom left and "Leave squad" on bottom right.
  */
 
 export function SquadInviteCards({ 
-  isPremium = false, 
+  hasCoach,
+  isPremium,
   inviteCode, 
   squadName = 'Your Squad',
   visibility = 'public',
   memberCount = 0,
   onLeaveSquad,
-  hasPremiumSquad = false,
-  hasStandardSquad: _hasStandardSquad = false,
+  squadId,
 }: SquadInviteCardsProps) {
-  const { sessionClaims } = useAuth();
   const { squad: squadTitle, squadLower } = useMenuTitles();
   
-  // Check if user is a premium member
-  const publicMetadata = sessionClaims?.publicMetadata as { tier?: string } | undefined;
-  const isPremiumUser = publicMetadata?.tier === 'premium';
+  // Support both new hasCoach and legacy isPremium
+  const squadHasCoach = hasCoach ?? isPremium ?? false;
   
   // Check if squad is at capacity
   const isAtCapacity = memberCount >= MAX_SQUAD_MEMBERS;
@@ -67,15 +64,9 @@ export function SquadInviteCards({
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
   
-  // Show "Join Premium Squad" card if:
-  // - User is a premium member
-  // - Currently viewing a standard squad (!isPremium)
-  // - User doesn't already have a premium squad
-  const showJoinPremiumSquadCard = isPremiumUser && !isPremium && !hasPremiumSquad;
-  
   // Determine squad type for invite dialog
   const getSquadType = (): InviteSquadType => {
-    if (isPremium) return 'premium';
+    if (squadHasCoach) return 'coached';
     if (visibility === 'private') return 'private';
     return 'public';
   };
@@ -110,11 +101,11 @@ export function SquadInviteCards({
     try {
       setIsLeaving(true);
       
-      // Pass the squad type to the leave API
+      // Pass the squad ID to the leave API
       const response = await fetch('/api/squad/leave', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: isPremium ? 'premium' : 'standard' }),
+        body: JSON.stringify({ squadId }),
       });
 
       if (!response.ok) {
@@ -161,47 +152,8 @@ export function SquadInviteCards({
         </div>
       )}
 
-      {/* Card 2: Find Premium Program - for premium users viewing standard squad without a premium squad */}
-      {showJoinPremiumSquadCard && (
-        <Link
-          href="/discover"
-          className="group block bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#2d2520] dark:to-[#251d18] border border-[#FFE4CC] dark:border-[#4a3d35] rounded-[20px] p-5 hover:shadow-lg hover:border-[#FF8A65]/40 dark:hover:border-[#FF8A65]/40 transition-all duration-300"
-        >
-          <div className="flex items-start gap-4">
-            {/* Premium Icon */}
-            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#FF8A65] to-[#FF6B6B] flex items-center justify-center flex-shrink-0 shadow-md">
-              <Star className="w-7 h-7 text-white fill-white" />
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              {/* Premium Badge */}
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-albert text-[12px] font-semibold bg-gradient-to-r from-[#FF8A65] to-[#FF6B6B] bg-clip-text text-transparent">
-                  Premium Member Benefit
-                </span>
-              </div>
-              
-              <h3 className="font-albert font-semibold text-[18px] text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px] mb-1">
-                Find a premium program with coaching
-              </h3>
-              
-              <p className="font-albert text-[14px] text-text-secondary dark:text-[#b2b6c2] leading-[1.4] mb-3">
-                As a premium member, you can join a program with weekly coaching calls and expert guidance. Discover programs now!
-              </p>
-
-              {/* CTA */}
-              <div className="flex items-center gap-2 text-[#FF6B6B] font-albert font-semibold text-[14px] group-hover:gap-3 transition-all">
-                <span>Discover programs</span>
-                <ArrowRight className="w-4 h-4" />
-              </div>
-            </div>
-          </div>
-        </Link>
-      )}
-
-      {/* Card 3: Upgrade to Premium - only show if not already premium AND user is not a premium member */}
-      {!isPremium && !isPremiumUser && (
+      {/* Card 2: Upgrade to Coached Squad - only show if not already a coached squad */}
+      {!squadHasCoach && (
         <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4">
           <div className="p-4 space-y-3">
             {/* Premium badge */}

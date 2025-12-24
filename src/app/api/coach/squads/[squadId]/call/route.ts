@@ -9,7 +9,7 @@ import type { Squad, ClerkPublicMetadata } from '@/types';
 /**
  * PUT /api/coach/squads/[squadId]/call
  * 
- * Updates the next squad call details for a premium squad.
+ * Updates the next squad call details for a coached squad.
  * Only accessible by coaches (for their own squads) or admins.
  * 
  * When call is created/updated:
@@ -81,10 +81,11 @@ export async function PUT(
     const squadData = squadDoc.data() as Squad;
     const coachId = squadData?.coachId || null;
 
-    // Check if squad is premium
-    if (!squadData.isPremium) {
+    // Check if squad has a coach (use hasCoach, fall back to isPremium for migration)
+    const squadHasCoach = squadData.hasCoach ?? squadData.isPremium ?? false;
+    if (!squadHasCoach) {
       return NextResponse.json(
-        { error: 'Squad call scheduling is only available for premium squads' },
+        { error: 'Squad call scheduling is only available for coached squads' },
         { status: 400 }
       );
     }
@@ -107,7 +108,7 @@ export async function PUT(
     if (previousCallTime) {
       await cancelSquadCallJobs({
         squadId,
-        isPremiumSquad: true,
+        hasCoach: true,
       });
     }
 
@@ -150,7 +151,7 @@ export async function PUT(
       await scheduleSquadCallJobs({
         squadId,
         squadName: squadData.name,
-        isPremiumSquad: true,
+        hasCoach: true,
         callDateTime: dateTime,
         callTimezone: timezone,
         callLocation: location,
@@ -210,7 +211,7 @@ export async function PUT(
 /**
  * DELETE /api/coach/squads/[squadId]/call
  * 
- * Removes the scheduled call from a premium squad.
+ * Removes the scheduled call from a coached squad.
  */
 export async function DELETE(
   request: Request,
@@ -265,7 +266,7 @@ export async function DELETE(
     // Cancel any scheduled notification/email jobs
     await cancelSquadCallJobs({
       squadId,
-      isPremiumSquad: true,
+      hasCoach: true,
     });
 
     return NextResponse.json({

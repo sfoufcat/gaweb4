@@ -6,7 +6,7 @@ import { shouldRedirectToFunnel, getFunnelRedirectUrl } from '@/lib/funnel-redir
 
 // Billing status types (must match admin-utils-clerk.ts)
 type BillingStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | 'none';
-// Membership tier - does NOT include coaching (coaching is separate)
+// @deprecated UserTier is deprecated - access controlled by program/squad membership
 type UserTier = 'free' | 'standard' | 'premium';
 type UserRole = 'user' | 'editor' | 'coach' | 'admin' | 'super_admin';
 // Coaching status - separate from membership
@@ -16,10 +16,12 @@ interface ClerkPublicMetadata {
   role?: UserRole;
   billingStatus?: BillingStatus;
   billingPeriodEnd?: string;
+  /** @deprecated UserTier is deprecated - access controlled by program/squad membership */
   tier?: UserTier;
   // Multi-org support
   primaryOrganizationId?: string;  // Last active / default org
-  organizationId?: string;         // @deprecated - use primaryOrganizationId
+  /** @deprecated Use primaryOrganizationId instead */
+  organizationId?: string;
   // Coaching (separate from membership tier)
   coaching?: boolean; // Legacy flag - true if has active coaching
   coachingStatus?: CoachingStatus; // New: detailed coaching status
