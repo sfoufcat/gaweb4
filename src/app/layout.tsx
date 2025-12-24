@@ -17,7 +17,7 @@ import { ClerkThemeProvider } from "@/components/auth/ClerkThemeProvider";
 import { TimezoneSync } from "@/components/TimezoneSync";
 import { getServerBranding } from "@/lib/branding-server";
 import { SWRProvider } from "@/lib/swr-provider";
-import { DEFAULT_LOGO_URL } from "@/types";
+import { DEFAULT_LOGO_URL, DEFAULT_THEME } from "@/types";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -84,6 +84,16 @@ export default async function RootLayout({
     >
       <html lang="en" className="h-full" suppressHydrationWarning>
         <head>
+          {/* Critical CSS for layout - prevents layout shift by being in initial HTML */}
+          <style dangerouslySetInnerHTML={{
+            __html: `
+              @media (min-width: 1024px) {
+                body[data-layout="with-sidebar"] main {
+                  padding-left: 16rem;
+                }
+              }
+            `
+          }} />
           {/* Inline script to prevent flash of wrong theme */}
           <script
             dangerouslySetInnerHTML={{
@@ -91,9 +101,22 @@ export default async function RootLayout({
                 (function() {
                   try {
                     var stored = localStorage.getItem('ga-theme');
+                    var orgDefault = '${ssrBranding.branding.defaultTheme || DEFAULT_THEME}';
+                    
                     if (stored === 'dark') {
                       document.documentElement.classList.add('dark');
+                    } else if (stored === 'light') {
+                      // Explicit light mode - no dark class
+                    } else if (orgDefault === 'dark') {
+                      // No user preference, use org default
+                      document.documentElement.classList.add('dark');
+                    } else if (orgDefault === 'system') {
+                      // Use system preference
+                      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        document.documentElement.classList.add('dark');
+                      }
                     }
+                    // Default: light mode (no action needed)
                   } catch (e) {}
                 })();
               `,
@@ -105,7 +128,7 @@ export default async function RootLayout({
           data-layout={layoutMode}
           suppressHydrationWarning
         >
-          <ThemeProvider>
+          <ThemeProvider initialOrgDefaultTheme={ssrBranding.branding.defaultTheme || DEFAULT_THEME}>
           <SWRProvider>
           <BrandingProvider 
             initialBranding={ssrBranding.branding}

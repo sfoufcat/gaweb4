@@ -263,16 +263,22 @@ export function useComments(postId: string | null) {
 
   const addComment = useCallback((comment: FeedComment) => {
     mutate((currentData) => {
-      if (!currentData || !currentData.length) return currentData;
+      if (!currentData || !currentData.length) {
+        // If no existing data, create initial page with the comment
+        return [{ comments: [comment], nextCursor: null, hasMore: false }];
+      }
       
-      const [firstPage, ...restPages] = currentData;
-      return [
-        {
-          ...firstPage,
-          comments: [comment, ...(firstPage.comments || [])],
-        },
-        ...restPages,
-      ];
+      // Add to the END of the last page (comments are sorted asc by createdAt)
+      const lastIndex = currentData.length - 1;
+      return currentData.map((page, index) => {
+        if (index === lastIndex) {
+          return {
+            ...page,
+            comments: [...(page.comments || []), comment],
+          };
+        }
+        return page;
+      });
     }, false);
   }, [mutate]);
 

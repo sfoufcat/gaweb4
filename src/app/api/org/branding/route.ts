@@ -5,8 +5,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg, TenantRequiredError } from '@/lib/admin-utils-clerk';
 import { syncTenantToEdgeConfig, setTenantByCustomDomain, buildTenantConfigData, type TenantBrandingData } from '@/lib/tenant-edge-config';
 import type { OrgCustomDomain } from '@/types';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, UserRole } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgDefaultTheme, UserRole } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_THEME } from '@/types';
 
 /**
  * GET /api/org/branding
@@ -121,7 +121,7 @@ export async function POST(request: Request) {
 
     // Parse request body
     const body = await request.json();
-    const { logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles, menuIcons } = body as Partial<OrgBranding>;
+    const { logoUrl, logoUrlDark, horizontalLogoUrl, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, defaultTheme } = body as Partial<OrgBranding>;
 
     // Get existing branding or create new
     const brandingRef = adminDb.collection('org_branding').doc(organizationId);
@@ -137,7 +137,9 @@ export async function POST(request: Request) {
       brandingData = {
         ...existing,
         ...(logoUrl !== undefined && { logoUrl }),
+        ...(logoUrlDark !== undefined && { logoUrlDark }),
         ...(horizontalLogoUrl !== undefined && { horizontalLogoUrl }),
+        ...(horizontalLogoUrlDark !== undefined && { horizontalLogoUrlDark }),
         ...(appTitle !== undefined && { appTitle }),
         ...(colors !== undefined && { 
           colors: {
@@ -159,6 +161,7 @@ export async function POST(request: Request) {
             ...menuIcons,
           } as OrgMenuIcons
         }),
+        ...(defaultTheme !== undefined && { defaultTheme }),
         updatedAt: now,
       };
     } else {
@@ -167,7 +170,9 @@ export async function POST(request: Request) {
         id: organizationId,
         organizationId,
         logoUrl: logoUrl ?? null,
+        logoUrlDark: logoUrlDark ?? null,
         horizontalLogoUrl: horizontalLogoUrl ?? null,
+        horizontalLogoUrlDark: horizontalLogoUrlDark ?? null,
         appTitle: appTitle ?? DEFAULT_APP_TITLE,
         colors: {
           ...DEFAULT_BRANDING_COLORS,
@@ -181,6 +186,7 @@ export async function POST(request: Request) {
           ...DEFAULT_MENU_ICONS,
           ...menuIcons,
         },
+        defaultTheme: defaultTheme ?? DEFAULT_THEME,
         createdAt: now,
         updatedAt: now,
       };
@@ -279,11 +285,14 @@ function getDefaultBranding(organizationId?: string): OrgBranding {
     id: organizationId || 'default',
     organizationId: organizationId || 'default',
     logoUrl: DEFAULT_LOGO_URL,
+    logoUrlDark: null,
     horizontalLogoUrl: null,
+    horizontalLogoUrlDark: null,
     appTitle: DEFAULT_APP_TITLE,
     colors: DEFAULT_BRANDING_COLORS,
     menuTitles: DEFAULT_MENU_TITLES,
     menuIcons: DEFAULT_MENU_ICONS,
+    defaultTheme: DEFAULT_THEME,
     createdAt: now,
     updatedAt: now,
   };

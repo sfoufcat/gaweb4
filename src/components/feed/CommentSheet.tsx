@@ -66,8 +66,10 @@ export function CommentSheet({ postId, onClose }: CommentSheetProps) {
       addCommentToList(data.comment);
       setNewComment('');
       
-      // Scroll to top to see new comment
-      listRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      // Scroll to bottom to see new comment (comments are ordered oldest first)
+      setTimeout(() => {
+        listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
+      }, 50);
     } catch (error) {
       console.error('Comment error:', error);
       setErrorMessage('Failed to post comment. Please try again.');

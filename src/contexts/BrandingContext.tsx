@@ -1,8 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgDefaultTheme } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_THEME } from '@/types';
 import { 
   DEFAULT_TENANT_COACHING_PROMO, 
   type TenantCoachingPromoData 
@@ -85,14 +85,24 @@ function getDefaultBranding(): OrgBranding {
     id: 'default',
     organizationId: 'default',
     logoUrl: DEFAULT_LOGO_URL,
+    logoUrlDark: null,
     horizontalLogoUrl: null,
+    horizontalLogoUrlDark: null,
     appTitle: DEFAULT_APP_TITLE,
     colors: DEFAULT_BRANDING_COLORS,
     menuTitles: DEFAULT_MENU_TITLES,
     menuIcons: DEFAULT_MENU_ICONS,
+    defaultTheme: DEFAULT_THEME,
     createdAt: now,
     updatedAt: now,
   };
+}
+
+/**
+ * Calculate appropriate foreground color (white or dark) based on background luminance
+ */
+function getForegroundColor(bgHex: string): string {
+  return isColorDark(bgHex) ? '#ffffff' : '#1a1a1a';
 }
 
 /**
@@ -105,6 +115,12 @@ function applyBrandingCSS(colors: OrgBrandingColors): void {
   // Set CSS custom properties for accent colors only
   root.style.setProperty('--brand-accent-light', colors.accentLight);
   root.style.setProperty('--brand-accent-dark', colors.accentDark);
+  
+  // Set foreground colors for text on accent backgrounds (auto-computed for contrast)
+  const lightFg = colors.accentLightForeground || getForegroundColor(colors.accentLight);
+  const darkFg = colors.accentDarkForeground || getForegroundColor(colors.accentDark);
+  root.style.setProperty('--brand-accent-light-foreground', lightFg);
+  root.style.setProperty('--brand-accent-dark-foreground', darkFg);
 }
 
 /**
@@ -115,6 +131,8 @@ function removeBrandingCSS(): void {
   
   root.style.removeProperty('--brand-accent-light');
   root.style.removeProperty('--brand-accent-dark');
+  root.style.removeProperty('--brand-accent-light-foreground');
+  root.style.removeProperty('--brand-accent-dark-foreground');
 }
 
 interface BrandingProviderProps {
@@ -313,9 +331,33 @@ export function useBranding() {
 
 /**
  * Hook to get just the effective branding values (for components that only need to read)
+ * Returns theme-aware logos (dark mode logos if available, otherwise falls back to light)
  */
 export function useBrandingValues() {
   const { effectiveBranding, isPreviewMode, isDefault } = useBranding();
+  
+  // Get current theme to select appropriate logo
+  // We need to detect theme from document since useTheme creates circular dependency
+  const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('light');
+  
+  useEffect(() => {
+    // Check if dark mode is active
+    const isDark = document.documentElement.classList.contains('dark');
+    setCurrentTheme(isDark ? 'dark' : 'light');
+    
+    // Listen for theme changes via class mutation
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'class') {
+          const isDarkNow = document.documentElement.classList.contains('dark');
+          setCurrentTheme(isDarkNow ? 'dark' : 'light');
+        }
+      });
+    });
+    
+    observer.observe(document.documentElement, { attributes: true });
+    return () => observer.disconnect();
+  }, []);
   
   // Calculate if accent colors are dark (need light text) or light (need dark text)
   const accentLightIsDark = isColorDark(effectiveBranding.colors.accentLight);
@@ -333,9 +375,23 @@ export function useBrandingValues() {
     ...effectiveBranding.menuIcons,
   };
   
+  // Get theme-aware logos (dark mode logo if available, otherwise fallback to light)
+  const logoUrl = currentTheme === 'dark' && effectiveBranding.logoUrlDark
+    ? effectiveBranding.logoUrlDark
+    : (effectiveBranding.logoUrl || DEFAULT_LOGO_URL);
+  
+  const horizontalLogoUrl = currentTheme === 'dark' && effectiveBranding.horizontalLogoUrlDark
+    ? effectiveBranding.horizontalLogoUrlDark
+    : (effectiveBranding.horizontalLogoUrl || null);
+  
   return {
-    logoUrl: effectiveBranding.logoUrl || DEFAULT_LOGO_URL,
-    horizontalLogoUrl: effectiveBranding.horizontalLogoUrl || null,
+    logoUrl,
+    horizontalLogoUrl,
+    // Also expose raw URLs for settings pages that need to show both variants
+    logoUrlLight: effectiveBranding.logoUrl || DEFAULT_LOGO_URL,
+    logoUrlDark: effectiveBranding.logoUrlDark || null,
+    horizontalLogoUrlLight: effectiveBranding.horizontalLogoUrl || null,
+    horizontalLogoUrlDark: effectiveBranding.horizontalLogoUrlDark || null,
     appTitle: effectiveBranding.appTitle || DEFAULT_APP_TITLE,
     colors: effectiveBranding.colors,
     menuTitles,
@@ -390,4 +446,13 @@ export function useCoachingPromo() {
 export function useFeedEnabled() {
   const { feedEnabled } = useBranding();
   return feedEnabled;
+}
+
+/**
+ * Hook to get the organization's default theme preference
+ * Returns 'light', 'dark', or 'system'
+ */
+export function useOrgDefaultTheme(): OrgDefaultTheme {
+  const { effectiveBranding } = useBranding();
+  return effectiveBranding.defaultTheme || DEFAULT_THEME;
 }

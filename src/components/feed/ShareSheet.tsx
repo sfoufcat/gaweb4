@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useBrandingValues } from '@/contexts/BrandingContext';
+import { ShareToChatModal } from './ShareToChatModal';
 
 interface ShareSheetProps {
   postId: string;
@@ -11,6 +12,7 @@ interface ShareSheetProps {
 export function ShareSheet({ postId, onClose }: ShareSheetProps) {
   const { colors, isDefault } = useBrandingValues();
   const [copied, setCopied] = useState(false);
+  const [showChatModal, setShowChatModal] = useState(false);
 
   const accentColor = isDefault ? '#a07855' : colors.accentLight;
   const postUrl = typeof window !== 'undefined' 
@@ -51,38 +53,59 @@ export function ShareSheet({ postId, onClose }: ShareSheetProps) {
     }
   }, [postUrl, onClose]);
 
-  // Share to chat (open chat with pre-filled message)
+  // Share to chat - open channel selector modal
   const handleShareToChat = useCallback(() => {
-    // Navigate to chat with the post link
-    window.location.href = `/chat?share=${encodeURIComponent(postUrl)}`;
-  }, [postUrl]);
+    setShowChatModal(true);
+  }, []);
 
   const canNativeShare = typeof navigator !== 'undefined' && 'share' in navigator;
 
+  // Show chat modal instead of main share sheet
+  if (showChatModal) {
+    return (
+      <ShareToChatModal
+        postUrl={postUrl}
+        onClose={() => setShowChatModal(false)}
+        onSuccess={onClose}
+      />
+    );
+  }
+
   return (
-    <>
+    <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Sheet */}
-      <div className="fixed inset-x-0 bottom-0 bg-white dark:bg-[#13171f] rounded-t-2xl z-50 overflow-hidden shadow-xl safe-area-inset-bottom">
-        {/* Handle */}
-        <div className="flex justify-center py-3">
-          <div className="w-10 h-1 rounded-full bg-[#d1ccc6] dark:bg-[#3a3f4a]" />
+      {/* Sheet - Bottom sheet on mobile, centered popup on desktop */}
+      <div className="relative w-full max-w-[400px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-300 safe-area-inset-bottom">
+        {/* Handle - Mobile only */}
+        <div className="flex justify-center pt-3 pb-2 md:hidden">
+          <div className="w-9 h-1 bg-gray-300 dark:bg-[#262b35] rounded-full" />
         </div>
 
+        {/* Close button - Desktop only */}
+        <button
+          onClick={onClose}
+          className="hidden md:block absolute top-4 right-4 text-text-muted dark:text-[#7d8190] hover:text-text-primary dark:hover:text-[#f5f5f8] transition-colors"
+          aria-label="Close"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
         {/* Title */}
-        <div className="px-4 pb-2">
-          <h2 className="font-semibold text-[16px] text-[#1a1a1a] dark:text-[#faf8f6]">
+        <div className="px-6 pt-2 md:pt-6 pb-2">
+          <h2 className="font-semibold text-[18px] text-[#1a1a1a] dark:text-[#faf8f6]">
             Share Post
           </h2>
         </div>
 
         {/* Options */}
-        <div className="p-4 space-y-2">
+        <div className="px-6 py-4 space-y-2">
           {/* Copy Link */}
           <button
             onClick={handleCopyLink}
@@ -162,7 +185,7 @@ export function ShareSheet({ postId, onClose }: ShareSheetProps) {
         </div>
 
         {/* Cancel button */}
-        <div className="p-4 pt-0">
+        <div className="px-6 pb-6 pt-2">
           <button
             onClick={onClose}
             className="w-full py-3 rounded-xl bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[15px] font-medium text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#ebe7e2] dark:hover:bg-[#262b35] transition-colors"
@@ -171,7 +194,7 @@ export function ShareSheet({ postId, onClose }: ShareSheetProps) {
           </button>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

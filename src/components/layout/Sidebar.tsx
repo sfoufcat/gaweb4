@@ -10,6 +10,7 @@ import type { UserRole, OrgRole } from '@/types';
 import { DEFAULT_MENU_ICONS } from '@/types';
 import { useChatUnreadCounts } from '@/hooks/useChatUnreadCounts';
 import { useBrandingValues, useFeedEnabled } from '@/contexts/BrandingContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { OrganizationSwitcher } from './OrganizationSwitcher';
 import { useMyPrograms } from '@/hooks/useMyPrograms';
 import { useSquad } from '@/hooks/useSquad';
@@ -116,7 +117,12 @@ export function Sidebar() {
   const { sessionClaims, isLoaded, isSignedIn, userId } = useAuth();
   const { totalUnread } = useChatUnreadCounts();
   const { scrollDirection, isAtTop } = useScrollDirection();
-  const { logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles, menuIcons, isDefault, accentLightIsDark, accentDarkIsDark: _accentDarkIsDark } = useBrandingValues();
+  const { logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles, menuIcons, isDefault, accentLightIsDark, accentDarkIsDark } = useBrandingValues();
+  const { theme } = useTheme();
+  
+  // Get the appropriate accent color and foreground based on theme
+  const currentAccentColor = theme === 'dark' ? colors.accentDark : colors.accentLight;
+  const currentAccentIsDark = theme === 'dark' ? accentDarkIsDark : accentLightIsDark;
   
   // Squad and program state for navigation visibility
   const { hasEnrollments } = useMyPrograms();
@@ -363,8 +369,8 @@ export function Sidebar() {
                 <span 
                   className="ml-auto flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-albert font-semibold"
                   style={{
-                    backgroundColor: !isDefault ? colors.accentLight : '#a07855',
-                    color: accentLightIsDark ? '#ffffff' : '#1a1a1a',
+                    backgroundColor: !isDefault ? currentAccentColor : (theme === 'dark' ? '#b8896a' : '#a07855'),
+                    color: currentAccentIsDark ? '#ffffff' : '#1a1a1a',
                   }}
                 >
                   {totalUnread > 9 ? '9+' : totalUnread}
@@ -456,8 +462,8 @@ export function Sidebar() {
                     <span 
                       className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-albert font-semibold"
                       style={{
-                        backgroundColor: !isDefault ? colors.accentLight : '#a07855',
-                        color: accentLightIsDark ? '#ffffff' : '#1a1a1a',
+                        backgroundColor: !isDefault ? currentAccentColor : (theme === 'dark' ? '#b8896a' : '#a07855'),
+                        color: currentAccentIsDark ? '#ffffff' : '#1a1a1a',
                       }}
                     >
                       {totalUnread > 9 ? '9+' : totalUnread}

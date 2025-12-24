@@ -41,6 +41,9 @@
     /* These can be overridden by BrandingContext for custom branding */
     --brand-accent-light: #a07855;
     --brand-accent-dark: #b8896a;
+    /* Foreground colors for text on accent backgrounds (auto-computed for contrast) */
+    --brand-accent-light-foreground: #ffffff;
+    --brand-accent-dark-foreground: #ffffff;
   }
 
   .dark {
@@ -192,19 +195,6 @@ html {
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   overflow-x: hidden;
-}
-
-/* ===========================================
-   Sidebar-aware Main Content Padding
-   Uses data-layout attribute set during SSR by middleware
-   to prevent layout shift from client-side hydration
-   =========================================== */
-
-/* Apply sidebar padding on large screens for pages with sidebar layout */
-@media (min-width: 1024px) {
-  body[data-layout="with-sidebar"] main {
-    padding-left: 16rem; /* 256px = w-64 sidebar width */
-  }
 }
 
 /* Dark mode skeleton / loading state styles */
@@ -634,10 +624,23 @@ div[class*="LoadingIndicator"],
 
 .bg-accent-branded {
   background-color: var(--brand-accent-light, #a07855);
+  /* Auto-contrast text color on accent background */
+  color: var(--brand-accent-light-foreground, #ffffff);
 }
 
 .dark .bg-accent-branded {
   background-color: var(--brand-accent-dark, #b8896a);
+  /* Auto-contrast text color on accent background */
+  color: var(--brand-accent-dark-foreground, #ffffff);
+}
+
+/* Text color utility for text ON accent backgrounds (auto-contrasted) */
+.text-on-accent {
+  color: var(--brand-accent-light-foreground, #ffffff);
+}
+
+.dark .text-on-accent {
+  color: var(--brand-accent-dark-foreground, #ffffff);
 }
 
 /* ===========================================

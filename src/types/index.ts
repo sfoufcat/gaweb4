@@ -1865,12 +1865,20 @@ export const PLATFORM_ORGANIZATION_SLUG = 'growthaddicts-platform';
 // =============================================================================
 
 /**
+ * Theme preference for an organization
+ */
+export type OrgDefaultTheme = 'light' | 'dark' | 'system';
+
+/**
  * Branding colors for an organization
  * Only accent colors are customizable (menu and page backgrounds use theme defaults)
  */
 export interface OrgBrandingColors {
   accentLight: string;         // Accent/primary color in light mode (default: "#a07855")
   accentDark: string;          // Accent/primary color in dark mode (default: "#b8896a")
+  // Text colors for accent backgrounds (computed based on accent luminance)
+  accentLightForeground?: string;  // Text color on accentLight bg (default: "#ffffff" if dark accent, "#1a1a1a" if light)
+  accentDarkForeground?: string;   // Text color on accentDark bg (default: "#ffffff" if dark accent, "#1a1a1a" if light)
 }
 
 /**
@@ -1931,15 +1939,23 @@ export interface OrgBranding {
   id: string;                    // Same as organizationId
   organizationId: string;        // Clerk Organization ID
   logoUrl: string | null;        // Custom square logo URL (null = use default)
+  logoUrlDark: string | null;    // Custom square logo URL for dark mode (null = use logoUrl)
   horizontalLogoUrl: string | null; // Custom horizontal/wide logo URL (replaces square logo + title if set)
+  horizontalLogoUrlDark: string | null; // Custom horizontal logo URL for dark mode (null = use horizontalLogoUrl)
   appTitle: string;              // App title shown in sidebar (default: "Growth Addicts")
   colors: OrgBrandingColors;
   menuTitles?: OrgMenuTitles;    // Customizable menu titles (optional, uses defaults if not set)
   menuIcons?: OrgMenuIcons;      // Customizable menu icons/emojis (optional, uses defaults if not set)
   emailSettings?: OrgEmailSettings; // Whitelabel email settings (optional)
+  defaultTheme?: OrgDefaultTheme; // Default theme for the organization (default: 'light')
   createdAt: string;             // ISO timestamp
   updatedAt: string;             // ISO timestamp
 }
+
+/**
+ * Default theme for organizations
+ */
+export const DEFAULT_THEME: OrgDefaultTheme = 'light';
 
 /**
  * Default branding values (matches current hardcoded theme)
@@ -1947,6 +1963,8 @@ export interface OrgBranding {
 export const DEFAULT_BRANDING_COLORS: OrgBrandingColors = {
   accentLight: '#a07855',
   accentDark: '#b8896a',
+  accentLightForeground: '#ffffff',  // White text on brown
+  accentDarkForeground: '#ffffff',   // White text on brown
 };
 
 export const DEFAULT_APP_TITLE = 'GrowthAddicts';

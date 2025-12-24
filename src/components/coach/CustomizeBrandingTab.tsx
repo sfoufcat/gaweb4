@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock, Mail, Send, Bell, Settings } from 'lucide-react';
+import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock, Mail, Send, Bell, Settings, Sun, Moon, Monitor } from 'lucide-react';
 import { useBranding } from '@/contexts/BrandingContext';
 import { FeedSettingsToggle } from './FeedSettingsToggle';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus, OrgEmailDefaults } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_EMAIL_SETTINGS, DEFAULT_EMAIL_DEFAULTS, validateSubdomain } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus, OrgEmailDefaults, OrgDefaultTheme } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_EMAIL_SETTINGS, DEFAULT_EMAIL_DEFAULTS, DEFAULT_THEME, validateSubdomain } from '@/types';
 import { IconPicker } from './IconPicker';
 
 /**
@@ -46,17 +46,22 @@ export function CustomizeBrandingTab() {
   
   // Form state
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoUrlDark, setLogoUrlDark] = useState<string | null>(null);
   const [horizontalLogoUrl, setHorizontalLogoUrl] = useState<string | null>(null);
+  const [horizontalLogoUrlDark, setHorizontalLogoUrlDark] = useState<string | null>(null);
   const [appTitle, setAppTitle] = useState(DEFAULT_APP_TITLE);
   const [colors, setColors] = useState<OrgBrandingColors>(DEFAULT_BRANDING_COLORS);
   const [menuTitles, setMenuTitles] = useState<OrgMenuTitles>(DEFAULT_MENU_TITLES);
   const [menuIcons, setMenuIcons] = useState<OrgMenuIcons>(DEFAULT_MENU_ICONS);
+  const [defaultTheme, setDefaultTheme] = useState<OrgDefaultTheme>(DEFAULT_THEME);
   
   // UI state
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingDark, setUploadingDark] = useState(false);
   const [uploadingHorizontal, setUploadingHorizontal] = useState(false);
+  const [uploadingHorizontalDark, setUploadingHorizontalDark] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
@@ -72,7 +77,9 @@ export function CustomizeBrandingTab() {
   
   // File input refs
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileDarkInputRef = useRef<HTMLInputElement>(null);
   const horizontalFileInputRef = useRef<HTMLInputElement>(null);
+  const horizontalDarkFileInputRef = useRef<HTMLInputElement>(null);
   
   // Domain settings state
   const [currentSubdomain, setCurrentSubdomain] = useState<string>('');
@@ -168,7 +175,9 @@ export function CustomizeBrandingTab() {
       
       setOriginalBranding(branding);
       setLogoUrl(branding.logoUrl);
+      setLogoUrlDark(branding.logoUrlDark || null);
       setHorizontalLogoUrl(branding.horizontalLogoUrl || null);
+      setHorizontalLogoUrlDark(branding.horizontalLogoUrlDark || null);
       setAppTitle(branding.appTitle);
       setColors(branding.colors);
       setMenuTitles({
@@ -179,6 +188,7 @@ export function CustomizeBrandingTab() {
         ...DEFAULT_MENU_ICONS,
         ...(branding.menuIcons || {}),
       });
+      setDefaultTheme(branding.defaultTheme || DEFAULT_THEME);
     } catch (err) {
       console.error('Error fetching branding:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch branding');
@@ -699,14 +709,16 @@ export function CustomizeBrandingTab() {
     const originalMenuIcons = originalBranding.menuIcons || DEFAULT_MENU_ICONS;
     const changed = 
       logoUrl !== originalBranding.logoUrl ||
+      logoUrlDark !== (originalBranding.logoUrlDark || null) ||
       horizontalLogoUrl !== (originalBranding.horizontalLogoUrl || null) ||
+      horizontalLogoUrlDark !== (originalBranding.horizontalLogoUrlDark || null) ||
       appTitle !== originalBranding.appTitle ||
       JSON.stringify(colors) !== JSON.stringify(originalBranding.colors) ||
       JSON.stringify(menuTitles) !== JSON.stringify(originalMenuTitles) ||
       JSON.stringify(menuIcons) !== JSON.stringify(originalMenuIcons);
     
     setHasChanges(changed);
-  }, [logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles, menuIcons, originalBranding]);
+  }, [logoUrl, logoUrlDark, horizontalLogoUrl, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, originalBranding]);
 
   // Build preview branding object
   const getPreviewBranding = useCallback((): OrgBranding => {
@@ -714,7 +726,9 @@ export function CustomizeBrandingTab() {
       id: originalBranding?.id || 'preview',
       organizationId: originalBranding?.organizationId || 'preview',
       logoUrl,
+      logoUrlDark,
       horizontalLogoUrl,
+      horizontalLogoUrlDark,
       appTitle,
       colors,
       menuTitles,
@@ -722,7 +736,7 @@ export function CustomizeBrandingTab() {
       createdAt: originalBranding?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-  }, [logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles, menuIcons, originalBranding]);
+  }, [logoUrl, logoUrlDark, horizontalLogoUrl, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, originalBranding]);
 
   // Toggle preview mode
   const handleTogglePreview = () => {
@@ -738,7 +752,7 @@ export function CustomizeBrandingTab() {
     if (isPreviewMode) {
       setPreviewMode(true, getPreviewBranding());
     }
-  }, [logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles, menuIcons, isPreviewMode, setPreviewMode, getPreviewBranding]);
+  }, [logoUrl, logoUrlDark, horizontalLogoUrl, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, isPreviewMode, setPreviewMode, getPreviewBranding]);
 
   // Handle logo upload
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -833,6 +847,96 @@ export function CustomizeBrandingTab() {
     }
   };
 
+  // Handle dark mode logo upload
+  const handleDarkLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be less than 5MB');
+      return;
+    }
+
+    try {
+      setUploadingDark(true);
+      setError(null);
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'dark');
+
+      const response = await fetch('/api/org/branding/logo', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to upload dark mode logo');
+      }
+
+      const data = await response.json();
+      setLogoUrlDark(data.url);
+      setSuccessMessage('Dark mode logo uploaded successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error('Error uploading dark mode logo:', err);
+      setError(err instanceof Error ? err.message : 'Failed to upload dark mode logo');
+    } finally {
+      setUploadingDark(false);
+    }
+  };
+
+  // Handle dark mode horizontal logo upload
+  const handleHorizontalDarkLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be less than 5MB');
+      return;
+    }
+
+    try {
+      setUploadingHorizontalDark(true);
+      setError(null);
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'horizontal-dark');
+
+      const response = await fetch('/api/org/branding/logo', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to upload dark mode horizontal logo');
+      }
+
+      const data = await response.json();
+      setHorizontalLogoUrlDark(data.url);
+      setSuccessMessage('Dark mode horizontal logo uploaded successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error('Error uploading dark mode horizontal logo:', err);
+      setError(err instanceof Error ? err.message : 'Failed to upload dark mode horizontal logo');
+    } finally {
+      setUploadingHorizontalDark(false);
+    }
+  };
+
   // Handle color change
   const handleColorChange = (key: keyof OrgBrandingColors, value: string) => {
     setColors(prev => ({ ...prev, [key]: value }));
@@ -841,7 +945,9 @@ export function CustomizeBrandingTab() {
   // Reset to defaults
   const handleResetToDefaults = () => {
     setLogoUrl(DEFAULT_LOGO_URL);
+    setLogoUrlDark(null);
     setHorizontalLogoUrl(null);
+    setHorizontalLogoUrlDark(null);
     setAppTitle(DEFAULT_APP_TITLE);
     setColors(DEFAULT_BRANDING_COLORS);
     setMenuTitles(DEFAULT_MENU_TITLES);
@@ -852,7 +958,9 @@ export function CustomizeBrandingTab() {
   const handleRevertChanges = () => {
     if (originalBranding) {
       setLogoUrl(originalBranding.logoUrl);
+      setLogoUrlDark(originalBranding.logoUrlDark || null);
       setHorizontalLogoUrl(originalBranding.horizontalLogoUrl || null);
+      setHorizontalLogoUrlDark(originalBranding.horizontalLogoUrlDark || null);
       setAppTitle(originalBranding.appTitle);
       setColors(originalBranding.colors);
       setMenuTitles({
@@ -877,11 +985,14 @@ export function CustomizeBrandingTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           logoUrl,
+          logoUrlDark,
           horizontalLogoUrl,
+          horizontalLogoUrlDark,
           appTitle,
           colors,
           menuTitles,
           menuIcons,
+          defaultTheme,
         }),
       });
 
@@ -1143,6 +1254,133 @@ export function CustomizeBrandingTab() {
               </div>
             </div>
           </div>
+
+          {/* Dark Mode Logos Section */}
+          <div className="pt-6 border-t border-[#e1ddd8]/50 dark:border-[#313746]/50">
+            <div className="flex items-center gap-2 mb-4">
+              <Moon className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+              <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                Dark Mode Logos (Optional)
+              </h4>
+            </div>
+            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mb-4">
+              Upload alternative logos for dark mode. If not set, the light mode logos will be used.
+            </p>
+            
+            {/* Dark Mode Square Logo */}
+            <div className="mb-4">
+              <h4 className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
+                Square Logo (Dark Mode)
+              </h4>
+              <div className="flex items-center gap-6">
+                {/* Dark Logo Preview - with dark background to show how it looks */}
+                <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-[#171b22] border-2 border-dashed border-[#313746]">
+                  {logoUrlDark ? (
+                    <Image
+                      src={logoUrlDark}
+                      alt="Organization logo (dark mode)"
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ImageIcon className="w-8 h-8 text-[#5f6775]" />
+                    </div>
+                  )}
+                </div>
+                
+                {/* Upload/Remove Buttons */}
+                <div className="flex-1">
+                  <input
+                    ref={fileDarkInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleDarkLogoUpload}
+                    className="hidden"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => fileDarkInputRef.current?.click()}
+                      disabled={uploadingDark}
+                      className="flex items-center gap-2 px-4 py-2 bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] rounded-xl hover:bg-[#e8e5e1] dark:hover:bg-[#313746] transition-colors font-albert text-sm disabled:opacity-50"
+                    >
+                      <Upload className="w-4 h-4" />
+                      {uploadingDark ? 'Uploading...' : 'Upload'}
+                    </button>
+                    {logoUrlDark && (
+                      <button
+                        onClick={() => setLogoUrlDark(null)}
+                        className="flex items-center gap-2 px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors font-albert text-sm"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-2 font-albert">
+                    Use a light-colored or transparent logo that&apos;s visible on dark backgrounds.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Dark Mode Horizontal Logo */}
+            <div className="pt-4 border-t border-[#e1ddd8]/30 dark:border-[#313746]/30">
+              <h4 className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
+                Horizontal Logo (Dark Mode)
+              </h4>
+              <div className="flex items-center gap-6">
+                {/* Dark Horizontal Logo Preview - with dark background */}
+                <div className="relative w-48 h-16 rounded-xl overflow-hidden bg-[#171b22] border-2 border-dashed border-[#313746]">
+                  {horizontalLogoUrlDark ? (
+                    <Image
+                      src={horizontalLogoUrlDark}
+                      alt="Horizontal logo (dark mode)"
+                      fill
+                      className="object-contain"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ImageIcon className="w-6 h-6 text-[#5f6775]" />
+                    </div>
+                  )}
+                </div>
+                
+                {/* Upload/Remove Buttons */}
+                <div className="flex-1">
+                  <input
+                    ref={horizontalDarkFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleHorizontalDarkLogoUpload}
+                    className="hidden"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => horizontalDarkFileInputRef.current?.click()}
+                      disabled={uploadingHorizontalDark}
+                      className="flex items-center gap-2 px-4 py-2 bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] rounded-xl hover:bg-[#e8e5e1] dark:hover:bg-[#313746] transition-colors font-albert text-sm disabled:opacity-50"
+                    >
+                      <Upload className="w-4 h-4" />
+                      {uploadingHorizontalDark ? 'Uploading...' : 'Upload'}
+                    </button>
+                    {horizontalLogoUrlDark && (
+                      <button
+                        onClick={() => setHorizontalLogoUrlDark(null)}
+                        className="flex items-center gap-2 px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors font-albert text-sm"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-2 font-albert">
+                    Use a light-colored or transparent logo that&apos;s visible on dark backgrounds.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1380,6 +1618,75 @@ export function CustomizeBrandingTab() {
 
         {/* Enable Social Feed */}
         <FeedSettingsToggle />
+        
+        {/* Default Theme Setting */}
+        <div className="mt-4 p-4 rounded-xl bg-white dark:bg-[#13171f] border border-[#e8e4df] dark:border-[#262b35]">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-semibold text-[15px] text-[#1a1a1a] dark:text-[#faf8f6]">
+                Default theme
+              </h4>
+              <p className="text-[13px] text-[#8a857f] mt-0.5">
+                Set the default appearance for new users
+              </p>
+            </div>
+          </div>
+          
+          {/* Theme Options */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setDefaultTheme('light');
+                setHasChanges(true);
+              }}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all ${
+                defaultTheme === 'light'
+                  ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/10 dark:bg-[#b8896a]/10 text-[#a07855] dark:text-[#b8896a]'
+                  : 'border-[#e1ddd8] dark:border-[#313746] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-[#a07855]/50 dark:hover:border-[#b8896a]/50'
+              }`}
+            >
+              <Sun className="w-4 h-4" />
+              <span className="font-albert text-sm font-medium">Light</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDefaultTheme('dark');
+                setHasChanges(true);
+              }}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all ${
+                defaultTheme === 'dark'
+                  ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/10 dark:bg-[#b8896a]/10 text-[#a07855] dark:text-[#b8896a]'
+                  : 'border-[#e1ddd8] dark:border-[#313746] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-[#a07855]/50 dark:hover:border-[#b8896a]/50'
+              }`}
+            >
+              <Moon className="w-4 h-4" />
+              <span className="font-albert text-sm font-medium">Dark</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDefaultTheme('system');
+                setHasChanges(true);
+              }}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all ${
+                defaultTheme === 'system'
+                  ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/10 dark:bg-[#b8896a]/10 text-[#a07855] dark:text-[#b8896a]'
+                  : 'border-[#e1ddd8] dark:border-[#313746] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-[#a07855]/50 dark:hover:border-[#b8896a]/50'
+              }`}
+            >
+              <Monitor className="w-4 h-4" />
+              <span className="font-albert text-sm font-medium">System</span>
+            </button>
+          </div>
+          
+          <p className="mt-3 text-[12px] text-[#a7a39e] dark:text-[#7d8190]">
+            {defaultTheme === 'light' && 'Users will see the light theme by default. They can still change it in their preferences.'}
+            {defaultTheme === 'dark' && 'Users will see the dark theme by default. They can still change it in their preferences.'}
+            {defaultTheme === 'system' && 'Users will see a theme matching their device settings. They can still change it in their preferences.'}
+          </p>
+        </div>
       </div>
 
       {/* Domain Settings Section */}

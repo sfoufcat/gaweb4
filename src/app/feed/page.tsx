@@ -9,7 +9,6 @@ import { useSquad } from '@/hooks/useSquad';
 import { useFeedStories } from '@/hooks/useFeedStories';
 import { FeedList } from '@/components/feed/FeedList';
 import { CreatePostModal } from '@/components/feed/CreatePostModal';
-import { CommentSheet } from '@/components/feed/CommentSheet';
 import { ShareSheet } from '@/components/feed/ShareSheet';
 import { ReportModal } from '@/components/feed/ReportModal';
 import { StoriesRow } from '@/components/feed/StoriesRow';
@@ -41,7 +40,6 @@ export default function FeedPage() {
   } = useFeed();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedPostForComment, setSelectedPostForComment] = useState<string | null>(null);
   const [selectedPostForShare, setSelectedPostForShare] = useState<string | null>(null);
   const [selectedPostForReport, setSelectedPostForReport] = useState<string | null>(null);
   const [selectedStoryUserId, setSelectedStoryUserId] = useState<string | null>(null);
@@ -62,11 +60,6 @@ export default function FeedPage() {
     addPost(post);
     setShowCreateModal(false);
   }, [addPost]);
-
-  // Handle comment
-  const handleComment = useCallback((postId: string) => {
-    setSelectedPostForComment(postId);
-  }, []);
 
   // Handle share
   const handleShare = useCallback((postId: string) => {
@@ -189,7 +182,6 @@ export default function FeedPage() {
               onLoadMore={loadMore}
               onLike={optimisticLike}
               onBookmark={optimisticBookmark}
-              onComment={handleComment}
               onShare={handleShare}
               onDelete={handleDelete}
               onReport={handleReport}
@@ -214,14 +206,6 @@ export default function FeedPage() {
         onClose={() => setShowCreateModal(false)}
         onPostCreated={handlePostCreated}
       />
-
-      {/* Comment sheet */}
-      {selectedPostForComment && (
-        <CommentSheet
-          postId={selectedPostForComment}
-          onClose={() => setSelectedPostForComment(null)}
-        />
-      )}
 
       {/* Share sheet */}
       {selectedPostForShare && (

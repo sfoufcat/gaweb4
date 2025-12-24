@@ -7,6 +7,7 @@ import { useUser } from '@clerk/nextjs';
 import { formatDistanceToNow } from 'date-fns';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 import { DeleteConfirmationModal } from './ConfirmationModal';
+import { InlineComments } from './InlineComments';
 import type { FeedPost } from '@/hooks/useFeed';
 import { getProfileUrl } from '@/lib/utils';
 
@@ -14,7 +15,6 @@ interface PostCardProps {
   post: FeedPost;
   onLike?: (postId: string, isLiked: boolean) => void;
   onBookmark?: (postId: string, isBookmarked: boolean) => void;
-  onComment?: (postId: string) => void;
   onShare?: (postId: string) => void;
   onDelete?: (postId: string) => void;
   onReport?: (postId: string) => void;
@@ -24,7 +24,6 @@ export function PostCard({
   post,
   onLike,
   onBookmark,
-  onComment,
   onShare,
   onDelete,
   onReport,
@@ -34,6 +33,8 @@ export function PostCard({
   const { colors, isDefault } = useBrandingValues();
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [commentsExpanded, setCommentsExpanded] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
   const [isBookmarking, setIsBookmarking] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -322,8 +323,9 @@ export function PostCard({
 
           {/* Comment */}
           <button
-            onClick={() => onComment?.(post.id)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors text-[#8a857f]"
+            onClick={() => setShowComments(!showComments)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors ${showComments ? '' : 'text-[#8a857f]'}`}
+            style={showComments ? { color: accentColor } : undefined}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -363,6 +365,16 @@ export function PostCard({
           </svg>
         </button>
       </div>
+
+      {/* Inline comments */}
+      {showComments && (
+        <InlineComments
+          postId={post.id}
+          commentCount={post.commentCount}
+          expanded={commentsExpanded}
+          onExpandChange={setCommentsExpanded}
+        />
+      )}
 
       {/* Delete confirmation modal */}
       <DeleteConfirmationModal
