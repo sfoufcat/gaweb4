@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import { addReaction, getStreamFeedsClient, createPost } from '@/lib/stream-feeds';
 import { adminDb } from '@/lib/firebase-admin';
 import { notifyUser } from '@/lib/notifications';
+import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * POST /api/feed/[postId]/repost
@@ -31,54 +31,66 @@ export async function POST(
     const body = await request.json().catch(() => ({}));
     const { quote } = body;
 
-    // Add repost reaction to track repost
-    await addReaction(userId, postId, 'repost');
-
-    // Get original post data
-    const client = getStreamFeedsClient();
-    const cleanOrgId = organizationId.replace('org_', '');
-    const orgFeed = client.feed('org', cleanOrgId);
-    
-    const response = await orgFeed.get({
-      id_lte: postId,
-      id_gte: postId,
-      limit: 1,
-    });
-
-    if (!response.results.length) {
+    // Get original post
+    const originalPostDoc = await adminDb.collection('feed_posts').doc(postId).get();
+    if (!originalPostDoc.exists) {
       return NextResponse.json({ error: 'Original post not found' }, { status: 404 });
     }
 
-    const originalPost = response.results[0] as Record<string, unknown>;
-    const originalAuthorId = originalPost.actor as string;
+    const originalPost = originalPostDoc.data()!;
+    const originalAuthorId = originalPost.authorId;
 
-    // Create a new post that references the original
-    // The repost will show the original content plus optional quote
-    const repostText = quote 
-      ? `${quote}\n\n[Reposted from @${originalAuthorId}]`
-      : `[Reposted from @${originalAuthorId}]`;
+    // Check if user has already reposted this post
+    const existingRepost = await adminDb
+      .collection('feed_reactions')
+      .where('postId', '==', postId)
+      .where('userId', '==', userId)
+      .where('type', '==', 'repost')
+      .limit(1)
+      .get();
 
-    // Create the repost as a new activity
-    const userFeed = client.feed('user', userId);
-    
-    const repostActivity = {
-      actor: userId,
-      verb: 'repost',
-      object: postId,
-      text: repostText,
+    if (!existingRepost.empty) {
+      return NextResponse.json({ success: true, message: 'Already reposted' });
+    }
+
+    const now = new Date().toISOString();
+
+    // Add repost reaction
+    const reactionRef = adminDb.collection('feed_reactions').doc();
+    await reactionRef.set({
+      postId,
+      userId,
+      type: 'repost',
+      organizationId,
+      createdAt: now,
+    });
+
+    // Increment repost count on original post
+    await adminDb.collection('feed_posts').doc(postId).update({
+      repostCount: FieldValue.increment(1),
+    });
+
+    // Create a new post that references the original (if quote provided, or as a share)
+    const repostRef = adminDb.collection('feed_posts').doc();
+    await repostRef.set({
+      authorId: userId,
+      organizationId,
+      text: quote || null,
+      images: [],
+      videoUrl: null,
+      isRepost: true,
       originalPostId: postId,
       originalAuthorId,
       originalText: originalPost.text,
-      originalImages: originalPost.images,
-      originalVideoUrl: originalPost.videoUrl,
-      quote: quote || null,
-      organizationId,
-      foreign_id: `repost:${userId}:${postId}:${Date.now()}`,
-      time: new Date().toISOString(),
-      to: [`org:${cleanOrgId}`],
-    };
-
-    const result = await userFeed.addActivity(repostActivity);
+      originalImages: originalPost.images || [],
+      originalVideoUrl: originalPost.videoUrl || null,
+      likeCount: 0,
+      commentCount: 0,
+      repostCount: 0,
+      bookmarkCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
 
     // Notify original author (fire-and-forget)
     notifyOriginalAuthor(originalAuthorId, userId, postId, organizationId).catch(console.error);
@@ -86,7 +98,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       repost: {
-        id: result.id,
+        id: repostRef.id,
         originalPostId: postId,
         quote,
       },
@@ -130,4 +142,3 @@ async function notifyOriginalAuthor(
     console.error('[FEED_REPOST_NOTIFY] Error:', error);
   }
 }
-

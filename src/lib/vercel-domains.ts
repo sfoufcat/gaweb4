@@ -337,3 +337,4 @@ export async function verifyDomainInVercel(domain: string): Promise<VercelDomain
 export function isVercelDomainApiConfigured(): boolean {
   return !!(process.env.VERCEL_API_TOKEN && process.env.VERCEL_PROJECT_ID);
 }
+

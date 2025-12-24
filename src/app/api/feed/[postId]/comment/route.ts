@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import { addComment, getComments, getStreamFeedsClient } from '@/lib/stream-feeds';
 import { adminDb } from '@/lib/firebase-admin';
 import { notifyUser } from '@/lib/notifications';
+import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * GET /api/feed/[postId]/comment
@@ -32,43 +32,62 @@ export async function GET(
     const limit = parseInt(searchParams.get('limit') || '20', 10);
     const cursor = searchParams.get('cursor') || undefined;
 
-    // Get comments from Stream
-    const response = await getComments(postId, { limit, id_lt: cursor });
+    // Get comments from Firestore
+    let query = adminDb
+      .collection('feed_comments')
+      .where('postId', '==', postId)
+      .orderBy('createdAt', 'asc')
+      .limit(limit + 1);
 
-    // Get user data for each commenter
-    const commenterIds = [...new Set(response.results.map((r) => r.user_id))];
-    const userDocs = await Promise.all(
-      commenterIds.map((id) => adminDb.collection('users').doc(id as string).get())
+    if (cursor) {
+      const cursorDoc = await adminDb.collection('feed_comments').doc(cursor).get();
+      if (cursorDoc.exists) {
+        query = query.startAfter(cursorDoc);
+      }
+    }
+
+    const snapshot = await query.get();
+    const hasMore = snapshot.docs.length > limit;
+    const docs = hasMore ? snapshot.docs.slice(0, limit) : snapshot.docs;
+
+    // Get unique author IDs
+    const authorIds = [...new Set(docs.map(doc => doc.data().authorId))];
+    
+    // Batch fetch author data
+    const authorDocs = await Promise.all(
+      authorIds.map(id => adminDb.collection('users').doc(id).get())
     );
-    const usersMap = new Map(
-      userDocs.map((doc) => [doc.id, doc.data()])
+    const authorMap = new Map(
+      authorDocs.filter(doc => doc.exists).map(doc => [doc.id, doc.data()])
     );
 
     // Transform comments
-    const comments = response.results.map((reaction) => {
-      const userData = usersMap.get(reaction.user_id as string);
+    const comments = docs.map(doc => {
+      const data = doc.data();
+      const author = authorMap.get(data.authorId);
+      
       return {
-        id: reaction.id,
+        id: doc.id,
         postId,
-        authorId: reaction.user_id,
-        text: (reaction.data as { text?: string })?.text || '',
-        parentCommentId: (reaction.data as { parentCommentId?: string })?.parentCommentId,
-        createdAt: reaction.created_at,
-        author: userData ? {
-          id: reaction.user_id,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          imageUrl: userData.avatarUrl || userData.imageUrl,
+        authorId: data.authorId,
+        text: data.text,
+        parentCommentId: data.parentCommentId || null,
+        createdAt: data.createdAt,
+        author: author ? {
+          id: data.authorId,
+          firstName: author.firstName,
+          lastName: author.lastName,
+          imageUrl: author.avatarUrl || author.imageUrl,
         } : null,
       };
     });
 
-    const nextCursor = comments.length === limit ? comments[comments.length - 1]?.id : null;
+    const nextCursor = hasMore && docs.length > 0 ? docs[docs.length - 1].id : null;
 
     return NextResponse.json({
       comments,
       nextCursor,
-      hasMore: comments.length === limit,
+      hasMore,
     });
   } catch (error) {
     console.error('[FEED_COMMENTS_GET] Error:', error);
@@ -112,8 +131,23 @@ export async function POST(
       );
     }
 
-    // Add comment
-    const reaction = await addComment(userId, postId, text.trim(), parentCommentId);
+    const now = new Date().toISOString();
+
+    // Add comment to Firestore
+    const commentRef = adminDb.collection('feed_comments').doc();
+    await commentRef.set({
+      postId,
+      authorId: userId,
+      text: text.trim(),
+      parentCommentId: parentCommentId || null,
+      organizationId,
+      createdAt: now,
+    });
+
+    // Increment comment count on post
+    await adminDb.collection('feed_posts').doc(postId).update({
+      commentCount: FieldValue.increment(1),
+    });
 
     // Get commenter data
     const userDoc = await adminDb.collection('users').doc(userId).get();
@@ -125,12 +159,12 @@ export async function POST(
     return NextResponse.json({
       success: true,
       comment: {
-        id: reaction.id,
+        id: commentRef.id,
         postId,
         authorId: userId,
         text: text.trim(),
-        parentCommentId,
-        createdAt: reaction.created_at,
+        parentCommentId: parentCommentId || null,
+        createdAt: now,
         author: userData ? {
           id: userId,
           firstName: userData.firstName,
@@ -158,21 +192,12 @@ async function notifyPostAuthor(
   commentText: string
 ) {
   try {
-    // Get the activity to find the author
-    const client = getStreamFeedsClient();
-    const cleanOrgId = organizationId.replace('org_', '');
-    const orgFeed = client.feed('org', cleanOrgId);
-    
-    const response = await orgFeed.get({
-      id_lte: postId,
-      id_gte: postId,
-      limit: 1,
-    });
+    // Get the post to find the author
+    const postDoc = await adminDb.collection('feed_posts').doc(postId).get();
+    if (!postDoc.exists) return;
 
-    if (!response.results.length) return;
-
-    const activity = response.results[0] as Record<string, unknown>;
-    const authorId = activity.actor as string;
+    const postData = postDoc.data()!;
+    const authorId = postData.authorId;
 
     // Don't notify yourself
     if (authorId === commenterId) return;
@@ -199,4 +224,3 @@ async function notifyPostAuthor(
     console.error('[FEED_COMMENT_NOTIFY] Error:', error);
   }
 }
-

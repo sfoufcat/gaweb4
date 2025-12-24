@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import { deletePost, getStreamFeedsClient } from '@/lib/stream-feeds';
 import { adminDb } from '@/lib/firebase-admin';
 import { isAdmin, canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import type { UserRole, OrgRole } from '@/types';
@@ -37,41 +36,43 @@ export async function DELETE(
     const orgRole = publicMetadata?.orgRole;
     const canModerate = isAdmin(role) || canAccessCoachDashboard(role, orgRole);
 
-    // Get the post to check ownership
-    const client = getStreamFeedsClient();
-    
-    // We need to find who owns this post to delete it from their feed
-    // For now, try to delete from the requester's feed (they can only delete their own)
-    // Coaches can delete from anyone's feed
-    
-    if (!canModerate) {
-      // Regular user - can only delete their own posts
-      try {
-        await deletePost(userId, postId);
-      } catch {
-        return NextResponse.json(
-          { error: 'You can only delete your own posts' },
-          { status: 403 }
-        );
-      }
-    } else {
-      // Coach/Admin - can delete any post
-      // We need to find the activity and delete it
-      try {
-        // Get activity details first
-        const cleanOrgId = organizationId.replace('org_', '');
-        const orgFeed = client.feed('org', cleanOrgId);
-        
-        // Delete the activity by ID
-        await orgFeed.removeActivity(postId);
-      } catch (error) {
-        console.error('[FEED_DELETE] Error deleting post:', error);
-        return NextResponse.json(
-          { error: 'Failed to delete post' },
-          { status: 500 }
-        );
-      }
+    // Get the post
+    const postDoc = await adminDb.collection('feed_posts').doc(postId).get();
+    if (!postDoc.exists) {
+      return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
+
+    const postData = postDoc.data()!;
+
+    // Check ownership or moderation rights
+    if (!canModerate && postData.authorId !== userId) {
+      return NextResponse.json(
+        { error: 'You can only delete your own posts' },
+        { status: 403 }
+      );
+    }
+
+    // Delete the post
+    await postDoc.ref.delete();
+
+    // Delete associated reactions
+    const reactionsSnapshot = await adminDb
+      .collection('feed_reactions')
+      .where('postId', '==', postId)
+      .get();
+    
+    const batch = adminDb.batch();
+    reactionsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+    
+    // Delete associated comments
+    const commentsSnapshot = await adminDb
+      .collection('feed_comments')
+      .where('postId', '==', postId)
+      .get();
+    
+    commentsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+    
+    await batch.commit();
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -113,40 +114,58 @@ export async function GET(
       return NextResponse.json({ error: 'Feed is not enabled' }, { status: 403 });
     }
 
-    // Get the activity from Stream
-    const client = getStreamFeedsClient();
-    const cleanOrgId = organizationId.replace('org_', '');
-    const orgFeed = client.feed('org', cleanOrgId);
-    
-    // Get activities with this ID
-    const response = await orgFeed.get({
-      id_lte: postId,
-      id_gte: postId,
-      limit: 1,
-      enrich: true,
-    });
-
-    if (!response.results.length) {
+    // Get the post from Firestore
+    const postDoc = await adminDb.collection('feed_posts').doc(postId).get();
+    if (!postDoc.exists) {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
 
-    const activity = response.results[0] as Record<string, unknown>;
+    const data = postDoc.data()!;
+
+    // Get author data
+    const authorDoc = await adminDb.collection('users').doc(data.authorId).get();
+    const authorData = authorDoc.data();
+
+    // Get user's reactions for this post
+    const userReactionsSnapshot = await adminDb
+      .collection('feed_reactions')
+      .where('postId', '==', postId)
+      .where('userId', '==', userId)
+      .get();
     
+    const userReactions = new Set(
+      userReactionsSnapshot.docs.map(doc => doc.data().type)
+    );
+
     const post = {
-      id: activity.id as string,
-      authorId: activity.actor as string,
-      text: activity.text as string | undefined,
-      images: activity.images as string[] | undefined,
-      videoUrl: activity.videoUrl as string | undefined,
-      createdAt: activity.time as string,
-      likeCount: (activity.reaction_counts as Record<string, number>)?.like || 0,
-      commentCount: (activity.reaction_counts as Record<string, number>)?.comment || 0,
-      repostCount: (activity.reaction_counts as Record<string, number>)?.repost || 0,
-      bookmarkCount: (activity.reaction_counts as Record<string, number>)?.bookmark || 0,
-      hasLiked: (activity.own_reactions as Record<string, unknown[]>)?.like?.length > 0,
-      hasBookmarked: (activity.own_reactions as Record<string, unknown[]>)?.bookmark?.length > 0,
-      hasReposted: (activity.own_reactions as Record<string, unknown[]>)?.repost?.length > 0,
-      author: activity.actor_data as Record<string, unknown> | undefined,
+      id: postDoc.id,
+      authorId: data.authorId,
+      text: data.text,
+      images: data.images,
+      videoUrl: data.videoUrl,
+      createdAt: data.createdAt,
+      likeCount: data.likeCount || 0,
+      commentCount: data.commentCount || 0,
+      repostCount: data.repostCount || 0,
+      bookmarkCount: data.bookmarkCount || 0,
+      hasLiked: userReactions.has('like'),
+      hasBookmarked: userReactions.has('bookmark'),
+      hasReposted: userReactions.has('repost'),
+      // Repost data
+      isRepost: data.isRepost || false,
+      originalPostId: data.originalPostId,
+      originalAuthorId: data.originalAuthorId,
+      originalText: data.originalText,
+      originalImages: data.originalImages,
+      originalVideoUrl: data.originalVideoUrl,
+      // Author data
+      author: authorData ? {
+        id: data.authorId,
+        firstName: authorData.firstName,
+        lastName: authorData.lastName,
+        imageUrl: authorData.avatarUrl || authorData.imageUrl,
+        name: `${authorData.firstName || ''} ${authorData.lastName || ''}`.trim(),
+      } : undefined,
     };
 
     return NextResponse.json({ post });
@@ -158,4 +177,3 @@ export async function GET(
     );
   }
 }
-

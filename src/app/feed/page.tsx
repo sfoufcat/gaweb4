@@ -10,6 +10,7 @@ import { CreatePostModal } from '@/components/feed/CreatePostModal';
 import { CommentSheet } from '@/components/feed/CommentSheet';
 import { ShareSheet } from '@/components/feed/ShareSheet';
 import { ReportModal } from '@/components/feed/ReportModal';
+import { StoriesRow } from '@/components/feed/StoriesRow';
 
 export default function FeedPage() {
   const { user } = useUser();
@@ -67,18 +68,18 @@ export default function FeedPage() {
   // Feed not enabled for this org (instant check from SSR Edge Config)
   if (!feedEnabled) {
     return (
-      <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b]">
-        <div className="max-w-2xl mx-auto px-4 py-16">
-          <div className="text-center">
-            <div className="w-16 h-16 rounded-full bg-[#f5f3f0] dark:bg-[#262b35] flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-[#8a857f]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <div className="min-h-screen bg-app-bg pb-24 lg:pb-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pt-4">
+          <div className="flex flex-col items-center justify-center py-16 px-4">
+            <div className="w-24 h-24 rounded-full bg-[#f3f1ef] dark:bg-[#171b22] flex items-center justify-center mb-6">
+              <svg className="w-12 h-12 text-text-secondary dark:text-[#7d8190]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
               </svg>
             </div>
-            <h1 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#faf8f6] mb-2">
+            <h2 className="font-albert text-[24px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3] text-center mb-3">
               {feedTitle} Not Available
-            </h1>
-            <p className="text-[15px] text-[#8a857f]">
+            </h2>
+            <p className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2] leading-[1.5] text-center max-w-sm">
               The social feed is not enabled for this community.
             </p>
           </div>
@@ -88,79 +89,92 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b]">
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        {/* Header */}
-        <header className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-[#1a1a1a] dark:text-[#faf8f6]">
+    <div className="min-h-screen bg-app-bg pb-24 lg:pb-8">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pt-4">
+        {/* Page Title */}
+        <div className="mb-6">
+          <h1 className="font-albert text-[28px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.2]">
             {feedTitle}
           </h1>
-          <button
-            onClick={refresh}
-            className="p-2 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
-            title="Refresh feed"
-          >
-            <svg className="w-5 h-5 text-[#8a857f]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </button>
-        </header>
-
-        {/* Create post card */}
-        <div className="bg-white dark:bg-[#13171f] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] p-4 mb-6">
-          <div className="flex items-center gap-3">
-            {/* Avatar */}
-            <div className="w-10 h-10 rounded-full overflow-hidden bg-[#f5f3f0] dark:bg-[#262b35] flex-shrink-0">
-              {user?.imageUrl ? (
-                <Image
-                  src={user.imageUrl}
-                  alt="Your avatar"
-                  width={40}
-                  height={40}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-sm font-semibold text-[#5f5a55] dark:text-[#b5b0ab]">
-                  {(user?.firstName?.[0] || '') + (user?.lastName?.[0] || '')}
-                </div>
-              )}
-            </div>
-
-            {/* Input placeholder button */}
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="flex-1 text-left px-4 py-2.5 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[15px] text-[#8a857f] hover:bg-[#ebe7e2] dark:hover:bg-[#262b35] transition-colors"
-            >
-              What&apos;s on your mind?
-            </button>
-
-            {/* Quick image button */}
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="p-2.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
-            >
-              <svg className="w-5 h-5 text-[#8a857f]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </button>
-          </div>
         </div>
 
-        {/* Feed list */}
-        <FeedList
-          posts={posts}
-          isLoading={isLoading}
-          isValidating={isValidating}
-          hasMore={hasMore}
-          isEmpty={isEmpty}
-          onLoadMore={loadMore}
-          onLike={optimisticLike}
-          onBookmark={optimisticBookmark}
-          onComment={handleComment}
-          onShare={handleShare}
-          onDelete={handleDelete}
-          onReport={handleReport}
-        />
+        {/* Stories Row */}
+        <section className="mb-6">
+          <StoriesRow 
+            onCreateStory={() => setShowCreateModal(true)}
+            onViewStory={(userId) => {
+              // TODO: Open story viewer for this user
+              console.log('View story for user:', userId);
+            }}
+          />
+        </section>
+
+        {/* Two Column Layout on Desktop */}
+        <div className="flex gap-8">
+          {/* Main Feed Column */}
+          <div className="flex-1 max-w-2xl">
+            {/* Create post card */}
+            <div className="bg-white dark:bg-[#171b22] rounded-[20px] border border-[#e1ddd8]/50 dark:border-[#262b35] p-4 mb-6">
+              <div className="flex items-center gap-3">
+                {/* Avatar */}
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-[#f5f3f0] dark:bg-[#262b35] flex-shrink-0">
+                  {user?.imageUrl ? (
+                    <Image
+                      src={user.imageUrl}
+                      alt="Your avatar"
+                      width={40}
+                      height={40}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-sm font-semibold text-[#5f5a55] dark:text-[#b5b0ab]">
+                      {(user?.firstName?.[0] || '') + (user?.lastName?.[0] || '')}
+                    </div>
+                  )}
+                </div>
+
+                {/* Input placeholder button */}
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="flex-1 text-left px-4 py-2.5 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[15px] text-text-secondary hover:bg-[#ebe7e2] dark:hover:bg-[#262b35] transition-colors"
+                >
+                  What&apos;s on your mind?
+                </button>
+
+                {/* Quick image button */}
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="p-2.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+                >
+                  <svg className="w-5 h-5 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Feed list */}
+            <FeedList
+              posts={posts}
+              isLoading={isLoading}
+              isValidating={isValidating}
+              hasMore={hasMore}
+              isEmpty={isEmpty}
+              onLoadMore={loadMore}
+              onLike={optimisticLike}
+              onBookmark={optimisticBookmark}
+              onComment={handleComment}
+              onShare={handleShare}
+              onDelete={handleDelete}
+              onReport={handleReport}
+            />
+          </div>
+
+          {/* Sidebar - Hidden on mobile */}
+          <div className="hidden lg:block w-80 flex-shrink-0">
+            {/* Placeholder for future sidebar content (trending, suggestions, etc.) */}
+          </div>
+        </div>
 
         {/* Floating create button (mobile) */}
         <button

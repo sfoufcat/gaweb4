@@ -95,3 +95,4 @@ export default async function JoinProgramPage({ params, searchParams }: JoinPage
   redirect(redirectUrl);
 }
 
+

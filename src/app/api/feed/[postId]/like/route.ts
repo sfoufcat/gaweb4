@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import { addReaction, removeReaction, getStreamFeedsClient } from '@/lib/stream-feeds';
 import { adminDb } from '@/lib/firebase-admin';
 import { notifyUser } from '@/lib/notifications';
+import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * POST /api/feed/[postId]/like
@@ -27,15 +27,40 @@ export async function POST(
       return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
     }
 
+    // Check if already liked
+    const existingLike = await adminDb
+      .collection('feed_reactions')
+      .where('postId', '==', postId)
+      .where('userId', '==', userId)
+      .where('type', '==', 'like')
+      .limit(1)
+      .get();
+
+    if (!existingLike.empty) {
+      return NextResponse.json({ success: true, message: 'Already liked' });
+    }
+
     // Add like reaction
-    const reaction = await addReaction(userId, postId, 'like');
+    const reactionRef = adminDb.collection('feed_reactions').doc();
+    await reactionRef.set({
+      postId,
+      userId,
+      type: 'like',
+      organizationId,
+      createdAt: new Date().toISOString(),
+    });
+
+    // Increment like count on post
+    await adminDb.collection('feed_posts').doc(postId).update({
+      likeCount: FieldValue.increment(1),
+    });
 
     // Get post author to send notification (fire-and-forget)
-    notifyPostAuthor(postId, userId, organizationId, 'like').catch(console.error);
+    notifyPostAuthor(postId, userId, organizationId).catch(console.error);
 
     return NextResponse.json({
       success: true,
-      reactionId: reaction.id,
+      reactionId: reactionRef.id,
     });
   } catch (error) {
     console.error('[FEED_LIKE] Error:', error);
@@ -68,20 +93,26 @@ export async function DELETE(
       return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
     }
 
-    // Find and remove the user's like reaction
-    const client = getStreamFeedsClient();
-    
-    // Get reactions for this activity by this user
-    const reactions = await client.reactions.filter({
-      activity_id: postId,
-      kind: 'like',
-      user_id: userId,
-      limit: 1,
-    });
+    // Find user's like
+    const likeSnapshot = await adminDb
+      .collection('feed_reactions')
+      .where('postId', '==', postId)
+      .where('userId', '==', userId)
+      .where('type', '==', 'like')
+      .limit(1)
+      .get();
 
-    if (reactions.results.length > 0) {
-      await removeReaction(reactions.results[0].id);
+    if (likeSnapshot.empty) {
+      return NextResponse.json({ success: true, message: 'Not liked' });
     }
+
+    // Delete the like
+    await likeSnapshot.docs[0].ref.delete();
+
+    // Decrement like count on post
+    await adminDb.collection('feed_posts').doc(postId).update({
+      likeCount: FieldValue.increment(-1),
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -99,25 +130,15 @@ export async function DELETE(
 async function notifyPostAuthor(
   postId: string,
   likerId: string,
-  organizationId: string,
-  action: 'like'
+  organizationId: string
 ) {
   try {
-    // Get the activity to find the author
-    const client = getStreamFeedsClient();
-    const cleanOrgId = organizationId.replace('org_', '');
-    const orgFeed = client.feed('org', cleanOrgId);
-    
-    const response = await orgFeed.get({
-      id_lte: postId,
-      id_gte: postId,
-      limit: 1,
-    });
+    // Get the post to find the author
+    const postDoc = await adminDb.collection('feed_posts').doc(postId).get();
+    if (!postDoc.exists) return;
 
-    if (!response.results.length) return;
-
-    const activity = response.results[0] as Record<string, unknown>;
-    const authorId = activity.actor as string;
+    const postData = postDoc.data()!;
+    const authorId = postData.authorId;
 
     // Don't notify yourself
     if (authorId === likerId) return;
@@ -128,7 +149,7 @@ async function notifyPostAuthor(
     const likerName = likerData?.firstName || 'Someone';
 
     // Get post preview
-    const postText = (activity.text as string) || 'your post';
+    const postText = postData.text || 'your post';
     const postPreview = postText.length > 50 ? postText.substring(0, 50) + '...' : postText;
 
     await notifyUser({
@@ -143,4 +164,3 @@ async function notifyPostAuthor(
     console.error('[FEED_LIKE_NOTIFY] Error:', error);
   }
 }
-

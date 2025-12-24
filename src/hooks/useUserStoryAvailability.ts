@@ -3,6 +3,15 @@ import type { Task } from '@/types';
 import { generateStoryContentHash } from './useStoryViewTracking';
 
 /**
+ * Check if we're currently in the weekly reflection window (Fri, Sat, Sun)
+ * The Week Closed story should only be visible during this period
+ */
+function isInReflectionWindow(): boolean {
+  const dayOfWeek = new Date().getDay(); // 0 = Sunday, 5 = Friday, 6 = Saturday
+  return dayOfWeek === 0 || dayOfWeek === 5 || dayOfWeek === 6;
+}
+
+/**
  * Story availability states:
  * 1. No ring, no story: user has no active goal
  * 2. Green ring, no check: has active goal but no tasks today
@@ -122,8 +131,9 @@ export function useCurrentUserStoryAvailability(): StoryAvailability {
       const hasActiveGoal = !!(userData.goal?.goal);
       const hasTasksToday = focusTasks.length > 0;
 
-      // Check if weekly reflection is complete
-      const hasWeekClosed = !!(weeklyData.checkIn?.completedAt);
+      // Check if weekly reflection is complete AND we're in the reflection window (Fri-Sun)
+      // The Week Closed story should only be visible during the reflection window
+      const hasWeekClosed = isInReflectionWindow() && !!(weeklyData.checkIn?.completedAt);
 
       setData({
         hasActiveGoal,
@@ -240,11 +250,14 @@ export function useUserStoryAvailability(userId: string): StoryAvailability {
 
       const storyData = await response.json();
 
+      // Apply reflection window check - Week Closed story only visible Fri-Sun
+      const hasWeekClosed = isInReflectionWindow() && (storyData.hasWeekClosed || false);
+
       setData({
         hasActiveGoal: storyData.hasActiveGoal,
         hasTasksToday: storyData.hasTasksToday,
         hasDayClosed: storyData.hasDayClosed || false,
-        hasWeekClosed: storyData.hasWeekClosed || false,
+        hasWeekClosed,
         goal: storyData.goal,
         tasks: storyData.tasks || [],
         completedTasks: storyData.completedTasks || [],

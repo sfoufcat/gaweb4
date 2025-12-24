@@ -178,29 +178,41 @@ export async function createPost(
     videoUrl?: string;
   }
 ): Promise<{ id: string; activity: FeedPostActivity }> {
-  const userFeed = getUserFeed(userId);
   const cleanOrgId = orgId.replace('org_', '');
+  const now = new Date().toISOString();
+  const postId = `post_${userId}_${Date.now()}`;
   
   const activity: FeedPostActivity = {
     actor: userId,
     verb: 'post',
-    object: `post:${Date.now()}`, // Temporary, will be replaced by Stream
+    object: postId,
     text: postData.text,
     images: postData.images,
     videoUrl: postData.videoUrl,
     organizationId: orgId,
-    foreign_id: `post:${userId}:${Date.now()}`,
-    time: new Date().toISOString(),
-    // Fan out to org feed
+    foreign_id: postId,
+    time: now,
     to: [`org:${cleanOrgId}`],
   };
 
-  const response = await userFeed.addActivity(activity);
-  
-  return {
-    id: response.id,
-    activity: { ...activity, object: response.id },
-  };
+  try {
+    // Try Stream Activity Feeds first
+    const userFeed = getUserFeed(userId);
+    const response = await userFeed.addActivity(activity);
+    
+    return {
+      id: response.id,
+      activity: { ...activity, object: response.id },
+    };
+  } catch (streamError) {
+    // Log the actual Stream error for debugging
+    console.error('[STREAM_FEEDS] Stream Activity Feeds error:', streamError);
+    console.error('[STREAM_FEEDS] This likely means Activity Feeds is not configured in Stream dashboard.');
+    console.error('[STREAM_FEEDS] Required feed groups: user, org, story, timeline');
+    
+    // Re-throw with more context
+    throw new Error(`Stream Activity Feeds not configured. Original error: ${streamError instanceof Error ? streamError.message : String(streamError)}`);
+  }
 }
 
 /**

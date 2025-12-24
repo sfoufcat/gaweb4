@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import { addReaction, removeReaction, getStreamFeedsClient } from '@/lib/stream-feeds';
+import { adminDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * POST /api/feed/[postId]/bookmark
@@ -25,12 +26,37 @@ export async function POST(
       return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
     }
 
+    // Check if already bookmarked
+    const existingBookmark = await adminDb
+      .collection('feed_reactions')
+      .where('postId', '==', postId)
+      .where('userId', '==', userId)
+      .where('type', '==', 'bookmark')
+      .limit(1)
+      .get();
+
+    if (!existingBookmark.empty) {
+      return NextResponse.json({ success: true, message: 'Already bookmarked' });
+    }
+
     // Add bookmark reaction
-    const reaction = await addReaction(userId, postId, 'bookmark');
+    const reactionRef = adminDb.collection('feed_reactions').doc();
+    await reactionRef.set({
+      postId,
+      userId,
+      type: 'bookmark',
+      organizationId,
+      createdAt: new Date().toISOString(),
+    });
+
+    // Increment bookmark count on post
+    await adminDb.collection('feed_posts').doc(postId).update({
+      bookmarkCount: FieldValue.increment(1),
+    });
 
     return NextResponse.json({
       success: true,
-      reactionId: reaction.id,
+      reactionId: reactionRef.id,
     });
   } catch (error) {
     console.error('[FEED_BOOKMARK] Error:', error);
@@ -63,19 +89,26 @@ export async function DELETE(
       return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
     }
 
-    // Find and remove the user's bookmark reaction
-    const client = getStreamFeedsClient();
-    
-    const reactions = await client.reactions.filter({
-      activity_id: postId,
-      kind: 'bookmark',
-      user_id: userId,
-      limit: 1,
-    });
+    // Find user's bookmark
+    const bookmarkSnapshot = await adminDb
+      .collection('feed_reactions')
+      .where('postId', '==', postId)
+      .where('userId', '==', userId)
+      .where('type', '==', 'bookmark')
+      .limit(1)
+      .get();
 
-    if (reactions.results.length > 0) {
-      await removeReaction(reactions.results[0].id);
+    if (bookmarkSnapshot.empty) {
+      return NextResponse.json({ success: true, message: 'Not bookmarked' });
     }
+
+    // Delete the bookmark
+    await bookmarkSnapshot.docs[0].ref.delete();
+
+    // Decrement bookmark count on post
+    await adminDb.collection('feed_posts').doc(postId).update({
+      bookmarkCount: FieldValue.increment(-1),
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -86,4 +119,3 @@ export async function DELETE(
     );
   }
 }
-

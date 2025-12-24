@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import { getStreamFeedsClient } from '@/lib/stream-feeds';
 import { adminDb } from '@/lib/firebase-admin';
 
 /**
@@ -36,64 +35,96 @@ export async function GET(request: NextRequest) {
     const cursor = searchParams.get('cursor') || undefined;
 
     // Get user's bookmark reactions
-    const client = getStreamFeedsClient();
-    
-    const reactions = await client.reactions.filter({
-      user_id: userId,
-      kind: 'bookmark',
-      limit,
-      id_lt: cursor,
-    });
+    let query = adminDb
+      .collection('feed_reactions')
+      .where('userId', '==', userId)
+      .where('type', '==', 'bookmark')
+      .where('organizationId', '==', organizationId)
+      .orderBy('createdAt', 'desc')
+      .limit(limit + 1);
+
+    if (cursor) {
+      const cursorDoc = await adminDb.collection('feed_reactions').doc(cursor).get();
+      if (cursorDoc.exists) {
+        query = query.startAfter(cursorDoc);
+      }
+    }
+
+    const bookmarksSnapshot = await query.get();
+    const hasMore = bookmarksSnapshot.docs.length > limit;
+    const bookmarkDocs = hasMore ? bookmarksSnapshot.docs.slice(0, limit) : bookmarksSnapshot.docs;
 
     // Get the actual posts for each bookmark
-    const cleanOrgId = organizationId.replace('org_', '');
-    const orgFeed = client.feed('org', cleanOrgId);
+    const postIds = bookmarkDocs.map(doc => doc.data().postId);
     
-    const posts = await Promise.all(
-      reactions.results.map(async (reaction) => {
-        try {
-          const activityId = reaction.activity_id;
-          const response = await orgFeed.get({
-            id_lte: activityId,
-            id_gte: activityId,
-            limit: 1,
-            enrich: true,
-          });
-          
-          if (!response.results.length) return null;
-          
-          const activity = response.results[0] as Record<string, unknown>;
-          return {
-            id: activity.id as string,
-            authorId: activity.actor as string,
-            text: activity.text as string | undefined,
-            images: activity.images as string[] | undefined,
-            videoUrl: activity.videoUrl as string | undefined,
-            createdAt: activity.time as string,
-            bookmarkedAt: reaction.created_at,
-            likeCount: (activity.reaction_counts as Record<string, number>)?.like || 0,
-            commentCount: (activity.reaction_counts as Record<string, number>)?.comment || 0,
-            author: activity.actor_data as Record<string, unknown> | undefined,
-            hasBookmarked: true,
-          };
-        } catch {
-          // Post may have been deleted
-          return null;
-        }
-      })
+    if (postIds.length === 0) {
+      return NextResponse.json({
+        posts: [],
+        nextCursor: null,
+        hasMore: false,
+      });
+    }
+
+    // Batch fetch posts
+    const postDocs = await Promise.all(
+      postIds.map(id => adminDb.collection('feed_posts').doc(id).get())
     );
 
-    // Filter out nulls (deleted posts)
-    const validPosts = posts.filter(Boolean);
+    // Get unique author IDs
+    const authorIds = [...new Set(
+      postDocs.filter(doc => doc.exists).map(doc => doc.data()!.authorId)
+    )];
+    
+    // Batch fetch author data
+    const authorDocs = await Promise.all(
+      authorIds.map(id => adminDb.collection('users').doc(id).get())
+    );
+    const authorMap = new Map(
+      authorDocs.filter(doc => doc.exists).map(doc => [doc.id, doc.data()])
+    );
 
-    const nextCursor = reactions.results.length === limit 
-      ? reactions.results[reactions.results.length - 1]?.id 
+    // Build posts with bookmark info
+    const posts = bookmarkDocs.map((bookmarkDoc, index) => {
+      const postDoc = postDocs[index];
+      if (!postDoc.exists) return null;
+
+      const bookmarkData = bookmarkDoc.data();
+      const postData = postDoc.data()!;
+      const author = authorMap.get(postData.authorId);
+
+      return {
+        id: postDoc.id,
+        authorId: postData.authorId,
+        text: postData.text,
+        images: postData.images,
+        videoUrl: postData.videoUrl,
+        createdAt: postData.createdAt,
+        bookmarkedAt: bookmarkData.createdAt,
+        likeCount: postData.likeCount || 0,
+        commentCount: postData.commentCount || 0,
+        repostCount: postData.repostCount || 0,
+        bookmarkCount: postData.bookmarkCount || 0,
+        hasLiked: false, // Would need another query to check
+        hasBookmarked: true,
+        hasReposted: false,
+        author: author ? {
+          id: postData.authorId,
+          firstName: author.firstName,
+          lastName: author.lastName,
+          imageUrl: author.avatarUrl || author.imageUrl,
+          name: `${author.firstName || ''} ${author.lastName || ''}`.trim(),
+        } : undefined,
+      };
+    }).filter(Boolean);
+
+    const nextCursor = hasMore && bookmarkDocs.length > 0 
+      ? bookmarkDocs[bookmarkDocs.length - 1].id 
       : null;
 
     return NextResponse.json({
-      posts: validPosts,
+      posts,
       nextCursor,
-      hasMore: reactions.results.length === limit,
+      hasMore,
     });
   } catch (error) {
     console.error('[FEED_BOOKMARKS] Error:', error);
@@ -103,4 +134,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

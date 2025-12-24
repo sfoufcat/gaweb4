@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import { createPost, getOrgPosts, setupStreamUser } from '@/lib/stream-feeds';
 import { adminDb } from '@/lib/firebase-admin';
 
 /**
  * GET /api/feed
  * Fetch posts from the organization's feed with pagination
+ * Uses Firestore for storage (simpler than Stream Activity Feeds which requires dashboard setup)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -35,43 +35,88 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20', 10);
     const cursor = searchParams.get('cursor') || undefined;
 
-    // Fetch posts from Stream
-    const response = await getOrgPosts(organizationId, {
-      limit,
-      id_lt: cursor,
+    // Fetch posts from Firestore
+    let query = adminDb
+      .collection('feed_posts')
+      .where('organizationId', '==', organizationId)
+      .orderBy('createdAt', 'desc')
+      .limit(limit + 1); // Fetch one extra to check if there's more
+
+    if (cursor) {
+      const cursorDoc = await adminDb.collection('feed_posts').doc(cursor).get();
+      if (cursorDoc.exists) {
+        query = query.startAfter(cursorDoc);
+      }
+    }
+
+    const snapshot = await query.get();
+    const hasMore = snapshot.docs.length > limit;
+    const docs = hasMore ? snapshot.docs.slice(0, limit) : snapshot.docs;
+
+    // Get unique author IDs
+    const authorIds = [...new Set(docs.map(doc => doc.data().authorId))];
+    
+    // Batch fetch author data
+    const authorDocs = await Promise.all(
+      authorIds.map(id => adminDb.collection('users').doc(id).get())
+    );
+    const authorMap = new Map(
+      authorDocs.filter(doc => doc.exists).map(doc => [doc.id, doc.data()])
+    );
+
+    // Get user's reactions for these posts
+    const postIds = docs.map(doc => doc.id);
+    const userReactionsSnapshot = await adminDb
+      .collection('feed_reactions')
+      .where('userId', '==', userId)
+      .where('postId', 'in', postIds.length > 0 ? postIds : ['__none__'])
+      .get();
+    
+    const userReactions = new Map<string, Set<string>>();
+    userReactionsSnapshot.docs.forEach(doc => {
+      const data = doc.data();
+      if (!userReactions.has(data.postId)) {
+        userReactions.set(data.postId, new Set());
+      }
+      userReactions.get(data.postId)!.add(data.type);
     });
 
-    // Transform response for frontend
-    const posts = response.results.map((activity) => {
-      const activityData = activity as Record<string, unknown>;
+    // Transform to frontend format
+    const posts = docs.map(doc => {
+      const data = doc.data();
+      const author = authorMap.get(data.authorId);
+      const reactions = userReactions.get(doc.id) || new Set();
+      
       return {
-        id: activityData.id as string,
-        authorId: activityData.actor as string,
-        text: activityData.text as string | undefined,
-        images: activityData.images as string[] | undefined,
-        videoUrl: activityData.videoUrl as string | undefined,
-        createdAt: activityData.time as string,
-        // Reaction counts from Stream's enriched data
-        likeCount: (activityData.reaction_counts as Record<string, number>)?.like || 0,
-        commentCount: (activityData.reaction_counts as Record<string, number>)?.comment || 0,
-        repostCount: (activityData.reaction_counts as Record<string, number>)?.repost || 0,
-        bookmarkCount: (activityData.reaction_counts as Record<string, number>)?.bookmark || 0,
-        // User's own reactions
-        hasLiked: (activityData.own_reactions as Record<string, unknown[]>)?.like?.length > 0,
-        hasBookmarked: (activityData.own_reactions as Record<string, unknown[]>)?.bookmark?.length > 0,
-        hasReposted: (activityData.own_reactions as Record<string, unknown[]>)?.repost?.length > 0,
-        // Author data (enriched by Stream)
-        author: activityData.actor_data as Record<string, unknown> | undefined,
+        id: doc.id,
+        authorId: data.authorId,
+        text: data.text,
+        images: data.images,
+        videoUrl: data.videoUrl,
+        createdAt: data.createdAt,
+        likeCount: data.likeCount || 0,
+        commentCount: data.commentCount || 0,
+        repostCount: data.repostCount || 0,
+        bookmarkCount: data.bookmarkCount || 0,
+        hasLiked: reactions.has('like'),
+        hasBookmarked: reactions.has('bookmark'),
+        hasReposted: reactions.has('repost'),
+        author: author ? {
+          id: data.authorId,
+          firstName: author.firstName,
+          lastName: author.lastName,
+          imageUrl: author.avatarUrl || author.imageUrl,
+          name: `${author.firstName || ''} ${author.lastName || ''}`.trim(),
+        } : undefined,
       };
     });
 
-    // Get next cursor for pagination
-    const nextCursor = posts.length === limit ? posts[posts.length - 1]?.id : null;
+    const nextCursor = hasMore && docs.length > 0 ? docs[docs.length - 1].id : null;
 
     return NextResponse.json({
       posts,
       nextCursor,
-      hasMore: posts.length === limit,
+      hasMore,
     });
   } catch (error) {
     console.error('[FEED_GET] Error fetching feed:', error);
@@ -85,6 +130,7 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/feed
  * Create a new post in the organization's feed
+ * Uses Firestore for storage
  */
 export async function POST(request: NextRequest) {
   try {
@@ -120,38 +166,53 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user data for Stream user setup
+    // Get user data for author info
     const userDoc = await adminDb.collection('users').doc(userId).get();
     const userData = userDoc.data();
     
-    if (userData) {
-      // Ensure user exists in Stream with profile data
-      await setupStreamUser(userId, {
-        name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'User',
-        profileImage: userData.avatarUrl || userData.imageUrl,
-      });
-    }
-
-    // Create the post
-    const result = await createPost(userId, organizationId, {
-      text,
-      images,
-      videoUrl,
-    });
+    const now = new Date().toISOString();
+    
+    // Create post in Firestore
+    const postRef = adminDb.collection('feed_posts').doc();
+    const postData = {
+      authorId: userId,
+      organizationId,
+      text: text || null,
+      images: images || [],
+      videoUrl: videoUrl || null,
+      likeCount: 0,
+      commentCount: 0,
+      repostCount: 0,
+      bookmarkCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+    
+    await postRef.set(postData);
 
     return NextResponse.json({
       success: true,
       post: {
-        id: result.id,
+        id: postRef.id,
         authorId: userId,
-        text,
-        images,
-        videoUrl,
-        createdAt: result.activity.time,
+        text: postData.text,
+        images: postData.images,
+        videoUrl: postData.videoUrl,
+        createdAt: now,
         likeCount: 0,
         commentCount: 0,
         repostCount: 0,
         bookmarkCount: 0,
+        hasLiked: false,
+        hasBookmarked: false,
+        hasReposted: false,
+        author: userData ? {
+          id: userId,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          imageUrl: userData.avatarUrl || userData.imageUrl,
+          name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
+        } : undefined,
       },
     });
   } catch (error) {
