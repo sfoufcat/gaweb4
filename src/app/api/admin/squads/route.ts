@@ -223,13 +223,59 @@ export async function POST(req: Request) {
       chatChannelId: channelId,
     });
 
+    // If a coach is assigned, add them as a proper Firebase member
+    const memberIds: string[] = [];
+    if (coachId) {
+      // Get coach details from Clerk (may already have it if coachId === adminUserId)
+      const coachClerkUser = coachId === adminUserId 
+        ? adminClerkUser 
+        : await clerk.users.getUser(coachId);
+      
+      // Add coach to memberIds
+      memberIds.push(coachId);
+      await squadRef.update({
+        memberIds: [coachId],
+        updatedAt: now,
+      });
+      
+      // Create squadMember document for the coach
+      await adminDb.collection('squadMembers').add({
+        squadId: squadRef.id,
+        userId: coachId,
+        roleInSquad: 'coach',
+        firstName: coachClerkUser.firstName || '',
+        lastName: coachClerkUser.lastName || '',
+        imageUrl: coachClerkUser.imageUrl || '',
+        createdAt: now,
+        updatedAt: now,
+      });
+      
+      // Update coach's user document with standardSquadId
+      // Check if user doc exists, create if not
+      const coachUserDoc = await adminDb.collection('users').doc(coachId).get();
+      if (coachUserDoc.exists) {
+        await adminDb.collection('users').doc(coachId).update({
+          standardSquadId: squadRef.id,
+          updatedAt: now,
+        });
+      } else {
+        await adminDb.collection('users').doc(coachId).set({
+          standardSquadId: squadRef.id,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+      
+      console.log(`[ADMIN_SQUADS] Added coach ${coachId} as member of squad ${squadRef.id}`);
+    }
+
     const squadData: Partial<Squad> = {
       name: name.trim(),
       description: description?.trim() || '',
       avatarUrl: avatarUrl || '',
       visibility: squadVisibility,
       timezone: timezone || 'UTC',
-      memberIds: [],
+      memberIds,
       inviteCode,
       isPremium: false,
       coachId: coachId || null,
