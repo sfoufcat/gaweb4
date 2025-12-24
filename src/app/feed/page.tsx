@@ -1,22 +1,30 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
 import Image from 'next/image';
 import { useFeed, type FeedPost } from '@/hooks/useFeed';
 import { useBrandingValues, useMenuTitles, useFeedEnabled } from '@/contexts/BrandingContext';
+import { useSquad } from '@/hooks/useSquad';
+import { useFeedStories } from '@/hooks/useFeedStories';
 import { FeedList } from '@/components/feed/FeedList';
 import { CreatePostModal } from '@/components/feed/CreatePostModal';
 import { CommentSheet } from '@/components/feed/CommentSheet';
 import { ShareSheet } from '@/components/feed/ShareSheet';
 import { ReportModal } from '@/components/feed/ReportModal';
 import { StoriesRow } from '@/components/feed/StoriesRow';
+import { StoryPlayer } from '@/components/stories/StoryPlayer';
+import { useUserStories } from '@/hooks/useUserStories';
 
 export default function FeedPage() {
   const { user } = useUser();
   const { colors, isDefault } = useBrandingValues();
   const { feed: feedTitle } = useMenuTitles();
   const feedEnabled = useFeedEnabled(); // From Edge Config via SSR - instant, no flash
+  
+  // Get squad members for stories
+  const { members: squadMembers, isLoading: isLoadingSquad } = useSquad();
+  const { storyUsers, isLoading: isLoadingStories } = useFeedStories(squadMembers);
   
   const {
     posts,
@@ -36,8 +44,18 @@ export default function FeedPage() {
   const [selectedPostForComment, setSelectedPostForComment] = useState<string | null>(null);
   const [selectedPostForShare, setSelectedPostForShare] = useState<string | null>(null);
   const [selectedPostForReport, setSelectedPostForReport] = useState<string | null>(null);
+  const [selectedStoryUserId, setSelectedStoryUserId] = useState<string | null>(null);
 
   const accentColor = isDefault ? '#a07855' : colors.accentLight;
+
+  // Get selected story user data
+  const selectedStoryUser = useMemo(() => {
+    if (!selectedStoryUserId) return null;
+    return storyUsers.find(u => u.id === selectedStoryUserId) || null;
+  }, [selectedStoryUserId, storyUsers]);
+
+  // Fetch stories for selected user
+  const { slides: selectedUserStories } = useUserStories(selectedStoryUserId || '');
 
   // Handle post creation
   const handlePostCreated = useCallback((post: FeedPost) => {
@@ -69,8 +87,15 @@ export default function FeedPage() {
   if (!feedEnabled) {
     return (
       <div className="min-h-screen bg-app-bg pb-24 lg:pb-8">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pt-4">
-          <div className="flex flex-col items-center justify-center py-16 px-4">
+        {/* Header - matches Discover page */}
+        <section className="px-4 pt-5 pb-4">
+          <h1 className="font-albert font-normal text-4xl text-text-primary tracking-[-2px] leading-[1.2]">
+            {feedTitle}
+          </h1>
+        </section>
+
+        <section className="px-4 py-8">
+          <div className="flex flex-col items-center justify-center py-16">
             <div className="w-24 h-24 rounded-full bg-[#f3f1ef] dark:bg-[#171b22] flex items-center justify-center mb-6">
               <svg className="w-12 h-12 text-text-secondary dark:text-[#7d8190]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
@@ -83,38 +108,38 @@ export default function FeedPage() {
               The social feed is not enabled for this community.
             </p>
           </div>
-        </div>
+        </section>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-app-bg pb-24 lg:pb-8">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pt-4">
-        {/* Page Title */}
-        <div className="mb-6">
-          <h1 className="font-albert text-[28px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.2]">
-            {feedTitle}
-          </h1>
-        </div>
+      {/* Header - matches Discover page */}
+      <section className="px-4 pt-5 pb-4">
+        <h1 className="font-albert font-normal text-4xl text-text-primary tracking-[-2px] leading-[1.2]">
+          {feedTitle}
+        </h1>
+      </section>
 
-        {/* Stories Row */}
-        <section className="mb-6">
+      {/* Stories Row */}
+      <section className="px-4 py-3 overflow-hidden">
+        <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
           <StoriesRow 
+            storyUsers={storyUsers}
+            isLoading={isLoadingSquad || isLoadingStories}
             onCreateStory={() => setShowCreateModal(true)}
             onViewStory={(userId) => {
-              // TODO: Open story viewer for this user
-              console.log('View story for user:', userId);
+              setSelectedStoryUserId(userId);
             }}
           />
-        </section>
+        </div>
+      </section>
 
-        {/* Two Column Layout on Desktop */}
-        <div className="flex gap-8">
-          {/* Main Feed Column */}
-          <div className="flex-1 max-w-2xl">
-            {/* Create post card */}
-            <div className="bg-white dark:bg-[#171b22] rounded-[20px] border border-[#e1ddd8]/50 dark:border-[#262b35] p-4 mb-6">
+      {/* Main Content */}
+      <section className="px-4 py-4">
+        {/* Create post card */}
+        <div className="bg-white dark:bg-[#171b22] rounded-[20px] border border-[#e1ddd8]/50 dark:border-[#262b35] p-4 mb-6 max-w-2xl">
               <div className="flex items-center gap-3">
                 {/* Avatar */}
                 <div className="w-10 h-10 rounded-full overflow-hidden bg-[#f5f3f0] dark:bg-[#262b35] flex-shrink-0">
@@ -153,7 +178,8 @@ export default function FeedPage() {
               </div>
             </div>
 
-            {/* Feed list */}
+          {/* Feed list */}
+          <div className="max-w-2xl">
             <FeedList
               posts={posts}
               isLoading={isLoading}
@@ -169,24 +195,18 @@ export default function FeedPage() {
               onReport={handleReport}
             />
           </div>
+      </section>
 
-          {/* Sidebar - Hidden on mobile */}
-          <div className="hidden lg:block w-80 flex-shrink-0">
-            {/* Placeholder for future sidebar content (trending, suggestions, etc.) */}
-          </div>
-        </div>
-
-        {/* Floating create button (mobile) */}
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="fixed bottom-24 right-4 lg:hidden w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
-          style={{ backgroundColor: accentColor }}
-        >
-          <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-        </button>
-      </div>
+      {/* Floating create button (mobile) */}
+      <button
+        onClick={() => setShowCreateModal(true)}
+        className="fixed bottom-24 right-4 lg:hidden w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+        style={{ backgroundColor: accentColor }}
+      >
+        <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+      </button>
 
       {/* Create post modal */}
       <CreatePostModal
@@ -216,6 +236,21 @@ export default function FeedPage() {
         <ReportModal
           postId={selectedPostForReport}
           onClose={() => setSelectedPostForReport(null)}
+        />
+      )}
+
+      {/* Story viewer */}
+      {selectedStoryUser && selectedUserStories.length > 0 && (
+        <StoryPlayer
+          isOpen={!!selectedStoryUserId}
+          onClose={() => setSelectedStoryUserId(null)}
+          slides={selectedUserStories}
+          user={{
+            id: selectedStoryUser.id,
+            firstName: selectedStoryUser.firstName,
+            lastName: selectedStoryUser.lastName,
+            imageUrl: selectedStoryUser.imageUrl || '',
+          }}
         />
       )}
     </div>

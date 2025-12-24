@@ -7,11 +7,10 @@ import { Sidebar } from '@/components/layout/Sidebar';
  * ConditionalSidebar
  * 
  * Wrapper that conditionally renders the Sidebar based on the current route.
- * When rendered, it includes a data-sidebar attribute that CSS uses to
- * automatically apply the correct padding to the main content area.
  * 
- * This approach avoids layout shift by using CSS :has() selector
- * instead of client-side JavaScript to determine padding.
+ * Note: The main content padding is now handled via data-layout attribute
+ * set during SSR by middleware, which prevents layout shift issues.
+ * This component only controls sidebar visibility.
  */
 export function ConditionalSidebar() {
   const pathname = usePathname();
@@ -52,11 +51,6 @@ export function ConditionalSidebar() {
     return null;
   }
   
-  // Wrapper div with data-sidebar attribute for CSS :has() detection
-  return (
-    <div data-sidebar>
-      <Sidebar />
-    </div>
-  );
+  return <Sidebar />;
 }
 

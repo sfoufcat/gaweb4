@@ -69,6 +69,9 @@ export default async function RootLayout({
   const headersList = await headers();
   const hostname = headersList.get('host') || '';
   
+  // Get layout mode from middleware (prevents layout shift by knowing during SSR)
+  const layoutMode = headersList.get('x-layout-mode') || 'with-sidebar';
+  
   // Get SSR branding from middleware cookie - single fetch, no redundant calls
   const ssrBranding = await getServerBranding();
   
@@ -99,6 +102,7 @@ export default async function RootLayout({
         </head>
         <body
           className={`${geistSans.variable} ${geistMono.variable} ${albertSans.variable} antialiased min-h-screen bg-app-bg text-text-primary transition-colors duration-300`}
+          data-layout={layoutMode}
           suppressHydrationWarning
         >
           <ThemeProvider>

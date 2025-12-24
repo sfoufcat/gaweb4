@@ -196,13 +196,13 @@ body {
 
 /* ===========================================
    Sidebar-aware Main Content Padding
-   Uses CSS :has() to detect sidebar presence
-   and apply padding without JavaScript hydration
+   Uses data-layout attribute set during SSR by middleware
+   to prevent layout shift from client-side hydration
    =========================================== */
 
-/* When sidebar wrapper exists in DOM, add left padding to main on large screens */
-body:has([data-sidebar]) main {
-  @media (min-width: 1024px) {
+/* Apply sidebar padding on large screens for pages with sidebar layout */
+@media (min-width: 1024px) {
+  body[data-layout="with-sidebar"] main {
     padding-left: 16rem; /* 256px = w-64 sidebar width */
   }
 }

@@ -124,7 +124,7 @@ export function useFeed() {
       
       return currentData.map((page) => ({
         ...page,
-        posts: page.posts.map((post) =>
+        posts: (page.posts || []).map((post) =>
           post.id === postId
             ? {
                 ...post,
@@ -144,7 +144,7 @@ export function useFeed() {
       
       return currentData.map((page) => ({
         ...page,
-        posts: page.posts.map((post) =>
+        posts: (page.posts || []).map((post) =>
           post.id === postId
             ? {
                 ...post,
@@ -160,13 +160,15 @@ export function useFeed() {
   // Add new post to feed (optimistic)
   const addPost = useCallback((post: FeedPost) => {
     mutate((currentData) => {
-      if (!currentData) return currentData;
+      if (!currentData || currentData.length === 0) return currentData;
       
       const [firstPage, ...restPages] = currentData;
+      if (!firstPage) return currentData;
+      
       return [
         {
           ...firstPage,
-          posts: [post, ...firstPage.posts],
+          posts: [post, ...(firstPage.posts || [])],
         },
         ...restPages,
       ];
@@ -180,7 +182,7 @@ export function useFeed() {
       
       return currentData.map((page) => ({
         ...page,
-        posts: page.posts.filter((post) => post.id !== postId),
+        posts: (page.posts || []).filter((post) => post.id !== postId),
       }));
     }, false);
   }, [mutate]);

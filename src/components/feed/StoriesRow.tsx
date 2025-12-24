@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Image from 'next/image';
 import { useUser } from '@clerk/nextjs';
 import { useBrandingValues } from '@/contexts/BrandingContext';
@@ -11,6 +10,7 @@ interface StoryUser {
   lastName: string;
   imageUrl?: string;
   hasUnseenStory: boolean;
+  hasStory?: boolean;
 }
 
 interface StoriesRowProps {
@@ -29,6 +29,9 @@ interface StoriesRowProps {
  * 
  * Shows "Your Story" first with a + icon, followed by other users' stories.
  * Similar to Instagram/Facebook stories UI.
+ * 
+ * Note: This component renders story items directly without a scroll container.
+ * The parent component should provide the scrollable container.
  */
 export function StoriesRow({ 
   storyUsers = [],
@@ -41,9 +44,12 @@ export function StoriesRow({
   
   const accentColor = isDefault ? '#a07855' : colors.accentLight;
 
+  // Filter to only show users who have stories
+  const usersWithStories = storyUsers.filter(u => u.hasStory || u.hasUnseenStory);
+
   if (isLoading) {
     return (
-      <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+      <>
         {/* Your Story skeleton */}
         <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
           <div className="w-16 h-16 rounded-full bg-[#e1ddd8]/50 dark:bg-[#262b35] animate-pulse" />
@@ -56,12 +62,12 @@ export function StoriesRow({
             <div className="w-10 h-3 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded animate-pulse" />
           </div>
         ))}
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+    <>
       {/* Your Story */}
       <button
         onClick={onCreateStory}
@@ -97,8 +103,8 @@ export function StoriesRow({
         <span className="text-xs text-text-secondary font-medium">Your Story</span>
       </button>
 
-      {/* Other users' stories */}
-      {storyUsers.map((storyUser) => (
+      {/* Other users' stories - only show users who have stories */}
+      {usersWithStories.map((storyUser) => (
         <button
           key={storyUser.id}
           onClick={() => onViewStory?.(storyUser.id)}
@@ -136,7 +142,7 @@ export function StoriesRow({
           </span>
         </button>
       ))}
-    </div>
+    </>
   );
 }
 

@@ -594,6 +594,30 @@ export default clerkMiddleware(async (auth, request) => {
     requestHeaders.set('x-tenant-hostname', hostname);
   }
   
+  // ==========================================================================
+  // LAYOUT MODE HEADER (for SSR layout shift prevention)
+  // ==========================================================================
+  
+  // Determine if this is a fullscreen page (no sidebar) during SSR
+  // This prevents layout shift by letting the layout know the mode before hydration
+  const searchParams = request.nextUrl.searchParams;
+  const isProfileEditOnboarding = pathname === '/profile' && 
+    searchParams.get('edit') === 'true' && 
+    searchParams.get('fromOnboarding') === 'true';
+  
+  const isFullscreenPage = 
+    pathname.startsWith('/onboarding') ||
+    pathname.startsWith('/start') ||
+    pathname.startsWith('/checkin') ||
+    pathname.startsWith('/join') ||
+    pathname.startsWith('/sign-in') ||
+    pathname === '/upgrade-premium/form' ||
+    pathname === '/get-coach/form' ||
+    pathname.startsWith('/invite') ||
+    isProfileEditOnboarding;
+  
+  requestHeaders.set('x-layout-mode', isFullscreenPage ? 'fullscreen' : 'with-sidebar');
+  
   // Create response with modified request headers
   const response = NextResponse.next({
     request: {
