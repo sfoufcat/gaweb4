@@ -13,6 +13,7 @@ import { useBrandingValues } from '@/contexts/BrandingContext';
 import { OrganizationSwitcher } from './OrganizationSwitcher';
 import { useMyPrograms } from '@/hooks/useMyPrograms';
 import { useSquad } from '@/hooks/useSquad';
+import { useOrgSettings } from '@/hooks/useOrgSettings';
 
 // Icon SVG paths for predefined icons
 const ICON_PATHS: Record<string, string> = {
@@ -121,12 +122,15 @@ export function Sidebar() {
   // Squad and program state for navigation visibility
   const { hasEnrollments } = useMyPrograms();
   const { hasStandardSquad } = useSquad();
+  const { settings: orgSettings } = useOrgSettings();
   
   // Navigation visibility logic:
   // - Program: Show if user has enrollments OR has no standard squad (empty state)
   // - Squad: Show ONLY if user has a standard squad (coach-created standalone)
+  // - Feed: Show if feed is enabled for the org
   const showProgramNav = hasEnrollments || !hasStandardSquad;
   const showSquadNav = hasStandardSquad;
+  const showFeedNav = orgSettings?.feedEnabled === true;
   
   const isActive = (path: string) => pathname === path;
   
@@ -169,6 +173,9 @@ export function Sidebar() {
   // Prefetch pages on mount to reduce loading time
   useEffect(() => {
     router.prefetch('/chat');
+    if (showFeedNav) {
+      router.prefetch('/feed');
+    }
     if (showMyCoach) {
       router.prefetch('/my-coach');
     }
@@ -181,7 +188,7 @@ export function Sidebar() {
     if (showEditorPanel) {
       router.prefetch('/editor');
     }
-  }, [router, showMyCoach, showCoachDashboard, showAdminPanel, showEditorPanel]);
+  }, [router, showFeedNav, showMyCoach, showCoachDashboard, showAdminPanel, showEditorPanel]);
   
   // Home nav item - always visible
   const homeNavItem = { name: menuTitles.home, path: '/', icon: (
@@ -198,6 +205,11 @@ export function Sidebar() {
     <NavIcon iconKey={menuIcons.squad} />
   )};
 
+  // Feed nav item - visible if feed is enabled for the org
+  const feedNavItem = { name: menuTitles.feed, path: '/feed', icon: (
+    <NavIcon iconKey={menuIcons.feed} />
+  )};
+
   // Learn/Discover nav item - always visible
   const learnNavItem = { name: menuTitles.learn, path: '/discover', icon: (
     <NavIcon iconKey={menuIcons.learn} />
@@ -208,11 +220,12 @@ export function Sidebar() {
     <NavIcon iconKey={menuIcons.chat} />
   )};
 
-  // Build base nav items with conditional Program and Squad visibility
+  // Build base nav items with conditional Program, Squad, and Feed visibility
   const baseNavItems = [
     homeNavItem,
     ...(showProgramNav ? [programNavItem] : []),
     ...(showSquadNav ? [squadNavItem] : []),
+    ...(showFeedNav ? [feedNavItem] : []),
     learnNavItem,
     chatNavItem,
   ];

@@ -1180,7 +1180,13 @@ export type NotificationType =
   | 'weekly_reflection'
   | 'squad_call_24h'
   | 'squad_call_1h'
-  | 'squad_call_live';
+  | 'squad_call_live'
+  // Feed notifications
+  | 'feed_like'
+  | 'feed_comment'
+  | 'feed_repost'
+  | 'feed_mention'
+  | 'story_reaction';
 
 export interface Notification {
   id: string;
@@ -1821,6 +1827,9 @@ export interface OrgSettings {
   // Default funnel for non-members (optional)
   defaultFunnelId?: string | null;     // Funnel to redirect users without access
   
+  // Social Feed feature (optional - coach can enable/disable)
+  feedEnabled?: boolean;               // Whether social feed is enabled for this org (default: false)
+  
   createdAt: string;                   // ISO timestamp
   updatedAt: string;                   // ISO timestamp
 }
@@ -1842,6 +1851,7 @@ export const DEFAULT_ORG_SETTINGS: Omit<OrgSettings, 'id' | 'organizationId' | '
   coachTier: 'starter',
   coachSubscriptionId: null,
   defaultFunnelId: null,
+  feedEnabled: false, // Social feed disabled by default - coach must enable
 };
 
 /**
@@ -1871,6 +1881,7 @@ export interface OrgMenuTitles {
   home: string;                // Default: "Home"
   squad: string;               // Default: "Squad" - can be "Cohort", "Team", "Group", etc.
   program: string;             // Default: "Program" - can be "Journey", "Path", etc.
+  feed: string;                // Default: "Feed" - can be "Community", "Wall", etc.
   learn: string;               // Default: "Learn" - can be "Discover", "Content", etc.
   chat: string;                // Default: "Chat" - can be "Messages", "Community", etc.
   coach: string;               // Default: "Coach" - can be "Mentor", "Guide", etc.
@@ -1945,6 +1956,7 @@ export const DEFAULT_MENU_TITLES: OrgMenuTitles = {
   home: 'Home',
   squad: 'Squad',
   program: 'Program',
+  feed: 'Feed',      // Social feed
   learn: 'Discover', // Renamed from "Learn" to "Discover"
   chat: 'Chat',
   coach: 'Coach',
@@ -1961,6 +1973,7 @@ export interface OrgMenuIcons {
   home: string;
   squad: string;
   program: string;
+  feed: string;      // Social feed
   learn: string;     // Discover
   chat: string;
   coach: string;
@@ -1970,6 +1983,7 @@ export const DEFAULT_MENU_ICONS: OrgMenuIcons = {
   home: 'home',
   squad: 'users',
   program: 'rocket',
+  feed: 'sparkles',  // Sparkles icon for Feed
   learn: 'search',   // Magnifying glass for Discover
   chat: 'message',
   coach: 'user',
@@ -2424,4 +2438,107 @@ export function getFlowSessionStatus(session: FlowSession): FlowSessionStatus {
   if (hoursSinceUpdate > 24) return 'abandoned';
   return 'active';
 }
+
+// =============================================================================
+// SOCIAL FEED TYPES
+// =============================================================================
+
+/**
+ * Feed Post - A post in the social feed
+ * Stored in Stream Activity Feeds, mirrored to Firestore for search/reporting
+ */
+export interface FeedPost {
+  id: string;                       // Stream activity ID
+  authorId: string;                 // User ID who created the post
+  organizationId: string;           // Clerk org ID for multi-tenancy
+  text?: string;                    // Post text content (optional if media only)
+  images?: string[];                // Array of image URLs (up to 4)
+  videoUrl?: string;                // Video URL (alternative to images)
+  
+  // Engagement counts (denormalized for display)
+  likeCount: number;
+  commentCount: number;
+  repostCount: number;
+  bookmarkCount: number;
+  
+  // Timestamps
+  createdAt: string;                // ISO timestamp
+  updatedAt?: string;               // ISO timestamp (for edits)
+}
+
+/**
+ * Feed Comment - A comment on a feed post
+ */
+export interface FeedComment {
+  id: string;                       // Reaction ID in Stream
+  postId: string;                   // The post being commented on
+  authorId: string;                 // User ID who commented
+  organizationId: string;           // For multi-tenancy
+  text: string;                     // Comment text
+  parentCommentId?: string;         // For threaded replies (1 level deep)
+  
+  // Timestamps
+  createdAt: string;
+}
+
+/**
+ * Feed Reaction - Like, bookmark, or repost
+ */
+export interface FeedReaction {
+  id: string;                       // Reaction ID in Stream
+  postId: string;                   // The post being reacted to
+  userId: string;                   // User who reacted
+  kind: 'like' | 'bookmark' | 'repost';
+  createdAt: string;
+}
+
+/**
+ * User-Posted Story - Ephemeral content (24hr TTL)
+ * Stored in Stream, merged with auto-generated stories in UI
+ */
+export interface UserStory {
+  id: string;                       // Stream activity ID
+  authorId: string;                 // User ID who posted
+  organizationId: string;           // For multi-tenancy
+  imageUrl?: string;                // Story image
+  videoUrl?: string;                // Story video (alternative to image)
+  caption?: string;                 // Optional caption
+  expiresAt: string;                // 24hrs from creation
+  createdAt: string;
+}
+
+/**
+ * Feed Report - Content moderation report
+ * Stored in Firestore: feed_reports/{reportId}
+ */
+export interface FeedReport {
+  id: string;
+  postId: string;                   // The post being reported
+  reporterId: string;               // User who reported
+  organizationId: string;           // For multi-tenancy
+  reason: FeedReportReason;
+  details?: string;                 // Optional additional details
+  status: FeedReportStatus;
+  reviewedBy?: string;              // Coach who reviewed
+  reviewedAt?: string;              // When reviewed
+  resolution?: FeedReportResolution;
+  createdAt: string;
+}
+
+export type FeedReportReason = 
+  | 'spam'
+  | 'harassment'
+  | 'inappropriate'
+  | 'misinformation'
+  | 'other';
+
+export type FeedReportStatus = 
+  | 'pending'
+  | 'reviewed'
+  | 'dismissed';
+
+export type FeedReportResolution =
+  | 'content_removed'
+  | 'user_warned'
+  | 'no_action';
 

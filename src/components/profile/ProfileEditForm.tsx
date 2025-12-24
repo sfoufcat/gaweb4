@@ -119,6 +119,28 @@ export function ProfileEditForm({ initialData, clerkUser, onSave, onCancel, from
         throw new Error('Failed to update profile');
       }
 
+      // Sync name to Clerk if changed
+      if (user && formData.name) {
+        const nameParts = formData.name.trim().split(/\s+/);
+        const newFirstName = nameParts[0] || '';
+        const newLastName = nameParts.slice(1).join(' ') || '';
+        
+        // Only update Clerk if name actually changed
+        if (newFirstName !== user.firstName || newLastName !== user.lastName) {
+          try {
+            console.log('[PROFILE] Syncing name to Clerk...');
+            await user.update({
+              firstName: newFirstName,
+              lastName: newLastName,
+            });
+            console.log('[PROFILE] Clerk name sync successful');
+          } catch (nameError) {
+            console.error('[NAME_SYNC_ERROR]', nameError);
+            // Don't fail the whole save - Firebase was already updated
+          }
+        }
+      }
+
       // Call onSave callback which will redirect
       if (onSave) {
         onSave();

@@ -349,12 +349,14 @@ export function useMenuTitles() {
     home: menuTitles.home,
     squad: menuTitles.squad,
     program: menuTitles.program,
+    feed: menuTitles.feed,
     learn: menuTitles.learn,
     chat: menuTitles.chat,
     coach: menuTitles.coach,
     // Lowercase variants (for use in sentences like "my squad")
     squadLower: menuTitles.squad.toLowerCase(),
     programLower: menuTitles.program.toLowerCase(),
+    feedLower: menuTitles.feed.toLowerCase(),
     // Helper for "My Squad" style usage
     mySquad: `My ${menuTitles.squad}`,
     myProgram: `My ${menuTitles.program}`,

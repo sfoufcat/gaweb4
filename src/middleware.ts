@@ -232,6 +232,7 @@ const requiresBilling = createRouteMatcher([
   '/checkin(.*)',
   '/chat(.*)',
   '/squad(.*)',
+  '/feed(.*)',       // Social feed - requires active billing, feature-gated by feedEnabled
   '/profile(.*)',
   '/discover(.*)',
   '/coach(.*)',

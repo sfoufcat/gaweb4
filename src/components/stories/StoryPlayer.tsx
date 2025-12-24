@@ -9,12 +9,13 @@ import { TaskStorySlide } from './TaskStorySlide';
 import { GoalStorySlide } from './GoalStorySlide';
 import { DayClosedStorySlide } from './DayClosedStorySlide';
 import { WeekClosedStorySlide } from './WeekClosedStorySlide';
+import { UserPostStorySlide } from './UserPostStorySlide';
 import Image from 'next/image';
 import { getProfileUrl } from '@/lib/utils';
 import type { Task } from '@/types';
 
 export interface StorySlide {
-  type: 'tasks' | 'goal' | 'dayClosed' | 'weekClosed';
+  type: 'tasks' | 'goal' | 'dayClosed' | 'weekClosed' | 'user_post';
   data: {
     tasks?: Task[];
     goalTitle?: string;
@@ -26,6 +27,13 @@ export interface StorySlide {
     // Week closed slide data
     progressChange?: number;
     publicFocus?: string;
+    // User post slide data
+    id?: string;
+    imageUrl?: string;
+    videoUrl?: string;
+    caption?: string;
+    createdAt?: string;
+    expiresAt?: string;
   };
 }
 
@@ -368,7 +376,16 @@ export function StoryPlayer({ isOpen, onClose, slides, user }: StoryPlayerProps)
       >
         {/* Story Slide Content */}
         <div className="absolute inset-0">
-          {currentSlideData.type === 'tasks' ? (
+          {currentSlideData.type === 'user_post' ? (
+            <UserPostStorySlide
+              imageUrl={currentSlideData.data.imageUrl}
+              videoUrl={currentSlideData.data.videoUrl}
+              caption={currentSlideData.data.caption}
+              createdAt={currentSlideData.data.createdAt}
+              expiresAt={currentSlideData.data.expiresAt}
+              isPaused={isPaused}
+            />
+          ) : currentSlideData.type === 'tasks' ? (
             <TaskStorySlide 
               tasks={currentSlideData.data.tasks || []} 
               userName={userName}
