@@ -2,12 +2,12 @@
 
 import { useState, useCallback } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { formatDistanceToNow } from 'date-fns';
 import { useBrandingValues } from '@/contexts/BrandingContext';
-import type { FeedPost, FeedPostAuthor } from '@/hooks/useFeed';
+import { DeleteConfirmationModal } from './ConfirmationModal';
+import type { FeedPost } from '@/hooks/useFeed';
 import { getProfileUrl } from '@/lib/utils';
 
 interface PostCardProps {
@@ -33,8 +33,10 @@ export function PostCard({
   const { user } = useUser();
   const { colors, isDefault } = useBrandingValues();
   const [showMenu, setShowMenu] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
   const [isBookmarking, setIsBookmarking] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [imageError, setImageError] = useState<Record<string, boolean>>({});
 
   const isOwnPost = user?.id === post.authorId;
@@ -106,10 +108,15 @@ export function PostCard({
     }
   }, [post.id, post.hasBookmarked, isBookmarking, onBookmark]);
 
-  // Handle delete
-  const handleDelete = useCallback(async () => {
-    if (!confirm('Are you sure you want to delete this post?')) return;
-    
+  // Handle delete - show modal
+  const handleDeleteClick = useCallback(() => {
+    setShowMenu(false);
+    setShowDeleteModal(true);
+  }, []);
+
+  // Confirm delete
+  const handleConfirmDelete = useCallback(async () => {
+    setIsDeleting(true);
     try {
       const response = await fetch(`/api/feed/${post.id}`, { method: 'DELETE' });
       if (response.ok) {
@@ -117,8 +124,10 @@ export function PostCard({
       }
     } catch (error) {
       console.error('Failed to delete post:', error);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
     }
-    setShowMenu(false);
   }, [post.id, onDelete]);
 
   // Handle report
@@ -197,7 +206,7 @@ export function PostCard({
               <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-20 overflow-hidden">
                 {isOwnPost ? (
                   <button
-                    onClick={handleDelete}
+                    onClick={handleDeleteClick}
                     className="w-full px-4 py-3 text-left text-[14px] text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors flex items-center gap-2"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -354,6 +363,15 @@ export function PostCard({
           </svg>
         </button>
       </div>
+
+      {/* Delete confirmation modal */}
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleConfirmDelete}
+        itemName="post"
+        isLoading={isDeleting}
+      />
     </article>
   );
 }

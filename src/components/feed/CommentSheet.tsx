@@ -29,6 +29,7 @@ export function CommentSheet({ postId, onClose }: CommentSheetProps) {
 
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -46,6 +47,7 @@ export function CommentSheet({ postId, onClose }: CommentSheetProps) {
     if (!newComment.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
+    setErrorMessage(null);
 
     try {
       const response = await fetch(`/api/feed/${postId}/comment`, {
@@ -68,7 +70,7 @@ export function CommentSheet({ postId, onClose }: CommentSheetProps) {
       listRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
       console.error('Comment error:', error);
-      alert('Failed to post comment');
+      setErrorMessage('Failed to post comment. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -155,6 +157,30 @@ export function CommentSheet({ postId, onClose }: CommentSheetProps) {
             </>
           )}
         </div>
+
+        {/* Error message */}
+        {errorMessage && (
+          <div className="px-4 pt-2">
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="font-sans text-[13px] text-red-800 dark:text-red-200 flex-1">
+                  {errorMessage}
+                </p>
+                <button
+                  onClick={() => setErrorMessage(null)}
+                  className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Input */}
         <form

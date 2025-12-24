@@ -43,6 +43,7 @@ export function ReportModal({ postId, onClose }: ReportModalProps) {
   const [details, setDetails] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const accentColor = isDefault ? '#a07855' : colors.accentLight;
 
@@ -51,6 +52,7 @@ export function ReportModal({ postId, onClose }: ReportModalProps) {
     if (!selectedReason || isSubmitting) return;
 
     setIsSubmitting(true);
+    setErrorMessage(null);
 
     try {
       const response = await fetch(`/api/feed/${postId}/report`, {
@@ -65,8 +67,7 @@ export function ReportModal({ postId, onClose }: ReportModalProps) {
       if (!response.ok) {
         const error = await response.json();
         if (error.error === 'You have already reported this post') {
-          alert('You have already reported this post.');
-          onClose();
+          setErrorMessage('You have already reported this post.');
           return;
         }
         throw new Error(error.error || 'Failed to submit report');
@@ -80,7 +81,7 @@ export function ReportModal({ postId, onClose }: ReportModalProps) {
       }, 2000);
     } catch (error) {
       console.error('Report error:', error);
-      alert(error instanceof Error ? error.message : 'Failed to submit report');
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to submit report. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -177,6 +178,28 @@ export function ReportModal({ postId, onClose }: ReportModalProps) {
                     className="w-full h-24 px-3 py-2 rounded-xl bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[14px] text-[#1a1a1a] dark:text-[#faf8f6] placeholder-[#8a857f] resize-none focus:outline-none focus:ring-2 focus:ring-opacity-50"
                     style={{ ['--tw-ring-color' as string]: accentColor }}
                   />
+                </div>
+              )}
+
+              {/* Error message */}
+              {errorMessage && (
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+                  <div className="flex items-start gap-2">
+                    <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="font-sans text-[13px] text-red-800 dark:text-red-200 flex-1">
+                      {errorMessage}
+                    </p>
+                    <button
+                      onClick={() => setErrorMessage(null)}
+                      className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

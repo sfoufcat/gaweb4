@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { useUser } from '@clerk/nextjs';
 import { useBrandingValues } from '@/contexts/BrandingContext';
+import { DiscardConfirmationModal } from './ConfirmationModal';
 import type { FeedPost } from '@/hooks/useFeed';
 
 interface CreatePostModalProps {
@@ -28,6 +29,8 @@ export function CreatePostModal({
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addToStory, setAddToStory] = useState(false);
+  const [showDiscardModal, setShowDiscardModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -45,16 +48,25 @@ export function CreatePostModal({
     setAddToStory(false);
     setIsUploading(false);
     setIsSubmitting(false);
+    setErrorMessage(null);
+    setShowDiscardModal(false);
   }, []);
 
-  // Handle close
+  // Handle close - show discard modal if there's content
   const handleClose = useCallback(() => {
     if (hasContent) {
-      if (!confirm('Discard this post?')) return;
+      setShowDiscardModal(true);
+      return;
     }
     resetForm();
     onClose();
   }, [hasContent, resetForm, onClose]);
+
+  // Confirm discard
+  const handleConfirmDiscard = useCallback(() => {
+    resetForm();
+    onClose();
+  }, [resetForm, onClose]);
 
   // Handle file selection
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,6 +74,7 @@ export function CreatePostModal({
     if (!files || files.length === 0) return;
 
     setIsUploading(true);
+    setErrorMessage(null);
 
     try {
       const file = files[0];
@@ -92,7 +105,7 @@ export function CreatePostModal({
       }
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Failed to upload file. Please try again.');
+      setErrorMessage('Failed to upload file. Please try again.');
     } finally {
       setIsUploading(false);
       // Reset file input
@@ -117,6 +130,7 @@ export function CreatePostModal({
     if (!hasContent || isSubmitting) return;
 
     setIsSubmitting(true);
+    setErrorMessage(null);
 
     try {
       const response = await fetch('/api/feed', {
@@ -152,7 +166,7 @@ export function CreatePostModal({
       onClose();
     } catch (error) {
       console.error('Submit error:', error);
-      alert(error instanceof Error ? error.message : 'Failed to create post');
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to create post');
     } finally {
       setIsSubmitting(false);
     }
@@ -290,6 +304,28 @@ export function CreatePostModal({
             </div>
           )}
 
+          {/* Error message */}
+          {errorMessage && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+              <div className="flex items-start gap-2">
+                <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="font-sans text-[13px] text-red-800 dark:text-red-200">
+                  {errorMessage}
+                </p>
+                <button
+                  onClick={() => setErrorMessage(null)}
+                  className="ml-auto text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Add to story toggle */}
           <label className="flex items-center gap-3 p-3 rounded-xl bg-[#f5f3f0] dark:bg-[#1a1f2a] cursor-pointer">
             <input
@@ -364,6 +400,14 @@ export function CreatePostModal({
           </div>
         </div>
       </div>
+
+      {/* Discard confirmation modal */}
+      <DiscardConfirmationModal
+        isOpen={showDiscardModal}
+        onClose={() => setShowDiscardModal(false)}
+        onConfirm={handleConfirmDiscard}
+        itemName="post"
+      />
     </>
   );
 }
