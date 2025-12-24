@@ -78,7 +78,7 @@ export function FeedSettingsToggle() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-[15px] text-[#1a1a1a] dark:text-[#faf8f6]">
-            Social Feed
+            Enable social feed
           </h3>
           <p className="text-[13px] text-[#8a857f] mt-0.5">
             Allow members to post and interact on a community feed

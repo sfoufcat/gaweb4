@@ -142,7 +142,7 @@ export function CommentSheet({ postId, onClose }: CommentSheetProps) {
                 <CommentItem
                   key={comment.id}
                   comment={comment}
-                  onProfileClick={() => router.push(getProfileUrl(comment.authorId))}
+                  onProfileClick={() => router.push(getProfileUrl(comment.authorId, user?.id || ''))}
                 />
               ))}
               

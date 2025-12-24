@@ -111,6 +111,8 @@ export interface FeedPostActivity {
   foreign_id?: string;        // For deduplication
   time?: string;              // ISO timestamp
   to?: string[];              // Target feeds (for fan-out)
+  // Index signature for Stream compatibility
+  [key: string]: unknown;
 }
 
 export interface FeedStoryActivity {
@@ -126,6 +128,8 @@ export interface FeedStoryActivity {
   // Stream fields
   foreign_id?: string;
   time?: string;
+  // Index signature for Stream compatibility
+  [key: string]: unknown;
 }
 
 export interface FeedCommentActivity {
@@ -139,6 +143,8 @@ export interface FeedCommentActivity {
   // Stream fields
   foreign_id?: string;
   time?: string;
+  // Index signature for Stream compatibility
+  [key: string]: unknown;
 }
 
 export interface FeedReactionActivity {
@@ -149,6 +155,8 @@ export interface FeedReactionActivity {
   // Stream fields
   foreign_id?: string;
   time?: string;
+  // Index signature for Stream compatibility
+  [key: string]: unknown;
 }
 
 // =============================================================================
@@ -170,7 +178,6 @@ export async function createPost(
     videoUrl?: string;
   }
 ): Promise<{ id: string; activity: FeedPostActivity }> {
-  const client = getStreamFeedsClient();
   const userFeed = getUserFeed(userId);
   const cleanOrgId = orgId.replace('org_', '');
   

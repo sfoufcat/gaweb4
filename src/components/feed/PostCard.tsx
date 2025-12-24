@@ -129,7 +129,7 @@ export function PostCard({
 
   // Navigate to profile
   const handleProfileClick = () => {
-    router.push(getProfileUrl(post.authorId));
+    router.push(getProfileUrl(post.authorId, user?.id || ''));
   };
 
   // Accent color for interactions

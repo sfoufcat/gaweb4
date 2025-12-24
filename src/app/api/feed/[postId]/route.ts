@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { deletePost, getStreamFeedsClient } from '@/lib/stream-feeds';
 import { adminDb } from '@/lib/firebase-admin';
-import { isAdmin, isCoach } from '@/lib/admin-utils-shared';
+import { isAdmin, canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import type { UserRole, OrgRole } from '@/types';
 
 /**
@@ -35,7 +35,7 @@ export async function DELETE(
     } | undefined;
     const role = publicMetadata?.role;
     const orgRole = publicMetadata?.orgRole;
-    const canModerate = isAdmin(role) || isCoach(role) || orgRole === 'super_coach' || orgRole === 'coach';
+    const canModerate = isAdmin(role) || canAccessCoachDashboard(role, orgRole);
 
     // Get the post to check ownership
     const client = getStreamFeedsClient();

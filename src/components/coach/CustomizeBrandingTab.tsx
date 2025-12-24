@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock, Mail, Send, Bell } from 'lucide-react';
+import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock, Mail, Send, Bell, Settings } from 'lucide-react';
 import { useBranding } from '@/contexts/BrandingContext';
+import { FeedSettingsToggle } from './FeedSettingsToggle';
 import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus, OrgEmailDefaults } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_EMAIL_SETTINGS, DEFAULT_EMAIL_DEFAULTS, validateSubdomain } from '@/types';
 import { IconPicker } from './IconPicker';
@@ -1301,6 +1302,21 @@ export function CustomizeBrandingTab() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Organization Settings Section */}
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Settings className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Organization Settings</h3>
+        </div>
+        
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mb-6 font-albert">
+          Configure features and settings for your organization.
+        </p>
+
+        {/* Enable Social Feed */}
+        <FeedSettingsToggle />
       </div>
 
       {/* Domain Settings Section */}
