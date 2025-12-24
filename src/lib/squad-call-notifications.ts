@@ -428,7 +428,7 @@ export async function executeSquadCallJob(job: SquadCallScheduledJob): Promise<{
           await sendSquadCallNotification({
             userId,
             jobType: job.jobType,
-            hasCoach: job.hasCoach ?? job.isPremiumSquad,
+            isPremium: job.hasCoach ?? job.isPremiumSquad,
             callDateTime: job.callDateTime,
             callTimezone: job.callTimezone,
           });
@@ -436,7 +436,7 @@ export async function executeSquadCallJob(job: SquadCallScheduledJob): Promise<{
           await sendSquadCallEmail({
             userId,
             jobType: job.jobType,
-            hasCoach: job.hasCoach ?? job.isPremiumSquad,
+            isPremium: job.hasCoach ?? job.isPremiumSquad,
             callDateTime: job.callDateTime,
             callTimezone: job.callTimezone,
           });
