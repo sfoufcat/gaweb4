@@ -302,21 +302,21 @@ export function ProgramDetailView({
             /* Group Program Overview */
             <>
               {/* Stacked Avatars - Real member photos */}
-              <div className="flex items-center -space-x-2">
+              <div className="flex items-center -space-x-3">
                 {(squadMembers && squadMembers.length > 0 
                   ? squadMembers.slice(0, 3) 
                   : [null, null, null]
                 ).map((member, i) => (
                   <div
                     key={member?.id || i}
-                    className="w-8 h-8 rounded-full border-2 border-white dark:border-[#05070b] overflow-hidden bg-[#d4cfc9] dark:bg-[#7d8190]"
+                    className="w-[38px] h-[38px] rounded-full border-2 border-white dark:border-[#05070b] overflow-hidden bg-[#d4cfc9] dark:bg-[#7d8190]"
                   >
                     {member?.imageUrl ? (
                       <Image
                         src={member.imageUrl}
                         alt={`${member.firstName} ${member.lastName}`}
-                        width={32}
-                        height={32}
+                        width={38}
+                        height={38}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -331,7 +331,7 @@ export function ProgramDetailView({
               </div>
 
               {/* Group Info */}
-              <div className="flex flex-col ml-1">
+              <div className="flex flex-col ml-2">
                 <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px] tracking-[0.1px]">
                   Group program
                 </span>

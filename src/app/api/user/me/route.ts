@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { getStreamServerClient } from '@/lib/stream-server';
 import type { FirebaseUser } from '@/types';
 
 /**
@@ -173,6 +174,23 @@ export async function PATCH(req: Request) {
     // Fetch and return updated user data
     const updatedDoc = await userRef.get();
     const updatedUserData = updatedDoc.data() as FirebaseUser;
+
+    // Sync user to Stream Chat if name or avatar changed
+    // This ensures comments/chat show updated profile info
+    if (updateData.name || updateData.avatarUrl) {
+      try {
+        const streamClient = await getStreamServerClient();
+        await streamClient.upsertUser({
+          id: userId,
+          name: updatedUserData.name || `${updatedUserData.firstName || ''} ${updatedUserData.lastName || ''}`.trim() || 'User',
+          image: updatedUserData.avatarUrl || updatedUserData.imageUrl,
+        });
+        console.log('[USER_ME] Synced user to Stream Chat:', userId);
+      } catch (streamError) {
+        // Non-fatal: log but don't fail the request
+        console.error('[USER_ME] Failed to sync to Stream:', streamError);
+      }
+    }
 
     return NextResponse.json({
       success: true,

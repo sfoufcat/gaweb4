@@ -3,7 +3,6 @@
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useSquad } from '@/hooks/useSquad';
-import { useMyPrograms } from '@/hooks/useMyPrograms';
 import { SquadHeader } from '@/components/squad/SquadHeader';
 import { SquadMemberList } from '@/components/squad/SquadMemberList';
 import { SquadInviteCards } from '@/components/squad/SquadInviteCards';
@@ -37,10 +36,6 @@ export function SquadTabContent() {
     isLoading,
     refetch: onRefetch,
   } = useSquad();
-
-  // Get program info for coach details
-  const { groupProgram } = useMyPrograms();
-  const program = groupProgram?.program;
 
   // Loading state
   if (isLoading) {
@@ -98,62 +93,6 @@ export function SquadTabContent() {
     <div className="space-y-5 px-4">
       {/* Squad Header */}
       <SquadHeader squad={squad} onSquadUpdated={onRefetch} />
-
-      {/* Coach Row (if program has coach) */}
-      {program && (
-        <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4">
-          <div className="flex items-center gap-3">
-            {/* Coach Avatar */}
-            <div className="w-[48px] h-[48px] rounded-full overflow-hidden bg-[#f3f1ef] dark:bg-[#262b35] flex-shrink-0">
-              {program.coachImageUrl ? (
-                <Image
-                  src={program.coachImageUrl}
-                  alt={program.coachName}
-                  width={48}
-                  height={48}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <span className="font-albert font-semibold text-lg text-text-secondary dark:text-[#7d8190]">
-                    {program.coachName[0]}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Coach Info */}
-            <div className="flex-1">
-              <p className="font-albert text-[16px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px] leading-[1.3]">
-                {program.coachName}
-              </p>
-              <p className="font-sans text-[14px] text-text-secondary dark:text-[#b2b6c2]">
-                {squadTitle} Coach
-              </p>
-            </div>
-
-            {/* Message Button */}
-            <button
-              onClick={() => router.push('/chat')}
-              className="w-10 h-10 rounded-full bg-[#f3f1ef] dark:bg-[#11141b] flex items-center justify-center hover:bg-[#e9e5e0] dark:hover:bg-[#1d222b] transition-colors"
-            >
-              <svg
-                className="w-5 h-5 text-text-primary dark:text-[#f5f5f8]"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Mood Bars Section */}
       {membersWithMood.length > 0 && (

@@ -157,6 +157,22 @@ export function useFeed() {
     }, false);
   }, [mutate]);
 
+  // Optimistic update for comment count
+  const incrementCommentCount = useCallback((postId: string) => {
+    mutate((currentData) => {
+      if (!currentData) return currentData;
+      
+      return currentData.map((page) => ({
+        ...page,
+        posts: (page.posts || []).map((post) =>
+          post.id === postId
+            ? { ...post, commentCount: post.commentCount + 1 }
+            : post
+        ),
+      }));
+    }, false);
+  }, [mutate]);
+
   // Add new post to feed (optimistic)
   const addPost = useCallback((post: FeedPost) => {
     mutate((currentData) => {
@@ -198,6 +214,7 @@ export function useFeed() {
     refresh,
     optimisticLike,
     optimisticBookmark,
+    incrementCommentCount,
     addPost,
     removePost,
   };

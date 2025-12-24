@@ -37,6 +37,7 @@ export default function FeedPage() {
     refresh,
     optimisticLike,
     optimisticBookmark,
+    incrementCommentCount,
     addPost,
     removePost,
   } = useFeed();
@@ -138,7 +139,7 @@ export default function FeedPage() {
           {/* Left: Main Feed */}
           <div className="flex-1 min-w-0">
             {/* Create post card */}
-            <div className="bg-white dark:bg-[#171b22] rounded-[20px] border border-[#e1ddd8]/50 dark:border-[#262b35] p-4 mb-6 max-w-2xl">
+            <div className="bg-white dark:bg-[#171b22] rounded-[20px] border border-[#e1ddd8]/50 dark:border-[#262b35] p-4 mb-6">
               <div className="flex items-center gap-3">
                 {/* Avatar */}
                 <div className="w-10 h-10 rounded-full overflow-hidden bg-[#f5f3f0] dark:bg-[#262b35] flex-shrink-0">
@@ -178,7 +179,7 @@ export default function FeedPage() {
             </div>
 
             {/* Feed list */}
-            <div className="max-w-2xl">
+            <div>
               <FeedList
                 posts={posts}
                 isLoading={isLoading}
@@ -191,6 +192,7 @@ export default function FeedPage() {
                 onShare={handleShare}
                 onDelete={handleDelete}
                 onReport={handleReport}
+                onCommentAdded={incrementCommentCount}
                 onCreatePost={() => setShowCreatePostModal(true)}
               />
             </div>

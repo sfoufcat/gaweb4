@@ -182,8 +182,12 @@ export function CreatePostModal({
         onClick={handleClose}
       />
 
-      {/* Modal */}
-      <div className="fixed inset-x-4 top-[10%] md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-lg bg-white dark:bg-[#171b22] rounded-2xl shadow-xl z-50 max-h-[80vh] flex flex-col overflow-hidden animate-modal-slide-up md:animate-modal-zoom-in">
+      {/* Modal Container - uses flex centering on desktop */}
+      <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 pointer-events-none">
+        <div 
+          className="w-full md:w-full md:max-w-lg bg-white dark:bg-[#171b22] rounded-t-2xl md:rounded-2xl shadow-xl max-h-[85vh] flex flex-col overflow-hidden pointer-events-auto animate-modal-slide-up md:animate-modal-zoom-in"
+          onClick={(e) => e.stopPropagation()}
+        >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[#e8e4df] dark:border-[#262b35]">
           <button
@@ -398,6 +402,7 @@ export function CreatePostModal({
               Video
             </button>
           </div>
+        </div>
         </div>
       </div>
 

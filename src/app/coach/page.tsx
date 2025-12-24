@@ -11,7 +11,7 @@ import { ArrowLeft } from 'lucide-react';
 import type { ClerkPublicMetadata, OrgRole } from '@/types';
 
 // Admin components for expanded coach dashboard
-import { AdminUsersTab } from '@/components/admin/AdminUsersTab';
+import { AdminUsersTab, type ColumnKey } from '@/components/admin/AdminUsersTab';
 import { AdminSquadsTab } from '@/components/admin/AdminSquadsTab';
 import { AdminDiscoverTab } from '@/components/admin/discover';
 import { AdminPremiumUpgradeFormsTab } from '@/components/admin/AdminPremiumUpgradeFormsTab';
@@ -35,6 +35,9 @@ import { CoachPlanTab } from '@/components/coach/CoachPlanTab';
 // Valid tab values
 type CoachTab = 'clients' | 'squads' | 'programs' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'channels' | 'customize' | 'plan';
 const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'discover', 'upgrade-forms', 'coaching-forms', 'funnels', 'channels', 'customize', 'plan'];
+
+// Columns for Coach Dashboard (excludes 'tier' - tiers are not used in coach context)
+const COACH_DASHBOARD_COLUMNS: ColumnKey[] = ['select', 'avatar', 'name', 'email', 'role', 'squad', 'coaching', 'invitedBy', 'invitedAt', 'created', 'actions'];
 
 export default function CoachPage() {
   const router = useRouter();
@@ -251,7 +254,7 @@ export default function CoachPage() {
                 showOrgRole={hasFullAccess && (role === 'coach' || orgRole === 'super_coach')}
                 currentUserOrgRole={orgRole}
                 readOnly={isLimitedOrgCoach}
-                visibleColumns={isLimitedOrgCoach ? ['avatar', 'name', 'email', 'coach', 'coaching', 'created'] : undefined}
+                visibleColumns={isLimitedOrgCoach ? ['avatar', 'name', 'email', 'coach', 'coaching', 'created'] : COACH_DASHBOARD_COLUMNS}
                 showInviteButton={!isLimitedOrgCoach}
               />
             )}

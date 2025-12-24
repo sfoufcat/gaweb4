@@ -16,6 +16,8 @@ interface InlineCommentsProps {
   expanded?: boolean;
   /** Callback when expanded state changes */
   onExpandChange?: (expanded: boolean) => void;
+  /** Callback when a comment is successfully added */
+  onCommentAdded?: () => void;
 }
 
 /**
@@ -29,6 +31,7 @@ export function InlineComments({
   commentCount,
   expanded = false,
   onExpandChange,
+  onCommentAdded,
 }: InlineCommentsProps) {
   const router = useRouter();
   const { user } = useUser();
@@ -82,6 +85,9 @@ export function InlineComments({
       // Add to list optimistically
       addCommentToList(data.comment);
       setNewComment('');
+      
+      // Notify parent to update comment count
+      onCommentAdded?.();
       
       // Scroll to bottom to see new comment
       setTimeout(() => {

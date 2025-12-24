@@ -1,6 +1,7 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export type ConfirmationModalVariant = 'default' | 'destructive' | 'warning';
 
@@ -34,7 +35,13 @@ export function ConfirmationModal({
   icon,
   isLoading = false,
 }: ConfirmationModalProps) {
-  if (!isOpen) return null;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !mounted) return null;
 
   // Variant-based styles
   const variantStyles = {
@@ -81,7 +88,7 @@ export function ConfirmationModal({
 
   const displayIcon = icon || defaultIcons[variant];
 
-  return (
+  const modalContent = (
     <>
       {/* Backdrop */}
       <div 
@@ -138,6 +145,9 @@ export function ConfirmationModal({
       </div>
     </>
   );
+
+  // Use portal to render at document body level, escaping any parent overflow:hidden
+  return createPortal(modalContent, document.body);
 }
 
 /**

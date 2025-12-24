@@ -81,7 +81,7 @@ interface ClerkAdminUser {
 }
 
 // Available column keys for visibility control
-type ColumnKey = 'select' | 'avatar' | 'name' | 'email' | 'role' | 'orgRole' | 'tier' | 'squad' | 'coach' | 'coaching' | 'invitedBy' | 'invitedAt' | 'created' | 'actions';
+export type ColumnKey = 'select' | 'avatar' | 'name' | 'email' | 'role' | 'orgRole' | 'tier' | 'squad' | 'coach' | 'coaching' | 'invitedBy' | 'invitedAt' | 'created' | 'actions';
 
 // Default columns for full access (select column added for bulk operations)
 const ALL_COLUMNS: ColumnKey[] = ['select', 'avatar', 'name', 'email', 'role', 'tier', 'squad', 'coaching', 'invitedBy', 'invitedAt', 'created', 'actions'];
@@ -95,7 +95,7 @@ interface SquadOption {
   name: string;
 }
 
-interface AdminUsersTabProps {
+export interface AdminUsersTabProps {
   currentUserRole: UserRole;
   /** Override API endpoint for multi-tenancy (e.g., '/api/coach/org-users' for coaches) */
   apiEndpoint?: string;

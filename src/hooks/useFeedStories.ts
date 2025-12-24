@@ -17,6 +17,13 @@ export interface FeedStoryUser {
   hasStory: boolean;
 }
 
+interface CommunityMember {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  imageUrl: string;
+}
+
 interface UseFeedStoriesReturn {
   storyUsers: FeedStoryUser[];
   isLoading: boolean;
@@ -31,22 +38,64 @@ interface UseFeedStoriesReturn {
 /**
  * Hook to fetch community members with their story status for the Feed page.
  * 
- * Takes squad members as input and returns them formatted for the StoriesRow
- * with story availability status.
+ * Takes squad members as input and also fetches org community members.
+ * Returns them formatted for the StoriesRow with story availability status.
  */
 export function useFeedStories(squadMembers: SquadMember[]): UseFeedStoriesReturn {
   const { user } = useUser();
+  const [communityMembers, setCommunityMembers] = useState<CommunityMember[]>([]);
   const [storyStatus, setStoryStatus] = useState<Map<string, boolean>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fetchTrigger, setFetchTrigger] = useState(0);
 
-  // Get member IDs excluding current user
-  const memberIds = useMemo(() => {
-    return squadMembers
+  // Fetch community members if no squad members
+  useEffect(() => {
+    const fetchCommunity = async () => {
+      if (squadMembers.length > 0) {
+        // Use squad members, no need to fetch community
+        setCommunityMembers([]);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/feed/community');
+        if (response.ok) {
+          const data = await response.json();
+          setCommunityMembers(data.members || []);
+        }
+      } catch (err) {
+        console.error('[useFeedStories] Error fetching community:', err);
+      }
+    };
+
+    fetchCommunity();
+  }, [squadMembers.length]);
+
+  // Combine squad members and community members
+  const allMembers = useMemo(() => {
+    if (squadMembers.length > 0) {
+      return squadMembers
+        .filter(m => m.userId !== user?.id)
+        .map(m => ({
+          id: m.userId,
+          firstName: m.firstName || '',
+          lastName: m.lastName || '',
+          imageUrl: m.imageUrl || '',
+        }));
+    }
+    return communityMembers
       .filter(m => m.userId !== user?.id)
-      .map(m => m.userId);
-  }, [squadMembers, user?.id]);
+      .map(m => ({
+        id: m.userId,
+        firstName: m.firstName,
+        lastName: m.lastName,
+        imageUrl: m.imageUrl,
+      }));
+  }, [squadMembers, communityMembers, user?.id]);
+
+  // Get member IDs
+  const memberIds = useMemo(() => allMembers.map(m => m.id), [allMembers]);
 
   // Fetch story status for all members
   const fetchStoryStatus = useCallback(async () => {
@@ -100,18 +149,17 @@ export function useFeedStories(squadMembers: SquadMember[]): UseFeedStoriesRetur
     fetchStoryStatus();
   }, [fetchStoryStatus, fetchTrigger]);
 
-  // Convert squad members to FeedStoryUser format
+  // Convert members to FeedStoryUser format
   const storyUsers = useMemo((): FeedStoryUser[] => {
-    return squadMembers
-      .filter(m => m.userId !== user?.id)
+    return allMembers
       .map(member => ({
-        id: member.userId,
-        firstName: member.firstName || '',
-        lastName: member.lastName || '',
+        id: member.id,
+        firstName: member.firstName,
+        lastName: member.lastName,
         imageUrl: member.imageUrl,
-        hasStory: storyStatus.get(member.userId) || false,
+        hasStory: storyStatus.get(member.id) || false,
         // For now, all stories are "unseen" - we can add viewed tracking later
-        hasUnseenStory: storyStatus.get(member.userId) || false,
+        hasUnseenStory: storyStatus.get(member.id) || false,
       }))
       // Sort: users with stories first
       .sort((a, b) => {
@@ -119,7 +167,7 @@ export function useFeedStories(squadMembers: SquadMember[]): UseFeedStoriesRetur
         if (!a.hasStory && b.hasStory) return 1;
         return 0;
       });
-  }, [squadMembers, storyStatus, user?.id]);
+  }, [allMembers, storyStatus]);
 
   const refetch = useCallback(() => {
     setFetchTrigger(prev => prev + 1);

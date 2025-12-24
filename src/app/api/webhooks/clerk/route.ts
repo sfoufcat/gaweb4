@@ -15,6 +15,7 @@ import { Webhook } from 'svix';
 import { headers } from 'next/headers';
 import { WebhookEvent, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getStreamServerClient } from '@/lib/stream-server';
 import type { OrgMembership, OrgSettings, DEFAULT_ORG_SETTINGS } from '@/types';
 import { parseHost } from '@/lib/tenant/parseHost';
 
@@ -291,7 +292,7 @@ export async function POST(req: Request) {
   }
 
   // ==========================================================================
-  // USER UPDATED - Sync user data
+  // USER UPDATED - Sync user data to Firebase and Stream
   // ==========================================================================
   if (eventType === 'user.updated') {
     const { id, email_addresses, first_name, last_name, image_url } = evt.data;
@@ -306,6 +307,21 @@ export async function POST(req: Request) {
 
     await adminDb.collection('users').doc(id).update(userData);
     console.log(`[CLERK_WEBHOOK] Updated Firebase user document for ${id}`);
+
+    // Sync user to Stream Chat to update profile in comments/chat
+    try {
+      const streamClient = await getStreamServerClient();
+      const name = `${first_name || ''} ${last_name || ''}`.trim() || 'User';
+      await streamClient.upsertUser({
+        id,
+        name,
+        image: image_url || undefined,
+      });
+      console.log(`[CLERK_WEBHOOK] Synced user ${id} to Stream Chat`);
+    } catch (streamError) {
+      // Non-fatal: log but don't fail the webhook
+      console.error(`[CLERK_WEBHOOK] Failed to sync user ${id} to Stream:`, streamError);
+    }
   }
 
   // ==========================================================================

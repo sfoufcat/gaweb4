@@ -170,8 +170,12 @@ export function CreateStoryModal({
         className="hidden"
       />
 
-      {/* Modal */}
-      <div className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-md bg-[#171b22] rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden animate-modal-slide-up md:animate-modal-zoom-in">
+      {/* Modal Container - uses flex centering */}
+      <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 pointer-events-none">
+        <div 
+          className="w-full md:w-full md:max-w-md bg-[#171b22] rounded-t-2xl md:rounded-2xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden pointer-events-auto animate-modal-slide-up md:animate-modal-zoom-in"
+          onClick={(e) => e.stopPropagation()}
+        >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[#262b35]">
           <button
@@ -313,6 +317,7 @@ export function CreateStoryModal({
             />
           </div>
         )}
+        </div>
       </div>
 
       {/* Discard confirmation modal */}

@@ -89,7 +89,7 @@ export default async function RootLayout({
             __html: `
               @media (min-width: 1024px) {
                 body[data-layout="with-sidebar"] main {
-                  padding-left: 16rem;
+                  padding-left: 16rem !important;
                 }
               }
             `

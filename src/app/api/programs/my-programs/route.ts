@@ -167,8 +167,11 @@ export async function GET() {
         if (squadDoc.exists) {
           squad = { id: squadDoc.id, ...squadDoc.data() } as Squad;
           
-          // Fetch first 5 squad members for avatar display
-          const memberIds = squad.memberIds?.slice(0, 5) || [];
+          // Fetch first 5 squad members for avatar display (excluding coach)
+          const coachIdToExclude = squad.coachId;
+          const memberIds = (squad.memberIds || [])
+            .filter(id => id !== coachIdToExclude)
+            .slice(0, 5);
           if (memberIds.length > 0) {
             try {
               for (const memberId of memberIds) {

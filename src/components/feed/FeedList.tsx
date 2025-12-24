@@ -17,6 +17,7 @@ interface FeedListProps {
   onShare: (postId: string) => void;
   onDelete: (postId: string) => void;
   onReport: (postId: string) => void;
+  onCommentAdded?: (postId: string) => void;
   onCreatePost?: () => void;
 }
 
@@ -119,6 +120,7 @@ export function FeedList({
   onShare,
   onDelete,
   onReport,
+  onCommentAdded,
   onCreatePost,
 }: FeedListProps) {
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -180,6 +182,7 @@ export function FeedList({
             onShare={onShare}
             onDelete={onDelete}
             onReport={onReport}
+            onCommentAdded={onCommentAdded}
           />
         </div>
       ))}
