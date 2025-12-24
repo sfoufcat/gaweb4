@@ -42,14 +42,24 @@ export function FeedSidebar() {
   const { data: bookmarksData, isLoading: isLoadingBookmarks } = useSWR<{ posts: CompactPostPreview[] }>(
     SIDEBAR_BOOKMARKS_KEY,
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 5000 }
+    { 
+      revalidateOnFocus: false, 
+      dedupingInterval: 5000,
+      errorRetryCount: 0, // Prevent constant retries on error
+      shouldRetryOnError: false,
+    }
   );
   
   // Use SWR for trending
   const { data: trendingData, isLoading: isLoadingTrending } = useSWR<{ posts: CompactPostPreview[] }>(
     SIDEBAR_TRENDING_KEY,
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 30000 }
+    { 
+      revalidateOnFocus: false, 
+      dedupingInterval: 30000,
+      errorRetryCount: 0, // Prevent constant retries on error
+      shouldRetryOnError: false,
+    }
   );
 
   const bookmarkedPosts = bookmarksData?.posts || [];

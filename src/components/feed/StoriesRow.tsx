@@ -2,21 +2,19 @@
 
 import Image from 'next/image';
 import { useUser } from '@clerk/nextjs';
-import { useBrandingValues } from '@/contexts/BrandingContext';
-import { useCurrentUserHasStory } from '@/hooks/useFeedStories';
+import { StoryAvatar } from '@/components/stories/StoryAvatar';
+import { useCurrentUserHasStory, type FeedStoryUser } from '@/hooks/useFeedStories';
 
-interface StoryUser {
-  id: string;
-  firstName: string;
-  lastName: string;
-  imageUrl?: string;
-  hasUnseenStory: boolean;
-  hasStory?: boolean;
-}
+// Ring colors matching StoryAvatar
+const RING_COLORS = {
+  green: '#4CAF50',
+  brown: '#8B7355',
+  gray: '#9CA3AF',
+};
 
 interface StoriesRowProps {
   /** Users with active stories */
-  storyUsers?: StoryUser[];
+  storyUsers?: FeedStoryUser[];
   /** Loading state */
   isLoading?: boolean;
   /** Callback when user wants to create a story */
@@ -29,7 +27,7 @@ interface StoriesRowProps {
  * StoriesRow - Horizontal scrollable row of story avatars
  * 
  * Shows "Your Story" first with a + icon, followed by other users' stories.
- * Similar to Instagram/Facebook stories UI.
+ * Uses the shared StoryAvatar component for visual consistency with Home tab.
  * 
  * Note: This component renders story items directly without a scroll container.
  * The parent component should provide the scrollable container.
@@ -41,10 +39,13 @@ export function StoriesRow({
   onViewStory,
 }: StoriesRowProps) {
   const { user } = useUser();
-  const { colors, isDefault } = useBrandingValues();
-  const { hasStory: currentUserHasStory, isLoading: isCheckingCurrentUserStory } = useCurrentUserHasStory();
+  const currentUserStatus = useCurrentUserHasStory();
   
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
+  // Determine ring color based on status (matches StoryAvatar logic)
+  const getCurrentUserRingColor = () => {
+    if (currentUserStatus.hasDayClosed) return RING_COLORS.brown;
+    return RING_COLORS.green;
+  };
 
   // Filter to only show users who have stories
   const usersWithStories = storyUsers.filter(u => u.hasStory || u.hasUnseenStory);
@@ -54,14 +55,14 @@ export function StoriesRow({
       <>
         {/* Your Story skeleton */}
         <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
-          <div className="w-16 h-16 rounded-full bg-[#e1ddd8]/50 dark:bg-[#262b35] animate-pulse" />
-          <div className="w-12 h-3 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded animate-pulse" />
+          <div className="w-14 h-14 rounded-full bg-earth-200 dark:bg-[#262b35] animate-pulse" />
+          <div className="w-12 h-3 bg-earth-200 dark:bg-[#262b35] rounded animate-pulse" />
         </div>
         {/* Other users skeletons */}
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="flex flex-col items-center gap-1.5 flex-shrink-0">
-            <div className="w-16 h-16 rounded-full bg-[#e1ddd8]/50 dark:bg-[#262b35] animate-pulse" />
-            <div className="w-10 h-3 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded animate-pulse" />
+            <div className="w-12 h-12 rounded-full bg-earth-200 dark:bg-[#262b35] animate-pulse" />
+            <div className="w-10 h-3 bg-earth-200 dark:bg-[#262b35] rounded animate-pulse" />
           </div>
         ))}
       </>
@@ -70,61 +71,79 @@ export function StoriesRow({
 
   return (
     <>
-      {/* Your Story */}
+      {/* Your Story - Custom button with add (+) icon */}
       <button
-        onClick={() => currentUserHasStory && user?.id ? onViewStory?.(user.id) : onCreateStory?.()}
+        onClick={() => currentUserStatus.hasStory && user?.id ? onViewStory?.(user.id) : onCreateStory?.()}
         className="flex flex-col items-center gap-1.5 flex-shrink-0 group"
       >
         <div className="relative">
-          {/* Avatar with story ring if has stories, dashed border otherwise */}
-          {currentUserHasStory && !isCheckingCurrentUserStory ? (
-            // Has stories - show gradient ring
-            <div 
-              className="w-16 h-16 rounded-full p-0.5"
-              style={{
-                background: `linear-gradient(135deg, ${accentColor}, #f59e0b)`,
-              }}
-            >
-              <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-[#171b22] p-0.5">
+          {/* Avatar with story ring (solid color like home) if has stories, dashed border otherwise */}
+          {currentUserStatus.hasStory && !currentUserStatus.isLoading ? (
+            // Has stories - show solid color ring matching home tab
+            <div className="relative w-14 h-14">
+              {/* Ring */}
+              <div 
+                className="absolute -inset-0.5 rounded-full border-[2.5px]"
+                style={{ borderColor: getCurrentUserRingColor() }}
+              />
+              {/* Avatar */}
+              <div className="w-14 h-14 rounded-full overflow-hidden bg-earth-200">
                 {user?.imageUrl ? (
                   <Image
                     src={user.imageUrl}
                     alt="Your story"
-                    width={64}
-                    height={64}
-                    className="w-full h-full object-cover rounded-full"
+                    width={56}
+                    height={56}
+                    className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full rounded-full flex items-center justify-center bg-[#f5f3f0] dark:bg-[#262b35] text-lg font-semibold text-text-secondary">
-                    {(user?.firstName?.[0] || '') + (user?.lastName?.[0] || '')}
+                  <div className="w-full h-full flex items-center justify-center text-sm font-bold text-earth-700">
+                    {(user?.firstName?.[0] || '')}{(user?.lastName?.[0] || '')}
                   </div>
                 )}
               </div>
+              {/* Check badge if has tasks */}
+              {currentUserStatus.hasTasks && (
+                <div 
+                  className="absolute w-5 h-5 -bottom-0.5 -right-0.5 rounded-full flex items-center justify-center border-2 border-white shadow-sm z-10"
+                  style={{ backgroundColor: getCurrentUserRingColor() }}
+                >
+                  <svg 
+                    className="w-3 h-3 text-white"
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    strokeWidth={3} 
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                </div>
+              )}
             </div>
           ) : (
             // No stories - show dashed border with add hint
-            <div className="w-16 h-16 rounded-full overflow-hidden bg-[#f5f3f0] dark:bg-[#262b35] border-2 border-dashed border-[#d1ccc6] dark:border-[#3a3f4a] group-hover:border-solid transition-all">
+            <div className="w-14 h-14 rounded-full overflow-hidden bg-earth-200 border-2 border-dashed border-earth-300 dark:border-[#3a3f4a] group-hover:border-solid transition-all">
               {user?.imageUrl ? (
                 <Image
                   src={user.imageUrl}
                   alt="Your story"
-                  width={64}
-                  height={64}
+                  width={56}
+                  height={56}
                   className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-lg font-semibold text-text-secondary">
-                  {(user?.firstName?.[0] || '') + (user?.lastName?.[0] || '')}
+                <div className="w-full h-full flex items-center justify-center text-sm font-bold text-earth-700">
+                  {(user?.firstName?.[0] || '')}{(user?.lastName?.[0] || '')}
                 </div>
               )}
             </div>
           )}
-          {/* Plus icon - always visible for adding more to story */}
+          {/* Plus icon for adding story - always visible */}
           <div 
-            className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full flex items-center justify-center border-2 border-white dark:border-[#171b22]"
-            style={{ backgroundColor: accentColor }}
+            className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-sm z-20"
+            style={{ backgroundColor: RING_COLORS.green }}
           >
-            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
           </div>
@@ -132,44 +151,29 @@ export function StoriesRow({
         <span className="text-xs text-text-secondary font-medium">Your Story</span>
       </button>
 
-      {/* Other users' stories - only show users who have stories */}
+      {/* Other users' stories - using StoryAvatar for visual consistency */}
       {usersWithStories.map((storyUser) => (
-        <button
-          key={storyUser.id}
-          onClick={() => onViewStory?.(storyUser.id)}
-          className="flex flex-col items-center gap-1.5 flex-shrink-0 group"
-        >
-          <div className="relative">
-            {/* Story ring - colored if unseen, gray if seen */}
-            <div 
-              className="w-16 h-16 rounded-full p-0.5"
-              style={{
-                background: storyUser.hasUnseenStory 
-                  ? `linear-gradient(135deg, ${accentColor}, #f59e0b)` 
-                  : '#d1d5db',
-              }}
-            >
-              <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-[#171b22] p-0.5">
-                {storyUser.imageUrl ? (
-                  <Image
-                    src={storyUser.imageUrl}
-                    alt={`${storyUser.firstName}'s story`}
-                    width={64}
-                    height={64}
-                    className="w-full h-full object-cover rounded-full"
-                  />
-                ) : (
-                  <div className="w-full h-full rounded-full flex items-center justify-center bg-[#f5f3f0] dark:bg-[#262b35] text-lg font-semibold text-text-secondary">
-                    {storyUser.firstName?.[0]}{storyUser.lastName?.[0]}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          <span className="text-xs text-text-secondary font-medium truncate max-w-[64px]">
+        <div key={storyUser.id} className="flex flex-col items-center gap-1.5 flex-shrink-0">
+          <StoryAvatar
+            user={{
+              firstName: storyUser.firstName,
+              lastName: storyUser.lastName,
+              imageUrl: storyUser.imageUrl || '',
+            }}
+            userId={storyUser.id}
+            hasStory={storyUser.hasStory}
+            showRing={storyUser.hasStory}
+            showCheck={storyUser.hasTasks}
+            hasDayClosed={storyUser.hasDayClosed}
+            hasWeekClosed={storyUser.hasWeekClosed}
+            // Override click to use feed's story viewer
+            onClick={() => onViewStory?.(storyUser.id)}
+            size="md"
+          />
+          <span className="text-xs text-text-secondary font-medium truncate max-w-[56px]">
             {storyUser.firstName}
           </span>
-        </button>
+        </div>
       ))}
     </>
   );
