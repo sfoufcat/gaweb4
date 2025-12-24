@@ -194,6 +194,19 @@ body {
   overflow-x: hidden;
 }
 
+/* ===========================================
+   Sidebar-aware Main Content Padding
+   Uses CSS :has() to detect sidebar presence
+   and apply padding without JavaScript hydration
+   =========================================== */
+
+/* When sidebar wrapper exists in DOM, add left padding to main on large screens */
+body:has([data-sidebar]) main {
+  @media (min-width: 1024px) {
+    padding-left: 16rem; /* 256px = w-64 sidebar width */
+  }
+}
+
 /* Dark mode skeleton / loading state styles */
 html.dark .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
