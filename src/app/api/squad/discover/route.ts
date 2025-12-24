@@ -47,11 +47,9 @@ export async function GET(req: Request) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    // Get user's subscription tier and track from Clerk session
-    const publicMetadata = sessionClaims?.publicMetadata as { tier?: string; track?: UserTrack } | undefined;
-    const userTier = publicMetadata?.tier || 'standard';
+    // Get user's track from Clerk session (tier deprecated)
+    const publicMetadata = sessionClaims?.publicMetadata as { track?: UserTrack } | undefined;
     const userTrack = publicMetadata?.track || null;
-    const isPremiumUser = userTier === 'premium';
 
     // MULTI-TENANCY: Get org from tenant domain (null on platform domain)
     const organizationId = await getEffectiveOrgId();
@@ -65,9 +63,14 @@ export async function GET(req: Request) {
     const userData = userDoc.exists ? userDoc.data() : null;
     const currentSquadIds = new Set<string>();
     
+    // Add squadIds array
+    if (userData?.squadIds && Array.isArray(userData.squadIds)) {
+      userData.squadIds.forEach((id: string) => currentSquadIds.add(id));
+    }
+    // Legacy fields
     if (userData?.standardSquadId) currentSquadIds.add(userData.standardSquadId);
     if (userData?.premiumSquadId) currentSquadIds.add(userData.premiumSquadId);
-    if (userData?.squadId) currentSquadIds.add(userData.squadId); // Legacy field
+    if (userData?.squadId) currentSquadIds.add(userData.squadId);
 
     // Helper to process squads from a query
     async function processSquads(squadsSnapshot: FirebaseFirestore.QuerySnapshot): Promise<PublicSquad[]> {
@@ -119,9 +122,10 @@ export async function GET(req: Request) {
           }
         }
 
-        // Fetch coach info for premium squads
+        // Fetch coach info for coached squads
         let coach: CoachInfo | null = null;
-        if (data.isPremium && data.coachId) {
+        const hasCoach = data.hasCoach ?? data.isPremium ?? false;
+        if (hasCoach && data.coachId) {
           const coachDoc = await adminDb.collection('users').doc(data.coachId).get();
           if (coachDoc.exists) {
             const coachData = coachDoc.data();
@@ -175,80 +179,42 @@ export async function GET(req: Request) {
       return { trackSquads, generalSquads, otherTrackSquads };
     };
 
-    if (isPremiumUser) {
-      // Premium users see BOTH premium and standard squads
-      // Build queries - filter by org if user has one
-      let premiumQuery: FirebaseFirestore.Query = adminDb.collection('squads')
-        .where('visibility', '==', 'public')
-        .where('isPremium', '==', true);
-      let standardQuery: FirebaseFirestore.Query = adminDb.collection('squads')
-        .where('visibility', '==', 'public')
-        .where('isPremium', '==', false);
-      
-      if (organizationId) {
-        premiumQuery = premiumQuery.where('organizationId', '==', organizationId);
-        standardQuery = standardQuery.where('organizationId', '==', organizationId);
-      }
-      
-      const [premiumSnapshot, standardSnapshot] = await Promise.all([
-        premiumQuery.get(),
-        standardQuery.get(),
-      ]);
-
-      const [premiumSquadsList, standardSquadsList] = await Promise.all([
-        processSquads(premiumSnapshot),
-        processSquads(standardSnapshot),
-      ]);
-
-      // Group each type by track
-      const premiumGrouped = groupByTrack(premiumSquadsList);
-      const standardGrouped = groupByTrack(standardSquadsList);
-
-      return NextResponse.json({
-        // Premium squads grouped
-        premiumTrackSquads: premiumGrouped.trackSquads,
-        premiumGeneralSquads: premiumGrouped.generalSquads,
-        premiumOtherTrackSquads: premiumGrouped.otherTrackSquads,
-        // Standard squads grouped
-        standardTrackSquads: standardGrouped.trackSquads,
-        standardGeneralSquads: standardGrouped.generalSquads,
-        standardOtherTrackSquads: standardGrouped.otherTrackSquads,
-        // Legacy format for backward compatibility (combined)
-        trackSquads: [...premiumGrouped.trackSquads, ...standardGrouped.trackSquads],
-        generalSquads: [...premiumGrouped.generalSquads, ...standardGrouped.generalSquads],
-        otherTrackSquads: [...premiumGrouped.otherTrackSquads, ...standardGrouped.otherTrackSquads],
-        // User info
-        userTier,
-        isPremiumUser,
-        userTrack,
-        // Flag for UI to know to show separate sections
-        hasDualSquadView: true,
-      });
-    } else {
-      // Standard users see only standard squads
-      let query: FirebaseFirestore.Query = adminDb.collection('squads')
-        .where('visibility', '==', 'public')
-        .where('isPremium', '==', false);
-      
-      if (organizationId) {
-        query = query.where('organizationId', '==', organizationId);
-      }
-      
-      const squadsSnapshot = await query.get();
-
-      const squads = await processSquads(squadsSnapshot);
-      const grouped = groupByTrack(squads);
-
-      return NextResponse.json({ 
-        trackSquads: grouped.trackSquads,
-        generalSquads: grouped.generalSquads,
-        otherTrackSquads: grouped.otherTrackSquads,
-        userTier,
-        isPremiumUser,
-        userTrack,
-        hasDualSquadView: false,
-      });
+    // All users can see all public squads (tier restrictions removed)
+    let query: FirebaseFirestore.Query = adminDb.collection('squads')
+      .where('visibility', '==', 'public');
+    
+    if (organizationId) {
+      query = query.where('organizationId', '==', organizationId);
     }
+    
+    const squadsSnapshot = await query.get();
+
+    const squads = await processSquads(squadsSnapshot);
+    
+    // Separate into coached and non-coached squads
+    const coachedSquads = squads.filter(s => s.hasCoach ?? s.isPremium);
+    const nonCoachedSquads = squads.filter(s => !(s.hasCoach ?? s.isPremium));
+    
+    // Group each type by track
+    const coachedGrouped = groupByTrack(coachedSquads);
+    const nonCoachedGrouped = groupByTrack(nonCoachedSquads);
+
+    return NextResponse.json({
+      // Coached squads grouped (squads with a coach)
+      coachedTrackSquads: coachedGrouped.trackSquads,
+      coachedGeneralSquads: coachedGrouped.generalSquads,
+      coachedOtherTrackSquads: coachedGrouped.otherTrackSquads,
+      // Non-coached squads grouped (peer-led squads)
+      peerTrackSquads: nonCoachedGrouped.trackSquads,
+      peerGeneralSquads: nonCoachedGrouped.generalSquads,
+      peerOtherTrackSquads: nonCoachedGrouped.otherTrackSquads,
+      // Legacy format for backward compatibility (combined)
+      trackSquads: [...coachedGrouped.trackSquads, ...nonCoachedGrouped.trackSquads],
+      generalSquads: [...coachedGrouped.generalSquads, ...nonCoachedGrouped.generalSquads],
+      otherTrackSquads: [...coachedGrouped.otherTrackSquads, ...nonCoachedGrouped.otherTrackSquads],
+      // User info
+      userTrack,
+    });
   } catch (error) {
     console.error('[SQUAD_DISCOVER_ERROR]', error);
     return new NextResponse('Internal Error', { status: 500 });

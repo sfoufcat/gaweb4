@@ -172,7 +172,7 @@ export async function POST(req: Request) {
       timezone: timezone || 'UTC',
       memberIds: [],
       inviteCode: inviteCode || undefined,
-      isPremium: false, // Premium flag deprecated - use programId instead
+      hasCoach: !!coachId, // hasCoach based on whether a coach is assigned
       coachId: coachId || null,
       programId: programId || null, // Attach to program
       capacity: capacity || null, // Squad cap
@@ -250,20 +250,25 @@ export async function POST(req: Request) {
         updatedAt: now,
       });
       
-      // Update coach's user document with standardSquadId
+      // Update coach's user document with squadIds array
       // Check if user doc exists, create if not
       const coachUserDoc = await adminDb.collection('users').doc(coachId).get();
-      if (coachUserDoc.exists) {
-        await adminDb.collection('users').doc(coachId).update({
-          standardSquadId: squadRef.id,
-          updatedAt: now,
-        });
-      } else {
-        await adminDb.collection('users').doc(coachId).set({
-          standardSquadId: squadRef.id,
-          createdAt: now,
-          updatedAt: now,
-        });
+      const coachUserData = coachUserDoc.exists ? coachUserDoc.data() : null;
+      const existingSquadIds: string[] = coachUserData?.squadIds || [];
+      
+      if (!existingSquadIds.includes(squadRef.id)) {
+        if (coachUserDoc.exists) {
+          await adminDb.collection('users').doc(coachId).update({
+            squadIds: [...existingSquadIds, squadRef.id],
+            updatedAt: now,
+          });
+        } else {
+          await adminDb.collection('users').doc(coachId).set({
+            squadIds: [squadRef.id],
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
       }
       
       console.log(`[ADMIN_SQUADS] Added coach ${coachId} as member of squad ${squadRef.id}`);
@@ -277,7 +282,7 @@ export async function POST(req: Request) {
       timezone: timezone || 'UTC',
       memberIds,
       inviteCode,
-      isPremium: false,
+      hasCoach: !!coachId,
       coachId: coachId || null,
       programId: programId || null,
       capacity: capacity || undefined,

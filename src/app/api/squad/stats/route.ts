@@ -2,18 +2,18 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getStatsTabData, computeContributionHistory } from '@/lib/squad-alignment';
-import type { SquadType } from '@/types';
 
 /**
  * GET /api/squad/stats
  * Gets the expensive stats for the Stats tab (percentile, contribution history)
  * 
- * DUAL SQUAD SUPPORT:
- * - Accepts `type` query param to specify which squad ('premium' | 'standard')
+ * MULTI-SQUAD SUPPORT:
+ * - Accepts `type` query param to specify squad type ('premium' | 'standard')
  * - Falls back to first available squad if type not specified
+ * - 'premium' = coached squad, 'standard' = peer-led squad
  * 
  * Query params:
- * - type: 'premium' | 'standard' - Which squad's stats to fetch (optional)
+ * - type: 'premium' | 'standard' - Which squad type's stats to fetch (optional)
  * - offset: Number of days to skip from today (for pagination, default: 0)
  * - limit: Number of days to fetch (default: 30)
  * 
@@ -32,40 +32,58 @@ export async function GET(request: Request) {
 
     // Parse query params
     const { searchParams } = new URL(request.url);
-    const requestedType = searchParams.get('type') as SquadType | null;
+    const requestedType = searchParams.get('type') as 'premium' | 'standard' | null;
     const offset = parseInt(searchParams.get('offset') || '0', 10);
     const limit = parseInt(searchParams.get('limit') || '30', 10);
 
-    // Get user's squad IDs
+    // Get user's squad IDs (new format)
     const userDoc = await adminDb.collection('users').doc(userId).get();
     const userData = userDoc.exists ? userDoc.data() : null;
     
-    let standardSquadId = userData?.standardSquadId || null;
-    let premiumSquadId = userData?.premiumSquadId || null;
+    // Build list of squad IDs from new and legacy fields
+    const squadIds: string[] = [];
+    if (userData?.squadIds && Array.isArray(userData.squadIds)) {
+      squadIds.push(...userData.squadIds);
+    }
+    if (userData?.standardSquadId && !squadIds.includes(userData.standardSquadId)) {
+      squadIds.push(userData.standardSquadId);
+    }
+    if (userData?.premiumSquadId && !squadIds.includes(userData.premiumSquadId)) {
+      squadIds.push(userData.premiumSquadId);
+    }
+    if (userData?.squadId && !squadIds.includes(userData.squadId)) {
+      squadIds.push(userData.squadId);
+    }
     
-    // Handle legacy squadId if new fields not set
-    if (!standardSquadId && !premiumSquadId && userData?.squadId) {
-      const legacySquadDoc = await adminDb.collection('squads').doc(userData.squadId).get();
-      if (legacySquadDoc.exists) {
-        const legacySquadData = legacySquadDoc.data();
-        if (legacySquadData?.isPremium) {
-          premiumSquadId = userData.squadId;
-        } else {
-          standardSquadId = userData.squadId;
+    // Find coached and non-coached squads
+    let coachedSquadId: string | null = null;
+    let peerSquadId: string | null = null;
+    
+    for (const sid of squadIds) {
+      const squadDoc = await adminDb.collection('squads').doc(sid).get();
+      if (squadDoc.exists) {
+        const sData = squadDoc.data();
+        const hasCoach = sData?.hasCoach ?? sData?.isPremium ?? false;
+        if (hasCoach && !coachedSquadId) {
+          coachedSquadId = sid;
+        } else if (!hasCoach && !peerSquadId) {
+          peerSquadId = sid;
         }
       }
+      // Stop early if we found both
+      if (coachedSquadId && peerSquadId) break;
     }
 
     // Determine which squad ID to use
     let squadId: string | null = null;
     
-    if (requestedType === 'premium' && premiumSquadId) {
-      squadId = premiumSquadId;
-    } else if (requestedType === 'standard' && standardSquadId) {
-      squadId = standardSquadId;
+    if (requestedType === 'premium' && coachedSquadId) {
+      squadId = coachedSquadId;
+    } else if (requestedType === 'standard' && peerSquadId) {
+      squadId = peerSquadId;
     } else {
-      // Fallback: use first available (premium first)
-      squadId = premiumSquadId || standardSquadId;
+      // Fallback: use first available (coached first)
+      squadId = coachedSquadId || peerSquadId || (squadIds.length > 0 ? squadIds[0] : null);
     }
 
     // If no squad found, return empty stats

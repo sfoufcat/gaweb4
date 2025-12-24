@@ -2,21 +2,19 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
-import type { Squad, SquadMember, SquadStats, SquadType, ContributionDay } from '@/types';
+import type { Squad, SquadMember, SquadStats, ContributionDay } from '@/types';
 
-const SQUAD_CACHE_KEY = 'ga-squad-cache';
-const CACHE_VERSION = 1;
+const SQUAD_CACHE_KEY = 'ga-squad-cache-v2';
+const CACHE_VERSION = 2;
 const CACHE_MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
 
 interface SquadCacheData {
   version: number;
   timestamp: number;
   userId: string;
-  premiumSquad: Squad | null;
-  premiumMembers: SquadMember[];
-  standardSquad: Squad | null;
-  standardMembers: SquadMember[];
-  activeSquadType: SquadType | null;
+  squads: Squad[];
+  membersBySquad: Record<string, SquadMember[]>;
+  activeSquadId: string | null;
 }
 
 /**
@@ -51,11 +49,9 @@ function loadSquadCache(userId: string): Partial<SquadCacheData> | null {
  * Save squad data to localStorage
  */
 function saveSquadCache(userId: string, data: {
-  premiumSquad: Squad | null;
-  premiumMembers: SquadMember[];
-  standardSquad: Squad | null;
-  standardMembers: SquadMember[];
-  activeSquadType: SquadType | null;
+  squads: Squad[];
+  membersBySquad: Record<string, SquadMember[]>;
+  activeSquadId: string | null;
 }): void {
   if (typeof window === 'undefined') return;
   
@@ -78,7 +74,12 @@ interface SquadContextValue {
   members: SquadMember[];
   stats: SquadStats | null;
   
-  // Dual squad support
+  // Multi-squad support - all squads user is in
+  squads: Squad[];
+  membersBySquad: Record<string, SquadMember[]>;
+  statsBySquad: Record<string, SquadStats | null>;
+  
+  // Legacy compatibility: first coached squad and first non-coached squad
   premiumSquad: Squad | null;
   premiumMembers: SquadMember[];
   premiumStats: SquadStats | null;
@@ -86,11 +87,15 @@ interface SquadContextValue {
   standardMembers: SquadMember[];
   standardStats: SquadStats | null;
   
-  // Which squad type is currently active
-  activeSquadType: SquadType | null;
-  setActiveSquadType: (type: SquadType) => void;
+  // Which squad is currently active
+  activeSquadId: string | null;
+  setActiveSquadId: (squadId: string) => void;
   
   // Convenience flags
+  hasMultipleSquads: boolean;
+  hasCoachedSquad: boolean;
+  hasPeerSquad: boolean;
+  // Legacy flags
   hasBothSquads: boolean;
   hasPremiumSquad: boolean;
   hasStandardSquad: boolean;
@@ -112,36 +117,23 @@ const SquadContext = createContext<SquadContextValue | undefined>(undefined);
 
 // Global cache to persist across re-renders and navigation
 let globalSquadData: {
-  premiumSquad: Squad | null;
-  premiumMembers: SquadMember[];
-  premiumStats: SquadStats | null;
-  standardSquad: Squad | null;
-  standardMembers: SquadMember[];
-  standardStats: SquadStats | null;
-  activeSquadType: SquadType | null;
+  squads: Squad[];
+  membersBySquad: Record<string, SquadMember[]>;
+  statsBySquad: Record<string, SquadStats | null>;
+  activeSquadId: string | null;
   fetchedForUserId: string | null;
-  // Stats loading tracking per squad type
-  premiumStatsLoaded: boolean;
-  standardStatsLoaded: boolean;
-  premiumContributionDaysLoaded: number;
-  standardContributionDaysLoaded: number;
-  premiumHasMoreContributions: boolean;
-  standardHasMoreContributions: boolean;
+  statsLoadedForSquads: Set<string>;
+  contributionDaysLoadedBySquad: Record<string, number>;
+  hasMoreContributionsBySquad: Record<string, boolean>;
 } = {
-  premiumSquad: null,
-  premiumMembers: [],
-  premiumStats: null,
-  standardSquad: null,
-  standardMembers: [],
-  standardStats: null,
-  activeSquadType: null,
+  squads: [],
+  membersBySquad: {},
+  statsBySquad: {},
+  activeSquadId: null,
   fetchedForUserId: null,
-  premiumStatsLoaded: false,
-  standardStatsLoaded: false,
-  premiumContributionDaysLoaded: 0,
-  standardContributionDaysLoaded: 0,
-  premiumHasMoreContributions: true,
-  standardHasMoreContributions: true,
+  statsLoadedForSquads: new Set(),
+  contributionDaysLoadedBySquad: {},
+  hasMoreContributionsBySquad: {},
 };
 
 interface SquadProviderProps {
@@ -151,32 +143,28 @@ interface SquadProviderProps {
 /**
  * Global Squad Provider
  * 
- * Supports dual squad membership for premium users.
- * Premium users can be in both a standard squad and a premium squad.
+ * Supports multi-squad membership. Users can be in multiple squads
+ * (e.g., a program squad and a standalone squad).
  * 
  * The context tracks:
- * - Both squads (premium and standard) with their members/stats
+ * - All squads user is a member of
+ * - Members and stats for each squad
  * - Which squad is currently "active" (being viewed)
  * - A switcher function to change the active squad
  * 
- * Default: Premium squad is shown first when user has both.
+ * Default: First coached squad is shown if exists, else first squad.
  */
 export function SquadProvider({ children }: SquadProviderProps) {
   const { user, isLoaded } = useUser();
   const hasInitializedFromStorage = useRef(false);
   
-  // Premium squad state
-  const [premiumSquad, setPremiumSquad] = useState<Squad | null>(globalSquadData.premiumSquad);
-  const [premiumMembers, setPremiumMembers] = useState<SquadMember[]>(globalSquadData.premiumMembers);
-  const [premiumStats, setPremiumStats] = useState<SquadStats | null>(globalSquadData.premiumStats);
+  // Multi-squad state
+  const [squads, setSquads] = useState<Squad[]>(globalSquadData.squads);
+  const [membersBySquad, setMembersBySquad] = useState<Record<string, SquadMember[]>>(globalSquadData.membersBySquad);
+  const [statsBySquad, setStatsBySquad] = useState<Record<string, SquadStats | null>>(globalSquadData.statsBySquad);
   
-  // Standard squad state
-  const [standardSquad, setStandardSquad] = useState<Squad | null>(globalSquadData.standardSquad);
-  const [standardMembers, setStandardMembers] = useState<SquadMember[]>(globalSquadData.standardMembers);
-  const [standardStats, setStandardStats] = useState<SquadStats | null>(globalSquadData.standardStats);
-  
-  // Active squad type (which one is being viewed)
-  const [activeSquadType, setActiveSquadTypeState] = useState<SquadType | null>(globalSquadData.activeSquadType);
+  // Active squad
+  const [activeSquadId, setActiveSquadIdState] = useState<string | null>(globalSquadData.activeSquadId);
   
   // Loading states
   const [isLoading, setIsLoading] = useState(!globalSquadData.fetchedForUserId);
@@ -193,18 +181,14 @@ export function SquadProvider({ children }: SquadProviderProps) {
     const cached = loadSquadCache(user.id);
     if (cached && !globalSquadData.fetchedForUserId) {
       // Initialize from localStorage cache
-      setPremiumSquad(cached.premiumSquad ?? null);
-      setPremiumMembers(cached.premiumMembers ?? []);
-      setStandardSquad(cached.standardSquad ?? null);
-      setStandardMembers(cached.standardMembers ?? []);
-      setActiveSquadTypeState(cached.activeSquadType ?? null);
+      setSquads(cached.squads ?? []);
+      setMembersBySquad(cached.membersBySquad ?? {});
+      setActiveSquadIdState(cached.activeSquadId ?? null);
       
       // Also update global cache
-      globalSquadData.premiumSquad = cached.premiumSquad ?? null;
-      globalSquadData.premiumMembers = cached.premiumMembers ?? [];
-      globalSquadData.standardSquad = cached.standardSquad ?? null;
-      globalSquadData.standardMembers = cached.standardMembers ?? [];
-      globalSquadData.activeSquadType = cached.activeSquadType ?? null;
+      globalSquadData.squads = cached.squads ?? [];
+      globalSquadData.membersBySquad = cached.membersBySquad ?? {};
+      globalSquadData.activeSquadId = cached.activeSquadId ?? null;
       
       // Mark as having data (even if stale, shows instantly)
       setIsLoading(false);
@@ -213,27 +197,31 @@ export function SquadProvider({ children }: SquadProviderProps) {
     hasInitializedFromStorage.current = true;
   }, [user?.id]);
 
+  // Get the active squad data
+  const activeSquad = squads.find(s => s.id === activeSquadId) || null;
+  const activeMembers = activeSquadId ? (membersBySquad[activeSquadId] || []) : [];
+  const activeStats = activeSquadId ? (statsBySquad[activeSquadId] || null) : null;
+  
+  // Legacy compatibility: find first coached and first non-coached squad
+  const coachedSquad = squads.find(s => s.hasCoach) || null;
+  const peerSquad = squads.find(s => !s.hasCoach) || null;
+  
   // Convenience flags
-  const hasPremiumSquad = !!premiumSquad;
-  const hasStandardSquad = !!standardSquad;
-  const hasBothSquads = hasPremiumSquad && hasStandardSquad;
+  const hasMultipleSquads = squads.length > 1;
+  const hasCoachedSquad = !!coachedSquad;
+  const hasPeerSquad = !!peerSquad;
+  // Legacy flags
+  const hasPremiumSquad = hasCoachedSquad;
+  const hasStandardSquad = hasPeerSquad;
+  const hasBothSquads = hasCoachedSquad && hasPeerSquad;
 
-  // Get the active squad data based on activeSquadType
-  const squad = activeSquadType === 'premium' ? premiumSquad : activeSquadType === 'standard' ? standardSquad : null;
-  const members = activeSquadType === 'premium' ? premiumMembers : activeSquadType === 'standard' ? standardMembers : [];
-  const stats = activeSquadType === 'premium' ? premiumStats : activeSquadType === 'standard' ? standardStats : null;
-
-  // Set active squad type with cache update
-  const setActiveSquadType = useCallback((type: SquadType) => {
-    setActiveSquadTypeState(type);
-    globalSquadData.activeSquadType = type;
+  // Set active squad ID with cache update
+  const setActiveSquadId = useCallback((squadId: string) => {
+    setActiveSquadIdState(squadId);
+    globalSquadData.activeSquadId = squadId;
     
     // Update hasMoreContributions for the new active squad
-    if (type === 'premium') {
-      setHasMoreContributions(globalSquadData.premiumHasMoreContributions);
-    } else {
-      setHasMoreContributions(globalSquadData.standardHasMoreContributions);
-    }
+    setHasMoreContributions(globalSquadData.hasMoreContributionsBySquad[squadId] ?? true);
   }, []);
 
   // Fetch squad data with staggered loading for instant UI
@@ -251,85 +239,110 @@ export function SquadProvider({ children }: SquadProviderProps) {
 
       const fastData = await fastResponse.json();
 
-      // Update state for both squad types
-      const newPremiumSquad = fastData.premiumSquad || null;
-      const newPremiumMembers = fastData.premiumMembers || [];
-      const newStandardSquad = fastData.standardSquad || null;
-      const newStandardMembers = fastData.standardMembers || [];
+      // Extract squads array from response (use new format or legacy)
+      const fetchedSquads: Squad[] = fastData.squads?.map((s: { squad: Squad }) => s.squad).filter(Boolean) || [];
+      const fetchedMembersBySquad: Record<string, SquadMember[]> = {};
       
-      // Determine default active squad type (premium first if exists)
-      let defaultActiveType: SquadType | null = null;
-      if (newPremiumSquad) {
-        defaultActiveType = 'premium';
-      } else if (newStandardSquad) {
-        defaultActiveType = 'standard';
+      // Build members map from response
+      if (fastData.squads) {
+        for (const squadData of fastData.squads) {
+          if (squadData.squad?.id) {
+            fetchedMembersBySquad[squadData.squad.id] = squadData.members || [];
+          }
+        }
+      }
+      
+      // Legacy fallback: if no squads array, check premium/standard fields
+      if (fetchedSquads.length === 0) {
+        if (fastData.premiumSquad) {
+          fetchedSquads.push(fastData.premiumSquad);
+          fetchedMembersBySquad[fastData.premiumSquad.id] = fastData.premiumMembers || [];
+        }
+        if (fastData.standardSquad) {
+          fetchedSquads.push(fastData.standardSquad);
+          fetchedMembersBySquad[fastData.standardSquad.id] = fastData.standardMembers || [];
+        }
+      }
+      
+      // Determine default active squad (first coached squad, or first squad)
+      let defaultActiveId: string | null = null;
+      const firstCoached = fetchedSquads.find(s => s.hasCoach);
+      if (firstCoached) {
+        defaultActiveId = firstCoached.id;
+      } else if (fetchedSquads.length > 0) {
+        defaultActiveId = fetchedSquads[0].id;
       }
 
       // Update global cache
       globalSquadData = {
-        premiumSquad: newPremiumSquad,
-        premiumMembers: newPremiumMembers,
-        premiumStats: fastData.premiumStats || null,
-        standardSquad: newStandardSquad,
-        standardMembers: newStandardMembers,
-        standardStats: fastData.standardStats || null,
-        activeSquadType: defaultActiveType,
+        squads: fetchedSquads,
+        membersBySquad: fetchedMembersBySquad,
+        statsBySquad: {},
+        activeSquadId: defaultActiveId,
         fetchedForUserId: userId,
-        premiumStatsLoaded: false,
-        standardStatsLoaded: false,
-        premiumContributionDaysLoaded: 0,
-        standardContributionDaysLoaded: 0,
-        premiumHasMoreContributions: true,
-        standardHasMoreContributions: true,
+        statsLoadedForSquads: new Set(),
+        contributionDaysLoadedBySquad: {},
+        hasMoreContributionsBySquad: {},
       };
 
-      setPremiumSquad(newPremiumSquad);
-      setPremiumMembers(newPremiumMembers);
-      setPremiumStats(fastData.premiumStats || null);
-      setStandardSquad(newStandardSquad);
-      setStandardMembers(newStandardMembers);
-      setStandardStats(fastData.standardStats || null);
-      setActiveSquadTypeState(defaultActiveType);
+      setSquads(fetchedSquads);
+      setMembersBySquad(fetchedMembersBySquad);
+      setActiveSquadIdState(defaultActiveId);
       setIsLoading(false); // Page can render now!
       
       // Save to localStorage for instant loading on next visit
       saveSquadCache(userId, {
-        premiumSquad: newPremiumSquad,
-        premiumMembers: newPremiumMembers,
-        standardSquad: newStandardSquad,
-        standardMembers: newStandardMembers,
-        activeSquadType: defaultActiveType,
+        squads: fetchedSquads,
+        membersBySquad: fetchedMembersBySquad,
+        activeSquadId: defaultActiveId,
       });
 
-      // STEP 2: Fetch full stats in background for both squads (fills in the alignment bars)
-      if (newPremiumSquad || newStandardSquad) {
+      // STEP 2: Fetch full stats in background (fills in the alignment bars)
+      if (fetchedSquads.length > 0) {
         const fullResponse = await fetch('/api/squad/me?includeStats=true');
         
         if (fullResponse.ok) {
           const fullData = await fullResponse.json();
           
           // Update with real alignment data
-          globalSquadData.premiumSquad = fullData.premiumSquad || null;
-          globalSquadData.premiumMembers = fullData.premiumMembers || [];
-          globalSquadData.premiumStats = fullData.premiumStats || null;
-          globalSquadData.standardSquad = fullData.standardSquad || null;
-          globalSquadData.standardMembers = fullData.standardMembers || [];
-          globalSquadData.standardStats = fullData.standardStats || null;
+          const updatedSquads: Squad[] = fullData.squads?.map((s: { squad: Squad }) => s.squad).filter(Boolean) || fetchedSquads;
+          const updatedMembersBySquad: Record<string, SquadMember[]> = {};
+          const updatedStatsBySquad: Record<string, SquadStats | null> = {};
+          
+          if (fullData.squads) {
+            for (const squadData of fullData.squads) {
+              if (squadData.squad?.id) {
+                updatedMembersBySquad[squadData.squad.id] = squadData.members || [];
+                updatedStatsBySquad[squadData.squad.id] = squadData.stats || null;
+              }
+            }
+          }
+          
+          // Legacy fallback
+          if (Object.keys(updatedMembersBySquad).length === 0) {
+            if (fullData.premiumSquad) {
+              updatedMembersBySquad[fullData.premiumSquad.id] = fullData.premiumMembers || [];
+              updatedStatsBySquad[fullData.premiumSquad.id] = fullData.premiumStats || null;
+            }
+            if (fullData.standardSquad) {
+              updatedMembersBySquad[fullData.standardSquad.id] = fullData.standardMembers || [];
+              updatedStatsBySquad[fullData.standardSquad.id] = fullData.standardStats || null;
+            }
+          }
 
-          setPremiumSquad(fullData.premiumSquad || null);
-          setPremiumMembers(fullData.premiumMembers || []);
-          setPremiumStats(fullData.premiumStats || null);
-          setStandardSquad(fullData.standardSquad || null);
-          setStandardMembers(fullData.standardMembers || []);
-          setStandardStats(fullData.standardStats || null);
+          globalSquadData.squads = updatedSquads;
+          globalSquadData.membersBySquad = updatedMembersBySquad;
+          globalSquadData.statsBySquad = updatedStatsBySquad;
+
+          setSquads(updatedSquads);
+          setMembersBySquad(updatedMembersBySquad);
+          setStatsBySquad(updatedStatsBySquad);
           
           // Update localStorage cache with full data
           saveSquadCache(userId, {
-            premiumSquad: fullData.premiumSquad || null,
-            premiumMembers: fullData.premiumMembers || [],
-            standardSquad: fullData.standardSquad || null,
-            standardMembers: fullData.standardMembers || [],
-            activeSquadType: defaultActiveType,
+            squads: updatedSquads,
+            membersBySquad: updatedMembersBySquad,
+            activeSquadId: defaultActiveId,
           });
         }
       }
@@ -340,48 +353,39 @@ export function SquadProvider({ children }: SquadProviderProps) {
       
       // Clear cache on error
       globalSquadData = {
-        premiumSquad: null,
-        premiumMembers: [],
-        premiumStats: null,
-        standardSquad: null,
-        standardMembers: [],
-        standardStats: null,
-        activeSquadType: null,
+        squads: [],
+        membersBySquad: {},
+        statsBySquad: {},
+        activeSquadId: null,
         fetchedForUserId: userId,
-        premiumStatsLoaded: false,
-        standardStatsLoaded: false,
-        premiumContributionDaysLoaded: 0,
-        standardContributionDaysLoaded: 0,
-        premiumHasMoreContributions: true,
-        standardHasMoreContributions: true,
+        statsLoadedForSquads: new Set(),
+        contributionDaysLoadedBySquad: {},
+        hasMoreContributionsBySquad: {},
       };
       
-      setPremiumSquad(null);
-      setPremiumMembers([]);
-      setPremiumStats(null);
-      setStandardSquad(null);
-      setStandardMembers([]);
-      setStandardStats(null);
-      setActiveSquadTypeState(null);
+      setSquads([]);
+      setMembersBySquad({});
+      setStatsBySquad({});
+      setActiveSquadIdState(null);
       setIsLoading(false);
     }
   }, []);
 
   // Fetch expensive stats tab data (lazy loaded) - for the ACTIVE squad
   const fetchStatsTabData = useCallback(async () => {
-    if (!activeSquadType) return;
+    if (!activeSquadId) return;
     
-    // Check if already loaded for the active squad type
-    const isLoaded = activeSquadType === 'premium' 
-      ? globalSquadData.premiumStatsLoaded 
-      : globalSquadData.standardStatsLoaded;
-    
-    if (isLoaded || isLoadingStats) return;
+    // Check if already loaded for this squad
+    if (globalSquadData.statsLoadedForSquads.has(activeSquadId) || isLoadingStats) return;
     
     try {
       setIsLoadingStats(true);
 
-      const response = await fetch(`/api/squad/stats?type=${activeSquadType}`);
+      // Use squad ID directly instead of type
+      const activeSquadData = squads.find(s => s.id === activeSquadId);
+      const squadType = activeSquadData?.hasCoach ? 'premium' : 'standard';
+      
+      const response = await fetch(`/api/squad/stats?type=${squadType}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch stats');
@@ -394,28 +398,25 @@ export function SquadProvider({ children }: SquadProviderProps) {
       } = await response.json();
 
       // Merge with existing stats for the active squad
-      const currentStats = activeSquadType === 'premium' ? premiumStats : standardStats;
+      const currentStats = statsBySquad[activeSquadId];
       const updatedStats = currentStats ? {
         ...currentStats,
         topPercentile: data.topPercentile,
         contributionHistory: data.contributionHistory,
-      } : null;
+      } : {
+        avgAlignment: 0,
+        alignmentChange: 0,
+        topPercentile: data.topPercentile,
+        contributionHistory: data.contributionHistory,
+      };
 
-      // Update global cache and state based on active squad type
-      if (activeSquadType === 'premium') {
-        globalSquadData.premiumStats = updatedStats;
-        globalSquadData.premiumStatsLoaded = true;
-        globalSquadData.premiumContributionDaysLoaded = data.contributionHistory.length;
-        globalSquadData.premiumHasMoreContributions = data.hasMore;
-        setPremiumStats(updatedStats);
-      } else {
-        globalSquadData.standardStats = updatedStats;
-        globalSquadData.standardStatsLoaded = true;
-        globalSquadData.standardContributionDaysLoaded = data.contributionHistory.length;
-        globalSquadData.standardHasMoreContributions = data.hasMore;
-        setStandardStats(updatedStats);
-      }
+      // Update global cache and state
+      globalSquadData.statsBySquad[activeSquadId] = updatedStats;
+      globalSquadData.statsLoadedForSquads.add(activeSquadId);
+      globalSquadData.contributionDaysLoadedBySquad[activeSquadId] = data.contributionHistory.length;
+      globalSquadData.hasMoreContributionsBySquad[activeSquadId] = data.hasMore;
       
+      setStatsBySquad(prev => ({ ...prev, [activeSquadId]: updatedStats }));
       setHasMoreContributions(data.hasMore);
 
     } catch (err) {
@@ -424,23 +425,23 @@ export function SquadProvider({ children }: SquadProviderProps) {
     } finally {
       setIsLoadingStats(false);
     }
-  }, [activeSquadType, premiumStats, standardStats, isLoadingStats]);
+  }, [activeSquadId, squads, statsBySquad, isLoadingStats]);
 
   // Load more contribution history (pagination) - for the ACTIVE squad
   const loadMoreContributions = useCallback(async () => {
-    if (!activeSquadType || isLoadingMoreContributions || !hasMoreContributions) return;
+    if (!activeSquadId || isLoadingMoreContributions || !hasMoreContributions) return;
     
-    const currentStats = activeSquadType === 'premium' ? premiumStats : standardStats;
+    const currentStats = statsBySquad[activeSquadId];
     if (!currentStats) return;
     
     try {
       setIsLoadingMoreContributions(true);
 
-      const offset = activeSquadType === 'premium' 
-        ? globalSquadData.premiumContributionDaysLoaded 
-        : globalSquadData.standardContributionDaysLoaded;
+      const offset = globalSquadData.contributionDaysLoadedBySquad[activeSquadId] || 0;
+      const activeSquadData = squads.find(s => s.id === activeSquadId);
+      const squadType = activeSquadData?.hasCoach ? 'premium' : 'standard';
       
-      const response = await fetch(`/api/squad/stats?type=${activeSquadType}&offset=${offset}&limit=30`);
+      const response = await fetch(`/api/squad/stats?type=${squadType}&offset=${offset}&limit=30`);
       
       if (!response.ok) {
         throw new Error('Failed to load more contributions');
@@ -457,19 +458,12 @@ export function SquadProvider({ children }: SquadProviderProps) {
         contributionHistory: [...currentStats.contributionHistory, ...data.contributionHistory],
       };
 
-      // Update global cache and state based on active squad type
-      if (activeSquadType === 'premium') {
-        globalSquadData.premiumStats = updatedStats;
-        globalSquadData.premiumContributionDaysLoaded += data.contributionHistory.length;
-        globalSquadData.premiumHasMoreContributions = data.hasMore;
-        setPremiumStats(updatedStats);
-      } else {
-        globalSquadData.standardStats = updatedStats;
-        globalSquadData.standardContributionDaysLoaded += data.contributionHistory.length;
-        globalSquadData.standardHasMoreContributions = data.hasMore;
-        setStandardStats(updatedStats);
-      }
+      // Update global cache and state
+      globalSquadData.statsBySquad[activeSquadId] = updatedStats;
+      globalSquadData.contributionDaysLoadedBySquad[activeSquadId] = (offset + data.contributionHistory.length);
+      globalSquadData.hasMoreContributionsBySquad[activeSquadId] = data.hasMore;
       
+      setStatsBySquad(prev => ({ ...prev, [activeSquadId]: updatedStats }));
       setHasMoreContributions(data.hasMore);
 
     } catch (err) {
@@ -477,18 +471,15 @@ export function SquadProvider({ children }: SquadProviderProps) {
     } finally {
       setIsLoadingMoreContributions(false);
     }
-  }, [activeSquadType, premiumStats, standardStats, isLoadingMoreContributions, hasMoreContributions]);
+  }, [activeSquadId, squads, statsBySquad, isLoadingMoreContributions, hasMoreContributions]);
 
   // Manual refetch function
   const refetch = useCallback(async () => {
     if (user?.id) {
       // Reset all stats loading state
-      globalSquadData.premiumStatsLoaded = false;
-      globalSquadData.standardStatsLoaded = false;
-      globalSquadData.premiumContributionDaysLoaded = 0;
-      globalSquadData.standardContributionDaysLoaded = 0;
-      globalSquadData.premiumHasMoreContributions = true;
-      globalSquadData.standardHasMoreContributions = true;
+      globalSquadData.statsLoadedForSquads = new Set();
+      globalSquadData.contributionDaysLoadedBySquad = {};
+      globalSquadData.hasMoreContributionsBySquad = {};
       setHasMoreContributions(true);
       await fetchSquad(user.id);
     }
@@ -501,28 +492,19 @@ export function SquadProvider({ children }: SquadProviderProps) {
     // No user = clear data
     if (!user) {
       globalSquadData = {
-        premiumSquad: null,
-        premiumMembers: [],
-        premiumStats: null,
-        standardSquad: null,
-        standardMembers: [],
-        standardStats: null,
-        activeSquadType: null,
+        squads: [],
+        membersBySquad: {},
+        statsBySquad: {},
+        activeSquadId: null,
         fetchedForUserId: null,
-        premiumStatsLoaded: false,
-        standardStatsLoaded: false,
-        premiumContributionDaysLoaded: 0,
-        standardContributionDaysLoaded: 0,
-        premiumHasMoreContributions: true,
-        standardHasMoreContributions: true,
+        statsLoadedForSquads: new Set(),
+        contributionDaysLoadedBySquad: {},
+        hasMoreContributionsBySquad: {},
       };
-      setPremiumSquad(null);
-      setPremiumMembers([]);
-      setPremiumStats(null);
-      setStandardSquad(null);
-      setStandardMembers([]);
-      setStandardStats(null);
-      setActiveSquadTypeState(null);
+      setSquads([]);
+      setMembersBySquad({});
+      setStatsBySquad({});
+      setActiveSquadIdState(null);
       setIsLoading(false);
       setHasMoreContributions(true);
       return;
@@ -530,20 +512,15 @@ export function SquadProvider({ children }: SquadProviderProps) {
 
     // Already fetched for this user = use cached data
     if (globalSquadData.fetchedForUserId === user.id) {
-      setPremiumSquad(globalSquadData.premiumSquad);
-      setPremiumMembers(globalSquadData.premiumMembers);
-      setPremiumStats(globalSquadData.premiumStats);
-      setStandardSquad(globalSquadData.standardSquad);
-      setStandardMembers(globalSquadData.standardMembers);
-      setStandardStats(globalSquadData.standardStats);
-      setActiveSquadTypeState(globalSquadData.activeSquadType);
+      setSquads(globalSquadData.squads);
+      setMembersBySquad(globalSquadData.membersBySquad);
+      setStatsBySquad(globalSquadData.statsBySquad);
+      setActiveSquadIdState(globalSquadData.activeSquadId);
       setIsLoading(false);
       
-      // Set hasMoreContributions based on active squad type
-      if (globalSquadData.activeSquadType === 'premium') {
-        setHasMoreContributions(globalSquadData.premiumHasMoreContributions);
-      } else if (globalSquadData.activeSquadType === 'standard') {
-        setHasMoreContributions(globalSquadData.standardHasMoreContributions);
+      // Set hasMoreContributions based on active squad
+      if (globalSquadData.activeSquadId) {
+        setHasMoreContributions(globalSquadData.hasMoreContributionsBySquad[globalSquadData.activeSquadId] ?? true);
       }
       return;
     }
@@ -555,23 +532,32 @@ export function SquadProvider({ children }: SquadProviderProps) {
   return (
     <SquadContext.Provider value={{
       // Active squad (shorthand)
-      squad,
-      members,
-      stats,
+      squad: activeSquad,
+      members: activeMembers,
+      stats: activeStats,
       
-      // Both squads
-      premiumSquad,
-      premiumMembers,
-      premiumStats,
-      standardSquad,
-      standardMembers,
-      standardStats,
+      // Multi-squad data
+      squads,
+      membersBySquad,
+      statsBySquad,
       
-      // Squad type switching
-      activeSquadType,
-      setActiveSquadType,
+      // Legacy compatibility (first coached and first non-coached)
+      premiumSquad: coachedSquad,
+      premiumMembers: coachedSquad ? (membersBySquad[coachedSquad.id] || []) : [],
+      premiumStats: coachedSquad ? (statsBySquad[coachedSquad.id] || null) : null,
+      standardSquad: peerSquad,
+      standardMembers: peerSquad ? (membersBySquad[peerSquad.id] || []) : [],
+      standardStats: peerSquad ? (statsBySquad[peerSquad.id] || null) : null,
+      
+      // Squad switching
+      activeSquadId,
+      setActiveSquadId,
       
       // Convenience flags
+      hasMultipleSquads,
+      hasCoachedSquad,
+      hasPeerSquad,
+      // Legacy flags
       hasBothSquads,
       hasPremiumSquad,
       hasStandardSquad,
@@ -599,10 +585,14 @@ export function SquadProvider({ children }: SquadProviderProps) {
  * Returns the globally cached squad data that was fetched at app startup.
  * No duplicate API calls - everyone gets the same cached data.
  * 
- * For premium users with both squads:
+ * For users with multiple squads:
  * - Use `squad`, `members`, `stats` to get the active (currently viewed) squad
- * - Use `premiumSquad`, `standardSquad` to access both squads directly
- * - Use `setActiveSquadType` to switch between them
+ * - Use `squads` to access all squads user is in
+ * - Use `setActiveSquadId` to switch between them
+ * - Use `hasMultipleSquads` to check if user has multiple squad membership
+ * 
+ * Legacy support for dual-squad (premium/standard):
+ * - Use `premiumSquad`, `standardSquad` to access coached and non-coached squads
  * - Use `hasBothSquads` to check if user has dual membership
  */
 export function useSquadContext(): SquadContextValue {
@@ -612,3 +602,11 @@ export function useSquadContext(): SquadContextValue {
   }
   return context;
 }
+
+// Export legacy type for backward compatibility
+export type SquadType = 'premium' | 'standard';
+
+/**
+ * @deprecated Use setActiveSquadId instead
+ */
+export type { SquadContextValue };

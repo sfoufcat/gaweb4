@@ -178,12 +178,12 @@ export function CreatePostModal({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 animate-backdrop-fade-in"
         onClick={handleClose}
       />
 
       {/* Modal */}
-      <div className="fixed inset-x-4 top-[10%] md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-lg bg-white dark:bg-[#13171f] rounded-2xl shadow-xl z-50 max-h-[80vh] flex flex-col overflow-hidden">
+      <div className="fixed inset-x-4 top-[10%] md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-lg bg-white dark:bg-[#171b22] rounded-2xl shadow-xl z-50 max-h-[80vh] flex flex-col overflow-hidden animate-modal-slide-up md:animate-modal-zoom-in">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[#e8e4df] dark:border-[#262b35]">
           <button

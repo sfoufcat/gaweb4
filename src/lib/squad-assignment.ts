@@ -305,37 +305,43 @@ async function createNewSquad(params: CreateNewSquadParams): Promise<string | nu
  * Update user document with squad reference
  * 
  * @param userId - User ID to update
- * @param squadId - Squad ID to set
- * @param isPremium - Whether this is a premium squad (determines field name)
+ * @param squadId - Squad ID to add to user's squadIds array
  */
 export async function updateUserSquadReference(
   userId: string,
-  squadId: string,
-  isPremium: boolean = true
+  squadId: string
 ): Promise<void> {
   const now = new Date().toISOString();
   const userRef = adminDb.collection('users').doc(userId);
   
+  // Get current user data to update squadIds array
+  const userDoc = await userRef.get();
+  const userData = userDoc.exists ? userDoc.data() : null;
+  
+  // Get current squadIds array or create from legacy fields
+  const currentSquadIds: string[] = userData?.squadIds || [];
+  
+  // Don't add if already in array
+  if (currentSquadIds.includes(squadId)) {
+    console.log(`[SQUAD_ASSIGNMENT] User ${userId} already has squadId ${squadId}`);
+    return;
+  }
+  
+  // Add legacy fields to array if not already present
+  if (userData?.standardSquadId && !currentSquadIds.includes(userData.standardSquadId)) {
+    currentSquadIds.push(userData.standardSquadId);
+  }
+  if (userData?.premiumSquadId && !currentSquadIds.includes(userData.premiumSquadId)) {
+    currentSquadIds.push(userData.premiumSquadId);
+  }
+  
+  // Add the new squad
+  currentSquadIds.push(squadId);
+  
   const updateData: Record<string, unknown> = {
+    squadIds: currentSquadIds,
     updatedAt: now,
   };
-  
-  if (isPremium) {
-    updateData.premiumSquadId = squadId;
-  } else {
-    updateData.standardSquadId = squadId;
-  }
-  
-  // Also set legacy squadId if user doesn't have any squad yet
-  const userDoc = await userRef.get();
-  if (userDoc.exists) {
-    const userData = userDoc.data();
-    if (!userData?.squadId && !userData?.premiumSquadId && !userData?.standardSquadId) {
-      updateData.squadId = squadId;
-    }
-  } else {
-    updateData.squadId = squadId;
-  }
   
   await userRef.set(updateData, { merge: true });
   console.log(`[SQUAD_ASSIGNMENT] Updated user ${userId} with squadId ${squadId}`);

@@ -217,7 +217,7 @@ export function SquadTabContent() {
         <h3 className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] leading-[1.3] tracking-[-1px] mb-4">
           Members ({members.length})
         </h3>
-        <SquadMemberList members={members} isPremium={squad.isPremium} />
+        <SquadMemberList members={members} hasCoach={squad.hasCoach ?? squad.isPremium} />
       </div>
 
       {/* View Squad Stats Button */}
@@ -266,7 +266,7 @@ export function SquadTabContent() {
 
       {/* Invite Cards */}
       <SquadInviteCards
-        isPremium={squad.isPremium}
+        hasCoach={squad.hasCoach ?? squad.isPremium}
         inviteCode={squad.inviteCode}
         squadName={squad.name}
         visibility={squad.visibility}

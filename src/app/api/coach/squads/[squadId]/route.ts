@@ -72,7 +72,8 @@ export async function GET(
       id: squadDoc.id,
       name: squadData?.name || '',
       avatarUrl: squadData?.avatarUrl || '',
-      isPremium: squadData?.isPremium || false,
+      hasCoach: squadData?.hasCoach ?? squadData?.isPremium ?? !!coachId,
+      isPremium: squadData?.isPremium, // Legacy field
       coachId: coachId,
       createdAt: squadData?.createdAt || new Date().toISOString(),
       updatedAt: squadData?.updatedAt || new Date().toISOString(),
@@ -80,7 +81,7 @@ export async function GET(
       streak: basicStats.squadStreak,
       avgAlignment: basicStats.avgAlignment,
       chatChannelId: squadData?.chatChannelId || null,
-      // Premium squad call fields
+      // Coached squad call fields
       nextCallDateTime: squadData?.nextCallDateTime || null,
       nextCallTimezone: squadData?.nextCallTimezone || null,
       nextCallLocation: squadData?.nextCallLocation || null,

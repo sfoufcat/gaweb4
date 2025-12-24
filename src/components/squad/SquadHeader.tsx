@@ -200,10 +200,10 @@ export function SquadHeader({ squad, onSquadUpdated }: SquadHeaderProps) {
               <Pencil className="w-3 h-3" />
             </button>
           </div>
-          {squad.isPremium ? (
+          {squad.hasCoach ? (
             <p className="font-sans text-[12px] font-semibold leading-[1.2]">
               <span className="bg-gradient-to-r from-[#FF8A65] to-[#FF6B6B] bg-clip-text text-transparent">
-                Premium squad
+                Coached squad
               </span>
             </p>
           ) : squad.visibility === 'private' ? (

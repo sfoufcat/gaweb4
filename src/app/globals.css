@@ -177,6 +177,201 @@
     background-size: 1000px 100%;
   }
 
+  /* Feed post fade-up with stagger support */
+  @keyframes feedFadeUp {
+    0% {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-feed-fade-up {
+    animation: feedFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 0;
+  }
+
+  /* Staggered animation delays for posts */
+  .animation-delay-0 { animation-delay: 0ms; }
+  .animation-delay-75 { animation-delay: 75ms; }
+  .animation-delay-150 { animation-delay: 150ms; }
+  .animation-delay-225 { animation-delay: 225ms; }
+  .animation-delay-300 { animation-delay: 300ms; }
+
+  /* New post pop-in animation */
+  @keyframes newPostPop {
+    0% {
+      opacity: 0;
+      transform: scale(0.95) translateY(-10px);
+    }
+    70% {
+      transform: scale(1.02) translateY(0);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .animate-new-post {
+    animation: newPostPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  /* Heart pop animation for likes */
+  @keyframes heartPop {
+    0% {
+      transform: scale(1);
+    }
+    25% {
+      transform: scale(1.3);
+    }
+    50% {
+      transform: scale(0.9);
+    }
+    75% {
+      transform: scale(1.1);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .animate-heart-pop {
+    animation: heartPop 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+  }
+
+  /* Bookmark bounce animation */
+  @keyframes bookmarkBounce {
+    0%, 100% {
+      transform: scale(1);
+    }
+    30% {
+      transform: scale(1.25) rotate(-8deg);
+    }
+    60% {
+      transform: scale(0.95) rotate(3deg);
+    }
+  }
+
+  .animate-bookmark-bounce {
+    animation: bookmarkBounce 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+  }
+
+  /* Modal zoom-in animation */
+  @keyframes modalZoomIn {
+    0% {
+      opacity: 0;
+      transform: scale(0.92);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .animate-modal-zoom-in {
+    animation: modalZoomIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* Modal slide-up for mobile */
+  @keyframes modalSlideUp {
+    0% {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-modal-slide-up {
+    animation: modalSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* Backdrop fade-in */
+  @keyframes backdropFadeIn {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+
+  .animate-backdrop-fade-in {
+    animation: backdropFadeIn 0.2s ease-out forwards;
+  }
+
+  /* Comment section slide-down */
+  @keyframes slideDown {
+    0% {
+      opacity: 0;
+      max-height: 0;
+      transform: translateY(-10px);
+    }
+    100% {
+      opacity: 1;
+      max-height: 500px;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-slide-down {
+    animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    overflow: hidden;
+  }
+
+  /* Skeleton shimmer effect */
+  @keyframes skeletonShimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  .animate-skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      #f5f3f0 0%,
+      #ebe7e2 20%,
+      #f5f3f0 40%,
+      #f5f3f0 100%
+    );
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.5s ease-in-out infinite;
+  }
+
+  .dark .animate-skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      #1a1f2a 0%,
+      #262b35 20%,
+      #1a1f2a 40%,
+      #1a1f2a 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  /* Hover lift effect for post cards */
+  .hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.08), 0 4px 10px -4px rgba(0, 0, 0, 0.04);
+  }
+
+  .dark .hover-lift:hover {
+    box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.3), 0 4px 10px -4px rgba(0, 0, 0, 0.2);
+  }
+
   /* Backdrop blur support */
   @supports (backdrop-filter: blur(0)) or (-webkit-backdrop-filter: blur(0)) {
     .backdrop-blur-xl {

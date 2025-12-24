@@ -164,7 +164,7 @@ export default function StandaloneSquadPage() {
       </div>
 
       {/* Squad Call Card */}
-      {squad.isPremium ? (
+      {(squad.hasCoach ?? squad.isPremium) ? (
         <NextSquadCallCard 
           squad={squad} 
           isCoach={isCoach}
@@ -333,7 +333,7 @@ export default function StandaloneSquadPage() {
             <h3 className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] leading-[1.3] tracking-[-1px] mb-4">
               Members ({members.length})
             </h3>
-            <SquadMemberList members={members} isPremium={squad.isPremium} />
+            <SquadMemberList members={members} hasCoach={squad.hasCoach ?? squad.isPremium} />
           </div>
 
           {/* Go to Chat Button */}
@@ -361,7 +361,7 @@ export default function StandaloneSquadPage() {
 
           {/* Invite Cards */}
           <SquadInviteCards
-            isPremium={squad.isPremium}
+            hasCoach={squad.hasCoach ?? squad.isPremium}
             inviteCode={squad.inviteCode}
             squadName={squad.name}
             visibility={squad.visibility}

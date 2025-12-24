@@ -15,7 +15,7 @@ import {
 import { SquadCard } from './SquadCard';
 import { CreateSquadModal } from './CreateSquadModal';
 import { JoinPrivateSquadModal } from './JoinPrivateSquadModal';
-import type { Squad, UserTier } from '@/types';
+import type { Squad } from '@/types';
 
 /**
  * SquadDiscovery Component
@@ -24,9 +24,7 @@ import type { Squad, UserTier } from '@/types';
  * when enrolling in a group program. Use `/discover` for program discovery instead.
  * 
  * Main discovery page for users without a squad.
- * Shows squads based on user subscription tier:
- * - Premium users: See premium squads, can only join private squads via invite code
- * - Standard users: See standard squads, can create and join squads
+ * Shows all public squads. Users can create squads or join via invite code.
  */
 
 type SortOption = 'most_active' | 'most_members' | 'newest' | 'alphabetical';
@@ -48,8 +46,6 @@ export function SquadDiscovery() {
   const [joiningSquadId, setJoiningSquadId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinPrivateModal, setShowJoinPrivateModal] = useState(false);
-  const [_userTier, setUserTier] = useState<UserTier>('standard');
-  const [isPremiumUser, setIsPremiumUser] = useState(false);
 
   // Fetch squads
   const fetchSquads = useCallback(async () => {
@@ -70,9 +66,6 @@ export function SquadDiscovery() {
         ...(data.otherTrackSquads || []),
       ];
       setSquads(allSquads);
-      // Store user tier info from API response
-      if (data.userTier) setUserTier(data.userTier);
-      if (typeof data.isPremiumUser === 'boolean') setIsPremiumUser(data.isPremiumUser);
     } catch (err) {
       console.error('Error fetching squads:', err);
     } finally {
@@ -141,13 +134,10 @@ export function SquadDiscovery() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="font-albert text-[36px] text-text-primary leading-[1.2] tracking-[-2px] mb-2">
-          {isPremiumUser ? 'Find your premium squad' : 'Find your squad'}
+          Find your squad
         </h1>
         <p className="font-albert text-[16px] text-text-secondary leading-[1.4]">
-          {isPremiumUser 
-            ? 'Browse available premium squads or join a private squad using an invite code.'
-            : 'Join a community of growth-minded people working toward their goals together.'
-          }
+          Join a community of growth-minded people working toward their goals together.
         </p>
       </div>
 
@@ -191,74 +181,42 @@ export function SquadDiscovery() {
         </DropdownMenu>
       </div>
 
-      {/* Premium Guided Squad Card - Only show for standard users */}
-      {!isPremiumUser && (
-        <Link
-          href="/upgrade-premium"
-          className="group block mb-4 bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#2a2420] dark:to-[#1f1c1a] border border-[#FFE4CC] dark:border-[#3d322a] rounded-[20px] p-5 hover:shadow-lg hover:border-[#FF8A65]/40 dark:hover:border-[#FF8A65]/30 transition-all duration-300"
-        >
-          <div className="flex items-start gap-4">
-            {/* Premium Icon */}
-            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#FF8A65] to-[#FF6B6B] flex items-center justify-center flex-shrink-0 shadow-md">
-              <Star className="w-7 h-7 text-white fill-white" />
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              {/* Premium Badge */}
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-albert text-[12px] font-semibold bg-gradient-to-r from-[#FF8A65] to-[#FF6B6B] bg-clip-text text-transparent">
-                  Premium
-                </span>
-              </div>
-              
-              <h3 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px] mb-1">
-                Join a guided squad
-              </h3>
-              
-              <p className="font-albert text-[14px] text-text-secondary leading-[1.4] mb-3">
-                Get weekly coaching calls, personalized guidance, and achieve your goals 10x faster with expert support.
-              </p>
-
-              {/* CTA */}
-              <div className="flex items-center gap-2 text-[#FF6B6B] font-albert font-semibold text-[14px] group-hover:gap-3 transition-all">
-                <span>Learn more</span>
-                <ArrowRight className="w-4 h-4" />
-              </div>
-            </div>
+      {/* Coached Squad Promo Card */}
+      <Link
+        href="/discover"
+        className="group block mb-4 bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#2a2420] dark:to-[#1f1c1a] border border-[#FFE4CC] dark:border-[#3d322a] rounded-[20px] p-5 hover:shadow-lg hover:border-[#FF8A65]/40 dark:hover:border-[#FF8A65]/30 transition-all duration-300"
+      >
+        <div className="flex items-start gap-4">
+          {/* Coached Icon */}
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#FF8A65] to-[#FF6B6B] flex items-center justify-center flex-shrink-0 shadow-md">
+            <Star className="w-7 h-7 text-white fill-white" />
           </div>
-        </Link>
-      )}
 
-      {/* Premium User Info Card - Only show for premium users */}
-      {isPremiumUser && (
-        <div className="mb-4 bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#2a2420] dark:to-[#1f1c1a] border border-[#FFE4CC] dark:border-[#3d322a] rounded-[20px] p-5">
-          <div className="flex items-start gap-4">
-            {/* Premium Icon */}
-            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#FF8A65] to-[#FF6B6B] flex items-center justify-center flex-shrink-0 shadow-md">
-              <Star className="w-7 h-7 text-white fill-white" />
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            {/* Badge */}
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-albert text-[12px] font-semibold bg-gradient-to-r from-[#FF8A65] to-[#FF6B6B] bg-clip-text text-transparent">
+                Coached
+              </span>
             </div>
+            
+            <h3 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px] mb-1">
+              Join a coached program
+            </h3>
+            
+            <p className="font-albert text-[14px] text-text-secondary leading-[1.4] mb-3">
+              Get weekly coaching calls, personalized guidance, and achieve your goals 10x faster with expert support.
+            </p>
 
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              {/* Premium Badge */}
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-albert text-[12px] font-semibold bg-gradient-to-r from-[#FF8A65] to-[#FF6B6B] bg-clip-text text-transparent">
-                  Premium Member
-                </span>
-              </div>
-              
-              <h3 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px] mb-1">
-                Your premium benefits
-              </h3>
-              
-              <p className="font-albert text-[14px] text-text-secondary leading-[1.4]">
-                As a premium member, you have access to exclusive premium squads with coaching support. Use an invite code to join a private premium squad, or browse available premium squads below.
-              </p>
+            {/* CTA */}
+            <div className="flex items-center gap-2 text-[#FF6B6B] font-albert font-semibold text-[14px] group-hover:gap-3 transition-all">
+              <span>Explore programs</span>
+              <ArrowRight className="w-4 h-4" />
             </div>
           </div>
         </div>
-      )}
+      </Link>
 
       {/* Squad Cards */}
       {loading ? (
@@ -295,14 +253,12 @@ export function SquadDiscovery() {
             <Users className="w-10 h-10 text-[#4A5D54]" />
           </div>
           <h3 className="font-albert text-[24px] text-text-primary tracking-[-1px] mb-2">
-            No {isPremiumUser ? 'premium ' : ''}squads found
+            No squads found
           </h3>
           <p className="font-albert text-[16px] text-text-secondary mb-6 max-w-[320px] mx-auto">
             {searchQuery 
-              ? `No ${isPremiumUser ? 'premium ' : ''}squads match "${searchQuery}". ${isPremiumUser ? 'Try a different search or use an invite code to join a private squad.' : 'Try a different search or create your own!'}`
-              : isPremiumUser 
-                ? 'No premium squads are currently available. Use an invite code to join a private premium squad.'
-                : 'Be the first to create a squad and start building your community.'
+              ? `No squads match "${searchQuery}". Try a different search or create your own!`
+              : 'Be the first to create a squad and start building your community.'
             }
           </p>
         </div>
@@ -311,25 +267,19 @@ export function SquadDiscovery() {
       {/* Secondary Actions */}
       <div className="mt-8 pt-8 border-t border-[#e1ddd8]/50">
         <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
-          {/* Create Squad - Only for standard users */}
-          {!isPremiumUser && (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-3 px-6 py-4 bg-[#a07855] hover:bg-[#8c6245] text-white rounded-[20px] font-albert font-semibold text-[16px] transition-all hover:scale-[1.02] shadow-md w-full sm:w-auto justify-center"
-            >
-              <Plus className="w-5 h-5" />
-              Create a squad
-            </button>
-          )}
+          {/* Create Squad */}
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-3 px-6 py-4 bg-[#a07855] hover:bg-[#8c6245] text-white rounded-[20px] font-albert font-semibold text-[16px] transition-all hover:scale-[1.02] shadow-md w-full sm:w-auto justify-center"
+          >
+            <Plus className="w-5 h-5" />
+            Create a squad
+          </button>
 
-          {/* Join Private Squad - Primary action for premium users, secondary for standard */}
+          {/* Join Private Squad */}
           <button
             onClick={() => setShowJoinPrivateModal(true)}
-            className={`flex items-center gap-3 px-6 py-4 rounded-[20px] font-albert font-semibold text-[16px] transition-all hover:scale-[1.02] w-full sm:w-auto justify-center ${
-              isPremiumUser 
-                ? 'bg-[#a07855] hover:bg-[#8c6245] text-white shadow-md' 
-                : 'bg-white border border-[#e1ddd8] hover:bg-[#faf8f6] text-text-primary'
-            }`}
+            className="flex items-center gap-3 px-6 py-4 rounded-[20px] font-albert font-semibold text-[16px] transition-all hover:scale-[1.02] w-full sm:w-auto justify-center bg-white border border-[#e1ddd8] hover:bg-[#faf8f6] text-text-primary"
           >
             <Key className="w-5 h-5" />
             Join private squad
@@ -337,8 +287,8 @@ export function SquadDiscovery() {
         </div>
       </div>
 
-      {/* Create Squad Modal - Only for standard users */}
-      {showCreateModal && !isPremiumUser && (
+      {/* Create Squad Modal */}
+      {showCreateModal && (
         <CreateSquadModal
           open={showCreateModal}
           onClose={() => setShowCreateModal(false)}

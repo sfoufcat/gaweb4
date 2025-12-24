@@ -1904,6 +1904,12 @@ export interface OrgBrandingColors {
 }
 
 /**
+ * Menu item keys for ordering
+ * These are the reorderable navigation items in the sidebar
+ */
+export type MenuItemKey = 'home' | 'program' | 'squad' | 'feed' | 'learn' | 'chat' | 'coach';
+
+/**
  * Customizable menu titles for an organization
  * Allows coaches to rebrand navigation items (e.g., "Squad" to "Cohort")
  */
@@ -1968,6 +1974,7 @@ export interface OrgBranding {
   colors: OrgBrandingColors;
   menuTitles?: OrgMenuTitles;    // Customizable menu titles (optional, uses defaults if not set)
   menuIcons?: OrgMenuIcons;      // Customizable menu icons/emojis (optional, uses defaults if not set)
+  menuOrder?: MenuItemKey[];     // Custom menu order (optional, uses DEFAULT_MENU_ORDER if not set)
   emailSettings?: OrgEmailSettings; // Whitelabel email settings (optional)
   defaultTheme?: OrgDefaultTheme; // Default theme for the organization (default: 'light')
   createdAt: string;             // ISO timestamp
@@ -2028,6 +2035,12 @@ export const DEFAULT_MENU_ICONS: OrgMenuIcons = {
   chat: 'message',
   coach: 'user',
 };
+
+/**
+ * Default menu order for navigation items
+ * Coaches can reorder these items via drag-and-drop in the branding settings
+ */
+export const DEFAULT_MENU_ORDER: MenuItemKey[] = ['home', 'program', 'squad', 'feed', 'learn', 'chat', 'coach'];
 
 export const DEFAULT_EMAIL_SETTINGS: OrgEmailSettings = {
   domain: null,

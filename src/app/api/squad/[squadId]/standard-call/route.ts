@@ -8,7 +8,7 @@ import type { Squad, StandardSquadCall, SquadCallVote } from '@/types';
 /**
  * Standard Squad Call API
  * 
- * Handles call management for standard (non-premium) squads.
+ * Handles call management for peer-led (non-coached) squads.
  * Any squad member can suggest, vote, and propose edits/deletions.
  * Calls are confirmed when >50% of members vote yes.
  */
@@ -48,9 +48,10 @@ export async function GET(
     }
 
     const squadData = squadDoc.data() as Squad;
-    if (squadData.isPremium) {
+    const hasCoach = squadData.hasCoach ?? squadData.isPremium ?? false;
+    if (hasCoach) {
       return NextResponse.json(
-        { error: 'This endpoint is for standard squads only' },
+        { error: 'This endpoint is for peer-led squads only. Coached squads use the coach scheduling endpoint.' },
         { status: 400 }
       );
     }
@@ -156,9 +157,10 @@ export async function POST(
     }
 
     const squadData = squadDoc.data() as Squad;
-    if (squadData.isPremium) {
+    const squadHasCoach = squadData.hasCoach ?? squadData.isPremium ?? false;
+    if (squadHasCoach) {
       return NextResponse.json(
-        { error: 'This endpoint is for standard squads only' },
+        { error: 'This endpoint is for peer-led squads only. Coached squads use the coach scheduling endpoint.' },
         { status: 400 }
       );
     }
@@ -329,9 +331,10 @@ export async function PUT(
     }
 
     const squadData = squadDoc.data() as Squad;
-    if (squadData.isPremium) {
+    const squadHasCoachVote = squadData.hasCoach ?? squadData.isPremium ?? false;
+    if (squadHasCoachVote) {
       return NextResponse.json(
-        { error: 'This endpoint is for standard squads only' },
+        { error: 'This endpoint is for peer-led squads only. Coached squads use the coach scheduling endpoint.' },
         { status: 400 }
       );
     }
@@ -481,7 +484,7 @@ async function confirmCall(callId: string, squadId: string, squadData: Squad) {
     // Cancel any scheduled notification/email jobs
     await cancelSquadCallJobs({
       squadId,
-      isPremiumSquad: false,
+      hasCoach: false,
       callId,
     });
     return;
@@ -491,7 +494,7 @@ async function confirmCall(callId: string, squadId: string, squadData: Squad) {
   if (callData.proposalType === 'edit' && callData.originalCallId) {
     await cancelSquadCallJobs({
       squadId,
-      isPremiumSquad: false,
+      hasCoach: false,
       callId: callData.originalCallId,
     });
   }
@@ -523,7 +526,7 @@ async function confirmCall(callId: string, squadId: string, squadData: Squad) {
     await scheduleSquadCallJobs({
       squadId,
       squadName: squadData.name,
-      isPremiumSquad: false,
+      hasCoach: false,
       callDateTime: callData.startDateTimeUtc,
       callTimezone: callData.timezone,
       callLocation: callData.location,

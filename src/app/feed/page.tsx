@@ -191,6 +191,7 @@ export default function FeedPage() {
                 onShare={handleShare}
                 onDelete={handleDelete}
                 onReport={handleReport}
+                onCreatePost={() => setShowCreatePostModal(true)}
               />
             </div>
           </div>

@@ -70,12 +70,12 @@ export function SquadCard({ squad, onJoin, isJoining, trackLabel }: SquadCardPro
             <h3 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px] truncate">
               {squad.name}
             </h3>
-            {/* Premium Badge */}
-            {squad.isPremium && (
+            {/* Coached Badge */}
+            {(squad.hasCoach ?? squad.isPremium) && (
               <div className="flex items-center gap-1 bg-gradient-to-r from-[#FF8A65]/10 to-[#FF6B6B]/10 rounded-full px-2 py-0.5 flex-shrink-0">
                 <Star className="w-3 h-3 text-[#FF6B6B] fill-[#FF6B6B]" />
                 <span className="font-albert text-[11px] font-semibold bg-gradient-to-r from-[#FF8A65] to-[#FF6B6B] bg-clip-text text-transparent">
-                  Premium
+                  Coached
                 </span>
               </div>
             )}
@@ -94,8 +94,8 @@ export function SquadCard({ squad, onJoin, isJoining, trackLabel }: SquadCardPro
         </div>
       </div>
 
-      {/* Coach Row (for premium squads) */}
-      {squad.isPremium && squad.coach && (
+      {/* Coach Row (for coached squads) */}
+      {(squad.hasCoach ?? squad.isPremium) && squad.coach && (
         <div className="flex items-center gap-2 mb-3">
           <span className="font-albert text-[12px] text-text-secondary">Coach:</span>
           <div className="flex items-center gap-1.5">

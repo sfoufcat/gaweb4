@@ -144,13 +144,18 @@ export async function generateInviteUrl(payload: Omit<InviteTokenPayload, 'times
 
 /**
  * Determine squad type based on squad data
+ * 
+ * @deprecated The 'premium' type is deprecated. Use hasCoach to determine if a squad has a coach.
+ * This function is kept for backward compatibility with existing invite links.
  */
 export function determineSquadType(squad: {
   visibility?: 'public' | 'private';
   isPremium?: boolean;
+  hasCoach?: boolean;
   inviteCode?: string;
 }): 'private' | 'public' | 'premium' {
-  if (squad.isPremium) {
+  // Check hasCoach first (new field), fall back to isPremium (deprecated)
+  if (squad.hasCoach ?? squad.isPremium) {
     return 'premium';
   }
   

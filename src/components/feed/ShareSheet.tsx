@@ -75,12 +75,12 @@ export function ShareSheet({ postId, onClose }: ShareSheetProps) {
     <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-backdrop-fade-in"
         onClick={onClose}
       />
 
       {/* Sheet - Bottom sheet on mobile, centered popup on desktop */}
-      <div className="relative w-full max-w-[400px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-300 safe-area-inset-bottom">
+      <div className="relative w-full max-w-[400px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-modal-slide-up md:animate-modal-zoom-in safe-area-inset-bottom">
         {/* Handle - Mobile only */}
         <div className="flex justify-center pt-3 pb-2 md:hidden">
           <div className="w-9 h-1 bg-gray-300 dark:bg-[#262b35] rounded-full" />

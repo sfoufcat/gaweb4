@@ -39,6 +39,8 @@ export function PostCard({
   const [isBookmarking, setIsBookmarking] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [imageError, setImageError] = useState<Record<string, boolean>>({});
+  const [likeAnimating, setLikeAnimating] = useState(false);
+  const [bookmarkAnimating, setBookmarkAnimating] = useState(false);
 
   const isOwnPost = user?.id === post.authorId;
 
@@ -63,6 +65,12 @@ export function PostCard({
     
     setIsLiking(true);
     const newLikedState = !post.hasLiked;
+    
+    // Trigger animation
+    if (newLikedState) {
+      setLikeAnimating(true);
+      setTimeout(() => setLikeAnimating(false), 400);
+    }
     
     // Optimistic update
     onLike?.(post.id, newLikedState);
@@ -89,6 +97,12 @@ export function PostCard({
     
     setIsBookmarking(true);
     const newBookmarkState = !post.hasBookmarked;
+    
+    // Trigger animation
+    if (newBookmarkState) {
+      setBookmarkAnimating(true);
+      setTimeout(() => setBookmarkAnimating(false), 500);
+    }
     
     // Optimistic update
     onBookmark?.(post.id, newBookmarkState);
@@ -146,7 +160,7 @@ export function PostCard({
   const accentColor = isDefault ? '#a07855' : colors.accentLight;
 
   return (
-    <article className="bg-white dark:bg-[#13171f] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden">
+    <article className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden hover-lift">
       {/* Header */}
       <div className="flex items-center justify-between p-4 pb-3">
         <div className="flex items-center gap-3">
@@ -306,7 +320,7 @@ export function PostCard({
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
           >
             <svg
-              className="w-5 h-5 transition-colors"
+              className={`w-5 h-5 transition-colors ${likeAnimating ? 'animate-heart-pop' : ''}`}
               fill={post.hasLiked ? accentColor : 'none'}
               viewBox="0 0 24 24"
               stroke={post.hasLiked ? accentColor : 'currentColor'}
@@ -355,7 +369,7 @@ export function PostCard({
           className="p-1.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
         >
           <svg
-            className="w-5 h-5 transition-colors"
+            className={`w-5 h-5 transition-colors ${bookmarkAnimating ? 'animate-bookmark-bounce' : ''}`}
             fill={post.hasBookmarked ? accentColor : 'none'}
             viewBox="0 0 24 24"
             stroke={post.hasBookmarked ? accentColor : 'currentColor'}
@@ -368,12 +382,14 @@ export function PostCard({
 
       {/* Inline comments */}
       {showComments && (
-        <InlineComments
-          postId={post.id}
-          commentCount={post.commentCount}
-          expanded={commentsExpanded}
-          onExpandChange={setCommentsExpanded}
-        />
+        <div className="animate-slide-down">
+          <InlineComments
+            postId={post.id}
+            commentCount={post.commentCount}
+            expanded={commentsExpanded}
+            onExpandChange={setCommentsExpanded}
+          />
+        </div>
       )}
 
       {/* Delete confirmation modal */}

@@ -1,8 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgDefaultTheme } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_THEME } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgDefaultTheme, MenuItemKey } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_THEME } from '@/types';
 import { 
   DEFAULT_TENANT_COACHING_PROMO, 
   type TenantCoachingPromoData 
@@ -92,6 +92,7 @@ function getDefaultBranding(): OrgBranding {
     colors: DEFAULT_BRANDING_COLORS,
     menuTitles: DEFAULT_MENU_TITLES,
     menuIcons: DEFAULT_MENU_ICONS,
+    menuOrder: DEFAULT_MENU_ORDER,
     defaultTheme: DEFAULT_THEME,
     createdAt: now,
     updatedAt: now,
@@ -375,6 +376,9 @@ export function useBrandingValues() {
     ...effectiveBranding.menuIcons,
   };
   
+  // Use custom menu order if set, otherwise use default
+  const menuOrder: MenuItemKey[] = effectiveBranding.menuOrder || DEFAULT_MENU_ORDER;
+  
   // Get theme-aware logos (dark mode logo if available, otherwise fallback to light)
   const logoUrl = currentTheme === 'dark' && effectiveBranding.logoUrlDark
     ? effectiveBranding.logoUrlDark
@@ -396,6 +400,7 @@ export function useBrandingValues() {
     colors: effectiveBranding.colors,
     menuTitles,
     menuIcons,
+    menuOrder,
     isPreviewMode,
     isDefault,
     // Smart contrast helpers

@@ -85,7 +85,8 @@ export async function GET() {
         timezone: data.timezone || 'UTC',
         memberIds: data.memberIds || [],
         inviteCode: data.inviteCode,
-        isPremium: data.isPremium || false,
+        hasCoach: data.hasCoach ?? data.isPremium ?? true, // All coach-managed squads have a coach
+        isPremium: data.isPremium, // Legacy field
         coachId: data.coachId || null,
         organizationId: data.organizationId,
         createdAt: data.createdAt || new Date().toISOString(),

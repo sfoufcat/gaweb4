@@ -91,12 +91,12 @@ export function ReportModal({ postId, onClose }: ReportModalProps) {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 animate-backdrop-fade-in"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="fixed inset-x-4 top-[10%] md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-md bg-white dark:bg-[#13171f] rounded-2xl z-50 overflow-hidden shadow-xl">
+      <div className="fixed inset-x-4 top-[10%] md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-md bg-white dark:bg-[#171b22] rounded-2xl z-50 overflow-hidden shadow-xl animate-modal-slide-up md:animate-modal-zoom-in">
         {submitted ? (
           // Success state
           <div className="p-8 text-center">

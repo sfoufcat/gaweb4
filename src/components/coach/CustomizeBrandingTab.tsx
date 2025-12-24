@@ -2,12 +2,29 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock, Mail, Send, Bell, Settings, Sun, Moon, Monitor } from 'lucide-react';
+import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock, Mail, Send, Bell, Settings, Sun, Moon, Monitor, GripVertical } from 'lucide-react';
 import { useBranding } from '@/contexts/BrandingContext';
 import { FeedSettingsToggle } from './FeedSettingsToggle';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus, OrgEmailDefaults, OrgDefaultTheme } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_EMAIL_SETTINGS, DEFAULT_EMAIL_DEFAULTS, DEFAULT_THEME, validateSubdomain } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus, OrgEmailDefaults, OrgDefaultTheme, MenuItemKey } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_EMAIL_SETTINGS, DEFAULT_EMAIL_DEFAULTS, DEFAULT_THEME, validateSubdomain } from '@/types';
 import { IconPicker } from './IconPicker';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 /**
  * Get DNS record names for a domain
@@ -53,6 +70,7 @@ export function CustomizeBrandingTab() {
   const [colors, setColors] = useState<OrgBrandingColors>(DEFAULT_BRANDING_COLORS);
   const [menuTitles, setMenuTitles] = useState<OrgMenuTitles>(DEFAULT_MENU_TITLES);
   const [menuIcons, setMenuIcons] = useState<OrgMenuIcons>(DEFAULT_MENU_ICONS);
+  const [menuOrder, setMenuOrder] = useState<MenuItemKey[]>(DEFAULT_MENU_ORDER);
   const [defaultTheme, setDefaultTheme] = useState<OrgDefaultTheme>(DEFAULT_THEME);
   
   // UI state
@@ -188,6 +206,7 @@ export function CustomizeBrandingTab() {
         ...DEFAULT_MENU_ICONS,
         ...(branding.menuIcons || {}),
       });
+      setMenuOrder(branding.menuOrder || DEFAULT_MENU_ORDER);
       setDefaultTheme(branding.defaultTheme || DEFAULT_THEME);
     } catch (err) {
       console.error('Error fetching branding:', err);
@@ -707,6 +726,7 @@ export function CustomizeBrandingTab() {
     
     const originalMenuTitles = originalBranding.menuTitles || DEFAULT_MENU_TITLES;
     const originalMenuIcons = originalBranding.menuIcons || DEFAULT_MENU_ICONS;
+    const originalMenuOrder = originalBranding.menuOrder || DEFAULT_MENU_ORDER;
     const changed = 
       logoUrl !== originalBranding.logoUrl ||
       logoUrlDark !== (originalBranding.logoUrlDark || null) ||
@@ -715,10 +735,11 @@ export function CustomizeBrandingTab() {
       appTitle !== originalBranding.appTitle ||
       JSON.stringify(colors) !== JSON.stringify(originalBranding.colors) ||
       JSON.stringify(menuTitles) !== JSON.stringify(originalMenuTitles) ||
-      JSON.stringify(menuIcons) !== JSON.stringify(originalMenuIcons);
+      JSON.stringify(menuIcons) !== JSON.stringify(originalMenuIcons) ||
+      JSON.stringify(menuOrder) !== JSON.stringify(originalMenuOrder);
     
     setHasChanges(changed);
-  }, [logoUrl, logoUrlDark, horizontalLogoUrl, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, originalBranding]);
+  }, [logoUrl, logoUrlDark, horizontalLogoUrl, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, menuOrder, originalBranding]);
 
   // Build preview branding object
   const getPreviewBranding = useCallback((): OrgBranding => {
@@ -733,10 +754,11 @@ export function CustomizeBrandingTab() {
       colors,
       menuTitles,
       menuIcons,
+      menuOrder,
       createdAt: originalBranding?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-  }, [logoUrl, logoUrlDark, horizontalLogoUrl, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, originalBranding]);
+  }, [logoUrl, logoUrlDark, horizontalLogoUrl, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, menuOrder, originalBranding]);
 
   // Toggle preview mode
   const handleTogglePreview = () => {
