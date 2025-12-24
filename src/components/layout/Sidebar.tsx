@@ -6,7 +6,7 @@ import { UserButton, useAuth } from '@clerk/nextjs';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { isAdmin, canAccessCoachDashboard, canAccessEditorSection, isSuperAdmin } from '@/lib/admin-utils-shared';
-import type { UserRole, OrgRole } from '@/types';
+import type { UserRole, OrgRole, MenuItemKey } from '@/types';
 import { DEFAULT_MENU_ICONS } from '@/types';
 import { useChatUnreadCounts } from '@/hooks/useChatUnreadCounts';
 import { useBrandingValues, useFeedEnabled } from '@/contexts/BrandingContext';
@@ -117,7 +117,7 @@ export function Sidebar() {
   const { sessionClaims, isLoaded, isSignedIn, userId } = useAuth();
   const { totalUnread } = useChatUnreadCounts();
   const { scrollDirection, isAtTop } = useScrollDirection();
-  const { logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles, menuIcons, isDefault, accentLightIsDark, accentDarkIsDark } = useBrandingValues();
+  const { logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles, menuIcons, menuOrder, isDefault, accentLightIsDark, accentDarkIsDark } = useBrandingValues();
   const { theme } = useTheme();
   
   // Get the appropriate accent color and foreground based on theme
@@ -195,59 +195,72 @@ export function Sidebar() {
     }
   }, [router, showFeedNav, showMyCoach, showCoachDashboard, showAdminPanel, showEditorPanel]);
   
-  // Home nav item - always visible
-  const homeNavItem = { name: menuTitles.home, path: '/', icon: (
-    <NavIcon iconKey={menuIcons.home} />
-  )};
-
-  // Program nav item - visible if has enrollments OR no standard squad
-  const programNavItem = { name: menuTitles.program, path: '/program', dataTour: 'program-nav', icon: (
-    <NavIcon iconKey={menuIcons.program} />
-  )};
-
-  // Squad nav item - visible ONLY if user has a standard squad
-  const squadNavItem = { name: menuTitles.squad, path: '/squad', icon: (
-    <NavIcon iconKey={menuIcons.squad} />
-  )};
-
-  // Feed nav item - visible if feed is enabled for the org
-  const feedNavItem = { name: menuTitles.feed, path: '/feed', icon: (
-    <NavIcon iconKey={menuIcons.feed} />
-  )};
-
-  // Learn/Discover nav item - always visible
-  const learnNavItem = { name: menuTitles.learn, path: '/discover', icon: (
-    <NavIcon iconKey={menuIcons.learn} />
-  )};
-
-  // Chat nav item - always visible
-  const chatNavItem = { name: menuTitles.chat, path: '/chat', icon: (
-    <NavIcon iconKey={menuIcons.chat} />
-  )};
-
-  // Build base nav items with conditional Program, Squad, and Feed visibility
-  const baseNavItems = [
-    homeNavItem,
-    ...(showProgramNav ? [programNavItem] : []),
-    ...(showSquadNav ? [squadNavItem] : []),
-    ...(showFeedNav ? [feedNavItem] : []),
-    learnNavItem,
-    chatNavItem,
-  ];
-
-  // My Coach item - visible for coaching subscribers and super_admin
-  const myCoachNavItem = { 
-    name: menuTitles.coach, 
-    path: '/my-coach', 
-    icon: (
-      <NavIcon iconKey={menuIcons.coach} />
-    )
+  // Define all nav items as a map for easy lookup by key
+  const navItemsMap: Record<MenuItemKey, { name: string; path: string; dataTour?: string; icon: React.ReactNode; visible: boolean }> = {
+    home: { 
+      name: menuTitles.home, 
+      path: '/', 
+      icon: <NavIcon iconKey={menuIcons.home} />,
+      visible: true, // Always visible
+    },
+    program: { 
+      name: menuTitles.program, 
+      path: '/program', 
+      dataTour: 'program-nav',
+      icon: <NavIcon iconKey={menuIcons.program} />,
+      visible: showProgramNav, // Visible if has enrollments OR no standard squad
+    },
+    squad: { 
+      name: menuTitles.squad, 
+      path: '/squad', 
+      icon: <NavIcon iconKey={menuIcons.squad} />,
+      visible: showSquadNav, // Visible ONLY if user has a standard squad
+    },
+    feed: { 
+      name: menuTitles.feed, 
+      path: '/feed', 
+      icon: <NavIcon iconKey={menuIcons.feed} />,
+      visible: showFeedNav, // Visible if feed is enabled for the org
+    },
+    learn: { 
+      name: menuTitles.learn, 
+      path: '/discover', 
+      icon: <NavIcon iconKey={menuIcons.learn} />,
+      visible: true, // Always visible
+    },
+    chat: { 
+      name: menuTitles.chat, 
+      path: '/chat', 
+      icon: <NavIcon iconKey={menuIcons.chat} />,
+      visible: true, // Always visible
+    },
+    coach: { 
+      name: menuTitles.coach, 
+      path: '/my-coach', 
+      icon: <NavIcon iconKey={menuIcons.coach} />,
+      visible: showMyCoach, // Visible for coaching subscribers and super_admin
+    },
   };
 
-  // Coach item - visible for coach, admin, super_admin (coach dashboard for managing clients/squads)
-  const coachNavItem = { 
-    name: menuTitles.coach, 
+  // Build base nav items according to menuOrder, filtering by visibility
+  const baseNavItems = menuOrder
+    .filter((key) => navItemsMap[key].visible)
+    .map((key) => {
+      const item = navItemsMap[key];
+      return {
+        name: item.name,
+        path: item.path,
+        dataTour: item.dataTour,
+        icon: item.icon,
+      };
+    });
+
+  // Coach Dashboard item - visible for coach, admin, super_admin (coach dashboard for managing clients/squads)
+  // Note: This is separate from "My Coach" (for users who have coaching) - this is for coaches to manage their org
+  const coachDashboardNavItem = { 
+    name: 'Coach', 
     path: '/coach', 
+    dataTour: undefined as string | undefined,
     icon: (
       <NavIcon iconKey="shield" />
     )
@@ -257,30 +270,30 @@ export function Sidebar() {
   const editorNavItem = { 
     name: 'Editor', 
     path: '/editor', 
+    dataTour: undefined as string | undefined,
     icon: (
       <NavIcon iconKey="edit" />
     )
   };
 
-  // Add Admin item if user has admin access
+  // Admin item - visible for admin and super_admin
   const adminNavItem = { 
     name: 'Admin', 
     path: '/admin', 
+    dataTour: undefined as string | undefined,
     icon: (
       <NavIcon iconKey="settings" />
     )
   };
 
-  // Build nav items: base + my-coach (if coaching subscriber) + editor + coach dashboard + admin
+  // Build nav items: base (includes my-coach via menuOrder) + editor + coach dashboard + admin
+  // Note: my-coach is now included in baseNavItems through the menuOrder system
   let navItems = [...baseNavItems];
-  if (showMyCoach) {
-    navItems = [...navItems, myCoachNavItem];
-  }
   if (showEditorPanel) {
     navItems = [...navItems, editorNavItem];
   }
   if (showCoachDashboard) {
-    navItems = [...navItems, coachNavItem];
+    navItems = [...navItems, coachDashboardNavItem];
   }
   if (showAdminPanel) {
     navItems = [...navItems, adminNavItem];

@@ -26,6 +26,86 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+// Menu item configuration for display labels and placeholders
+const MENU_ITEM_CONFIG: Record<MenuItemKey, { label: string; placeholder: string }> = {
+  home: { label: 'Home', placeholder: 'e.g., Dashboard, Start' },
+  program: { label: 'Program', placeholder: 'e.g., Journey, Path, Course' },
+  squad: { label: 'Squad', placeholder: 'e.g., Cohort, Team, Group' },
+  feed: { label: 'Feed', placeholder: 'e.g., Community, Wall' },
+  learn: { label: 'Discover', placeholder: 'e.g., Learn, Content, Resources' },
+  chat: { label: 'Chat', placeholder: 'e.g., Messages, Community' },
+  coach: { label: 'Coach', placeholder: 'e.g., Mentor, Guide, Support' },
+};
+
+// Sortable menu item component
+interface SortableMenuItemProps {
+  id: MenuItemKey;
+  title: string;
+  icon: string;
+  onTitleChange: (value: string) => void;
+  onIconChange: (value: string) => void;
+}
+
+function SortableMenuItem({ id, title, icon, onTitleChange, onIconChange }: SortableMenuItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const config = MENU_ITEM_CONFIG[id];
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-3 p-3 bg-white/80 dark:bg-[#1e222a]/80 border border-[#e1ddd8] dark:border-[#313746] rounded-xl ${
+        isDragging ? 'shadow-lg ring-2 ring-[#a07855]/20' : ''
+      }`}
+    >
+      {/* Drag Handle */}
+      <button
+        {...attributes}
+        {...listeners}
+        className="flex-shrink-0 p-1.5 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] cursor-grab active:cursor-grabbing touch-none"
+        type="button"
+      >
+        <GripVertical className="w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
+      </button>
+      
+      {/* Label */}
+      <span className="flex-shrink-0 w-20 text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+        {config.label}
+      </span>
+      
+      {/* Title Input */}
+      <input
+        type="text"
+        value={title}
+        onChange={(e) => onTitleChange(e.target.value)}
+        placeholder={config.placeholder}
+        className="flex-1 px-3 py-2 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+      />
+      
+      {/* Icon Picker */}
+      <IconPicker
+        value={icon}
+        onChange={onIconChange}
+        compact
+      />
+    </div>
+  );
+}
+
 /**
  * Get DNS record names for a domain
  * For subdomains (e.g., app.porepower.com), returns the subdomain part
@@ -98,6 +178,31 @@ export function CustomizeBrandingTab() {
   const fileDarkInputRef = useRef<HTMLInputElement>(null);
   const horizontalFileInputRef = useRef<HTMLInputElement>(null);
   const horizontalDarkFileInputRef = useRef<HTMLInputElement>(null);
+  
+  // DnD sensors for menu reordering
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+  
+  // Handle menu drag end
+  const handleMenuDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      setMenuOrder((items) => {
+        const oldIndex = items.indexOf(active.id as MenuItemKey);
+        const newIndex = items.indexOf(over.id as MenuItemKey);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
   
   // Domain settings state
   const [currentSubdomain, setCurrentSubdomain] = useState<string>('');
@@ -774,7 +879,7 @@ export function CustomizeBrandingTab() {
     if (isPreviewMode) {
       setPreviewMode(true, getPreviewBranding());
     }
-  }, [logoUrl, logoUrlDark, horizontalLogoUrl, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, isPreviewMode, setPreviewMode, getPreviewBranding]);
+  }, [logoUrl, logoUrlDark, horizontalLogoUrl, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, menuOrder, isPreviewMode, setPreviewMode, getPreviewBranding]);
 
   // Handle logo upload
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -974,6 +1079,7 @@ export function CustomizeBrandingTab() {
     setColors(DEFAULT_BRANDING_COLORS);
     setMenuTitles(DEFAULT_MENU_TITLES);
     setMenuIcons(DEFAULT_MENU_ICONS);
+    setMenuOrder(DEFAULT_MENU_ORDER);
   };
 
   // Revert changes
@@ -993,6 +1099,7 @@ export function CustomizeBrandingTab() {
         ...DEFAULT_MENU_ICONS,
         ...(originalBranding.menuIcons || {}),
       });
+      setMenuOrder(originalBranding.menuOrder || DEFAULT_MENU_ORDER);
     }
   };
 
@@ -1014,6 +1121,7 @@ export function CustomizeBrandingTab() {
           colors,
           menuTitles,
           menuIcons,
+          menuOrder,
           defaultTheme,
         }),
       });
@@ -1425,143 +1533,39 @@ export function CustomizeBrandingTab() {
         </p>
       </div>
 
-      {/* Menu Titles & Icons Section */}
+      {/* Menu Order & Customization Section */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-2">
           <Type className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Menu Titles & Icons</h3>
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Menu Order & Customization</h3>
         </div>
         <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mb-4">
-          Customize how navigation items are labeled and their icons throughout your app.
+          Drag to reorder, customize labels and icons for your navigation menu.
         </p>
 
-        <div className="space-y-4">
-          {/* Home */}
-          <div>
-            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
-              Home
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={menuTitles.home}
-                onChange={(e) => setMenuTitles(prev => ({ ...prev, home: e.target.value }))}
-                placeholder="e.g., Dashboard, Start"
-                className="flex-1 px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
-              />
-              <IconPicker
-                value={menuIcons.home}
-                onChange={(value) => setMenuIcons(prev => ({ ...prev, home: value }))}
-                compact
-              />
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleMenuDragEnd}
+        >
+          <SortableContext
+            items={menuOrder}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-2">
+              {menuOrder.map((key) => (
+                <SortableMenuItem
+                  key={key}
+                  id={key}
+                  title={menuTitles[key]}
+                  icon={menuIcons[key]}
+                  onTitleChange={(value) => setMenuTitles(prev => ({ ...prev, [key]: value }))}
+                  onIconChange={(value) => setMenuIcons(prev => ({ ...prev, [key]: value }))}
+                />
+              ))}
             </div>
-          </div>
-
-          {/* Program */}
-          <div>
-            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
-              Program
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={menuTitles.program}
-                onChange={(e) => setMenuTitles(prev => ({ ...prev, program: e.target.value }))}
-                placeholder="e.g., Journey, Path, Course"
-                className="flex-1 px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
-              />
-              <IconPicker
-                value={menuIcons.program}
-                onChange={(value) => setMenuIcons(prev => ({ ...prev, program: value }))}
-                compact
-              />
-            </div>
-          </div>
-
-          {/* Squad */}
-          <div>
-            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
-              Squad
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={menuTitles.squad}
-                onChange={(e) => setMenuTitles(prev => ({ ...prev, squad: e.target.value }))}
-                placeholder="e.g., Cohort, Team, Group"
-                className="flex-1 px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
-              />
-              <IconPicker
-                value={menuIcons.squad}
-                onChange={(value) => setMenuIcons(prev => ({ ...prev, squad: value }))}
-                compact
-              />
-            </div>
-          </div>
-
-          {/* Discover */}
-          <div>
-            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
-              Discover
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={menuTitles.learn}
-                onChange={(e) => setMenuTitles(prev => ({ ...prev, learn: e.target.value }))}
-                placeholder="e.g., Learn, Content, Resources"
-                className="flex-1 px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
-              />
-              <IconPicker
-                value={menuIcons.learn}
-                onChange={(value) => setMenuIcons(prev => ({ ...prev, learn: value }))}
-                compact
-              />
-            </div>
-          </div>
-
-          {/* Chat */}
-          <div>
-            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
-              Chat
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={menuTitles.chat}
-                onChange={(e) => setMenuTitles(prev => ({ ...prev, chat: e.target.value }))}
-                placeholder="e.g., Messages, Community"
-                className="flex-1 px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
-              />
-              <IconPicker
-                value={menuIcons.chat}
-                onChange={(value) => setMenuIcons(prev => ({ ...prev, chat: value }))}
-                compact
-              />
-            </div>
-          </div>
-
-          {/* Coach */}
-          <div>
-            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
-              Coach
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={menuTitles.coach}
-                onChange={(e) => setMenuTitles(prev => ({ ...prev, coach: e.target.value }))}
-                placeholder="e.g., Mentor, Guide, Support"
-                className="flex-1 px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
-              />
-              <IconPicker
-                value={menuIcons.coach}
-                onChange={(value) => setMenuIcons(prev => ({ ...prev, coach: value }))}
-                compact
-              />
-            </div>
-          </div>
-        </div>
+          </SortableContext>
+        </DndContext>
         
         <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-4 font-albert">
           Changes apply to navigation menu items. &ldquo;Squad&rdquo; also updates throughout the app (e.g., &ldquo;My Squad&rdquo;, upgrade pages).

@@ -10,7 +10,7 @@ import { useMyPrograms } from '@/hooks/useMyPrograms';
 import { useMenuTitles } from '@/contexts/BrandingContext';
 
 // Components for different sections
-import { ProgramEmptyState } from '@/components/program/ProgramEmptyState';
+import { ProgramDiscovery } from '@/components/program/ProgramDiscovery';
 import { PlatformEmptyState } from '@/components/program/PlatformEmptyState';
 import { ProgramListView } from '@/components/program/ProgramListView';
 import { ProgramDetailView } from '@/components/program/ProgramDetailView';
@@ -135,11 +135,11 @@ export default function ProgramHubPage() {
     );
   }
   
-  // Empty state: no enrollments on tenant domain
+  // No enrollments: show available programs or empty state
   if (!hasEnrollments) {
     return (
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
-        <ProgramEmptyState />
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16">
+        <ProgramDiscovery />
       </div>
     );
   }

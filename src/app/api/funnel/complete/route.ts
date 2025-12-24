@@ -298,7 +298,7 @@ export async function POST(req: Request) {
     // This is done separately to properly handle premium vs standard squad fields
     if (assignedSquadId) {
       try {
-        await updateUserSquadReference(userId, assignedSquadId, true); // Premium squad for paid programs
+        await updateUserSquadReference(userId, assignedSquadId);
       } catch (squadRefErr) {
         console.error(`[FUNNEL_COMPLETE] Failed to update squad reference (non-fatal):`, squadRefErr);
       }

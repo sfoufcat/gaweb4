@@ -7,12 +7,12 @@ import { useMenuTitles } from '@/contexts/BrandingContext';
  * ProgramEmptyState Component
  * 
  * Matches Figma design for empty program state.
- * Shows when user has no enrolled programs.
+ * Shows when user has no enrolled programs AND coach has no available programs.
  * Features:
  * - Gradient orb background effect
  * - Large title with tracking
  * - Descriptive text
- * - "Discover programs" CTA button
+ * - "Discover more content" CTA button
  */
 export function ProgramEmptyState() {
   const router = useRouter();
@@ -69,18 +69,10 @@ export function ProgramEmptyState() {
 
         {/* CTA Button - Figma style */}
         <button
-          onClick={() => router.push('/discover?tab=programs')}
+          onClick={() => router.push('/discover')}
           className="bg-[#a07855] border border-[rgba(215,210,204,0.5)] rounded-[32px] px-8 py-4 font-bold text-[16px] text-white leading-[1.4] tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all"
         >
-          Discover {programLower}s
-        </button>
-
-        {/* Secondary link */}
-        <button
-          onClick={() => router.push('/discover')}
-          className="mt-6 font-sans text-[14px] text-text-secondary dark:text-[#7d8190] hover:text-text-primary dark:hover:text-[#f5f5f8] transition-colors underline underline-offset-4"
-        >
-          Browse all content
+          Discover more content
         </button>
       </div>
     </div>
