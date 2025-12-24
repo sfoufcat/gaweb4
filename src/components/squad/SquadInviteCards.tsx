@@ -17,7 +17,7 @@ import { SquadInviteDialog } from './SquadInviteDialog';
 import { MAX_SQUAD_MEMBERS } from '@/lib/squad-constants';
 import { useMenuTitles } from '@/contexts/BrandingContext';
 
-type InviteSquadType = 'private' | 'public' | 'coached';
+type InviteSquadType = 'private' | 'public' | 'premium';
 
 interface SquadInviteCardsProps {
   hasCoach?: boolean;
@@ -66,7 +66,7 @@ export function SquadInviteCards({
   
   // Determine squad type for invite dialog
   const getSquadType = (): InviteSquadType => {
-    if (squadHasCoach) return 'coached';
+    if (squadHasCoach) return 'premium';
     if (visibility === 'private') return 'private';
     return 'public';
   };
