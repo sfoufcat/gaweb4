@@ -2,11 +2,10 @@ import { auth } from '@clerk/nextjs/server';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
-import { ensureCoachHasOrganization } from '@/lib/clerk-organizations';
+import { requireCoachWithOrg, TenantRequiredError } from '@/lib/admin-utils-clerk';
 import { syncTenantToEdgeConfig, setTenantByCustomDomain, buildTenantConfigData, type TenantBrandingData } from '@/lib/tenant-edge-config';
 import type { OrgCustomDomain } from '@/types';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, UserRole, OrgRole } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, UserRole } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS } from '@/types';
 
 /**
@@ -15,9 +14,13 @@ import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_M
  * 
  * Resolution priority:
  * 1. x-tenant-org-id header (set by middleware for tenant domains) - NO AUTH REQUIRED
- * 2. Query param orgId (for specific org lookup)
- * 3. Query param forCoach=true (for coach dashboard on platform domain) - AUTH REQUIRED
- * 4. Default branding
+ * 2. Query param orgId (for super_admin only - for debugging/support)
+ * 3. Default branding (on platform domain)
+ * 
+ * NOTE: The forCoach fallback has been REMOVED to enforce tenant isolation.
+ * Coaches must access their branding settings from their tenant domain
+ * (subdomain or custom domain), not the platform domain.
+ * Super admins are exempted and can access from platform domain.
  * 
  * This endpoint is public for GET requests when on a tenant domain,
  * allowing branding to load before user authentication.
@@ -40,28 +43,20 @@ export async function GET(request: Request) {
       organizationId = tenantOrgId;
       console.log(`[ORG_BRANDING_GET] Using tenant org from header: ${organizationId}`);
     } else if (requestedOrgId) {
-      // Priority 2: Explicit org ID requested (only if explicitly passed)
-      organizationId = requestedOrgId;
-    }
-    
-    // Priority 3: Coach dashboard mode - fetch authenticated coach's org branding
-    // This allows coaches to see/edit their branding from the platform domain
-    const forCoach = searchParams.get('forCoach') === 'true';
-    if (!organizationId && forCoach) {
-      const { userId, sessionClaims } = await auth();
-      if (userId) {
-        const publicMetadata = sessionClaims?.publicMetadata as { role?: UserRole; orgRole?: OrgRole } | undefined;
-        if (canAccessCoachDashboard(publicMetadata?.role, publicMetadata?.orgRole)) {
-          organizationId = await ensureCoachHasOrganization(userId);
-          console.log(`[ORG_BRANDING_GET] Using coach's org from auth: ${organizationId}`);
-        }
+      // Priority 2: Explicit org ID requested - only allow for super_admin
+      const { sessionClaims } = await auth();
+      const role = (sessionClaims?.publicMetadata as { role?: UserRole } | undefined)?.role;
+      if (role === 'super_admin') {
+        organizationId = requestedOrgId;
+        console.log(`[ORG_BRANDING_GET] Super admin accessing org: ${organizationId}`);
+      } else {
+        console.log(`[ORG_BRANDING_GET] Rejected orgId param for non-super_admin`);
       }
     }
     
-    // NOTE: Without forCoach=true, we do NOT fall back to the user's organization.
-    // On the platform domain (app.growthaddicts.com), we want default branding for regular users.
-    // User-specific branding should only appear on tenant domains where
-    // x-tenant-org-id header is set by the middleware, OR when forCoach=true for the coach dashboard.
+    // NOTE: forCoach fallback REMOVED - enforces tenant isolation
+    // On platform domain without tenant context, return default branding
+    // Coaches must use their subdomain or custom domain to see their branding
 
     // If still no org ID, return default branding
     if (!organizationId) {
@@ -97,44 +92,31 @@ export async function GET(request: Request) {
  * POST /api/org/branding
  * Updates branding settings for the current user's organization
  * 
- * Only accessible by users who can access the coach dashboard (coach, admin, super_admin)
+ * REQUIRES tenant mode (subdomain or custom domain) unless super_admin.
+ * Regular coaches must access from their tenant domain.
  * 
  * Body: Partial<OrgBranding> - fields to update
  */
 export async function POST(request: Request) {
   try {
-    const { userId, sessionClaims } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check if user has coach/admin access (check both global role and org role)
-    const publicMetadata = sessionClaims?.publicMetadata as { role?: UserRole; orgRole?: OrgRole } | undefined;
-    const role = publicMetadata?.role;
-    const orgRole = publicMetadata?.orgRole;
-
-    if (!canAccessCoachDashboard(role, orgRole)) {
-      return NextResponse.json({ error: 'Forbidden: Coach access required' }, { status: 403 });
-    }
-
-    // Determine which organization to save branding for
-    // Priority 1: Use tenant org ID from middleware (on tenant domains like app.porepower.com)
-    // Priority 2: Use user's personal org (on platform domain like app.growthaddicts.com)
-    const headersList = await headers();
-    const tenantOrgId = headersList.get('x-tenant-org-id');
-    
+    // Use requireCoachWithOrg which enforces tenant mode
+    // Super admins are exempted and can access from platform domain
     let organizationId: string;
     
-    if (tenantOrgId) {
-      // On tenant domain - use tenant's org ID
-      // The user must be the owner/admin of this org (verified by middleware + coach access check)
-      organizationId = tenantOrgId;
-      console.log(`[ORG_BRANDING_POST] Using tenant org from header: ${organizationId}`);
-    } else {
-      // On platform domain - use user's personal org
-      organizationId = await ensureCoachHasOrganization(userId);
-      console.log(`[ORG_BRANDING_POST] Using user's org: ${organizationId}`);
+    try {
+      const result = await requireCoachWithOrg();
+      organizationId = result.organizationId;
+      console.log(`[ORG_BRANDING_POST] Using org: ${organizationId} (tenantMode: ${result.isTenantMode})`);
+    } catch (error) {
+      if (error instanceof TenantRequiredError) {
+        return NextResponse.json({
+          error: 'tenant_required',
+          message: 'Please access this feature from your organization domain',
+          tenantUrl: error.tenantUrl,
+          subdomain: error.subdomain,
+        }, { status: 403 });
+      }
+      throw error;
     }
 
     // Parse request body
@@ -241,15 +223,21 @@ export async function POST(request: Request) {
         ? null 
         : (customDomainSnapshot.docs[0].data() as OrgCustomDomain).domain;
       
+      // Get feedEnabled from org_settings for Edge Config
+      const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
+      const feedEnabled = orgSettingsDoc.exists ? (orgSettingsDoc.data()?.feedEnabled === true) : false;
+      
       if (subdomain) {
         // Has subdomain - sync with both subdomain and custom domain keys
         await syncTenantToEdgeConfig(
           organizationId,
           subdomain,
           edgeBranding,
-          verifiedCustomDomain || undefined
+          verifiedCustomDomain || undefined,
+          undefined, // coachingPromo
+          feedEnabled
         );
-        console.log(`[ORG_BRANDING_POST] Synced branding to Edge Config for subdomain: ${subdomain}${verifiedCustomDomain ? ` and custom domain: ${verifiedCustomDomain}` : ''}`);
+        console.log(`[ORG_BRANDING_POST] Synced branding to Edge Config for subdomain: ${subdomain}${verifiedCustomDomain ? ` and custom domain: ${verifiedCustomDomain}` : ''} (feedEnabled: ${feedEnabled})`);
       } else if (verifiedCustomDomain) {
         // Custom-domain-only org - sync with custom domain key only
         // Generate a fallback subdomain from org ID for the data structure
@@ -258,10 +246,12 @@ export async function POST(request: Request) {
           organizationId,
           fallbackSubdomain,
           edgeBranding,
-          verifiedCustomDomain
+          verifiedCustomDomain,
+          undefined, // coachingPromo
+          feedEnabled
         );
         await setTenantByCustomDomain(verifiedCustomDomain, configData);
-        console.log(`[ORG_BRANDING_POST] Synced branding to Edge Config for custom domain: ${verifiedCustomDomain}`);
+        console.log(`[ORG_BRANDING_POST] Synced branding to Edge Config for custom domain: ${verifiedCustomDomain} (feedEnabled: ${feedEnabled})`);
       } else {
         console.log(`[ORG_BRANDING_POST] No subdomain or verified custom domain found for org ${organizationId} - skipping Edge Config sync`);
       }

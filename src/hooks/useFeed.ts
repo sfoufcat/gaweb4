@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import useSWRInfinite from 'swr/infinite';
 import useSWR from 'swr';
 
@@ -55,7 +55,20 @@ export interface FeedComment {
 // FEED HOOK
 // =============================================================================
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+// Fetcher that throws on error responses so SWR can handle them properly
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  const data = await res.json();
+  
+  // If the API returns an error (e.g., feed disabled), throw so SWR treats it as error
+  if (!res.ok || data.error) {
+    const error = new Error(data.error || 'Failed to fetch feed');
+    (error as Error & { status?: number }).status = res.status;
+    throw error;
+  }
+  
+  return data;
+};
 
 const getKey = (pageIndex: number, previousPageData: { posts: FeedPost[]; nextCursor: string | null } | null) => {
   // First page
@@ -87,10 +100,10 @@ export function useFeed() {
     }
   );
 
-  // Flatten posts from all pages
-  const posts = data ? data.flatMap((page) => page.posts) : [];
-  const hasMore = data ? data[data.length - 1]?.hasMore : false;
-  const isEmpty = data?.[0]?.posts.length === 0;
+  // Flatten posts from all pages (with null safety for error responses)
+  const posts = data ? data.flatMap((page) => page.posts || []) : [];
+  const hasMore = data ? data[data.length - 1]?.hasMore ?? false : false;
+  const isEmpty = !posts.length && !isLoading && !error;
 
   // Load more
   const loadMore = useCallback(() => {
@@ -237,8 +250,8 @@ export function useComments(postId: string | null) {
     }
   );
 
-  const comments = data ? data.flatMap((page) => page.comments) : [];
-  const hasMore = data ? data[data.length - 1]?.hasMore : false;
+  const comments = data ? data.flatMap((page) => page.comments || []) : [];
+  const hasMore = data ? data[data.length - 1]?.hasMore ?? false : false;
 
   const loadMore = useCallback(() => {
     if (!isValidating && hasMore) {
@@ -248,13 +261,13 @@ export function useComments(postId: string | null) {
 
   const addComment = useCallback((comment: FeedComment) => {
     mutate((currentData) => {
-      if (!currentData) return currentData;
+      if (!currentData || !currentData.length) return currentData;
       
       const [firstPage, ...restPages] = currentData;
       return [
         {
           ...firstPage,
-          comments: [comment, ...firstPage.comments],
+          comments: [comment, ...(firstPage.comments || [])],
         },
         ...restPages,
       ];
@@ -301,8 +314,8 @@ export function useBookmarks() {
     }
   );
 
-  const posts = data ? data.flatMap((page) => page.posts) : [];
-  const hasMore = data ? data[data.length - 1]?.hasMore : false;
+  const posts = data ? data.flatMap((page) => page.posts || []) : [];
+  const hasMore = data ? data[data.length - 1]?.hasMore ?? false : false;
 
   const loadMore = useCallback(() => {
     if (!isValidating && hasMore) {
@@ -346,30 +359,7 @@ export function useFeedSearch(query: string) {
 // =============================================================================
 // FEED ENABLED CHECK
 // =============================================================================
-
-export function useFeedEnabled() {
-  const [isEnabled, setIsEnabled] = useState<boolean | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const checkFeedEnabled = async () => {
-      try {
-        const response = await fetch('/api/feed?limit=1');
-        if (response.status === 403) {
-          setIsEnabled(false);
-        } else {
-          setIsEnabled(true);
-        }
-      } catch {
-        setIsEnabled(false);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkFeedEnabled();
-  }, []);
-
-  return { isEnabled, isLoading };
-}
+// NOTE: Use useFeedEnabled from @/contexts/BrandingContext instead!
+// That hook uses Edge Config values from SSR for instant rendering without flash.
+// This legacy hook is kept for backward compatibility but should not be used.
 

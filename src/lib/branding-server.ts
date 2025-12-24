@@ -48,6 +48,7 @@ export interface TenantCookieData {
     menuTitles: OrgMenuTitles;
     menuIcons: OrgMenuIcons;
   };
+  feedEnabled?: boolean;
   coachingPromo?: TenantCoachingPromoData;
 }
 
@@ -57,6 +58,7 @@ export interface TenantCookieData {
 export interface ServerBranding {
   branding: OrgBranding;
   coachingPromo: TenantCoachingPromoData;
+  feedEnabled: boolean;
   isDefault: boolean;
   isTenantMode: boolean;
   organizationId: string | null;
@@ -133,6 +135,7 @@ export async function getServerBranding(): Promise<ServerBranding> {
     return {
       branding: getDefaultBranding(),
       coachingPromo: DEFAULT_TENANT_COACHING_PROMO,
+      feedEnabled: false,
       isDefault: true,
       isTenantMode: false,
       organizationId: null,
@@ -166,9 +169,13 @@ export async function getServerBranding(): Promise<ServerBranding> {
   // Get coaching promo from cookie, fallback to defaults if not present
   const coachingPromo: TenantCoachingPromoData = tenantData.coachingPromo || DEFAULT_TENANT_COACHING_PROMO;
   
+  // Get feedEnabled from cookie (set by middleware from Edge Config)
+  const feedEnabled = tenantData.feedEnabled === true;
+  
   return {
     branding,
     coachingPromo,
+    feedEnabled,
     isDefault: isActuallyDefault,
     isTenantMode: true,
     organizationId: tenantData.orgId,

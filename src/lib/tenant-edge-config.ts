@@ -50,6 +50,7 @@ export interface TenantConfigData {
   organizationId: string;
   subdomain: string;
   branding: TenantBrandingData;
+  feedEnabled?: boolean;  // Whether social feed is enabled for this org
   coachingPromo?: TenantCoachingPromoData;
   verifiedCustomDomain?: string;
   updatedAt: string;
@@ -229,7 +230,8 @@ export function buildTenantConfigData(
   subdomain: string,
   branding?: Partial<TenantBrandingData>,
   verifiedCustomDomain?: string,
-  coachingPromo?: Partial<TenantCoachingPromoData>
+  coachingPromo?: Partial<TenantCoachingPromoData>,
+  feedEnabled?: boolean
 ): TenantConfigData {
   return {
     organizationId,
@@ -242,6 +244,7 @@ export function buildTenantConfigData(
       menuTitles: branding?.menuTitles ?? DEFAULT_TENANT_BRANDING.menuTitles,
       menuIcons: branding?.menuIcons ?? DEFAULT_TENANT_BRANDING.menuIcons,
     },
+    feedEnabled: feedEnabled ?? false,
     coachingPromo: coachingPromo ? {
       title: coachingPromo.title ?? DEFAULT_TENANT_COACHING_PROMO.title,
       subtitle: coachingPromo.subtitle ?? DEFAULT_TENANT_COACHING_PROMO.subtitle,
@@ -261,9 +264,10 @@ export async function syncTenantToEdgeConfig(
   subdomain: string,
   branding?: Partial<TenantBrandingData>,
   verifiedCustomDomain?: string,
-  coachingPromo?: Partial<TenantCoachingPromoData>
+  coachingPromo?: Partial<TenantCoachingPromoData>,
+  feedEnabled?: boolean
 ): Promise<void> {
-  const data = buildTenantConfigData(organizationId, subdomain, branding, verifiedCustomDomain, coachingPromo);
+  const data = buildTenantConfigData(organizationId, subdomain, branding, verifiedCustomDomain, coachingPromo, feedEnabled);
   
   const items: EdgeConfigItem[] = [
     { operation: 'upsert', key: getSubdomainKey(subdomain), value: data },

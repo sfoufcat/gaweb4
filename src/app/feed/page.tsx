@@ -3,8 +3,8 @@
 import { useState, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
 import Image from 'next/image';
-import { useFeed, useFeedEnabled, type FeedPost } from '@/hooks/useFeed';
-import { useBrandingValues, useMenuTitles } from '@/contexts/BrandingContext';
+import { useFeed, type FeedPost } from '@/hooks/useFeed';
+import { useBrandingValues, useMenuTitles, useFeedEnabled } from '@/contexts/BrandingContext';
 import { FeedList } from '@/components/feed/FeedList';
 import { CreatePostModal } from '@/components/feed/CreatePostModal';
 import { CommentSheet } from '@/components/feed/CommentSheet';
@@ -15,7 +15,7 @@ export default function FeedPage() {
   const { user } = useUser();
   const { colors, isDefault } = useBrandingValues();
   const { feed: feedTitle } = useMenuTitles();
-  const { isEnabled, isLoading: isCheckingEnabled } = useFeedEnabled();
+  const feedEnabled = useFeedEnabled(); // From Edge Config via SSR - instant, no flash
   
   const {
     posts,
@@ -64,21 +64,8 @@ export default function FeedPage() {
     removePost(postId);
   }, [removePost]);
 
-  // Show loading while checking if feed is enabled
-  if (isCheckingEnabled) {
-    return (
-      <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b]">
-        <div className="max-w-2xl mx-auto px-4 py-8">
-          <div className="flex justify-center">
-            <div className="w-8 h-8 border-2 border-[#a07855] border-t-transparent rounded-full animate-spin" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Feed not enabled for this org
-  if (!isEnabled) {
+  // Feed not enabled for this org (instant check from SSR Edge Config)
+  if (!feedEnabled) {
     return (
       <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b]">
         <div className="max-w-2xl mx-auto px-4 py-16">

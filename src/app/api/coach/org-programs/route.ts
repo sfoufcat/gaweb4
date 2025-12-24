@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
+import { requireCoachWithOrg, TenantRequiredError } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { Program, ProgramType, ProgramHabitTemplate, ProgramWithStats, ProgramFeature, ProgramTestimonial, ProgramFAQ } from '@/types';
 
@@ -86,6 +86,16 @@ export async function GET(request: NextRequest) {
       organizationId,
     });
   } catch (error) {
+    // Handle tenant required error
+    if (error instanceof TenantRequiredError) {
+      return NextResponse.json({
+        error: 'tenant_required',
+        message: 'Please access this feature from your organization domain',
+        tenantUrl: error.tenantUrl,
+        subdomain: error.subdomain,
+      }, { status: 403 });
+    }
+    
     console.error('[COACH_ORG_PROGRAMS_GET] Error:', error);
     const message = error instanceof Error ? error.message : 'Internal Error';
     
@@ -286,6 +296,16 @@ export async function POST(request: NextRequest) {
       message: 'Program created successfully',
     }, { status: 201 });
   } catch (error) {
+    // Handle tenant required error
+    if (error instanceof TenantRequiredError) {
+      return NextResponse.json({
+        error: 'tenant_required',
+        message: 'Please access this feature from your organization domain',
+        tenantUrl: error.tenantUrl,
+        subdomain: error.subdomain,
+      }, { status: 403 });
+    }
+    
     console.error('[COACH_ORG_PROGRAMS_POST] Error:', error);
     const message = error instanceof Error ? error.message : 'Internal Error';
     

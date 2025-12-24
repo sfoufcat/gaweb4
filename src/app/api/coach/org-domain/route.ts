@@ -6,7 +6,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { requireCoachWithOrg, isUserOrgAdminInOrg } from '@/lib/admin-utils-clerk';
+import { requireCoachWithOrg, isUserOrgAdminInOrg, TenantRequiredError } from '@/lib/admin-utils-clerk';
 import { 
   getOrgDomain, 
   updateOrgSubdomain, 
@@ -53,6 +53,16 @@ export async function GET() {
       organizationId,
     });
   } catch (error) {
+    // Handle tenant required error
+    if (error instanceof TenantRequiredError) {
+      return NextResponse.json({
+        error: 'tenant_required',
+        message: 'Please access this feature from your organization domain',
+        tenantUrl: error.tenantUrl,
+        subdomain: error.subdomain,
+      }, { status: 403 });
+    }
+    
     console.error('[COACH_ORG_DOMAIN_GET] Error:', error);
     const message = error instanceof Error ? error.message : 'Internal Error';
     
@@ -178,6 +188,16 @@ export async function PATCH(request: Request) {
       tenantUrl: `https://${normalizedSubdomain}.growthaddicts.com`,
     });
   } catch (error) {
+    // Handle tenant required error
+    if (error instanceof TenantRequiredError) {
+      return NextResponse.json({
+        error: 'tenant_required',
+        message: 'Please access this feature from your organization domain',
+        tenantUrl: error.tenantUrl,
+        subdomain: error.subdomain,
+      }, { status: 403 });
+    }
+    
     console.error('[COACH_ORG_DOMAIN_PATCH] Error:', error);
     const message = error instanceof Error ? error.message : 'Internal Error';
     

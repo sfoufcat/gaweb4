@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
+import { requireCoachWithOrg, TenantRequiredError } from '@/lib/admin-utils-clerk';
 import type { Funnel, FunnelTargetType } from '@/types';
 
 /**
@@ -45,6 +45,15 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ funnels });
   } catch (error) {
+    // Handle tenant required error
+    if (error instanceof TenantRequiredError) {
+      return NextResponse.json({
+        error: 'tenant_required',
+        message: 'Please access this feature from your organization domain',
+        tenantUrl: error.tenantUrl,
+        subdomain: error.subdomain,
+      }, { status: 403 });
+    }
     console.error('[COACH_ORG_FUNNELS_GET]', error);
     return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
   }
@@ -191,6 +200,15 @@ export async function POST(req: Request) {
       funnel: { id: funnelRef.id, ...funnelData },
     });
   } catch (error) {
+    // Handle tenant required error
+    if (error instanceof TenantRequiredError) {
+      return NextResponse.json({
+        error: 'tenant_required',
+        message: 'Please access this feature from your organization domain',
+        tenantUrl: error.tenantUrl,
+        subdomain: error.subdomain,
+      }, { status: 403 });
+    }
     console.error('[COACH_ORG_FUNNELS_POST]', error);
     return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
   }

@@ -107,6 +107,7 @@ export default async function RootLayout({
             initialBranding={ssrBranding.branding}
             initialCoachingPromo={ssrBranding.coachingPromo}
             initialIsDefault={ssrBranding.isDefault}
+            initialFeedEnabled={ssrBranding.feedEnabled}
           >
           <SquadProvider>
           <OrganizationProvider>

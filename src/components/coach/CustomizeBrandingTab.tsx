@@ -61,6 +61,12 @@ export function CustomizeBrandingTab() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   
+  // Tenant required state - shown when accessing from platform domain
+  const [tenantRequired, setTenantRequired] = useState<{
+    tenantUrl: string | null;
+    subdomain: string | null;
+  } | null>(null);
+  
   // Original values for comparison
   const [originalBranding, setOriginalBranding] = useState<OrgBranding | null>(null);
   
@@ -129,14 +135,30 @@ export function CustomizeBrandingTab() {
   const [emailDefaultsSaving, setEmailDefaultsSaving] = useState<string | null>(null);
 
   // Fetch current branding on mount
+  // On tenant domain, branding comes from x-tenant-org-id header
+  // On platform domain (without super_admin), this will return default branding
   const fetchBranding = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
+      setTenantRequired(null);
       
-      // Use forCoach=true to fetch the authenticated coach's organization branding
-      // This ensures coaches see their saved branding on the platform domain
-      const response = await fetch('/api/org/branding?forCoach=true');
+      // Fetch branding - tenant mode provides org via header
+      // forCoach param removed - now enforced via tenant mode
+      const response = await fetch('/api/org/branding');
+      
+      // Check for tenant_required error (on platform domain for non-super-admins)
+      if (response.status === 403) {
+        const data = await response.json();
+        if (data.error === 'tenant_required') {
+          setTenantRequired({
+            tenantUrl: data.tenantUrl,
+            subdomain: data.subdomain,
+          });
+          return;
+        }
+      }
+      
       if (!response.ok) {
         throw new Error('Failed to fetch branding settings');
       }
@@ -865,6 +887,14 @@ export function CustomizeBrandingTab() {
 
       if (!response.ok) {
         const data = await response.json();
+        // Handle tenant_required error
+        if (data.error === 'tenant_required') {
+          setTenantRequired({
+            tenantUrl: data.tenantUrl,
+            subdomain: data.subdomain,
+          });
+          return;
+        }
         throw new Error(data.error || 'Failed to save branding');
       }
 
@@ -909,6 +939,39 @@ export function CustomizeBrandingTab() {
             </div>
           </div>
         ))}
+      </div>
+    );
+  }
+
+  // Show tenant required message when accessing from platform domain
+  if (tenantRequired) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-8 text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+            <Globe className="w-8 h-8 text-amber-600 dark:text-amber-400" />
+          </div>
+          <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+            Access from Your Organization Domain
+          </h2>
+          <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-6 max-w-md mx-auto">
+            To customize your branding and settings, please access this page from your organization&apos;s domain.
+          </p>
+          
+          {tenantRequired.tenantUrl ? (
+            <a
+              href={`${tenantRequired.tenantUrl}/coach?tab=customize`}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[#a07855] text-white rounded-xl hover:bg-[#8c6245] transition-colors font-albert font-medium"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Go to {tenantRequired.subdomain}.growthaddicts.com
+            </a>
+          ) : (
+            <p className="text-[#a7a39e] dark:text-[#7d8190] font-albert text-sm">
+              Your organization domain is not yet configured. Please contact support.
+            </p>
+          )}
+        </div>
       </div>
     );
   }

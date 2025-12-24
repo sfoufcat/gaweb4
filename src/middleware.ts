@@ -631,10 +631,12 @@ export default clerkMiddleware(async (auth, request) => {
     // Always set the cookie to ensure correct tenant context (handles switching between tenants)
     const brandingData = tenantConfigData?.branding || DEFAULT_TENANT_BRANDING;
     const coachingPromoData = tenantConfigData?.coachingPromo; // May be undefined
+    const feedEnabledData = tenantConfigData?.feedEnabled === true; // Feed enabled flag for instant SSR
     const tenantCookieData = {
       orgId: tenantOrgId,
       subdomain: tenantSubdomain,
       branding: brandingData,
+      feedEnabled: feedEnabledData,
       coachingPromo: coachingPromoData,
     };
     

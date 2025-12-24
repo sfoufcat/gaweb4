@@ -57,6 +57,8 @@ interface BrandingContextType {
   branding: OrgBranding;
   // Coaching promo settings (separate from branding)
   coachingPromo: TenantCoachingPromoData;
+  // Whether social feed is enabled for this org (from Edge Config for instant SSR)
+  feedEnabled: boolean;
   // Whether branding is loading
   isLoading: boolean;
   // Whether using default branding (no custom branding loaded)
@@ -132,6 +134,11 @@ interface BrandingProviderProps {
    * Used to skip unnecessary client-side fetches.
    */
   initialIsDefault?: boolean;
+  /**
+   * Whether feed is enabled for this org (from Edge Config).
+   * Used for instant SSR rendering of feed nav item.
+   */
+  initialFeedEnabled?: boolean;
 }
 
 export function BrandingProvider({ 
@@ -139,6 +146,7 @@ export function BrandingProvider({
   initialBranding,
   initialCoachingPromo,
   initialIsDefault = true,
+  initialFeedEnabled = false,
 }: BrandingProviderProps) {
   // Initialize with SSR branding if provided, otherwise default
   const [branding, setBranding] = useState<OrgBranding>(
@@ -148,6 +156,8 @@ export function BrandingProvider({
   const [coachingPromo, setCoachingPromo] = useState<TenantCoachingPromoData>(
     initialCoachingPromo || DEFAULT_TENANT_COACHING_PROMO
   );
+  // Initialize feed enabled from SSR for instant nav rendering
+  const [feedEnabled] = useState<boolean>(initialFeedEnabled);
   const [isLoading, setIsLoading] = useState(false);
   const [isDefault, setIsDefault] = useState(initialIsDefault);
   const [mounted, setMounted] = useState(false);
@@ -278,6 +288,7 @@ export function BrandingProvider({
       value={{
         branding,
         coachingPromo,
+        feedEnabled,
         isLoading,
         isDefault,
         isPreviewMode,
@@ -370,4 +381,13 @@ export function useMenuTitles() {
 export function useCoachingPromo() {
   const { coachingPromo } = useBranding();
   return coachingPromo;
+}
+
+/**
+ * Hook to check if social feed is enabled for the current org
+ * Uses Edge Config value from SSR for instant rendering (no flash)
+ */
+export function useFeedEnabled() {
+  const { feedEnabled } = useBranding();
+  return feedEnabled;
 }

@@ -14,6 +14,26 @@ import { isAdmin, isSuperAdmin, isOrgCoach } from './admin-utils-shared';
  */
 
 // ============================================================================
+// TENANT REQUIRED ERROR
+// ============================================================================
+
+/**
+ * Error thrown when tenant mode is required but the request is on the platform domain.
+ * Includes the user's tenant URL so UI can redirect them.
+ */
+export class TenantRequiredError extends Error {
+  tenantUrl: string | null;
+  subdomain: string | null;
+  
+  constructor(tenantUrl: string | null, subdomain: string | null) {
+    super('TenantRequired: Please access this feature from your organization domain');
+    this.name = 'TenantRequiredError';
+    this.tenantUrl = tenantUrl;
+    this.subdomain = subdomain;
+  }
+}
+
+// ============================================================================
 // BILLING STATUS TYPES & HELPERS
 // ============================================================================
 
@@ -289,14 +309,23 @@ export async function requireSuperAdmin(): Promise<void> {
  * Server-side: Check if current user is a coach and get their organizationId
  * Throws error if not coach/admin or if no organization exists
  * 
+ * IMPORTANT: By default, this function REQUIRES tenant mode (subdomain or custom domain).
+ * On the platform domain, it will throw TenantRequiredError unless:
+ * - The user is a super_admin (full access on platform domain)
+ * - allowPlatformMode option is explicitly set to true
+ * 
  * Priority for organizationId:
  * 1. Tenant context from headers (x-tenant-org-id) - for domain-based routing
  * 2. Clerk's native org session (auth().orgId) - preferred for full Clerk Orgs
  * 3. publicMetadata.organizationId - backward compatibility
  * 
+ * @param options.allowPlatformMode - If true, allows access from platform domain (default: false)
  * @returns { userId, role, organizationId, isTenantMode }
+ * @throws TenantRequiredError if not on tenant domain and not super_admin
  */
-export async function requireCoachWithOrg(): Promise<{ 
+export async function requireCoachWithOrg(options?: {
+  allowPlatformMode?: boolean;
+}): Promise<{ 
   userId: string; 
   role: UserRole; 
   orgRole?: OrgRole;
@@ -332,6 +361,41 @@ export async function requireCoachWithOrg(): Promise<{
     isTenantMode = !!tenantOrgId;
   } catch {
     // Headers not available (e.g., in some edge cases)
+  }
+  
+  // TENANT MODE ENFORCEMENT
+  // If not in tenant mode and platform mode not explicitly allowed
+  if (!isTenantMode && !options?.allowPlatformMode) {
+    // Super admins always have full access on platform domain (for support/debugging)
+    if (role === 'super_admin') {
+      const organizationId = orgId || publicMetadata?.organizationId;
+      if (organizationId) {
+        console.log(`[requireCoachWithOrg] Super admin ${userId} accessing org ${organizationId} from platform domain`);
+        return { userId, role, orgRole, organizationId, isTenantMode: false };
+      }
+    }
+    
+    // Regular coaches must use their tenant domain
+    // Look up their subdomain to provide a helpful redirect URL
+    const userOrgId = orgId || publicMetadata?.organizationId;
+    let tenantUrl: string | null = null;
+    let subdomain: string | null = null;
+    
+    if (userOrgId) {
+      try {
+        // Dynamic import to avoid circular dependencies
+        const { getOrgDomain } = await import('@/lib/tenant/resolveTenant');
+        const orgDomain = await getOrgDomain(userOrgId);
+        if (orgDomain?.subdomain) {
+          subdomain = orgDomain.subdomain;
+          tenantUrl = `https://${orgDomain.subdomain}.growthaddicts.com`;
+        }
+      } catch (error) {
+        console.error('[requireCoachWithOrg] Error looking up org domain:', error);
+      }
+    }
+    
+    throw new TenantRequiredError(tenantUrl, subdomain);
   }
   
   // Get organizationId - priority: tenant context > Clerk org session > metadata

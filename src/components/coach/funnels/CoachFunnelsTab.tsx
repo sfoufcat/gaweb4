@@ -15,7 +15,8 @@ import {
   EyeOff,
   Link2,
   Users,
-  Check
+  Check,
+  Globe
 } from 'lucide-react';
 import type { Funnel, Program } from '@/types';
 import { FunnelEditorDialog } from './FunnelEditorDialog';
@@ -41,6 +42,12 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // Tenant required state - shown when accessing from platform domain
+  const [tenantRequired, setTenantRequired] = useState<{
+    tenantUrl: string | null;
+    subdomain: string | null;
+  } | null>(null);
+  
   // Dialogs & editing
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -58,11 +65,26 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   const fetchFunnels = useCallback(async () => {
     try {
       setIsLoading(true);
+      setTenantRequired(null);
       const params = new URLSearchParams();
       if (selectedProgramId) {
         params.append('programId', selectedProgramId);
       }
       const response = await fetch(`/api/coach/org-funnels?${params}`);
+      
+      // Check for tenant_required error
+      if (response.status === 403) {
+        const data = await response.json();
+        if (data.error === 'tenant_required') {
+          setTenantRequired({
+            tenantUrl: data.tenantUrl,
+            subdomain: data.subdomain,
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+      
       if (!response.ok) throw new Error('Failed to fetch funnels');
       const data = await response.json();
       setFunnels(data.funnels || []);
@@ -276,8 +298,37 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
         </div>
       )}
 
+      {/* Tenant required state */}
+      {tenantRequired && (
+        <div className="bg-white border border-[#e1ddd8] rounded-2xl p-8 text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-100 flex items-center justify-center">
+            <Globe className="w-8 h-8 text-amber-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-text-primary mb-2">
+            Access from Your Organization Domain
+          </h3>
+          <p className="text-text-secondary mb-6 max-w-md mx-auto">
+            To manage funnels, please access this page from your organization&apos;s domain.
+          </p>
+          
+          {tenantRequired.tenantUrl ? (
+            <a
+              href={`${tenantRequired.tenantUrl}/coach?tab=funnels`}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[#a07855] text-white rounded-xl hover:bg-[#8c6245] transition-colors font-medium"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Go to {tenantRequired.subdomain}.growthaddicts.com
+            </a>
+          ) : (
+            <p className="text-text-muted text-sm">
+              Your organization domain is not yet configured. Please contact support.
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Empty state */}
-      {!isLoading && !error && funnels.length === 0 && (
+      {!isLoading && !error && !tenantRequired && funnels.length === 0 && (
         <div className="text-center py-12 bg-[#faf8f6] rounded-2xl border border-[#e1ddd8]">
           <Layers className="w-12 h-12 text-text-muted mx-auto mb-4" />
           <h3 className="text-lg font-medium text-text-primary mb-2">No funnels yet</h3>
@@ -294,7 +345,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
       )}
 
       {/* Funnels list */}
-      {!isLoading && !error && funnels.length > 0 && (
+      {!isLoading && !error && !tenantRequired && funnels.length > 0 && (
         <div className="space-y-3">
           {funnels.map(funnel => (
             <motion.div

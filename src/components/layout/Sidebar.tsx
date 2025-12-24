@@ -9,11 +9,10 @@ import { isAdmin, canAccessCoachDashboard, canAccessEditorSection, isSuperAdmin 
 import type { UserRole, OrgRole } from '@/types';
 import { DEFAULT_MENU_ICONS } from '@/types';
 import { useChatUnreadCounts } from '@/hooks/useChatUnreadCounts';
-import { useBrandingValues } from '@/contexts/BrandingContext';
+import { useBrandingValues, useFeedEnabled } from '@/contexts/BrandingContext';
 import { OrganizationSwitcher } from './OrganizationSwitcher';
 import { useMyPrograms } from '@/hooks/useMyPrograms';
 import { useSquad } from '@/hooks/useSquad';
-import { useOrgSettings } from '@/hooks/useOrgSettings';
 
 // Icon SVG paths for predefined icons
 const ICON_PATHS: Record<string, string> = {
@@ -122,15 +121,15 @@ export function Sidebar() {
   // Squad and program state for navigation visibility
   const { hasEnrollments } = useMyPrograms();
   const { hasStandardSquad } = useSquad();
-  const { settings: orgSettings } = useOrgSettings();
+  const feedEnabled = useFeedEnabled(); // From Edge Config via SSR - instant, no flash
   
   // Navigation visibility logic:
   // - Program: Show if user has enrollments OR has no standard squad (empty state)
   // - Squad: Show ONLY if user has a standard squad (coach-created standalone)
-  // - Feed: Show if feed is enabled for the org
+  // - Feed: Show if feed is enabled for the org (from SSR for instant rendering)
   const showProgramNav = hasEnrollments || !hasStandardSquad;
   const showSquadNav = hasStandardSquad;
-  const showFeedNav = orgSettings?.feedEnabled === true;
+  const showFeedNav = feedEnabled;
   
   const isActive = (path: string) => pathname === path;
   
