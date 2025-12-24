@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import useSWR from 'swr';
 import { useBrandingValues } from '@/contexts/BrandingContext';
-import type { FeedPost } from '@/hooks/useFeed';
 
 interface CompactPostPreview {
   id: string;
@@ -19,57 +18,43 @@ interface CompactPostPreview {
   };
 }
 
+// SWR fetcher
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to fetch');
+  return res.json();
+};
+
+// SWR cache keys - exported so they can be used for revalidation
+export const SIDEBAR_BOOKMARKS_KEY = '/api/feed/bookmarks?limit=5';
+export const SIDEBAR_TRENDING_KEY = '/api/feed/trending?limit=5';
+
 /**
  * FeedSidebar - Desktop right sidebar showing bookmarks and trending posts
  * 
  * Hidden on mobile, visible on lg: breakpoints
+ * Uses SWR for caching - bookmarks auto-refresh when feed bookmarks change
  */
 export function FeedSidebar() {
   const { colors, isDefault } = useBrandingValues();
-  const [bookmarkedPosts, setBookmarkedPosts] = useState<CompactPostPreview[]>([]);
-  const [trendingPosts, setTrendingPosts] = useState<CompactPostPreview[]>([]);
-  const [isLoadingBookmarks, setIsLoadingBookmarks] = useState(true);
-  const [isLoadingTrending, setIsLoadingTrending] = useState(true);
+  
+  // Use SWR for bookmarks - will auto-revalidate
+  const { data: bookmarksData, isLoading: isLoadingBookmarks } = useSWR<{ posts: CompactPostPreview[] }>(
+    SIDEBAR_BOOKMARKS_KEY,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 5000 }
+  );
+  
+  // Use SWR for trending
+  const { data: trendingData, isLoading: isLoadingTrending } = useSWR<{ posts: CompactPostPreview[] }>(
+    SIDEBAR_TRENDING_KEY,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 30000 }
+  );
 
+  const bookmarkedPosts = bookmarksData?.posts || [];
+  const trendingPosts = trendingData?.posts || [];
   const accentColor = isDefault ? '#a07855' : colors.accentLight;
-
-  // Fetch bookmarked posts
-  useEffect(() => {
-    const fetchBookmarks = async () => {
-      try {
-        const response = await fetch('/api/feed/bookmarks?limit=5');
-        if (response.ok) {
-          const data = await response.json();
-          setBookmarkedPosts(data.posts || []);
-        }
-      } catch (error) {
-        console.error('Failed to fetch bookmarks:', error);
-      } finally {
-        setIsLoadingBookmarks(false);
-      }
-    };
-
-    fetchBookmarks();
-  }, []);
-
-  // Fetch trending posts
-  useEffect(() => {
-    const fetchTrending = async () => {
-      try {
-        const response = await fetch('/api/feed/trending?limit=5');
-        if (response.ok) {
-          const data = await response.json();
-          setTrendingPosts(data.posts || []);
-        }
-      } catch (error) {
-        console.error('Failed to fetch trending:', error);
-      } finally {
-        setIsLoadingTrending(false);
-      }
-    };
-
-    fetchTrending();
-  }, []);
 
   return (
     <aside className="hidden lg:block w-[340px] flex-shrink-0 space-y-6">

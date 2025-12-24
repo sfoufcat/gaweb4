@@ -5,9 +5,11 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { formatDistanceToNow } from 'date-fns';
+import { mutate } from 'swr';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 import { DeleteConfirmationModal } from './ConfirmationModal';
 import { InlineComments } from './InlineComments';
+import { SIDEBAR_BOOKMARKS_KEY } from './FeedSidebar';
 import type { FeedPost } from '@/hooks/useFeed';
 import { getProfileUrl } from '@/lib/utils';
 
@@ -116,6 +118,9 @@ export function PostCard({
       if (!response.ok) {
         // Revert on error
         onBookmark?.(post.id, !newBookmarkState);
+      } else {
+        // Revalidate sidebar bookmarks to show updated list
+        mutate(SIDEBAR_BOOKMARKS_KEY);
       }
     } catch {
       // Revert on error
