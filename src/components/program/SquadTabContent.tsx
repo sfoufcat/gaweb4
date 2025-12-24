@@ -214,10 +214,7 @@ export function SquadTabContent() {
 
       {/* Squad Members */}
       <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4">
-        <h3 className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] leading-[1.3] tracking-[-1px] mb-4">
-          Members ({members.length})
-        </h3>
-        <SquadMemberList members={members} hasCoach={squad.hasCoach ?? squad.isPremium} />
+        <SquadMemberList members={members} />
       </div>
 
       {/* View Squad Stats Button */}
@@ -240,29 +237,6 @@ export function SquadTabContent() {
         </svg>
         View {squadLower} stats
       </button>
-
-      {/* Go to Chat Button */}
-      {squad.chatChannelId && (
-        <button
-          onClick={() => router.push(`/chat?channel=${squad.chatChannelId}`)}
-          className="w-full bg-[#a07855] border border-[rgba(215,210,204,0.5)] rounded-[32px] px-4 py-4 font-bold text-[16px] text-white leading-[1.4] tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"
-            />
-          </svg>
-          Go to {squadLower} chat
-        </button>
-      )}
 
       {/* Invite Cards */}
       <SquadInviteCards

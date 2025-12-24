@@ -239,7 +239,7 @@ export function SquadView({ squadId, showCoachBadge = false }: SquadViewProps) {
       {activeTab === 'squad' ? (
         <div>
           {/* Member List */}
-          <SquadMemberList members={members} hasCoach={squadHasCoach} />
+          <SquadMemberList members={members} />
 
           {/* Invite Cards - only show in non-coach view */}
           {!squadId && (

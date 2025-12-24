@@ -93,7 +93,7 @@ export async function GET() {
           membership: {
             id: doc.id,
             orgRole: membership.orgRole,
-            tier: membership.tier,
+            tier: membership.tier || 'basic',
             track: membership.track,
             joinedAt: membership.joinedAt,
           },
