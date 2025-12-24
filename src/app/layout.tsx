@@ -6,6 +6,7 @@ import "./globals.css";
 import { ConditionalSidebar } from "@/components/layout/ConditionalSidebar";
 import { ConditionalMain } from "@/components/layout/ConditionalMain";
 import { PageTransition } from "@/components/layout/PageTransition";
+import { LayoutModeSync } from "@/components/layout/LayoutModeSync";
 import { StreamChatProvider } from "@/contexts/StreamChatContext";
 import { StreamVideoProvider } from "@/contexts/StreamVideoContext";
 import { SquadProvider } from "@/contexts/SquadContext";
@@ -128,6 +129,11 @@ export default async function RootLayout({
           data-layout={layoutMode}
           suppressHydrationWarning
         >
+          {/* Client-side sync for body data-layout attribute (safety net for hydration/navigation) */}
+          <Suspense fallback={null}>
+            <LayoutModeSync />
+          </Suspense>
+          
           <ThemeProvider initialOrgDefaultTheme={ssrBranding.branding.defaultTheme || DEFAULT_THEME}>
           <SWRProvider>
           <BrandingProvider 
