@@ -102,8 +102,12 @@ export function ShareToChatModal({ postUrl, onClose, onSuccess }: ShareToChatMod
     let image = channelData?.image as string | undefined;
     
     if (!name && isDM && otherMember?.user) {
-      name = otherMember.user.name || `${otherMember.user.first_name || ''} ${otherMember.user.last_name || ''}`.trim() || 'User';
-      image = otherMember.user.image;
+      // Stream Chat user properties - cast to access custom fields
+      const userData = otherMember.user as Record<string, unknown>;
+      name = (otherMember.user.name as string) || 
+             `${(userData.firstName as string) || ''} ${(userData.lastName as string) || ''}`.trim() || 
+             'User';
+      image = otherMember.user.image as string | undefined;
     }
     
     if (!name) {
