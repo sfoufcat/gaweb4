@@ -44,8 +44,8 @@ export function useFeedStories(squadMembers: SquadMember[]): UseFeedStoriesRetur
   // Get member IDs excluding current user
   const memberIds = useMemo(() => {
     return squadMembers
-      .filter(m => m.clerkUserId !== user?.id)
-      .map(m => m.clerkUserId);
+      .filter(m => m.userId !== user?.id)
+      .map(m => m.userId);
   }, [squadMembers, user?.id]);
 
   // Fetch story status for all members
@@ -103,15 +103,15 @@ export function useFeedStories(squadMembers: SquadMember[]): UseFeedStoriesRetur
   // Convert squad members to FeedStoryUser format
   const storyUsers = useMemo((): FeedStoryUser[] => {
     return squadMembers
-      .filter(m => m.clerkUserId !== user?.id)
+      .filter(m => m.userId !== user?.id)
       .map(member => ({
-        id: member.clerkUserId,
+        id: member.userId,
         firstName: member.firstName || '',
         lastName: member.lastName || '',
-        imageUrl: member.avatarUrl || member.imageUrl,
-        hasStory: storyStatus.get(member.clerkUserId) || false,
+        imageUrl: member.imageUrl,
+        hasStory: storyStatus.get(member.userId) || false,
         // For now, all stories are "unseen" - we can add viewed tracking later
-        hasUnseenStory: storyStatus.get(member.clerkUserId) || false,
+        hasUnseenStory: storyStatus.get(member.userId) || false,
       }))
       // Sort: users with stories first
       .sort((a, b) => {
