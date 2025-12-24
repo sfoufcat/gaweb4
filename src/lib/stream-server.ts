@@ -33,6 +33,48 @@ export const generateStreamToken = async (userId: string) => {
 };
 
 /**
+ * Sync a user's profile to Stream Chat.
+ * This ensures their name and avatar are up-to-date across all channels.
+ * 
+ * @param userId - The user's ID
+ * @param profile - Profile data to sync
+ */
+export const syncUserToStream = async (
+  userId: string,
+  profile: {
+    name?: string;
+    firstName?: string;
+    lastName?: string;
+    imageUrl?: string;
+    avatarUrl?: string;
+  }
+) => {
+  try {
+    const client = await getStreamServerClient();
+    
+    // Build display name: prefer explicit name, fallback to firstName + lastName
+    const displayName = profile.name 
+      || `${profile.firstName || ''} ${profile.lastName || ''}`.trim() 
+      || 'User';
+    
+    // Prefer avatarUrl (Firebase), fallback to imageUrl (Clerk)
+    const imageUrl = profile.avatarUrl || profile.imageUrl || undefined;
+    
+    await client.upsertUser({
+      id: userId,
+      name: displayName,
+      image: imageUrl,
+    });
+    
+    console.log('[STREAM] Synced user profile:', userId, { name: displayName, hasImage: !!imageUrl });
+    return true;
+  } catch (error) {
+    console.error('[STREAM] Failed to sync user profile:', userId, error);
+    return false;
+  }
+};
+
+/**
  * Ensures the GrowthAddicts system bot user exists in Stream.
  * This user is used for sending automated notifications like
  * morning check-in updates.

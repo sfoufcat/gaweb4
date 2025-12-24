@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useUser } from '@clerk/nextjs';
 import { StoryAvatar } from '@/components/stories/StoryAvatar';
 import { useCurrentUserHasStory, type FeedStoryUser } from '@/hooks/useFeedStories';
+import { useStoryViewStatus, useStoryViewTracking } from '@/hooks/useStoryViewTracking';
 
 // Ring colors matching StoryAvatar
 const RING_COLORS = {
@@ -40,9 +41,18 @@ export function StoriesRow({
 }: StoriesRowProps) {
   const { user } = useUser();
   const currentUserStatus = useCurrentUserHasStory();
+  const { markStoryAsViewed } = useStoryViewTracking();
   
-  // Determine ring color based on status (matches StoryAvatar logic)
+  // Check if current user has viewed their own story (using contentHash for accurate tracking)
+  const hasViewedOwnStory = useStoryViewStatus(
+    user?.id || '',
+    currentUserStatus.contentHash
+  );
+  
+  // Determine ring color based on status (matches StoryAvatar logic from Home)
+  // Gray = viewed, Brown = day closed (not viewed), Green = default (not viewed)
   const getCurrentUserRingColor = () => {
+    if (hasViewedOwnStory && currentUserStatus.hasStory) return RING_COLORS.gray;
     if (currentUserStatus.hasDayClosed) return RING_COLORS.brown;
     return RING_COLORS.green;
   };
@@ -69,11 +79,27 @@ export function StoriesRow({
     );
   }
 
+  // Handle clicking the avatar area (view story if exists)
+  const handleAvatarClick = () => {
+    if (currentUserStatus.hasStory && user?.id) {
+      onViewStory?.(user.id);
+    } else {
+      // No story - clicking avatar also creates
+      onCreateStory?.();
+    }
+  };
+
+  // Handle clicking the plus icon (ALWAYS create story)
+  const handlePlusClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent parent button click
+    onCreateStory?.();
+  };
+
   return (
     <>
       {/* Your Story - Custom button with add (+) icon */}
       <button
-        onClick={() => currentUserStatus.hasStory && user?.id ? onViewStory?.(user.id) : onCreateStory?.()}
+        onClick={handleAvatarClick}
         className="flex flex-col items-center gap-1.5 flex-shrink-0 group"
       >
         <div className="relative">
@@ -138,15 +164,17 @@ export function StoriesRow({
               )}
             </div>
           )}
-          {/* Plus icon for adding story - always visible */}
-          <div 
-            className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-sm z-20"
+          {/* Plus icon for adding story - ALWAYS opens create modal */}
+          <button
+            onClick={handlePlusClick}
+            className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-sm z-20 hover:scale-110 transition-transform"
             style={{ backgroundColor: RING_COLORS.green }}
+            aria-label="Add to story"
           >
             <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-          </div>
+          </button>
         </div>
         <span className="text-xs text-text-secondary font-medium">Your Story</span>
       </button>

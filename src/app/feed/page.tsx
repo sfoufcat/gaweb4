@@ -6,7 +6,8 @@ import Image from 'next/image';
 import { useFeed, type FeedPost } from '@/hooks/useFeed';
 import { useBrandingValues, useMenuTitles, useFeedEnabled } from '@/contexts/BrandingContext';
 import { useSquad } from '@/hooks/useSquad';
-import { useFeedStories } from '@/hooks/useFeedStories';
+import { useFeedStories, useCurrentUserHasStory } from '@/hooks/useFeedStories';
+import { useStoryViewTracking } from '@/hooks/useStoryViewTracking';
 import { FeedList } from '@/components/feed/FeedList';
 import { CreatePostModal } from '@/components/feed/CreatePostModal';
 import { CreateStoryModal } from '@/components/feed/CreateStoryModal';
@@ -26,6 +27,10 @@ export default function FeedPage() {
   // Get squad members for stories
   const { members: squadMembers, isLoading: isLoadingSquad } = useSquad();
   const { storyUsers, isLoading: isLoadingStories } = useFeedStories(squadMembers);
+  
+  // Story view tracking (for marking stories as viewed)
+  const currentUserStoryStatus = useCurrentUserHasStory();
+  const { markStoryAsViewed } = useStoryViewTracking();
   
   const {
     posts,
@@ -50,11 +55,37 @@ export default function FeedPage() {
 
   const accentColor = isDefault ? '#a07855' : colors.accentLight;
 
+  // Check if viewing own story
+  const isViewingOwnStory = selectedStoryUserId === user?.id;
+
   // Get selected story user data
+  // For own story, use Clerk user data; for others, look in storyUsers array
   const selectedStoryUser = useMemo(() => {
     if (!selectedStoryUserId) return null;
-    return storyUsers.find(u => u.id === selectedStoryUserId) || null;
-  }, [selectedStoryUserId, storyUsers]);
+    
+    // If viewing own story, build from Clerk user data
+    if (isViewingOwnStory && user) {
+      return {
+        id: user.id,
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        imageUrl: user.imageUrl || '',
+      };
+    }
+    
+    // Otherwise look in storyUsers (other community members)
+    const foundUser = storyUsers.find(u => u.id === selectedStoryUserId);
+    if (foundUser) {
+      return {
+        id: foundUser.id,
+        firstName: foundUser.firstName,
+        lastName: foundUser.lastName,
+        imageUrl: foundUser.imageUrl || '',
+      };
+    }
+    
+    return null;
+  }, [selectedStoryUserId, storyUsers, isViewingOwnStory, user]);
 
   // Fetch stories for selected user
   const { slides: selectedUserStories } = useUserStories(selectedStoryUserId || '');
@@ -79,6 +110,15 @@ export default function FeedPage() {
   const handleDelete = useCallback((postId: string) => {
     removePost(postId);
   }, [removePost]);
+
+  // Handle story viewer close - marks own story as viewed
+  const handleStoryClose = useCallback(() => {
+    // If viewing own story, mark as viewed with current content hash
+    if (isViewingOwnStory && user?.id && currentUserStoryStatus.contentHash) {
+      markStoryAsViewed(user.id, currentUserStoryStatus.contentHash);
+    }
+    setSelectedStoryUserId(null);
+  }, [isViewingOwnStory, user?.id, currentUserStoryStatus.contentHash, markStoryAsViewed]);
 
   // Feed not enabled for this org (instant check from SSR Edge Config)
   if (!feedEnabled) {
@@ -251,7 +291,7 @@ export default function FeedPage() {
       {selectedStoryUser && selectedUserStories.length > 0 && (
         <StoryPlayer
           isOpen={!!selectedStoryUserId}
-          onClose={() => setSelectedStoryUserId(null)}
+          onClose={handleStoryClose}
           slides={selectedUserStories}
           user={{
             id: selectedStoryUser.id,
