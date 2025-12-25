@@ -73,6 +73,7 @@ export async function GET(
         text: data.text,
         parentCommentId: data.parentCommentId || null,
         createdAt: data.createdAt,
+        updatedAt: data.updatedAt || null,
         author: author ? {
           id: data.authorId,
           firstName: author.firstName,
@@ -177,6 +178,106 @@ export async function POST(
     console.error('[FEED_COMMENT_POST] Error:', error);
     return NextResponse.json(
       { error: 'Failed to add comment' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PATCH /api/feed/[postId]/comment?commentId=xxx
+ * Edit a comment
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ postId: string }> }
+) {
+  try {
+    const { postId } = await params;
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get org context
+    const organizationId = await getEffectiveOrgId();
+    if (!organizationId) {
+      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
+    }
+
+    // Get commentId from query params
+    const { searchParams } = new URL(request.url);
+    const commentId = searchParams.get('commentId');
+
+    if (!commentId) {
+      return NextResponse.json({ error: 'Comment ID required' }, { status: 400 });
+    }
+
+    // Parse body
+    const body = await request.json();
+    const { text } = body;
+
+    if (!text?.trim()) {
+      return NextResponse.json(
+        { error: 'Comment text is required' },
+        { status: 400 }
+      );
+    }
+
+    // Get the comment to verify ownership
+    const commentRef = adminDb.collection('feed_comments').doc(commentId);
+    const commentDoc = await commentRef.get();
+
+    if (!commentDoc.exists) {
+      return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
+    }
+
+    const commentData = commentDoc.data()!;
+
+    // Verify the comment belongs to this post
+    if (commentData.postId !== postId) {
+      return NextResponse.json({ error: 'Comment does not belong to this post' }, { status: 400 });
+    }
+
+    // Only the comment author can edit
+    if (commentData.authorId !== userId) {
+      return NextResponse.json({ error: 'Not authorized to edit this comment' }, { status: 403 });
+    }
+
+    const now = new Date().toISOString();
+
+    // Update the comment
+    await commentRef.update({
+      text: text.trim(),
+      updatedAt: now,
+    });
+
+    // Get user data for response
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    const userData = userDoc.data();
+
+    return NextResponse.json({
+      success: true,
+      comment: {
+        id: commentId,
+        postId,
+        authorId: userId,
+        text: text.trim(),
+        parentCommentId: commentData.parentCommentId || null,
+        createdAt: commentData.createdAt,
+        updatedAt: now,
+        author: userData ? {
+          id: userId,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          imageUrl: userData.avatarUrl || userData.imageUrl,
+        } : null,
+      },
+    });
+  } catch (error) {
+    console.error('[FEED_COMMENT_PATCH] Error:', error);
+    return NextResponse.json(
+      { error: 'Failed to update comment' },
       { status: 500 }
     );
   }

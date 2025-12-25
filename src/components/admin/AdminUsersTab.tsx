@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
-import { UserPlus, RefreshCw } from 'lucide-react';
+import { UserPlus, RefreshCw, X, Plus } from 'lucide-react';
 import type { UserRole, UserTier, CoachingStatus, OrgRole, Squad } from '@/types';
 import { validateSubdomain } from '@/types';
 import { 
@@ -63,8 +63,9 @@ interface ClerkAdminUser {
   orgRole?: OrgRole; // Organization-level role (for multi-tenant)
   orgRoleForOrg?: OrgRole; // Org role for a specific org (from org-scoped API)
   tier: UserTier;
-  // Squad (for multi-tenant)
-  squadId?: string | null;
+  // Squad (for multi-tenant) - supports multiple squads
+  squadIds?: string[]; // Array of squad IDs user belongs to
+  squadId?: string | null; // Legacy single squad field (deprecated)
   premiumSquadId?: string | null;
   // Coaching is separate from membership tier
   coachingStatus?: CoachingStatus;
@@ -413,7 +414,8 @@ export function AdminUsersTab({
   };
 
 
-  const handleSquadChange = async (userId: string, newSquadId: string | null) => {
+  // Add user to a squad (proper multi-squad support)
+  const handleAddToSquad = async (userId: string, squadId: string) => {
     if (!isOrgScopedApi) return;
     
     try {
@@ -422,23 +424,71 @@ export function AdminUsersTab({
       const response = await fetch(`/api/coach/org-users/${userId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ squadId: newSquadId }),
+        body: JSON.stringify({ addSquadId: squadId }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to update squad');
+        throw new Error(error.error || 'Failed to add to squad');
       }
 
-      // Update local state optimistically
+      // Update local state - add squad to user's squadIds
       setUsers((prev) =>
-        prev.map((user) =>
-          user.id === userId ? { ...user, squadId: newSquadId } : user
-        )
+        prev.map((user) => {
+          if (user.id !== userId) return user;
+          const currentSquadIds = user.squadIds || [];
+          if (currentSquadIds.includes(squadId)) return user;
+          return { 
+            ...user, 
+            squadIds: [...currentSquadIds, squadId],
+            squadId: user.squadId || squadId, // Keep legacy field in sync
+          };
+        })
       );
     } catch (err) {
-      console.error('Error updating squad:', err);
-      alert(err instanceof Error ? err.message : 'Failed to update squad');
+      console.error('Error adding to squad:', err);
+      alert(err instanceof Error ? err.message : 'Failed to add to squad');
+      await fetchUsers();
+    } finally {
+      setUpdatingSquadUserId(null);
+    }
+  };
+
+  // Remove user from a squad (proper multi-squad support)
+  const handleRemoveFromSquad = async (userId: string, squadId: string) => {
+    if (!isOrgScopedApi) return;
+    
+    try {
+      setUpdatingSquadUserId(userId);
+      
+      const response = await fetch(`/api/coach/org-users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ removeSquadId: squadId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to remove from squad');
+      }
+
+      // Update local state - remove squad from user's squadIds
+      setUsers((prev) =>
+        prev.map((user) => {
+          if (user.id !== userId) return user;
+          const currentSquadIds = user.squadIds || [];
+          const updatedSquadIds = currentSquadIds.filter(id => id !== squadId);
+          return { 
+            ...user, 
+            squadIds: updatedSquadIds,
+            // Update legacy field
+            squadId: updatedSquadIds.length > 0 ? updatedSquadIds[0] : null,
+          };
+        })
+      );
+    } catch (err) {
+      console.error('Error removing from squad:', err);
+      alert(err instanceof Error ? err.message : 'Failed to remove from squad');
       await fetchUsers();
     } finally {
       setUpdatingSquadUserId(null);
@@ -469,46 +519,45 @@ export function AdminUsersTab({
   const isAllSelected = filteredUsers.length > 0 && selectedUserIds.size === filteredUsers.length;
   const isSomeSelected = selectedUserIds.size > 0 && selectedUserIds.size < filteredUsers.length;
 
-  // Bulk update handlers - uses bulk API for efficiency
-  const handleBulkSquadChange = async (newSquadId: string | null) => {
+  // Bulk add users to a squad
+  const handleBulkAddToSquad = async (squadId: string) => {
     if (!isOrgScopedApi || selectedUserIds.size === 0) return;
     
     try {
       setBulkUpdating(true);
       
-      const response = await fetch('/api/coach/org-users/bulk', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userIds: Array.from(selectedUserIds),
-          squadId: newSquadId,
-        }),
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update users');
+      // Process each user individually (could be batched in a bulk API later)
+      const results = { success: 0, failed: 0 };
+      for (const userId of selectedUserIds) {
+        try {
+          const response = await fetch(`/api/coach/org-users/${userId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ addSquadId: squadId }),
+          });
+          
+          if (response.ok) {
+            results.success++;
+          } else {
+            results.failed++;
+          }
+        } catch {
+          results.failed++;
+        }
       }
       
-      const result = await response.json();
+      // Refresh to get updated state
+      await fetchUsers();
       
-      // Update local state for successful updates
-      const successfulIds = new Set(result.results?.success || Array.from(selectedUserIds));
-      setUsers((prev) =>
-        prev.map((user) =>
-          successfulIds.has(user.id) ? { ...user, squadId: newSquadId } : user
-        )
-      );
-      
-      // Show warning if some failed
-      if (result.failed > 0) {
-        alert(`Updated ${result.updated} users. ${result.failed} failed.`);
+      // Show result
+      if (results.failed > 0) {
+        alert(`Added ${results.success} users to squad. ${results.failed} failed.`);
       }
       
       // Clear selection after bulk operation
       setSelectedUserIds(new Set());
     } catch (err) {
-      console.error('Error bulk updating squad:', err);
+      console.error('Error bulk adding to squad:', err);
       alert(err instanceof Error ? err.message : 'Failed to update users. Please try again.');
       await fetchUsers();
     } finally {
@@ -683,17 +732,16 @@ export function AdminUsersTab({
             </span>
             
             <div className="flex items-center gap-2">
-              <span className="font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2]">Set Squad:</span>
+              <span className="font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2]">Add to Squad:</span>
               <Select
                 value=""
-                onValueChange={(value) => handleBulkSquadChange(value === 'none' ? null : value)}
+                onValueChange={(squadId) => handleBulkAddToSquad(squadId)}
                 disabled={bulkUpdating}
               >
                 <SelectTrigger className={`w-[150px] font-albert text-sm h-8 ${bulkUpdating ? 'opacity-50' : ''}`}>
                   <SelectValue placeholder="Select squad" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none" className="font-albert">None</SelectItem>
                   {squads.map((squad) => (
                     <SelectItem key={squad.id} value={squad.id} className="font-albert">
                       {squad.name}
@@ -914,34 +962,89 @@ export function AdminUsersTab({
                       </TableCell>
                     )}
 
-                    {/* Squad */}
+                    {/* Squad - Multi-squad support with tags */}
                     {showColumn('squad') && (
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        {isOrgScopedApi && !readOnly ? (
-                          <Select
-                            value={user.squadId || 'none'}
-                            onValueChange={(value) => handleSquadChange(user.id, value === 'none' ? null : value)}
-                            disabled={updatingSquadUserId === user.id}
-                          >
-                            <SelectTrigger className={`w-[150px] font-albert text-sm h-9 ${updatingSquadUserId === user.id ? 'opacity-50' : ''}`}>
-                              <SelectValue>
-                                {user.squadId ? (squads.find(s => s.id === user.squadId)?.name || 'Unknown') : 'None'}
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none" className="font-albert">None</SelectItem>
-                              {squads.map((squad) => (
-                                <SelectItem key={squad.id} value={squad.id} className="font-albert">
-                                  {squad.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <span className="font-albert text-[14px] text-[#5f5a55] dark:text-[#b2b6c2]">
-                            {user.squadId ? (squads.find(s => s.id === user.squadId)?.name || 'Unknown') : '-'}
-                          </span>
-                        )}
+                        {(() => {
+                          const userSquadIds = user.squadIds || (user.squadId ? [user.squadId] : []);
+                          const isUpdating = updatingSquadUserId === user.id;
+                          // Squads available to add (not already a member)
+                          const availableSquads = squads.filter(s => !userSquadIds.includes(s.id));
+                          
+                          if (isOrgScopedApi && !readOnly) {
+                            return (
+                              <div className={`flex flex-wrap gap-1.5 items-center min-w-[150px] ${isUpdating ? 'opacity-50 pointer-events-none' : ''}`}>
+                                {/* Squad tags */}
+                                {userSquadIds.map((squadId) => {
+                                  const squad = squads.find(s => s.id === squadId);
+                                  return (
+                                    <span
+                                      key={squadId}
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#a07855]/10 dark:bg-[#b8896a]/10 text-[#a07855] dark:text-[#b8896a] rounded-full text-xs font-medium font-albert"
+                                    >
+                                      {squad?.name || 'Unknown'}
+                                      <button
+                                        onClick={() => handleRemoveFromSquad(user.id, squadId)}
+                                        className="hover:bg-[#a07855]/20 dark:hover:bg-[#b8896a]/20 rounded-full p-0.5 transition-colors"
+                                        title={`Remove from ${squad?.name || 'squad'}`}
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </span>
+                                  );
+                                })}
+                                
+                                {/* Add squad dropdown */}
+                                {availableSquads.length > 0 && (
+                                  <Select
+                                    value=""
+                                    onValueChange={(squadId) => handleAddToSquad(user.id, squadId)}
+                                  >
+                                    <SelectTrigger className="w-auto h-6 px-1.5 py-0 border-dashed border-[#e1ddd8] dark:border-[#262b35] bg-transparent hover:bg-[#faf8f6] dark:hover:bg-[#11141b]">
+                                      <Plus className="w-3.5 h-3.5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {availableSquads.map((squad) => (
+                                        <SelectItem key={squad.id} value={squad.id} className="font-albert text-sm">
+                                          {squad.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                                
+                                {/* Show "None" if no squads */}
+                                {userSquadIds.length === 0 && availableSquads.length === 0 && (
+                                  <span className="text-[#8c8c8c] dark:text-[#7d8190] text-sm font-albert">-</span>
+                                )}
+                                {userSquadIds.length === 0 && availableSquads.length > 0 && (
+                                  <span className="text-[#8c8c8c] dark:text-[#7d8190] text-xs font-albert mr-1">None</span>
+                                )}
+                              </div>
+                            );
+                          } else {
+                            // Read-only mode - just show squad names
+                            return (
+                              <div className="flex flex-wrap gap-1">
+                                {userSquadIds.length > 0 ? (
+                                  userSquadIds.map((squadId) => {
+                                    const squad = squads.find(s => s.id === squadId);
+                                    return (
+                                      <span
+                                        key={squadId}
+                                        className="inline-flex items-center px-2 py-0.5 bg-[#a07855]/10 dark:bg-[#b8896a]/10 text-[#a07855] dark:text-[#b8896a] rounded-full text-xs font-medium font-albert"
+                                      >
+                                        {squad?.name || 'Unknown'}
+                                      </span>
+                                    );
+                                  })
+                                ) : (
+                                  <span className="text-[#8c8c8c] dark:text-[#7d8190] text-sm font-albert">-</span>
+                                )}
+                              </div>
+                            );
+                          }
+                        })()}
                       </TableCell>
                     )}
 

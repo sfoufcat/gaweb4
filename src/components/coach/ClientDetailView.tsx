@@ -92,7 +92,9 @@ interface UserData {
   timezone?: string;
   goal?: string;
   goalProgress?: number;
-  standardSquadId?: string | null;
+  // Multi-squad support
+  squadIds?: string[];
+  standardSquadId?: string | null; // Legacy
   premiumSquadId?: string | null;
   tier?: string;
   coachingStatus?: string;
@@ -289,26 +291,71 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   }, [fetchData]);
 
 
-  // Update squad for user
-  const handleSquadChange = async (newSquadId: string | null) => {
+  // Add user to a squad (proper multi-squad support)
+  const handleAddToSquad = async (squadId: string) => {
     try {
       setUpdatingSquad(true);
       
       const response = await fetch(`/api/coach/org-users/${clientId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ squadId: newSquadId }),
+        body: JSON.stringify({ addSquadId: squadId }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update squad');
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to add to squad');
       }
 
-      // Update local state
-      setUser((prev) => prev ? { ...prev, standardSquadId: newSquadId } : prev);
+      // Update local state - add squad to user's squadIds
+      setUser((prev) => {
+        if (!prev) return prev;
+        const currentSquadIds = prev.squadIds || [];
+        if (currentSquadIds.includes(squadId)) return prev;
+        return { 
+          ...prev, 
+          squadIds: [...currentSquadIds, squadId],
+          standardSquadId: prev.standardSquadId || squadId,
+        };
+      });
     } catch (err) {
-      console.error('Error updating squad:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update squad');
+      console.error('Error adding to squad:', err);
+      setError(err instanceof Error ? err.message : 'Failed to add to squad');
+    } finally {
+      setUpdatingSquad(false);
+    }
+  };
+
+  // Remove user from a squad (proper multi-squad support)
+  const handleRemoveFromSquad = async (squadId: string) => {
+    try {
+      setUpdatingSquad(true);
+      
+      const response = await fetch(`/api/coach/org-users/${clientId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ removeSquadId: squadId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to remove from squad');
+      }
+
+      // Update local state - remove squad from user's squadIds
+      setUser((prev) => {
+        if (!prev) return prev;
+        const currentSquadIds = prev.squadIds || [];
+        const updatedSquadIds = currentSquadIds.filter(id => id !== squadId);
+        return { 
+          ...prev, 
+          squadIds: updatedSquadIds,
+          standardSquadId: updatedSquadIds.length > 0 ? updatedSquadIds[0] : null,
+        };
+      });
+    } catch (err) {
+      console.error('Error removing from squad:', err);
+      setError(err instanceof Error ? err.message : 'Failed to remove from squad');
     } finally {
       setUpdatingSquad(false);
     }
@@ -777,32 +824,67 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
         </div>
 
         <div className="space-y-4">
-          {/* Squad */}
-          <div className="flex items-center justify-between py-2 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-            <span className="font-albert text-[14px] text-[#5f5a55] dark:text-[#b2b6c2]">Squad</span>
-            <Select
-              value={user?.standardSquadId || 'none'}
-              onValueChange={(value) => handleSquadChange(value === 'none' ? null : value)}
-              disabled={updatingSquad}
-            >
-              <SelectTrigger className={`w-[180px] font-albert text-[14px] h-9 ${updatingSquad ? 'opacity-50' : ''}`}>
-                <SelectValue placeholder="Select squad">
-                  {user?.standardSquadId 
-                    ? squads.find(s => s.id === user.standardSquadId)?.name || 'Unknown squad'
-                    : 'None'}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none" className="font-albert">
-                  None
-                </SelectItem>
-                {squads.map((squad) => (
-                  <SelectItem key={squad.id} value={squad.id} className="font-albert">
-                    {squad.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Squad - Multi-squad support with tags */}
+          <div className="py-2 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-albert text-[14px] text-[#5f5a55] dark:text-[#b2b6c2]">Squads</span>
+            </div>
+            {(() => {
+              const userSquadIds = user?.squadIds || (user?.standardSquadId ? [user.standardSquadId] : []);
+              const availableSquads = squads.filter(s => !userSquadIds.includes(s.id));
+              
+              return (
+                <div className={`flex flex-wrap gap-2 items-center ${updatingSquad ? 'opacity-50 pointer-events-none' : ''}`}>
+                  {/* Squad tags */}
+                  {userSquadIds.map((squadId) => {
+                    const squad = squads.find(s => s.id === squadId);
+                    return (
+                      <span
+                        key={squadId}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#a07855]/10 dark:bg-[#b8896a]/10 text-[#a07855] dark:text-[#b8896a] rounded-full text-[13px] font-medium font-albert"
+                      >
+                        {squad?.name || 'Unknown'}
+                        <button
+                          onClick={() => handleRemoveFromSquad(squadId)}
+                          className="hover:bg-[#a07855]/20 dark:hover:bg-[#b8896a]/20 rounded-full p-0.5 transition-colors"
+                          title={`Remove from ${squad?.name || 'squad'}`}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                  
+                  {/* Add squad dropdown */}
+                  {availableSquads.length > 0 && (
+                    <Select
+                      value=""
+                      onValueChange={(squadId) => handleAddToSquad(squadId)}
+                    >
+                      <SelectTrigger className="w-auto h-7 px-2 py-0 border-dashed border-[#e1ddd8] dark:border-[#262b35] bg-transparent hover:bg-[#faf8f6] dark:hover:bg-[#11141b] text-[13px]">
+                        <Plus className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] mr-1" />
+                        <span className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">Add to squad</span>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableSquads.map((squad) => (
+                          <SelectItem key={squad.id} value={squad.id} className="font-albert text-sm">
+                            {squad.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  
+                  {/* Show "None" if no squads and no available squads */}
+                  {userSquadIds.length === 0 && availableSquads.length === 0 && (
+                    <span className="text-[#8c8c8c] dark:text-[#7d8190] text-sm font-albert">No squads available</span>
+                  )}
+                  {userSquadIds.length === 0 && availableSquads.length > 0 && (
+                    <span className="text-[#8c8c8c] dark:text-[#7d8190] text-xs font-albert">Not in any squad</span>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Notes about user */}

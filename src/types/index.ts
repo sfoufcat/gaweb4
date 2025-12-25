@@ -2578,6 +2578,7 @@ export interface FeedComment {
   
   // Timestamps
   createdAt: string;
+  updatedAt?: string;               // When comment was last edited
 }
 
 /**

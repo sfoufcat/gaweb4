@@ -7,6 +7,7 @@ import type { UserRole, UserTier, UserTrack, CoachingStatus, OrgRole, OrgMembers
 interface FirebaseUserData {
   tier?: UserTier;
   track?: UserTrack | null;
+  squadIds?: string[];
   standardSquadId?: string | null;
   premiumSquadId?: string | null;
   coaching?: {
@@ -20,6 +21,7 @@ interface FirebaseUserData {
 interface OrgMembershipData {
   tier?: UserTier;
   track?: UserTrack | null;
+  squadIds?: string[];
   squadId?: string | null;
   premiumSquadId?: string | null;
   orgRole?: OrgRole;
@@ -39,6 +41,8 @@ interface ClerkUserMetadata {
  * 
  * Uses Clerk's Organization Membership API for proper multi-tenancy.
  * Falls back to publicMetadata filtering for backward compatibility.
+ * 
+ * Returns squadIds[] array for each user (proper multi-squad support)
  */
 export async function GET() {
   try {
@@ -94,6 +98,7 @@ export async function GET() {
     const userIds = combinedUsers.map(u => u.id);
     const firebaseUserData = new Map<string, FirebaseUserData>();
     const orgMembershipData = new Map<string, OrgMembershipData>();
+    const userSquadIds = new Map<string, string[]>(); // userId -> squadIds from squadMembers
     
     if (userIds.length > 0) {
       // Batch fetch user data in chunks of 10 (Firestore 'in' query limit)
@@ -109,6 +114,7 @@ export async function GET() {
           firebaseUserData.set(doc.id, {
             tier: data.tier as UserTier | undefined,
             track: data.track as UserTrack | null | undefined,
+            squadIds: data.squadIds as string[] | undefined,
             standardSquadId: data.standardSquadId as string | null | undefined,
             premiumSquadId: data.premiumSquadId as string | null | undefined,
             coaching: data.coaching,
@@ -133,10 +139,33 @@ export async function GET() {
           orgMembershipData.set(data.userId, {
             tier: data.tier as UserTier | undefined,
             track: data.track as UserTrack | null | undefined,
+            squadIds: data.squadIds as string[] | undefined,
             squadId: data.squadId as string | null | undefined,
             premiumSquadId: data.premiumSquadId as string | null | undefined,
             orgRole: data.orgRole as OrgRole | undefined,
           });
+        });
+      }
+      
+      // Fetch actual squad memberships from squadMembers collection
+      // This is the authoritative source for multi-squad membership
+      for (let i = 0; i < userIds.length; i += 10) {
+        const chunk = userIds.slice(i, i + 10);
+        const squadMembersSnapshot = await adminDb
+          .collection('squadMembers')
+          .where('userId', 'in', chunk)
+          .get();
+        
+        squadMembersSnapshot.forEach((doc) => {
+          const data = doc.data();
+          const userId = data.userId as string;
+          const squadId = data.squadId as string;
+          
+          const existing = userSquadIds.get(userId) || [];
+          if (!existing.includes(squadId)) {
+            existing.push(squadId);
+            userSquadIds.set(userId, existing);
+          }
         });
       }
     }
@@ -158,6 +187,22 @@ export async function GET() {
         ? userIdToName.get(fbData.invitedBy) || 'Unknown User'
         : null;
       
+      // Get squad IDs from squadMembers (authoritative), fall back to other sources
+      let squadIds = userSquadIds.get(user.id) || [];
+      
+      // If no squadMembers records, fall back to org_membership squadIds or user squadIds
+      if (squadIds.length === 0) {
+        squadIds = membershipData?.squadIds || fbData?.squadIds || [];
+      }
+      
+      // If still empty, check legacy single-value fields
+      if (squadIds.length === 0) {
+        const legacySquadId = membershipData?.squadId ?? fbData?.standardSquadId;
+        if (legacySquadId) {
+          squadIds = [legacySquadId];
+        }
+      }
+      
       // Org membership data takes precedence (multi-tenant), fallback to Firebase user data
       return {
         id: user.id,
@@ -170,7 +215,10 @@ export async function GET() {
         orgRole: membershipData?.orgRole || (clerkMetadata?.orgRole as OrgRole) || 'member',
         tier: membershipData?.tier || fbData?.tier || 'free',
         track: membershipData?.track ?? fbData?.track ?? null,
-        squadId: membershipData?.squadId ?? fbData?.standardSquadId ?? null,
+        // Multi-squad support - return array of squad IDs
+        squadIds,
+        // Legacy single-value field for backward compatibility
+        squadId: squadIds.length > 0 ? squadIds[0] : (membershipData?.squadId ?? fbData?.standardSquadId ?? null),
         premiumSquadId: membershipData?.premiumSquadId ?? fbData?.premiumSquadId ?? null,
         coachingStatus: clerkMetadata?.coachingStatus || fbData?.coaching?.status || 'none',
         coaching: clerkMetadata?.coaching,
@@ -278,7 +326,7 @@ export async function POST(request: Request) {
         accessExpiresAt = expiryDate.toISOString();
       }
       
-      // Create org_membership
+      // Create org_membership with squadIds array
       const membership: Omit<OrgMembership, 'id'> = {
         userId: user.id,
         organizationId,

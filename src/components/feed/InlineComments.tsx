@@ -47,9 +47,11 @@ export function InlineComments({
     loadMore,
     addComment: addCommentToList,
     removeComment: removeCommentFromList,
+    updateComment: updateCommentInList,
   } = useComments(postId);
   
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
 
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -152,6 +154,32 @@ export function InlineComments({
     }
   }, [postId, deletingCommentId, removeCommentFromList, onCommentDeleted]);
 
+  // Handle edit comment
+  const handleEditComment = useCallback(async (commentId: string, newText: string) => {
+    if (!newText.trim()) return;
+
+    try {
+      const response = await fetch(`/api/feed/${postId}/comment?commentId=${commentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: newText.trim() }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update comment');
+      }
+
+      const data = await response.json();
+      
+      // Update in local list
+      updateCommentInList(commentId, data.comment.text, data.comment.updatedAt);
+      setEditingCommentId(null);
+    } catch (error) {
+      console.error('Edit comment error:', error);
+      setErrorMessage('Failed to update comment. Please try again.');
+    }
+  }, [postId, updateCommentInList]);
+
   // Determine which comments to show
   const visibleComments = expanded ? comments : comments.slice(-2);
   const hasMoreToShow = !expanded && commentCount > 2;
@@ -244,8 +272,13 @@ export function InlineComments({
             comment={comment}
             currentUserId={user?.id}
             isDeleting={deletingCommentId === comment.id}
+            isEditing={editingCommentId === comment.id}
             onProfileClick={() => handleProfileClick(comment.authorId)}
             onDelete={() => handleDeleteComment(comment.id)}
+            onEdit={() => setEditingCommentId(comment.id)}
+            onEditSubmit={(newText) => handleEditComment(comment.id, newText)}
+            onEditCancel={() => setEditingCommentId(null)}
+            accentColor={accentColor}
           />
         ))}
         
@@ -320,16 +353,29 @@ function CommentItem({
   comment,
   currentUserId,
   isDeleting,
+  isEditing,
   onProfileClick,
   onDelete,
+  onEdit,
+  onEditSubmit,
+  onEditCancel,
+  accentColor,
 }: {
   comment: FeedComment;
   currentUserId?: string;
   isDeleting?: boolean;
+  isEditing?: boolean;
   onProfileClick: () => void;
   onDelete: () => void;
+  onEdit: () => void;
+  onEditSubmit: (newText: string) => void;
+  onEditCancel: () => void;
+  accentColor: string;
 }) {
   const [showMenu, setShowMenu] = useState(false);
+  const [editText, setEditText] = useState(comment.text);
+  const editInputRef = useRef<HTMLInputElement>(null);
+  
   const authorName = comment.author
     ? `${comment.author.firstName || ''} ${comment.author.lastName || ''}`.trim() || 'User'
     : 'User';
@@ -341,9 +387,35 @@ function CommentItem({
     .substring(0, 2)
     .toUpperCase();
   const timeAgo = formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true });
+  const wasEdited = !!comment.updatedAt;
   
-  // Can delete if user is the comment author
-  const canDelete = currentUserId === comment.authorId;
+  // Can modify if user is the comment author
+  const canModify = currentUserId === comment.authorId;
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (isEditing) {
+      setEditText(comment.text);
+      setTimeout(() => editInputRef.current?.focus(), 0);
+    }
+  }, [isEditing, comment.text]);
+
+  // Handle edit form submit
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editText.trim() && editText.trim() !== comment.text) {
+      onEditSubmit(editText.trim());
+    } else {
+      onEditCancel();
+    }
+  };
+
+  // Handle escape key to cancel editing
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onEditCancel();
+    }
+  };
 
   return (
     <div className={`flex gap-2 group ${isDeleting ? 'opacity-50' : ''}`}>
@@ -369,24 +441,59 @@ function CommentItem({
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <div className="inline">
-          <button
-            onClick={onProfileClick}
-            className="font-semibold text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] hover:underline"
-          >
-            {authorName}
-          </button>
-          <span className="text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] ml-1.5">
-            {comment.text}
-          </span>
-        </div>
-        <p className="text-[11px] text-[#8a857f] mt-0.5">
-          {timeAgo}
-        </p>
+        {isEditing ? (
+          <form onSubmit={handleEditSubmit} className="flex items-center gap-2">
+            <input
+              ref={editInputRef}
+              type="text"
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="flex-1 px-3 py-1.5 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] placeholder-[#8a857f] focus:outline-none focus:ring-2 focus:ring-inset"
+              style={{ '--tw-ring-color': accentColor } as React.CSSProperties}
+            />
+            <button
+              type="submit"
+              disabled={!editText.trim()}
+              className="p-1.5 rounded-full transition-colors disabled:opacity-50"
+              style={{ color: editText.trim() ? accentColor : '#8a857f' }}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={onEditCancel}
+              className="p-1.5 rounded-full transition-colors text-[#8a857f] hover:text-[#5f5a55]"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </form>
+        ) : (
+          <>
+            <div className="inline">
+              <button
+                onClick={onProfileClick}
+                className="font-semibold text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] hover:underline"
+              >
+                {authorName}
+              </button>
+              <span className="text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] ml-1.5">
+                {comment.text}
+              </span>
+            </div>
+            <p className="text-[11px] text-[#8a857f] mt-0.5">
+              {timeAgo}{wasEdited && ' · Edited'}
+            </p>
+          </>
+        )}
       </div>
 
-      {/* Delete menu (only for comment author) */}
-      {canDelete && (
+      {/* Menu (only for comment author, not when editing) */}
+      {canModify && !isEditing && (
         <div className="relative">
           <button
             onClick={() => setShowMenu(!showMenu)}
@@ -407,6 +514,18 @@ function CommentItem({
                 onClick={() => setShowMenu(false)}
               />
               <div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-20 overflow-hidden">
+                <button
+                  onClick={() => {
+                    setShowMenu(false);
+                    onEdit();
+                  }}
+                  className="w-full px-3 py-2 text-left text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Edit
+                </button>
                 <button
                   onClick={() => {
                     setShowMenu(false);

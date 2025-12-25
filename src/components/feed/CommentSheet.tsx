@@ -25,11 +25,15 @@ export function CommentSheet({ postId, onClose }: CommentSheetProps) {
     hasMore,
     loadMore,
     addComment: addCommentToList,
+    removeComment: removeCommentFromList,
+    updateComment: updateCommentInList,
   } = useComments(postId);
 
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -87,6 +91,54 @@ export function CommentSheet({ postId, onClose }: CommentSheetProps) {
       loadMore();
     }
   }, [hasMore, isValidating, loadMore]);
+
+  // Handle delete comment
+  const handleDeleteComment = useCallback(async (commentId: string) => {
+    if (deletingCommentId) return;
+
+    setDeletingCommentId(commentId);
+
+    try {
+      const response = await fetch(`/api/feed/${postId}/comment?commentId=${commentId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete comment');
+      }
+
+      removeCommentFromList(commentId);
+    } catch (error) {
+      console.error('Delete comment error:', error);
+      setErrorMessage('Failed to delete comment. Please try again.');
+    } finally {
+      setDeletingCommentId(null);
+    }
+  }, [postId, deletingCommentId, removeCommentFromList]);
+
+  // Handle edit comment
+  const handleEditComment = useCallback(async (commentId: string, newText: string) => {
+    if (!newText.trim()) return;
+
+    try {
+      const response = await fetch(`/api/feed/${postId}/comment?commentId=${commentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: newText.trim() }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update comment');
+      }
+
+      const data = await response.json();
+      updateCommentInList(commentId, data.comment.text, data.comment.updatedAt);
+      setEditingCommentId(null);
+    } catch (error) {
+      console.error('Edit comment error:', error);
+      setErrorMessage('Failed to update comment. Please try again.');
+    }
+  }, [postId, updateCommentInList]);
 
   return (
     <>
@@ -146,7 +198,15 @@ export function CommentSheet({ postId, onClose }: CommentSheetProps) {
                 <CommentItem
                   key={comment.id}
                   comment={comment}
+                  currentUserId={user?.id}
+                  isDeleting={deletingCommentId === comment.id}
+                  isEditing={editingCommentId === comment.id}
                   onProfileClick={() => router.push(getProfileUrl(comment.authorId, user?.id || ''))}
+                  onDelete={() => handleDeleteComment(comment.id)}
+                  onEdit={() => setEditingCommentId(comment.id)}
+                  onEditSubmit={(newText) => handleEditComment(comment.id, newText)}
+                  onEditCancel={() => setEditingCommentId(null)}
+                  accentColor={accentColor}
                 />
               ))}
               
@@ -237,11 +297,31 @@ export function CommentSheet({ postId, onClose }: CommentSheetProps) {
 // Individual comment item
 function CommentItem({
   comment,
+  currentUserId,
+  isDeleting,
+  isEditing,
   onProfileClick,
+  onDelete,
+  onEdit,
+  onEditSubmit,
+  onEditCancel,
+  accentColor,
 }: {
   comment: FeedComment;
+  currentUserId?: string;
+  isDeleting?: boolean;
+  isEditing?: boolean;
   onProfileClick: () => void;
+  onDelete: () => void;
+  onEdit: () => void;
+  onEditSubmit: (newText: string) => void;
+  onEditCancel: () => void;
+  accentColor: string;
 }) {
+  const [showMenu, setShowMenu] = useState(false);
+  const [editText, setEditText] = useState(comment.text);
+  const editInputRef = useRef<HTMLInputElement>(null);
+
   const authorName = comment.author
     ? `${comment.author.firstName || ''} ${comment.author.lastName || ''}`.trim() || 'User'
     : 'User';
@@ -253,9 +333,38 @@ function CommentItem({
     .substring(0, 2)
     .toUpperCase();
   const timeAgo = formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true });
+  const wasEdited = !!comment.updatedAt;
+
+  // Can modify if user is the comment author
+  const canModify = currentUserId === comment.authorId;
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (isEditing) {
+      setEditText(comment.text);
+      setTimeout(() => editInputRef.current?.focus(), 0);
+    }
+  }, [isEditing, comment.text]);
+
+  // Handle edit form submit
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editText.trim() && editText.trim() !== comment.text) {
+      onEditSubmit(editText.trim());
+    } else {
+      onEditCancel();
+    }
+  };
+
+  // Handle escape key to cancel editing
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onEditCancel();
+    }
+  };
 
   return (
-    <div className="flex gap-3">
+    <div className={`flex gap-3 group ${isDeleting ? 'opacity-50' : ''}`}>
       {/* Avatar */}
       <button
         onClick={onProfileClick}
@@ -278,21 +387,108 @@ function CommentItem({
 
       {/* Content */}
       <div className="flex-1">
-        <div className="bg-[#f5f3f0] dark:bg-[#1a1f2a] rounded-2xl px-3 py-2">
-          <button
-            onClick={onProfileClick}
-            className="font-semibold text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] hover:underline"
-          >
-            {authorName}
-          </button>
-          <p className="text-[14px] text-[#1a1a1a] dark:text-[#faf8f6] mt-0.5">
-            {comment.text}
-          </p>
-        </div>
-        <p className="text-[11px] text-[#8a857f] mt-1 ml-3">
-          {timeAgo}
-        </p>
+        {isEditing ? (
+          <form onSubmit={handleEditSubmit} className="flex items-center gap-2">
+            <input
+              ref={editInputRef}
+              type="text"
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="flex-1 px-3 py-1.5 rounded-full bg-[#f5f3f0] dark:bg-[#262b35] text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] placeholder-[#8a857f] focus:outline-none focus:ring-2 focus:ring-inset"
+              style={{ '--tw-ring-color': accentColor } as React.CSSProperties}
+            />
+            <button
+              type="submit"
+              disabled={!editText.trim()}
+              className="p-1.5 rounded-full transition-colors disabled:opacity-50"
+              style={{ color: editText.trim() ? accentColor : '#8a857f' }}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={onEditCancel}
+              className="p-1.5 rounded-full transition-colors text-[#8a857f] hover:text-[#5f5a55]"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </form>
+        ) : (
+          <>
+            <div className="bg-[#f5f3f0] dark:bg-[#1a1f2a] rounded-2xl px-3 py-2">
+              <button
+                onClick={onProfileClick}
+                className="font-semibold text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] hover:underline"
+              >
+                {authorName}
+              </button>
+              <p className="text-[14px] text-[#1a1a1a] dark:text-[#faf8f6] mt-0.5">
+                {comment.text}
+              </p>
+            </div>
+            <p className="text-[11px] text-[#8a857f] mt-1 ml-3">
+              {timeAgo}{wasEdited && ' · Edited'}
+            </p>
+          </>
+        )}
       </div>
+
+      {/* Menu (only for comment author, not when editing) */}
+      {canModify && !isEditing && (
+        <div className="relative">
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className="p-1 rounded-full opacity-0 group-hover:opacity-100 hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-all"
+            disabled={isDeleting}
+          >
+            <svg className="w-4 h-4 text-[#8a857f]" fill="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="6" r="1.5" />
+              <circle cx="12" cy="12" r="1.5" />
+              <circle cx="12" cy="18" r="1.5" />
+            </svg>
+          </button>
+
+          {showMenu && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setShowMenu(false)}
+              />
+              <div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-20 overflow-hidden">
+                <button
+                  onClick={() => {
+                    setShowMenu(false);
+                    onEdit();
+                  }}
+                  className="w-full px-3 py-2 text-left text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Edit
+                </button>
+                <button
+                  onClick={() => {
+                    setShowMenu(false);
+                    onDelete();
+                  }}
+                  className="w-full px-3 py-2 text-left text-[13px] text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Delete
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

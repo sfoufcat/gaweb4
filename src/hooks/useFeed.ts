@@ -331,6 +331,19 @@ export function useComments(postId: string | null) {
     }, false);
   }, [mutate]);
 
+  const updateComment = useCallback((commentId: string, newText: string, updatedAt: string) => {
+    mutate((currentData) => {
+      if (!currentData) return currentData;
+      
+      return currentData.map((page) => ({
+        ...page,
+        comments: (page.comments || []).map((c) => 
+          c.id === commentId ? { ...c, text: newText, updatedAt } : c
+        ),
+      }));
+    }, false);
+  }, [mutate]);
+
   return {
     comments,
     isLoading,
@@ -340,6 +353,7 @@ export function useComments(postId: string | null) {
     loadMore,
     addComment,
     removeComment,
+    updateComment,
     refresh: mutate,
   };
 }

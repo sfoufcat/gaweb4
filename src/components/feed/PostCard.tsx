@@ -17,6 +17,7 @@ import { getProfileUrl } from '@/lib/utils';
 interface PostCardProps {
   post: FeedPost;
   variant?: 'card' | 'embedded';
+  stickyActionBar?: boolean;
   onLike?: (postId: string, isLiked: boolean) => void;
   onBookmark?: (postId: string, isBookmarked: boolean) => void;
   onShare?: (postId: string) => void;
@@ -30,6 +31,7 @@ interface PostCardProps {
 export function PostCard({
   post,
   variant = 'card',
+  stickyActionBar = false,
   onLike,
   onBookmark,
   onShare,
@@ -365,7 +367,11 @@ export function PostCard({
       )}
 
       {/* Action bar */}
-      <div className={`flex items-center justify-between py-3 ${isEmbedded ? 'border-t border-[#e8e4df] dark:border-[#262b35]' : 'px-4 border-t border-[#e8e4df] dark:border-[#262b35]'}`}>
+      <div className={`flex items-center justify-between py-3 border-t border-[#e8e4df] dark:border-[#262b35] ${
+        isEmbedded ? '' : 'px-4'
+      } ${
+        stickyActionBar ? 'sticky bottom-0 bg-white dark:bg-[#171b22] z-10' : ''
+      }`}>
         <div className="flex items-center gap-1">
           {/* Like */}
           <button

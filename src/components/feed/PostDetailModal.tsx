@@ -82,8 +82,8 @@ export function PostDetailModal({
             </button>
           </div>
 
-          {/* Content - uses embedded PostCard, no extra padding needed */}
-          <div className="flex-1 overflow-y-auto px-5 py-4">
+          {/* Content - uses embedded PostCard with sticky action bar */}
+          <div className="flex-1 overflow-y-auto px-5 pt-4">
             {isLoading ? (
               // Loading skeleton - matches embedded layout
               <div className="animate-pulse">
@@ -108,8 +108,8 @@ export function PostDetailModal({
                 {/* Image placeholder */}
                 <div className="mb-4 h-52 rounded-xl bg-[#f5f3f0] dark:bg-[#262b35]" />
                 
-                {/* Action bar skeleton */}
-                <div className="py-3 flex gap-3 border-t border-[#e8e4df] dark:border-[#262b35]">
+                {/* Action bar skeleton - sticky at bottom */}
+                <div className="py-3 flex gap-3 border-t border-[#e8e4df] dark:border-[#262b35] sticky bottom-0 bg-white dark:bg-[#171b22]">
                   <div className="w-14 h-8 rounded-full bg-[#f5f3f0] dark:bg-[#262b35]" />
                   <div className="w-14 h-8 rounded-full bg-[#f5f3f0] dark:bg-[#262b35]" />
                   <div className="w-14 h-8 rounded-full bg-[#f5f3f0] dark:bg-[#262b35]" />
@@ -132,10 +132,11 @@ export function PostDetailModal({
                 </p>
               </div>
             ) : post ? (
-              // Post content - embedded variant for clean modal display
+              // Post content - embedded variant with sticky action bar
               <PostCard
                 post={post}
                 variant="embedded"
+                stickyActionBar
                 onLike={handleLike}
                 onBookmark={handleBookmark}
                 onShare={onShare}

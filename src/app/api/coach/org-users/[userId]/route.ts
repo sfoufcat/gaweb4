@@ -9,7 +9,231 @@ import { clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
-import type { UserTier, UserTrack } from '@/types';
+import { getStreamServerClient } from '@/lib/stream-server';
+import { FieldValue } from 'firebase-admin/firestore';
+import type { UserTier, UserTrack, Squad } from '@/types';
+
+/**
+ * Add a user to a squad with full data sync
+ */
+async function addUserToSquad(
+  userId: string,
+  squadId: string,
+  organizationId: string
+): Promise<{ success: boolean; error?: string }> {
+  const now = new Date().toISOString();
+  
+  // Verify squad belongs to the organization
+  const squadDoc = await adminDb.collection('squads').doc(squadId).get();
+  if (!squadDoc.exists) {
+    return { success: false, error: 'Squad not found' };
+  }
+  
+  const squadData = squadDoc.data() as Squad;
+  if (squadData?.organizationId !== organizationId) {
+    return { success: false, error: 'Squad does not belong to your organization' };
+  }
+  
+  // Check if user is already in this squad
+  const existingMembership = await adminDb.collection('squadMembers')
+    .where('squadId', '==', squadId)
+    .where('userId', '==', userId)
+    .limit(1)
+    .get();
+  
+  if (!existingMembership.empty) {
+    return { success: false, error: 'User is already in this squad' };
+  }
+  
+  // Get user info from Clerk for the squadMember record
+  let firstName = '';
+  let lastName = '';
+  let imageUrl = '';
+  
+  try {
+    const clerk = await clerkClient();
+    const clerkUser = await clerk.users.getUser(userId);
+    firstName = clerkUser.firstName || '';
+    lastName = clerkUser.lastName || '';
+    imageUrl = clerkUser.imageUrl || '';
+  } catch (err) {
+    console.warn(`[ADD_TO_SQUAD] Could not fetch Clerk user ${userId}:`, err);
+  }
+  
+  // 1. Create squadMember record
+  await adminDb.collection('squadMembers').add({
+    squadId,
+    userId,
+    roleInSquad: 'member',
+    firstName,
+    lastName,
+    imageUrl,
+    createdAt: now,
+    updatedAt: now,
+  });
+  
+  // 2. Update squads.memberIds array
+  await adminDb.collection('squads').doc(squadId).update({
+    memberIds: FieldValue.arrayUnion(userId),
+    updatedAt: now,
+  });
+  
+  // 3. Update user's squadIds array
+  const userDoc = await adminDb.collection('users').doc(userId).get();
+  const userData = userDoc.exists ? userDoc.data() : null;
+  const currentSquadIds: string[] = userData?.squadIds || [];
+  
+  if (!currentSquadIds.includes(squadId)) {
+    const updatedSquadIds = [...currentSquadIds, squadId];
+    await adminDb.collection('users').doc(userId).update({
+      squadIds: updatedSquadIds,
+      // Keep legacy fields in sync - set standardSquadId if not already set
+      ...(userData?.standardSquadId ? {} : { standardSquadId: squadId }),
+      updatedAt: now,
+    });
+  }
+  
+  // 4. Add to Stream Chat channel
+  if (squadData?.chatChannelId) {
+    try {
+      const streamClient = await getStreamServerClient();
+      
+      // Upsert user in Stream Chat
+      await streamClient.upsertUser({
+        id: userId,
+        name: `${firstName} ${lastName}`.trim() || 'User',
+        image: imageUrl,
+      });
+      
+      // Add to channel
+      const channel = streamClient.channel('messaging', squadData.chatChannelId);
+      await channel.addMembers([userId]);
+      
+      console.log(`[ADD_TO_SQUAD] Added user ${userId} to Stream channel ${squadData.chatChannelId}`);
+    } catch (streamError) {
+      console.error('[ADD_TO_SQUAD] Stream Chat error:', streamError);
+      // Don't fail - user is still added to squad
+    }
+  }
+  
+  console.log(`[ADD_TO_SQUAD] Successfully added user ${userId} to squad ${squadId}`);
+  return { success: true };
+}
+
+/**
+ * Remove a user from a squad with full data sync
+ */
+async function removeUserFromSquad(
+  userId: string,
+  squadId: string,
+  organizationId: string
+): Promise<{ success: boolean; error?: string }> {
+  const now = new Date().toISOString();
+  
+  // Verify squad belongs to the organization
+  const squadDoc = await adminDb.collection('squads').doc(squadId).get();
+  if (!squadDoc.exists) {
+    // Squad was deleted - just clean up user data
+    await cleanupUserSquadData(userId, squadId);
+    return { success: true };
+  }
+  
+  const squadData = squadDoc.data() as Squad;
+  if (squadData?.organizationId !== organizationId) {
+    return { success: false, error: 'Squad does not belong to your organization' };
+  }
+  
+  // Check if user is the coach - they can't be removed via this method
+  if (squadData.coachId === userId) {
+    return { success: false, error: 'Cannot remove the coach from their squad. Reassign the coach first.' };
+  }
+  
+  // 1. Delete squadMember record(s)
+  const membershipSnapshot = await adminDb.collection('squadMembers')
+    .where('squadId', '==', squadId)
+    .where('userId', '==', userId)
+    .get();
+  
+  const batch = adminDb.batch();
+  membershipSnapshot.forEach(doc => {
+    batch.delete(doc.ref);
+  });
+  
+  // 2. Update squads.memberIds array
+  batch.update(adminDb.collection('squads').doc(squadId), {
+    memberIds: FieldValue.arrayRemove(userId),
+    updatedAt: now,
+  });
+  
+  // 3. Update user's squadIds array and legacy fields
+  const userDoc = await adminDb.collection('users').doc(userId).get();
+  const userData = userDoc.exists ? userDoc.data() : null;
+  const currentSquadIds: string[] = userData?.squadIds || [];
+  const updatedSquadIds = currentSquadIds.filter(id => id !== squadId);
+  
+  const userUpdate: Record<string, unknown> = {
+    squadIds: updatedSquadIds,
+    updatedAt: now,
+  };
+  
+  // Clear legacy fields if they match
+  if (userData?.squadId === squadId) userUpdate.squadId = null;
+  if (userData?.standardSquadId === squadId) userUpdate.standardSquadId = null;
+  if (userData?.premiumSquadId === squadId) userUpdate.premiumSquadId = null;
+  
+  // If user has other squads, set standardSquadId to the first one
+  if (updatedSquadIds.length > 0 && userUpdate.standardSquadId === null) {
+    userUpdate.standardSquadId = updatedSquadIds[0];
+  }
+  
+  batch.update(adminDb.collection('users').doc(userId), userUpdate);
+  
+  await batch.commit();
+  
+  // 4. Remove from Stream Chat channel
+  if (squadData?.chatChannelId) {
+    try {
+      const streamClient = await getStreamServerClient();
+      const channel = streamClient.channel('messaging', squadData.chatChannelId);
+      await channel.removeMembers([userId]);
+      
+      console.log(`[REMOVE_FROM_SQUAD] Removed user ${userId} from Stream channel ${squadData.chatChannelId}`);
+    } catch (streamError) {
+      console.error('[REMOVE_FROM_SQUAD] Stream Chat error:', streamError);
+      // Don't fail - user is still removed from squad
+    }
+  }
+  
+  console.log(`[REMOVE_FROM_SQUAD] Successfully removed user ${userId} from squad ${squadId}`);
+  return { success: true };
+}
+
+/**
+ * Clean up user's squad data when squad is deleted
+ */
+async function cleanupUserSquadData(userId: string, squadId: string): Promise<void> {
+  const now = new Date().toISOString();
+  
+  const userDoc = await adminDb.collection('users').doc(userId).get();
+  const userData = userDoc.exists ? userDoc.data() : null;
+  const currentSquadIds: string[] = userData?.squadIds || [];
+  const updatedSquadIds = currentSquadIds.filter(id => id !== squadId);
+  
+  const userUpdate: Record<string, unknown> = {
+    squadIds: updatedSquadIds,
+    updatedAt: now,
+  };
+  
+  if (userData?.squadId === squadId) userUpdate.squadId = null;
+  if (userData?.standardSquadId === squadId) userUpdate.standardSquadId = null;
+  if (userData?.premiumSquadId === squadId) userUpdate.premiumSquadId = null;
+  
+  if (updatedSquadIds.length > 0 && userUpdate.standardSquadId === null) {
+    userUpdate.standardSquadId = updatedSquadIds[0];
+  }
+  
+  await adminDb.collection('users').doc(userId).update(userUpdate);
+}
 
 /**
  * PATCH /api/coach/org-users/[userId]
@@ -18,10 +242,14 @@ import type { UserTier, UserTrack } from '@/types';
  * Body (all optional):
  * - tier: 'free' | 'standard' | 'premium'
  * - track: UserTrack | null
- * - squadId: string | null
- * - premiumSquadId: string | null
+ * - addSquadId: string - Add user to this squad (proper membership)
+ * - removeSquadId: string - Remove user from this squad (proper membership)
  * - accessExpiresAt: string | null (ISO date)
  * - isActive: boolean
+ * 
+ * DEPRECATED (use addSquadId/removeSquadId instead):
+ * - squadId: string | null
+ * - premiumSquadId: string | null
  */
 export async function PATCH(
   request: Request,
@@ -32,7 +260,17 @@ export async function PATCH(
     const { organizationId } = await requireCoachWithOrg();
     
     const body = await request.json();
-    const { tier, track, squadId, premiumSquadId, accessExpiresAt, isActive } = body;
+    const { 
+      tier, 
+      track, 
+      addSquadId, 
+      removeSquadId,
+      // Legacy fields - still supported but deprecated
+      squadId, 
+      premiumSquadId, 
+      accessExpiresAt, 
+      isActive 
+    } = body;
     
     // Find the user's membership in this org
     const membershipQuery = await adminDb
@@ -49,7 +287,52 @@ export async function PATCH(
     const membershipDoc = membershipQuery.docs[0];
     const now = new Date().toISOString();
     
-    // Build update object
+    // Handle squad add operation (NEW - proper way)
+    if (addSquadId) {
+      const result = await addUserToSquad(targetUserId, addSquadId, organizationId);
+      if (!result.success) {
+        return NextResponse.json({ error: result.error }, { status: 400 });
+      }
+      
+      // Update org_membership squadIds
+      const currentMembership = membershipDoc.data();
+      const currentSquadIds: string[] = currentMembership.squadIds || [];
+      if (!currentSquadIds.includes(addSquadId)) {
+        await membershipDoc.ref.update({
+          squadIds: FieldValue.arrayUnion(addSquadId),
+          // Keep legacy field in sync
+          squadId: currentMembership.squadId || addSquadId,
+          updatedAt: now,
+        });
+      }
+    }
+    
+    // Handle squad remove operation (NEW - proper way)
+    if (removeSquadId) {
+      const result = await removeUserFromSquad(targetUserId, removeSquadId, organizationId);
+      if (!result.success) {
+        return NextResponse.json({ error: result.error }, { status: 400 });
+      }
+      
+      // Update org_membership squadIds
+      const currentMembership = membershipDoc.data();
+      const currentSquadIds: string[] = currentMembership.squadIds || [];
+      const updatedSquadIds = currentSquadIds.filter(id => id !== removeSquadId);
+      
+      const membershipUpdate: Record<string, unknown> = {
+        squadIds: updatedSquadIds,
+        updatedAt: now,
+      };
+      
+      // Update legacy field if it was the removed squad
+      if (currentMembership.squadId === removeSquadId) {
+        membershipUpdate.squadId = updatedSquadIds.length > 0 ? updatedSquadIds[0] : null;
+      }
+      
+      await membershipDoc.ref.update(membershipUpdate);
+    }
+    
+    // Build update object for non-squad fields
     const updates: Record<string, unknown> = {
       updatedAt: now,
     };
@@ -68,13 +351,16 @@ export async function PATCH(
       updates.track = track as UserTrack | null;
     }
     
-    // Apply squadId (can be null to remove)
-    if (squadId !== undefined) {
+    // DEPRECATED: Legacy squadId handling (still works for backward compatibility)
+    // But warns and won't do full membership sync
+    if (squadId !== undefined && !addSquadId && !removeSquadId) {
+      console.warn('[COACH_ORG_USERS] Using deprecated squadId field. Use addSquadId/removeSquadId instead.');
       updates.squadId = squadId;
     }
     
-    // Apply premiumSquadId (can be null to remove)
+    // DEPRECATED: Legacy premiumSquadId handling
     if (premiumSquadId !== undefined) {
+      console.warn('[COACH_ORG_USERS] Using deprecated premiumSquadId field.');
       updates.premiumSquadId = premiumSquadId;
     }
     
@@ -91,15 +377,16 @@ export async function PATCH(
       updates.isActive = isActive === true;
     }
     
-    // Update the membership
-    await membershipDoc.ref.update(updates);
+    // Update the membership (only if we have non-squad updates)
+    if (Object.keys(updates).length > 1) {
+      await membershipDoc.ref.update(updates);
+    }
     
     // Also update Firebase user document with relevant fields
     const userUpdates: Record<string, unknown> = { updatedAt: now };
     if (tier !== undefined) userUpdates.tier = tier;
     if (track !== undefined) userUpdates.track = track;
-    if (squadId !== undefined) userUpdates.standardSquadId = squadId;
-    if (premiumSquadId !== undefined) userUpdates.premiumSquadId = premiumSquadId;
+    // Don't update squad fields here - they're handled by addUserToSquad/removeUserFromSquad
     
     if (Object.keys(userUpdates).length > 1) {
       try {
@@ -243,5 +530,3 @@ export async function DELETE(
     return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
   }
 }
-
-

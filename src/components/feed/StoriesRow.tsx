@@ -42,8 +42,16 @@ function FeedStoryAvatar({
     storyUser.contentHash
   );
 
+  const handleClick = () => {
+    onViewStory?.(storyUser.id);
+  };
+
   return (
-    <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+    <button
+      type="button" 
+      onClick={handleClick}
+      className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer"
+    >
       <StoryAvatar
         user={{
           firstName: storyUser.firstName,
@@ -58,14 +66,14 @@ function FeedStoryAvatar({
         hasWeekClosed={storyUser.hasWeekClosed}
         hasViewed={hasViewed}
         contentHash={storyUser.contentHash}
-        // Override click to use feed's story viewer
-        onClick={() => onViewStory?.(storyUser.id)}
+        // Disable StoryAvatar's internal click handler since we handle it at wrapper level
+        disableStory={true}
         size="lg" // 56px to match "Your Story"
       />
       <span className="text-xs text-text-secondary font-medium truncate max-w-[56px]">
         {storyUser.firstName}
       </span>
-    </div>
+    </button>
   );
 }
 
