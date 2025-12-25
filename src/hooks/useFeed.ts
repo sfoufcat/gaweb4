@@ -52,6 +52,7 @@ export interface FeedComment {
   text: string;
   parentCommentId?: string;
   createdAt: string;
+  updatedAt?: string;
   author?: FeedPostAuthor;
 }
 
