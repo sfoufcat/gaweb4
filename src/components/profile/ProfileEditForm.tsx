@@ -96,6 +96,11 @@ export function ProfileEditForm({ initialData, clerkUser, onSave, onCancel, from
           // Use Clerk's native setProfileImage API
           await user.setProfileImage({ file: avatarFile });
           console.log('[PROFILE] Clerk avatar upload successful');
+          
+          // Reload user to get the new imageUrl from Clerk
+          // This ensures subsequent calls have the updated URL
+          await user.reload();
+          console.log('[PROFILE] User reloaded with new imageUrl:', user.imageUrl?.substring(0, 80));
         } catch (uploadError) {
           console.error('[AVATAR_UPLOAD_ERROR]', uploadError);
           throw new Error('Failed to upload profile picture. Please try again.');
@@ -104,22 +109,8 @@ export function ProfileEditForm({ initialData, clerkUser, onSave, onCancel, from
         }
       }
 
-      // Build request body - no need to include avatarUrl as Clerk handles it
-      const requestBody: Record<string, unknown> = { 
-        ...formData,
-      };
-
-      const response = await fetch('/api/user/me', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update profile');
-      }
-
-      // Sync name to Clerk if changed
+      // Sync name to Clerk if changed - do this BEFORE calling /api/user/me
+      // so the server sees the updated Clerk data
       if (user && formData.name) {
         const nameParts = formData.name.trim().split(/\s+/);
         const newFirstName = nameParts[0] || '';
@@ -138,6 +129,41 @@ export function ProfileEditForm({ initialData, clerkUser, onSave, onCancel, from
             console.error('[NAME_SYNC_ERROR]', nameError);
             // Don't fail the whole save - Firebase was already updated
           }
+        }
+      }
+
+      // Build request body
+      const requestBody: Record<string, unknown> = { 
+        ...formData,
+      };
+
+      const response = await fetch('/api/user/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update profile');
+      }
+      
+      // Always sync profile to Stream/Firebase after any profile update
+      // This ensures chat/feed shows the updated name and/or profile image immediately
+      if (user) {
+        try {
+          console.log('[PROFILE] Syncing profile to Stream/Firebase...');
+          await fetch('/api/user/sync-stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: formData.name,
+              imageUrl: user.imageUrl,
+            }),
+          });
+          console.log('[PROFILE] Stream/Firebase sync complete');
+        } catch (streamError) {
+          console.error('[STREAM_SYNC_ERROR]', streamError);
+          // Non-fatal - don't fail the save
         }
       }
 

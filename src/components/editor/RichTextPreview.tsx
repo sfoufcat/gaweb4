@@ -4,6 +4,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
+import Youtube from '@tiptap/extension-youtube';
 
 interface RichTextPreviewProps {
   /** HTML content to display */
@@ -45,6 +46,15 @@ export function RichTextPreview({
           target: '_blank',
           rel: 'noopener noreferrer',
         },
+      }),
+      Youtube.configure({
+        inline: false,
+        width: 480,
+        height: 270,
+        HTMLAttributes: {
+          class: 'rounded-lg my-2 mx-auto max-w-full',
+        },
+        nocookie: true,
       }),
     ],
     content,
@@ -132,6 +142,19 @@ export function RichTextPreview({
         .dark .rich-text-preview .ProseMirror blockquote {
           border-left-color: #262b35;
           color: #b5b0ab;
+        }
+        
+        .rich-text-preview .ProseMirror iframe,
+        .rich-text-preview .ProseMirror div[data-youtube-video] {
+          max-width: 100%;
+          border-radius: 0.5rem;
+          margin: 0.5rem auto;
+          display: block;
+        }
+        
+        .rich-text-preview .ProseMirror div[data-youtube-video] iframe {
+          margin: 0;
+          border-radius: 0.5rem;
         }
       `}</style>
     </div>

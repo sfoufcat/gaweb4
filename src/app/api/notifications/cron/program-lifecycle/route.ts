@@ -218,6 +218,9 @@ async function handleCronRequest(request: NextRequest) {
           const archivedCount = await archiveProgramHabits(enrollment.userId, enrollment.programId, now);
           stats.habitsArchived += archivedCount;
 
+          // Mark user as alumni
+          await markUserAsAlumni(enrollment.userId, enrollment.programId);
+
           stats.enrollmentsCompleted++;
           console.log(`[PROGRAM_LIFECYCLE] Completed enrollment ${enrollmentDoc.id}, archived ${archivedCount} habits`);
         }
@@ -256,6 +259,9 @@ async function handleCronRequest(request: NextRequest) {
           // Archive program-created habits for this user
           const archivedCount = await archiveProgramHabits(enrollment.userId, enrollment.programId, now);
           stats.habitsArchived += archivedCount;
+
+          // Mark user as alumni
+          await markUserAsAlumni(enrollment.userId, enrollment.programId);
 
           stats.enrollmentsCompleted++;
           console.log(`[PROGRAM_LIFECYCLE] Completed group enrollment ${enrollmentDoc.id}, archived ${archivedCount} habits`);
@@ -398,6 +404,38 @@ async function sendCommunityConversionMessage(
   } catch (error) {
     console.error(`[PROGRAM_LIFECYCLE] Error sending community conversion message:`, error);
     // Don't throw - we still want to convert the squad
+  }
+}
+
+/**
+ * Mark user as alumni when they complete a program
+ * This enables them to use alumni discounts
+ */
+async function markUserAsAlumni(userId: string, programId: string): Promise<void> {
+  try {
+    const userRef = adminDb.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+    
+    if (!userDoc.exists) {
+      console.warn(`[PROGRAM_LIFECYCLE] User ${userId} not found for alumni marking`);
+      return;
+    }
+
+    const userData = userDoc.data();
+    const alumniOf = userData?.alumniOf || [];
+    
+    // Only add if not already in the list
+    if (!alumniOf.includes(programId)) {
+      await userRef.update({
+        isAlumni: true,
+        alumniOf: [...alumniOf, programId],
+        updatedAt: new Date().toISOString(),
+      });
+      console.log(`[PROGRAM_LIFECYCLE] Marked user ${userId} as alumni of program ${programId}`);
+    }
+  } catch (error) {
+    console.error(`[PROGRAM_LIFECYCLE] Error marking user ${userId} as alumni:`, error);
+    // Don't throw - we still want to continue with other operations
   }
 }
 

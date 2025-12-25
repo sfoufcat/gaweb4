@@ -289,6 +289,10 @@ export interface FirebaseUser extends ClerkUser {
   lastCompletedProgramId?: string; // ID of the most recently completed program
   lastCompletedProgramName?: string; // Name of the most recently completed program
   
+  // Alumni tracking (for alumni discount eligibility)
+  isAlumni?: boolean; // True if user has completed at least one program
+  alumniOf?: string[]; // Array of programIds the user has completed
+  
   // Notification preferences
   notificationPreferences?: NotificationPreferences;
   emailPreferences?: EmailPreferences; // User's email notification preferences
@@ -1857,6 +1861,14 @@ export interface OrgSettings {
   // Social Feed feature (optional - coach can enable/disable)
   feedEnabled?: boolean;               // Whether social feed is enabled for this org (default: false)
   
+  // Alumni & Community settings
+  defaultConvertToCommunity?: boolean; // If true, all new cohorts default to convert to community after ending
+  
+  // Alumni discount settings
+  alumniDiscountEnabled?: boolean;     // If true, alumni get automatic discount
+  alumniDiscountType?: 'percentage' | 'fixed'; // Type of discount
+  alumniDiscountValue?: number;        // 20 for 20% or 2000 for $20
+  
   createdAt: string;                   // ISO timestamp
   updatedAt: string;                   // ISO timestamp
 }
@@ -1878,6 +1890,10 @@ export const DEFAULT_ORG_SETTINGS: Omit<OrgSettings, 'id' | 'organizationId' | '
   coachSubscriptionId: null,
   defaultFunnelId: null,
   feedEnabled: false, // Social feed disabled by default - coach must enable
+  defaultConvertToCommunity: false, // Don't auto-convert by default
+  alumniDiscountEnabled: false,
+  alumniDiscountType: 'percentage',
+  alumniDiscountValue: 0,
 };
 
 /**
@@ -2598,4 +2614,71 @@ export type FeedReportResolution =
   | 'content_removed'
   | 'user_warned'
   | 'no_action';
+
+// =============================================================================
+// DISCOUNT CODE TYPES
+// =============================================================================
+
+export type DiscountType = 'percentage' | 'fixed';
+export type DiscountApplicableTo = 'all' | 'programs' | 'squads';
+
+/**
+ * Discount Code - Reusable discount codes for programs and squads
+ * Stored in Firestore 'discount_codes' collection
+ */
+export interface DiscountCode {
+  id: string;
+  organizationId: string;        // Clerk Organization ID
+  code: string;                  // Uppercase code e.g., "ALUMNI20"
+  name?: string;                 // Optional friendly name
+  
+  // Discount configuration
+  type: DiscountType;            // 'percentage' or 'fixed'
+  value: number;                 // 20 for 20% or 2000 for $20.00
+  
+  // Applicability
+  applicableTo: DiscountApplicableTo;  // 'all', 'programs', or 'squads'
+  programIds?: string[];         // Specific programs (if empty, applies to all)
+  squadIds?: string[];           // Specific squads (if empty, applies to all)
+  
+  // Usage limits
+  maxUses?: number | null;       // null = unlimited
+  useCount: number;              // Current redemption count
+  maxUsesPerUser?: number;       // null = unlimited per user
+  
+  // Validity period
+  startsAt?: string | null;      // null = immediately active
+  expiresAt?: string | null;     // null = never expires
+  
+  // Status
+  isActive: boolean;             // Can be manually disabled
+  
+  // Tracking
+  createdBy: string;             // Coach userId who created it
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Discount Code Usage - Track individual redemptions
+ * Stored in Firestore 'discount_code_usages' collection
+ */
+export interface DiscountCodeUsage {
+  id: string;
+  discountCodeId: string;
+  userId: string;
+  organizationId: string;
+  
+  // What was discounted
+  programId?: string;
+  squadId?: string;
+  enrollmentId?: string;         // Link to program_enrollments
+  
+  // Discount applied
+  originalAmountCents: number;
+  discountAmountCents: number;
+  finalAmountCents: number;
+  
+  createdAt: string;
+}
 

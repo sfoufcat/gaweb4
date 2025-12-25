@@ -244,7 +244,7 @@ export function AdminSquadsTab({
                   <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2] text-xs">
                     {squad.timezone || 'UTC'}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="whitespace-nowrap">
                     {squad.isClosed ? (
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-600 font-albert dark:bg-gray-800 dark:text-gray-400">
                         Closed
@@ -281,7 +281,7 @@ export function AdminSquadsTab({
                       <span className="text-[#5f5a55]/70 dark:text-[#7d8190]/70 italic">Peer group</span>
                     )}
                   </TableCell>
-                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2]">
+                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2] whitespace-nowrap">
                     {squad.memberCount > 0 ? (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#a07855]/10 text-[#a07855]">
                         {squad.memberCount} member{squad.memberCount !== 1 ? 's' : ''}

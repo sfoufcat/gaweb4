@@ -52,30 +52,43 @@ export async function GET(request: NextRequest) {
     }> = [];
     
     try {
+      // Query stories for this user and organization
+      // Note: Firestore may require a composite index for this query
+      // Created stories without timestamp comparison first, then filter in JS
       const storiesSnapshot = await adminDb
         .collection('feed_stories')
         .where('authorId', '==', targetUserId)
         .where('organizationId', '==', organizationId)
-        .where('createdAt', '>=', twentyFourHoursAgo)
         .orderBy('createdAt', 'desc')
-        .limit(20)
+        .limit(50)
         .get();
       
-      stories = storiesSnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          type: 'user_post' as const,
-          authorId: data.authorId,
-          imageUrl: data.imageUrl,
-          videoUrl: data.videoUrl,
-          caption: data.caption,
-          expiresAt: data.expiresAt?.toDate?.()?.toISOString() || data.expiresAt,
-          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
-        };
-      });
+      // Filter to last 24 hours in JavaScript to avoid index issues
+      stories = storiesSnapshot.docs
+        .map(doc => {
+          const data = doc.data();
+          const createdAt = data.createdAt?.toDate?.() || (data.createdAt ? new Date(data.createdAt) : null);
+          
+          return {
+            id: doc.id,
+            type: 'user_post' as const,
+            authorId: data.authorId,
+            imageUrl: data.imageUrl,
+            videoUrl: data.videoUrl,
+            caption: data.caption,
+            expiresAt: data.expiresAt?.toDate?.()?.toISOString() || data.expiresAt,
+            createdAt: createdAt?.toISOString() || new Date().toISOString(),
+            _createdAtDate: createdAt,
+          };
+        })
+        .filter(story => {
+          if (!story._createdAtDate) return false;
+          return story._createdAtDate >= twentyFourHoursAgo;
+        })
+        .map(({ _createdAtDate, ...rest }) => rest)
+        .slice(0, 20);
     } catch (firestoreError) {
-      console.warn('[STORIES_GET] Firestore error (continuing):', firestoreError);
+      console.error('[STORIES_GET] Firestore error:', firestoreError);
     }
 
     // ===== FETCH AUTO-GENERATED STORY DATA FROM FIREBASE =====

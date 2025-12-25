@@ -28,7 +28,6 @@ export function CreatePostModal({
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [addToStory, setAddToStory] = useState(false);
   const [showDiscardModal, setShowDiscardModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -44,7 +43,6 @@ export function CreatePostModal({
     setContent(null);
     setImages([]);
     setVideoUrl(null);
-    setAddToStory(false);
     setIsUploading(false);
     setIsSubmitting(false);
     setErrorMessage(null);
@@ -163,7 +161,6 @@ export function CreatePostModal({
           contentHtml: content?.html || undefined,
           images: images.length > 0 ? images : undefined,
           videoUrl: videoUrl || undefined,
-          addToStory,
         }),
       });
 
@@ -193,7 +190,7 @@ export function CreatePostModal({
     } finally {
       setIsSubmitting(false);
     }
-  }, [hasContent, isSubmitting, content, images, videoUrl, addToStory, onPostCreated, user, resetForm, onClose]);
+  }, [hasContent, isSubmitting, content, images, videoUrl, onPostCreated, user, resetForm, onClose]);
 
   if (!isOpen) return null;
 
@@ -349,35 +346,6 @@ export function CreatePostModal({
             </div>
           )}
 
-          {/* Add to story toggle */}
-          <label className="flex items-center gap-3 p-3 mt-4 rounded-xl bg-[#f5f3f0] dark:bg-[#1a1f2a] cursor-pointer">
-            <input
-              type="checkbox"
-              checked={addToStory}
-              onChange={(e) => setAddToStory(e.target.checked)}
-              className="sr-only"
-            />
-            <div
-              className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${
-                addToStory ? '' : 'border-2 border-[#d1ccc6] dark:border-[#3a3f4a]'
-              }`}
-              style={addToStory ? { backgroundColor: accentColor } : undefined}
-            >
-              {addToStory && (
-                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              )}
-            </div>
-            <div>
-              <p className="text-[14px] font-medium text-[#1a1a1a] dark:text-[#faf8f6]">
-                Add to your Story
-              </p>
-              <p className="text-[12px] text-[#8a857f]">
-                Post will also appear as a 24-hour story
-              </p>
-            </div>
-          </label>
         </div>
 
         {/* Footer - Media buttons (for attachments separate from inline images) */}

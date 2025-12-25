@@ -47,8 +47,44 @@ export function StreamChatProvider({ children }: StreamChatProviderProps) {
   const initializingRef = useRef(false);
 
   const initializeClient = useCallback(async (userId: string, userData: { firstName?: string | null; lastName?: string | null; imageUrl?: string }) => {
-    // If already connected with this user, return existing client
+    const expectedName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'User';
+    const expectedImage = userData.imageUrl;
+    
+    // If already connected with this user, check if profile needs update
     if (globalClient?.user && globalConnectedUserId === userId) {
+      const currentUser = globalClient.user;
+      
+      // Check if Clerk profile data has changed since connection
+      if (currentUser.name !== expectedName || currentUser.image !== expectedImage) {
+        console.log('[StreamChatContext] Profile changed, updating Stream user...', {
+          oldName: currentUser.name,
+          newName: expectedName,
+          oldImage: currentUser.image?.substring(0, 50),
+          newImage: expectedImage?.substring(0, 50),
+        });
+        
+        // Update the user profile in Stream
+        try {
+          await globalClient.upsertUser({
+            id: userId,
+            name: expectedName,
+            image: expectedImage,
+          });
+          
+          // Also update the local user object in the client
+          await globalClient.partialUpdateUser({
+            id: userId,
+            set: {
+              name: expectedName,
+              image: expectedImage,
+            },
+          });
+          console.log('[StreamChatContext] Profile updated successfully');
+        } catch (err) {
+          console.error('[StreamChatContext] Failed to update profile:', err);
+        }
+      }
+      
       return globalClient;
     }
 
@@ -91,12 +127,20 @@ export function StreamChatProvider({ children }: StreamChatProviderProps) {
             throw new Error('Invalid token response');
           }
 
-          // Connect user
+          // First, upsert the user to ensure Stream has the latest profile
+          // This prevents the "flickering" where old cached data overwrites new data
+          await chatClient.upsertUser({
+            id: userId,
+            name: expectedName,
+            image: expectedImage,
+          });
+
+          // Connect user with profile data
           await chatClient.connectUser(
             {
               id: userId,
-              name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'User',
-              image: userData.imageUrl,
+              name: expectedName,
+              image: expectedImage,
             },
             data.token
           );
@@ -109,8 +153,6 @@ export function StreamChatProvider({ children }: StreamChatProviderProps) {
         } else {
           // Already connected - check if profile needs update
           const currentUser = chatClient.user;
-          const expectedName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'User';
-          const expectedImage = userData.imageUrl;
           
           // Update Stream user if Clerk profile has changed
           if (currentUser && (currentUser.name !== expectedName || currentUser.image !== expectedImage)) {

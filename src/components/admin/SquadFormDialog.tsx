@@ -402,6 +402,11 @@ export function SquadFormDialog({
           <AlertDialogTitle className="font-albert">
             {squad ? 'Edit Squad' : 'Create Squad'}
           </AlertDialogTitle>
+          {!squad && (
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+              Standalone squads are perfect for evergreen masterminds, ongoing communities, or paid peer groups that don&apos;t follow a fixed program schedule.
+            </p>
+          )}
         </AlertDialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">

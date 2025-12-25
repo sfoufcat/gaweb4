@@ -22,6 +22,7 @@ import type {
   Squad, 
   OrgSettings,
   ClientCoachingData,
+  DiscountCode,
 } from '@/types';
 
 // Initialize Stripe
@@ -289,7 +290,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { programId, cohortId } = body as { programId: string; cohortId?: string };
+    const { programId, cohortId, discountCode } = body as { 
+      programId: string; 
+      cohortId?: string;
+      discountCode?: string;
+    };
 
     if (!programId) {
       return NextResponse.json({ error: 'Program ID is required' }, { status: 400 });

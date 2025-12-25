@@ -7,7 +7,7 @@ import { ProgramLandingPageEditor } from './ProgramLandingPageEditor';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Edit2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Edit2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy } from 'lucide-react';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { NewProgramModal } from './NewProgramModal';
 
@@ -379,6 +379,35 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     }
     setSaveError(null);
     setIsCohortModalOpen(true);
+  };
+
+  const [duplicatingCohort, setDuplicatingCohort] = useState<string | null>(null);
+
+  const handleDuplicateCohort = async (cohort: ProgramCohort) => {
+    if (!selectedProgram) return;
+    
+    try {
+      setDuplicatingCohort(cohort.id);
+      
+      const response = await fetch(
+        `${apiBasePath}/${selectedProgram.id}/cohorts/${cohort.id}/duplicate`,
+        { method: 'POST' }
+      );
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to duplicate cohort');
+      }
+      
+      // Refresh cohorts list
+      await fetchProgramDetails(selectedProgram.id);
+    } catch (err) {
+      console.error('Error duplicating cohort:', err);
+      setSaveError(err instanceof Error ? err.message : 'Failed to duplicate cohort');
+    } finally {
+      setDuplicatingCohort(null);
+    }
   };
 
   const handleSaveProgram = async () => {
@@ -1184,14 +1213,28 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                         {cohort.enrollmentOpen ? 'Open' : 'Closed'}
                       </span>
                       <button
+                        onClick={() => handleDuplicateCohort(cohort)}
+                        disabled={duplicatingCohort === cohort.id}
+                        className="p-1.5 text-[#5f5a55] hover:text-[#a07855] rounded disabled:opacity-50"
+                        title="Duplicate cohort"
+                      >
+                        {duplicatingCohort === cohort.id ? (
+                          <div className="w-4 h-4 border-2 border-[#a07855] border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
+                      </button>
+                      <button
                         onClick={() => handleOpenCohortModal(cohort)}
                         className="p-1.5 text-[#5f5a55] hover:text-[#a07855] rounded"
+                        title="Edit cohort"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => setDeleteConfirmCohort(cohort)}
                         className="p-1.5 text-[#5f5a55] hover:text-red-500 rounded"
+                        title="Delete cohort"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -1467,9 +1510,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 leaveTo="opacity-0 scale-95"
               >
                 <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white dark:bg-[#171b22] p-6 shadow-xl transition-all max-h-[90vh] overflow-y-auto">
-                  <Dialog.Title className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-4">
+                  <Dialog.Title className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                     {editingProgram ? 'Edit Program' : 'Create Program'}
                   </Dialog.Title>
+                  {!editingProgram && (
+                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-4">
+                      Programs are time-limited journeys with structured content — perfect for courses, bootcamps, challenges, or coaching cohorts.
+                    </p>
+                  )}
 
                   <div className="space-y-4">
                     {/* Type */}

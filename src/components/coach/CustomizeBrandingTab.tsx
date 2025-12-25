@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock, Mail, Send, Bell, Settings, Sun, Moon, Monitor, GripVertical } from 'lucide-react';
 import { useBranding } from '@/contexts/BrandingContext';
 import { FeedSettingsToggle } from './FeedSettingsToggle';
+import { CommunitySettingsToggle } from './CommunitySettingsToggle';
+import { AlumniDiscountToggle } from './AlumniDiscountToggle';
 import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus, OrgEmailDefaults, OrgDefaultTheme, MenuItemKey } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_EMAIL_SETTINGS, DEFAULT_EMAIL_DEFAULTS, DEFAULT_THEME, validateSubdomain } from '@/types';
 import { IconPicker } from './IconPicker';
@@ -1644,6 +1646,16 @@ export function CustomizeBrandingTab() {
 
         {/* Enable Social Feed */}
         <FeedSettingsToggle />
+        
+        {/* Auto-Convert to Community */}
+        <div className="mt-4">
+          <CommunitySettingsToggle />
+        </div>
+        
+        {/* Alumni Discount */}
+        <div className="mt-4">
+          <AlumniDiscountToggle />
+        </div>
         
         {/* Default Theme Setting */}
         <div className="mt-4 p-4 rounded-xl bg-white dark:bg-[#13171f] border border-[#e8e4df] dark:border-[#262b35]">

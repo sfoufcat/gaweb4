@@ -91,9 +91,12 @@ export async function GET(request: NextRequest) {
         id: doc.id,
         authorId: data.authorId,
         text: data.text,
+        content: data.content,
+        contentHtml: data.contentHtml,
         images: data.images,
         videoUrl: data.videoUrl,
         createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
         likeCount: data.likeCount || 0,
         commentCount: data.commentCount || 0,
         repostCount: data.repostCount || 0,
@@ -156,10 +159,10 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { text, images, videoUrl } = body;
+    const { text, content, contentHtml, images, videoUrl } = body;
 
     // Validate - must have text or media
-    if (!text && !images?.length && !videoUrl) {
+    if (!text && !content && !images?.length && !videoUrl) {
       return NextResponse.json(
         { error: 'Post must have text or media' },
         { status: 400 }
@@ -178,6 +181,8 @@ export async function POST(request: NextRequest) {
       authorId: userId,
       organizationId,
       text: text || null,
+      content: content || null, // TipTap JSON
+      contentHtml: contentHtml || null, // Pre-rendered HTML
       images: images || [],
       videoUrl: videoUrl || null,
       likeCount: 0,
@@ -196,6 +201,8 @@ export async function POST(request: NextRequest) {
         id: postRef.id,
         authorId: userId,
         text: postData.text,
+        content: postData.content,
+        contentHtml: postData.contentHtml,
         images: postData.images,
         videoUrl: postData.videoUrl,
         createdAt: now,

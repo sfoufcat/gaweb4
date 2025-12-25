@@ -6,6 +6,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
+import Youtube from '@tiptap/extension-youtube';
 import { EditorToolbar } from './EditorToolbar';
 
 interface RichTextEditorProps {
@@ -75,6 +76,16 @@ export function RichTextEditor({
         HTMLAttributes: {
           class: 'text-blue-600 dark:text-blue-400 underline',
         },
+      }),
+      Youtube.configure({
+        inline: false,
+        width: 480,
+        height: 270,
+        HTMLAttributes: {
+          class: 'rounded-lg my-2 mx-auto',
+        },
+        modestBranding: true,
+        nocookie: true,
       }),
       Placeholder.configure({
         placeholder,
@@ -176,6 +187,25 @@ export function RichTextEditor({
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   }, [editor]);
 
+  // Handle YouTube video addition
+  const handleAddYoutube = useCallback(() => {
+    if (!editor) return;
+
+    const url = window.prompt('Enter YouTube URL:');
+    if (!url) return;
+
+    // Validate YouTube URL
+    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    if (!youtubeRegex.test(url)) {
+      alert('Please enter a valid YouTube URL');
+      return;
+    }
+
+    editor.commands.setYoutubeVideo({
+      src: url,
+    });
+  }, [editor]);
+
   if (!editor) {
     return (
       <div 
@@ -202,6 +232,7 @@ export function RichTextEditor({
           editor={editor}
           onAddImage={onUploadImage ? triggerImageUpload : undefined}
           onAddLink={handleSetLink}
+          onAddYoutube={handleAddYoutube}
           accentColor={accentColor}
           isUploading={isUploading}
         />
@@ -302,6 +333,18 @@ export function RichTextEditor({
         .dark .rich-text-editor .ProseMirror blockquote {
           border-left-color: #262b35;
           color: #b5b0ab;
+        }
+        
+        .rich-text-editor .ProseMirror iframe,
+        .rich-text-editor .ProseMirror div[data-youtube-video] {
+          max-width: 100%;
+          border-radius: 0.5rem;
+          margin: 0.5rem auto;
+          display: block;
+        }
+        
+        .rich-text-editor .ProseMirror div[data-youtube-video] iframe {
+          margin: 0;
         }
       `}</style>
     </div>

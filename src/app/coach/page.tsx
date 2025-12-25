@@ -19,6 +19,7 @@ import { AdminCoachingIntakeFormsTab } from '@/components/admin/AdminCoachingInt
 import { CoachFunnelsTab } from '@/components/coach/funnels';
 import { CoachProgramsTab } from '@/components/coach/programs';
 import { CoachPlanTab } from '@/components/coach/CoachPlanTab';
+import { DiscountCodesTab } from '@/components/coach/DiscountCodesTab';
 
 /**
  * Coach Dashboard Page
@@ -33,8 +34,8 @@ import { CoachPlanTab } from '@/components/coach/CoachPlanTab';
  */
 
 // Valid tab values
-type CoachTab = 'clients' | 'squads' | 'programs' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'channels' | 'customize' | 'plan';
-const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'discover', 'upgrade-forms', 'coaching-forms', 'funnels', 'channels', 'customize', 'plan'];
+type CoachTab = 'clients' | 'squads' | 'programs' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'channels' | 'customize' | 'plan';
+const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'discounts', 'discover', 'upgrade-forms', 'coaching-forms', 'funnels', 'channels', 'customize', 'plan'];
 
 // Columns for Coach Dashboard (excludes 'tier' - tiers are not used in coach context)
 const COACH_DASHBOARD_COLUMNS: ColumnKey[] = ['select', 'avatar', 'name', 'email', 'role', 'squad', 'coaching', 'invitedBy', 'invitedAt', 'created', 'actions'];
@@ -268,9 +269,15 @@ export default function CoachPage() {
             >
               Squads
             </TabsTrigger>
-            {/* Full access tabs - Channels, Funnels */}
+            {/* Full access tabs - Discounts, Channels, Funnels */}
             {!isLimitedOrgCoach && (
               <>
+                <TabsTrigger 
+                  value="discounts"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Discounts
+                </TabsTrigger>
                 <TabsTrigger 
                   value="channels"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
@@ -429,6 +436,13 @@ export default function CoachPage() {
           <TabsContent value="programs">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
               <CoachProgramsTab apiBasePath="/api/coach/org-programs" />
+            </div>
+          </TabsContent>
+
+          {/* Discounts Tab */}
+          <TabsContent value="discounts">
+            <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
+              <DiscountCodesTab />
             </div>
           </TabsContent>
 

@@ -182,6 +182,17 @@ export async function POST(
     // Calculate grace period end (7 days after end date)
     const gracePeriodEndDate = new Date(endDate.getTime() + 7 * 24 * 60 * 60 * 1000);
 
+    // Get org default for convert to community if not explicitly set
+    let convertSquadsToCommunity = body.convertSquadsToCommunity;
+    if (convertSquadsToCommunity === undefined) {
+      const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
+      if (orgSettingsDoc.exists) {
+        convertSquadsToCommunity = orgSettingsDoc.data()?.defaultConvertToCommunity === true;
+      } else {
+        convertSquadsToCommunity = false;
+      }
+    }
+
     const cohortData: Omit<ProgramCohort, 'id' | 'createdAt' | 'updatedAt'> & { createdAt: FieldValue; updatedAt: FieldValue } = {
       programId,
       organizationId,
@@ -194,7 +205,7 @@ export async function POST(
       status,
       gracePeriodEndDate: gracePeriodEndDate.toISOString().split('T')[0],
       closingNotificationSent: false,
-      convertSquadsToCommunity: body.convertSquadsToCommunity === true,
+      convertSquadsToCommunity: convertSquadsToCommunity === true,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };
