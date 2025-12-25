@@ -1599,7 +1599,7 @@ export default function Dashboard() {
           <h2 className="font-albert text-[24px] text-text-primary leading-[1.3] tracking-[-1.5px]">
             My Program
           </h2>
-          <Link href="/discover" className="font-sans text-[12px] text-accent-secondary leading-[1.2]">
+          <Link href="/discover" className="font-sans text-[12px] text-brand-accent leading-[1.2]">
             Discover more
           </Link>
         </div>
