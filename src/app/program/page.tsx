@@ -51,6 +51,7 @@ export default function ProgramHubPage() {
     hasBothPrograms,
     isPlatformMode,
     isLoading: programsLoading,
+    refresh: refreshPrograms,
   } = useMyPrograms();
   
   // Local state
@@ -181,6 +182,7 @@ export default function ProgramHubPage() {
           <ProgramDetailView 
             program={selectedProgram}
             onBack={handleBackFromDetails}
+            onRefresh={refreshPrograms}
           />
         ) : (
           <SquadTabContent 
@@ -231,6 +233,7 @@ export default function ProgramHubPage() {
         <ProgramDetailView 
           program={singleProgram}
           showBackButton={false}
+          onRefresh={refreshPrograms}
         />
       ) : (
         <SquadTabContent 

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Phone, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Phone, ChevronDown, ChevronUp, ExternalLink, Users, Loader2 } from 'lucide-react';
 import type { EnrolledProgramWithDetails } from '@/hooks/useMyPrograms';
 import type { DiscoverCourse, DiscoverArticle, DiscoverEvent } from '@/types/discover';
 import { ArticleCard } from '@/components/discover/ArticleCard';
@@ -31,6 +31,7 @@ interface ProgramDetailViewProps {
   program: EnrolledProgramWithDetails;
   onBack?: () => void;
   showBackButton?: boolean;
+  onRefresh?: () => void;
 }
 
 // Types for program-specific content
@@ -75,10 +76,53 @@ export function ProgramDetailView({
   program: enrolled, 
   onBack,
   showBackButton = true,
+  onRefresh,
 }: ProgramDetailViewProps) {
   const router = useRouter();
-  const { program, progress, squad, squadMembers } = enrolled;
+  const { program, progress, squad, squadMembers, enrollment } = enrolled;
   const isGroup = program.type === 'group';
+  
+  // State for joining community
+  const [isJoiningCommunity, setIsJoiningCommunity] = useState(false);
+  const [joinCommunityError, setJoinCommunityError] = useState<string | null>(null);
+  
+  // Check if community is available but not joined
+  const showJoinCommunityCard = !isGroup && 
+    program.clientCommunityEnabled && 
+    program.clientCommunitySquadId && 
+    !enrollment.joinedCommunity;
+  
+  // Handle joining community
+  const handleJoinCommunity = async () => {
+    setIsJoiningCommunity(true);
+    setJoinCommunityError(null);
+    
+    try {
+      const response = await fetch('/api/programs/join-community', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ programId: program.id }),
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to join community');
+      }
+      
+      // Refresh data to show updated state
+      if (onRefresh) {
+        onRefresh();
+      } else {
+        // Fallback: reload page
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Error joining community:', error);
+      setJoinCommunityError(error instanceof Error ? error.message : 'Failed to join community');
+    } finally {
+      setIsJoiningCommunity(false);
+    }
+  };
 
   // Program-specific content
   const [content, setContent] = useState<ProgramContent>({
@@ -387,6 +431,53 @@ export function ProgramDetailView({
           )}
         </div>
       </div>
+
+      {/* Join Community Card (for 1:1 programs with community enabled but not joined) */}
+      {showJoinCommunityCard && (
+        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-[20px] p-5 space-y-3 border border-purple-100 dark:border-purple-800/30">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
+              <Users className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <h3 className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3]">
+                Join the Community
+              </h3>
+              <p className="font-sans text-[13px] text-text-secondary dark:text-[#b2b6c2] leading-[1.4]">
+                Connect with other participants in this program
+              </p>
+            </div>
+          </div>
+          
+          <p className="font-sans text-[14px] text-text-secondary dark:text-[#b2b6c2] leading-[1.5]">
+            Get peer support, share experiences, and participate in group discussions with fellow program members.
+          </p>
+          
+          {joinCommunityError && (
+            <p className="font-sans text-[13px] text-red-600 dark:text-red-400">
+              {joinCommunityError}
+            </p>
+          )}
+          
+          <button
+            onClick={handleJoinCommunity}
+            disabled={isJoiningCommunity}
+            className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 rounded-[32px] px-4 py-3 font-semibold text-[15px] text-white leading-[1.4] tracking-[-0.3px] shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+          >
+            {isJoiningCommunity ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Joining...
+              </>
+            ) : (
+              <>
+                <Users className="w-4 h-4" />
+                Join Community
+              </>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Next Scheduled Call Card (for 1:1 programs) */}
       {!isGroup && (

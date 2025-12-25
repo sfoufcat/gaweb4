@@ -271,6 +271,66 @@ export async function PUT(
           // Continue anyway - squad is created, chat can be added later
         }
         
+        // Add coach as proper squad member (like in group programs)
+        try {
+          const clerk = await clerkClient();
+          const coachClerkUser = await clerk.users.getUser(userId);
+          
+          // Create squadMember document for the coach
+          await adminDb.collection('squadMembers').add({
+            squadId,
+            userId,
+            roleInSquad: 'coach',
+            firstName: coachClerkUser.firstName || '',
+            lastName: coachClerkUser.lastName || '',
+            imageUrl: coachClerkUser.imageUrl || '',
+            createdAt: now,
+            updatedAt: now,
+          });
+          
+          // Update squad memberIds to include coach
+          await squadRef.update({
+            memberIds: [userId],
+            updatedAt: now,
+          });
+          
+          // Update coach's user document with squadIds
+          const coachUserDoc = await adminDb.collection('users').doc(userId).get();
+          if (coachUserDoc.exists) {
+            await adminDb.collection('users').doc(userId).update({
+              squadIds: FieldValue.arrayUnion(squadId),
+              updatedAt: now,
+            });
+          } else {
+            await adminDb.collection('users').doc(userId).set({
+              squadIds: [squadId],
+              createdAt: now,
+              updatedAt: now,
+            });
+          }
+          
+          // If coach has an enrollment for this program, set joinedCommunity
+          const coachEnrollmentSnapshot = await adminDb.collection('programEnrollments')
+            .where('programId', '==', programId)
+            .where('userId', '==', userId)
+            .where('status', '==', 'active')
+            .limit(1)
+            .get();
+          
+          if (!coachEnrollmentSnapshot.empty) {
+            await coachEnrollmentSnapshot.docs[0].ref.update({
+              joinedCommunity: true,
+              updatedAt: now,
+            });
+            console.log(`[COACH_ORG_PROGRAM_PUT] Updated coach enrollment with joinedCommunity: true`);
+          }
+          
+          console.log(`[COACH_ORG_PROGRAM_PUT] Added coach ${userId} as proper squad member`);
+        } catch (memberError) {
+          console.error(`[COACH_ORG_PROGRAM_PUT] Failed to add coach as squad member:`, memberError);
+          // Continue anyway - squad is created
+        }
+        
         // Add the squad ID to the program update
         updateData.clientCommunitySquadId = squadId;
       }
