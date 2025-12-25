@@ -14,14 +14,20 @@ export async function GET(request: NextRequest) {
     const { organizationId } = await requireCoachWithOrg();
 
     // Get all standalone squads (programId is null)
+    // Note: We filter isClosed in memory to avoid requiring a composite index
     const squadsSnapshot = await adminDb
       .collection('squads')
       .where('organizationId', '==', organizationId)
       .where('programId', '==', null)
-      .where('isClosed', '!=', true)
       .get();
 
-    if (squadsSnapshot.empty) {
+    // Filter out closed squads in memory
+    const openSquadDocs = squadsSnapshot.docs.filter(doc => {
+      const data = doc.data();
+      return data.isClosed !== true;
+    });
+
+    if (openSquadDocs.length === 0) {
       return NextResponse.json({
         communities: [],
         summary: {
@@ -39,14 +45,11 @@ export async function GET(request: NextRequest) {
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-    // Get analytics for these squads
-    const squadIds = squadsSnapshot.docs.map(d => d.id);
-    
     // Build community summaries
     const communities: SquadAnalyticsSummary[] = [];
     const healthCounts = { thriving: 0, active: 0, inactive: 0 };
 
-    for (const squadDoc of squadsSnapshot.docs) {
+    for (const squadDoc of openSquadDocs) {
       const squad = { id: squadDoc.id, ...squadDoc.data() } as Squad;
       const memberCount = squad.memberIds?.length || 0;
 

@@ -47,15 +47,21 @@ async function handleCronRequest(request: NextRequest) {
     const sevenDaysAgoStr = sevenDaysAgo.toISOString();
 
     // Get all standalone squads (programId is null)
+    // Note: We filter isClosed in memory to avoid requiring a composite index
     const squadsSnapshot = await adminDb
       .collection('squads')
       .where('programId', '==', null)
-      .where('isClosed', '!=', true)
       .get();
 
-    console.log(`[SQUAD_ANALYTICS] Processing ${squadsSnapshot.size} standalone squads`);
+    // Filter out closed squads in memory
+    const openSquadDocs = squadsSnapshot.docs.filter(doc => {
+      const data = doc.data();
+      return data.isClosed !== true;
+    });
 
-    for (const squadDoc of squadsSnapshot.docs) {
+    console.log(`[SQUAD_ANALYTICS] Processing ${openSquadDocs.length} standalone squads`);
+
+    for (const squadDoc of openSquadDocs) {
       try {
         const squad = { id: squadDoc.id, ...squadDoc.data() } as Squad;
         stats.squadsProcessed++;
