@@ -61,8 +61,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
-    // Validate required fields
-    const requiredFields = ['title', 'coverImageUrl', 'content', 'authorName', 'authorTitle'];
+    // Validate required fields (authorTitle is now optional)
+    const requiredFields = ['title', 'coverImageUrl', 'content', 'authorName'];
     for (const field of requiredFields) {
       if (!body[field]) {
         return NextResponse.json(
@@ -76,20 +76,10 @@ export async function POST(request: NextRequest) {
     const wordCount = body.content.split(/\s+/).length;
     const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
 
-    // Validate articleType if provided
-    const validArticleTypes = ['playbook', 'trend', 'caseStudy'];
-    if (body.articleType && !validArticleTypes.includes(body.articleType)) {
+    // Validate programIds if provided
+    if (body.programIds && !Array.isArray(body.programIds)) {
       return NextResponse.json(
-        { error: `Invalid article type. Must be one of: ${validArticleTypes.join(', ')}` },
-        { status: 400 }
-      );
-    }
-
-    // Validate track if provided
-    const validTracks = ['content_creator', 'saas', 'coach_consultant', 'ecom', 'agency', 'community_builder', 'general'];
-    if (body.track && !validTracks.includes(body.track)) {
-      return NextResponse.json(
-        { error: `Invalid track. Must be one of: ${validTracks.join(', ')}` },
+        { error: 'programIds must be an array' },
         { status: 400 }
       );
     }
@@ -98,16 +88,21 @@ export async function POST(request: NextRequest) {
       title: body.title,
       coverImageUrl: body.coverImageUrl,
       content: body.content,
+      // Author fields
+      authorId: body.authorId || null, // New: User ID for dynamic bio lookup
       authorName: body.authorName,
-      authorTitle: body.authorTitle,
+      authorTitle: body.authorTitle || null, // Now optional
+      // Deprecated author fields (kept for backward compatibility)
       authorAvatarUrl: body.authorAvatarUrl || '',
       authorBio: body.authorBio || '',
       publishedAt: body.publishedAt ? new Date(body.publishedAt) : FieldValue.serverTimestamp(),
       readingTimeMinutes,
       category: body.category || '',
-      articleType: body.articleType || 'playbook', // Default to playbook
-      track: body.track || null, // Track-specific content (deprecated)
-      programIds: Array.isArray(body.programIds) ? body.programIds : [], // New: program association
+      // Deprecated fields (kept for backward compatibility)
+      articleType: body.articleType || null,
+      track: body.track || null,
+      // Program association
+      programIds: Array.isArray(body.programIds) ? body.programIds : [],
       featured: body.featured || false,
       trending: body.trending || false,
       createdAt: FieldValue.serverTimestamp(),

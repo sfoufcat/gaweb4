@@ -83,29 +83,22 @@ export async function PATCH(
       updatedAt: FieldValue.serverTimestamp(),
     };
 
-    // Validate articleType if provided
-    const validArticleTypes = ['playbook', 'trend', 'caseStudy'];
-    if (body.articleType && !validArticleTypes.includes(body.articleType)) {
+    // Validate programIds if provided
+    if (body.programIds && !Array.isArray(body.programIds)) {
       return NextResponse.json(
-        { error: `Invalid article type. Must be one of: ${validArticleTypes.join(', ')}` },
-        { status: 400 }
-      );
-    }
-
-    // Validate track if provided
-    const validTracks = ['content_creator', 'saas', 'coach_consultant', 'ecom', 'agency', 'community_builder', 'general'];
-    if (body.track && !validTracks.includes(body.track)) {
-      return NextResponse.json(
-        { error: `Invalid track. Must be one of: ${validTracks.join(', ')}` },
+        { error: 'programIds must be an array' },
         { status: 400 }
       );
     }
 
     // Only update fields that are provided
+    // Note: authorId is new for dynamic bio lookup
+    // articleType and track are deprecated but still supported for backward compatibility
     const allowedFields = [
-      'title', 'coverImageUrl', 'content', 'authorName', 'authorTitle',
-      'authorAvatarUrl', 'authorBio', 'publishedAt', 'category', 'articleType', 
-      'track', 'programIds', 'featured', 'trending'
+      'title', 'coverImageUrl', 'content', 
+      'authorId', 'authorName', 'authorTitle', 'authorAvatarUrl', 'authorBio',
+      'publishedAt', 'category', 'articleType', 'track', 'programIds', 
+      'featured', 'trending'
     ];
 
     for (const field of allowedFields) {

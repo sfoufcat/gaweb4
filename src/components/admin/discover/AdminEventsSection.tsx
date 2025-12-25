@@ -481,13 +481,13 @@ function EventFormDialog({
 
             {/* Featured */}
             <div className="flex items-center">
-              <label className="flex items-center gap-2 cursor-pointer">
+              <div className="flex items-center gap-2">
                 <BrandedCheckbox
                   checked={formData.featured}
                   onChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
                 />
-                <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] font-albert">Featured Event</span>
-              </label>
+                <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, featured: !prev.featured }))}>Featured Event</span>
+              </div>
             </div>
           </div>
 

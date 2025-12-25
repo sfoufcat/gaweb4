@@ -7,7 +7,7 @@ import { generateStoryContentHash } from './useStoryViewTracking';
  * Check if we're currently in the weekly reflection window (Fri, Sat, Sun)
  * The Week Closed story should only be visible during this period
  */
-function isInReflectionWindow(): boolean {
+export function isInReflectionWindow(): boolean {
   const dayOfWeek = new Date().getDay(); // 0 = Sunday, 5 = Friday, 6 = Saturday
   return dayOfWeek === 0 || dayOfWeek === 5 || dayOfWeek === 6;
 }

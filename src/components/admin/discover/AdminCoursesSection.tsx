@@ -685,20 +685,20 @@ function CourseFormDialog({
               </div>
               
               <div className="flex gap-6">
-                <label className="flex items-center gap-2 cursor-pointer">
+                <div className="flex items-center gap-2">
                   <BrandedCheckbox
                     checked={formData.featured}
                     onChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
                   />
-                  <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Featured</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                  <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, featured: !prev.featured }))}>Featured</span>
+                </div>
+                <div className="flex items-center gap-2">
                   <BrandedCheckbox
                     checked={formData.trending}
                     onChange={(checked) => setFormData(prev => ({ ...prev, trending: checked }))}
                   />
-                  <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Trending</span>
-                </label>
+                  <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, trending: !prev.trending }))}>Trending</span>
+                </div>
               </div>
             </div>
 

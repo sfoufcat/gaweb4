@@ -819,20 +819,20 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
 
                     {/* Checkboxes */}
                     <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
+                      <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                         <BrandedCheckbox
                           checked={programFormData.isDefaultForTrack}
                           onChange={(checked) => setProgramFormData({ ...programFormData, isDefaultForTrack: checked })}
                         />
-                        Default for track
-                      </label>
-                      <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
+                        <span className="cursor-pointer" onClick={() => setProgramFormData({ ...programFormData, isDefaultForTrack: !programFormData.isDefaultForTrack })}>Default for track</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                         <BrandedCheckbox
                           checked={programFormData.isActive}
                           onChange={(checked) => setProgramFormData({ ...programFormData, isActive: checked })}
                         />
-                        Active
-                      </label>
+                        <span className="cursor-pointer" onClick={() => setProgramFormData({ ...programFormData, isActive: !programFormData.isActive })}>Active</span>
+                      </div>
                     </div>
 
                     {saveError && (

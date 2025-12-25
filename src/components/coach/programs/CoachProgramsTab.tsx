@@ -1695,7 +1695,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                             New squads auto-created when this limit is reached
                           </p>
                         </div>
-                        <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
+                        <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                           <BrandedCheckbox
                             checked={programFormData.coachInSquads}
                             onChange={(checked) => setProgramFormData({ 
@@ -1705,8 +1705,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                               assignedCoachIds: checked ? [] : programFormData.assignedCoachIds,
                             })}
                           />
-                          Join squads as coach
-                        </label>
+                          <span className="cursor-pointer" onClick={() => setProgramFormData({ 
+                              ...programFormData, 
+                              coachInSquads: !programFormData.coachInSquads,
+                              assignedCoachIds: !programFormData.coachInSquads ? [] : programFormData.assignedCoachIds,
+                            })}>Join squads as coach</span>
+                        </div>
                         
                         {/* Coach Selection (when not joining as coach) */}
                         {!programFormData.coachInSquads && (
@@ -1785,13 +1789,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                         
                         {/* Apply to existing squads (only when editing) */}
                         {editingProgram && (
-                          <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-4 cursor-pointer">
+                          <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-4">
                             <BrandedCheckbox
                               checked={programFormData.applyCoachesToExistingSquads}
                               onChange={(checked) => setProgramFormData({ ...programFormData, applyCoachesToExistingSquads: checked })}
                             />
-                            Apply coach changes to existing squads
-                          </label>
+                            <span className="cursor-pointer" onClick={() => setProgramFormData({ ...programFormData, applyCoachesToExistingSquads: !programFormData.applyCoachesToExistingSquads })}>Apply coach changes to existing squads</span>
+                          </div>
                         )}
                       </div>
                     )}
@@ -1834,20 +1838,20 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
                     {/* Status checkboxes */}
                     <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
+                      <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                         <BrandedCheckbox
                           checked={programFormData.isActive}
                           onChange={(checked) => setProgramFormData({ ...programFormData, isActive: checked })}
                         />
-                        Active
-                      </label>
-                      <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
+                        <span className="cursor-pointer" onClick={() => setProgramFormData({ ...programFormData, isActive: !programFormData.isActive })}>Active</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                         <BrandedCheckbox
                           checked={programFormData.isPublished}
                           onChange={(checked) => setProgramFormData({ ...programFormData, isPublished: checked })}
                         />
-                        Published (visible in Discover)
-                      </label>
+                        <span className="cursor-pointer" onClick={() => setProgramFormData({ ...programFormData, isPublished: !programFormData.isPublished })}>Published (visible in Discover)</span>
+                      </div>
                     </div>
 
                     {saveError && (

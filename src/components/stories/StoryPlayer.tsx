@@ -376,21 +376,7 @@ export function StoryPlayer({ isOpen, onClose, slides, user, isLoading = false }
         onPointerLeave={handlePointerCancel}
         onPointerCancel={handlePointerCancel}
       >
-        {/* Story Container */}
-        <div 
-          ref={containerRef}
-          className={`relative w-full max-w-[450px] h-full max-h-[800px] sm:h-[85vh] sm:rounded-[24px] overflow-hidden bg-gray-900 cursor-pointer select-none transition-all duration-300 ease-spring ${containerClasses}`}
-          style={{
-            boxShadow: isAnimating || animationState === 'open' 
-              ? '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)' 
-              : 'none'
-          }}
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerCancel}
-          onPointerCancel={handlePointerCancel}
-        >
-          {/* Loading Spinner */}
+        {/* Loading Spinner */}
           {isLoading ? (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
@@ -543,9 +529,7 @@ export function StoryPlayer({ isOpen, onClose, slides, user, isLoading = false }
               </div>
             </>
           )}
-        </div>
       </div>
-    );
     </div>
   );
 

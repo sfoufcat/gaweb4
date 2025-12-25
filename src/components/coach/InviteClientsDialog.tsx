@@ -722,14 +722,13 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                     {createForm.email && (
                       <div className="flex items-center gap-3 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
                         <BrandedCheckbox
-                          id="sendEmail"
                           checked={createForm.sendEmail}
                           onChange={(checked) => setCreateForm(prev => ({ ...prev, sendEmail: checked }))}
                         />
-                        <label htmlFor="sendEmail" className="flex items-center gap-2 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer">
+                        <span className="flex items-center gap-2 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setCreateForm(prev => ({ ...prev, sendEmail: !prev.sendEmail }))}>
                           <Send className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
                           Send invite email to {createForm.email}
-                        </label>
+                        </span>
                       </div>
                     )}
 
@@ -798,14 +797,13 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                         {/* Send Emails Toggle */}
                         <div className="flex items-center gap-3 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
                           <BrandedCheckbox
-                            id="bulkSendEmails"
                             checked={bulkSendEmails}
                             onChange={(checked) => setBulkSendEmails(checked)}
                           />
-                          <label htmlFor="bulkSendEmails" className="flex items-center gap-2 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer">
+                          <span className="flex items-center gap-2 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setBulkSendEmails(!bulkSendEmails)}>
                             <Send className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
                             Send invite emails to all addresses
-                          </label>
+                          </span>
                         </div>
 
                         <div className="flex gap-3 pt-4">

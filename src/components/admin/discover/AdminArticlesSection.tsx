@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import type { DiscoverArticle } from '@/types/discover';
-import type { UserTrack } from '@/types';
 import {
   Table,
   TableBody,
@@ -26,25 +25,8 @@ import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
-
-// Track options for dropdown
-const TRACK_OPTIONS: { value: UserTrack | ''; label: string }[] = [
-  { value: '', label: 'All Tracks (No specific track)' },
-  { value: 'content_creator', label: 'Creator' },
-  { value: 'saas', label: 'SaaS' },
-  { value: 'coach_consultant', label: 'Coach/Consultant' },
-  { value: 'ecom', label: 'Ecom' },
-  { value: 'agency', label: 'Agency' },
-  { value: 'community_builder', label: 'Community Builder' },
-  { value: 'general', label: 'General' },
-];
-
-// Helper to get track display name
-const getTrackDisplayName = (track: UserTrack | null | undefined): string => {
-  if (!track) return '—';
-  const option = TRACK_OPTIONS.find(t => t.value === track);
-  return option?.label || track;
-};
+import { AuthorSelector } from '@/components/admin/AuthorSelector';
+import { CategorySelector } from '@/components/admin/CategorySelector';
 
 // Article Form Dialog
 function ArticleFormDialog({
@@ -53,46 +35,48 @@ function ArticleFormDialog({
   onClose,
   onSave,
   uploadEndpoint,
+  apiEndpoint,
 }: {
   article: DiscoverArticle | null;
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
   uploadEndpoint: string;
+  apiEndpoint: string;
 }) {
   const isEditing = !!article;
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
-    coverImageUrl: '',
     content: '',
+    coverImageUrl: '',
+    authorId: null as string | null,
     authorName: '',
     authorTitle: '',
-    authorAvatarUrl: '',
-    authorBio: '',
     publishedAt: '',
     category: '',
-    articleType: 'playbook' as 'playbook' | 'trend' | 'caseStudy',
-    track: '' as UserTrack | '',
     programIds: [] as string[],
     featured: false,
     trending: false,
   });
 
+  // Determine if we're in coach context based on API endpoint
+  const isCoachContext = apiEndpoint.includes('/coach/');
+  const programsApiEndpoint = isCoachContext ? '/api/coach/org-programs' : '/api/admin/programs';
+  const categoriesApiEndpoint = '/api/coach/org-article-categories';
+  const coachesApiEndpoint = '/api/coach/org-coaches';
+
   useEffect(() => {
     if (article) {
       setFormData({
         title: article.title || '',
-        coverImageUrl: article.coverImageUrl || '',
         content: article.content || '',
+        coverImageUrl: article.coverImageUrl || '',
+        authorId: article.authorId || null,
         authorName: article.authorName || '',
         authorTitle: article.authorTitle || '',
-        authorAvatarUrl: article.authorAvatarUrl || '',
-        authorBio: article.authorBio || '',
         publishedAt: article.publishedAt ? article.publishedAt.split('T')[0] : '',
         category: article.category || '',
-        articleType: article.articleType || 'playbook',
-        track: article.track || '',
         programIds: article.programIds || [],
         featured: article.featured || false,
         trending: article.trending || false,
@@ -101,16 +85,13 @@ function ArticleFormDialog({
       const today = new Date().toISOString().split('T')[0];
       setFormData({
         title: '',
-        coverImageUrl: '',
         content: '',
+        coverImageUrl: '',
+        authorId: null,
         authorName: '',
         authorTitle: '',
-        authorAvatarUrl: '',
-        authorBio: '',
         publishedAt: today,
         category: '',
-        articleType: 'playbook',
-        track: '',
         programIds: [],
         featured: false,
         trending: false,
@@ -126,13 +107,12 @@ function ArticleFormDialog({
       const payload = {
         ...formData,
         publishedAt: formData.publishedAt ? new Date(formData.publishedAt).toISOString() : new Date().toISOString(),
-        track: formData.track || null, // Convert empty string to null (deprecated)
-        programIds: formData.programIds, // New program association
+        programIds: formData.programIds,
       };
 
       const url = isEditing 
-        ? `/api/admin/discover/articles/${article.id}`
-        : '/api/admin/discover/articles';
+        ? `${apiEndpoint}/${article.id}`
+        : apiEndpoint;
       
       const response = await fetch(url, {
         method: isEditing ? 'PATCH' : 'POST',
@@ -161,8 +141,8 @@ function ArticleFormDialog({
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
       <div className="bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl w-full max-w-2xl mx-4 shadow-2xl shadow-black/10 dark:shadow-black/30 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
         <form onSubmit={handleSubmit}>
-          <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35]">
-            <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] font-albert">
+          <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]">
+            <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
               {isEditing ? 'Edit Article' : 'Create Article'}
             </h2>
           </div>
@@ -170,126 +150,17 @@ function ArticleFormDialog({
           <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
             {/* Title */}
             <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] mb-1 font-albert">Title *</label>
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Title *</label>
               <input
                 type="text"
                 required
                 value={formData.title}
                 onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8]"
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
               />
             </div>
 
-            {/* Cover Image */}
-            <MediaUpload
-              value={formData.coverImageUrl}
-              onChange={(url) => setFormData(prev => ({ ...prev, coverImageUrl: url }))}
-              folder="articles"
-              type="image"
-              label="Cover Image"
-              required
-              uploadEndpoint={uploadEndpoint}
-            />
-
-            {/* Author Info */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] mb-1 font-albert">Author Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.authorName}
-                  onChange={e => setFormData(prev => ({ ...prev, authorName: e.target.value }))}
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8]"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] mb-1 font-albert">Author Title *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.authorTitle}
-                  onChange={e => setFormData(prev => ({ ...prev, authorTitle: e.target.value }))}
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8]"
-                  placeholder="e.g., Life Coach, CEO"
-                />
-              </div>
-            </div>
-
-            {/* Author Avatar & Bio */}
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] mb-1 font-albert">Author Avatar URL</label>
-              <input
-                type="url"
-                value={formData.authorAvatarUrl}
-                onChange={e => setFormData(prev => ({ ...prev, authorAvatarUrl: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8]"
-                placeholder="https://..."
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] mb-1 font-albert">Author Bio</label>
-              <textarea
-                value={formData.authorBio}
-                onChange={e => setFormData(prev => ({ ...prev, authorBio: e.target.value }))}
-                rows={2}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert resize-none text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8]"
-                placeholder="Brief bio about the author..."
-              />
-            </div>
-
-            {/* Published Date & Category */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] mb-1 font-albert">Published Date</label>
-                <input
-                  type="date"
-                  value={formData.publishedAt}
-                  onChange={e => setFormData(prev => ({ ...prev, publishedAt: e.target.value }))}
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8]"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] mb-1 font-albert">Category</label>
-                <input
-                  type="text"
-                  value={formData.category}
-                  onChange={e => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8]"
-                  placeholder="e.g., Mindset, Productivity"
-                />
-              </div>
-            </div>
-
-            {/* Article Type & Track */}
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] mb-1 font-albert">Article Type *</label>
-              <select
-                required
-                value={formData.articleType}
-                onChange={e => setFormData(prev => ({ ...prev, articleType: e.target.value as 'playbook' | 'trend' | 'caseStudy' }))}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8]"
-              >
-                <option value="playbook">Playbook</option>
-                <option value="trend">Trend</option>
-                <option value="caseStudy">Case Study</option>
-              </select>
-            </div>
-
-            {/* Program Association */}
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-                Programs
-              </label>
-              <ProgramSelector
-                value={formData.programIds}
-                onChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
-                placeholder="Select programs for this article..."
-              />
-            </div>
-
-            {/* Content with Rich Text Editor */}
+            {/* Content - Moved right after Title */}
             <RichTextEditor
               value={formData.content}
               onChange={(content) => setFormData(prev => ({ ...prev, content }))}
@@ -302,26 +173,97 @@ function ArticleFormDialog({
               uploadEndpoint={uploadEndpoint}
             />
 
-            {/* Featured & Trending */}
+            {/* Cover Image */}
+            <MediaUpload
+              value={formData.coverImageUrl}
+              onChange={(url) => setFormData(prev => ({ ...prev, coverImageUrl: url }))}
+              folder="articles"
+              type="image"
+              label="Cover Image"
+              required
+              uploadEndpoint={uploadEndpoint}
+            />
+
+            {/* Author Selection */}
+            <div>
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Author *</label>
+              <AuthorSelector
+                value={formData.authorId}
+                onChange={({ authorId, authorName }) => 
+                  setFormData(prev => ({ ...prev, authorId, authorName }))
+                }
+                placeholder="Select author..."
+                coachesApiEndpoint={coachesApiEndpoint}
+              />
+            </div>
+
+            {/* Author Title - Now Optional */}
+            <div>
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Author Title</label>
+              <input
+                type="text"
+                value={formData.authorTitle}
+                onChange={e => setFormData(prev => ({ ...prev, authorTitle: e.target.value }))}
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                placeholder="e.g., Life Coach, CEO (optional)"
+              />
+            </div>
+
+            {/* Published Date */}
+            <div>
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Published Date</label>
+              <input
+                type="date"
+                value={formData.publishedAt}
+                onChange={e => setFormData(prev => ({ ...prev, publishedAt: e.target.value }))}
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+              />
+            </div>
+
+            {/* Category - New CategorySelector */}
+            <div>
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Category</label>
+              <CategorySelector
+                value={formData.category}
+                onChange={(category) => setFormData(prev => ({ ...prev, category }))}
+                placeholder="Select or create category..."
+                categoriesApiEndpoint={categoriesApiEndpoint}
+              />
+            </div>
+
+            {/* Program Association */}
+            <div>
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+                Programs
+              </label>
+              <ProgramSelector
+                value={formData.programIds}
+                onChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
+                placeholder="Select programs for this article..."
+                programsApiEndpoint={programsApiEndpoint}
+              />
+            </div>
+
+            {/* Featured & Trending - Removed "Recommended" from Featured */}
             <div className="flex gap-6">
-              <label className="flex items-center gap-2 cursor-pointer">
+              <div className="flex items-center gap-2">
                 <BrandedCheckbox
                   checked={formData.featured}
                   onChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
                 />
-                <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] font-albert">Featured (Recommended)</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
+                <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, featured: !prev.featured }))}>Featured</span>
+              </div>
+              <div className="flex items-center gap-2">
                 <BrandedCheckbox
                   checked={formData.trending}
                   onChange={(checked) => setFormData(prev => ({ ...prev, trending: checked }))}
                 />
-                <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] font-albert">Trending</span>
-              </label>
+                <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, trending: !prev.trending }))}>Trending</span>
+              </div>
             </div>
           </div>
 
-          <div className="p-6 border-t border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] flex justify-end gap-3">
+          <div className="p-6 border-t border-[#e1ddd8] dark:border-[#262b35] flex justify-end gap-3">
             <Button
               type="button"
               variant="outline"
@@ -355,7 +297,6 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
-  const [trackFilter, setTrackFilter] = useState('');
   const [articleToEdit, setArticleToEdit] = useState<DiscoverArticle | null>(null);
   const [articleToDelete, setArticleToDelete] = useState<DiscoverArticle | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -411,16 +352,8 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
       filtered = filtered.filter(article => article.category === categoryFilter);
     }
     
-    if (trackFilter) {
-      if (trackFilter === 'none') {
-        filtered = filtered.filter(article => !article.track);
-      } else {
-        filtered = filtered.filter(article => article.track === trackFilter);
-      }
-    }
-    
     return filtered;
-  }, [articles, searchQuery, categoryFilter, trackFilter]);
+  }, [articles, searchQuery, categoryFilter]);
 
   const handleDelete = async () => {
     if (!articleToDelete) return;
@@ -527,7 +460,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
                 <select
                   value={categoryFilter}
                   onChange={e => setCategoryFilter(e.target.value)}
-                  className="px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8]"
+                  className="px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]"
                 >
                   <option value="">All Categories</option>
                   {categories.map(cat => (
@@ -535,19 +468,6 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
                   ))}
                 </select>
               )}
-              
-              {/* Track Filter */}
-              <select
-                value={trackFilter}
-                onChange={e => setTrackFilter(e.target.value)}
-                className="px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8]"
-              >
-                <option value="">All Tracks</option>
-                <option value="none">No Track</option>
-                {TRACK_OPTIONS.filter(t => t.value).map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
               
               <Button
                 onClick={() => { setArticleToEdit(null); setIsFormOpen(true); }}
@@ -568,8 +488,6 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
                 <TableHead className="font-albert">Author</TableHead>
                 <TableHead className="font-albert">Published</TableHead>
                 <TableHead className="font-albert">Category</TableHead>
-                <TableHead className="font-albert">Type</TableHead>
-                <TableHead className="font-albert">Track</TableHead>
                 <TableHead className="font-albert">Featured</TableHead>
                 <TableHead className="font-albert">Trending</TableHead>
                 <TableHead className="font-albert text-right">Actions</TableHead>
@@ -578,40 +496,17 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
             <TableBody>
               {filteredArticles.map(article => (
                 <TableRow key={article.id}>
-                  <TableCell className="font-albert font-medium max-w-[200px] truncate text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8]">
+                  <TableCell className="font-albert font-medium max-w-[200px] truncate text-[#1a1a1a] dark:text-[#f5f5f8]">
                     {article.title}
                   </TableCell>
-                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2]">
+                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
                     {article.authorName}
                   </TableCell>
-                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2]">
+                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
                     {formatDate(article.publishedAt)}
                   </TableCell>
-                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2]">
+                  <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">
                     {article.category || '—'}
-                  </TableCell>
-                  <TableCell>
-                    {article.articleType ? (
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium font-albert ${
-                        article.articleType === 'playbook' ? 'bg-emerald-100 text-emerald-700' :
-                        article.articleType === 'trend' ? 'bg-purple-100 text-purple-700' :
-                        'bg-orange-100 text-orange-700'
-                      }`}>
-                        {article.articleType === 'caseStudy' ? 'Case Study' : 
-                         article.articleType.charAt(0).toUpperCase() + article.articleType.slice(1)}
-                      </span>
-                    ) : (
-                      <span className="text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#7d8190] text-sm font-albert">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {article.track ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 font-albert">
-                        {getTrackDisplayName(article.track)}
-                      </span>
-                    ) : (
-                      <span className="text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#7d8190] text-sm font-albert">—</span>
-                    )}
                   </TableCell>
                   <TableCell>
                     {article.featured ? (
@@ -619,7 +514,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
                         Yes
                       </span>
                     ) : (
-                      <span className="text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#7d8190] text-sm font-albert">No</span>
+                      <span className="text-[#5f5a55] dark:text-[#b2b6c2] text-sm font-albert">No</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -628,7 +523,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
                         Yes
                       </span>
                     ) : (
-                      <span className="text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#7d8190] text-sm font-albert">No</span>
+                      <span className="text-[#5f5a55] dark:text-[#b2b6c2] text-sm font-albert">No</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
@@ -671,6 +566,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
         onClose={() => { setIsFormOpen(false); setArticleToEdit(null); }}
         onSave={fetchArticles}
         uploadEndpoint={uploadEndpoint}
+        apiEndpoint={apiEndpoint}
       />
 
       {/* Delete Confirmation */}

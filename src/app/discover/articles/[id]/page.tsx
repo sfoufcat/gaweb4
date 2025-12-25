@@ -1,17 +1,50 @@
 'use client';
 
-import { use } from 'react';
+import { use, useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useArticle } from '@/hooks/useDiscover';
 import { BackButton, ShareButton, RichContent } from '@/components/discover';
+import { User } from 'lucide-react';
 
 interface ArticlePageProps {
   params: Promise<{ id: string }>;
 }
 
+interface AuthorProfile {
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  imageUrl?: string;
+  avatarUrl?: string;
+  bio?: string;
+  profession?: string;
+}
+
 export default function ArticleDetailPage({ params }: ArticlePageProps) {
   const { id } = use(params);
   const { article, loading } = useArticle(id);
+  const [authorProfile, setAuthorProfile] = useState<AuthorProfile | null>(null);
+  const [authorLoading, setAuthorLoading] = useState(false);
+
+  // Fetch author profile dynamically if authorId is available
+  useEffect(() => {
+    if (article?.authorId) {
+      setAuthorLoading(true);
+      fetch(`/api/user/${article.authorId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.exists && data.user) {
+            setAuthorProfile(data.user);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to fetch author profile:', err);
+        })
+        .finally(() => {
+          setAuthorLoading(false);
+        });
+    }
+  }, [article?.authorId]);
 
   if (loading) {
     return (
@@ -38,6 +71,11 @@ export default function ArticleDetailPage({ params }: ArticlePageProps) {
       year: 'numeric' 
     });
   };
+
+  // Use dynamic author data if available, otherwise fall back to static fields
+  const authorAvatarUrl = authorProfile?.avatarUrl || authorProfile?.imageUrl || article.authorAvatarUrl;
+  const authorBio = authorProfile?.bio || article.authorBio;
+  const authorName = article.authorName; // Keep using the stored name for consistency
 
   return (
     <div className="min-h-screen bg-app-bg pb-24 lg:pb-8">
@@ -98,29 +136,37 @@ export default function ArticleDetailPage({ params }: ArticlePageProps) {
               Author
             </h2>
             
-            {/* Author Avatar */}
-            {article.authorAvatarUrl && (
+            {/* Author Avatar - Dynamic or fallback */}
+            {authorLoading ? (
+              <div className="w-12 h-12 rounded-full bg-earth-100 dark:bg-[#262b35] animate-pulse" />
+            ) : authorAvatarUrl ? (
               <div className="relative w-12 h-12 rounded-full overflow-hidden">
                 <Image
-                  src={article.authorAvatarUrl}
-                  alt={article.authorName}
+                  src={authorAvatarUrl}
+                  alt={authorName}
                   fill
                   className="object-cover"
                 />
+              </div>
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-[#a07855] flex items-center justify-center">
+                <User className="w-6 h-6 text-white" />
               </div>
             )}
             
             {/* Author Name & Title */}
             <h3 className="font-albert font-semibold text-lg text-text-primary tracking-[-1px] leading-[1.3]">
-              {article.authorName}, {article.authorTitle}
+              {authorName}{article.authorTitle ? `, ${article.authorTitle}` : ''}
             </h3>
             
-            {/* Author Bio */}
-            {article.authorBio && (
+            {/* Author Bio - Dynamic */}
+            {authorLoading ? (
+              <div className="h-12 bg-earth-100 dark:bg-[#262b35] rounded animate-pulse" />
+            ) : authorBio ? (
               <p className="font-sans text-base text-text-secondary tracking-[-0.3px] leading-[1.2]">
-                {article.authorBio}
+                {authorBio}
               </p>
-            )}
+            ) : null}
             
             {/* Published Date */}
             <p className="font-sans text-sm text-text-muted leading-[1.2]">

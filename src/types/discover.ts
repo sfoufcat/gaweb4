@@ -55,20 +55,26 @@ export type DiscoverArticle = {
   title: string;
   coverImageUrl: string;
   content: string;       // rich text / markdown
+  /** User ID of the author - used for dynamic bio/avatar lookup */
+  authorId?: string;
   authorName: string;
-  authorTitle: string;
+  /** Optional author title (e.g., "Life Coach", "CEO") */
+  authorTitle?: string;
+  /** @deprecated Use authorId for dynamic avatar lookup from user profile */
   authorAvatarUrl?: string;
+  /** @deprecated Use authorId for dynamic bio lookup from user profile */
   authorBio?: string;
   publishedAt: string;
   readingTimeMinutes?: number;
   category?: string;
+  /** @deprecated Use category with org-specific categories instead */
   articleType?: ArticleType; // playbook, trend, or caseStudy
   /** @deprecated Use programIds instead. Track-based filtering is being phased out. */
   track?: UserTrack | null;
   /** Program IDs this content belongs to. Used for program-scoped content delivery. */
   programIds?: string[];
   organizationId?: string;   // Clerk Organization ID for multi-tenancy
-  featured?: boolean;    // for Recommended section
+  featured?: boolean;    // for Featured section
   trending?: boolean;    // for Trending section
   createdAt?: string;
   updatedAt?: string;

@@ -1890,6 +1890,9 @@ export interface OrgSettings {
   programEmptyStateBehavior?: EmptyStateBehavior; // default: 'discover'
   squadEmptyStateBehavior?: EmptyStateBehavior;   // default: 'discover'
   
+  // Content categories (coach-defined)
+  articleCategories?: string[];        // Coach-defined article categories for the org
+  
   createdAt: string;                   // ISO timestamp
   updatedAt: string;                   // ISO timestamp
 }

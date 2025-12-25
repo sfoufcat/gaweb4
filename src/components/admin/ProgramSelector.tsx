@@ -30,6 +30,8 @@ interface ProgramSelectorProps {
   onChange: (programIds: string[]) => void;
   placeholder?: string;
   className?: string;
+  /** API endpoint to fetch programs from. Defaults to /api/admin/programs for admin, use /api/coach/org-programs for coach context */
+  programsApiEndpoint?: string;
 }
 
 export function ProgramSelector({
@@ -37,6 +39,7 @@ export function ProgramSelector({
   onChange,
   placeholder = 'Select programs...',
   className = '',
+  programsApiEndpoint = '/api/admin/programs',
 }: ProgramSelectorProps) {
   const [open, setOpen] = useState(false);
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -47,7 +50,7 @@ export function ProgramSelector({
   useEffect(() => {
     const fetchPrograms = async () => {
       try {
-        const response = await fetch('/api/admin/programs');
+        const response = await fetch(programsApiEndpoint);
         if (response.ok) {
           const data = await response.json();
           setPrograms(data.programs || []);
@@ -60,7 +63,7 @@ export function ProgramSelector({
     };
 
     fetchPrograms();
-  }, []);
+  }, [programsApiEndpoint]);
 
   const toggleProgram = (programId: string) => {
     if (value.includes(programId)) {
