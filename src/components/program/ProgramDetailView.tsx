@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Phone, ChevronDown, ChevronUp, ExternalLink, Users, Loader2 } from 'lucide-react';
+import { ArrowLeft, Phone, ChevronDown, ExternalLink, Users, Loader2 } from 'lucide-react';
 import type { EnrolledProgramWithDetails } from '@/hooks/useMyPrograms';
-import type { DiscoverCourse, DiscoverArticle, DiscoverEvent } from '@/types/discover';
+import { useProgramContent } from '@/hooks/useProgramContent';
 import { ArticleCard } from '@/components/discover/ArticleCard';
 import { ProgramSkeleton } from '@/components/program/ProgramSkeleton';
 
@@ -32,44 +32,6 @@ interface ProgramDetailViewProps {
   onBack?: () => void;
   showBackButton?: boolean;
   onRefresh?: () => void;
-}
-
-// Types for program-specific content
-interface ProgramLink {
-  id: string;
-  title: string;
-  url: string;
-  description?: string;
-}
-
-interface ProgramDownload {
-  id: string;
-  title: string;
-  fileUrl: string;
-  fileType?: string;
-  fileSize?: string;
-}
-
-interface ProgramDayTask {
-  id: string;
-  title: string;
-  type: 'course' | 'article' | 'habit' | 'task' | 'event';
-  completed?: boolean;
-}
-
-interface ProgramDay {
-  dayIndex: number;
-  tasks: ProgramDayTask[];
-}
-
-interface ProgramContent {
-  courses: DiscoverCourse[];
-  articles: DiscoverArticle[];
-  events: DiscoverEvent[];
-  links: ProgramLink[];
-  downloads: ProgramDownload[];
-  days: ProgramDay[];
-  isLoading: boolean;
 }
 
 export function ProgramDetailView({ 
@@ -124,16 +86,16 @@ export function ProgramDetailView({
     }
   };
 
-  // Program-specific content
-  const [content, setContent] = useState<ProgramContent>({
-    courses: [],
-    articles: [],
-    events: [],
-    links: [],
-    downloads: [],
-    days: [],
-    isLoading: true,
-  });
+  // Program-specific content - using SWR for caching between tab switches
+  const {
+    courses,
+    articles,
+    events,
+    links,
+    downloads,
+    days,
+    isLoading: contentLoading,
+  } = useProgramContent(program.id);
 
   // 3-day focus accordion state - all collapsed by default
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
@@ -163,73 +125,46 @@ export function ProgramDetailView({
       {
         dayIndex: currentDayIndex,
         label: 'Today',
-        tasks: content.days.find(d => d.dayIndex === currentDayIndex)?.tasks || [],
+        tasks: days.find(d => d.dayIndex === currentDayIndex)?.tasks || [],
       },
       {
         dayIndex: currentDayIndex + 1,
         label: 'Tomorrow',
-        tasks: content.days.find(d => d.dayIndex === currentDayIndex + 1)?.tasks || [],
+        tasks: days.find(d => d.dayIndex === currentDayIndex + 1)?.tasks || [],
       },
       {
         dayIndex: currentDayIndex + 2,
         label: dayNames[(dayOfWeek + 2) % 7],
-        tasks: content.days.find(d => d.dayIndex === currentDayIndex + 2)?.tasks || [],
+        tasks: days.find(d => d.dayIndex === currentDayIndex + 2)?.tasks || [],
       },
     ];
-  }, [progress.currentDay, content.days]);
+  }, [progress.currentDay, days]);
 
   // Check if any days have tasks
   const hasAnyTasks = threeDayFocus.some(day => day.tasks.length > 0);
-
-  // Fetch program-specific content
-  useEffect(() => {
-    const fetchContent = async () => {
-      try {
-        const response = await fetch(`/api/programs/${program.id}/content`);
-        if (response.ok) {
-          const data = await response.json();
-          setContent({
-            courses: data.courses || [],
-            articles: data.articles || [],
-            events: data.events || [],
-            links: data.links || [],
-            downloads: data.downloads || [],
-            days: data.days || [],
-            isLoading: false,
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching program content:', error);
-      } finally {
-        setContent(prev => ({ ...prev, isLoading: false }));
-      }
-    };
-
-    fetchContent();
-  }, [program.id]);
 
   // Format week progress
   const weekProgress = Math.ceil(progress.currentDay / 7);
   const totalWeeks = Math.ceil(progress.totalDays / 7);
 
   // Get upcoming events
-  const upcomingEvents = content.events.filter(e => new Date(e.date) >= new Date());
+  const upcomingEvents = events.filter(e => new Date(e.date) >= new Date());
 
   // Calculate member count from squad (memberIds) or cohort
   const memberCount = squad?.memberIds?.length || 0;
 
   // Check if there's any content at all
   const hasContent = 
-    content.courses.length > 0 || 
-    content.articles.length > 0 || 
-    content.events.length > 0 ||
-    content.links.length > 0 ||
-    content.downloads.length > 0 ||
+    courses.length > 0 || 
+    articles.length > 0 || 
+    events.length > 0 ||
+    links.length > 0 ||
+    downloads.length > 0 ||
     (program.defaultHabits && program.defaultHabits.length > 0);
 
   // Show full-page skeleton while content is loading
   // Hide pill menu in skeleton since parent already renders it
-  if (content.isLoading) {
+  if (contentLoading) {
     return <ProgramSkeleton showPillMenu={false} />;
   }
 
@@ -624,14 +559,14 @@ export function ProgramDetailView({
       )}
 
       {/* Courses (horizontal scroll) */}
-      {content.courses.length > 0 && (
+      {courses.length > 0 && (
         <div className="space-y-4">
           <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
             Courses
           </h2>
           
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {content.courses.map((course) => (
+            {courses.map((course) => (
               <Link
                 key={course.id}
                 href={`/discover/courses/${course.id}`}
@@ -650,14 +585,14 @@ export function ProgramDetailView({
       )}
 
       {/* Articles */}
-      {content.articles.length > 0 && (
+      {articles.length > 0 && (
         <div className="space-y-3">
           <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
             Articles
           </h2>
           
           <div className="space-y-2">
-            {content.articles.slice(0, 3).map((article) => (
+            {articles.slice(0, 3).map((article) => (
               <ArticleCard key={article.id} article={article} variant="grid" />
             ))}
           </div>
@@ -665,14 +600,14 @@ export function ProgramDetailView({
       )}
 
       {/* Links (pill chips) */}
-      {content.links.length > 0 && (
+      {links.length > 0 && (
         <div className="space-y-4">
           <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
             Links
           </h2>
           
           <div className="flex flex-wrap gap-2">
-            {content.links.map((link) => (
+            {links.map((link) => (
               <a
                 key={link.id}
                 href={link.url}
@@ -691,14 +626,14 @@ export function ProgramDetailView({
       )}
 
       {/* Downloads (horizontal scroll) */}
-      {content.downloads.length > 0 && (
+      {downloads.length > 0 && (
         <div className="space-y-4">
           <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
             Downloads
           </h2>
           
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {content.downloads.map((download) => (
+            {downloads.map((download) => (
               <a
                 key={download.id}
                 href={download.fileUrl}
@@ -719,7 +654,7 @@ export function ProgramDetailView({
 
 
       {/* No content message - only if completely empty */}
-      {!content.isLoading && !hasContent && !hasAnyTasks && (
+      {!contentLoading && !hasContent && !hasAnyTasks && (
         <div className="text-center py-8">
           <p className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2]">
             No program content available yet.

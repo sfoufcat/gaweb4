@@ -3,9 +3,9 @@
 // Force dynamic rendering for this page
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { useSquad } from '@/hooks/useSquad';
 import { SquadStats } from '@/components/squad/SquadStats';
@@ -23,22 +23,45 @@ import { useMenuTitles } from '@/contexts/BrandingContext';
  * - Explanation cards
  * 
  * Accessed from the "View squad stats" button in the Squad tab.
+ * 
+ * URL params:
+ * - squadId: specific squad to show stats for
+ * - programId: program context for back navigation
  */
 export default function SquadStatsPage() {
   const { user, isLoaded: userLoaded } = useUser();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { squad: squadTitle, squadLower } = useMenuTitles();
   
+  // Get URL params for context
+  const squadIdParam = searchParams.get('squadId');
+  const programIdParam = searchParams.get('programId');
+  
   const {
-    squad,
-    stats,
+    squad: activeSquad,
+    squads,
+    stats: activeStats,
+    statsBySquad,
+    membersBySquad,
     isLoading,
     isLoadingStats,
     fetchStatsTabData,
     hasMoreContributions,
     isLoadingMoreContributions,
     loadMoreContributions,
+    setActiveSquadId,
   } = useSquad();
+  
+  // If squadId is provided, use that specific squad; otherwise use active squad
+  const { squad, stats } = useMemo(() => {
+    if (squadIdParam && squads.length > 0) {
+      const targetSquad = squads.find(s => s.id === squadIdParam);
+      const targetStats = statsBySquad[squadIdParam] || null;
+      return { squad: targetSquad || null, stats: targetStats };
+    }
+    return { squad: activeSquad, stats: activeStats };
+  }, [squadIdParam, squads, statsBySquad, activeSquad, activeStats]);
   
   const [mounted, setMounted] = useState(false);
   const [showStreakSheet, setShowStreakSheet] = useState(false);
@@ -47,6 +70,16 @@ export default function SquadStatsPage() {
     setMounted(true);
   }, []);
   
+  // Set the active squad if squadId is provided (ensures stats are fetched for correct squad)
+  useEffect(() => {
+    if (mounted && squadIdParam && squads.length > 0) {
+      const targetSquad = squads.find(s => s.id === squadIdParam);
+      if (targetSquad) {
+        setActiveSquadId(squadIdParam);
+      }
+    }
+  }, [mounted, squadIdParam, squads, setActiveSquadId]);
+  
   // Load stats data when component mounts
   useEffect(() => {
     if (mounted && userLoaded && user) {
@@ -54,9 +87,16 @@ export default function SquadStatsPage() {
     }
   }, [mounted, userLoaded, user, fetchStatsTabData]);
   
+  // Handle back navigation with proper context
   const handleBack = useCallback(() => {
-    router.push('/program?tab=squad');
-  }, [router]);
+    if (programIdParam) {
+      // Navigate back to specific program's squad tab
+      router.push(`/program?programId=${programIdParam}&tab=squad`);
+    } else {
+      // Default: navigate to main squad tab
+      router.push('/program?tab=squad');
+    }
+  }, [router, programIdParam]);
   
   // Loading state
   if (!mounted || !userLoaded || isLoading) {

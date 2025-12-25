@@ -14,6 +14,7 @@ import { getProfileUrl } from '@/lib/utils';
 import { VoiceMessageAttachment } from './VoiceRecorder';
 import { PollMessageCard } from './PollMessageCard';
 import { PollResultsSheet } from './PollResultsSheet';
+import { PostPreviewAttachment } from './PostPreviewAttachment';
 import type { ChatPollState } from '@/types/poll';
 
 /**
@@ -535,14 +536,17 @@ export function CustomMessage() {
               {/* Attachments */}
               {hasAttachments && (
                 <div className="mb-2">
-                  {/* Separate audio attachments from other types */}
+                  {/* Separate different attachment types */}
                   {(() => {
                     const attachments = message.attachments || [];
                     const audioAttachments = attachments.filter(
                       (att) => att.type === 'audio' || att.mime_type?.startsWith('audio/')
                     );
+                    const postPreviewAttachments = attachments.filter(
+                      (att) => att.type === 'post_preview'
+                    );
                     const otherAttachments = attachments.filter(
-                      (att) => att.type !== 'audio' && !att.mime_type?.startsWith('audio/')
+                      (att) => att.type !== 'audio' && !att.mime_type?.startsWith('audio/') && att.type !== 'post_preview'
                     );
                     
                     return (
@@ -555,6 +559,31 @@ export function CustomMessage() {
                             isMine={isMine}
                           />
                         ))}
+                        
+                        {/* Render post preview attachments */}
+                        {postPreviewAttachments.map((att, index) => {
+                          const postAtt = att as typeof att & { 
+                            title?: string; 
+                            text?: string; 
+                            image_url?: string; 
+                            title_link?: string;
+                            author_name?: string;
+                            author_icon?: string;
+                            post_id?: string;
+                          };
+                          return (
+                            <PostPreviewAttachment
+                              key={`post-preview-${index}`}
+                              title={postAtt.title || 'Shared post'}
+                              text={postAtt.text}
+                              imageUrl={postAtt.image_url}
+                              linkUrl={postAtt.title_link || ''}
+                              authorName={postAtt.author_name}
+                              authorIcon={postAtt.author_icon}
+                              isMine={isMine}
+                            />
+                          );
+                        })}
                         
                         {/* Render other attachments with default renderer */}
                         {otherAttachments.length > 0 && (

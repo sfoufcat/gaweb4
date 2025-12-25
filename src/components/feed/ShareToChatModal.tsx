@@ -10,7 +10,19 @@ import { useCoachSquads } from '@/hooks/useCoachSquads';
 import { ANNOUNCEMENTS_CHANNEL_ID, SOCIAL_CORNER_CHANNEL_ID, SHARE_WINS_CHANNEL_ID } from '@/lib/chat-constants';
 import type { Channel } from 'stream-chat';
 
+// Post data interface for the attachment
+interface PostData {
+  id: string;
+  text?: string;
+  images?: string[];
+  author?: {
+    name: string;
+    imageUrl?: string;
+  };
+}
+
 interface ShareToChatModalProps {
+  postId: string;
   postUrl: string;
   onClose: () => void;
   onSuccess?: () => void;
@@ -22,9 +34,9 @@ interface ShareToChatModalProps {
  * - Desktop: Centered popup
  * - Mobile: Bottom sheet
  * - Shows user's chat channels
- * - Allows selecting one and sending the post link
+ * - Allows selecting one and sending the post link with rich preview
  */
-export function ShareToChatModal({ postUrl, onClose, onSuccess }: ShareToChatModalProps) {
+export function ShareToChatModal({ postId, postUrl, onClose, onSuccess }: ShareToChatModalProps) {
   const { client } = useStreamChatClient();
   const { colors, isDefault } = useBrandingValues();
   
@@ -39,8 +51,29 @@ export function ShareToChatModal({ postUrl, onClose, onSuccess }: ShareToChatMod
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [postData, setPostData] = useState<PostData | null>(null);
 
   const accentColor = isDefault ? '#a07855' : colors.accentLight;
+
+  // Fetch post data for rich preview
+  useEffect(() => {
+    const fetchPostData = async () => {
+      try {
+        const response = await fetch(`/api/feed/${postId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setPostData(data.post);
+        }
+      } catch (err) {
+        console.error('Failed to fetch post data:', err);
+        // Continue without post data - will fall back to simple link
+      }
+    };
+
+    if (postId) {
+      fetchPostData();
+    }
+  }, [postId]);
 
   // Fetch user's channels
   useEffect(() => {
@@ -108,7 +141,7 @@ export function ShareToChatModal({ postUrl, onClose, onSuccess }: ShareToChatMod
           }
         });
 
-        // Filter out channels where user cannot send messages
+        // Filter out channels where user cannot send messages or that don't have proper names
         const validChannels = Array.from(allChannelsMap.values()).filter(channel => {
           // Check capabilities if available
           const capabilities = channel.data?.own_capabilities as string[] | undefined;
@@ -116,12 +149,42 @@ export function ShareToChatModal({ postUrl, onClose, onSuccess }: ShareToChatMod
             return false;
           }
           
-          // Special case for Announcements: only admins can post
-          // If we can't check admin status easily here (we could pass it in), assume read-only if not capability
-          // But capabilities usually reflect permissions.
-          // For now, let's rely on capabilities.
+          // Filter out channels that would display without a meaningful name
+          const channelId = channel.id;
+          const channelData = channel.data as Record<string, unknown> | undefined;
+          const members = Object.values(channel.state.members).filter(m => m.user);
+          const otherMember = members.find(m => m.user?.id !== client.userID);
           
-          return true;
+          // Special channels are always valid
+          if (channelId === ANNOUNCEMENTS_CHANNEL_ID || 
+              channelId === SOCIAL_CORNER_CHANNEL_ID || 
+              channelId === SHARE_WINS_CHANNEL_ID) {
+            return true;
+          }
+          
+          // Check if channel has a name
+          const explicitName = channelData?.name as string | undefined;
+          if (explicitName) return true;
+          
+          // Check if it's a DM with a named user
+          const isDM = channelId?.startsWith('dm-') || (members.length === 2 && !explicitName);
+          if (isDM && otherMember?.user) {
+            const userData = otherMember.user as unknown as Record<string, unknown>;
+            const userName = (otherMember.user.name as string) || 
+                           `${(userData.firstName as string) || ''} ${(userData.lastName as string) || ''}`.trim();
+            if (userName) return true;
+          }
+          
+          // Check for squad or coaching channels
+          const isSquad = channelId?.startsWith('squad-') || 
+                          Boolean(channelData?.isSquadChannel) || 
+                          Boolean(channelData?.squadId);
+          const isCoaching = channelId?.startsWith('coaching-') || Boolean(channelData?.coachingId);
+          
+          if (isSquad || isCoaching) return true;
+          
+          // Filter out channels without meaningful identification
+          return false;
         });
         
         // Sort manually by last_message_at since we merged two lists
@@ -151,9 +214,36 @@ export function ShareToChatModal({ postUrl, onClose, onSuccess }: ShareToChatMod
     setError(null);
 
     try {
-      // Send message to the selected channel
+      // Build the message with a rich post preview attachment
+      const truncatedText = postData?.text 
+        ? (postData.text.length > 150 ? postData.text.substring(0, 150) + '...' : postData.text)
+        : undefined;
+
+      // Create attachment for rich post preview
+      const attachment: Record<string, unknown> = {
+        type: 'post_preview',
+        title: postData?.author?.name ? `${postData.author.name}'s post` : 'Shared post',
+        text: truncatedText,
+        title_link: postUrl,
+        og_scrape_url: postUrl,
+        post_id: postId,
+      };
+
+      // Add image if available
+      if (postData?.images && postData.images.length > 0) {
+        attachment.image_url = postData.images[0];
+      }
+
+      // Add author image if available
+      if (postData?.author?.imageUrl) {
+        attachment.author_icon = postData.author.imageUrl;
+        attachment.author_name = postData.author.name;
+      }
+
+      // Send message with attachment
       await selectedChannel.sendMessage({
-        text: `📢 Check out this post: ${postUrl}`,
+        text: 'Check out this post!',
+        attachments: [attachment],
       });
 
       setSuccess(true);
@@ -169,17 +259,31 @@ export function ShareToChatModal({ postUrl, onClose, onSuccess }: ShareToChatMod
     } finally {
       setIsSending(false);
     }
-  }, [selectedChannel, client, postUrl, onClose, onSuccess]);
+  }, [selectedChannel, client, postUrl, postId, postData, onClose, onSuccess]);
 
   // Get channel display info
   const getChannelInfo = (channel: Channel) => {
+    const channelId = channel.id;
     const channelData = channel.data as Record<string, unknown> | undefined;
     const members = Object.values(channel.state.members).filter(m => m.user);
     const otherMember = members.find(m => m.user?.id !== client?.userID);
     
+    // Check for special global channels first
+    if (channelId === ANNOUNCEMENTS_CHANNEL_ID) {
+      return { name: 'Announcements', image: undefined, isDM: false, isSquad: false, isSpecial: true };
+    }
+    if (channelId === SOCIAL_CORNER_CHANNEL_ID) {
+      return { name: 'Social Corner', image: undefined, isDM: false, isSquad: false, isSpecial: true };
+    }
+    if (channelId === SHARE_WINS_CHANNEL_ID) {
+      return { name: 'Share your wins', image: undefined, isDM: false, isSquad: false, isSpecial: true };
+    }
+    
     // For DMs, show the other person's name
-    const isDM = channel.id?.startsWith('dm-') || members.length === 2;
-    const isSquad = channel.id?.startsWith('squad-') || channelData?.isSquadChannel;
+    const isDM = channelId?.startsWith('dm-') || (members.length === 2 && !channelData?.name);
+    const isSquad = channelId?.startsWith('squad-') || 
+                    Boolean(channelData?.isSquadChannel) || 
+                    Boolean(channelData?.squadId);
     
     let name = (channelData?.name as string) || '';
     let image = channelData?.image as string | undefined;
@@ -189,15 +293,21 @@ export function ShareToChatModal({ postUrl, onClose, onSuccess }: ShareToChatMod
       const userData = otherMember.user as unknown as Record<string, unknown>;
       name = (otherMember.user.name as string) || 
              `${(userData.firstName as string) || ''} ${(userData.lastName as string) || ''}`.trim() || 
-             'User';
+             '';
       image = otherMember.user.image as string | undefined;
     }
     
+    // Check for coaching channel
+    const isCoaching = channelId?.startsWith('coaching-') || Boolean(channelData?.coachingId);
+    if (!name && isCoaching) {
+      name = 'Coach Chat';
+    }
+    
     if (!name) {
-      name = isSquad ? 'Squad Chat' : 'Chat';
+      name = isSquad ? 'Squad Chat' : '';
     }
 
-    return { name, image, isDM, isSquad };
+    return { name, image, isDM, isSquad, isSpecial: false };
   };
 
   return (
@@ -265,9 +375,17 @@ export function ShareToChatModal({ postUrl, onClose, onSuccess }: ShareToChatMod
             // Channel list
             <div className="space-y-1">
               {channels.map((channel) => {
-                const { name, image, isDM, isSquad } = getChannelInfo(channel);
+                const { name, image, isDM, isSquad, isSpecial } = getChannelInfo(channel);
                 const isSelected = selectedChannel?.id === channel.id;
                 const initial = name.charAt(0).toUpperCase();
+                
+                // Get channel type label
+                const getTypeLabel = () => {
+                  if (isSpecial) return 'Community';
+                  if (isSquad) return 'Squad';
+                  if (isDM) return 'Direct Message';
+                  return 'Chat';
+                };
 
                 return (
                   <button
@@ -297,20 +415,20 @@ export function ShareToChatModal({ postUrl, onClose, onSuccess }: ShareToChatMod
                       )}
                     </div>
 
-                    {/* Name */}
-                    <div className="flex-1 text-left">
+                    {/* Name - constrained width when selected to leave room for checkmark */}
+                    <div className={`flex-1 text-left min-w-0 ${isSelected ? 'max-w-[calc(100%-80px)]' : ''}`}>
                       <p className="font-medium text-[15px] text-[#1a1a1a] dark:text-[#faf8f6] truncate">
                         {name}
                       </p>
                       <p className="text-[12px] text-[#8a857f]">
-                        {isSquad ? 'Squad' : isDM ? 'Direct Message' : 'Chat'}
+                        {getTypeLabel()}
                       </p>
                     </div>
 
                     {/* Selection indicator */}
                     {isSelected && (
                       <div 
-                        className="w-5 h-5 rounded-full flex items-center justify-center"
+                        className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
                         style={{ backgroundColor: accentColor }}
                       >
                         <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>

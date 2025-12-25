@@ -233,7 +233,7 @@ export function SquadTabContent({ programId, squadId, onBack }: SquadTabContentP
 
       {/* View Squad Stats Button */}
       <button
-        onClick={() => router.push('/program/squad-stats')}
+        onClick={() => router.push(`/program/squad-stats?squadId=${squad.id}${programId ? `&programId=${programId}` : ''}`)}
         className="w-full bg-white dark:bg-[#171b22] border border-[rgba(215,210,204,0.5)] rounded-[32px] px-4 py-4 font-bold text-[16px] text-[#2c2520] dark:text-[#f5f5f8] leading-[1.4] tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.1)] hover:shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
       >
         <svg

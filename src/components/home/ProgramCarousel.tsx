@@ -45,10 +45,10 @@ export function ProgramCarousel({ enrollments, isLoading }: ProgramCarouselProps
     return (
       <Link 
         href="/discover"
-        className="block bg-[#E8F5E9] dark:bg-[#1a2e1f] border border-[#C8E6C9] dark:border-[#2E5435] rounded-[20px] p-5 hover:shadow-lg hover:border-[#43A047]/40 dark:hover:border-[#4CAF50]/40 transition-all duration-300 group"
+        className="block bg-[#ECFFF2] dark:bg-[#1a2e1f] border border-[#D3F0D8] dark:border-[#2E5435] rounded-[20px] p-5 hover:shadow-lg hover:border-[#4CAF51]/40 dark:hover:border-[#4CAF50]/40 transition-all duration-300 group"
       >
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-xl bg-[#C8E6C9] dark:bg-[#2E5435] flex items-center justify-center flex-shrink-0">
+          <div className="w-14 h-14 rounded-xl bg-[#D3F0D8] dark:bg-[#2E5435] flex items-center justify-center flex-shrink-0">
             <BookOpen className="w-7 h-7 text-[#2E7D6B] dark:text-[#4CAF50]" />
           </div>
           <div className="flex-1 min-w-0">
@@ -59,7 +59,7 @@ export function ProgramCarousel({ enrollments, isLoading }: ProgramCarouselProps
               Find structured coaching programs to accelerate your growth.
             </p>
           </div>
-          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#43A047] dark:bg-[#4CAF50] flex items-center justify-center group-hover:opacity-90 group-hover:scale-105 transition-all">
+          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#4CAF51] dark:bg-[#4CAF50] flex items-center justify-center group-hover:opacity-90 group-hover:scale-105 transition-all">
             <ChevronRight className="w-5 h-5 text-white" />
           </div>
         </div>
@@ -168,9 +168,9 @@ export function ProgramCarousel({ enrollments, isLoading }: ProgramCarouselProps
           href="/discover"
           className="flex-shrink-0 w-[260px] sm:w-[280px] snap-start"
         >
-          <div className="bg-[#E8F5E9] dark:bg-[#1a2e1f] border border-dashed border-[#C8E6C9] dark:border-[#2E5435] rounded-[20px] h-full min-h-[200px] flex items-center justify-center hover:border-[#43A047]/60 dark:hover:border-[#4CAF50]/60 transition-all group">
+          <div className="bg-[#ECFFF2] dark:bg-[#1a2e1f] border border-dashed border-[#D3F0D8] dark:border-[#2E5435] rounded-[20px] h-full min-h-[200px] flex items-center justify-center hover:border-[#4CAF51]/60 dark:hover:border-[#4CAF50]/60 transition-all group">
             <div className="text-center p-4">
-              <div className="w-12 h-12 mx-auto rounded-full bg-[#C8E6C9] dark:bg-[#2E5435] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+              <div className="w-12 h-12 mx-auto rounded-full bg-[#D3F0D8] dark:bg-[#2E5435] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                 <BookOpen className="w-6 h-6 text-[#2E7D6B] dark:text-[#4CAF50]" />
               </div>
               <p className="font-albert font-semibold text-[14px] text-[#2E7D6B] dark:text-[#4CAF50]">
