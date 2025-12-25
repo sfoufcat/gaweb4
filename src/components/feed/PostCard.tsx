@@ -54,18 +54,21 @@ export function PostCard({
   const [imageError, setImageError] = useState<Record<string, boolean>>({});
   const [likeAnimating, setLikeAnimating] = useState(false);
   const [bookmarkAnimating, setBookmarkAnimating] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   const isOwnPost = user?.id === post.authorId;
 
-  // Get menu position for fixed positioning (escapes overflow containers)
-  const getMenuPosition = () => {
-    if (!menuButtonRef.current) return {};
-    const rect = menuButtonRef.current.getBoundingClientRect();
-    return {
-      top: rect.bottom + 4,
-      right: window.innerWidth - rect.right,
-    };
+  // Handle menu toggle with position calculation
+  const handleMenuToggle = () => {
+    if (!showMenu && menuButtonRef.current) {
+      const rect = menuButtonRef.current.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom + 4,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setShowMenu(!showMenu);
   };
 
   // Get author display info
@@ -245,7 +248,7 @@ export function PostCard({
         <div className="relative">
           <button
             ref={menuButtonRef}
-            onClick={() => setShowMenu(!showMenu)}
+            onClick={handleMenuToggle}
             className="p-2 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
           >
             <svg className="w-5 h-5 text-[#8a857f]" fill="currentColor" viewBox="0 0 24 24">
@@ -256,7 +259,7 @@ export function PostCard({
           </button>
 
           {/* Dropdown menu */}
-          {showMenu && (
+          {showMenu && menuPosition && (
             <>
               <div
                 className="fixed inset-0 z-10"
@@ -264,7 +267,7 @@ export function PostCard({
               />
               <div 
                 className="fixed w-48 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-20 overflow-hidden"
-                style={getMenuPosition()}
+                style={{ top: menuPosition.top, right: menuPosition.right }}
               >
                 {isOwnPost ? (
                   <>

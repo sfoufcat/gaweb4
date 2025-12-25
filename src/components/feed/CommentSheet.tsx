@@ -320,17 +320,20 @@ function CommentItem({
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const [editText, setEditText] = useState(comment.text);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Get menu position for fixed positioning (escapes overflow containers)
-  const getMenuPosition = () => {
-    if (!menuButtonRef.current) return {};
-    const rect = menuButtonRef.current.getBoundingClientRect();
-    return {
-      top: rect.bottom + 4,
-      right: window.innerWidth - rect.right,
-    };
+  // Handle menu toggle with position calculation
+  const handleMenuToggle = () => {
+    if (!showMenu && menuButtonRef.current) {
+      const rect = menuButtonRef.current.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom + 4,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setShowMenu(!showMenu);
   };
 
   const authorName = comment.author
@@ -454,7 +457,7 @@ function CommentItem({
         <div className="relative">
           <button
             ref={menuButtonRef}
-            onClick={() => setShowMenu(!showMenu)}
+            onClick={handleMenuToggle}
             className="p-1 rounded-full opacity-0 group-hover:opacity-100 hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-all"
             disabled={isDeleting}
           >
@@ -465,7 +468,7 @@ function CommentItem({
             </svg>
           </button>
 
-          {showMenu && (
+          {showMenu && menuPosition && (
             <>
               <div
                 className="fixed inset-0 z-10"
@@ -473,7 +476,7 @@ function CommentItem({
               />
               <div 
                 className="fixed w-32 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-20 overflow-hidden"
-                style={getMenuPosition()}
+                style={{ top: menuPosition.top, right: menuPosition.right }}
               >
                 <button
                   onClick={() => {

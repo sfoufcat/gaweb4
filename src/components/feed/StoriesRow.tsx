@@ -28,6 +28,9 @@ interface StoriesRowProps {
 
 /**
  * Internal component for rendering a feed story user with view tracking
+ * 
+ * NOTE: We use a div wrapper (not button) because StoryAvatar renders a button internally.
+ * Nested buttons are invalid HTML and cause click issues in browsers.
  */
 function FeedStoryAvatar({ 
   storyUser, 
@@ -42,16 +45,14 @@ function FeedStoryAvatar({
     storyUser.contentHash
   );
 
+  // This callback is passed to StoryAvatar's onClick prop
+  // StoryAvatar will call this instead of opening its internal player
   const handleClick = () => {
     onViewStory?.(storyUser.id);
   };
 
   return (
-    <button
-      type="button" 
-      onClick={handleClick}
-      className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer"
-    >
+    <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
       <StoryAvatar
         user={{
           firstName: storyUser.firstName,
@@ -66,14 +67,15 @@ function FeedStoryAvatar({
         hasWeekClosed={storyUser.hasWeekClosed}
         hasViewed={hasViewed}
         contentHash={storyUser.contentHash}
-        // Disable StoryAvatar's internal click handler since we handle it at wrapper level
-        disableStory={true}
+        // Pass onClick to override StoryAvatar's internal behavior
+        // When onClick is provided, StoryAvatar calls it instead of opening its player
+        onClick={handleClick}
         size="lg" // 56px to match "Your Story"
       />
       <span className="text-xs text-text-secondary font-medium truncate max-w-[56px]">
         {storyUser.firstName}
       </span>
-    </button>
+    </div>
   );
 }
 
