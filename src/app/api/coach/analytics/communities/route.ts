@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
         squadId: squad.id,
         squadName: squad.name,
         squadAvatarUrl: squad.avatarUrl,
-        coachId: squad.coachId,
+        coachId: squad.coachId ?? undefined,
         totalMembers: memberCount,
         activeMembers,
         activityRate,
