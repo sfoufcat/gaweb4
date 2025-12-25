@@ -200,6 +200,15 @@ export async function PUT(
     if (body.coachInSquads !== undefined && currentData?.type === 'group') {
       updateData.coachInSquads = body.coachInSquads;
     }
+    
+    // Handle assignedCoachIds for group programs
+    if (body.assignedCoachIds !== undefined && currentData?.type === 'group') {
+      if (Array.isArray(body.assignedCoachIds) && body.assignedCoachIds.length > 0) {
+        updateData.assignedCoachIds = body.assignedCoachIds;
+      } else {
+        updateData.assignedCoachIds = FieldValue.delete();
+      }
+    }
 
     // Handle default habits
     if (body.defaultHabits !== undefined) {
@@ -294,6 +303,53 @@ export async function PUT(
     await adminDb.collection('programs').doc(programId).update(updateData);
 
     console.log(`[COACH_ORG_PROGRAM_PUT] Updated program: ${programId} in org ${organizationId}`);
+
+    // If applyCoachesToExistingSquads is true, update all existing squads with new coach assignment
+    if (body.applyCoachesToExistingSquads === true && currentData?.type === 'group') {
+      const coachInSquads = body.coachInSquads ?? currentData?.coachInSquads;
+      const assignedCoachIds = body.assignedCoachIds ?? currentData?.assignedCoachIds ?? [];
+      
+      // Get all squads for this program
+      const squadsSnapshot = await adminDb
+        .collection('squads')
+        .where('programId', '==', programId)
+        .get();
+      
+      if (!squadsSnapshot.empty) {
+        const batch = adminDb.batch();
+        let updatedSquadCount = 0;
+        
+        squadsSnapshot.docs.forEach((squadDoc) => {
+          const squad = squadDoc.data();
+          const squadNumber = squad.squadNumber || 1;
+          
+          let newCoachId: string | null = null;
+          
+          if (coachInSquads) {
+            // If coachInSquads is true, we can't easily determine who the original creator was
+            // so we leave the coach as-is or null
+            newCoachId = squad.coachId || null;
+          } else if (assignedCoachIds.length > 0) {
+            // Round-robin assignment based on squad number
+            newCoachId = assignedCoachIds[(squadNumber - 1) % assignedCoachIds.length];
+          }
+          
+          // Only update if coach assignment changed
+          if (squad.coachId !== newCoachId) {
+            batch.update(squadDoc.ref, { 
+              coachId: newCoachId,
+              updatedAt: new Date().toISOString(),
+            });
+            updatedSquadCount++;
+          }
+        });
+        
+        if (updatedSquadCount > 0) {
+          await batch.commit();
+          console.log(`[COACH_ORG_PROGRAM_PUT] Updated ${updatedSquadCount} squads with new coach assignment`);
+        }
+      }
+    }
 
     // Fetch updated program
     const updatedDoc = await adminDb.collection('programs').doc(programId).get();

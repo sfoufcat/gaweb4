@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useFeed, type FeedPost } from '@/hooks/useFeed';
+import { useFeed, type FeedPost, usePost } from '@/hooks/useFeed';
 import { useBrandingValues, useMenuTitles, useFeedEnabled } from '@/contexts/BrandingContext';
 import { useSquad } from '@/hooks/useSquad';
 import { useFeedStories, useCurrentUserHasStory } from '@/hooks/useFeedStories';
@@ -16,11 +17,19 @@ import { ShareSheet } from '@/components/feed/ShareSheet';
 import { ReportModal } from '@/components/feed/ReportModal';
 import { StoriesRow } from '@/components/feed/StoriesRow';
 import { FeedSidebar } from '@/components/feed/FeedSidebar';
+import { PostDetailModal } from '@/components/feed/PostDetailModal';
 import { StoryPlayer } from '@/components/stories/StoryPlayer';
 import { useUserStories } from '@/hooks/useUserStories';
 
 export default function FeedPage() {
   const { user } = useUser();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const postId = searchParams.get('post');
+  
+  // Single post data
+  const { post: singlePost, isLoading: isSinglePostLoading, error: singlePostError } = usePost(postId);
+
   const { colors, isDefault } = useBrandingValues();
   const { feed: feedTitle } = useMenuTitles();
   const feedEnabled = useFeedEnabled(); // From Edge Config via SSR - instant, no flash
@@ -57,6 +66,7 @@ export default function FeedPage() {
   const [editingPost, setEditingPost] = useState<FeedPost | null>(null);
   const [selectedPostForShare, setSelectedPostForShare] = useState<string | null>(null);
   const [selectedPostForReport, setSelectedPostForReport] = useState<string | null>(null);
+  const [selectedPostForView, setSelectedPostForView] = useState<string | null>(null);
   const [selectedStoryUserId, setSelectedStoryUserId] = useState<string | null>(null);
 
   const accentColor = isDefault ? '#a07855' : colors.accentLight;
@@ -138,6 +148,11 @@ export default function FeedPage() {
     setSelectedStoryUserId(null);
   }, [isViewingOwnStory, user?.id, currentUserStoryStatus.contentHash, markStoryAsViewed]);
 
+  // Handle back to feed
+  const handleBackToFeed = useCallback(() => {
+    router.push('/feed');
+  }, [router]);
+
   // Feed not enabled for this org (instant check from SSR Edge Config)
   if (!feedEnabled) {
     return (
@@ -177,89 +192,165 @@ export default function FeedPage() {
         </h1>
       </section>
 
-      {/* Stories Row */}
-      <section className="px-4 pt-4 pb-3">
-        <div className="flex gap-3 overflow-x-auto pb-2 pt-1 -mx-4 px-4 scrollbar-hide">
-          <StoriesRow 
-            storyUsers={storyUsers}
-            isLoading={isLoadingSquad || isLoadingStories}
-            onCreateStory={() => setShowCreateStoryModal(true)}
-            onViewStory={(userId) => {
-              setSelectedStoryUserId(userId);
-            }}
-          />
-        </div>
-      </section>
+      {/* Stories Row - Hide in single post view */}
+      {!postId && (
+        <section className="px-4 pt-4 pb-3">
+          <div className="flex gap-3 overflow-x-auto pb-2 pt-1 -mx-4 px-4 scrollbar-hide">
+            <StoriesRow 
+              storyUsers={storyUsers}
+              isLoading={isLoadingSquad || isLoadingStories}
+              onCreateStory={() => setShowCreateStoryModal(true)}
+              onViewStory={(userId) => {
+                setSelectedStoryUserId(userId);
+              }}
+            />
+          </div>
+        </section>
+      )}
 
       {/* Main Content with Sidebar */}
       <section className="px-4 py-4">
         <div className="flex gap-6">
           {/* Left: Main Feed */}
           <div className="flex-1 min-w-0">
-            {/* Create post card */}
-            <div className="bg-white dark:bg-[#171b22] rounded-[20px] border border-[#e1ddd8]/50 dark:border-[#262b35] p-4 mb-6">
-              <div className="flex items-center gap-3">
-                {/* Avatar */}
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-[#f5f3f0] dark:bg-[#262b35] flex-shrink-0">
-                  {user?.imageUrl ? (
-                    <Image
-                      src={user.imageUrl}
-                      alt="Your avatar"
-                      width={40}
-                      height={40}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-sm font-semibold text-[#5f5a55] dark:text-[#b5b0ab]">
-                      {(user?.firstName?.[0] || '') + (user?.lastName?.[0] || '')}
+            {postId ? (
+              // Single Post View
+              <div className="space-y-4">
+                {/* Back button */}
+                <button
+                  onClick={handleBackToFeed}
+                  className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors mb-2"
+                >
+                  <div className="w-8 h-8 rounded-full bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] flex items-center justify-center">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                  </div>
+                  <span className="font-medium text-[15px]">Back to Feed</span>
+                </button>
+
+                {isSinglePostLoading ? (
+                  <div className="bg-white dark:bg-[#171b22] rounded-[24px] p-6 animate-pulse">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-full bg-[#f3f1ef] dark:bg-[#262b35]" />
+                      <div className="space-y-2">
+                        <div className="w-32 h-4 rounded bg-[#f3f1ef] dark:bg-[#262b35]" />
+                        <div className="w-24 h-3 rounded bg-[#f3f1ef] dark:bg-[#262b35]" />
+                      </div>
                     </div>
-                  )}
+                    <div className="space-y-2">
+                      <div className="w-full h-4 rounded bg-[#f3f1ef] dark:bg-[#262b35]" />
+                      <div className="w-full h-4 rounded bg-[#f3f1ef] dark:bg-[#262b35]" />
+                      <div className="w-3/4 h-4 rounded bg-[#f3f1ef] dark:bg-[#262b35]" />
+                    </div>
+                  </div>
+                ) : singlePostError ? (
+                  <div className="bg-white dark:bg-[#171b22] rounded-[24px] p-8 text-center border border-[#e1ddd8] dark:border-[#262b35]">
+                    <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                    <h3 className="font-semibold text-lg text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">Post not found</h3>
+                    <p className="text-[#5f5a55] dark:text-[#b5b0ab] mb-6">
+                      This post may have been deleted or does not exist.
+                    </p>
+                    <button
+                      onClick={handleBackToFeed}
+                      className="px-6 py-2 rounded-xl bg-[#1a1a1a] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] font-medium"
+                    >
+                      Go back to feed
+                    </button>
+                  </div>
+                ) : singlePost ? (
+                  <FeedList
+                    posts={[singlePost]}
+                    isLoading={false}
+                    isValidating={false}
+                    hasMore={false}
+                    isEmpty={false}
+                    onLoadMore={() => {}}
+                    onLike={optimisticLike}
+                    onBookmark={optimisticBookmark}
+                    onShare={handleShare}
+                    onDelete={handleDelete}
+                    onEdit={handleEdit}
+                    onReport={handleReport}
+                    onCommentAdded={incrementCommentCount}
+                    onCommentDeleted={decrementCommentCount}
+                    onCreatePost={() => setShowCreatePostModal(true)}
+                  />
+                ) : null}
+              </div>
+            ) : (
+              // Default Feed View
+              <>
+                {/* Create post card */}
+                <div className="bg-white dark:bg-[#171b22] rounded-[20px] border border-[#e1ddd8]/50 dark:border-[#262b35] p-4 mb-6">
+                  <div className="flex items-center gap-3">
+                    {/* Avatar */}
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-[#f5f3f0] dark:bg-[#262b35] flex-shrink-0">
+                      {user?.imageUrl ? (
+                        <Image
+                          src={user.imageUrl}
+                          alt="Your avatar"
+                          width={40}
+                          height={40}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-sm font-semibold text-[#5f5a55] dark:text-[#b5b0ab]">
+                          {(user?.firstName?.[0] || '') + (user?.lastName?.[0] || '')}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Input placeholder button */}
+                    <button
+                      onClick={() => setShowCreatePostModal(true)}
+                      className="flex-1 text-left px-4 py-2.5 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[15px] text-text-secondary hover:bg-[#ebe7e2] dark:hover:bg-[#262b35] transition-colors"
+                    >
+                      What&apos;s on your mind?
+                    </button>
+
+                    {/* Quick image button */}
+                    <button
+                      onClick={() => setShowCreatePostModal(true)}
+                      className="p-2.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+                    >
+                      <svg className="w-5 h-5 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
 
-                {/* Input placeholder button */}
-                <button
-                  onClick={() => setShowCreatePostModal(true)}
-                  className="flex-1 text-left px-4 py-2.5 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[15px] text-text-secondary hover:bg-[#ebe7e2] dark:hover:bg-[#262b35] transition-colors"
-                >
-                  What&apos;s on your mind?
-                </button>
-
-                {/* Quick image button */}
-                <button
-                  onClick={() => setShowCreatePostModal(true)}
-                  className="p-2.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
-                >
-                  <svg className="w-5 h-5 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Feed list */}
-            <div>
-              <FeedList
-                posts={posts}
-                isLoading={isLoading}
-                isValidating={isValidating}
-                hasMore={hasMore}
-                isEmpty={isEmpty}
-                onLoadMore={loadMore}
-                onLike={optimisticLike}
-                onBookmark={optimisticBookmark}
-                onShare={handleShare}
-                onDelete={handleDelete}
-                onEdit={handleEdit}
-                onReport={handleReport}
-                onCommentAdded={incrementCommentCount}
-                onCommentDeleted={decrementCommentCount}
-                onCreatePost={() => setShowCreatePostModal(true)}
-              />
-            </div>
+                {/* Feed list */}
+                <div>
+                  <FeedList
+                    posts={posts}
+                    isLoading={isLoading}
+                    isValidating={isValidating}
+                    hasMore={hasMore}
+                    isEmpty={isEmpty}
+                    onLoadMore={loadMore}
+                    onLike={optimisticLike}
+                    onBookmark={optimisticBookmark}
+                    onShare={handleShare}
+                    onDelete={handleDelete}
+                    onEdit={handleEdit}
+                    onReport={handleReport}
+                    onCommentAdded={incrementCommentCount}
+                    onCommentDeleted={decrementCommentCount}
+                    onCreatePost={() => setShowCreatePostModal(true)}
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           {/* Right: Sidebar (desktop only) */}
-          <FeedSidebar />
+          <FeedSidebar onSelectPost={setSelectedPostForView} />
         </div>
       </section>
 
@@ -314,6 +405,20 @@ export default function FeedPage() {
           post={editingPost}
           onClose={() => setEditingPost(null)}
           onPostUpdated={handlePostUpdated}
+        />
+      )}
+
+      {/* Post detail modal (for viewing saved/trending posts) */}
+      {selectedPostForView && (
+        <PostDetailModal
+          postId={selectedPostForView}
+          onClose={() => setSelectedPostForView(null)}
+          onLike={optimisticLike}
+          onBookmark={optimisticBookmark}
+          onShare={handleShare}
+          onDelete={handleDelete}
+          onEdit={handleEdit}
+          onReport={handleReport}
         />
       )}
 

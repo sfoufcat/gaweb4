@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import type { StarterProgram, StarterProgramDay, UserTrack, ProgramTaskTemplate, ProgramHabitTemplate } from '@/types';
 import { Button } from '@/components/ui/button';
+import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 
@@ -818,21 +819,17 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
 
                     {/* Checkboxes */}
                     <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                        <input
-                          type="checkbox"
+                      <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
+                        <BrandedCheckbox
                           checked={programFormData.isDefaultForTrack}
-                          onChange={(e) => setProgramFormData({ ...programFormData, isDefaultForTrack: e.target.checked })}
-                          className="rounded"
+                          onChange={(checked) => setProgramFormData({ ...programFormData, isDefaultForTrack: checked })}
                         />
                         Default for track
                       </label>
-                      <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                        <input
-                          type="checkbox"
+                      <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
+                        <BrandedCheckbox
                           checked={programFormData.isActive}
-                          onChange={(e) => setProgramFormData({ ...programFormData, isActive: e.target.checked })}
-                          className="rounded"
+                          onChange={(checked) => setProgramFormData({ ...programFormData, isActive: checked })}
                         />
                         Active
                       </label>

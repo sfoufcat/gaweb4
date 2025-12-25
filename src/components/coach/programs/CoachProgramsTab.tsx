@@ -10,6 +10,7 @@ import { Fragment } from 'react';
 import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Edit2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy } from 'lucide-react';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { NewProgramModal } from './NewProgramModal';
+import { BrandedCheckbox } from '@/components/ui/checkbox';
 
 // Enrollment with user info
 interface EnrollmentWithUser extends ProgramEnrollment {
@@ -20,6 +21,16 @@ interface EnrollmentWithUser extends ProgramEnrollment {
     email: string;
     imageUrl: string;
   };
+}
+
+// Coach type for multi-select
+interface OrgCoach {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  name: string;
+  imageUrl: string;
 }
 
 interface CoachProgramsTabProps {
@@ -71,9 +82,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     currency: string;
     squadCapacity: number;
     coachInSquads: boolean;
+    assignedCoachIds: string[];
     isActive: boolean;
     isPublished: boolean;
     defaultHabits: ProgramHabitTemplate[];
+    applyCoachesToExistingSquads: boolean;
   }>({
     name: '',
     type: 'group',
@@ -84,10 +97,16 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     currency: 'usd',
     squadCapacity: 10,
     coachInSquads: true,
+    assignedCoachIds: [],
     isActive: true,
     isPublished: false,
     defaultHabits: [],
+    applyCoachesToExistingSquads: false,
   });
+  
+  // Available coaches for selection
+  const [availableCoaches, setAvailableCoaches] = useState<OrgCoach[]>([]);
+  const [loadingCoaches, setLoadingCoaches] = useState(false);
   
   // Cohort form
   const [cohortFormData, setCohortFormData] = useState<{
@@ -180,6 +199,22 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       setLoading(false);
     }
   }, [apiBasePath]);
+
+  // Fetch available coaches for assignment
+  const fetchCoaches = useCallback(async () => {
+    try {
+      setLoadingCoaches(true);
+      const response = await fetch('/api/coach/org-coaches');
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableCoaches(data.coaches || []);
+      }
+    } catch (err) {
+      console.error('Error fetching coaches:', err);
+    } finally {
+      setLoadingCoaches(false);
+    }
+  }, []);
 
   const fetchProgramDetails = useCallback(async (programId: string) => {
     try {
@@ -311,6 +346,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   }, [selectedDayIndex, programDays, selectedProgram]);
 
   const handleOpenProgramModal = (program?: Program) => {
+    // Fetch coaches when modal opens
+    fetchCoaches();
+    
     if (program) {
       setEditingProgram(program);
       setProgramFormData({
@@ -323,9 +361,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         currency: program.currency,
         squadCapacity: program.squadCapacity || 10,
         coachInSquads: program.coachInSquads !== false,
+        assignedCoachIds: program.assignedCoachIds || [],
         isActive: program.isActive,
         isPublished: program.isPublished,
         defaultHabits: program.defaultHabits || [],
+        applyCoachesToExistingSquads: false, // Reset on each edit
       });
     } else {
       setEditingProgram(null);
@@ -339,9 +379,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         currency: 'usd',
         squadCapacity: 10,
         coachInSquads: true,
+        assignedCoachIds: [],
         isActive: true,
         isPublished: false,
         defaultHabits: [],
+        applyCoachesToExistingSquads: false,
       });
     }
     setSaveError(null);
@@ -1633,7 +1675,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
                     {/* Group-specific settings */}
                     {programFormData.type === 'group' && (
-                      <div className="p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-lg space-y-4">
+                      <div className="space-y-4">
                         <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                           Squad Settings
                         </h4>
@@ -1647,21 +1689,110 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                             onChange={(e) => setProgramFormData({ ...programFormData, squadCapacity: parseInt(e.target.value) || 10 })}
                             min={2}
                             max={100}
-                            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                           />
                           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
                             New squads auto-created when this limit is reached
                           </p>
                         </div>
-                        <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                          <input
-                            type="checkbox"
+                        <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
+                          <BrandedCheckbox
                             checked={programFormData.coachInSquads}
-                            onChange={(e) => setProgramFormData({ ...programFormData, coachInSquads: e.target.checked })}
-                            className="rounded"
+                            onChange={(checked) => setProgramFormData({ 
+                              ...programFormData, 
+                              coachInSquads: checked,
+                              // Clear assigned coaches when switching to "join as coach"
+                              assignedCoachIds: checked ? [] : programFormData.assignedCoachIds,
+                            })}
                           />
                           Join squads as coach
                         </label>
+                        
+                        {/* Coach Selection (when not joining as coach) */}
+                        {!programFormData.coachInSquads && (
+                          <div className="mt-4 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-lg space-y-3">
+                            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                              Assign coaches to squads
+                            </label>
+                            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                              Select coaches to assign in round-robin order (Coach A → Squad 1, Coach B → Squad 2, etc.)
+                            </p>
+                            {loadingCoaches ? (
+                              <div className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">Loading coaches...</div>
+                            ) : availableCoaches.length === 0 ? (
+                              <div className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">No coaches available in your organization</div>
+                            ) : (
+                              <div className="space-y-2 max-h-48 overflow-y-auto">
+                                {availableCoaches.map((coach) => (
+                                  <label
+                                    key={coach.id}
+                                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-white dark:hover:bg-[#171b22] cursor-pointer transition-colors"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={programFormData.assignedCoachIds.includes(coach.id)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setProgramFormData({
+                                            ...programFormData,
+                                            assignedCoachIds: [...programFormData.assignedCoachIds, coach.id],
+                                          });
+                                        } else {
+                                          setProgramFormData({
+                                            ...programFormData,
+                                            assignedCoachIds: programFormData.assignedCoachIds.filter(id => id !== coach.id),
+                                          });
+                                        }
+                                      }}
+                                      className="rounded"
+                                    />
+                                    {coach.imageUrl && (
+                                      <Image
+                                        src={coach.imageUrl}
+                                        alt={coach.name}
+                                        width={28}
+                                        height={28}
+                                        className="rounded-full"
+                                      />
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                                        {coach.name}
+                                      </div>
+                                      <div className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] truncate">
+                                        {coach.email}
+                                      </div>
+                                    </div>
+                                    {programFormData.assignedCoachIds.includes(coach.id) && (
+                                      <span className="text-xs text-[#a07855] font-medium">
+                                        #{programFormData.assignedCoachIds.indexOf(coach.id) + 1}
+                                      </span>
+                                    )}
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                            {programFormData.assignedCoachIds.length > 0 && (
+                              <div className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] pt-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                                Assignment order: {programFormData.assignedCoachIds.map((id, i) => {
+                                  const coach = availableCoaches.find(c => c.id === id);
+                                  return coach?.name || 'Unknown';
+                                }).join(' → ')} → (repeat)
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Apply to existing squads (only when editing) */}
+                        {editingProgram && (
+                          <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-4 cursor-pointer">
+                            <BrandedCheckbox
+                              checked={programFormData.applyCoachesToExistingSquads}
+                              onChange={(checked) => setProgramFormData({ ...programFormData, applyCoachesToExistingSquads: checked })}
+                            />
+                            Apply coach changes to existing squads
+                          </label>
+                        )}
                       </div>
                     )}
 
@@ -1703,21 +1834,17 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
                     {/* Status checkboxes */}
                     <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                        <input
-                          type="checkbox"
+                      <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
+                        <BrandedCheckbox
                           checked={programFormData.isActive}
-                          onChange={(e) => setProgramFormData({ ...programFormData, isActive: e.target.checked })}
-                          className="rounded"
+                          onChange={(checked) => setProgramFormData({ ...programFormData, isActive: checked })}
                         />
                         Active
                       </label>
-                      <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                        <input
-                          type="checkbox"
+                      <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
+                        <BrandedCheckbox
                           checked={programFormData.isPublished}
-                          onChange={(e) => setProgramFormData({ ...programFormData, isPublished: e.target.checked })}
-                          className="rounded"
+                          onChange={(checked) => setProgramFormData({ ...programFormData, isPublished: checked })}
                         />
                         Published (visible in Discover)
                       </label>
@@ -2047,6 +2174,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         onCreateFromScratch={() => {
           setIsNewProgramModalOpen(false);
           setEditingProgram(null);
+          fetchCoaches();
           setProgramFormData({
             name: '',
             type: 'group',
@@ -2057,9 +2185,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             currency: 'usd',
             squadCapacity: 10,
             coachInSquads: true,
+            assignedCoachIds: [],
             isActive: true,
             isPublished: false,
             defaultHabits: [],
+            applyCoachesToExistingSquads: false,
           });
           setIsProgramModalOpen(true);
         }}

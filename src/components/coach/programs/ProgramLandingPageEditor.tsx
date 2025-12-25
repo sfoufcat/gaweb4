@@ -3,6 +3,7 @@
 import React from 'react';
 import { Plus, Trash2, Star, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { BrandedCheckbox } from '@/components/ui/checkbox';
 import type { ProgramFeature, ProgramTestimonial, ProgramFAQ } from '@/types';
 
 interface LandingPageFormData {
@@ -408,11 +409,9 @@ export function ProgramLandingPageEditor({ formData, onChange }: ProgramLandingP
         </h3>
         <div className="space-y-3">
           <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
+            <BrandedCheckbox
               checked={formData.showEnrollmentCount}
-              onChange={(e) => onChange({ ...formData, showEnrollmentCount: e.target.checked })}
-              className="w-4 h-4 rounded border-[#e1ddd8] text-[#a07855] focus:ring-[#a07855]"
+              onChange={(checked) => onChange({ ...formData, showEnrollmentCount: checked })}
             />
             <div>
               <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
@@ -424,11 +423,9 @@ export function ProgramLandingPageEditor({ formData, onChange }: ProgramLandingP
             </div>
           </label>
           <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
+            <BrandedCheckbox
               checked={formData.showCurriculum}
-              onChange={(e) => onChange({ ...formData, showCurriculum: e.target.checked })}
-              className="w-4 h-4 rounded border-[#e1ddd8] text-[#a07855] focus:ring-[#a07855]"
+              onChange={(checked) => onChange({ ...formData, showCurriculum: checked })}
             />
             <div>
               <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">

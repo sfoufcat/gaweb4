@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Layers, UsersRound } from 'lucide-react';
 import type { Funnel, Program, FunnelTargetType } from '@/types';
+import { BrandedCheckbox } from '@/components/ui/checkbox';
 
 interface Squad {
   id: string;
@@ -334,11 +335,9 @@ export function FunnelEditorDialog({
           {/* Is Default */}
           <div>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
+              <BrandedCheckbox
                 checked={formData.isDefault}
-                onChange={(e) => setFormData(prev => ({ ...prev, isDefault: e.target.checked }))}
-                className="rounded text-[#a07855] focus:ring-[#a07855]"
+                onChange={(checked) => setFormData(prev => ({ ...prev, isDefault: checked }))}
               />
               <span className="text-text-primary">
                 Set as default funnel for this {formData.targetType}

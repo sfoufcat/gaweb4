@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
@@ -481,11 +482,9 @@ function EventFormDialog({
             {/* Featured */}
             <div className="flex items-center">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
+                <BrandedCheckbox
                   checked={formData.featured}
-                  onChange={e => setFormData(prev => ({ ...prev, featured: e.target.checked }))}
-                  className="w-4 h-4 text-[#a07855] border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] rounded focus:ring-[#a07855] dark:focus:ring-[#b8896a]"
+                  onChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
                 />
                 <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] font-albert">Featured Event</span>
               </label>

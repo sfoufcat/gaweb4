@@ -701,6 +701,7 @@ export interface Program {
   // Group program settings (only applicable when type = 'group')
   squadCapacity?: number; // Max members per squad (e.g., 10)
   coachInSquads?: boolean; // Whether coach joins each squad
+  assignedCoachIds?: string[]; // Coach IDs for round-robin assignment (used when coachInSquads is false)
   
   // Content
   defaultHabits?: ProgramHabitTemplate[]; // Default habits for enrolled users

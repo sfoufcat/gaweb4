@@ -23,6 +23,7 @@ import {
   getAssignableOrgRoles,
   getAssignableOrgRolesForAdmin,
 } from '@/lib/admin-utils-shared';
+import { BrandedCheckbox } from '@/components/ui/checkbox';
 import {
   Table,
   TableBody,
@@ -725,14 +726,10 @@ export function AdminUsersTab({
               <TableRow>
                 {showColumn('select') && isOrgScopedApi && !readOnly && (
                   <TableHead className="w-[50px]">
-                    <input
-                      type="checkbox"
+                    <BrandedCheckbox
                       checked={isAllSelected}
-                      ref={(el) => {
-                        if (el) el.indeterminate = isSomeSelected;
-                      }}
-                      onChange={(e) => handleSelectAll(e.target.checked)}
-                      className="w-4 h-4 rounded border-[#e1ddd8] dark:border-[#262b35] text-[#a07855] focus:ring-[#a07855] focus:ring-offset-0 cursor-pointer"
+                      indeterminate={isSomeSelected}
+                      onChange={(checked) => handleSelectAll(checked)}
                     />
                   </TableHead>
                 )}
@@ -773,11 +770,9 @@ export function AdminUsersTab({
                     {/* Checkbox for selection */}
                     {showColumn('select') && isOrgScopedApi && !readOnly && (
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
+                        <BrandedCheckbox
                           checked={selectedUserIds.has(user.id)}
-                          onChange={(e) => handleSelectUser(user.id, e.target.checked)}
-                          className="w-4 h-4 rounded border-[#e1ddd8] dark:border-[#262b35] text-[#a07855] focus:ring-[#a07855] focus:ring-offset-0 cursor-pointer"
+                          onChange={(checked) => handleSelectUser(user.id, checked)}
                         />
                       </TableCell>
                     )}

@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useChatContext } from 'stream-chat-react';
 import { useBrandingValues } from '@/contexts/BrandingContext';
+import { useSquad } from '@/hooks/useSquad';
+import { useCoachingData } from '@/hooks/useCoachingData';
+import { useCoachSquads } from '@/hooks/useCoachSquads';
+import { ANNOUNCEMENTS_CHANNEL_ID, SOCIAL_CORNER_CHANNEL_ID, SHARE_WINS_CHANNEL_ID } from '@/lib/chat-constants';
 import type { Channel } from 'stream-chat';
 
 interface ShareToChatModalProps {
@@ -23,6 +27,12 @@ interface ShareToChatModalProps {
 export function ShareToChatModal({ postUrl, onClose, onSuccess }: ShareToChatModalProps) {
   const { client } = useChatContext();
   const { colors, isDefault } = useBrandingValues();
+  
+  // Get squad and coaching info to find relevant channels
+  const { squad, premiumSquad, standardSquad } = useSquad();
+  const { coachingData } = useCoachingData();
+  const { squads: coachSquads, isCoach } = useCoachSquads();
+
   const [channels, setChannels] = useState<Channel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
@@ -42,17 +52,86 @@ export function ShareToChatModal({ postUrl, onClose, onSuccess }: ShareToChatMod
 
       try {
         setIsLoading(true);
-        // Query all messaging and squad channels where user is a member
-        const filter = { 
+        
+        // 1. Collect all "known" channel IDs that the user should have access to
+        const knownChannelIds = new Set<string>();
+        
+        // Global channels
+        knownChannelIds.add(ANNOUNCEMENTS_CHANNEL_ID);
+        knownChannelIds.add(SOCIAL_CORNER_CHANNEL_ID);
+        knownChannelIds.add(SHARE_WINS_CHANNEL_ID);
+        
+        // Squad channels
+        if (squad?.chatChannelId) knownChannelIds.add(squad.chatChannelId);
+        if (premiumSquad?.chatChannelId) knownChannelIds.add(premiumSquad.chatChannelId);
+        if (standardSquad?.chatChannelId) knownChannelIds.add(standardSquad.chatChannelId);
+        
+        // Coaching channel
+        if (coachingData?.chatChannelId) knownChannelIds.add(coachingData.chatChannelId);
+        
+        // Coach squads (if user is a coach)
+        if (isCoach && coachSquads) {
+          coachSquads.forEach(s => {
+            if (s.chatChannelId) knownChannelIds.add(s.chatChannelId);
+          });
+        }
+
+        // 2. Query for channels where user is a member OR it's one of the known channels
+        // Note: Stream doesn't support "OR" between members and IDs easily in one query if we want to include "members: $in"
+        // So we'll do two queries and merge them, or try to be smart.
+        
+        // Query 1: Channels where user is a member (Messaging, DMs, etc.)
+        const memberFilter = { 
           members: { $in: [client.userID] } 
         };
         const sort = [{ last_message_at: -1 as const }];
-        const result = await client.queryChannels(filter, sort, { 
-          limit: 30,
-          watch: false,
-          state: true,
+        
+        // Query 2: Explicit known channels (Squads, Global)
+        // We query these by ID. 
+        const knownChannelsFilter = {
+          id: { $in: Array.from(knownChannelIds) }
+        };
+
+        const [memberChannels, knownChannels] = await Promise.all([
+          client.queryChannels(memberFilter, sort, { limit: 30, watch: false, state: true }),
+          knownChannelIds.size > 0 
+            ? client.queryChannels(knownChannelsFilter, sort, { limit: 30, watch: false, state: true })
+            : Promise.resolve([])
+        ]);
+
+        // Merge and deduplicate
+        const allChannelsMap = new Map<string, Channel>();
+        
+        [...memberChannels, ...knownChannels].forEach(channel => {
+          if (channel.id) {
+            allChannelsMap.set(channel.id, channel);
+          }
         });
-        setChannels(result);
+
+        // Filter out channels where user cannot send messages
+        const validChannels = Array.from(allChannelsMap.values()).filter(channel => {
+          // Check capabilities if available
+          const capabilities = channel.data?.own_capabilities as string[] | undefined;
+          if (capabilities && !capabilities.includes('send-message')) {
+            return false;
+          }
+          
+          // Special case for Announcements: only admins can post
+          // If we can't check admin status easily here (we could pass it in), assume read-only if not capability
+          // But capabilities usually reflect permissions.
+          // For now, let's rely on capabilities.
+          
+          return true;
+        });
+        
+        // Sort manually by last_message_at since we merged two lists
+        validChannels.sort((a, b) => {
+          const dateA = a.state.last_message_at ? new Date(a.state.last_message_at).getTime() : 0;
+          const dateB = b.state.last_message_at ? new Date(b.state.last_message_at).getTime() : 0;
+          return dateB - dateA;
+        });
+
+        setChannels(validChannels);
       } catch (err) {
         console.error('Failed to fetch channels:', err);
         setError('Failed to load conversations');
@@ -62,7 +141,7 @@ export function ShareToChatModal({ postUrl, onClose, onSuccess }: ShareToChatMod
     };
 
     fetchChannels();
-  }, [client]);
+  }, [client, squad, premiumSquad, standardSquad, coachingData, coachSquads, isCoach]);
 
   // Handle share
   const handleShare = useCallback(async () => {
@@ -130,7 +209,7 @@ export function ShareToChatModal({ postUrl, onClose, onSuccess }: ShareToChatMod
       />
 
       {/* Modal - Bottom sheet on mobile, centered popup on desktop */}
-      <div className="relative w-full max-w-[440px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-300 max-h-[80vh] flex flex-col overflow-hidden safe-area-inset-bottom">
+      <div className="relative w-full md:max-w-[440px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-300 max-h-[80vh] flex flex-col overflow-hidden safe-area-inset-bottom">
         {/* Handle - Mobile only */}
         <div className="flex justify-center pt-3 pb-2 md:hidden">
           <div className="w-9 h-1 bg-gray-300 dark:bg-[#262b35] rounded-full" />

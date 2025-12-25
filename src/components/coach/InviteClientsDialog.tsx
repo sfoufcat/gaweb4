@@ -21,6 +21,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import type { Funnel, Program, ProgramInvite } from '@/types';
+import { BrandedCheckbox } from '@/components/ui/checkbox';
 
 type DialogView = 'list' | 'create' | 'bulk';
 
@@ -720,12 +721,10 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                     {/* Send Email Toggle */}
                     {createForm.email && (
                       <div className="flex items-center gap-3 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
-                        <input
-                          type="checkbox"
+                        <BrandedCheckbox
                           id="sendEmail"
                           checked={createForm.sendEmail}
-                          onChange={(e) => setCreateForm(prev => ({ ...prev, sendEmail: e.target.checked }))}
-                          className="w-4 h-4 rounded border-[#e1ddd8] dark:border-[#262b35] text-[#a07855] focus:ring-[#a07855]"
+                          onChange={(checked) => setCreateForm(prev => ({ ...prev, sendEmail: checked }))}
                         />
                         <label htmlFor="sendEmail" className="flex items-center gap-2 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer">
                           <Send className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
@@ -798,12 +797,10 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
 
                         {/* Send Emails Toggle */}
                         <div className="flex items-center gap-3 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
-                          <input
-                            type="checkbox"
+                          <BrandedCheckbox
                             id="bulkSendEmails"
                             checked={bulkSendEmails}
-                            onChange={(e) => setBulkSendEmails(e.target.checked)}
-                            className="w-4 h-4 rounded border-[#e1ddd8] dark:border-[#262b35] text-[#a07855] focus:ring-[#a07855]"
+                            onChange={(checked) => setBulkSendEmails(checked)}
                           />
                           <label htmlFor="bulkSendEmails" className="flex items-center gap-2 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer">
                             <Send className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />

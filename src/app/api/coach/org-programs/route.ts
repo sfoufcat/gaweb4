@@ -265,6 +265,9 @@ export async function POST(request: NextRequest) {
       stripePriceId: body.stripePriceId || undefined,
       squadCapacity: body.type === 'group' ? (body.squadCapacity || 10) : undefined,
       coachInSquads: body.type === 'group' ? (body.coachInSquads !== false) : undefined,
+      assignedCoachIds: body.type === 'group' && Array.isArray(body.assignedCoachIds) && body.assignedCoachIds.length > 0 
+        ? body.assignedCoachIds 
+        : undefined,
       defaultHabits: defaultHabits.length > 0 ? defaultHabits : undefined,
       isActive: body.isActive !== false,
       isPublished: body.isPublished === true,

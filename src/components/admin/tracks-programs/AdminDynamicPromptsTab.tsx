@@ -11,6 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 
@@ -533,14 +534,12 @@ export function AdminDynamicPromptsTab({ apiBasePath = '/api/admin/dynamic-promp
 
                     {/* Active Status */}
                     <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
+                      <BrandedCheckbox
                         id="isActive"
                         checked={formData.isActive}
-                        onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                        className="w-4 h-4 rounded border-[#e1ddd8] dark:border-[#262b35] text-[#a07855] focus:ring-[#a07855]"
+                        onChange={(checked) => setFormData({ ...formData, isActive: checked })}
                       />
-                      <label htmlFor="isActive" className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                      <label htmlFor="isActive" className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
                         Active
                       </label>
                     </div>

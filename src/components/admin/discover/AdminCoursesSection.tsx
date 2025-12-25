@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
@@ -685,20 +686,16 @@ function CourseFormDialog({
               
               <div className="flex gap-6">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
+                  <BrandedCheckbox
                     checked={formData.featured}
-                    onChange={e => setFormData(prev => ({ ...prev, featured: e.target.checked }))}
-                    className="w-4 h-4 text-[#a07855] border-[#e1ddd8] dark:border-[#262b35] rounded focus:ring-[#a07855]"
+                    onChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
                   />
                   <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Featured</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
+                  <BrandedCheckbox
                     checked={formData.trending}
-                    onChange={e => setFormData(prev => ({ ...prev, trending: e.target.checked }))}
-                    className="w-4 h-4 text-[#a07855] border-[#e1ddd8] dark:border-[#262b35] rounded focus:ring-[#a07855]"
+                    onChange={(checked) => setFormData(prev => ({ ...prev, trending: checked }))}
                   />
                   <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Trending</span>
                 </label>

@@ -1,7 +1,6 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
 import useSWR from 'swr';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 
@@ -16,6 +15,10 @@ interface CompactPostPreview {
     lastName?: string;
     imageUrl?: string;
   };
+}
+
+interface FeedSidebarProps {
+  onSelectPost?: (postId: string) => void;
 }
 
 // SWR fetcher
@@ -35,7 +38,7 @@ export const SIDEBAR_TRENDING_KEY = '/api/feed/trending?limit=5';
  * Hidden on mobile, visible on lg: breakpoints
  * Uses SWR for caching - bookmarks auto-refresh when feed bookmarks change
  */
-export function FeedSidebar() {
+export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
   const { colors, isDefault } = useBrandingValues();
   
   // Use SWR for bookmarks - will auto-revalidate
@@ -117,7 +120,7 @@ export function FeedSidebar() {
             // Posts list
             <div className="space-y-1">
               {bookmarkedPosts.map((post) => (
-                <CompactPostItem key={post.id} post={post} />
+                <CompactPostItem key={post.id} post={post} onSelect={onSelectPost} />
               ))}
             </div>
           )}
@@ -163,7 +166,7 @@ export function FeedSidebar() {
             // Posts list
             <div className="space-y-1">
               {trendingPosts.map((post, index) => (
-                <CompactPostItem key={post.id} post={post} rank={index + 1} />
+                <CompactPostItem key={post.id} post={post} rank={index + 1} onSelect={onSelectPost} />
               ))}
             </div>
           )}
@@ -174,7 +177,7 @@ export function FeedSidebar() {
 }
 
 // Compact post preview item
-function CompactPostItem({ post, rank }: { post: CompactPostPreview; rank?: number }) {
+function CompactPostItem({ post, rank, onSelect }: { post: CompactPostPreview; rank?: number; onSelect?: (postId: string) => void }) {
   const authorName = post.author 
     ? `${post.author.firstName || ''} ${post.author.lastName || ''}`.trim() || 'User'
     : 'User';
@@ -195,9 +198,9 @@ function CompactPostItem({ post, rank }: { post: CompactPostPreview; rank?: numb
       : '';
 
   return (
-    <Link
-      href={`/feed?post=${post.id}`}
-      className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-[#f5f3f0] dark:hover:bg-[#1a1f2a] transition-colors"
+    <button
+      onClick={() => onSelect?.(post.id)}
+      className="w-full text-left flex items-start gap-3 p-2.5 rounded-xl hover:bg-[#f5f3f0] dark:hover:bg-[#1a1f2a] transition-colors"
     >
       {/* Rank number for trending */}
       {rank && (
@@ -253,7 +256,7 @@ function CompactPostItem({ post, rank }: { post: CompactPostPreview; rank?: numb
           />
         </div>
       )}
-    </Link>
+    </button>
   );
 }
 

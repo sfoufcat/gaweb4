@@ -57,11 +57,11 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
     return (
       <Link 
         href="/program"
-        className="block bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#1a1512] dark:to-[#181310] border border-[#FFE4CC] dark:border-[#3d3530] rounded-[20px] p-5 hover:shadow-lg hover:border-[#a07855]/40 dark:hover:border-[#b8896a]/40 transition-all duration-300 group"
+        className="block bg-gradient-to-br from-[#FDEBD0] to-[#F5D7B0] dark:from-[#2a2015] dark:to-[#1f1810] border border-[#E8C9A0]/60 dark:border-[#4a3d30] rounded-[20px] p-5 hover:shadow-lg hover:border-[#D4A574]/60 dark:hover:border-[#6a5540]/60 transition-all duration-300 group"
       >
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#F5E6A8] to-[#EDD96C] dark:from-[#8c6245] dark:to-[#a07855] flex items-center justify-center flex-shrink-0">
-            <Users className="w-7 h-7 text-[#4A5D54] dark:text-white" />
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#E8C9A0] to-[#D4A574] dark:from-[#8c6245] dark:to-[#a07855] flex items-center justify-center flex-shrink-0">
+            <Users className="w-7 h-7 text-[#5C4833] dark:text-white" />
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px] mb-1">
@@ -71,7 +71,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
               Join a community of growth-minded people and stay accountable together.
             </p>
           </div>
-          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#a07855] dark:bg-[#b8896a] flex items-center justify-center group-hover:bg-[#8c6245] dark:group-hover:bg-[#a07855] group-hover:scale-105 transition-all">
+          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#2DD4BF] dark:bg-[#2DD4BF] flex items-center justify-center group-hover:bg-[#14B8A6] dark:group-hover:bg-[#14B8A6] group-hover:scale-105 transition-all">
             <ChevronRight className="w-5 h-5 text-white" />
           </div>
         </div>

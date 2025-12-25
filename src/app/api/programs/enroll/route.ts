@@ -66,6 +66,39 @@ async function findOrCreateSquad(
   // Generate invite code
   const inviteCode = `GA-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
   
+  // Determine coach assignment using round-robin logic
+  let coachId: string | null = null;
+  const assignedCoachIds = program.assignedCoachIds || [];
+  
+  if (assignedCoachIds.length > 0 && !program.coachInSquads) {
+    // Round-robin coach assignment: Squad 1 -> Coach A, Squad 2 -> Coach B, etc.
+    coachId = assignedCoachIds[(squadNumber - 1) % assignedCoachIds.length];
+    console.log(`[PROGRAM_ENROLL] Round-robin coach assignment: Squad ${squadNumber} -> Coach ${coachId}`);
+  } else if (program.coachInSquads) {
+    // When coachInSquads is true, get the org admin (super_coach) as the coach
+    try {
+      const clerk = await clerkClient();
+      const memberships = await clerk.organizations.getOrganizationMembershipList({
+        organizationId: program.organizationId,
+        limit: 100,
+      });
+      
+      // Find org:admin (super_coach)
+      for (const membership of memberships.data) {
+        if (membership.role === 'org:admin') {
+          coachId = membership.publicUserData?.userId || null;
+          break;
+        }
+      }
+      
+      if (coachId) {
+        console.log(`[PROGRAM_ENROLL] coachInSquads: Assigning org admin ${coachId} as coach for Squad ${squadNumber}`);
+      }
+    } catch (err) {
+      console.error(`[PROGRAM_ENROLL] Failed to get org admin for coachInSquads:`, err);
+    }
+  }
+  
   const now = new Date().toISOString();
   const squadData: Omit<Squad, 'id'> = {
     name: squadName,
@@ -76,7 +109,7 @@ async function findOrCreateSquad(
     memberIds: [],
     inviteCode,
     hasCoach: true, // Program squads always have coach scheduling
-    coachId: null,
+    coachId,
     organizationId: program.organizationId,
     programId: program.id,
     cohortId: cohort.id,

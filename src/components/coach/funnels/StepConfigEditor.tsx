@@ -7,6 +7,7 @@ import { X, Plus, Trash2, GripVertical } from 'lucide-react';
 import type { FunnelStep, FunnelStepType, FunnelQuestionOption } from '@/types';
 import { nanoid } from 'nanoid';
 import { MediaUpload } from '@/components/admin/MediaUpload';
+import { BrandedCheckbox } from '@/components/ui/checkbox';
 
 interface StepConfigEditorProps {
   step: FunnelStep;
@@ -319,11 +320,9 @@ function SignupConfigEditor({ config, onChange }: { config: Record<string, unkno
     <div className="space-y-6">
       <div>
         <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
+          <BrandedCheckbox
             checked={config.showSocialLogin !== false}
-            onChange={(e) => onChange({ ...config, showSocialLogin: e.target.checked })}
-            className="rounded text-[#a07855] focus:ring-[#a07855]"
+            onChange={(checked) => onChange({ ...config, showSocialLogin: checked })}
           />
           <span className="text-text-primary">Show social login buttons (Google)</span>
         </label>
@@ -360,11 +359,9 @@ function PaymentConfigEditor({ config, onChange }: { config: Record<string, unkn
     <div className="space-y-6">
       <div>
         <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
+          <BrandedCheckbox
             checked={config.useProgramPricing !== false}
-            onChange={(e) => onChange({ ...config, useProgramPricing: e.target.checked })}
-            className="rounded text-[#a07855] focus:ring-[#a07855]"
+            onChange={(checked) => onChange({ ...config, useProgramPricing: checked })}
           />
           <span className="text-text-primary">Use program's default pricing</span>
         </label>
@@ -616,11 +613,9 @@ function PlanRevealConfigEditor({ config, onChange }: { config: Record<string, u
     <div className="space-y-6">
       <div>
         <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
+          <BrandedCheckbox
             checked={config.showGraph !== false}
-            onChange={(e) => onChange({ ...config, showGraph: e.target.checked })}
-            className="rounded text-[#a07855] focus:ring-[#a07855]"
+            onChange={(checked) => onChange({ ...config, showGraph: checked })}
           />
           <span className="text-text-primary">Show transformation graph</span>
         </label>
@@ -723,11 +718,10 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
       {/* Skip success page option */}
       <div className="p-4 bg-[#faf8f6] rounded-lg border border-[#e1ddd8]">
         <label className="flex items-start gap-3 cursor-pointer">
-          <input
-            type="checkbox"
+          <BrandedCheckbox
             checked={skipSuccessPage}
-            onChange={(e) => onChange({ ...config, skipSuccessPage: e.target.checked })}
-            className="rounded text-[#a07855] focus:ring-[#a07855] mt-0.5"
+            onChange={(checked) => onChange({ ...config, skipSuccessPage: checked })}
+            className="mt-0.5"
           />
           <div>
             <span className="text-text-primary font-medium">Skip success page</span>
@@ -761,11 +755,9 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
         <>
           <div>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
+              <BrandedCheckbox
                 checked={config.showConfetti !== false}
-                onChange={(e) => onChange({ ...config, showConfetti: e.target.checked })}
-                className="rounded text-[#a07855] focus:ring-[#a07855]"
+                onChange={(checked) => onChange({ ...config, showConfetti: checked })}
               />
               <span className="text-text-primary">Show confetti animation</span>
             </label>
