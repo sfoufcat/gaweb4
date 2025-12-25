@@ -408,12 +408,12 @@ export function ProgramLandingPageEditor({ formData, onChange }: ProgramLandingP
           Display Settings
         </h3>
         <div className="space-y-3">
-          <label className="flex items-center gap-3 cursor-pointer">
+          <div className="flex items-center gap-3">
             <BrandedCheckbox
               checked={formData.showEnrollmentCount}
               onChange={(checked) => onChange({ ...formData, showEnrollmentCount: checked })}
             />
-            <div>
+            <div className="cursor-pointer" onClick={() => onChange({ ...formData, showEnrollmentCount: !formData.showEnrollmentCount })}>
               <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                 Show enrollment count
               </span>
@@ -421,13 +421,13 @@ export function ProgramLandingPageEditor({ formData, onChange }: ProgramLandingP
                 Display &quot;X students enrolled&quot; badge on landing page
               </p>
             </div>
-          </label>
-          <label className="flex items-center gap-3 cursor-pointer">
+          </div>
+          <div className="flex items-center gap-3">
             <BrandedCheckbox
               checked={formData.showCurriculum}
               onChange={(checked) => onChange({ ...formData, showCurriculum: checked })}
             />
-            <div>
+            <div className="cursor-pointer" onClick={() => onChange({ ...formData, showCurriculum: !formData.showCurriculum })}>
               <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                 Show curriculum preview
               </span>
@@ -435,7 +435,7 @@ export function ProgramLandingPageEditor({ formData, onChange }: ProgramLandingP
                 Display program day titles as a curriculum outline
               </p>
             </div>
-          </label>
+          </div>
         </div>
       </div>
     </div>

@@ -535,13 +535,12 @@ export function AdminDynamicPromptsTab({ apiBasePath = '/api/admin/dynamic-promp
                     {/* Active Status */}
                     <div className="flex items-center gap-2">
                       <BrandedCheckbox
-                        id="isActive"
                         checked={formData.isActive}
                         onChange={(checked) => setFormData({ ...formData, isActive: checked })}
                       />
-                      <label htmlFor="isActive" className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
+                      <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer" onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}>
                         Active
-                      </label>
+                      </span>
                     </div>
 
                     {saveError && (

@@ -319,13 +319,13 @@ function SignupConfigEditor({ config, onChange }: { config: Record<string, unkno
   return (
     <div className="space-y-6">
       <div>
-        <label className="flex items-center gap-2 cursor-pointer">
+        <div className="flex items-center gap-2">
           <BrandedCheckbox
             checked={config.showSocialLogin !== false}
             onChange={(checked) => onChange({ ...config, showSocialLogin: checked })}
           />
-          <span className="text-text-primary">Show social login buttons (Google)</span>
-        </label>
+          <span className="text-text-primary cursor-pointer" onClick={() => onChange({ ...config, showSocialLogin: config.showSocialLogin === false })}>Show social login buttons (Google)</span>
+        </div>
       </div>
 
       <div>
@@ -358,13 +358,13 @@ function PaymentConfigEditor({ config, onChange }: { config: Record<string, unkn
   return (
     <div className="space-y-6">
       <div>
-        <label className="flex items-center gap-2 cursor-pointer">
+        <div className="flex items-center gap-2">
           <BrandedCheckbox
             checked={config.useProgramPricing !== false}
             onChange={(checked) => onChange({ ...config, useProgramPricing: checked })}
           />
-          <span className="text-text-primary">Use program's default pricing</span>
-        </label>
+          <span className="text-text-primary cursor-pointer" onClick={() => onChange({ ...config, useProgramPricing: config.useProgramPricing === false })}>Use program&apos;s default pricing</span>
+        </div>
       </div>
 
       {!config.useProgramPricing && (
@@ -612,13 +612,13 @@ function PlanRevealConfigEditor({ config, onChange }: { config: Record<string, u
   return (
     <div className="space-y-6">
       <div>
-        <label className="flex items-center gap-2 cursor-pointer">
+        <div className="flex items-center gap-2">
           <BrandedCheckbox
             checked={config.showGraph !== false}
             onChange={(checked) => onChange({ ...config, showGraph: checked })}
           />
-          <span className="text-text-primary">Show transformation graph</span>
-        </label>
+          <span className="text-text-primary cursor-pointer" onClick={() => onChange({ ...config, showGraph: config.showGraph === false })}>Show transformation graph</span>
+        </div>
       </div>
 
       <div>
@@ -717,19 +717,19 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
     <div className="space-y-6">
       {/* Skip success page option */}
       <div className="p-4 bg-[#faf8f6] rounded-lg border border-[#e1ddd8]">
-        <label className="flex items-start gap-3 cursor-pointer">
+        <div className="flex items-start gap-3">
           <BrandedCheckbox
             checked={skipSuccessPage}
             onChange={(checked) => onChange({ ...config, skipSuccessPage: checked })}
             className="mt-0.5"
           />
-          <div>
+          <div className="cursor-pointer" onClick={() => onChange({ ...config, skipSuccessPage: !skipSuccessPage })}>
             <span className="text-text-primary font-medium">Skip success page</span>
             <p className="text-xs text-text-muted mt-1">
               Redirect users directly to homepage after completing the funnel
             </p>
           </div>
-        </label>
+        </div>
         
         {skipSuccessPage && (
           <div className="mt-4 pl-6">
@@ -754,13 +754,13 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
       {!skipSuccessPage && (
         <>
           <div>
-            <label className="flex items-center gap-2 cursor-pointer">
+            <div className="flex items-center gap-2">
               <BrandedCheckbox
                 checked={config.showConfetti !== false}
                 onChange={(checked) => onChange({ ...config, showConfetti: checked })}
               />
-              <span className="text-text-primary">Show confetti animation</span>
-            </label>
+              <span className="text-text-primary cursor-pointer" onClick={() => onChange({ ...config, showConfetti: config.showConfetti === false })}>Show confetti animation</span>
+            </div>
           </div>
 
           <div>

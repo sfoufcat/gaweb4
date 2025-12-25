@@ -11,6 +11,7 @@ import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Ed
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { NewProgramModal } from './NewProgramModal';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
+import { CoachSelector } from '@/components/coach/CoachSelector';
 
 // Enrollment with user info
 interface EnrollmentWithUser extends ProgramEnrollment {
@@ -1714,76 +1715,23 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                         
                         {/* Coach Selection (when not joining as coach) */}
                         {!programFormData.coachInSquads && (
-                          <div className="mt-4 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-lg space-y-3">
+                          <div className="mt-4 space-y-2">
                             <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                               Assign coaches to squads
                             </label>
+                            <CoachSelector
+                              coaches={availableCoaches}
+                              value={programFormData.assignedCoachIds}
+                              onChange={(coachIds) => setProgramFormData({
+                                ...programFormData,
+                                assignedCoachIds: coachIds,
+                              })}
+                              loading={loadingCoaches}
+                              placeholder="Select coaches to assign..."
+                            />
                             <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                              Select coaches to assign in round-robin order (Coach A → Squad 1, Coach B → Squad 2, etc.)
+                              Coaches are assigned in round-robin order (Coach A → Squad 1, Coach B → Squad 2, etc.)
                             </p>
-                            {loadingCoaches ? (
-                              <div className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">Loading coaches...</div>
-                            ) : availableCoaches.length === 0 ? (
-                              <div className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">No coaches available in your organization</div>
-                            ) : (
-                              <div className="space-y-2 max-h-48 overflow-y-auto">
-                                {availableCoaches.map((coach) => (
-                                  <label
-                                    key={coach.id}
-                                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-white dark:hover:bg-[#171b22] cursor-pointer transition-colors"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={programFormData.assignedCoachIds.includes(coach.id)}
-                                      onChange={(e) => {
-                                        if (e.target.checked) {
-                                          setProgramFormData({
-                                            ...programFormData,
-                                            assignedCoachIds: [...programFormData.assignedCoachIds, coach.id],
-                                          });
-                                        } else {
-                                          setProgramFormData({
-                                            ...programFormData,
-                                            assignedCoachIds: programFormData.assignedCoachIds.filter(id => id !== coach.id),
-                                          });
-                                        }
-                                      }}
-                                      className="rounded"
-                                    />
-                                    {coach.imageUrl && (
-                                      <Image
-                                        src={coach.imageUrl}
-                                        alt={coach.name}
-                                        width={28}
-                                        height={28}
-                                        className="rounded-full"
-                                      />
-                                    )}
-                                    <div className="flex-1 min-w-0">
-                                      <div className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
-                                        {coach.name}
-                                      </div>
-                                      <div className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] truncate">
-                                        {coach.email}
-                                      </div>
-                                    </div>
-                                    {programFormData.assignedCoachIds.includes(coach.id) && (
-                                      <span className="text-xs text-[#a07855] font-medium">
-                                        #{programFormData.assignedCoachIds.indexOf(coach.id) + 1}
-                                      </span>
-                                    )}
-                                  </label>
-                                ))}
-                              </div>
-                            )}
-                            {programFormData.assignedCoachIds.length > 0 && (
-                              <div className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] pt-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
-                                Assignment order: {programFormData.assignedCoachIds.map((id, i) => {
-                                  const coach = availableCoaches.find(c => c.id === id);
-                                  return coach?.name || 'Unknown';
-                                }).join(' → ')} → (repeat)
-                              </div>
-                            )}
                           </div>
                         )}
                         

@@ -334,15 +334,15 @@ export function FunnelEditorDialog({
 
           {/* Is Default */}
           <div>
-            <label className="flex items-center gap-2 cursor-pointer">
+            <div className="flex items-center gap-2">
               <BrandedCheckbox
                 checked={formData.isDefault}
                 onChange={(checked) => setFormData(prev => ({ ...prev, isDefault: checked }))}
               />
-              <span className="text-text-primary">
+              <span className="text-text-primary cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, isDefault: !prev.isDefault }))}>
                 Set as default funnel for this {formData.targetType}
               </span>
-            </label>
+            </div>
             <p className="text-xs text-text-muted mt-1 ml-6">
               {formData.targetType === 'squad'
                 ? 'The default funnel is used when users visit /join/squad/[slug] without specifying a funnel'
