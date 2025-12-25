@@ -41,15 +41,15 @@ export function ProgramCarousel({ enrollments, isLoading }: ProgramCarouselProps
   }
   
   if (enrollments.length === 0) {
-    // Empty state - show discover CTA with green theme
+    // Empty state - show discover CTA with brand accent theme
     return (
       <Link 
         href="/discover"
-        className="block bg-gradient-to-br from-[#F0FFF4] to-[#E8FFF0] dark:from-[#121a15] dark:to-[#101813] border border-[#B8E6C1] dark:border-[#2d4035] rounded-[20px] p-5 hover:shadow-lg hover:border-[#4CAF50]/40 dark:hover:border-[#81C784]/40 transition-all duration-300 group"
+        className="block bg-gradient-to-br from-[#a07855]/5 to-[#a07855]/10 dark:from-[#b8896a]/5 dark:to-[#b8896a]/10 border border-[#a07855]/20 dark:border-[#b8896a]/20 rounded-[20px] p-5 hover:shadow-lg hover:border-[#a07855]/40 dark:hover:border-[#b8896a]/40 transition-all duration-300 group"
       >
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#4CAF50]/20 to-[#2E7D32]/10 flex items-center justify-center flex-shrink-0">
-            <BookOpen className="w-7 h-7 text-[#2E7D32] dark:text-[#81C784]" />
+          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#a07855]/20 to-[#a07855]/10 dark:from-[#b8896a]/20 dark:to-[#b8896a]/10 flex items-center justify-center flex-shrink-0">
+            <BookOpen className="w-7 h-7 text-[#a07855] dark:text-[#b8896a]" />
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px] mb-1">
@@ -59,7 +59,7 @@ export function ProgramCarousel({ enrollments, isLoading }: ProgramCarouselProps
               Find structured coaching programs to accelerate your growth.
             </p>
           </div>
-          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#4CAF50] dark:bg-[#66BB6A] flex items-center justify-center group-hover:bg-[#388E3C] dark:group-hover:bg-[#4CAF50] group-hover:scale-105 transition-all">
+          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#a07855] dark:bg-[#b8896a] flex items-center justify-center group-hover:opacity-90 group-hover:scale-105 transition-all">
             <ChevronRight className="w-5 h-5 text-white" />
           </div>
         </div>
@@ -163,17 +163,17 @@ export function ProgramCarousel({ enrollments, isLoading }: ProgramCarouselProps
           </Link>
         ))}
         
-        {/* Discover More Card - Green theme */}
+        {/* Discover More Card - Brand accent theme */}
         <Link
           href="/discover"
           className="flex-shrink-0 w-[260px] sm:w-[280px] snap-start"
         >
-          <div className="bg-gradient-to-br from-[#F0FFF4] to-[#E8FFF0] dark:from-[#121a15] dark:to-[#101813] border border-dashed border-[#4CAF50]/30 dark:border-[#81C784]/30 rounded-[20px] h-full min-h-[200px] flex items-center justify-center hover:border-[#4CAF50]/60 dark:hover:border-[#81C784]/60 transition-all group">
+          <div className="bg-gradient-to-br from-[#a07855]/5 to-[#a07855]/10 dark:from-[#b8896a]/5 dark:to-[#b8896a]/10 border border-dashed border-[#a07855]/30 dark:border-[#b8896a]/30 rounded-[20px] h-full min-h-[200px] flex items-center justify-center hover:border-[#a07855]/60 dark:hover:border-[#b8896a]/60 transition-all group">
             <div className="text-center p-4">
-              <div className="w-12 h-12 mx-auto rounded-full bg-[#4CAF50]/10 dark:bg-[#81C784]/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <BookOpen className="w-6 h-6 text-[#2E7D32] dark:text-[#81C784]" />
+              <div className="w-12 h-12 mx-auto rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <BookOpen className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" />
               </div>
-              <p className="font-albert font-semibold text-[14px] text-[#2E7D32] dark:text-[#81C784]">
+              <p className="font-albert font-semibold text-[14px] text-[#a07855] dark:text-[#b8896a]">
                 Discover more
               </p>
             </div>

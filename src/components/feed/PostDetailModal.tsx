@@ -2,7 +2,6 @@
 
 import { useCallback } from 'react';
 import { mutate } from 'swr';
-import { useBrandingValues } from '@/contexts/BrandingContext';
 import { usePost, type FeedPost } from '@/hooks/useFeed';
 import { PostCard } from './PostCard';
 import { SIDEBAR_BOOKMARKS_KEY } from './FeedSidebar';
@@ -28,9 +27,7 @@ export function PostDetailModal({
   onEdit,
   onReport,
 }: PostDetailModalProps) {
-  const { colors, isDefault } = useBrandingValues();
   const { post, isLoading, error, refresh } = usePost(postId);
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
 
   // Handle like with local state update
   const handleLike = useCallback(async (postId: string, isLiked: boolean) => {
@@ -67,11 +64,11 @@ export function PostDetailModal({
       {/* Modal Container */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div 
-          className="w-full max-w-2xl bg-[#faf8f6] dark:bg-[#0d1117] rounded-2xl shadow-xl max-h-[90vh] flex flex-col overflow-hidden pointer-events-auto animate-modal-zoom-in"
+          className="w-full max-w-3xl bg-white dark:bg-[#171b22] rounded-2xl shadow-xl max-h-[90vh] flex flex-col overflow-hidden pointer-events-auto animate-modal-zoom-in"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[#e8e4df] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-[#e8e4df] dark:border-[#262b35]">
             <h2 className="font-semibold text-[16px] text-[#1a1a1a] dark:text-[#faf8f6]">
               Post
             </h2>
@@ -85,13 +82,13 @@ export function PostDetailModal({
             </button>
           </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-4">
+          {/* Content - uses embedded PostCard, no extra padding needed */}
+          <div className="flex-1 overflow-y-auto px-5 py-4">
             {isLoading ? (
-              // Loading skeleton
-              <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden animate-pulse">
+              // Loading skeleton - matches embedded layout
+              <div className="animate-pulse">
                 {/* Header skeleton */}
-                <div className="p-4">
+                <div className="pb-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-[#f5f3f0] dark:bg-[#262b35]" />
                     <div className="space-y-2 flex-1">
@@ -102,17 +99,17 @@ export function PostDetailModal({
                 </div>
                 
                 {/* Content skeleton */}
-                <div className="px-4 pb-4 space-y-2.5">
+                <div className="pb-4 space-y-2.5">
                   <div className="w-full h-4 rounded-md bg-[#f5f3f0] dark:bg-[#262b35]" />
                   <div className="w-4/5 h-4 rounded-md bg-[#f5f3f0] dark:bg-[#262b35]" />
                   <div className="w-2/3 h-4 rounded-md bg-[#f5f3f0] dark:bg-[#262b35]" />
                 </div>
                 
                 {/* Image placeholder */}
-                <div className="mx-4 mb-4 h-52 rounded-xl bg-[#f5f3f0] dark:bg-[#262b35]" />
+                <div className="mb-4 h-52 rounded-xl bg-[#f5f3f0] dark:bg-[#262b35]" />
                 
                 {/* Action bar skeleton */}
-                <div className="px-4 pb-4 flex gap-3">
+                <div className="py-3 flex gap-3 border-t border-[#e8e4df] dark:border-[#262b35]">
                   <div className="w-14 h-8 rounded-full bg-[#f5f3f0] dark:bg-[#262b35]" />
                   <div className="w-14 h-8 rounded-full bg-[#f5f3f0] dark:bg-[#262b35]" />
                   <div className="w-14 h-8 rounded-full bg-[#f5f3f0] dark:bg-[#262b35]" />
@@ -135,9 +132,10 @@ export function PostDetailModal({
                 </p>
               </div>
             ) : post ? (
-              // Post content
+              // Post content - embedded variant for clean modal display
               <PostCard
                 post={post}
+                variant="embedded"
                 onLike={handleLike}
                 onBookmark={handleBookmark}
                 onShare={onShare}

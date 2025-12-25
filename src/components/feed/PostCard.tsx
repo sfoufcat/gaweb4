@@ -16,6 +16,7 @@ import { getProfileUrl } from '@/lib/utils';
 
 interface PostCardProps {
   post: FeedPost;
+  variant?: 'card' | 'embedded';
   onLike?: (postId: string, isLiked: boolean) => void;
   onBookmark?: (postId: string, isBookmarked: boolean) => void;
   onShare?: (postId: string) => void;
@@ -28,6 +29,7 @@ interface PostCardProps {
 
 export function PostCard({
   post,
+  variant = 'card',
   onLike,
   onBookmark,
   onShare,
@@ -181,10 +183,13 @@ export function PostCard({
   // Accent color for interactions
   const accentColor = isDefault ? '#a07855' : colors.accentLight;
 
+  // Card vs embedded styling
+  const isEmbedded = variant === 'embedded';
+  
   return (
-    <article className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden hover-lift">
+    <article className={isEmbedded ? '' : 'bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden hover-lift'}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 pb-3">
+      <div className={`flex items-center justify-between ${isEmbedded ? 'pb-3' : 'p-4 pb-3'}`}>
         <div className="flex items-center gap-3">
           {/* Avatar */}
           <button
@@ -287,16 +292,19 @@ export function PostCard({
 
       {/* Content */}
       {(post.contentHtml || post.text) && (
-        <div className="px-4 pb-3">
+        <div className={isEmbedded ? 'pb-3' : 'px-4 pb-3'}>
           {post.contentHtml ? (
             <RichTextPreview 
               content={post.contentHtml}
               className="text-[15px] text-[#1a1a1a] dark:text-[#faf8f6]"
             />
           ) : (
-            <p className="text-[15px] text-[#1a1a1a] dark:text-[#faf8f6] whitespace-pre-wrap break-words leading-relaxed">
-              {post.text}
-            </p>
+            // Only show text fallback in card mode to prevent flash in embedded mode
+            !isEmbedded && (
+              <p className="text-[15px] text-[#1a1a1a] dark:text-[#faf8f6] whitespace-pre-wrap break-words leading-relaxed">
+                {post.text}
+              </p>
+            )
           )}
         </div>
       )}
@@ -357,7 +365,7 @@ export function PostCard({
       )}
 
       {/* Action bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-[#e8e4df] dark:border-[#262b35]">
+      <div className={`flex items-center justify-between py-3 ${isEmbedded ? 'border-t border-[#e8e4df] dark:border-[#262b35]' : 'px-4 border-t border-[#e8e4df] dark:border-[#262b35]'}`}>
         <div className="flex items-center gap-1">
           {/* Like */}
           <button

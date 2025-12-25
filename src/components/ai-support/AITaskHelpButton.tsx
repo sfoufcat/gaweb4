@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { AIHelpCompleteModal } from './AIHelpCompleteModal';
 import type { HelpCompleteTaskResponse } from '@/types';
 
@@ -12,7 +12,7 @@ interface AITaskHelpButtonProps {
 
 /**
  * AI Help button that appears next to each task
- * When clicked, fetches AI assistance for completing the task and shows a modal
+ * When clicked, opens modal immediately and fetches AI assistance asynchronously
  */
 export function AITaskHelpButton({ task, onTaskUpdate }: AITaskHelpButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
@@ -24,10 +24,13 @@ export function AITaskHelpButton({ task, onTaskUpdate }: AITaskHelpButtonProps) 
     // Prevent triggering parent click handlers
     e.stopPropagation();
     
-    if (isLoading) return;
+    if (showModal) return;
     
+    // Show modal immediately with loading state
+    setShowModal(true);
     setIsLoading(true);
     setError(null);
+    setResponse(null);
     
     try {
       const payload = {
@@ -56,7 +59,6 @@ export function AITaskHelpButton({ task, onTaskUpdate }: AITaskHelpButtonProps) 
       }
       
       setResponse(data.data as HelpCompleteTaskResponse);
-      setShowModal(true);
     } catch (err) {
       console.error('[AITaskHelpButton] Error:', err);
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -88,35 +90,26 @@ export function AITaskHelpButton({ task, onTaskUpdate }: AITaskHelpButtonProps) 
   function handleClose() {
     setShowModal(false);
     setResponse(null);
+    setError(null);
   }
 
   return (
     <>
       <button
         onClick={handleClick}
-        disabled={isLoading}
-        className="p-1.5 rounded-lg text-text-muted dark:text-[#7d8190] hover:text-accent-secondary dark:hover:text-[#b8896a] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-all flex-shrink-0"
+        className="p-1.5 rounded-lg text-text-muted dark:text-[#7d8190] hover:text-[#a07855] dark:hover:text-[#b8896a] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-all flex-shrink-0"
         title="Get AI help to complete this task"
       >
-        {isLoading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <Sparkles className="w-4 h-4" />
-        )}
+        <Sparkles className="w-4 h-4" />
       </button>
       
-      {/* Error toast */}
-      {error && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-red-500 text-white rounded-lg text-sm animate-in fade-in slide-in-from-bottom-2 duration-200">
-          {error}
-        </div>
-      )}
-      
-      {/* Help Complete Modal */}
-      {showModal && response && (
+      {/* Help Complete Modal - shows immediately with loading state */}
+      {showModal && (
         <AIHelpCompleteModal
           response={response}
           task={task}
+          isLoading={isLoading}
+          error={error}
           onUpdateTitle={handleUpdateTitle}
           onClose={handleClose}
         />
@@ -124,5 +117,3 @@ export function AITaskHelpButton({ task, onTaskUpdate }: AITaskHelpButtonProps) 
     </>
   );
 }
-
-
