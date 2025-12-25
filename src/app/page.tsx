@@ -1242,6 +1242,7 @@ export default function Dashboard() {
               hasStory={storyAvailability.hasStory}
               showRing={storyAvailability.showRing}
               showCheck={storyAvailability.showCheck}
+              userPostedStories={storyAvailability.data.userPostedStories}
               goal={storyAvailability.data.goal}
               tasks={storyAvailability.data.tasks}
               hasDayClosed={storyAvailability.data.hasDayClosed}

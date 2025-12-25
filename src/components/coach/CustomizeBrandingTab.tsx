@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock, Mail, Send, Bell, Settings, Sun, Moon, Monitor, GripVertical } from 'lucide-react';
+import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock, Mail, Send, Bell, Settings, Moon, GripVertical } from 'lucide-react';
 import { useBranding } from '@/contexts/BrandingContext';
 import { FeedSettingsToggle } from './FeedSettingsToggle';
 import { CommunitySettingsToggle } from './CommunitySettingsToggle';
 import { AlumniDiscountToggle } from './AlumniDiscountToggle';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus, OrgEmailDefaults, OrgDefaultTheme, MenuItemKey } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_EMAIL_SETTINGS, DEFAULT_EMAIL_DEFAULTS, DEFAULT_THEME, validateSubdomain } from '@/types';
+import { MenuEmptyStateSettings } from './MenuEmptyStateSettings';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus, OrgEmailDefaults, MenuItemKey } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_EMAIL_SETTINGS, DEFAULT_EMAIL_DEFAULTS, validateSubdomain } from '@/types';
 import { IconPicker } from './IconPicker';
 import {
   DndContext,
@@ -153,7 +154,6 @@ export function CustomizeBrandingTab() {
   const [menuTitles, setMenuTitles] = useState<OrgMenuTitles>(DEFAULT_MENU_TITLES);
   const [menuIcons, setMenuIcons] = useState<OrgMenuIcons>(DEFAULT_MENU_ICONS);
   const [menuOrder, setMenuOrder] = useState<MenuItemKey[]>(DEFAULT_MENU_ORDER);
-  const [defaultTheme, setDefaultTheme] = useState<OrgDefaultTheme>(DEFAULT_THEME);
   
   // UI state
   const [loading, setLoading] = useState(true);
@@ -314,7 +314,6 @@ export function CustomizeBrandingTab() {
         ...(branding.menuIcons || {}),
       });
       setMenuOrder(branding.menuOrder || DEFAULT_MENU_ORDER);
-      setDefaultTheme(branding.defaultTheme || DEFAULT_THEME);
     } catch (err) {
       console.error('Error fetching branding:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch branding');
@@ -1124,7 +1123,6 @@ export function CustomizeBrandingTab() {
           menuTitles,
           menuIcons,
           menuOrder,
-          defaultTheme,
         }),
       });
 
@@ -1657,73 +1655,9 @@ export function CustomizeBrandingTab() {
           <AlumniDiscountToggle />
         </div>
         
-        {/* Default Theme Setting */}
-        <div className="mt-4 p-4 rounded-xl bg-white dark:bg-[#13171f] border border-[#e8e4df] dark:border-[#262b35]">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="font-semibold text-[15px] text-[#1a1a1a] dark:text-[#faf8f6]">
-                Default theme
-              </h4>
-              <p className="text-[13px] text-[#8a857f] mt-0.5">
-                Set the default appearance for new users
-              </p>
-            </div>
-          </div>
-          
-          {/* Theme Options */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setDefaultTheme('light');
-                setHasChanges(true);
-              }}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all ${
-                defaultTheme === 'light'
-                  ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/10 dark:bg-[#b8896a]/10 text-[#a07855] dark:text-[#b8896a]'
-                  : 'border-[#e1ddd8] dark:border-[#313746] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-[#a07855]/50 dark:hover:border-[#b8896a]/50'
-              }`}
-            >
-              <Sun className="w-4 h-4" />
-              <span className="font-albert text-sm font-medium">Light</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setDefaultTheme('dark');
-                setHasChanges(true);
-              }}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all ${
-                defaultTheme === 'dark'
-                  ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/10 dark:bg-[#b8896a]/10 text-[#a07855] dark:text-[#b8896a]'
-                  : 'border-[#e1ddd8] dark:border-[#313746] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-[#a07855]/50 dark:hover:border-[#b8896a]/50'
-              }`}
-            >
-              <Moon className="w-4 h-4" />
-              <span className="font-albert text-sm font-medium">Dark</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setDefaultTheme('system');
-                setHasChanges(true);
-              }}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all ${
-                defaultTheme === 'system'
-                  ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/10 dark:bg-[#b8896a]/10 text-[#a07855] dark:text-[#b8896a]'
-                  : 'border-[#e1ddd8] dark:border-[#313746] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-[#a07855]/50 dark:hover:border-[#b8896a]/50'
-              }`}
-            >
-              <Monitor className="w-4 h-4" />
-              <span className="font-albert text-sm font-medium">System</span>
-            </button>
-          </div>
-          
-          <p className="mt-3 text-[12px] text-[#a7a39e] dark:text-[#7d8190]">
-            {defaultTheme === 'light' && 'Users will see the light theme by default. They can still change it in their preferences.'}
-            {defaultTheme === 'dark' && 'Users will see the dark theme by default. They can still change it in their preferences.'}
-            {defaultTheme === 'system' && 'Users will see a theme matching their device settings. They can still change it in their preferences.'}
-          </p>
+        {/* Menu Empty State Settings */}
+        <div className="mt-4">
+          <MenuEmptyStateSettings />
         </div>
       </div>
 

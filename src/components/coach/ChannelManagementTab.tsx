@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import type { OrgChannel, OrgChannelType, OrgCoachingPromo } from '@/lib/org-channels';
+import { MediaUpload } from '@/components/admin/MediaUpload';
 
 // Icon map for channel types
 const CHANNEL_ICONS: Record<string, React.ReactNode> = {
@@ -99,12 +100,12 @@ function EditChannelModal({ channel, isOpen, onClose, onSave, isNew }: EditChann
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-200">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       
       {/* Modal */}
-      <div className="relative bg-white dark:bg-[#11141b] rounded-2xl shadow-xl max-w-md w-full mx-4 overflow-hidden">
+      <div className="relative bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl shadow-2xl shadow-black/10 dark:shadow-black/30 max-w-lg w-full mx-4 overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
           <h2 className="font-albert text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
@@ -289,12 +290,12 @@ function DeleteConfirmModal({ channel, isOpen, onClose, onConfirm }: DeleteConfi
   if (!isOpen || !channel) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-200">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       
       {/* Modal */}
-      <div className="relative bg-white dark:bg-[#11141b] rounded-2xl shadow-xl max-w-sm w-full mx-4 overflow-hidden">
+      <div className="relative bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl shadow-2xl shadow-black/10 dark:shadow-black/30 max-w-sm w-full mx-4 overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
         <div className="p-6 text-center">
           <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
@@ -333,12 +334,13 @@ function DeleteConfirmModal({ channel, isOpen, onClose, onConfirm }: DeleteConfi
 
 interface EditCoachingPromoModalProps {
   promo: OrgCoachingPromo | null;
+  defaultCoachImageUrl: string | null;
   isOpen: boolean;
   onClose: () => void;
   onSave: (updates: Partial<OrgCoachingPromo>) => Promise<void>;
 }
 
-function EditCoachingPromoModal({ promo, isOpen, onClose, onSave }: EditCoachingPromoModalProps) {
+function EditCoachingPromoModal({ promo, defaultCoachImageUrl, isOpen, onClose, onSave }: EditCoachingPromoModalProps) {
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [imageUrl, setImageUrl] = useState('');
@@ -354,6 +356,9 @@ function EditCoachingPromoModal({ promo, isOpen, onClose, onSave }: EditCoaching
       setIsVisible(promo.isVisible);
     }
   }, [isOpen, promo]);
+
+  // Get the effective image URL for preview (use coach default if no custom image)
+  const effectiveImageUrl = imageUrl || defaultCoachImageUrl;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -376,12 +381,12 @@ function EditCoachingPromoModal({ promo, isOpen, onClose, onSave }: EditCoaching
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-200">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       
       {/* Modal */}
-      <div className="relative bg-white dark:bg-[#11141b] rounded-2xl shadow-xl max-w-md w-full mx-4 overflow-hidden">
+      <div className="relative bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl shadow-2xl shadow-black/10 dark:shadow-black/30 max-w-lg w-full mx-4 overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
           <h2 className="font-albert text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
@@ -426,32 +431,32 @@ function EditCoachingPromoModal({ promo, isOpen, onClose, onSave }: EditCoaching
             />
           </div>
 
-          {/* Image URL */}
+          {/* Image Upload */}
           <div>
-            <label className="block font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-              Image URL
-            </label>
-            <input
-              type="url"
+            <MediaUpload
               value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://..."
-              className="w-full px-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/50"
+              onChange={setImageUrl}
+              folder="promo"
+              type="image"
+              label="Profile Image"
+              uploadEndpoint="/api/coach/org-upload-media"
             />
-            {/* Image Preview */}
-            {imageUrl && (
-              <div className="mt-3 flex justify-center">
-                <div className="w-16 h-16 rounded-full overflow-hidden bg-[#f3f1ef] dark:bg-[#171b22]">
-                  <Image
-                    src={imageUrl}
-                    alt="Preview"
-                    width={64}
-                    height={64}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
+            {/* Default Coach Image Indicator */}
+            {!imageUrl && defaultCoachImageUrl && (
+              <div className="mt-3 p-3 rounded-xl bg-[#f3f1ef] dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35]">
+                <p className="font-albert text-xs text-[#5f5a55] dark:text-[#b2b6c2] mb-2">
+                  Using your profile picture as default:
+                </p>
+                <div className="flex justify-center">
+                  <div className="w-16 h-16 rounded-full overflow-hidden">
+                    <Image
+                      src={defaultCoachImageUrl}
+                      alt="Your profile picture"
+                      width={64}
+                      height={64}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -537,6 +542,7 @@ export function ChannelManagementTab() {
   
   // Coaching promo state
   const [coachingPromo, setCoachingPromo] = useState<OrgCoachingPromo | null>(null);
+  const [defaultCoachImageUrl, setDefaultCoachImageUrl] = useState<string | null>(null);
   const [editingPromo, setEditingPromo] = useState(false);
 
   // Fetch coaching promo
@@ -546,6 +552,7 @@ export function ChannelManagementTab() {
       if (response.ok) {
         const data = await response.json();
         setCoachingPromo(data.promo);
+        setDefaultCoachImageUrl(data.defaultCoachImageUrl || null);
       }
     } catch (err) {
       console.error('Error fetching coaching promo:', err);
@@ -874,13 +881,21 @@ export function ChannelManagementTab() {
             <div className="flex items-center gap-4 p-4 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b]">
               {/* Promo Image */}
               <div className="w-14 h-14 rounded-full overflow-hidden bg-[#f3f1ef] dark:bg-[#171b22] flex-shrink-0">
-                <Image
-                  src={coachingPromo.imageUrl}
-                  alt="Coaching promo"
-                  width={56}
-                  height={56}
-                  className="w-full h-full object-cover"
-                />
+                {(coachingPromo.imageUrl || defaultCoachImageUrl) ? (
+                  <Image
+                    src={coachingPromo.imageUrl || defaultCoachImageUrl || ''}
+                    alt="Coaching promo"
+                    width={56}
+                    height={56}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e] flex items-center justify-center">
+                    <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                    </svg>
+                  </div>
+                )}
               </div>
               
               {/* Content */}
@@ -942,6 +957,7 @@ export function ChannelManagementTab() {
       {/* Edit Coaching Promo Modal */}
       <EditCoachingPromoModal
         promo={coachingPromo}
+        defaultCoachImageUrl={defaultCoachImageUrl}
         isOpen={editingPromo}
         onClose={() => setEditingPromo(false)}
         onSave={handlePromoSave}

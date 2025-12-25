@@ -115,15 +115,18 @@ export function useStoryViewTracking() {
  * @param hasTasksToday - Whether the user has tasks today
  * @param hasDayClosed - Whether the user has completed evening check-in
  * @param taskCount - Number of tasks (optional, for more granular tracking)
+ * @param hasWeekClosed - Whether the user has completed weekly check-in
+ * @param userPostCount - Number of user-posted stories (optional)
  * @returns A string hash representing the story content state
  */
 export function generateStoryContentHash(
   hasTasksToday: boolean,
   hasDayClosed: boolean,
   taskCount: number = 0,
-  hasWeekClosed: boolean = false
+  hasWeekClosed: boolean = false,
+  userPostCount: number = 0
 ): string {
-  return `${hasTasksToday}:${hasDayClosed}:${taskCount}:${hasWeekClosed}`;
+  return `${hasTasksToday}:${hasDayClosed}:${taskCount}:${hasWeekClosed}:${userPostCount}`;
 }
 
 /**

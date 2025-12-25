@@ -3,10 +3,11 @@
 // Force dynamic rendering for this page
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { ChevronDown } from 'lucide-react';
 import { useSquad } from '@/hooks/useSquad';
 import { SquadHeader } from '@/components/squad/SquadHeader';
 import { SquadMemberList } from '@/components/squad/SquadMemberList';
@@ -20,14 +21,17 @@ import { useMenuTitles } from '@/contexts/BrandingContext';
 /**
  * Standalone Squad Page
  * 
- * Displays the user's standard (non-program) squad.
- * This page is shown when a user has a coach-created standalone squad
- * but no program enrollment.
+ * Displays the user's standalone squads (not attached to a program).
+ * This includes:
+ * - Coach-created standalone squads
+ * - Alumni squads (converted from program squads)
+ * - Peer-created squads
  * 
  * Features:
+ * - Squad switcher in title when user has multiple standalone squads
  * - Squad header with name and streak
  * - Coach info (if squad has a coach)
- * - Member list with mood indicators
+ * - Member list with alignment indicators
  * - Squad stats tab
  * - Chat and invite functionality
  */
@@ -42,19 +46,42 @@ export default function StandaloneSquadPage() {
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('squad');
   const [showStreakSheet, setShowStreakSheet] = useState(false);
+  const [showSquadSwitcher, setShowSquadSwitcher] = useState(false);
+  const switcherRef = useRef<HTMLDivElement>(null);
   
-  // Get standard squad data specifically
+  // Get standalone squad data
   const {
-    standardSquad: squad,
-    standardMembers: members,
-    standardStats: stats,
+    standaloneSquads,
+    activeStandaloneSquad: squad,
+    activeStandaloneSquadId,
+    setActiveStandaloneSquadId,
+    hasStandaloneSquad,
+    hasMultipleStandaloneSquads,
+    membersBySquad,
+    statsBySquad,
     isLoading,
     refetch,
     fetchStatsTabData,
   } = useSquad();
+  
+  // Get members and stats for the active standalone squad
+  const members = squad ? (membersBySquad[squad.id] || []) : [];
+  const stats = squad ? (statsBySquad[squad.id] || null) : null;
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+  
+  // Close switcher when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (switcherRef.current && !switcherRef.current.contains(event.target as Node)) {
+        setShowSquadSwitcher(false);
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Load stats when switching to stats tab
@@ -90,6 +117,12 @@ export default function StandaloneSquadPage() {
     uncertain: '😕',
     stuck: '😔',
   };
+  
+  // Handle squad switch
+  const handleSquadSwitch = (squadId: string) => {
+    setActiveStandaloneSquadId(squadId);
+    setShowSquadSwitcher(false);
+  };
 
   // Loading state
   if (!mounted || !userLoaded || isLoading) {
@@ -108,9 +141,8 @@ export default function StandaloneSquadPage() {
     );
   }
 
-  // No standard squad - this shouldn't happen if navigation is correct
-  // but handle gracefully by redirecting to discover
-  if (!squad) {
+  // No standalone squad - show discover page
+  if (!hasStandaloneSquad || !squad) {
     return (
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
         <div className="flex flex-col items-center justify-center py-16 px-4">
@@ -151,11 +183,85 @@ export default function StandaloneSquadPage() {
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
-      {/* Page Title */}
-      <div className="mb-6">
-        <h1 className="font-albert text-[28px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.2]">
-          {squadTitle}
-        </h1>
+      {/* Page Title with Squad Switcher */}
+      <div className="mb-6 relative" ref={switcherRef}>
+        {hasMultipleStandaloneSquads ? (
+          // Clickable title with dropdown for multiple squads
+          <button
+            onClick={() => setShowSquadSwitcher(!showSquadSwitcher)}
+            className="flex items-center gap-2 group"
+          >
+            <h1 className="font-albert text-[28px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.2]">
+              {squad.name}
+            </h1>
+            <ChevronDown 
+              className={`w-6 h-6 text-text-secondary dark:text-[#7d8190] transition-transform ${
+                showSquadSwitcher ? 'rotate-180' : ''
+              }`} 
+            />
+          </button>
+        ) : (
+          // Static title for single squad
+          <h1 className="font-albert text-[28px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.2]">
+            {squad.name}
+          </h1>
+        )}
+        
+        {/* Squad Switcher Dropdown */}
+        {showSquadSwitcher && hasMultipleStandaloneSquads && (
+          <div className="absolute top-full left-0 mt-2 w-72 bg-white dark:bg-[#171b22] rounded-xl shadow-lg border border-[#e1ddd8] dark:border-[#262b35] z-50 overflow-hidden">
+            <div className="p-2">
+              <p className="px-3 py-2 text-xs font-medium text-text-secondary dark:text-[#7d8190] uppercase tracking-wide">
+                Switch {squadLower}
+              </p>
+              {standaloneSquads.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => handleSquadSwitch(s.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+                    s.id === activeStandaloneSquadId
+                      ? 'bg-[#f3f1ef] dark:bg-[#262b35]'
+                      : 'hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                  }`}
+                >
+                  {/* Squad Avatar */}
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-[#f3f1ef] dark:bg-[#11141b] flex-shrink-0">
+                    {s.avatarUrl ? (
+                      <Image
+                        src={s.avatarUrl}
+                        alt={s.name}
+                        width={40}
+                        height={40}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="font-albert font-semibold text-sm text-text-secondary dark:text-[#7d8190]">
+                          {s.name[0]}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex-1 text-left min-w-0">
+                    <p className="font-albert font-semibold text-[15px] text-text-primary dark:text-[#f5f5f8] truncate">
+                      {s.name}
+                    </p>
+                    <p className="text-xs text-text-secondary dark:text-[#7d8190]">
+                      {membersBySquad[s.id]?.length || 0} members
+                      {s.hasCoach && ' • Coached'}
+                    </p>
+                  </div>
+                  
+                  {/* Active indicator */}
+                  {s.id === activeStandaloneSquadId && (
+                    <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Squad Header */}

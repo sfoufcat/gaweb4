@@ -274,22 +274,30 @@ interface CoachPromoItemProps {
 }
 
 function CoachPromoItem({ 
-  title = 'Get your personal coach',
-  subtitle = 'Work with a performance psychologist 1:1',
-  imageUrl = 'https://images.unsplash.com/photo-1580518324671-c2f0833a3af3?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  title = 'Work with me 1:1',
+  subtitle = 'Let me help you unleash your potential',
+  imageUrl,
 }: CoachPromoItemProps) {
   return (
     <Link
       href="/get-coach"
       className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[#ffffff]/60 dark:hover:bg-[#171b22]/60 transition-colors"
     >
-      <Image 
-        src={imageUrl}
-        alt="Personal Coach"
-        width={48}
-        height={48}
-        className="w-12 h-12 rounded-full object-cover flex-shrink-0"
-      />
+      {imageUrl ? (
+        <Image 
+          src={imageUrl}
+          alt="Personal Coach"
+          width={48}
+          height={48}
+          className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+        />
+      ) : (
+        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e] flex items-center justify-center flex-shrink-0">
+          <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+          </svg>
+        </div>
+      )}
       <div className="flex-1 min-w-0">
         <p className="font-albert text-[15px] font-medium text-text-primary">{title}</p>
         <p className="font-albert text-[13px] text-text-secondary">{subtitle}</p>

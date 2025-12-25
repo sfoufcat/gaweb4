@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgDefaultTheme, MenuItemKey } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgDefaultTheme, MenuItemKey, EmptyStateBehavior } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_THEME } from '@/types';
 import { 
   DEFAULT_TENANT_COACHING_PROMO, 
@@ -60,6 +60,9 @@ interface BrandingContextType {
   coachingPromo: TenantCoachingPromoData;
   // Whether social feed is enabled for this org (from Edge Config for instant SSR)
   feedEnabled: boolean;
+  // Menu empty state behaviors (from Edge Config for instant SSR)
+  programEmptyStateBehavior: EmptyStateBehavior;
+  squadEmptyStateBehavior: EmptyStateBehavior;
   // Whether branding is loading
   isLoading: boolean;
   // Whether using default branding (no custom branding loaded)
@@ -159,6 +162,18 @@ interface BrandingProviderProps {
    * Used for instant SSR rendering of feed nav item.
    */
   initialFeedEnabled?: boolean;
+  /**
+   * Empty state behavior for program menu (from Edge Config).
+   * 'hide' = hide menu when user has no programs
+   * 'discover' = show discover/find program page
+   */
+  initialProgramEmptyStateBehavior?: EmptyStateBehavior;
+  /**
+   * Empty state behavior for squad menu (from Edge Config).
+   * 'hide' = hide menu when user has no squads
+   * 'discover' = show discover/find squad page
+   */
+  initialSquadEmptyStateBehavior?: EmptyStateBehavior;
 }
 
 export function BrandingProvider({ 
@@ -167,6 +182,8 @@ export function BrandingProvider({
   initialCoachingPromo,
   initialIsDefault = true,
   initialFeedEnabled = false,
+  initialProgramEmptyStateBehavior = 'discover',
+  initialSquadEmptyStateBehavior = 'discover',
 }: BrandingProviderProps) {
   // Initialize with SSR branding if provided, otherwise default
   const [branding, setBranding] = useState<OrgBranding>(
@@ -178,6 +195,9 @@ export function BrandingProvider({
   );
   // Initialize feed enabled from SSR for instant nav rendering
   const [feedEnabled] = useState<boolean>(initialFeedEnabled);
+  // Initialize empty state behaviors from SSR for instant nav rendering
+  const [programEmptyStateBehavior] = useState<EmptyStateBehavior>(initialProgramEmptyStateBehavior);
+  const [squadEmptyStateBehavior] = useState<EmptyStateBehavior>(initialSquadEmptyStateBehavior);
   const [isLoading, setIsLoading] = useState(false);
   const [isDefault, setIsDefault] = useState(initialIsDefault);
   const [mounted, setMounted] = useState(false);
@@ -320,6 +340,8 @@ export function BrandingProvider({
         branding,
         coachingPromo,
         feedEnabled,
+        programEmptyStateBehavior,
+        squadEmptyStateBehavior,
         isLoading,
         isDefault,
         isPreviewMode,
@@ -463,6 +485,15 @@ export function useCoachingPromo() {
 export function useFeedEnabled() {
   const { feedEnabled } = useBranding();
   return feedEnabled;
+}
+
+/**
+ * Hook to get empty state behaviors for program and squad menus
+ * Uses Edge Config values from SSR for instant rendering (no flash)
+ */
+export function useEmptyStateBehaviors() {
+  const { programEmptyStateBehavior, squadEmptyStateBehavior } = useBranding();
+  return { programEmptyStateBehavior, squadEmptyStateBehavior };
 }
 
 /**

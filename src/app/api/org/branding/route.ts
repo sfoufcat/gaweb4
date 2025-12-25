@@ -121,7 +121,7 @@ export async function POST(request: Request) {
 
     // Parse request body
     const body = await request.json();
-    const { logoUrl, logoUrlDark, horizontalLogoUrl, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, menuOrder, defaultTheme } = body as Partial<OrgBranding>;
+    const { logoUrl, logoUrlDark, horizontalLogoUrl, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, menuOrder } = body as Partial<OrgBranding>;
 
     // Get existing branding or create new
     const brandingRef = adminDb.collection('org_branding').doc(organizationId);
@@ -162,7 +162,6 @@ export async function POST(request: Request) {
           } as OrgMenuIcons
         }),
         ...(menuOrder !== undefined && { menuOrder }),
-        ...(defaultTheme !== undefined && { defaultTheme }),
         updatedAt: now,
       };
     } else {
@@ -188,7 +187,6 @@ export async function POST(request: Request) {
           ...menuIcons,
         },
         ...(menuOrder !== undefined && { menuOrder }),
-        defaultTheme: defaultTheme ?? DEFAULT_THEME,
         createdAt: now,
         updatedAt: now,
       };

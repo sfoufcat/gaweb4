@@ -658,12 +658,16 @@ export default clerkMiddleware(async (auth, request) => {
     const brandingData = tenantConfigData?.branding || DEFAULT_TENANT_BRANDING;
     const coachingPromoData = tenantConfigData?.coachingPromo; // May be undefined
     const feedEnabledData = tenantConfigData?.feedEnabled === true; // Feed enabled flag for instant SSR
+    const programEmptyStateData = tenantConfigData?.programEmptyStateBehavior || 'discover';
+    const squadEmptyStateData = tenantConfigData?.squadEmptyStateBehavior || 'discover';
     const tenantCookieData = {
       orgId: tenantOrgId,
       subdomain: tenantSubdomain,
       branding: brandingData,
       feedEnabled: feedEnabledData,
       coachingPromo: coachingPromoData,
+      programEmptyStateBehavior: programEmptyStateData,
+      squadEmptyStateBehavior: squadEmptyStateData,
     };
     
     // Log when replacing a different tenant's cookie (for debugging)

@@ -120,6 +120,9 @@ async function fetchSquadData(
     streak: squadStats?.squadStreak ?? null,
     avgAlignment: squadStats?.avgAlignment ?? null,
     chatChannelId: squadData?.chatChannelId || null,
+    // Program association (null = standalone squad, not attached to any program)
+    programId: squadData?.programId || null,
+    cohortId: squadData?.cohortId || null,
     // Coach-scheduled call fields (only used when hasCoach: true)
     nextCallDateTime: squadData?.nextCallDateTime || null,
     nextCallTimezone: squadData?.nextCallTimezone || null,

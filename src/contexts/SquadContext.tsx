@@ -79,6 +79,14 @@ interface SquadContextValue {
   membersBySquad: Record<string, SquadMember[]>;
   statsBySquad: Record<string, SquadStats | null>;
   
+  // Standalone squads (not attached to a program) - for Squad page
+  standaloneSquads: Squad[];
+  activeStandaloneSquad: Squad | null;
+  activeStandaloneSquadId: string | null;
+  setActiveStandaloneSquadId: (squadId: string) => void;
+  hasStandaloneSquad: boolean;
+  hasMultipleStandaloneSquads: boolean;
+  
   // Legacy compatibility: first coached squad and first non-coached squad
   premiumSquad: Squad | null;
   premiumMembers: SquadMember[];
@@ -121,6 +129,7 @@ let globalSquadData: {
   membersBySquad: Record<string, SquadMember[]>;
   statsBySquad: Record<string, SquadStats | null>;
   activeSquadId: string | null;
+  activeStandaloneSquadId: string | null;
   fetchedForUserId: string | null;
   statsLoadedForSquads: Set<string>;
   contributionDaysLoadedBySquad: Record<string, number>;
@@ -130,6 +139,7 @@ let globalSquadData: {
   membersBySquad: {},
   statsBySquad: {},
   activeSquadId: null,
+  activeStandaloneSquadId: null,
   fetchedForUserId: null,
   statsLoadedForSquads: new Set(),
   contributionDaysLoadedBySquad: {},
@@ -165,6 +175,9 @@ export function SquadProvider({ children }: SquadProviderProps) {
   
   // Active squad
   const [activeSquadId, setActiveSquadIdState] = useState<string | null>(globalSquadData.activeSquadId);
+  
+  // Active standalone squad (for Squad page switcher)
+  const [activeStandaloneSquadId, setActiveStandaloneSquadIdState] = useState<string | null>(globalSquadData.activeStandaloneSquadId);
   
   // Loading states
   const [isLoading, setIsLoading] = useState(!globalSquadData.fetchedForUserId);
@@ -202,6 +215,19 @@ export function SquadProvider({ children }: SquadProviderProps) {
   const activeMembers = activeSquadId ? (membersBySquad[activeSquadId] || []) : [];
   const activeStats = activeSquadId ? (statsBySquad[activeSquadId] || null) : null;
   
+  // Standalone squads: squads NOT attached to a program (alumni squads, coach-created standalone, peer squads)
+  // These are shown in the Squad menu/page, regardless of whether they have a coach
+  const standaloneSquads = squads.filter(s => !s.programId);
+  const hasStandaloneSquad = standaloneSquads.length > 0;
+  const hasMultipleStandaloneSquads = standaloneSquads.length > 1;
+  
+  // Active standalone squad for the Squad page
+  // Default to the first standalone squad if current selection is invalid
+  const effectiveStandaloneId = standaloneSquads.find(s => s.id === activeStandaloneSquadId)
+    ? activeStandaloneSquadId
+    : (standaloneSquads[0]?.id || null);
+  const activeStandaloneSquad = standaloneSquads.find(s => s.id === effectiveStandaloneId) || null;
+  
   // Legacy compatibility: find first coached and first non-coached squad
   const coachedSquad = squads.find(s => s.hasCoach) || null;
   const peerSquad = squads.find(s => !s.hasCoach) || null;
@@ -222,6 +248,12 @@ export function SquadProvider({ children }: SquadProviderProps) {
     
     // Update hasMoreContributions for the new active squad
     setHasMoreContributions(globalSquadData.hasMoreContributionsBySquad[squadId] ?? true);
+  }, []);
+  
+  // Set active standalone squad ID (for Squad page switcher)
+  const setActiveStandaloneSquadId = useCallback((squadId: string) => {
+    setActiveStandaloneSquadIdState(squadId);
+    globalSquadData.activeStandaloneSquadId = squadId;
   }, []);
 
   // Fetch squad data with staggered loading for instant UI
@@ -272,6 +304,10 @@ export function SquadProvider({ children }: SquadProviderProps) {
       } else if (fetchedSquads.length > 0) {
         defaultActiveId = fetchedSquads[0].id;
       }
+      
+      // Determine default standalone squad (first squad without programId)
+      const standaloneSquadsList = fetchedSquads.filter(s => !s.programId);
+      const defaultStandaloneId = standaloneSquadsList[0]?.id || null;
 
       // Update global cache
       globalSquadData = {
@@ -279,6 +315,7 @@ export function SquadProvider({ children }: SquadProviderProps) {
         membersBySquad: fetchedMembersBySquad,
         statsBySquad: {},
         activeSquadId: defaultActiveId,
+        activeStandaloneSquadId: defaultStandaloneId,
         fetchedForUserId: userId,
         statsLoadedForSquads: new Set(),
         contributionDaysLoadedBySquad: {},
@@ -288,6 +325,7 @@ export function SquadProvider({ children }: SquadProviderProps) {
       setSquads(fetchedSquads);
       setMembersBySquad(fetchedMembersBySquad);
       setActiveSquadIdState(defaultActiveId);
+      setActiveStandaloneSquadIdState(defaultStandaloneId);
       setIsLoading(false); // Page can render now!
       
       // Save to localStorage for instant loading on next visit
@@ -357,6 +395,7 @@ export function SquadProvider({ children }: SquadProviderProps) {
         membersBySquad: {},
         statsBySquad: {},
         activeSquadId: null,
+        activeStandaloneSquadId: null,
         fetchedForUserId: userId,
         statsLoadedForSquads: new Set(),
         contributionDaysLoadedBySquad: {},
@@ -367,6 +406,7 @@ export function SquadProvider({ children }: SquadProviderProps) {
       setMembersBySquad({});
       setStatsBySquad({});
       setActiveSquadIdState(null);
+      setActiveStandaloneSquadIdState(null);
       setIsLoading(false);
     }
   }, []);
@@ -496,6 +536,7 @@ export function SquadProvider({ children }: SquadProviderProps) {
         membersBySquad: {},
         statsBySquad: {},
         activeSquadId: null,
+        activeStandaloneSquadId: null,
         fetchedForUserId: null,
         statsLoadedForSquads: new Set(),
         contributionDaysLoadedBySquad: {},
@@ -505,6 +546,7 @@ export function SquadProvider({ children }: SquadProviderProps) {
       setMembersBySquad({});
       setStatsBySquad({});
       setActiveSquadIdState(null);
+      setActiveStandaloneSquadIdState(null);
       setIsLoading(false);
       setHasMoreContributions(true);
       return;
@@ -516,6 +558,7 @@ export function SquadProvider({ children }: SquadProviderProps) {
       setMembersBySquad(globalSquadData.membersBySquad);
       setStatsBySquad(globalSquadData.statsBySquad);
       setActiveSquadIdState(globalSquadData.activeSquadId);
+      setActiveStandaloneSquadIdState(globalSquadData.activeStandaloneSquadId);
       setIsLoading(false);
       
       // Set hasMoreContributions based on active squad
@@ -540,6 +583,14 @@ export function SquadProvider({ children }: SquadProviderProps) {
       squads,
       membersBySquad,
       statsBySquad,
+      
+      // Standalone squads (for Squad page)
+      standaloneSquads,
+      activeStandaloneSquad,
+      activeStandaloneSquadId: effectiveStandaloneId,
+      setActiveStandaloneSquadId,
+      hasStandaloneSquad,
+      hasMultipleStandaloneSquads,
       
       // Legacy compatibility (first coached and first non-coached)
       premiumSquad: coachedSquad,
@@ -590,6 +641,13 @@ export function SquadProvider({ children }: SquadProviderProps) {
  * - Use `squads` to access all squads user is in
  * - Use `setActiveSquadId` to switch between them
  * - Use `hasMultipleSquads` to check if user has multiple squad membership
+ * 
+ * For standalone squads (Squad page):
+ * - Use `standaloneSquads` to get all squads not attached to a program
+ * - Use `activeStandaloneSquad` to get the currently viewed standalone squad
+ * - Use `setActiveStandaloneSquadId` to switch between standalone squads
+ * - Use `hasStandaloneSquad` to check if user has any standalone squad
+ * - Use `hasMultipleStandaloneSquads` to show a switcher
  * 
  * Legacy support for dual-squad (premium/standard):
  * - Use `premiumSquad`, `standardSquad` to access coached and non-coached squads

@@ -9,8 +9,9 @@ import { adminDb } from '@/lib/firebase-admin';
  * Batch fetch story status for multiple users in a single request.
  * Optimized to reduce N+1 queries to 1 API call with parallel Firestore reads.
  * 
- * Request body:
+ * Request body (one of):
  * { userIds: string[] } - Array of user IDs (max 20)
+ * { squadId: string }   - Squad ID to fetch all member stories (eliminates waterfall)
  * 
  * Response:
  * { 
@@ -19,7 +20,8 @@ import { adminDb } from '@/lib/firebase-admin';
  *       hasStory, hasDayClosed, hasWeekClosed, hasTasks, hasGoal,
  *       user: { firstName, lastName, imageUrl }
  *     } 
- *   } 
+ *   },
+ *   memberIds?: string[]  // Returned when using squadId mode
  * }
  */
 
@@ -53,14 +55,34 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { userIds } = body as { userIds: string[] };
+    const { userIds, squadId } = body as { userIds?: string[]; squadId?: string };
 
-    if (!Array.isArray(userIds) || userIds.length === 0) {
-      return NextResponse.json({ error: 'userIds array required' }, { status: 400 });
+    // Determine user IDs to fetch
+    let targetUserIds: string[] = [];
+    let returnMemberIds = false;
+
+    if (squadId) {
+      // Squad mode: fetch member IDs from the squad
+      const memberIds = await fetchSquadMemberIds(squadId, currentUserId, organizationId);
+      targetUserIds = memberIds;
+      returnMemberIds = true;
+    } else if (Array.isArray(userIds) && userIds.length > 0) {
+      // Explicit user IDs mode
+      targetUserIds = userIds;
+    } else {
+      return NextResponse.json({ error: 'userIds array or squadId required' }, { status: 400 });
+    }
+
+    // Handle empty member list
+    if (targetUserIds.length === 0) {
+      return NextResponse.json({ 
+        statuses: {},
+        ...(returnMemberIds && { memberIds: [] })
+      });
     }
 
     // Limit to 20 users per batch for performance
-    const limitedUserIds = userIds.slice(0, 20);
+    const limitedUserIds = targetUserIds.slice(0, 20);
 
     // Get current date info
     const today = new Date().toISOString().split('T')[0];
@@ -147,13 +169,56 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    return NextResponse.json({ statuses });
+    return NextResponse.json({ 
+      statuses,
+      ...(returnMemberIds && { memberIds: limitedUserIds })
+    });
   } catch (error) {
     console.error('[STORIES_BATCH] Error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch story statuses' },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Fetch squad member IDs from a squad, excluding the current user
+ */
+async function fetchSquadMemberIds(
+  squadId: string,
+  currentUserId: string,
+  organizationId: string
+): Promise<string[]> {
+  try {
+    // Verify squad exists and belongs to this org
+    const squadDoc = await adminDb.collection('squads').doc(squadId).get();
+    if (!squadDoc.exists) {
+      return [];
+    }
+    
+    const squadData = squadDoc.data();
+    if (squadData?.organizationId !== organizationId) {
+      return [];
+    }
+
+    // Fetch squad members
+    const membersSnapshot = await adminDb
+      .collection('squads')
+      .doc(squadId)
+      .collection('members')
+      .select('userId') // Only need userId for efficiency
+      .get();
+
+    // Extract user IDs, excluding current user
+    const memberIds = membersSnapshot.docs
+      .map(doc => doc.data().userId as string)
+      .filter(uid => uid && uid !== currentUserId);
+
+    return memberIds;
+  } catch (err) {
+    console.error('[STORIES_BATCH] Error fetching squad members:', err);
+    return [];
   }
 }
 
@@ -244,4 +309,3 @@ async function fetchUserStoriesExistence(
 
   return usersWithStories;
 }
-

@@ -13,7 +13,7 @@
  */
 
 import { get } from '@vercel/edge-config';
-import type { OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, MenuItemKey } from '@/types';
+import type { OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, MenuItemKey, EmptyStateBehavior } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER } from '@/types';
 
 // =============================================================================
@@ -54,6 +54,9 @@ export interface TenantConfigData {
   feedEnabled?: boolean;  // Whether social feed is enabled for this org
   coachingPromo?: TenantCoachingPromoData;
   verifiedCustomDomain?: string;
+  // Menu empty state behavior (what to show when user has no program/squad)
+  programEmptyStateBehavior?: EmptyStateBehavior; // 'hide' | 'discover'
+  squadEmptyStateBehavior?: EmptyStateBehavior;   // 'hide' | 'discover'
   updatedAt: string;
 }
 
@@ -74,9 +77,9 @@ export const DEFAULT_TENANT_BRANDING: TenantBrandingData = {
  * Default coaching promo for new organizations or when Edge Config is empty
  */
 export const DEFAULT_TENANT_COACHING_PROMO: TenantCoachingPromoData = {
-  title: 'Get your personal coach',
-  subtitle: 'Work with a performance psychologist 1:1',
-  imageUrl: 'https://images.unsplash.com/photo-1580518324671-c2f0833a3af3?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  title: 'Work with me 1:1',
+  subtitle: 'Let me help you unleash your potential',
+  imageUrl: '', // Empty string signals "use coach's profile picture"
   isVisible: true,
 };
 
@@ -233,7 +236,9 @@ export function buildTenantConfigData(
   branding?: Partial<TenantBrandingData>,
   verifiedCustomDomain?: string,
   coachingPromo?: Partial<TenantCoachingPromoData>,
-  feedEnabled?: boolean
+  feedEnabled?: boolean,
+  programEmptyStateBehavior?: EmptyStateBehavior,
+  squadEmptyStateBehavior?: EmptyStateBehavior
 ): TenantConfigData {
   return {
     organizationId,
@@ -255,6 +260,8 @@ export function buildTenantConfigData(
       isVisible: coachingPromo.isVisible ?? DEFAULT_TENANT_COACHING_PROMO.isVisible,
     } : undefined,
     verifiedCustomDomain,
+    programEmptyStateBehavior: programEmptyStateBehavior ?? 'discover',
+    squadEmptyStateBehavior: squadEmptyStateBehavior ?? 'discover',
     updatedAt: new Date().toISOString(),
   };
 }
@@ -268,9 +275,11 @@ export async function syncTenantToEdgeConfig(
   branding?: Partial<TenantBrandingData>,
   verifiedCustomDomain?: string,
   coachingPromo?: Partial<TenantCoachingPromoData>,
-  feedEnabled?: boolean
+  feedEnabled?: boolean,
+  programEmptyStateBehavior?: EmptyStateBehavior,
+  squadEmptyStateBehavior?: EmptyStateBehavior
 ): Promise<void> {
-  const data = buildTenantConfigData(organizationId, subdomain, branding, verifiedCustomDomain, coachingPromo, feedEnabled);
+  const data = buildTenantConfigData(organizationId, subdomain, branding, verifiedCustomDomain, coachingPromo, feedEnabled, programEmptyStateBehavior, squadEmptyStateBehavior);
   
   const items: EdgeConfigItem[] = [
     { operation: 'upsert', key: getSubdomainKey(subdomain), value: data },

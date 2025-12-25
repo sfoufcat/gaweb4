@@ -97,9 +97,9 @@ export const DEFAULT_CHANNEL_ICONS: Record<OrgChannelType, string> = {
 
 // Default coaching promo configuration
 export const DEFAULT_COACHING_PROMO: Omit<OrgCoachingPromo, 'id' | 'organizationId' | 'createdAt' | 'updatedAt'> = {
-  title: 'Get your personal coach',
-  subtitle: 'Work with a performance psychologist 1:1',
-  imageUrl: 'https://images.unsplash.com/photo-1580518324671-c2f0833a3af3?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  title: 'Work with me 1:1',
+  subtitle: 'Let me help you unleash your potential',
+  imageUrl: '', // Empty string signals "use coach's profile picture"
   isVisible: true,
 };
 

@@ -1845,6 +1845,13 @@ export interface OrgInviteCodeRedemption {
 // Stripe Connect status for coach billing
 export type StripeConnectStatus = 'not_connected' | 'pending' | 'connected';
 
+/**
+ * Empty state behavior for menu items
+ * - 'hide': Hide the menu item entirely when user has no content
+ * - 'discover': Show the menu item with a discover/find page
+ */
+export type EmptyStateBehavior = 'hide' | 'discover';
+
 export interface OrgSettings {
   id: string;                          // Same as organizationId
   organizationId: string;              // Clerk Organization ID
@@ -1878,6 +1885,10 @@ export interface OrgSettings {
   alumniDiscountType?: 'percentage' | 'fixed'; // Type of discount
   alumniDiscountValue?: number;        // 20 for 20% or 2000 for $20
   
+  // Menu empty state behavior (what to show when user has no program/squad)
+  programEmptyStateBehavior?: EmptyStateBehavior; // default: 'discover'
+  squadEmptyStateBehavior?: EmptyStateBehavior;   // default: 'discover'
+  
   createdAt: string;                   // ISO timestamp
   updatedAt: string;                   // ISO timestamp
 }
@@ -1903,6 +1914,8 @@ export const DEFAULT_ORG_SETTINGS: Omit<OrgSettings, 'id' | 'organizationId' | '
   alumniDiscountEnabled: false,
   alumniDiscountType: 'percentage',
   alumniDiscountValue: 0,
+  programEmptyStateBehavior: 'discover', // Show find program page by default
+  squadEmptyStateBehavior: 'discover',   // Show find squad page by default
 };
 
 /**
@@ -2013,7 +2026,7 @@ export interface OrgBranding {
 /**
  * Default theme for organizations
  */
-export const DEFAULT_THEME: OrgDefaultTheme = 'light';
+export const DEFAULT_THEME: OrgDefaultTheme = 'system';
 
 /**
  * Default branding values (matches current hardcoded theme)

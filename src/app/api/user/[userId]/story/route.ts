@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
 
 /**
  * GET /api/user/[userId]/story
  * Fetches story-related data for a specific user
  * Used by squad members to view each other's stories
+ * 
+ * Returns both:
+ * - User-posted stories (from feed_stories collection, 24hr TTL)
+ * - Auto-generated stories (tasks, goals, check-ins)
  */
 export async function GET(
   request: NextRequest,
@@ -20,6 +25,9 @@ export async function GET(
     const { userId: targetUserId } = await params;
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
+
+    // Get organization context for user-posted stories
+    const organizationId = await getEffectiveOrgId();
 
     // Fetch user data from Firebase
     const userDoc = await adminDb.collection('users').doc(targetUserId).get();
@@ -97,12 +105,69 @@ export async function GET(
       );
     }
 
+    // ===== FETCH USER-POSTED STORIES (24hr TTL) =====
+    interface UserPostedStory {
+      id: string;
+      type: 'user_post';
+      authorId: string;
+      imageUrl?: string;
+      videoUrl?: string;
+      caption?: string;
+      expiresAt: string;
+      createdAt: string;
+    }
+    let userPostedStories: UserPostedStory[] = [];
+
+    if (organizationId) {
+      try {
+        const nowDate = new Date();
+        const twentyFourHoursAgo = new Date(nowDate.getTime() - 24 * 60 * 60 * 1000);
+
+        const storiesSnapshot = await adminDb
+          .collection('feed_stories')
+          .where('authorId', '==', targetUserId)
+          .where('organizationId', '==', organizationId)
+          .orderBy('createdAt', 'desc')
+          .limit(20)
+          .get();
+
+        userPostedStories = storiesSnapshot.docs
+          .map(doc => {
+            const data = doc.data();
+            const createdAt = data.createdAt?.toDate?.() || (data.createdAt ? new Date(data.createdAt) : null);
+
+            return {
+              id: doc.id,
+              type: 'user_post' as const,
+              authorId: data.authorId,
+              imageUrl: data.imageUrl || undefined,
+              videoUrl: data.videoUrl || undefined,
+              caption: data.caption || undefined,
+              expiresAt: data.expiresAt?.toDate?.()?.toISOString() || data.expiresAt,
+              createdAt: createdAt?.toISOString() || new Date().toISOString(),
+              _createdAtDate: createdAt,
+            };
+          })
+          .filter(story => {
+            if (!story._createdAtDate) return false;
+            return story._createdAtDate >= twentyFourHoursAgo;
+          })
+          .map(({ _createdAtDate, ...rest }) => rest);
+      } catch (storiesError) {
+        console.error('[USER_STORY] Error fetching user-posted stories:', storiesError);
+        // Continue without user-posted stories - auto-generated will still work
+      }
+    }
+
     // Build response
     const response = {
       hasActiveGoal,
       hasTasksToday,
       hasDayClosed,
       hasWeekClosed,
+      // Include user-posted stories
+      userPostedStories,
+      hasUserPostedStories: userPostedStories.length > 0,
       goal: hasActiveGoal
         ? {
             title: userData?.goal || '',

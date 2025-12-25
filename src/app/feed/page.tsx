@@ -25,9 +25,12 @@ export default function FeedPage() {
   const { feed: feedTitle } = useMenuTitles();
   const feedEnabled = useFeedEnabled(); // From Edge Config via SSR - instant, no flash
   
-  // Get squad members for stories
-  const { members: squadMembers, isLoading: isLoadingSquad } = useSquad();
-  const { storyUsers, isLoading: isLoadingStories } = useFeedStories(squadMembers);
+  // Get squad data for stories - use squadId mode for instant loading (no waterfall)
+  const { members: squadMembers, activeSquadId, isLoading: isLoadingSquad } = useSquad();
+  const { storyUsers, isLoading: isLoadingStories } = useFeedStories({ 
+    squadId: activeSquadId,
+    squadMembers, // Fallback for when squadId is not yet available
+  });
   
   // Story view tracking (for marking stories as viewed)
   const currentUserStoryStatus = useCurrentUserHasStory();

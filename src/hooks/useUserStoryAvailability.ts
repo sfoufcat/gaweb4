@@ -19,16 +19,31 @@ function isInReflectionWindow(): boolean {
  * 3. Green ring + check: has active goal AND has tasks today (morning check-in done)
  * 
  * Story slides (in order):
- * 1. Tasks - "What I'm focusing on today" (if tasks today)
- * 2. Goal - "My goal" (if active goal)
- * 3. Day Closed - Shows completed tasks (if evening check-in done, resets next day)
+ * 1. User-posted stories (images/videos uploaded, 24hr TTL) - newest first
+ * 2. Tasks - "What I'm focusing on today" (if tasks today)
+ * 3. Day Closed - Shows completed tasks (if evening check-in done)
+ * 4. Week Closed - Shows weekly reflection (Fri-Sun only)
+ * 5. Goal - "My goal" (if active goal) - anchor slide
  */
+
+export interface UserPostedStory {
+  id: string;
+  type: 'user_post';
+  authorId: string;
+  imageUrl?: string;
+  videoUrl?: string;
+  caption?: string;
+  expiresAt: string;
+  createdAt: string;
+}
 
 export interface UserStoryData {
   hasActiveGoal: boolean;
   hasTasksToday: boolean;
   hasDayClosed: boolean;
   hasWeekClosed: boolean;
+  hasUserPostedStories: boolean;
+  userPostedStories: UserPostedStory[];
   goal: {
     title: string;
     targetDate: string;
@@ -80,6 +95,8 @@ const DEFAULT_DATA: UserStoryData = {
   hasTasksToday: false,
   hasDayClosed: false,
   hasWeekClosed: false,
+  hasUserPostedStories: false,
+  userPostedStories: [],
   goal: null,
   tasks: [],
   completedTasks: [],
@@ -119,6 +136,8 @@ interface StoryDataResponse {
     previousProgress?: number;
     publicFocus?: string;
   };
+  // User-posted stories (from /api/stories)
+  userPostedStories?: UserPostedStory[];
 }
 
 /**
@@ -127,12 +146,13 @@ interface StoryDataResponse {
 async function fetchCurrentUserStoryData(): Promise<StoryDataResponse> {
   const today = new Date().toISOString().split('T')[0];
 
-  // Fetch all data in parallel
-  const [userResponse, tasksResponse, eveningResponse, weeklyResponse] = await Promise.all([
+  // Fetch all data in parallel (including user-posted stories)
+  const [userResponse, tasksResponse, eveningResponse, weeklyResponse, storiesResponse] = await Promise.all([
     fetch('/api/user/me'),
     fetch(`/api/tasks?date=${today}`),
     fetch(`/api/checkin/evening?date=${today}`),
     fetch('/api/checkin/weekly'),
+    fetch('/api/stories'), // Fetch current user's posted stories
   ]);
 
   if (!userResponse.ok || !tasksResponse.ok) {
@@ -143,6 +163,7 @@ async function fetchCurrentUserStoryData(): Promise<StoryDataResponse> {
   const tasksData = await tasksResponse.json();
   const eveningData = eveningResponse.ok ? await eveningResponse.json() : { checkIn: null };
   const weeklyData = weeklyResponse.ok ? await weeklyResponse.json() : { checkIn: null };
+  const storiesData = storiesResponse.ok ? await storiesResponse.json() : { stories: [] };
 
   return {
     user: userData.user,
@@ -150,6 +171,7 @@ async function fetchCurrentUserStoryData(): Promise<StoryDataResponse> {
     tasks: tasksData.tasks || [],
     checkIn: eveningData.checkIn,
     weeklyCheckIn: weeklyData.checkIn,
+    userPostedStories: storiesData.stories || [],
   };
 }
 
@@ -181,11 +203,16 @@ function transformStoryData(response: StoryDataResponse): UserStoryData {
   // Check if weekly reflection is complete AND we're in the reflection window
   const hasWeekClosed = isInReflectionWindow() && !!(response.weeklyCheckIn?.completedAt);
 
+  // User-posted stories
+  const userPostedStories = response.userPostedStories || [];
+
   return {
     hasActiveGoal,
     hasTasksToday,
     hasDayClosed,
     hasWeekClosed,
+    hasUserPostedStories: userPostedStories.length > 0,
+    userPostedStories,
     goal: hasActiveGoal
       ? {
           title: response.goal!.goal!,
@@ -242,9 +269,9 @@ export function useCurrentUserStoryAvailability(): StoryAvailability {
     return transformStoryData(rawData);
   }, [rawData]);
 
-  // Calculate story availability
-  const hasStory = data.hasActiveGoal || data.hasDayClosed || data.hasWeekClosed;
-  const showRing = data.hasActiveGoal || data.hasDayClosed || data.hasWeekClosed;
+  // Calculate story availability - include user-posted stories
+  const hasStory = data.hasActiveGoal || data.hasDayClosed || data.hasWeekClosed || data.hasUserPostedStories;
+  const showRing = data.hasActiveGoal || data.hasDayClosed || data.hasWeekClosed || data.hasUserPostedStories;
   
   // Weekly check-in completion only shows checkmark on weekends
   const isWeekend = (() => {
@@ -253,10 +280,10 @@ export function useCurrentUserStoryAvailability(): StoryAvailability {
   })();
   const showCheck = (data.hasActiveGoal && data.hasTasksToday) || data.hasDayClosed || (isWeekend && data.hasWeekClosed);
 
-  // Generate content hash for view tracking
+  // Generate content hash for view tracking (include user-posted stories count)
   const contentHash = useMemo(() => 
-    generateStoryContentHash(data.hasTasksToday, data.hasDayClosed, data.tasks.length, data.hasWeekClosed),
-    [data.hasTasksToday, data.hasDayClosed, data.tasks.length, data.hasWeekClosed]
+    generateStoryContentHash(data.hasTasksToday, data.hasDayClosed, data.tasks.length, data.hasWeekClosed, data.userPostedStories.length),
+    [data.hasTasksToday, data.hasDayClosed, data.tasks.length, data.hasWeekClosed, data.userPostedStories.length]
   );
 
   const refetch = useCallback(async () => {
@@ -285,6 +312,8 @@ interface UserStoryApiResponse {
   hasTasksToday: boolean;
   hasDayClosed?: boolean;
   hasWeekClosed?: boolean;
+  hasUserPostedStories?: boolean;
+  userPostedStories?: UserPostedStory[];
   goal: {
     title: string;
     targetDate: string;
@@ -336,12 +365,15 @@ export function useUserStoryAvailability(userId: string): StoryAvailability {
 
     // Apply reflection window check - Week Closed story only visible Fri-Sun
     const hasWeekClosed = isInReflectionWindow() && (storyData.hasWeekClosed || false);
+    const userPostedStories = storyData.userPostedStories || [];
 
     return {
       hasActiveGoal: storyData.hasActiveGoal,
       hasTasksToday: storyData.hasTasksToday,
       hasDayClosed: storyData.hasDayClosed || false,
       hasWeekClosed,
+      hasUserPostedStories: userPostedStories.length > 0,
+      userPostedStories,
       goal: storyData.goal,
       tasks: storyData.tasks || [],
       completedTasks: storyData.completedTasks || [],
@@ -351,9 +383,9 @@ export function useUserStoryAvailability(userId: string): StoryAvailability {
     };
   }, [storyData]);
 
-  // Calculate story availability
-  const hasStory = data.hasActiveGoal || data.hasDayClosed || data.hasWeekClosed;
-  const showRing = data.hasActiveGoal || data.hasDayClosed || data.hasWeekClosed;
+  // Calculate story availability - include user-posted stories
+  const hasStory = data.hasActiveGoal || data.hasDayClosed || data.hasWeekClosed || data.hasUserPostedStories;
+  const showRing = data.hasActiveGoal || data.hasDayClosed || data.hasWeekClosed || data.hasUserPostedStories;
   
   // Weekly check-in completion only shows checkmark on weekends
   const isWeekend = (() => {
@@ -362,10 +394,10 @@ export function useUserStoryAvailability(userId: string): StoryAvailability {
   })();
   const showCheck = (data.hasActiveGoal && data.hasTasksToday) || data.hasDayClosed || (isWeekend && data.hasWeekClosed);
 
-  // Generate content hash for view tracking
+  // Generate content hash for view tracking (include user-posted stories count)
   const contentHash = useMemo(() => 
-    generateStoryContentHash(data.hasTasksToday, data.hasDayClosed, data.tasks.length, data.hasWeekClosed),
-    [data.hasTasksToday, data.hasDayClosed, data.tasks.length, data.hasWeekClosed]
+    generateStoryContentHash(data.hasTasksToday, data.hasDayClosed, data.tasks.length, data.hasWeekClosed, data.userPostedStories.length),
+    [data.hasTasksToday, data.hasDayClosed, data.tasks.length, data.hasWeekClosed, data.userPostedStories.length]
   );
 
   const refetch = useCallback(async () => {

@@ -17,7 +17,7 @@
  */
 
 import { cookies } from 'next/headers';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, MenuItemKey } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, MenuItemKey, EmptyStateBehavior } from '@/types';
 import { 
   DEFAULT_BRANDING_COLORS, 
   DEFAULT_APP_TITLE, 
@@ -52,6 +52,8 @@ export interface TenantCookieData {
   };
   feedEnabled?: boolean;
   coachingPromo?: TenantCoachingPromoData;
+  programEmptyStateBehavior?: EmptyStateBehavior;
+  squadEmptyStateBehavior?: EmptyStateBehavior;
 }
 
 /**
@@ -61,6 +63,8 @@ export interface ServerBranding {
   branding: OrgBranding;
   coachingPromo: TenantCoachingPromoData;
   feedEnabled: boolean;
+  programEmptyStateBehavior: EmptyStateBehavior;
+  squadEmptyStateBehavior: EmptyStateBehavior;
   isDefault: boolean;
   isTenantMode: boolean;
   organizationId: string | null;
@@ -141,6 +145,8 @@ export async function getServerBranding(): Promise<ServerBranding> {
       branding: getDefaultBranding(),
       coachingPromo: DEFAULT_TENANT_COACHING_PROMO,
       feedEnabled: false,
+      programEmptyStateBehavior: 'discover',
+      squadEmptyStateBehavior: 'discover',
       isDefault: true,
       isTenantMode: false,
       organizationId: null,
@@ -180,10 +186,16 @@ export async function getServerBranding(): Promise<ServerBranding> {
   // Get feedEnabled from cookie (set by middleware from Edge Config)
   const feedEnabled = tenantData.feedEnabled === true;
   
+  // Get empty state behaviors from cookie (set by middleware from Edge Config)
+  const programEmptyStateBehavior: EmptyStateBehavior = tenantData.programEmptyStateBehavior || 'discover';
+  const squadEmptyStateBehavior: EmptyStateBehavior = tenantData.squadEmptyStateBehavior || 'discover';
+  
   return {
     branding,
     coachingPromo,
     feedEnabled,
+    programEmptyStateBehavior,
+    squadEmptyStateBehavior,
     isDefault: isActuallyDefault,
     isTenantMode: true,
     organizationId: tenantData.orgId,

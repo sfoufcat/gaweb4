@@ -129,7 +129,7 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
 
   return (
     <AlertDialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0">
+      <AlertDialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
         <AlertDialogHeader className="p-6 pb-0">
           <div className="flex items-center justify-between">
             <AlertDialogTitle className="font-albert text-[24px] tracking-[-1px]">

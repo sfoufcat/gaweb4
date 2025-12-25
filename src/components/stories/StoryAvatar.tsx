@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { StoryPlayer, type StorySlide } from './StoryPlayer';
 import type { Task } from '@/types';
+import type { UserPostedStory } from '@/hooks/useUserStoryAvailability';
 
 interface StoryAvatarProps {
   // User info
@@ -18,6 +19,8 @@ interface StoryAvatarProps {
   hasStory: boolean;
   showRing: boolean;
   showCheck: boolean;
+  // User-posted stories (images/videos, 24hr TTL)
+  userPostedStories?: UserPostedStory[];
   // Story content
   goal?: {
     title: string;
@@ -73,6 +76,7 @@ export function StoryAvatar({
   hasStory,
   showRing,
   showCheck,
+  userPostedStories = [],
   goal,
   tasks = [],
   hasDayClosed = false,
@@ -130,9 +134,26 @@ export function StoryAvatar({
   const userName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'User';
 
   // Build story slides
-  // Order: Tasks → Day Closed → Week Closed → Goal
+  // Order: User-posted → Tasks → Day Closed → Week Closed → Goal
   const buildSlides = (): StorySlide[] => {
     const slides: StorySlide[] = [];
+
+    // Add user-posted stories first (newest first)
+    userPostedStories
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .forEach((story) => {
+        slides.push({
+          type: 'user_post',
+          data: {
+            id: story.id,
+            imageUrl: story.imageUrl,
+            videoUrl: story.videoUrl,
+            caption: story.caption,
+            createdAt: story.createdAt,
+            expiresAt: story.expiresAt,
+          },
+        });
+      });
 
     // Add tasks slide if user has tasks today
     if (tasks.length > 0) {

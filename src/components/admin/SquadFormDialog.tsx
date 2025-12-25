@@ -410,7 +410,7 @@ export function SquadFormDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <AlertDialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <AlertDialogHeader>
           <AlertDialogTitle className="font-albert">
             {squad ? 'Edit Squad' : 'Create Squad'}

@@ -9,7 +9,7 @@ import { isAdmin, canAccessCoachDashboard, canAccessEditorSection, isSuperAdmin 
 import type { UserRole, OrgRole, MenuItemKey } from '@/types';
 import { DEFAULT_MENU_ICONS } from '@/types';
 import { useChatUnreadCounts } from '@/hooks/useChatUnreadCounts';
-import { useBrandingValues, useFeedEnabled } from '@/contexts/BrandingContext';
+import { useBrandingValues, useFeedEnabled, useEmptyStateBehaviors } from '@/contexts/BrandingContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { OrganizationSwitcher } from './OrganizationSwitcher';
 import { useMyPrograms } from '@/hooks/useMyPrograms';
@@ -126,15 +126,16 @@ export function Sidebar() {
   
   // Squad and program state for navigation visibility
   const { hasEnrollments } = useMyPrograms();
-  const { hasStandardSquad } = useSquad();
+  const { hasStandaloneSquad } = useSquad();
   const feedEnabled = useFeedEnabled(); // From Edge Config via SSR - instant, no flash
+  const { programEmptyStateBehavior, squadEmptyStateBehavior } = useEmptyStateBehaviors();
   
   // Navigation visibility logic:
-  // - Program: Show if user has enrollments OR has no standard squad (empty state)
-  // - Squad: Show ONLY if user has a standard squad (coach-created standalone)
+  // - Program: Show if user has enrollments, OR coach config says show discover page
+  // - Squad: Show if user has standalone squad (not program-attached), OR coach config says show discover page
   // - Feed: Show if feed is enabled for the org (from SSR for instant rendering)
-  const showProgramNav = hasEnrollments || !hasStandardSquad;
-  const showSquadNav = hasStandardSquad;
+  const showProgramNav = hasEnrollments || programEmptyStateBehavior === 'discover';
+  const showSquadNav = hasStandaloneSquad || squadEmptyStateBehavior === 'discover';
   const showFeedNav = feedEnabled;
   
   const isActive = (path: string) => pathname === path;

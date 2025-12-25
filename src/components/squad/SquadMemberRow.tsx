@@ -85,6 +85,7 @@ export function SquadMemberRow({ member }: SquadMemberRowProps) {
           hasStory={isCoach ? false : storyAvailability.hasStory}
           showRing={isCoach ? false : storyAvailability.showRing}
           showCheck={isCoach ? false : storyAvailability.showCheck}
+          userPostedStories={isCoach ? undefined : storyAvailability.data.userPostedStories}
           goal={isCoach ? undefined : storyAvailability.data.goal}
           tasks={isCoach ? undefined : storyAvailability.data.tasks}
           hasDayClosed={isCoach ? false : storyAvailability.data.hasDayClosed}

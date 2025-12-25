@@ -80,6 +80,7 @@ export function SquadMemberStoryAvatar({
         hasStory={hasStory}
         showRing={showRing}
         showCheck={showCheck}
+        userPostedStories={data.userPostedStories}
         goal={data.goal}
         tasks={data.tasks}
         hasDayClosed={data.hasDayClosed}

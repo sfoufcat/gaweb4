@@ -141,6 +141,8 @@ export default async function RootLayout({
             initialCoachingPromo={ssrBranding.coachingPromo}
             initialIsDefault={ssrBranding.isDefault}
             initialFeedEnabled={ssrBranding.feedEnabled}
+            initialProgramEmptyStateBehavior={ssrBranding.programEmptyStateBehavior}
+            initialSquadEmptyStateBehavior={ssrBranding.squadEmptyStateBehavior}
           >
           <SquadProvider>
           <OrganizationProvider>

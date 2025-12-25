@@ -126,6 +126,7 @@ export function ProfileHeader({
           hasStory={hasStory}
           showRing={showRing}
           showCheck={showCheck}
+          userPostedStories={storyDetails.userPostedStories}
           goal={storyDetails.goal}
           tasks={storyDetails.tasks}
           hasDayClosed={storyDetails.hasDayClosed}
@@ -182,6 +183,7 @@ export function ProfileHeader({
             hasStory={hasStory}
             showRing={showRing}
             showCheck={showCheck}
+            userPostedStories={storyDetails.userPostedStories}
             goal={storyDetails.goal}
             tasks={storyDetails.tasks}
             hasDayClosed={storyDetails.hasDayClosed}
