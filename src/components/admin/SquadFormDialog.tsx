@@ -410,8 +410,8 @@ export function SquadFormDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <AlertDialogHeader>
+      <AlertDialogContent className="max-w-3xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
+        <AlertDialogHeader className="p-6 pb-4 flex-shrink-0">
           <AlertDialogTitle className="font-albert">
             {squad ? 'Edit Squad' : 'Create Squad'}
           </AlertDialogTitle>
@@ -422,7 +422,8 @@ export function SquadFormDialog({
           )}
         </AlertDialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="px-6 pb-4 space-y-4 overflow-y-auto flex-1">
           {/* Grace Period Warning */}
           {squad && isInGracePeriod && !convertSuccess && (
             <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl p-4">
@@ -855,8 +856,10 @@ export function SquadFormDialog({
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex justify-end gap-2 pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
+          </div>
+
+          {/* Sticky Footer */}
+          <div className="p-6 pt-4 border-t border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0 flex justify-end gap-3">
             <Button
               type="button"
               variant="outline"

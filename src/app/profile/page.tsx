@@ -13,6 +13,7 @@ import { MyJourneyTab } from '@/components/profile/MyJourneyTab';
 import { MyDetailsTab } from '@/components/profile/MyDetailsTab';
 import { ProfileEditForm } from '@/components/profile/ProfileEditForm';
 import { SettingsDrawer } from '@/components/profile/SettingsDrawer';
+import { ProfileSkeleton } from '@/components/profile/ProfileSkeleton';
 import { openOrCreateDirectChat } from '@/lib/chat';
 
 /**
@@ -127,11 +128,25 @@ export default function ProfilePage() {
     }
   }, [clerkUser, clerkLoaded, viewingUserId]);
 
-  // Redirect if not authenticated
+  // Show skeleton while loading
   if (!clerkLoaded || loading) {
+    // Determine if we should show edit skeleton based on query params
+    const showEditSkeleton = typeof window !== 'undefined' && 
+      new URLSearchParams(window.location.search).get('edit') === 'true';
+    const showOnboardingSkeleton = typeof window !== 'undefined' && 
+      new URLSearchParams(window.location.search).get('fromOnboarding') === 'true';
+    
+    if (showEditSkeleton) {
+      return (
+        <div className={`${showOnboardingSkeleton ? 'fixed inset-0 bg-app-bg overflow-y-auto lg:pl-0' : 'max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 py-6 pb-32'}`}>
+          <ProfileSkeleton variant="edit" fromOnboarding={showOnboardingSkeleton} />
+        </div>
+      );
+    }
+    
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-text-primary" />
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
+        <ProfileSkeleton variant="view" />
       </div>
     );
   }
@@ -336,9 +351,7 @@ export default function ProfilePage() {
       )}
 
       {!userData?.user && (
-        <div className="text-center py-12">
-          <p className="font-sans text-text-secondary mb-4">Loading profile...</p>
-        </div>
+        <ProfileSkeleton variant="view" />
       )}
     </div>
   );

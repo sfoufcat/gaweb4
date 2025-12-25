@@ -25,6 +25,49 @@ interface StoriesRowProps {
 }
 
 /**
+ * Internal component for rendering a feed story user with view tracking
+ */
+function FeedStoryAvatar({ 
+  storyUser, 
+  onViewStory 
+}: { 
+  storyUser: FeedStoryUser; 
+  onViewStory?: (userId: string) => void;
+}) {
+  // Track viewed status using content hash
+  const hasViewed = useStoryViewStatus(
+    storyUser.id,
+    storyUser.contentHash
+  );
+
+  return (
+    <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+      <StoryAvatar
+        user={{
+          firstName: storyUser.firstName,
+          lastName: storyUser.lastName,
+          imageUrl: storyUser.imageUrl || '',
+        }}
+        userId={storyUser.id}
+        hasStory={storyUser.hasStory}
+        showRing={storyUser.hasStory}
+        showCheck={storyUser.hasTasks}
+        hasDayClosed={storyUser.hasDayClosed}
+        hasWeekClosed={storyUser.hasWeekClosed}
+        hasViewed={hasViewed}
+        contentHash={storyUser.contentHash}
+        // Override click to use feed's story viewer
+        onClick={() => onViewStory?.(storyUser.id)}
+        size="lg" // 56px to match "Your Story"
+      />
+      <span className="text-xs text-text-secondary font-medium truncate max-w-[56px]">
+        {storyUser.firstName}
+      </span>
+    </div>
+  );
+}
+
+/**
  * StoriesRow - Horizontal scrollable row of story avatars
  * 
  * Shows "Your Story" first with a + icon, followed by other users' stories.
@@ -68,11 +111,11 @@ export function StoriesRow({
           <div className="w-14 h-14 rounded-full bg-earth-200 dark:bg-[#262b35] animate-pulse" />
           <div className="w-12 h-3 bg-earth-200 dark:bg-[#262b35] rounded animate-pulse" />
         </div>
-        {/* Other users skeletons */}
+        {/* Other users skeletons - matching 56px size */}
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="flex flex-col items-center gap-1.5 flex-shrink-0">
-            <div className="w-12 h-12 rounded-full bg-earth-200 dark:bg-[#262b35] animate-pulse" />
-            <div className="w-10 h-3 bg-earth-200 dark:bg-[#262b35] rounded animate-pulse" />
+            <div className="w-14 h-14 rounded-full bg-earth-200 dark:bg-[#262b35] animate-pulse" />
+            <div className="w-12 h-3 bg-earth-200 dark:bg-[#262b35] rounded animate-pulse" />
           </div>
         ))}
       </>
@@ -179,29 +222,13 @@ export function StoriesRow({
         <span className="text-xs text-text-secondary font-medium">Your Story</span>
       </button>
 
-      {/* Other users' stories - using StoryAvatar for visual consistency */}
+      {/* Other users' stories - using FeedStoryAvatar for viewed tracking */}
       {usersWithStories.map((storyUser) => (
-        <div key={storyUser.id} className="flex flex-col items-center gap-1.5 flex-shrink-0">
-          <StoryAvatar
-            user={{
-              firstName: storyUser.firstName,
-              lastName: storyUser.lastName,
-              imageUrl: storyUser.imageUrl || '',
-            }}
-            userId={storyUser.id}
-            hasStory={storyUser.hasStory}
-            showRing={storyUser.hasStory}
-            showCheck={storyUser.hasTasks}
-            hasDayClosed={storyUser.hasDayClosed}
-            hasWeekClosed={storyUser.hasWeekClosed}
-            // Override click to use feed's story viewer
-            onClick={() => onViewStory?.(storyUser.id)}
-            size="md"
-          />
-          <span className="text-xs text-text-secondary font-medium truncate max-w-[56px]">
-            {storyUser.firstName}
-          </span>
-        </div>
+        <FeedStoryAvatar
+          key={storyUser.id}
+          storyUser={storyUser}
+          onViewStory={onViewStory}
+        />
       ))}
     </>
   );

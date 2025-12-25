@@ -129,22 +129,23 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
 
   return (
     <AlertDialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
-        <AlertDialogHeader className="p-6 pb-0">
+      <AlertDialogContent className="max-w-3xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
+        <AlertDialogHeader className="p-6 pb-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <AlertDialogTitle className="font-albert text-[24px] tracking-[-1px]">
               Create your squad
             </AlertDialogTitle>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-[#faf8f6] rounded-full transition-colors"
+              className="p-2 hover:bg-[#faf8f6] dark:hover:bg-white/10 rounded-full transition-colors"
             >
               <X className="w-5 h-5 text-text-secondary" />
             </button>
           </div>
         </AlertDialogHeader>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="px-6 pb-4 space-y-5 overflow-y-auto flex-1">
           {/* Error */}
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-[12px] text-red-700 font-albert text-[14px]">
@@ -289,12 +290,22 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
             </div>
           </div>
 
-          {/* Submit Button */}
-          <div className="pt-2">
+          </div>
+
+          {/* Sticky Footer */}
+          <div className="p-6 pt-4 border-t border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0 flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="flex-1 border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-white/5 rounded-[16px] py-3 font-albert font-medium"
+            >
+              Cancel
+            </Button>
             <Button
               type="submit"
               disabled={loading || !name.trim()}
-              className="w-full bg-[#a07855] hover:bg-[#8c6245] disabled:bg-[#a07855]/50 text-white rounded-[16px] py-3 font-albert font-semibold text-[16px]"
+              className="flex-1 bg-[#a07855] hover:bg-[#8c6245] disabled:bg-[#a07855]/50 text-white rounded-[16px] py-3 font-albert font-semibold text-[16px]"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">

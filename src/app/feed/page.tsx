@@ -94,7 +94,7 @@ export default function FeedPage() {
   }, [selectedStoryUserId, storyUsers, isViewingOwnStory, user]);
 
   // Fetch stories for selected user
-  const { slides: selectedUserStories } = useUserStories(selectedStoryUserId || '');
+  const { slides: selectedUserStories, isLoading: isSelectedUserStoriesLoading } = useUserStories(selectedStoryUserId || '');
 
   // Handle post creation
   const handlePostCreated = useCallback((post: FeedPost) => {
@@ -317,8 +317,8 @@ export default function FeedPage() {
         />
       )}
 
-      {/* Story viewer */}
-      {selectedStoryUser && selectedUserStories.length > 0 && (
+      {/* Story viewer - Render immediately with loading state */}
+      {selectedStoryUser && (
         <StoryPlayer
           isOpen={!!selectedStoryUserId}
           onClose={handleStoryClose}
@@ -329,6 +329,7 @@ export default function FeedPage() {
             lastName: selectedStoryUser.lastName,
             imageUrl: selectedStoryUser.imageUrl || '',
           }}
+          isLoading={isSelectedUserStoriesLoading}
         />
       )}
     </div>

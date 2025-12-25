@@ -22,6 +22,7 @@ export interface FeedStoryUser {
   hasWeekClosed: boolean;
   hasTasks: boolean;
   hasGoal: boolean;
+  contentHash: string; // Used for view tracking
 }
 
 /** Story status data from batch API */
@@ -32,6 +33,8 @@ interface StoryStatusData {
   hasTasks: boolean;
   hasGoal: boolean;
   taskCount: number;
+  userStoryCount: number;
+  hasUserStory: boolean;
   user: {
     firstName: string;
     lastName: string;
@@ -242,6 +245,8 @@ export function useFeedStories(
       hasTasks: false,
       hasGoal: false,
       taskCount: 0,
+      userStoryCount: 0,
+      hasUserStory: false,
       user: null,
     };
 
@@ -267,6 +272,14 @@ export function useFeedStories(
         const status = statuses[memberId] || defaultStatus;
         const legacyMember = legacyMemberMap.get(memberId);
         
+        const contentHash = generateStoryContentHash(
+          status.hasTasks,
+          status.hasDayClosed,
+          status.taskCount,
+          status.hasWeekClosed,
+          status.userStoryCount
+        );
+        
         return {
           id: memberId,
           // Prefer API user data, fall back to local member data
@@ -279,6 +292,7 @@ export function useFeedStories(
           hasWeekClosed: status.hasWeekClosed,
           hasTasks: status.hasTasks,
           hasGoal: status.hasGoal,
+          contentHash,
         };
       })
       // Sort: users with stories first

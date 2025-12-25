@@ -47,6 +47,7 @@ interface StoryPlayerProps {
     lastName: string;
     imageUrl: string;
   };
+  isLoading?: boolean;
 }
 
 const SLIDE_DURATION = 6000; // 6 seconds per slide
@@ -65,7 +66,7 @@ const ANIMATION_DURATION = 300; // Animation duration in ms
  * - Click avatar/name to go to profile
  * - Mobile and desktop responsive
  */
-export function StoryPlayer({ isOpen, onClose, slides, user }: StoryPlayerProps) {
+export function StoryPlayer({ isOpen, onClose, slides, user, isLoading = false }: StoryPlayerProps) {
   const router = useRouter();
   const { user: clerkUser } = useUser();
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -335,7 +336,8 @@ export function StoryPlayer({ isOpen, onClose, slides, user }: StoryPlayerProps)
   const userName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'User';
 
   // Don't render if not mounted or fully closed
-  if (!mounted || animationState === 'closed' || slides.length === 0) return null;
+  // BUT do render if isLoading (even with empty slides) so we show the spinner
+  if (!mounted || animationState === 'closed' || (!isLoading && slides.length === 0)) return null;
 
   const currentSlideData = slides[currentSlide];
 
@@ -374,151 +376,177 @@ export function StoryPlayer({ isOpen, onClose, slides, user }: StoryPlayerProps)
         onPointerLeave={handlePointerCancel}
         onPointerCancel={handlePointerCancel}
       >
-        {/* Story Slide Content */}
-        <div className="absolute inset-0">
-          {currentSlideData.type === 'user_post' ? (
-            <UserPostStorySlide
-              imageUrl={currentSlideData.data.imageUrl}
-              videoUrl={currentSlideData.data.videoUrl}
-              caption={currentSlideData.data.caption}
-              createdAt={currentSlideData.data.createdAt}
-              expiresAt={currentSlideData.data.expiresAt}
-              isPaused={isPaused}
-            />
-          ) : currentSlideData.type === 'tasks' ? (
-            <TaskStorySlide 
-              tasks={currentSlideData.data.tasks || []} 
-              userName={userName}
-            />
-          ) : currentSlideData.type === 'goal' ? (
-            <GoalStorySlide 
-              goalTitle={currentSlideData.data.goalTitle || ''}
-              targetDate={currentSlideData.data.targetDate || ''}
-              progress={currentSlideData.data.progress}
-              userName={userName}
-            />
-          ) : currentSlideData.type === 'weekClosed' ? (
-            <WeekClosedStorySlide
-              progressChange={currentSlideData.data.progressChange || 0}
-              publicFocus={currentSlideData.data.publicFocus}
-              userName={userName}
-            />
+        {/* Story Container */}
+        <div 
+          ref={containerRef}
+          className={`relative w-full max-w-[450px] h-full max-h-[800px] sm:h-[85vh] sm:rounded-[24px] overflow-hidden bg-gray-900 cursor-pointer select-none transition-all duration-300 ease-spring ${containerClasses}`}
+          style={{
+            boxShadow: isAnimating || animationState === 'open' 
+              ? '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)' 
+              : 'none'
+          }}
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerCancel}
+          onPointerCancel={handlePointerCancel}
+        >
+          {/* Loading Spinner */}
+          {isLoading ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+            </div>
           ) : (
-            <DayClosedStorySlide
-              completedTasks={currentSlideData.data.completedTasks || []}
-              userName={userName}
-              tasksCompleted={currentSlideData.data.tasksCompleted}
-              tasksTotal={currentSlideData.data.tasksTotal}
-            />
+            <>
+              {/* Story Slide Content */}
+              <div className="absolute inset-0">
+                {currentSlideData?.type === 'user_post' ? (
+                  <UserPostStorySlide
+                    imageUrl={currentSlideData.data.imageUrl}
+                    videoUrl={currentSlideData.data.videoUrl}
+                    caption={currentSlideData.data.caption}
+                    createdAt={currentSlideData.data.createdAt}
+                    expiresAt={currentSlideData.data.expiresAt}
+                    isPaused={isPaused}
+                  />
+                ) : currentSlideData?.type === 'tasks' ? (
+                  <TaskStorySlide 
+                    tasks={currentSlideData.data.tasks || []} 
+                    userName={userName}
+                  />
+                ) : currentSlideData?.type === 'goal' ? (
+                  <GoalStorySlide 
+                    goalTitle={currentSlideData.data.goalTitle || ''}
+                    targetDate={currentSlideData.data.targetDate || ''}
+                    progress={currentSlideData.data.progress}
+                    userName={userName}
+                  />
+                ) : currentSlideData?.type === 'weekClosed' ? (
+                  <WeekClosedStorySlide
+                    progressChange={currentSlideData.data.progressChange || 0}
+                    publicFocus={currentSlideData.data.publicFocus}
+                    userName={userName}
+                  />
+                ) : currentSlideData ? (
+                  <DayClosedStorySlide
+                    completedTasks={currentSlideData.data.completedTasks || []}
+                    userName={userName}
+                    tasksCompleted={currentSlideData.data.tasksCompleted}
+                    tasksTotal={currentSlideData.data.tasksTotal}
+                  />
+                ) : null}
+              </div>
+
+              {/* Pause Indicator */}
+              {isPaused && (
+                <div className="absolute inset-0 z-15 flex items-center justify-center pointer-events-none">
+                  <div className="w-16 h-16 rounded-full bg-black/40 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                    </svg>
+                  </div>
+                </div>
+              )}
+
+              {/* Header Overlay */}
+              <div className="absolute top-0 left-0 right-0 z-20 pt-3">
+                {/* Progress Bars */}
+                <div className="mb-3">
+                  <StoryProgress 
+                    totalSlides={slides.length}
+                    currentSlide={currentSlide}
+                    progress={progress}
+                  />
+                </div>
+
+                {/* User Info + Controls */}
+                <div className="flex items-center justify-between px-4">
+                  {/* User Avatar + Name - Clickable to profile */}
+                  <button 
+                    onClick={handleProfileClick}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onPointerUp={(e) => e.stopPropagation()}
+                    className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                  >
+                    <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-600 ring-2 ring-white/30">
+                      {user.imageUrl ? (
+                        <Image 
+                          src={user.imageUrl} 
+                          alt={userName} 
+                          width={36}
+                          height={36}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm">
+                          {user.firstName?.[0]}{user.lastName?.[0]}
+                        </div>
+                      )}
+                    </div>
+                    <span className="font-albert text-[16px] font-medium text-white">
+                      {userName}
+                    </span>
+                  </button>
+
+                  {/* Control Buttons */}
+                  <div className="flex items-center gap-1">
+                    {/* Pause/Play Button */}
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        togglePause();
+                      }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onPointerUp={(e) => e.stopPropagation()}
+                      className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white transition-colors"
+                      aria-label={isPaused ? "Play story" : "Pause story"}
+                    >
+                      {isPaused ? (
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                        </svg>
+                      )}
+                    </button>
+
+                    {/* Close Button */}
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleClose();
+                      }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onPointerUp={(e) => e.stopPropagation()}
+                      className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white transition-colors"
+                      aria-label="Close story"
+                    >
+                      <svg 
+                        className="w-6 h-6" 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        strokeWidth={2} 
+                        stroke="currentColor"
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Navigation Hint Overlay (invisible tap areas) */}
+              <div className="absolute inset-0 z-10 pointer-events-none">
+                <div className="absolute left-0 top-0 bottom-0 w-1/3" />
+                <div className="absolute right-0 top-0 bottom-0 w-1/3" />
+              </div>
+            </>
           )}
         </div>
-
-        {/* Pause Indicator */}
-        {isPaused && (
-          <div className="absolute inset-0 z-15 flex items-center justify-center pointer-events-none">
-            <div className="w-16 h-16 rounded-full bg-black/40 flex items-center justify-center">
-              <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-              </svg>
-            </div>
-          </div>
-        )}
-
-        {/* Header Overlay */}
-        <div className="absolute top-0 left-0 right-0 z-20 pt-3">
-          {/* Progress Bars */}
-          <div className="mb-3">
-            <StoryProgress 
-              totalSlides={slides.length}
-              currentSlide={currentSlide}
-              progress={progress}
-            />
-          </div>
-
-          {/* User Info + Controls */}
-          <div className="flex items-center justify-between px-4">
-            {/* User Avatar + Name - Clickable to profile */}
-            <button 
-              onClick={handleProfileClick}
-              onPointerDown={(e) => e.stopPropagation()}
-              onPointerUp={(e) => e.stopPropagation()}
-              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-            >
-              <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-600 ring-2 ring-white/30">
-                {user.imageUrl ? (
-                  <Image 
-                    src={user.imageUrl} 
-                    alt={userName} 
-                    width={36}
-                    height={36}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm">
-                    {user.firstName?.[0]}{user.lastName?.[0]}
-                  </div>
-                )}
-              </div>
-              <span className="font-albert text-[16px] font-medium text-white">
-                {userName}
-              </span>
-            </button>
-
-            {/* Control Buttons */}
-            <div className="flex items-center gap-1">
-              {/* Pause/Play Button */}
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  togglePause();
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-                onPointerUp={(e) => e.stopPropagation()}
-                className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white transition-colors"
-                aria-label={isPaused ? "Play story" : "Pause story"}
-              >
-                {isPaused ? (
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                  </svg>
-                )}
-              </button>
-
-              {/* Close Button */}
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleClose();
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-                onPointerUp={(e) => e.stopPropagation()}
-                className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white transition-colors"
-                aria-label="Close story"
-              >
-                <svg 
-                  className="w-6 h-6" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  strokeWidth={2} 
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Navigation Hint Overlay (invisible tap areas) */}
-        <div className="absolute inset-0 z-10 pointer-events-none">
-          <div className="absolute left-0 top-0 bottom-0 w-1/3" />
-          <div className="absolute right-0 top-0 bottom-0 w-1/3" />
-        </div>
       </div>
+    );
     </div>
   );
 

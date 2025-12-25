@@ -267,6 +267,7 @@ function SpecialChannelItem({
 
 // Get your personal coach item (links to /get-coach page)
 // Now accepts props for org-customized promo settings
+// Fetches resolved coach image if imageUrl is empty
 interface CoachPromoItemProps {
   title?: string;
   subtitle?: string;
@@ -278,14 +279,35 @@ function CoachPromoItem({
   subtitle = 'Let me help you unleash your potential',
   imageUrl,
 }: CoachPromoItemProps) {
+  // If no imageUrl is provided, fetch the resolved promo data which includes coach's profile picture
+  const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(imageUrl || null);
+  
+  useEffect(() => {
+    if (!imageUrl) {
+      // Fetch resolved promo data to get coach's profile picture
+      fetch('/api/user/org-coaching-promo')
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data?.promo?.imageUrl) {
+            setResolvedImageUrl(data.promo.imageUrl);
+          }
+        })
+        .catch(() => {
+          // Silently fail - will show placeholder
+        });
+    } else {
+      setResolvedImageUrl(imageUrl);
+    }
+  }, [imageUrl]);
+  
   return (
     <Link
       href="/get-coach"
       className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[#ffffff]/60 dark:hover:bg-[#171b22]/60 transition-colors"
     >
-      {imageUrl ? (
+      {resolvedImageUrl ? (
         <Image 
-          src={imageUrl}
+          src={resolvedImageUrl}
           alt="Personal Coach"
           width={48}
           height={48}

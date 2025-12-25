@@ -11,10 +11,51 @@
  */
 
 import { NextResponse } from 'next/server';
+import { clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import type { OrgDomain, OrgCustomDomain, OrgBranding } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER } from '@/types';
 import type { TenantBrandingData, TenantCoachingPromoData } from '@/lib/tenant-edge-config';
+
+/**
+ * Helper to get the coach's profile picture for an organization
+ * Finds the super_coach member and returns their Clerk imageUrl
+ */
+async function getCoachImageUrl(organizationId: string): Promise<string | null> {
+  try {
+    const clerk = await clerkClient();
+    
+    // Get organization members to find the super_coach
+    const memberships = await clerk.organizations.getOrganizationMembershipList({
+      organizationId,
+    });
+    
+    // Find the member with super_coach orgRole (stored in membership publicMetadata)
+    const coachMember = memberships.data.find(m => {
+      const metadata = m.publicMetadata as { orgRole?: string } | undefined;
+      return metadata?.orgRole === 'super_coach';
+    });
+    
+    if (coachMember?.publicUserData?.userId) {
+      const coachUser = await clerk.users.getUser(coachMember.publicUserData.userId);
+      return coachUser.imageUrl || null;
+    }
+    
+    // Fallback to first org:admin if no super_coach found
+    const adminMember = memberships.data.find(m => 
+      m.role === 'org:admin' && m.publicUserData?.userId
+    );
+    if (adminMember?.publicUserData?.userId) {
+      const adminUser = await clerk.users.getUser(adminMember.publicUserData.userId);
+      return adminUser.imageUrl || null;
+    }
+    
+    return null;
+  } catch (err) {
+    console.error('[TENANT_RESOLVE] Error fetching coach image:', err);
+    return null;
+  }
+}
 
 /**
  * Fetch branding data for an organization from Firestore
@@ -63,22 +104,37 @@ async function getOrgBranding(organizationId: string): Promise<TenantBrandingDat
 
 /**
  * Fetch coaching promo data for an organization from Firestore
+ * If no custom image is set, resolves to coach's profile picture
  */
 async function getOrgCoachingPromo(organizationId: string): Promise<TenantCoachingPromoData | undefined> {
   try {
     const promoDoc = await adminDb.collection('org_coaching_promo').doc(organizationId).get();
     
+    let imageUrl = '';
+    let title = 'Work with me 1:1';
+    let subtitle = 'Let me help you unleash your potential';
+    let isVisible = true;
+    
     if (promoDoc.exists) {
       const data = promoDoc.data();
-      return {
-        title: data?.title || 'Get your personal coach',
-        subtitle: data?.subtitle || 'Work with a performance psychologist 1:1',
-        imageUrl: data?.imageUrl || '',
-        isVisible: data?.isVisible ?? true,
-      };
+      title = data?.title || title;
+      subtitle = data?.subtitle || subtitle;
+      imageUrl = data?.imageUrl || '';
+      isVisible = data?.isVisible ?? true;
     }
     
-    return undefined;
+    // If no custom image, resolve to coach's profile picture
+    if (!imageUrl) {
+      const coachImage = await getCoachImageUrl(organizationId);
+      imageUrl = coachImage || '';
+    }
+    
+    return {
+      title,
+      subtitle,
+      imageUrl,
+      isVisible,
+    };
   } catch (error) {
     console.error('[TENANT_RESOLVE] Error fetching coaching promo:', error);
     return undefined;

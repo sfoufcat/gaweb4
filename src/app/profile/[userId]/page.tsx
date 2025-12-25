@@ -11,6 +11,7 @@ import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ProfileTabs } from '@/components/profile/ProfileTabs';
 import { MyJourneyTab } from '@/components/profile/MyJourneyTab';
 import { MyDetailsTab } from '@/components/profile/MyDetailsTab';
+import { ProfileSkeleton } from '@/components/profile/ProfileSkeleton';
 import { openOrCreateDirectChat } from '@/lib/chat';
 
 /**
@@ -99,11 +100,11 @@ export default function UserProfilePage() {
     }
   }, [clerkUser, clerkLoaded, userId, isCurrentUser, router]);
 
-  // Redirect if not authenticated
+  // Show skeleton while loading
   if (!clerkLoaded || loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-text-primary" />
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
+        <ProfileSkeleton variant="view" />
       </div>
     );
   }
@@ -195,9 +196,7 @@ export default function UserProfilePage() {
       )}
 
       {!userData?.user && !notFound && (
-        <div className="text-center py-12">
-          <p className="font-sans text-text-secondary mb-4">Loading profile...</p>
-        </div>
+        <ProfileSkeleton variant="view" />
       )}
     </div>
   );

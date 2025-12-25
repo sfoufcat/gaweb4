@@ -162,10 +162,16 @@ export async function PUT(req: Request) {
         // Get existing tenant config to preserve branding
         const existingConfig = await getTenantBySubdomain(domainData.subdomain);
         
+        // If no custom image is set, resolve to coach's profile picture for Edge Config
+        let resolvedImageUrl = promo.imageUrl;
+        if (!resolvedImageUrl) {
+          resolvedImageUrl = await getCoachImageUrl(organizationId) || '';
+        }
+        
         const coachingPromoData: TenantCoachingPromoData = {
           title: promo.title,
           subtitle: promo.subtitle,
-          imageUrl: promo.imageUrl,
+          imageUrl: resolvedImageUrl,
           isVisible: promo.isVisible,
         };
         

@@ -32,6 +32,8 @@ interface StoryStatus {
   hasTasks: boolean;
   hasGoal: boolean;
   taskCount: number;
+  userStoryCount: number;
+  hasUserStory: boolean;
   user: {
     firstName: string;
     lastName: string;
@@ -117,15 +119,15 @@ export async function POST(request: NextRequest) {
     const taskCountsPromise = fetchTaskCountsForUsers(limitedUserIds, today, organizationId);
 
     // 5. Check for user-posted stories (24hr) for all users
-    const userStoriesPromise = fetchUserStoriesExistence(limitedUserIds, organizationId);
+    const userStoryCountsPromise = fetchUserStoryCounts(limitedUserIds, organizationId);
 
     // Execute all queries in parallel
-    const [userDocs, eveningDocs, weeklyDocs, taskCounts, userStories] = await Promise.all([
+    const [userDocs, eveningDocs, weeklyDocs, taskCounts, userStoryCounts] = await Promise.all([
       userDocsPromise,
       eveningDocsPromise,
       weeklyDocsPromise,
       taskCountsPromise,
-      userStoriesPromise,
+      userStoryCountsPromise,
     ]);
 
     // =========================================================================
@@ -140,7 +142,8 @@ export async function POST(request: NextRequest) {
       const eveningDoc = eveningDocs[i];
       const weeklyDoc = weeklyDocs[i];
       const taskCount = taskCounts.get(userId) || 0;
-      const hasUserStory = userStories.has(userId);
+      const userStoryCount = userStoryCounts.get(userId) || 0;
+      const hasUserStory = userStoryCount > 0;
 
       const userData = userDoc.exists ? userDoc.data() : null;
       const eveningData = eveningDoc.exists ? eveningDoc.data() : null;
@@ -161,6 +164,8 @@ export async function POST(request: NextRequest) {
         hasTasks,
         hasGoal: hasActiveGoal,
         taskCount,
+        userStoryCount,
+        hasUserStory,
         user: userData ? {
           firstName: userData.firstName || '',
           lastName: userData.lastName || '',
@@ -270,13 +275,17 @@ async function fetchTaskCountsForUsers(
 
 /**
  * Check which users have user-posted stories in the last 24 hours
+ * Returns a map of userId -> story count
  */
-async function fetchUserStoriesExistence(
+async function fetchUserStoryCounts(
   userIds: string[],
   organizationId: string
-): Promise<Set<string>> {
-  const usersWithStories = new Set<string>();
+): Promise<Map<string, number>> {
+  const userStoryCounts = new Map<string, number>();
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  // Initialize all with 0
+  userIds.forEach(uid => userStoryCounts.set(uid, 0));
 
   // Firestore 'in' query limit is 10, so batch the queries
   const batches: string[][] = [];
@@ -293,11 +302,12 @@ async function fetchUserStoriesExistence(
           .where('organizationId', '==', organizationId)
           .where('createdAt', '>=', twentyFourHoursAgo)
           .select('authorId') // Only fetch authorId for efficiency
-          .limit(100) // Reasonable limit
+          .limit(100) // Reasonable limit per batch
           .get();
 
         snapshot.docs.forEach(doc => {
-          usersWithStories.add(doc.data().authorId);
+          const authorId = doc.data().authorId;
+          userStoryCounts.set(authorId, (userStoryCounts.get(authorId) || 0) + 1);
         });
       } catch (err) {
         // This query might fail if index doesn't exist, that's okay
@@ -307,5 +317,5 @@ async function fetchUserStoriesExistence(
     })
   );
 
-  return usersWithStories;
+  return userStoryCounts;
 }
