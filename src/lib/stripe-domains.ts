@@ -12,10 +12,20 @@
 
 import Stripe from 'stripe';
 
-// Initialize Stripe with the platform's secret key
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
-});
+// Lazy initialization of Stripe client to avoid build-time errors
+let _stripe: Stripe | null = null;
+
+function getStripe(): Stripe {
+  if (!_stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('STRIPE_SECRET_KEY is not configured');
+    }
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-02-24.acacia',
+    });
+  }
+  return _stripe;
+}
 
 interface StripeDomainResult {
   success: boolean;
@@ -36,7 +46,7 @@ export async function registerDomainForApplePay(
 ): Promise<StripeDomainResult> {
   try {
     // Register the domain for Apple Pay on the connected account
-    const applePayDomain = await stripe.applePayDomains.create(
+    const applePayDomain = await getStripe().applePayDomains.create(
       { domain_name: domain },
       { stripeAccount: stripeConnectAccountId }
     );
@@ -85,7 +95,7 @@ export async function registerDomainForApplePayPlatform(
   domain: string
 ): Promise<StripeDomainResult> {
   try {
-    const applePayDomain = await stripe.applePayDomains.create({
+    const applePayDomain = await getStripe().applePayDomains.create({
       domain_name: domain,
     });
     
@@ -127,7 +137,7 @@ export async function removeDomainFromApplePay(
       ? { stripeAccount: stripeConnectAccountId }
       : undefined;
     
-    const domains = await stripe.applePayDomains.list(
+    const domains = await getStripe().applePayDomains.list(
       { domain_name: domain },
       options
     );
@@ -139,7 +149,7 @@ export async function removeDomainFromApplePay(
     
     // Delete the domain
     for (const applePayDomain of domains.data) {
-      await stripe.applePayDomains.del(applePayDomain.id, options);
+      await getStripe().applePayDomains.del(applePayDomain.id, options);
       console.log(`[STRIPE_DOMAINS] Removed Apple Pay domain ${domain} (ID: ${applePayDomain.id})`);
     }
     

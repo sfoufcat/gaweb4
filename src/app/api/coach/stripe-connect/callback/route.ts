@@ -13,9 +13,19 @@ import type { StripeConnectStatus } from '@/types';
 import { registerDomainForApplePay } from '@/lib/stripe-domains';
 import { getOrgCustomDomains } from '@/lib/tenant/resolveTenant';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
-});
+// Lazy initialization to avoid build-time errors
+let _stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!_stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('STRIPE_SECRET_KEY is not configured');
+    }
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-02-24.acacia',
+    });
+  }
+  return _stripe;
+}
 
 /**
  * GET /api/coach/stripe-connect/callback
@@ -57,7 +67,7 @@ export async function GET(request: NextRequest) {
     const organizationId = settingsDoc.id;
     
     // Get the account status from Stripe
-    const account = await stripe.accounts.retrieve(accountId);
+    const account = await getStripe().accounts.retrieve(accountId);
     
     // Determine the connection status
     let status: StripeConnectStatus = 'pending';

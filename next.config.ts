@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   // Optimize for Vercel deployment
   output: 'standalone',
   
+  // Set the root directory for file tracing
+  outputFileTracingRoot: __dirname,
+  
   // CORS headers for API routes (needed for tenant/custom domains)
   async headers() {
     return [
@@ -25,9 +28,6 @@ const nextConfig: NextConfig = {
   // Skip static generation errors - app requires auth
   typescript: {
     ignoreBuildErrors: false,
-  },
-  eslint: {
-    ignoreDuringBuilds: false,
   },
   
   // Configure external images
@@ -93,6 +93,10 @@ const nextConfig: NextConfig = {
   
   // Enable compression for faster loading
   compress: true,
+  
+  // Acknowledge Turbopack as default bundler in Next.js 16
+  // Webpack config is used when building with --webpack flag
+  turbopack: {},
   
   webpack: (config, { isServer, dev }) => {
     // Only apply optimizations in development for faster rebuilds

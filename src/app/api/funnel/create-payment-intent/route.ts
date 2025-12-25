@@ -4,9 +4,19 @@ import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import type { FlowSession, Program, OrgSettings } from '@/types';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
-});
+// Lazy initialization to avoid build-time errors
+let _stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!_stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('STRIPE_SECRET_KEY is not configured');
+    }
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-02-24.acacia',
+    });
+  }
+  return _stripe;
+}
 
 /**
  * POST /api/funnel/create-payment-intent
@@ -110,7 +120,7 @@ export async function POST(req: Request) {
 
     // Verify the connected account is ready to accept payments
     try {
-      const account = await stripe.accounts.retrieve(stripeConnectAccountId);
+      const account = await getStripe().accounts.retrieve(stripeConnectAccountId);
       if (!account.charges_enabled) {
         return NextResponse.json(
           { error: 'Payment processing is not yet enabled for this organization. Please try again later.' },
@@ -144,7 +154,7 @@ export async function POST(req: Request) {
       customerId = connectedCustomerIds[stripeConnectAccountId];
     } else {
       // Create new Stripe customer on the Connected account
-      const customer = await stripe.customers.create(
+      const customer = await getStripe().customers.create(
         {
           email,
           metadata: {
@@ -174,7 +184,7 @@ export async function POST(req: Request) {
       : 'Program enrollment';
 
     // Create payment intent on the Connected account with application fee
-    const paymentIntent = await stripe.paymentIntents.create(
+    const paymentIntent = await getStripe().paymentIntents.create(
       {
         amount: priceInCents,
         currency: currency.toLowerCase(),

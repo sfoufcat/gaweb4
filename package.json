@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "doppler run -- next dev",
-    "dev:local": "next dev",
+    "dev:local": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -69,7 +69,7 @@
     "lucide-react": "^0.554.0",
     "markdown-to-jsx": "^9.1.1",
     "memoize-one": "^6.0.0",
-    "next": "15.3.6",
+    "next": "^16.1.1",
     "property-information": "^7.1.0",
     "react": "^19.2.1",
     "react-day-picker": "^9.11.2",

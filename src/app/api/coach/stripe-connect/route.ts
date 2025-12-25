@@ -11,9 +11,19 @@ import { adminDb } from '@/lib/firebase-admin';
 import Stripe from 'stripe';
 import type { StripeConnectStatus } from '@/types';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
-});
+// Lazy initialization to avoid build-time errors
+let _stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!_stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('STRIPE_SECRET_KEY is not configured');
+    }
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-02-24.acacia',
+    });
+  }
+  return _stripe;
+}
 
 // Helper to get coach's organization ID
 async function getCoachOrganizationId(userId: string): Promise<string | null> {
@@ -83,7 +93,7 @@ export async function GET() {
     // If connected, get account details from Stripe
     if (result.stripeConnectAccountId) {
       try {
-        const account = await stripe.accounts.retrieve(result.stripeConnectAccountId);
+        const account = await getStripe().accounts.retrieve(result.stripeConnectAccountId);
         result.chargesEnabled = account.charges_enabled;
         result.payoutsEnabled = account.payouts_enabled;
         result.detailsSubmitted = account.details_submitted;
@@ -155,7 +165,7 @@ export async function POST(request: NextRequest) {
     
     // Create a new Connect account if one doesn't exist
     if (!accountId) {
-      const account = await stripe.accounts.create({
+      const account = await getStripe().accounts.create({
         type: 'standard',
         metadata: {
           organizationId,
@@ -199,7 +209,7 @@ export async function POST(request: NextRequest) {
     
     // Create an account link for onboarding
     // Use primary domain (registered in Stripe) with return_domain param for redirect back
-    const accountLink = await stripe.accountLinks.create({
+    const accountLink = await getStripe().accountLinks.create({
       account: accountId,
       refresh_url: `${primaryDomain}/coach?tab=customize&stripe=refresh&return_domain=${encodeURIComponent(returnDomain)}`,
       return_url: `${primaryDomain}/api/coach/stripe-connect/callback?account_id=${accountId}&return_domain=${encodeURIComponent(returnDomain)}`,
