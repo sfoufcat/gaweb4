@@ -1706,6 +1706,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                         folder="programs"
                         type="image"
                         uploadEndpoint="/api/coach/org-upload-media"
+                        hideLabel
                       />
                     </div>
 

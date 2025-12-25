@@ -15,6 +15,8 @@ import { getProfileUrl } from '@/lib/utils';
 import type { Task } from '@/types';
 
 export interface StorySlide {
+  /** Unique identifier for this slide (used for view tracking) */
+  id: string;
   type: 'tasks' | 'goal' | 'dayClosed' | 'weekClosed' | 'user_post';
   data: {
     tasks?: Task[];
@@ -28,7 +30,6 @@ export interface StorySlide {
     progressChange?: number;
     publicFocus?: string;
     // User post slide data
-    id?: string;
     imageUrl?: string;
     videoUrl?: string;
     caption?: string;
@@ -50,6 +51,10 @@ interface StoryPlayerProps {
   isLoading?: boolean;
   /** Called when all slides finish (for auto-advancing to next user) */
   onStoryComplete?: () => void;
+  /** Initial slide index to start from (for resuming where user left off) */
+  initialSlideIndex?: number;
+  /** Called when a slide is viewed (progress completes for that slide) */
+  onSlideViewed?: (slideId: string) => void;
 }
 
 const SLIDE_DURATION = 6000; // 6 seconds per slide
@@ -68,7 +73,16 @@ const ANIMATION_DURATION = 300; // Animation duration in ms
  * - Click avatar/name to go to profile
  * - Mobile and desktop responsive
  */
-export function StoryPlayer({ isOpen, onClose, slides, user, isLoading = false, onStoryComplete }: StoryPlayerProps) {
+export function StoryPlayer({ 
+  isOpen, 
+  onClose, 
+  slides, 
+  user, 
+  isLoading = false, 
+  onStoryComplete,
+  initialSlideIndex = 0,
+  onSlideViewed,
+}: StoryPlayerProps) {
   const router = useRouter();
   const { user: clerkUser } = useUser();
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -134,16 +148,18 @@ export function StoryPlayer({ isOpen, onClose, slides, user, isLoading = false, 
     }
   }, [animationState]);
 
-  // Reset state when opening
+  // Reset state when opening - start from initialSlideIndex
   useEffect(() => {
     if (isOpen) {
-      setCurrentSlide(0);
+      // Ensure initialSlideIndex is within bounds
+      const validIndex = Math.max(0, Math.min(initialSlideIndex, slides.length - 1));
+      setCurrentSlide(validIndex);
       setProgress(0);
       setIsPaused(false);
       startTimeRef.current = Date.now();
       pausedAtRef.current = 0;
     }
-  }, [isOpen]);
+  }, [isOpen, initialSlideIndex, slides.length]);
 
   // Handle progress and auto-advance
   useEffect(() => {
@@ -170,6 +186,12 @@ export function StoryPlayer({ isOpen, onClose, slides, user, isLoading = false, 
       setProgress(newProgress);
 
       if (elapsed >= SLIDE_DURATION) {
+        // Mark current slide as viewed
+        const currentSlideData = slides[currentSlide];
+        if (currentSlideData && onSlideViewed) {
+          onSlideViewed(currentSlideData.id);
+        }
+
         // Advance to next slide or complete
         if (currentSlide < slides.length - 1) {
           setCurrentSlide(prev => prev + 1);
@@ -238,6 +260,12 @@ export function StoryPlayer({ isOpen, onClose, slides, user, isLoading = false, 
   }, [isOpen]);
 
   const handleNext = useCallback(() => {
+    // Mark current slide as viewed when skipping
+    const currentSlideData = slides[currentSlide];
+    if (currentSlideData && onSlideViewed) {
+      onSlideViewed(currentSlideData.id);
+    }
+
     if (currentSlide < slides.length - 1) {
       setCurrentSlide(prev => prev + 1);
       setProgress(0);
@@ -259,7 +287,7 @@ export function StoryPlayer({ isOpen, onClose, slides, user, isLoading = false, 
         }, ANIMATION_DURATION);
       }
     }
-  }, [currentSlide, slides.length, onClose, animationState, onStoryComplete]);
+  }, [currentSlide, slides, onClose, animationState, onStoryComplete, onSlideViewed]);
 
   const handlePrevious = useCallback(() => {
     if (currentSlide > 0) {

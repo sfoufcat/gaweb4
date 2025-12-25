@@ -630,6 +630,7 @@ function CourseFormDialog({
                     type="image"
                     required
                     uploadEndpoint={uploadEndpoint}
+                    hideLabel
                   />
                 </div>
                 

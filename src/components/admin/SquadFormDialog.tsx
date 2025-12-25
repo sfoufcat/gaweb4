@@ -625,6 +625,7 @@ export function SquadFormDialog({
               folder="squads"
               type="image"
               uploadEndpoint={uploadEndpoint}
+              hideLabel
             />
           </div>
 

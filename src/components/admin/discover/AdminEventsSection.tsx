@@ -231,6 +231,7 @@ function EventFormDialog({
                 type="image"
                 required
                 uploadEndpoint={uploadEndpoint}
+                hideLabel
               />
             </div>
 

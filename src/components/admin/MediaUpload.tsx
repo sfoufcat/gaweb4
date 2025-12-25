@@ -14,6 +14,8 @@ interface MediaUploadProps {
   required?: boolean;
   /** Custom upload endpoint URL (defaults to /api/admin/upload-media) */
   uploadEndpoint?: string;
+  /** Hide the label row (use when providing external label) */
+  hideLabel?: boolean;
 }
 
 const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
@@ -68,7 +70,8 @@ export function MediaUpload({
   type = 'image',
   label = 'Media',
   required = false,
-  uploadEndpoint = '/api/admin/upload-media'
+  uploadEndpoint = '/api/admin/upload-media',
+  hideLabel = false,
 }: MediaUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -169,18 +172,20 @@ export function MediaUpload({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-          {label} {required && '*'}
-        </label>
-        <button
-          type="button"
-          onClick={() => setShowUrlInput(!showUrlInput)}
-          className="text-xs text-[#a07855] hover:text-[#8c6245] font-albert"
-        >
-          {showUrlInput ? 'Upload file' : 'Enter URL manually'}
-        </button>
-      </div>
+      {!hideLabel && (
+        <div className="flex items-center justify-between">
+          <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+            {label} {required && '*'}
+          </label>
+          <button
+            type="button"
+            onClick={() => setShowUrlInput(!showUrlInput)}
+            className="text-xs text-[#a07855] hover:text-[#8c6245] font-albert"
+          >
+            {showUrlInput ? 'Upload file' : 'Enter URL manually'}
+          </button>
+        </div>
+      )}
 
       {showUrlInput ? (
         // Manual URL input

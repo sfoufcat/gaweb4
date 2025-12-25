@@ -6,6 +6,7 @@ import { StoryPlayer } from '@/components/stories/StoryPlayer';
 import { useStoryPrefetch, type PrefetchedStoryData } from '@/hooks/useStoryPrefetch';
 import { useStoryViewTracking } from '@/hooks/useStoryViewTracking';
 import type { FeedStoryUser } from '@/hooks/useFeedStories';
+import type { StorySlide } from '@/components/stories/StoryPlayer';
 
 // =============================================================================
 // TYPES
@@ -57,7 +58,8 @@ export function StoryPlayerWrapper({
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [currentStoryData, setCurrentStoryData] = useState<PrefetchedStoryData | null>(null);
   const [isLoadingCurrent, setIsLoadingCurrent] = useState(true);
-  const { markStoryAsViewed } = useStoryViewTracking();
+  const [initialSlideIndex, setInitialSlideIndex] = useState(0);
+  const { markStoryAsViewed, markSlideAsViewed, getFirstUnviewedSlideIndex } = useStoryViewTracking();
   
   const {
     prefetchStories,
@@ -98,6 +100,12 @@ export function StoryPlayerWrapper({
     };
   }, [currentStoryUser, isViewingOwnStory, currentUser]);
 
+  // Calculate resume slide index for a given user's slides
+  const calculateResumeIndex = useCallback((userId: string, slides: StorySlide[]): number => {
+    if (!userId || slides.length === 0) return 0;
+    return getFirstUnviewedSlideIndex(userId, slides);
+  }, [getFirstUnviewedSlideIndex]);
+
   // Fetch story data for current user and prefetch upcoming
   const loadCurrentStory = useCallback(async () => {
     if (!currentStoryUser) return;
@@ -108,6 +116,8 @@ export function StoryPlayerWrapper({
     const cached = getCachedStoryData(currentStoryUser.id);
     if (cached) {
       setCurrentStoryData(cached);
+      // Calculate resume index based on what's been viewed
+      setInitialSlideIndex(calculateResumeIndex(currentStoryUser.id, cached.slides));
       setIsLoadingCurrent(false);
     }
 
@@ -115,6 +125,8 @@ export function StoryPlayerWrapper({
     const data = await fetchStoryData(currentStoryUser.id);
     if (data) {
       setCurrentStoryData(data);
+      // Recalculate resume index with fresh data
+      setInitialSlideIndex(calculateResumeIndex(currentStoryUser.id, data.slides));
     }
     setIsLoadingCurrent(false);
 
@@ -122,7 +134,7 @@ export function StoryPlayerWrapper({
     if (currentIndex < userIds.length - 1) {
       prefetchStories(userIds, currentIndex + 1, PREFETCH_WINDOW);
     }
-  }, [currentStoryUser, currentIndex, userIds, getCachedStoryData, fetchStoryData, prefetchStories]);
+  }, [currentStoryUser, currentIndex, userIds, getCachedStoryData, fetchStoryData, prefetchStories, calculateResumeIndex]);
 
   // Load current story when index changes
   useEffect(() => {
@@ -138,9 +150,15 @@ export function StoryPlayerWrapper({
     }
   }, [userIds, startIndex, prefetchStories]);
 
+  // Handle individual slide viewed - mark in localStorage
+  const handleSlideViewed = useCallback((slideId: string) => {
+    if (!currentStoryUser) return;
+    markSlideAsViewed(currentStoryUser.id, slideId);
+  }, [currentStoryUser, markSlideAsViewed]);
+
   // Handle story complete - advance to next user
   const handleStoryComplete = useCallback(() => {
-    // Mark current story as viewed
+    // Mark current story as viewed (for the ring color tracking)
     if (currentStoryUser) {
       markStoryAsViewed(currentStoryUser.id, currentStoryUser.contentHash);
     }
@@ -154,10 +172,13 @@ export function StoryPlayerWrapper({
         if (cached) {
           // Pre-set data for instant transition
           setCurrentStoryData(cached);
+          // Calculate resume index for next user
+          setInitialSlideIndex(calculateResumeIndex(nextUser.id, cached.slides));
           setIsLoadingCurrent(false);
         } else {
           // Will need to fetch - show loading
           setIsLoadingCurrent(true);
+          setInitialSlideIndex(0);
         }
       }
       setCurrentIndex(prev => prev + 1);
@@ -165,7 +186,7 @@ export function StoryPlayerWrapper({
       // No more users - close the viewer
       onClose();
     }
-  }, [currentIndex, storyUsers, currentStoryUser, getCachedStoryData, markStoryAsViewed, onClose]);
+  }, [currentIndex, storyUsers, currentStoryUser, getCachedStoryData, markStoryAsViewed, calculateResumeIndex, onClose]);
 
   // Handle close - mark story as viewed and close
   const handleClose = useCallback(() => {
@@ -189,6 +210,8 @@ export function StoryPlayerWrapper({
       user={storyPlayerUser}
       isLoading={isLoadingCurrent}
       onStoryComplete={handleStoryComplete}
+      initialSlideIndex={initialSlideIndex}
+      onSlideViewed={handleSlideViewed}
     />
   );
 }

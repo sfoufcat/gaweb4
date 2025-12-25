@@ -133,37 +133,35 @@ export function StoryAvatar({
   const config = sizeConfig[size];
   const userName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'User';
 
-  // Build story slides
-  // Order: User-posted → Tasks → Day Closed → Week Closed → Goal
+  // Build story slides in CHRONOLOGICAL order (oldest first, newest last)
+  // This matches Instagram behavior and allows resuming where left off
+  // Order: Goal → Tasks → Day Closed → Week Closed → User Posts (oldest → newest)
   const buildSlides = (): StorySlide[] => {
     const slides: StorySlide[] = [];
 
-    // Add user-posted stories first (newest first)
-    userPostedStories
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .forEach((story) => {
-        slides.push({
-          type: 'user_post',
-          data: {
-            id: story.id,
-            imageUrl: story.imageUrl,
-            videoUrl: story.videoUrl,
-            caption: story.caption,
-            createdAt: story.createdAt,
-            expiresAt: story.expiresAt,
-          },
-        });
+    // 1. Goal slide first (constant anchor - base context)
+    if (goal) {
+      slides.push({
+        id: 'goal',
+        type: 'goal',
+        data: {
+          goalTitle: goal.title,
+          targetDate: goal.targetDate,
+          progress: goal.progress,
+        },
       });
+    }
 
-    // Add tasks slide if user has tasks today
+    // 2. Tasks slide (daily work)
     if (tasks.length > 0) {
       slides.push({
+        id: 'tasks',
         type: 'tasks',
         data: { tasks },
       });
     }
 
-    // Add Day Closed slide if evening check-in is completed
+    // 3. Day Closed slide (daily achievement)
     if (hasDayClosed) {
       // Compute completed tasks from tasks array if prop is empty (fallback for stale data)
       const actualCompletedTasks = completedTasks.length > 0 
@@ -171,6 +169,7 @@ export function StoryAvatar({
         : tasks.filter(t => t.status === 'completed');
       
       slides.push({
+        id: 'dayClosed',
         type: 'dayClosed',
         data: {
           completedTasks: actualCompletedTasks,
@@ -180,9 +179,10 @@ export function StoryAvatar({
       });
     }
 
-    // Add Week Closed slide if weekly check-in is completed
+    // 4. Week Closed slide (weekly achievement)
     if (hasWeekClosed && weeklyReflection) {
       slides.push({
+        id: 'weekClosed',
         type: 'weekClosed',
         data: {
           progressChange: weeklyReflection.progressChange,
@@ -191,17 +191,22 @@ export function StoryAvatar({
       });
     }
 
-    // Add goal slide if user has a goal (last, as the "anchor" of the story)
-    if (goal) {
-      slides.push({
-        type: 'goal',
-        data: {
-          goalTitle: goal.title,
-          targetDate: goal.targetDate,
-          progress: goal.progress,
-        },
+    // 5. User-posted stories LAST, in chronological order (oldest → newest)
+    userPostedStories
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      .forEach((story) => {
+        slides.push({
+          id: story.id,
+          type: 'user_post',
+          data: {
+            imageUrl: story.imageUrl,
+            videoUrl: story.videoUrl,
+            caption: story.caption,
+            createdAt: story.createdAt,
+            expiresAt: story.expiresAt,
+          },
+        });
       });
-    }
 
     return slides;
   };

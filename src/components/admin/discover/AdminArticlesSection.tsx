@@ -189,6 +189,7 @@ function ArticleFormDialog({
                 type="image"
                 required
                 uploadEndpoint={uploadEndpoint}
+                hideLabel
               />
             </div>
 
@@ -203,6 +204,7 @@ function ArticleFormDialog({
                 folder="articles"
                 type="image"
                 uploadEndpoint={uploadEndpoint}
+                hideLabel
               />
             </div>
 
