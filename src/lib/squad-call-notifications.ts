@@ -428,7 +428,7 @@ export async function executeSquadCallJob(job: SquadCallScheduledJob): Promise<{
           await sendSquadCallNotification({
             userId,
             jobType: job.jobType,
-            isPremium: job.hasCoach ?? job.isPremiumSquad,
+            isPremium: job.hasCoach ?? false,
             callDateTime: job.callDateTime,
             callTimezone: job.callTimezone,
           });
@@ -436,7 +436,7 @@ export async function executeSquadCallJob(job: SquadCallScheduledJob): Promise<{
           await sendSquadCallEmail({
             userId,
             jobType: job.jobType,
-            isPremium: job.hasCoach ?? job.isPremiumSquad,
+            isPremium: job.hasCoach ?? false,
             callDateTime: job.callDateTime,
             callTimezone: job.callTimezone,
           });
@@ -545,8 +545,7 @@ export async function processSquadCallScheduledJobs(): Promise<{
  * Validate that a job is still valid (call hasn't been rescheduled or canceled)
  */
 async function validateJobStillValid(job: SquadCallScheduledJob): Promise<boolean> {
-  // Use hasCoach if available, fall back to isPremiumSquad for migration
-  const hasCoach = job.hasCoach ?? job.isPremiumSquad ?? false;
+  const hasCoach = job.hasCoach ?? false;
   if (hasCoach) {
     // For coach-scheduled calls, check the squad document
     const squadDoc = await adminDb.collection('squads').doc(job.squadId).get();

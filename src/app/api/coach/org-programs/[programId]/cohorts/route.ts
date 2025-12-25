@@ -194,6 +194,7 @@ export async function POST(
       status,
       gracePeriodEndDate: gracePeriodEndDate.toISOString().split('T')[0],
       closingNotificationSent: false,
+      convertSquadsToCommunity: body.convertSquadsToCommunity === true,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };

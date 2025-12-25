@@ -190,8 +190,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
   };
 
   // Don't render for squads with coaches
-  // Use hasCoach if available, fall back to isPremium for migration
-  const hasCoach = squad.hasCoach ?? squad.isPremium ?? false;
+  const hasCoach = !!squad.coachId;
   if (hasCoach) {
     return null;
   }

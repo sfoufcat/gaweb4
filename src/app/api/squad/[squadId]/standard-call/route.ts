@@ -48,7 +48,7 @@ export async function GET(
     }
 
     const squadData = squadDoc.data() as Squad;
-    const hasCoach = squadData.hasCoach ?? squadData.isPremium ?? false;
+    const hasCoach = !!squadData.coachId;
     if (hasCoach) {
       return NextResponse.json(
         { error: 'This endpoint is for peer-led squads only. Coached squads use the coach scheduling endpoint.' },
@@ -157,7 +157,7 @@ export async function POST(
     }
 
     const squadData = squadDoc.data() as Squad;
-    const squadHasCoach = squadData.hasCoach ?? squadData.isPremium ?? false;
+    const squadHasCoach = !!squadData.coachId;
     if (squadHasCoach) {
       return NextResponse.json(
         { error: 'This endpoint is for peer-led squads only. Coached squads use the coach scheduling endpoint.' },
@@ -331,7 +331,7 @@ export async function PUT(
     }
 
     const squadData = squadDoc.data() as Squad;
-    const squadHasCoachVote = squadData.hasCoach ?? squadData.isPremium ?? false;
+    const squadHasCoachVote = !!squadData.coachId;
     if (squadHasCoachVote) {
       return NextResponse.json(
         { error: 'This endpoint is for peer-led squads only. Coached squads use the coach scheduling endpoint.' },

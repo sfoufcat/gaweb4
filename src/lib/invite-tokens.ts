@@ -150,12 +150,11 @@ export async function generateInviteUrl(payload: Omit<InviteTokenPayload, 'times
  */
 export function determineSquadType(squad: {
   visibility?: 'public' | 'private';
-  isPremium?: boolean;
-  hasCoach?: boolean;
+  coachId?: string | null;
   inviteCode?: string;
 }): 'private' | 'public' | 'premium' {
-  // Check hasCoach first (new field), fall back to isPremium (deprecated)
-  if (squad.hasCoach ?? squad.isPremium) {
+  // Check if squad has a coach
+  if (squad.coachId) {
     return 'premium';
   }
   

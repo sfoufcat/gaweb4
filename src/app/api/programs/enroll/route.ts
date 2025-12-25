@@ -75,7 +75,6 @@ async function findOrCreateSquad(
     memberIds: [],
     inviteCode,
     hasCoach: true, // Program squads always have coach scheduling
-    isPremium: true, // Kept for backward compatibility
     coachId: null,
     organizationId: program.organizationId,
     programId: program.id,

@@ -117,8 +117,7 @@ export function NextSquadCallCard({ squad, isCoach = false, onCallUpdated, coach
   }, [squad.nextCallDateTime, callTimezone, userTimezone, sameTimezone]);
   
   // Only show for squads with a coach - must be after all hooks
-  // Use hasCoach if available, fall back to isPremium for migration
-  const hasCoach = squad.hasCoach ?? squad.isPremium ?? false;
+  const hasCoach = !!squad.coachId;
   if (!hasCoach) {
     return null;
   }

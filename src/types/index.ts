@@ -761,6 +761,9 @@ export interface ProgramCohort {
   gracePeriodEndDate?: string; // When squad closes (7 days after endDate)
   closingNotificationSent?: boolean; // Whether closing notification was sent
   
+  // Community Mode settings
+  convertSquadsToCommunity?: boolean; // If true, squads become standalone when cohort ends
+  
   // Metadata
   createdAt: string;
   updatedAt: string;
@@ -904,7 +907,7 @@ export interface ProgramHabitTemplate {
 export type SquadRoleInSquad = 'member' | 'coach';
 export type MoodState = 'energized' | 'confident' | 'neutral' | 'uncertain' | 'stuck';
 export type SquadVisibility = 'public' | 'private';
-/** @deprecated SquadType is deprecated - use hasCoach boolean instead */
+/** @deprecated SquadType is deprecated - check !!coachId instead */
 export type SquadType = 'premium' | 'standard';
 
 export interface Squad {
@@ -916,10 +919,11 @@ export interface Squad {
   timezone?: string; // IANA timezone e.g. "Europe/Amsterdam" - defaults to "UTC"
   memberIds?: string[]; // Array of member user IDs (excludes coach)
   inviteCode?: string; // e.g. "GA-XY29Q8" - required for private squads
-  hasCoach: boolean; // Whether squad has a coach (determines call scheduling mode)
-  /** @deprecated Use hasCoach instead */
+  /** @deprecated Check !!coachId instead - this field may be removed in future */
+  hasCoach?: boolean; // Whether squad has a coach (determines call scheduling mode)
+  /** @deprecated Check !!coachId instead */
   isPremium?: boolean;
-  coachId: string | null; // Set if hasCoach is true
+  coachId: string | null; // The authoritative field for coach status
   organizationId?: string; // Clerk Organization ID for multi-tenancy (coach's organization)
   createdAt: string;
   updatedAt: string;

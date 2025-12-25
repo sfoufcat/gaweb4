@@ -6,14 +6,6 @@ import { Globe, Lock, Copy, RefreshCw } from 'lucide-react';
 import type { Squad, FirebaseUser, SquadMember, SquadVisibility } from '@/types';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { Button } from '@/components/ui/button';
-
-// Program type for dropdown
-interface ProgramOption {
-  id: string;
-  name: string;
-  type: string;
-  slug: string;
-}
 import {
   AlertDialog,
   AlertDialogContent,
@@ -47,8 +39,6 @@ interface SquadFormDialogProps {
   apiBasePath?: string;
   /** API endpoint for fetching coaches (default: /api/admin/coaches, use /api/coach/org-coaches for org context) */
   coachesApiEndpoint?: string;
-  /** API endpoint for fetching programs (default: /api/admin/programs, use /api/coach/org-programs for org context) */
-  programsApiEndpoint?: string;
   /** Custom upload endpoint URL for squad images (defaults to /api/admin/upload-media) */
   uploadEndpoint?: string;
 }
@@ -77,7 +67,6 @@ export function SquadFormDialog({
   onSave, 
   apiBasePath = '/api/admin/squads',
   coachesApiEndpoint = '/api/admin/coaches',
-  programsApiEndpoint = '/api/admin/programs',
   uploadEndpoint = '/api/admin/upload-media',
 }: SquadFormDialogProps) {
   const [name, setName] = useState('');
@@ -91,12 +80,34 @@ export function SquadFormDialog({
   const [regeneratingCode, setRegeneratingCode] = useState(false);
   const [coaches, setCoaches] = useState<FirebaseUser[]>([]);
   
-  // Program attachment state
-  const [attachToProgram, setAttachToProgram] = useState(false);
-  const [programId, setProgramId] = useState<string | null>(null);
-  const [capacity, setCapacity] = useState<number | ''>('');
+  // Pricing state
   const [priceInCents, setPriceInCents] = useState<number | ''>('');
-  const [programs, setPrograms] = useState<ProgramOption[]>([]);
+  
+  // Grace period conversion state
+  const [converting, setConverting] = useState(false);
+  const [convertSuccess, setConvertSuccess] = useState(false);
+
+  // Check if squad is in grace period
+  const isInGracePeriod = squad?.programId && squad?.gracePeriodStartDate && !squad?.isClosed;
+
+  // Handle conversion to community
+  const handleConvertToCommunity = async () => {
+    if (!squad?.id) return;
+    setConverting(true);
+    try {
+      const response = await fetch(`/api/coach/squads/${squad.id}/convert-to-community`, {
+        method: 'POST',
+      });
+      if (response.ok) {
+        setConvertSuccess(true);
+        onSave(); // Refresh the list
+      }
+    } catch (error) {
+      console.error('Error converting squad:', error);
+    } finally {
+      setConverting(false);
+    }
+  };
 
   // Member management state
   const [members, setMembers] = useState<SquadMember[]>([]);
@@ -117,10 +128,6 @@ export function SquadFormDialog({
       setTimezone(squad.timezone || 'UTC');
       setInviteCode(squad.inviteCode || '');
       setCoachId(squad.coachId || '');
-      // Program attachment
-      setAttachToProgram(!!squad.programId);
-      setProgramId(squad.programId || null);
-      setCapacity(squad.capacity || '');
       setPriceInCents(squad.priceInCents || '');
     } else {
       setName('');
@@ -130,9 +137,6 @@ export function SquadFormDialog({
       setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
       setInviteCode('');
       setCoachId('');
-      setAttachToProgram(false);
-      setProgramId(null);
-      setCapacity('');
       setPriceInCents('');
       setMembers([]);
     }
@@ -153,22 +157,6 @@ export function SquadFormDialog({
     };
     fetchCoaches();
   }, [coachesApiEndpoint]);
-
-  // Fetch programs for attachment dropdown
-  useEffect(() => {
-    const fetchPrograms = async () => {
-      try {
-        const response = await fetch(programsApiEndpoint);
-        if (response.ok) {
-          const data = await response.json();
-          setPrograms(data.programs || []);
-        }
-      } catch (err) {
-        console.error('Error fetching programs:', err);
-      }
-    };
-    fetchPrograms();
-  }, [programsApiEndpoint]);
 
   const fetchMembers = useCallback(async () => {
     if (!squad) return;
@@ -363,11 +351,6 @@ export function SquadFormDialog({
       return;
     }
 
-    if (attachToProgram && !programId) {
-      alert('Please select a program to attach to');
-      return;
-    }
-
     try {
       setLoading(true);
 
@@ -384,9 +367,6 @@ export function SquadFormDialog({
           visibility,
           timezone,
           coachId: coachId || null,
-          // Program attachment
-          programId: attachToProgram ? programId : null,
-          capacity: attachToProgram && capacity !== '' ? Number(capacity) : null,
           // Pricing
           priceInCents: priceInCents !== '' ? Number(priceInCents) : 0,
           currency: 'usd',
@@ -425,6 +405,56 @@ export function SquadFormDialog({
         </AlertDialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Grace Period Warning */}
+          {squad && isInGracePeriod && !convertSuccess && (
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-albert font-semibold text-sm text-amber-800 dark:text-amber-200">
+                    This squad is in grace period
+                  </h3>
+                  <p className="text-xs text-amber-700 dark:text-amber-300 font-albert mt-0.5">
+                    The linked program has ended. Convert to a standalone community to keep members connected.
+                  </p>
+                  <Button
+                    type="button"
+                    onClick={handleConvertToCommunity}
+                    disabled={converting}
+                    className="mt-2 bg-amber-600 hover:bg-amber-700 text-white text-xs px-3 py-1 h-auto"
+                  >
+                    {converting ? 'Converting...' : 'Convert to Community'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Conversion Success */}
+          {convertSuccess && (
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800/50 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-albert font-semibold text-sm text-green-800 dark:text-green-200">
+                    Converted to community!
+                  </h3>
+                  <p className="text-xs text-green-700 dark:text-green-300 font-albert">
+                    This squad is now a standalone community.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Squad Name */}
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
@@ -598,78 +628,6 @@ export function SquadFormDialog({
             </p>
           </div>
 
-          {/* Attach to Program */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <input
-                id="attachToProgram"
-                type="checkbox"
-                checked={attachToProgram}
-                onChange={(e) => {
-                  setAttachToProgram(e.target.checked);
-                  if (!e.target.checked) {
-                    setProgramId(null);
-                    setCapacity('');
-                  }
-                }}
-                className="w-4 h-4 text-[#a07855] border-[#e1ddd8] dark:border-[#262b35] rounded focus:ring-[#a07855]"
-              />
-              <label htmlFor="attachToProgram" className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                Attach squad to program
-              </label>
-            </div>
-            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-              Attached squads become part of a program and are used until the capacity is reached
-            </p>
-
-            {/* Program Selection (conditional) */}
-            {attachToProgram && (
-              <>
-                <div>
-                  <label htmlFor="programId" className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-                    Program *
-                  </label>
-                  <Select value={programId || ''} onValueChange={setProgramId}>
-                    <SelectTrigger className="w-full font-albert">
-                      <SelectValue placeholder="Select a program" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {programs.map((program) => (
-                        <SelectItem key={program.id} value={program.id} className="font-albert">
-                          {program.name} ({program.type})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {programs.length === 0 && (
-                    <p className="text-xs text-red-600 mt-1 font-albert">
-                      No programs available. Create a program first.
-                    </p>
-                  )}
-                </div>
-
-                {/* Squad Cap */}
-                <div>
-                  <label htmlFor="capacity" className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-                    Squad Cap
-                  </label>
-                  <input
-                    id="capacity"
-                    type="number"
-                    min={1}
-                    value={capacity}
-                    onChange={(e) => setCapacity(e.target.value ? Number(e.target.value) : '')}
-                    placeholder="e.g., 10"
-                    className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert"
-                  />
-                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
-                    Maximum number of members in this squad
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-
           {/* Price to Join */}
           <div>
             <label htmlFor="priceInCents" className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
@@ -833,7 +791,7 @@ export function SquadFormDialog({
             </Button>
             <Button
               type="submit"
-              disabled={loading || (attachToProgram && !programId)}
+              disabled={loading}
               className="bg-[#a07855] hover:bg-[#8c6245] text-white font-albert"
             >
               {loading ? 'Saving...' : squad ? 'Update Squad' : 'Create Squad'}

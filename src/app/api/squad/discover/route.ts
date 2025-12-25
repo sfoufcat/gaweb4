@@ -124,7 +124,7 @@ export async function GET(req: Request) {
 
         // Fetch coach info for coached squads
         let coach: CoachInfo | null = null;
-        const hasCoach = data.hasCoach ?? data.isPremium ?? false;
+        const hasCoach = !!data.coachId;
         if (hasCoach && data.coachId) {
           const coachDoc = await adminDb.collection('users').doc(data.coachId).get();
           if (coachDoc.exists) {
@@ -192,8 +192,8 @@ export async function GET(req: Request) {
     const squads = await processSquads(squadsSnapshot);
     
     // Separate into coached and non-coached squads
-    const coachedSquads = squads.filter(s => s.hasCoach ?? s.isPremium);
-    const nonCoachedSquads = squads.filter(s => !(s.hasCoach ?? s.isPremium));
+    const coachedSquads = squads.filter(s => !!s.coachId);
+    const nonCoachedSquads = squads.filter(s => !s.coachId);
     
     // Group each type by track
     const coachedGrouped = groupByTrack(coachedSquads);

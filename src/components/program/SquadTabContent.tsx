@@ -179,7 +179,7 @@ export function SquadTabContent() {
 
       {/* Invite Cards */}
       <SquadInviteCards
-        hasCoach={squad.hasCoach ?? squad.isPremium}
+        hasCoach={!!squad.coachId}
         inviteCode={squad.inviteCode}
         squadName={squad.name}
         visibility={squad.visibility}

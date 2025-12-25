@@ -65,7 +65,7 @@ export async function GET(
     const durationMinutes = 60;
 
     // Determine call source based on squad type and query param
-    const hasCoach = squadData.hasCoach ?? squadData.isPremium ?? false;
+    const hasCoach = !!squadData.coachId;
     if (callType === 'standard' || !hasCoach) {
       // Standard squad - fetch from standardSquadCalls collection
       const callsSnapshot = await adminDb

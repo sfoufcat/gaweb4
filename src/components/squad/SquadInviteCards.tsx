@@ -54,8 +54,8 @@ export function SquadInviteCards({
 }: SquadInviteCardsProps) {
   const { squad: squadTitle, squadLower } = useMenuTitles();
   
-  // Support both new hasCoach and legacy isPremium
-  const squadHasCoach = hasCoach ?? isPremium ?? false;
+  // Use the hasCoach prop passed from parent (already derived from coachId)
+  const squadHasCoach = hasCoach ?? false;
   
   // Check if squad is at capacity
   const isAtCapacity = memberCount >= MAX_SQUAD_MEMBERS;

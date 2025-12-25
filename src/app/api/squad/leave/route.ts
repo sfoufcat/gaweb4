@@ -103,8 +103,7 @@ export async function POST(req: Request) {
     }
 
     const squad = squadDoc.data() as Squad;
-    // Use hasCoach if available, fall back to isPremium for migration
-    const squadHasCoach = squad.hasCoach ?? squad.isPremium ?? false;
+    const squadHasCoach = !!squad.coachId;
 
     // Check if user is the coach - coaches can't leave (must be removed by admin)
     if (squad.coachId === userId) {

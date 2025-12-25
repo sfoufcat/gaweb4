@@ -69,8 +69,7 @@ export async function POST(req: Request) {
     const squad = squadDoc.data() as Squad;
     const squadRef = adminDb.collection('squads').doc(squadId);
     
-    // Use hasCoach if available, fall back to isPremium for migration
-    const squadHasCoach = squad.hasCoach ?? squad.isPremium ?? false;
+    const squadHasCoach = !!squad.coachId;
 
     // Check if already in the target squad
     if (currentSquadIds.includes(squadId)) {

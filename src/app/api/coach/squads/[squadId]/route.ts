@@ -72,8 +72,7 @@ export async function GET(
       id: squadDoc.id,
       name: squadData?.name || '',
       avatarUrl: squadData?.avatarUrl || '',
-      hasCoach: squadData?.hasCoach ?? squadData?.isPremium ?? !!coachId,
-      isPremium: squadData?.isPremium, // Legacy field
+      hasCoach: !!coachId,
       coachId: coachId,
       createdAt: squadData?.createdAt || new Date().toISOString(),
       updatedAt: squadData?.updatedAt || new Date().toISOString(),

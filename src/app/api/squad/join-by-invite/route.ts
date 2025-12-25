@@ -83,8 +83,7 @@ export async function POST(req: Request) {
     }
 
     const squad = squadDoc.data() as Squad;
-    // Use hasCoach if available, fall back to isPremium for migration
-    const squadHasCoach = squad.hasCoach ?? squad.isPremium ?? false;
+    const squadHasCoach = !!squad.coachId;
 
     // Check user's existing squad memberships
     const userDoc = await adminDb.collection('users').doc(userId).get();

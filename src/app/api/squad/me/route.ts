@@ -100,8 +100,7 @@ async function fetchSquadData(
     ? await getSquadStatsWithCache(squadId, coachId)
     : null;
 
-  // Use hasCoach if available, fall back to isPremium for migration
-  const hasCoach = squadData?.hasCoach ?? squadData?.isPremium ?? false;
+  const hasCoach = !!coachId;
   
   const squad: Squad = {
     id: squadDoc.id,
@@ -113,7 +112,6 @@ async function fetchSquadData(
     memberIds: squadData?.memberIds || [],
     inviteCode: squadData?.inviteCode || undefined,
     hasCoach: hasCoach,
-    isPremium: squadData?.isPremium, // Keep for backward compatibility
     coachId: coachId,
     organizationId: squadOrgId || undefined,
     createdAt: squadData?.createdAt || new Date().toISOString(),

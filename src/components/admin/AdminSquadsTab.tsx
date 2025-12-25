@@ -39,8 +39,6 @@ interface AdminSquadsTabProps {
   onSelectSquad?: (squadId: string) => void;
   /** API endpoint for fetching coaches (default: /api/admin/coaches, use /api/coach/org-coaches for org context) */
   coachesApiEndpoint?: string;
-  /** API endpoint for fetching programs (default: /api/admin/programs, use /api/coach/org-programs for org context) */
-  programsApiEndpoint?: string;
 }
 
 export function AdminSquadsTab({ 
@@ -48,7 +46,6 @@ export function AdminSquadsTab({
   apiEndpoint = '/api/admin/squads', 
   onSelectSquad,
   coachesApiEndpoint = '/api/admin/coaches',
-  programsApiEndpoint = '/api/admin/programs',
 }: AdminSquadsTabProps) {
   const [squads, setSquads] = useState<SquadWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -248,13 +245,17 @@ export function AdminSquadsTab({
                     {squad.timezone || 'UTC'}
                   </TableCell>
                   <TableCell>
-                    {squad.isPremium ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 font-albert">
-                        Premium
+                    {squad.isClosed ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-600 font-albert dark:bg-gray-800 dark:text-gray-400">
+                        Closed
+                      </span>
+                    ) : squad.programId ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 font-albert dark:bg-blue-900/30 dark:text-blue-300">
+                        With Program
                       </span>
                     ) : (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 font-albert">
-                        Free
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 font-albert dark:bg-emerald-900/30 dark:text-emerald-300">
+                        Standalone
                       </span>
                     )}
                   </TableCell>
@@ -277,7 +278,7 @@ export function AdminSquadsTab({
                         <span>{squad.coachName || 'Unknown'}</span>
                       </div>
                     ) : (
-                      '—'
+                      <span className="text-[#5f5a55]/70 dark:text-[#7d8190]/70 italic">Peer group</span>
                     )}
                   </TableCell>
                   <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2]">
@@ -349,7 +350,6 @@ export function AdminSquadsTab({
           onSave={handleSquadSaved}
           apiBasePath={apiEndpoint}
           coachesApiEndpoint={coachesApiEndpoint}
-          programsApiEndpoint={programsApiEndpoint}
         />
       )}
 

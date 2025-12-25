@@ -164,7 +164,7 @@ export default function StandaloneSquadPage() {
       </div>
 
       {/* Squad Call Card */}
-      {(squad.hasCoach ?? squad.isPremium) ? (
+      {!!squad.coachId ? (
         <NextSquadCallCard 
           squad={squad} 
           isCoach={isCoach}
@@ -279,7 +279,7 @@ export default function StandaloneSquadPage() {
 
           {/* Invite Cards */}
           <SquadInviteCards
-            hasCoach={squad.hasCoach ?? squad.isPremium}
+            hasCoach={!!squad.coachId}
             inviteCode={squad.inviteCode}
             squadName={squad.name}
             visibility={squad.visibility}

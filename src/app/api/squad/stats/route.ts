@@ -63,7 +63,7 @@ export async function GET(request: Request) {
       const squadDoc = await adminDb.collection('squads').doc(sid).get();
       if (squadDoc.exists) {
         const sData = squadDoc.data();
-        const hasCoach = sData?.hasCoach ?? sData?.isPremium ?? false;
+        const hasCoach = !!sData?.coachId;
         if (hasCoach && !coachedSquadId) {
           coachedSquadId = sid;
         } else if (!hasCoach && !peerSquadId) {

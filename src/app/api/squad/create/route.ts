@@ -87,7 +87,6 @@ export async function POST(req: Request) {
       memberIds: [userId],
       inviteCode,
       hasCoach: hasCoach, // Whether squad has coach-scheduled calls
-      isPremium: hasCoach, // Keep for backward compatibility
       coachId: null,
       trackId: trackId || null, // null means visible to all tracks
       createdAt: now,

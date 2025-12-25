@@ -98,8 +98,7 @@ export async function GET() {
         timezone: data.timezone || 'UTC',
         memberIds: data.memberIds || [],
         inviteCode: data.inviteCode,
-        hasCoach: data.hasCoach ?? data.isPremium ?? false,
-        isPremium: data.isPremium || false, // Legacy field for backward compatibility
+        hasCoach: !!data.coachId,
         coachId: data.coachId || null,
         organizationId: data.organizationId,
         programId: data.programId || null,

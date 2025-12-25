@@ -78,24 +78,43 @@ async function handleCronRequest(request: NextRequest) {
           .where('isClosed', '!=', true)
           .get();
 
+        // Check if this cohort should auto-convert squads to community
+        const shouldAutoConvert = cohort.convertSquadsToCommunity === true;
+
         for (const squadDoc of squadsSnapshot.docs) {
           const squad = squadDoc.data() as Squad;
           
           // Check if we already sent the grace period message
           if (squad.gracePeriodMessageSent) continue;
 
-          // Send message in squad chat
-          await sendGracePeriodMessage(squad.chatChannelId ?? undefined, cohort, GRACE_PERIOD_DAYS);
+          if (shouldAutoConvert) {
+            // Auto-convert to standalone community
+            await sendCommunityConversionMessage(squad.chatChannelId ?? undefined, cohort);
+            
+            // Convert the squad - remove program/cohort link
+            await squadDoc.ref.update({
+              programId: null,
+              cohortId: null,
+              gracePeriodMessageSent: false,
+              gracePeriodStartDate: null,
+              updatedAt: new Date().toISOString(),
+            });
 
-          // Mark that we sent the message
-          await squadDoc.ref.update({
-            gracePeriodMessageSent: true,
-            gracePeriodStartDate: todayStr,
-            updatedAt: new Date().toISOString(),
-          });
+            console.log(`[PROGRAM_LIFECYCLE] Auto-converted squad ${squadDoc.id} to community`);
+          } else {
+            // Standard grace period flow
+            await sendGracePeriodMessage(squad.chatChannelId ?? undefined, cohort, GRACE_PERIOD_DAYS);
 
-          stats.graceNotificationsSent++;
-          console.log(`[PROGRAM_LIFECYCLE] Sent grace period message to squad ${squadDoc.id}`);
+            // Mark that we sent the message
+            await squadDoc.ref.update({
+              gracePeriodMessageSent: true,
+              gracePeriodStartDate: todayStr,
+              updatedAt: new Date().toISOString(),
+            });
+
+            stats.graceNotificationsSent++;
+            console.log(`[PROGRAM_LIFECYCLE] Sent grace period message to squad ${squadDoc.id}`);
+          }
         }
 
         // Update cohort status to 'completed'
@@ -120,6 +139,13 @@ async function handleCronRequest(request: NextRequest) {
     for (const squadDoc of squadsToCloseSnapshot.docs) {
       try {
         const squad = squadDoc.data() as Squad;
+
+        // Skip squads that have been converted to standalone community
+        // (programId is null = already converted, don't close)
+        if (!squad.programId) {
+          console.log(`[PROGRAM_LIFECYCLE] Skipping squad ${squadDoc.id} - already converted to community`);
+          continue;
+        }
 
         // Send final closing message
         await sendSquadClosingMessage(squad.chatChannelId ?? undefined);
@@ -340,6 +366,38 @@ async function sendSquadClosingMessage(chatChannelId: string | undefined): Promi
   } catch (error) {
     console.error(`[PROGRAM_LIFECYCLE] Error sending closing message:`, error);
     // Don't throw - we still want to close the squad
+  }
+}
+
+/**
+ * Send message when squad is auto-converted to community
+ */
+async function sendCommunityConversionMessage(
+  chatChannelId: string | undefined,
+  cohort: ProgramCohort
+): Promise<void> {
+  if (!chatChannelId) return;
+
+  try {
+    const streamClient = await getStreamServerClient();
+    await ensureSystemBotUser(streamClient);
+    
+    const channel = streamClient.channel('messaging', chatChannelId);
+
+    await channel.sendMessage({
+      text: `🎉 **Congratulations!** The ${cohort.name} program has officially ended!\n\n` +
+        `Great news – this squad is now a **standalone community**! ` +
+        `The chat will remain open so you can stay connected with your squadmates and coach.\n\n` +
+        `Keep supporting each other on your journey! 🙏`,
+      user_id: SYSTEM_BOT_USER_ID,
+      program_notification: true,
+      notification_type: 'squad_converted_to_community',
+    } as Parameters<typeof channel.sendMessage>[0]);
+
+    console.log(`[PROGRAM_LIFECYCLE] Sent community conversion message to channel ${chatChannelId}`);
+  } catch (error) {
+    console.error(`[PROGRAM_LIFECYCLE] Error sending community conversion message:`, error);
+    // Don't throw - we still want to convert the squad
   }
 }
 

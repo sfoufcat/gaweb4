@@ -81,8 +81,8 @@ export async function PUT(
     const squadData = squadDoc.data() as Squad;
     const coachId = squadData?.coachId || null;
 
-    // Check if squad has a coach (use hasCoach, fall back to isPremium for migration)
-    const squadHasCoach = squadData.hasCoach ?? squadData.isPremium ?? false;
+    // Check if squad has a coach
+    const squadHasCoach = !!squadData.coachId;
     if (!squadHasCoach) {
       return NextResponse.json(
         { error: 'Squad call scheduling is only available for coached squads' },

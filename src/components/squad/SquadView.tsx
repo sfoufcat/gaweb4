@@ -106,8 +106,34 @@ export function SquadView({ squadId, showCoachBadge = false }: SquadViewProps) {
   // Check if current user is actually the coach of this squad (NOT just admin access)
   const isActualCoach = squad?.coachId === user?.id;
 
-  // Determine if squad has a coach (use hasCoach, fallback to isPremium for migration)
-  const squadHasCoach = squad?.hasCoach ?? squad?.isPremium ?? false;
+  // Determine if squad has a coach
+  const squadHasCoach = !!squad?.coachId;
+
+  // Check if squad is in grace period (has programId AND gracePeriodStartDate)
+  const isInGracePeriod = squad?.programId && squad?.gracePeriodStartDate && !squad?.isClosed;
+
+  // State for converting to community
+  const [converting, setConverting] = useState(false);
+  const [convertSuccess, setConvertSuccess] = useState(false);
+
+  // Handle conversion to community
+  const handleConvertToCommunity = async () => {
+    if (!squad?.id) return;
+    setConverting(true);
+    try {
+      const response = await fetch(`/api/coach/squads/${squad.id}/convert-to-community`, {
+        method: 'POST',
+      });
+      if (response.ok) {
+        setConvertSuccess(true);
+        fetchSquadData(); // Refresh squad data
+      }
+    } catch (error) {
+      console.error('Error converting squad:', error);
+    } finally {
+      setConverting(false);
+    }
+  };
   
   // Find coach info from members for squads with coaches
   const coachInfo: CoachInfo | undefined = useMemo(() => {
@@ -185,6 +211,58 @@ export function SquadView({ squadId, showCoachBadge = false }: SquadViewProps) {
           </div>
         )}
       </div>
+
+      {/* Grace Period Conversion Card - only show to coach when squad is in grace period */}
+      {showCoachBadge && isActualCoach && isInGracePeriod && !convertSuccess && (
+        <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+              <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-albert font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                Program ending soon
+              </h3>
+              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
+                This squad is in grace period. Convert to a standalone community to keep members connected after the program ends.
+              </p>
+              <button
+                onClick={handleConvertToCommunity}
+                disabled={converting}
+                className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-albert font-medium transition-colors disabled:opacity-50"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                {converting ? 'Converting...' : 'Convert to Community'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Conversion Success Message */}
+      {convertSuccess && (
+        <div className="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800/50 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+              <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="font-albert font-semibold text-green-800 dark:text-green-200">
+                Squad converted to community!
+              </h3>
+              <p className="text-sm text-green-700 dark:text-green-300 font-albert">
+                Members can continue connecting in this standalone community.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Squad Call Card - show coach-scheduled or member-proposed based on hasCoach */}
       {squadHasCoach ? (

@@ -42,8 +42,7 @@ export async function POST(req: Request) {
     }
 
     const squad = squadDoc.data() as Squad;
-    // Use hasCoach if available, fall back to isPremium for migration
-    const squadHasCoach = squad.hasCoach ?? squad.isPremium ?? false;
+    const squadHasCoach = !!squad.coachId;
 
     // Verify squad is public
     if (squad.visibility !== 'public') {

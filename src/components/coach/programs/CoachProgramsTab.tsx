@@ -96,12 +96,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     endDate: string;
     enrollmentOpen: boolean;
     maxEnrollment: number | null;
+    convertSquadsToCommunity: boolean;
   }>({
     name: '',
     startDate: '',
     endDate: '',
     enrollmentOpen: true,
     maxEnrollment: null,
+    convertSquadsToCommunity: false,
   });
   
   // Day editor state
@@ -355,6 +357,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         endDate: cohort.endDate,
         enrollmentOpen: cohort.enrollmentOpen,
         maxEnrollment: cohort.maxEnrollment || null,
+        convertSquadsToCommunity: cohort.convertSquadsToCommunity || false,
       });
     } else {
       setEditingCohort(null);
@@ -371,6 +374,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         endDate: endDate.toISOString().split('T')[0],
         enrollmentOpen: true,
         maxEnrollment: null,
+        convertSquadsToCommunity: false,
       });
     }
     setSaveError(null);
@@ -1804,6 +1808,38 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       />
                       Enrollment open
                     </label>
+
+                    {/* After Program Ends Setting */}
+                    <div className="pt-3 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                      <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert">
+                        After program ends
+                      </label>
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
+                          <input
+                            type="radio"
+                            name="afterProgramEnds"
+                            checked={!cohortFormData.convertSquadsToCommunity}
+                            onChange={() => setCohortFormData({ ...cohortFormData, convertSquadsToCommunity: false })}
+                            className="text-[#a07855]"
+                          />
+                          Close squad after grace period
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert cursor-pointer">
+                          <input
+                            type="radio"
+                            name="afterProgramEnds"
+                            checked={cohortFormData.convertSquadsToCommunity}
+                            onChange={() => setCohortFormData({ ...cohortFormData, convertSquadsToCommunity: true })}
+                            className="text-[#a07855]"
+                          />
+                          Convert to standalone community
+                        </label>
+                      </div>
+                      <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
+                        Standalone communities remain active for alumni to stay connected
+                      </p>
+                    </div>
 
                     {saveError && (
                       <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">

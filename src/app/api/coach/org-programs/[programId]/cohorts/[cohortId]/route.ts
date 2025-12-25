@@ -186,6 +186,11 @@ export async function PUT(
       updateData.maxEnrollment = body.maxEnrollment || null;
     }
 
+    // Community mode setting
+    if (body.convertSquadsToCommunity !== undefined) {
+      updateData.convertSquadsToCommunity = body.convertSquadsToCommunity === true;
+    }
+
     // Status update (manual override)
     if (body.status !== undefined) {
       if (!['upcoming', 'active', 'completed', 'archived'].includes(body.status)) {

@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { SquadView } from '@/components/squad/SquadView';
 import { ClientDetailView, CustomizeBrandingTab, ChannelManagementTab } from '@/components/coach';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft } from 'lucide-react';
-import type { ClerkPublicMetadata, OrgRole } from '@/types';
+import { ArrowLeft, AlertCircle, Users } from 'lucide-react';
+import type { ClerkPublicMetadata, OrgRole, ProgramCohort } from '@/types';
 
 // Admin components for expanded coach dashboard
 import { AdminUsersTab, type ColumnKey } from '@/components/admin/AdminUsersTab';
@@ -51,6 +51,17 @@ export default function CoachPage() {
   // Squads tab state - selected squad ID for viewing squad management
   const [selectedSquadIdForView, setSelectedSquadIdForView] = useState<string | null>(null);
   
+  // Ending cohorts banner state
+  interface EndingCohortData {
+    cohort: ProgramCohort;
+    program: { id: string; name: string; coverImageUrl?: string };
+    squads: { id: string; name: string; memberCount: number }[];
+    daysUntilClose: number;
+    convertSquadsToCommunity: boolean;
+  }
+  const [endingCohorts, setEndingCohorts] = useState<EndingCohortData[]>([]);
+  const [convertingSquads, setConvertingSquads] = useState<Set<string>>(new Set());
+  
   // Get initial tab from URL query param, default to 'clients'
   const tabFromUrl = searchParams.get('tab') as CoachTab | null;
   const initialTab = tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'clients';
@@ -86,6 +97,47 @@ export default function CoachPage() {
       router.push('/');
     }
   }, [hasAccess, isLoaded, router, mounted]);
+
+  // Fetch ending cohorts for banner
+  const fetchEndingCohorts = useCallback(async () => {
+    try {
+      const response = await fetch('/api/coach/ending-cohorts');
+      if (response.ok) {
+        const data = await response.json();
+        setEndingCohorts(data.endingCohorts || []);
+      }
+    } catch (error) {
+      console.error('Error fetching ending cohorts:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isLoaded && mounted && hasAccess && !isLimitedOrgCoach) {
+      fetchEndingCohorts();
+    }
+  }, [isLoaded, mounted, hasAccess, isLimitedOrgCoach, fetchEndingCohorts]);
+
+  // Handle squad conversion to community
+  const handleConvertToCommunity = async (squadId: string) => {
+    setConvertingSquads(prev => new Set(prev).add(squadId));
+    try {
+      const response = await fetch(`/api/coach/squads/${squadId}/convert-to-community`, {
+        method: 'POST',
+      });
+      if (response.ok) {
+        // Refresh ending cohorts to update the banner
+        fetchEndingCohorts();
+      }
+    } catch (error) {
+      console.error('Error converting squad:', error);
+    } finally {
+      setConvertingSquads(prev => {
+        const next = new Set(prev);
+        next.delete(squadId);
+        return next;
+      });
+    }
+  };
 
   // Loading state
   if (!isLoaded || !mounted) {
@@ -147,6 +199,51 @@ export default function CoachPage() {
           </p>
         </div>
 
+        {/* Ending Cohorts Banner */}
+        {endingCohorts.length > 0 && (
+          <div className="mb-6 space-y-3">
+            {endingCohorts.map((item) => (
+              <div
+                key={item.cohort.id}
+                className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl p-4"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                    <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-albert font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                      {item.program.name} — {item.cohort.name} ending soon
+                    </h3>
+                    <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
+                      {item.daysUntilClose} day{item.daysUntilClose !== 1 ? 's' : ''} until squads close.
+                      {item.convertSquadsToCommunity 
+                        ? ' Squads will be converted to standalone communities.'
+                        : ' Convert to community to keep members connected?'}
+                    </p>
+                    {/* Show squads that can be converted */}
+                    {!item.convertSquadsToCommunity && item.squads.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {item.squads.map((squad) => (
+                          <button
+                            key={squad.id}
+                            onClick={() => handleConvertToCommunity(squad.id)}
+                            disabled={convertingSquads.has(squad.id)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-[#171b22] border border-amber-300 dark:border-amber-700 rounded-lg text-sm font-albert font-medium text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors disabled:opacity-50"
+                          >
+                            <Users className="w-3.5 h-3.5" />
+                            {convertingSquads.has(squad.id) ? 'Converting...' : `Convert "${squad.name}"`}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
           <TabsList className="mb-6 w-full flex-nowrap overflow-x-auto justify-start bg-white/60 dark:bg-[#11141b]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 p-1 scrollbar-hide">
@@ -156,21 +253,24 @@ export default function CoachPage() {
             >
               Clients
             </TabsTrigger>
+            {/* Programs tab - before Squads (full access only) */}
+            {!isLimitedOrgCoach && (
+              <TabsTrigger 
+                value="programs"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+              >
+                Programs
+              </TabsTrigger>
+            )}
             <TabsTrigger 
               value="squads"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
             >
               Squads
             </TabsTrigger>
-            {/* Full access tabs - first group (Programs, Channels, Quizzes) */}
+            {/* Full access tabs - Channels, Funnels */}
             {!isLimitedOrgCoach && (
               <>
-                <TabsTrigger 
-                  value="programs"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
-                >
-                  Programs
-                </TabsTrigger>
                 <TabsTrigger 
                   value="channels"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
@@ -293,7 +393,6 @@ export default function CoachPage() {
                 }
                 onSelectSquad={(squadId) => setSelectedSquadIdForView(squadId)}
                 coachesApiEndpoint={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-coaches' : '/api/admin/coaches'}
-                programsApiEndpoint={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-programs' : '/api/admin/programs'}
               />
             )}
           </TabsContent>
