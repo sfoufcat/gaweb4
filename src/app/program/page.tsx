@@ -59,6 +59,8 @@ export default function ProgramHubPage() {
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('program');
   const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
+  // Track navigation direction for slide animations (null = no animation on initial load)
+  const [navigationDirection, setNavigationDirection] = useState<'forward' | 'back' | null>(null);
   
   // Determine if Squad tab should be visible for the selected program
   // For group programs: always show squad tab
@@ -117,14 +119,16 @@ export default function ProgramHubPage() {
     }
   }, [router, selectedProgramId]);
   
-  // Handle program selection
+  // Handle program selection (forward navigation - slide left)
   const handleSelectProgram = useCallback((programId: string) => {
+    setNavigationDirection('forward');
     setSelectedProgramId(programId);
     router.replace(`/program?programId=${programId}`, { scroll: false });
   }, [router]);
   
-  // Handle back from program details
+  // Handle back from program details (back navigation - slide right)
   const handleBackFromDetails = useCallback(() => {
+    setNavigationDirection('back');
     setSelectedProgramId(null);
     router.replace('/program', { scroll: false });
   }, [router]);
@@ -168,28 +172,32 @@ export default function ProgramHubPage() {
     );
   }
   
-  // Animation variants for slide transitions
+  // Animation variants for slide transitions (list <-> detail)
   const slideVariants = {
-    enterFromRight: {
-      x: '100%',
-      opacity: 0,
-    },
-    enterFromLeft: {
-      x: '-100%',
-      opacity: 0,
-    },
-    center: {
-      x: 0,
-      opacity: 1,
-    },
-    exitToLeft: {
-      x: '-100%',
-      opacity: 0,
-    },
-    exitToRight: {
-      x: '100%',
-      opacity: 0,
-    },
+    // Forward navigation: detail slides in from right
+    enterFromRight: { x: '100%', opacity: 0 },
+    // Back navigation: list slides in from left  
+    enterFromLeft: { x: '-100%', opacity: 0 },
+    // Centered/visible state
+    center: { x: 0, opacity: 1 },
+    // Forward navigation: list exits to left
+    exitToLeft: { x: '-100%', opacity: 0 },
+    // Back navigation: detail exits to right
+    exitToRight: { x: '100%', opacity: 0 },
+  };
+
+  // Fade-up animation for tab switching (matches PageTransition)
+  const fadeUpVariants = {
+    initial: { opacity: 0, y: 20 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -10 },
+  };
+
+  // Get initial animation state based on navigation direction
+  const getInitialState = (view: 'list' | 'detail') => {
+    if (navigationDirection === null) return false; // No animation on initial load
+    if (view === 'detail') return navigationDirection === 'forward' ? 'enterFromRight' : 'enterFromLeft';
+    return navigationDirection === 'back' ? 'enterFromRight' : 'enterFromLeft';
   };
 
   // If showing program details view (selected a specific program) - when user has both programs
@@ -205,7 +213,7 @@ export default function ProgramHubPage() {
         <AnimatePresence mode="wait">
           <motion.div
             key="program-detail"
-            initial="enterFromRight"
+            initial={getInitialState('detail')}
             animate="center"
             exit="exitToRight"
             variants={slideVariants}
@@ -224,19 +232,40 @@ export default function ProgramHubPage() {
               </div>
             )}
             
-            {activeTab === 'program' || !programShowSquadTab ? (
-              <ProgramDetailView 
-                program={selectedProgram}
-                onBack={handleBackFromDetails}
-                onRefresh={refreshPrograms}
-              />
-            ) : (
-              <SquadTabContent 
-                programId={selectedProgram.program.id}
-                squadId={programSquadId || undefined}
-                onBack={handleBackFromDetails}
-              />
-            )}
+            {/* Tab content with fade-up animation */}
+            <AnimatePresence mode="wait">
+              {activeTab === 'program' || !programShowSquadTab ? (
+                <motion.div
+                  key="program-tab"
+                  variants={fadeUpVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+                >
+                  <ProgramDetailView 
+                    program={selectedProgram}
+                    onBack={handleBackFromDetails}
+                    onRefresh={refreshPrograms}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="squad-tab"
+                  variants={fadeUpVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+                >
+                  <SquadTabContent 
+                    programId={selectedProgram.program.id}
+                    squadId={programSquadId || undefined}
+                    onBack={handleBackFromDetails}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         </AnimatePresence>
       </div>
@@ -250,7 +279,7 @@ export default function ProgramHubPage() {
         <AnimatePresence mode="wait">
           <motion.div
             key="program-list"
-            initial="enterFromLeft"
+            initial={getInitialState('list')}
             animate="center"
             exit="exitToLeft"
             variants={slideVariants}
@@ -287,19 +316,40 @@ export default function ProgramHubPage() {
           </div>
         )}
         
-        {activeTab === 'program' || !programShowSquadTab ? (
-          <ProgramDetailView 
-            program={selectedProgram}
-            onBack={handleBackFromDetails}
-            onRefresh={refreshPrograms}
-          />
-        ) : (
-          <SquadTabContent 
-            programId={selectedProgram.program.id}
-            squadId={programSquadId || undefined}
-            onBack={handleBackFromDetails}
-          />
-        )}
+        {/* Tab content with fade-up animation */}
+        <AnimatePresence mode="wait">
+          {activeTab === 'program' || !programShowSquadTab ? (
+            <motion.div
+              key="program-tab"
+              variants={fadeUpVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+            >
+              <ProgramDetailView 
+                program={selectedProgram}
+                onBack={handleBackFromDetails}
+                onRefresh={refreshPrograms}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="squad-tab"
+              variants={fadeUpVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+            >
+              <SquadTabContent 
+                programId={selectedProgram.program.id}
+                squadId={programSquadId || undefined}
+                onBack={handleBackFromDetails}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }
@@ -325,19 +375,39 @@ export default function ProgramHubPage() {
         </div>
       )}
       
-      {/* Tab Content */}
-      {activeTab === 'program' || !showSquadTab ? (
-        <ProgramDetailView 
-          program={singleProgram}
-          showBackButton={false}
-          onRefresh={refreshPrograms}
-        />
-      ) : (
-        <SquadTabContent 
-          programId={singleProgram.program.id}
-          squadId={singleProgramSquadId || undefined}
-        />
-      )}
+      {/* Tab Content with fade-up animation */}
+      <AnimatePresence mode="wait">
+        {activeTab === 'program' || !showSquadTab ? (
+          <motion.div
+            key="program-tab"
+            variants={fadeUpVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+          >
+            <ProgramDetailView 
+              program={singleProgram}
+              showBackButton={false}
+              onRefresh={refreshPrograms}
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="squad-tab"
+            variants={fadeUpVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+          >
+            <SquadTabContent 
+              programId={singleProgram.program.id}
+              squadId={singleProgramSquadId || undefined}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

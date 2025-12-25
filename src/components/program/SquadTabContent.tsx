@@ -3,7 +3,8 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, LogOut, Loader2 } from 'lucide-react';
+import { LogOut, Loader2 } from 'lucide-react';
+import { useUser } from '@clerk/nextjs';
 import { useSquad } from '@/hooks/useSquad';
 import { SquadHeader } from '@/components/squad/SquadHeader';
 import { SquadMemberList } from '@/components/squad/SquadMemberList';
@@ -41,6 +42,7 @@ interface SquadTabContentProps {
 
 export function SquadTabContent({ programId, squadId, onBack }: SquadTabContentProps) {
   const router = useRouter();
+  const { user } = useUser();
   const { squad: squadTitle, squadLower } = useMenuTitles();
 
   // Fetch squad data internally
@@ -62,6 +64,9 @@ export function SquadTabContent({ programId, squadId, onBack }: SquadTabContentP
     }
     return { squad: activeSquad, members: activeMembers };
   }, [squadId, squads, membersBySquad, activeSquad, activeMembers]);
+  
+  // Check if current user is the coach of this squad
+  const isCoach = squad?.coachId === user?.id;
   
   // State for leaving community
   const [isLeaving, setIsLeaving] = useState(false);
@@ -161,19 +166,8 @@ export function SquadTabContent({ programId, squadId, onBack }: SquadTabContentP
 
   return (
     <div className="space-y-5 px-4">
-      {/* Back Button (when viewing specific program's squad) */}
-      {onBack && (
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors mb-2"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span className="font-albert text-[14px]">Back to program</span>
-        </button>
-      )}
-      
       {/* Squad Header */}
-      <SquadHeader squad={squad} onSquadUpdated={onRefetch} />
+      <SquadHeader squad={squad} onSquadUpdated={onRefetch} isCoach={isCoach} />
 
       {/* Mood Bars Section */}
       {membersWithMood.length > 0 && (

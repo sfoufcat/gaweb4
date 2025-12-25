@@ -19,8 +19,11 @@ function AILoadingSkeleton() {
   return (
     <div className="flex flex-col items-center py-8">
       {/* Animated Sparkles Icon */}
-      <div className="w-16 h-16 rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/10 flex items-center justify-center mb-5 animate-ai-pulse">
-        <Sparkles className="w-8 h-8 text-[#a07855] dark:text-[#b8896a]" />
+      <div 
+        className="w-16 h-16 rounded-full flex items-center justify-center mb-5 animate-ai-pulse"
+        style={{ backgroundColor: 'color-mix(in srgb, var(--brand-accent-light) 15%, transparent)' }}
+      >
+        <Sparkles className="w-8 h-8" style={{ color: 'var(--brand-accent-light)' }} />
       </div>
       
       {/* Loading text */}
@@ -115,7 +118,7 @@ export function AIHelpCompleteModal({
               {/* Header with task title visible during loading */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <Target className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                  <Target className="w-5 h-5" style={{ color: 'var(--brand-accent-light)' }} />
                   <h3 className="font-albert text-[20px] text-text-primary dark:text-[#f5f5f8] font-semibold tracking-[-1px]">
                     Plan to complete
                   </h3>
@@ -154,7 +157,7 @@ export function AIHelpCompleteModal({
               <div className="p-6 pb-0">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <Target className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                    <Target className="w-5 h-5" style={{ color: 'var(--brand-accent-light)' }} />
                     <h3 className="font-albert text-[20px] text-text-primary dark:text-[#f5f5f8] font-semibold tracking-[-1px]">
                       Plan to complete
                     </h3>
@@ -190,8 +193,11 @@ export function AIHelpCompleteModal({
                       key={index}
                       className="flex items-start gap-3 p-3 bg-[#f9f7f5] dark:bg-[#1d222b] rounded-[12px]"
                     >
-                      <div className="w-6 h-6 rounded-full bg-[#a07855] dark:bg-[#b8896a] flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="font-sans text-[12px] font-semibold text-white">
+                      <div 
+                        className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                        style={{ backgroundColor: 'var(--brand-accent-light)' }}
+                      >
+                        <span className="font-sans text-[12px] font-semibold" style={{ color: 'var(--brand-accent-light-foreground)' }}>
                           {index + 1}
                         </span>
                       </div>
@@ -206,10 +212,13 @@ export function AIHelpCompleteModal({
               {/* Suggested New Title */}
               {hasNewTitle && (
                 <div className="px-6 py-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-                  <div className="flex items-start gap-3 p-4 bg-[#a07855]/40 dark:bg-[#b8896a]/40 rounded-[16px]">
-                    <Edit3 className="w-5 h-5 text-[#a07855] dark:text-[#b8896a] flex-shrink-0 mt-0.5" />
+                  <div 
+                    className="flex items-start gap-3 p-4 rounded-[16px]"
+                    style={{ backgroundColor: 'color-mix(in srgb, var(--brand-accent-light) 25%, transparent)' }}
+                  >
+                    <Edit3 className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--brand-accent-light)' }} />
                     <div className="flex-1">
-                      <p className="font-sans text-[12px] text-[#a07855] dark:text-[#b8896a] font-medium mb-1">
+                      <p className="font-sans text-[12px] font-medium mb-1" style={{ color: 'var(--brand-accent-light)' }}>
                         Suggested clearer title:
                       </p>
                       <p className="font-albert text-[16px] text-text-primary dark:text-[#f5f5f8] font-medium tracking-[-0.5px]">
@@ -235,8 +244,12 @@ export function AIHelpCompleteModal({
                     className={`flex-1 py-3 px-4 rounded-xl font-sans font-semibold text-[14px] flex items-center justify-center gap-2 transition-all ${
                       isUpdating
                         ? 'bg-[#e1ddd8] dark:bg-[#262b35] text-text-muted cursor-not-allowed'
-                        : 'bg-[#a07855] dark:bg-[#b8896a] text-white hover:opacity-90'
+                        : 'hover:opacity-90'
                     }`}
+                    style={!isUpdating ? { 
+                      backgroundColor: 'var(--brand-accent-light)', 
+                      color: 'var(--brand-accent-light-foreground)' 
+                    } : undefined}
                   >
                     <Sparkles className="w-4 h-4" />
                     {isUpdating ? 'Updating...' : 'Update task title'}

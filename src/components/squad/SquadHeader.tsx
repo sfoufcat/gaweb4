@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Pencil, Camera, X } from 'lucide-react';
+import { Pencil, Camera, X, ChevronDown } from 'lucide-react';
 import type { Squad, UserAlignment, UserAlignmentSummary } from '@/types';
 import { AlignmentGauge } from '@/components/alignment';
 import { SquadStreakSheet } from './SquadStreakSheet';
@@ -27,23 +27,72 @@ import {
  * where >=50% of members were fully aligned).
  * Uses the SAME AlignmentGauge component as the personal alignment on Home page.
  * Arc is always full (100%) since streak is a count, not a percentage.
+ * 
+ * Features:
+ * - Optional squad switcher dropdown (for users with multiple standalone squads)
+ * - Edit button only visible to coaches (isCoach prop)
  */
 
 interface SquadHeaderProps {
   squad: Squad;
   onSquadUpdated?: () => void;
+  /** Only show edit button when user is the coach */
+  isCoach?: boolean;
+  /** For squad switcher - list of standalone squads user belongs to */
+  standaloneSquads?: Squad[];
+  /** For squad switcher - currently active squad ID */
+  activeSquadId?: string;
+  /** For squad switcher - callback when user switches squad */
+  onSquadSwitch?: (squadId: string) => void;
+  /** For squad switcher - member counts by squad ID */
+  memberCountsBySquad?: Record<string, number>;
 }
 
-export function SquadHeader({ squad, onSquadUpdated }: SquadHeaderProps) {
+export function SquadHeader({ 
+  squad, 
+  onSquadUpdated,
+  isCoach = false,
+  standaloneSquads,
+  activeSquadId,
+  onSquadSwitch,
+  memberCountsBySquad,
+}: SquadHeaderProps) {
   const router = useRouter();
   const [showSquadSheet, setShowSquadSheet] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showSquadSwitcher, setShowSquadSwitcher] = useState(false);
   const [editName, setEditName] = useState(squad.name);
   const [editAvatarUrl, setEditAvatarUrl] = useState(squad.avatarUrl || '');
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const switcherRef = useRef<HTMLDivElement>(null);
+  
+  // Check if we should show the squad switcher
+  const hasMultipleSquads = standaloneSquads && standaloneSquads.length > 1;
+  
+  // Close switcher when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (switcherRef.current && !switcherRef.current.contains(event.target as Node)) {
+        setShowSquadSwitcher(false);
+      }
+    }
+    
+    if (showSquadSwitcher) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showSquadSwitcher]);
+  
+  // Handle squad switch
+  const handleSquadSwitch = (squadId: string) => {
+    if (onSquadSwitch) {
+      onSquadSwitch(squadId);
+    }
+    setShowSquadSwitcher(false);
+  };
 
   const handleOpenEditModal = () => {
     setEditName(squad.name);
@@ -185,20 +234,40 @@ export function SquadHeader({ squad, onSquadUpdated }: SquadHeaderProps) {
           )}
         </div>
 
-        {/* Name + Subtitle + Edit Button */}
-        <div>
+        {/* Name + Subtitle + Edit Button + Squad Switcher */}
+        <div className="relative" ref={switcherRef}>
           <div className="flex items-center gap-1.5">
-            <h1 className="font-albert text-[24px] font-medium text-text-primary leading-[1.3] tracking-[-1.5px]">
-              {squad.name}
-            </h1>
-            {/* Edit Button - inline with squad name */}
-            <button
-              onClick={handleOpenEditModal}
-              className="p-1 rounded-full hover:bg-[#f3f1ef] transition-colors text-text-secondary/60 hover:text-text-primary"
-              aria-label="Edit squad"
-            >
-              <Pencil className="w-3 h-3" />
-            </button>
+            {hasMultipleSquads ? (
+              // Clickable name with dropdown for multiple squads
+              <button
+                onClick={() => setShowSquadSwitcher(!showSquadSwitcher)}
+                className="flex items-center gap-1 group"
+              >
+                <h1 className="font-albert text-[24px] font-medium text-text-primary leading-[1.3] tracking-[-1.5px]">
+                  {squad.name}
+                </h1>
+                <ChevronDown 
+                  className={`w-5 h-5 text-text-secondary dark:text-[#7d8190] transition-transform ${
+                    showSquadSwitcher ? 'rotate-180' : ''
+                  }`} 
+                />
+              </button>
+            ) : (
+              // Static name for single squad
+              <h1 className="font-albert text-[24px] font-medium text-text-primary leading-[1.3] tracking-[-1.5px]">
+                {squad.name}
+              </h1>
+            )}
+            {/* Edit Button - only visible to coaches */}
+            {isCoach && (
+              <button
+                onClick={handleOpenEditModal}
+                className="p-1 rounded-full hover:bg-[#f3f1ef] transition-colors text-text-secondary/60 hover:text-text-primary"
+                aria-label="Edit squad"
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
+            )}
           </div>
           {squad.hasCoach ? (
             <p className="font-sans text-[12px] font-semibold leading-[1.2]">
@@ -214,6 +283,62 @@ export function SquadHeader({ squad, onSquadUpdated }: SquadHeaderProps) {
             <p className="font-sans text-[12px] text-text-secondary leading-[1.2]">
               🌍 Public squad
             </p>
+          )}
+          
+          {/* Squad Switcher Dropdown */}
+          {showSquadSwitcher && hasMultipleSquads && standaloneSquads && (
+            <div className="absolute top-full left-0 mt-2 w-72 bg-white dark:bg-[#171b22] rounded-xl shadow-lg border border-[#e1ddd8] dark:border-[#262b35] z-50 overflow-hidden">
+              <div className="p-2">
+                <p className="px-3 py-2 text-xs font-medium text-text-secondary dark:text-[#7d8190] uppercase tracking-wide">
+                  Switch squad
+                </p>
+                {standaloneSquads.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => handleSquadSwitch(s.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+                      s.id === activeSquadId
+                        ? 'bg-[#f3f1ef] dark:bg-[#262b35]'
+                        : 'hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
+                    }`}
+                  >
+                    {/* Squad Avatar */}
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-[#f3f1ef] dark:bg-[#11141b] flex-shrink-0">
+                      {s.avatarUrl ? (
+                        <Image
+                          src={s.avatarUrl}
+                          alt={s.name}
+                          width={40}
+                          height={40}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#F5E6A8] to-[#EDD96C]">
+                          <span className="font-albert font-semibold text-sm text-[#4A5D54]">
+                            {s.name[0]}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex-1 text-left min-w-0">
+                      <p className="font-albert font-semibold text-[15px] text-text-primary dark:text-[#f5f5f8] truncate">
+                        {s.name}
+                      </p>
+                      <p className="text-xs text-text-secondary dark:text-[#7d8190]">
+                        {memberCountsBySquad?.[s.id] || 0} members
+                        {s.hasCoach && ' • Coached'}
+                      </p>
+                    </div>
+                    
+                    {/* Active indicator */}
+                    {s.id === activeSquadId && (
+                      <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>

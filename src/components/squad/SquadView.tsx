@@ -197,7 +197,7 @@ export function SquadView({ squadId, showCoachBadge = false }: SquadViewProps) {
     <div>
       {/* Header */}
       <div className="mb-6 pt-3">
-        <SquadHeader squad={squad} />
+        <SquadHeader squad={squad} isCoach={isActualCoach} />
         
         {/* Coach Badge - only show if showCoachBadge is true and user is actually the coach */}
         {showCoachBadge && isActualCoach && (
