@@ -2666,6 +2666,8 @@ export interface SquadAnalyticsSummary {
   squadName: string;
   squadAvatarUrl?: string;
   coachId?: string;
+  squadType?: 'standalone' | 'program';
+  programId?: string;
   
   // Current state
   totalMembers: number;

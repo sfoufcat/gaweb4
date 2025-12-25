@@ -23,22 +23,14 @@ export async function GET(request: NextRequest) {
     const activeOnly = searchParams.get('active') === 'true';
     const applicableTo = searchParams.get('applicableTo');
 
-    // Build query
-    let query = adminDb
+    // Fetch all discount codes for this org and filter/sort in memory
+    // This avoids requiring composite indexes for various filter combinations
+    const snapshot = await adminDb
       .collection('discount_codes')
-      .where('organizationId', '==', organizationId);
+      .where('organizationId', '==', organizationId)
+      .get();
 
-    if (activeOnly) {
-      query = query.where('isActive', '==', true);
-    }
-
-    if (applicableTo && ['all', 'programs', 'squads'].includes(applicableTo)) {
-      query = query.where('applicableTo', '==', applicableTo);
-    }
-
-    const snapshot = await query.orderBy('createdAt', 'desc').get();
-
-    const discountCodes: DiscountCode[] = snapshot.docs.map(doc => {
+    let discountCodes: DiscountCode[] = snapshot.docs.map(doc => {
       const data = doc.data();
       return {
         id: doc.id,
@@ -46,6 +38,22 @@ export async function GET(request: NextRequest) {
         createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
         updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
       } as DiscountCode;
+    });
+
+    // Apply filters in memory
+    if (activeOnly) {
+      discountCodes = discountCodes.filter(code => code.isActive === true);
+    }
+
+    if (applicableTo && ['all', 'programs', 'squads'].includes(applicableTo)) {
+      discountCodes = discountCodes.filter(code => code.applicableTo === applicableTo);
+    }
+
+    // Sort by createdAt descending
+    discountCodes.sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return dateB - dateA;
     });
 
     return NextResponse.json({ 

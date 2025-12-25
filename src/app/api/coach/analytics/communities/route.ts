@@ -1,7 +1,9 @@
 /**
  * Coach API: Community Analytics Overview
  * 
- * GET /api/coach/analytics/communities - Get health overview for all standalone squads
+ * GET /api/coach/analytics/communities - Get health overview for all squads
+ * Query params:
+ *   - type: 'all' | 'standalone' | 'program' (default: 'all')
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -12,19 +14,32 @@ import type { Squad, SquadAnalytics, SquadAnalyticsSummary, SquadHealthStatus } 
 export async function GET(request: NextRequest) {
   try {
     const { organizationId } = await requireCoachWithOrg();
+    const { searchParams } = new URL(request.url);
+    const typeFilter = searchParams.get('type') || 'all'; // 'all', 'standalone', 'program'
 
-    // Get all standalone squads (programId is null)
-    // Note: We filter isClosed in memory to avoid requiring a composite index
+    // Get all squads for this organization and filter in memory
+    // This avoids requiring composite indexes
     const squadsSnapshot = await adminDb
       .collection('squads')
       .where('organizationId', '==', organizationId)
-      .where('programId', '==', null)
       .get();
 
-    // Filter out closed squads in memory
+    // Filter squads in memory based on type and closed status
     const openSquadDocs = squadsSnapshot.docs.filter(doc => {
       const data = doc.data();
-      return data.isClosed !== true;
+      
+      // Skip closed squads
+      if (data.isClosed === true) return false;
+      
+      // Apply type filter
+      if (typeFilter === 'standalone') {
+        return data.programId == null;
+      } else if (typeFilter === 'program') {
+        return data.programId != null;
+      }
+      
+      // 'all' - include everything
+      return true;
     });
 
     if (openSquadDocs.length === 0) {
@@ -119,6 +134,8 @@ export async function GET(request: NextRequest) {
         squadName: squad.name,
         squadAvatarUrl: squad.avatarUrl,
         coachId: squad.coachId ?? undefined,
+        squadType: squad.programId ? 'program' : 'standalone',
+        programId: squad.programId ?? undefined,
         totalMembers: memberCount,
         activeMembers,
         activityRate,
