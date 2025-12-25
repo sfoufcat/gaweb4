@@ -57,11 +57,11 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
     return (
       <Link 
         href="/program"
-        className="block bg-brand-accent-subtle border border-brand-accent-subtle hover:border-brand-accent rounded-[20px] p-5 hover:shadow-lg transition-all duration-300 group"
+        className="block bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#1a1512] dark:to-[#181310] border border-[#FFE4CC] dark:border-[#3d3530] rounded-[20px] p-5 hover:shadow-lg hover:border-[#a07855]/40 dark:hover:border-[#b8896a]/40 transition-all duration-300 group"
       >
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-brand-accent-subtle flex items-center justify-center flex-shrink-0">
-            <Users className="w-7 h-7 text-brand-accent" />
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#F5E6A8] to-[#EDD96C] dark:from-[#8c6245] dark:to-[#a07855] flex items-center justify-center flex-shrink-0">
+            <Users className="w-7 h-7 text-[#4A5D54] dark:text-white" />
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px] mb-1">
@@ -71,8 +71,8 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
               Join a community of growth-minded people and stay accountable together.
             </p>
           </div>
-          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-brand-accent flex items-center justify-center group-hover:opacity-90 group-hover:scale-105 transition-all">
-            <ChevronRight className="w-5 h-5 text-brand-accent-foreground" />
+          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#E07A3A] dark:bg-[#D4692E] flex items-center justify-center group-hover:bg-[#C96830] dark:group-hover:bg-[#C55E26] group-hover:scale-105 transition-all">
+            <ChevronRight className="w-5 h-5 text-white" />
           </div>
         </div>
       </Link>
@@ -131,7 +131,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
             )}
             <Link
               href="/program?tab=squad"
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-accent hover:opacity-90 text-brand-accent-foreground rounded-full font-albert font-semibold text-[14px] transition-all hover:scale-[1.02]"
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-[#a07855] hover:bg-[#8c6245] text-white rounded-full font-albert font-semibold text-[14px] transition-all hover:scale-[1.02]"
             >
               Go to squad
               <ChevronRight className="w-4 h-4" />
@@ -205,7 +205,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
                   )}
                   <Link
                     href="/program?tab=squad"
-                    className="flex-1 py-2 px-3 bg-brand-accent hover:opacity-90 rounded-xl flex items-center justify-center gap-1 text-brand-accent-foreground transition-all"
+                    className="flex-1 py-2 px-3 bg-[#a07855] hover:bg-[#8c6245] rounded-xl flex items-center justify-center gap-1 text-white transition-all"
                   >
                     <span className="font-sans text-[12px] font-medium">View</span>
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -221,12 +221,12 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
           href="/program"
           className="flex-shrink-0 w-[260px] sm:w-[280px] snap-start"
         >
-          <div className="bg-brand-accent-subtle border border-dashed border-brand-accent-subtle hover:border-brand-accent rounded-[20px] h-full min-h-[140px] flex items-center justify-center transition-all group">
+          <div className="bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#1a1512] dark:to-[#181310] border border-dashed border-[#a07855]/30 dark:border-[#b8896a]/30 rounded-[20px] h-full min-h-[140px] flex items-center justify-center hover:border-[#a07855]/60 dark:hover:border-[#b8896a]/60 transition-all group">
             <div className="text-center p-4">
-              <div className="w-10 h-10 mx-auto rounded-full bg-brand-accent-subtle flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                <Users className="w-5 h-5 text-brand-accent" />
+              <div className="w-10 h-10 mx-auto rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                <Users className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
               </div>
-              <p className="font-albert font-semibold text-[13px] text-brand-accent">
+              <p className="font-albert font-semibold text-[13px] text-[#a07855] dark:text-[#b8896a]">
                 Find another squad
               </p>
             </div>
@@ -247,7 +247,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
             }}
             className={`w-2 h-2 rounded-full transition-all ${
               i === activeIndex 
-                ? 'bg-brand-accent w-4' 
+                ? 'bg-[#a07855] w-4' 
                 : 'bg-[#e1ddd8] dark:bg-[#272d38]'
             }`}
           />
@@ -261,7 +261,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
           }}
           className={`w-2 h-2 rounded-full transition-all ${
             activeIndex >= squads.length
-              ? 'bg-brand-accent w-4' 
+              ? 'bg-[#a07855] w-4' 
               : 'bg-[#e1ddd8] dark:bg-[#272d38]'
           }`}
         />

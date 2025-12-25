@@ -43,7 +43,7 @@ export function ProgramEmptyState() {
         {/* Empty state illustration - simplified icon */}
         <div className="w-20 h-20 rounded-full bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-sm flex items-center justify-center mb-8 shadow-lg">
           <svg
-            className="w-10 h-10 text-brand-accent"
+            className="w-10 h-10 text-[#a07855] dark:text-[#a07855]"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -70,7 +70,7 @@ export function ProgramEmptyState() {
         {/* CTA Button - Figma style */}
         <button
           onClick={() => router.push('/discover')}
-          className="bg-brand-accent border border-[rgba(215,210,204,0.5)] rounded-[32px] px-8 py-4 font-bold text-[16px] text-brand-accent-foreground leading-[1.4] tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+          className="bg-[#a07855] border border-[rgba(215,210,204,0.5)] rounded-[32px] px-8 py-4 font-bold text-[16px] text-white leading-[1.4] tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all"
         >
           Discover more content
         </button>

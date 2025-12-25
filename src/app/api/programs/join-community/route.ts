@@ -130,10 +130,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify user has an active enrollment
-    const enrollmentSnapshot = await adminDb.collection('programEnrollments')
+    const enrollmentSnapshot = await adminDb.collection('program_enrollments')
       .where('programId', '==', programId)
       .where('userId', '==', userId)
-      .where('status', '==', 'active')
+      .where('status', 'in', ['active', 'upcoming'])
       .limit(1)
       .get();
 

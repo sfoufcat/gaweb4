@@ -45,11 +45,11 @@ export function ProgramCarousel({ enrollments, isLoading }: ProgramCarouselProps
     return (
       <Link 
         href="/discover"
-        className="block bg-brand-accent-subtle border border-brand-accent-subtle hover:border-brand-accent rounded-[20px] p-5 hover:shadow-lg transition-all duration-300 group"
+        className="block bg-gradient-to-br from-[#a07855]/5 to-[#a07855]/10 dark:from-[#b8896a]/5 dark:to-[#b8896a]/10 border border-[#a07855]/20 dark:border-[#b8896a]/20 rounded-[20px] p-5 hover:shadow-lg hover:border-[#a07855]/40 dark:hover:border-[#b8896a]/40 transition-all duration-300 group"
       >
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-xl bg-brand-accent-subtle flex items-center justify-center flex-shrink-0">
-            <BookOpen className="w-7 h-7 text-brand-accent" />
+          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#a07855]/20 to-[#a07855]/10 dark:from-[#b8896a]/20 dark:to-[#b8896a]/10 flex items-center justify-center flex-shrink-0">
+            <BookOpen className="w-7 h-7 text-[#a07855] dark:text-[#b8896a]" />
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px] mb-1">
@@ -59,8 +59,8 @@ export function ProgramCarousel({ enrollments, isLoading }: ProgramCarouselProps
               Find structured coaching programs to accelerate your growth.
             </p>
           </div>
-          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-brand-accent flex items-center justify-center group-hover:opacity-90 group-hover:scale-105 transition-all">
-            <ChevronRight className="w-5 h-5 text-brand-accent-foreground" />
+          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#a07855] dark:bg-[#b8896a] flex items-center justify-center group-hover:opacity-90 group-hover:scale-105 transition-all">
+            <ChevronRight className="w-5 h-5 text-white" />
           </div>
         </div>
       </Link>
@@ -84,7 +84,7 @@ export function ProgramCarousel({ enrollments, isLoading }: ProgramCarouselProps
           >
             <div className="bg-white dark:bg-surface rounded-[20px] overflow-hidden hover:shadow-lg transition-all group">
               {/* Program Cover */}
-              <div className="relative w-full h-32 bg-brand-accent-subtle">
+              <div className="relative w-full h-32 bg-gradient-to-br from-[#a07855]/20 to-[#8c6245]/10">
                 {enrollment.program.coverImageUrl ? (
                   <Image 
                     src={enrollment.program.coverImageUrl} 
@@ -95,9 +95,9 @@ export function ProgramCarousel({ enrollments, isLoading }: ProgramCarouselProps
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     {enrollment.program.type === 'group' ? (
-                      <Users className="w-12 h-12 text-brand-accent opacity-40" />
+                      <Users className="w-12 h-12 text-[#a07855]/40" />
                     ) : (
-                      <User className="w-12 h-12 text-brand-accent opacity-40" />
+                      <User className="w-12 h-12 text-[#a07855]/40" />
                     )}
                   </div>
                 )}
@@ -148,7 +148,7 @@ export function ProgramCarousel({ enrollments, isLoading }: ProgramCarouselProps
                     </div>
                     <div className="h-1.5 bg-[#e1ddd8] dark:bg-[#272d38] rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-brand-accent rounded-full transition-all"
+                        className="h-full bg-[#a07855] rounded-full transition-all"
                         style={{ width: `${enrollment.progress.percentComplete}%` }}
                       />
                     </div>
@@ -168,12 +168,12 @@ export function ProgramCarousel({ enrollments, isLoading }: ProgramCarouselProps
           href="/discover"
           className="flex-shrink-0 w-[260px] sm:w-[280px] snap-start"
         >
-          <div className="bg-brand-accent-subtle border border-dashed border-brand-accent-subtle hover:border-brand-accent rounded-[20px] h-full min-h-[200px] flex items-center justify-center transition-all group">
+          <div className="bg-gradient-to-br from-[#a07855]/5 to-[#a07855]/10 dark:from-[#b8896a]/5 dark:to-[#b8896a]/10 border border-dashed border-[#a07855]/30 dark:border-[#b8896a]/30 rounded-[20px] h-full min-h-[200px] flex items-center justify-center hover:border-[#a07855]/60 dark:hover:border-[#b8896a]/60 transition-all group">
             <div className="text-center p-4">
-              <div className="w-12 h-12 mx-auto rounded-full bg-brand-accent-subtle flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <BookOpen className="w-6 h-6 text-brand-accent" />
+              <div className="w-12 h-12 mx-auto rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <BookOpen className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" />
               </div>
-              <p className="font-albert font-semibold text-[14px] text-brand-accent">
+              <p className="font-albert font-semibold text-[14px] text-[#a07855] dark:text-[#b8896a]">
                 Discover more
               </p>
             </div>
@@ -195,7 +195,7 @@ export function ProgramCarousel({ enrollments, isLoading }: ProgramCarouselProps
               }}
               className={`w-2 h-2 rounded-full transition-all ${
                 i === activeIndex 
-                  ? 'bg-brand-accent w-4' 
+                  ? 'bg-[#a07855] w-4' 
                   : 'bg-[#e1ddd8] dark:bg-[#272d38]'
               }`}
             />
@@ -210,7 +210,7 @@ export function ProgramCarousel({ enrollments, isLoading }: ProgramCarouselProps
             }}
             className={`w-2 h-2 rounded-full transition-all ${
               activeIndex >= enrollments.length
-                ? 'bg-brand-accent w-4' 
+                ? 'bg-[#a07855] w-4' 
                 : 'bg-[#e1ddd8] dark:bg-[#272d38]'
             }`}
           />
