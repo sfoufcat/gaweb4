@@ -46,6 +46,7 @@ function ArticleFormDialog({
 }) {
   const isEditing = !!article;
   const [saving, setSaving] = useState(false);
+  const [showThumbnail, setShowThumbnail] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -83,6 +84,8 @@ function ArticleFormDialog({
         featured: article.featured || false,
         trending: article.trending || false,
       });
+      // Show thumbnail section if article already has a thumbnail
+      setShowThumbnail(!!article.thumbnailUrl);
     } else {
       const today = new Date().toISOString().split('T')[0];
       setFormData({
@@ -99,6 +102,7 @@ function ArticleFormDialog({
         featured: false,
         trending: false,
       });
+      setShowThumbnail(false);
     }
   }, [article, isOpen]);
 
@@ -190,23 +194,50 @@ function ArticleFormDialog({
                 required
                 uploadEndpoint={uploadEndpoint}
                 hideLabel
+                aspectRatio="2:1"
               />
             </div>
 
-            {/* Thumbnail */}
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-                Thumbnail <span className="text-text-muted text-xs font-normal">(1200 x 675px)</span>
-              </label>
-              <MediaUpload
-                value={formData.thumbnailUrl}
-                onChange={(url) => setFormData(prev => ({ ...prev, thumbnailUrl: url }))}
-                folder="articles"
-                type="image"
-                uploadEndpoint={uploadEndpoint}
-                hideLabel
-              />
-            </div>
+            {/* Thumbnail - Collapsible */}
+            {!showThumbnail ? (
+              <button
+                type="button"
+                onClick={() => setShowThumbnail(true)}
+                className="flex items-center gap-2 text-sm text-[#a07855] hover:text-[#8c6245] font-albert font-medium transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Thumbnail
+              </button>
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    Thumbnail <span className="text-text-muted text-xs font-normal">(1200 x 675px)</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowThumbnail(false);
+                      setFormData(prev => ({ ...prev, thumbnailUrl: '' }));
+                    }}
+                    className="text-xs text-[#5f5a55] hover:text-red-500 font-albert transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <MediaUpload
+                  value={formData.thumbnailUrl}
+                  onChange={(url) => setFormData(prev => ({ ...prev, thumbnailUrl: url }))}
+                  folder="articles"
+                  type="image"
+                  uploadEndpoint={uploadEndpoint}
+                  hideLabel
+                  aspectRatio="16:9"
+                />
+              </div>
+            )}
 
             {/* Author Selection */}
             <div>

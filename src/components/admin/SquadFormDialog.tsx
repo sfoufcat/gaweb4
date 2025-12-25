@@ -626,6 +626,7 @@ export function SquadFormDialog({
               type="image"
               uploadEndpoint={uploadEndpoint}
               hideLabel
+              aspectRatio="1:1"
             />
           </div>
 

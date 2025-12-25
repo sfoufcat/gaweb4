@@ -232,6 +232,7 @@ function EventFormDialog({
                 required
                 uploadEndpoint={uploadEndpoint}
                 hideLabel
+                aspectRatio="16:9"
               />
             </div>
 

@@ -631,6 +631,7 @@ function CourseFormDialog({
                     required
                     uploadEndpoint={uploadEndpoint}
                     hideLabel
+                    aspectRatio="16:9"
                   />
                 </div>
                 

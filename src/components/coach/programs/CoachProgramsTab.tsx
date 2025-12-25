@@ -1707,6 +1707,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                         type="image"
                         uploadEndpoint="/api/coach/org-upload-media"
                         hideLabel
+                        aspectRatio="16:9"
                       />
                     </div>
 

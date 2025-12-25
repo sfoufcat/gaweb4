@@ -120,7 +120,7 @@ export async function POST(req: Request) {
     if (isImage && file.type !== 'image/svg+xml' && file.type !== 'image/gif') {
       try {
         const imageInfo = await sharp(buffer).metadata();
-        const maxWidth = 1200;
+        const maxWidth = 2000; // Increased to support 1600x800 cover images
         const quality = 80;
 
         let sharpInstance = sharp(buffer);

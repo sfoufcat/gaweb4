@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Target, Check, Edit3, Sparkles } from 'lucide-react';
+import { X, Target, Edit3, Sparkles } from 'lucide-react';
 import type { HelpCompleteTaskResponse } from '@/types';
 
 interface AIHelpCompleteModalProps {
@@ -190,8 +190,8 @@ export function AIHelpCompleteModal({
                       key={index}
                       className="flex items-start gap-3 p-3 bg-[#f9f7f5] dark:bg-[#1d222b] rounded-[12px]"
                     >
-                      <div className="w-6 h-6 rounded-full bg-[#a07855]/20 dark:bg-[#b8896a]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="font-sans text-[12px] font-semibold text-[#a07855] dark:text-[#b8896a]">
+                      <div className="w-6 h-6 rounded-full bg-[#a07855] dark:bg-[#b8896a] flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="font-sans text-[12px] font-semibold text-white">
                           {index + 1}
                         </span>
                       </div>
@@ -206,10 +206,10 @@ export function AIHelpCompleteModal({
               {/* Suggested New Title */}
               {hasNewTitle && (
                 <div className="px-6 py-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-                  <div className="flex items-start gap-3 p-4 bg-[#a07855]/5 dark:bg-[#b8896a]/10 border border-[#a07855]/20 dark:border-[#b8896a]/30 rounded-[16px]">
+                  <div className="flex items-start gap-3 p-4 bg-[#a07855]/15 dark:bg-[#b8896a]/20 border border-[#a07855]/25 dark:border-[#b8896a]/35 rounded-[16px]">
                     <Edit3 className="w-5 h-5 text-[#a07855] dark:text-[#b8896a] flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
-                      <p className="font-sans text-[12px] text-[#a07855] dark:text-[#b8896a] mb-1">
+                      <p className="font-sans text-[12px] text-[#a07855] dark:text-[#b8896a] font-medium mb-1">
                         Suggested clearer title:
                       </p>
                       <p className="font-albert text-[16px] text-text-primary dark:text-[#f5f5f8] font-medium tracking-[-0.5px]">
@@ -238,7 +238,7 @@ export function AIHelpCompleteModal({
                         : 'bg-[#a07855] dark:bg-[#b8896a] text-white hover:opacity-90'
                     }`}
                   >
-                    <Check className="w-4 h-4" />
+                    <Sparkles className="w-4 h-4" />
                     {isUpdating ? 'Updating...' : 'Update task title'}
                   </button>
                 )}

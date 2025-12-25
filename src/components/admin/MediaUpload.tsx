@@ -16,6 +16,8 @@ interface MediaUploadProps {
   uploadEndpoint?: string;
   /** Hide the label row (use when providing external label) */
   hideLabel?: boolean;
+  /** Aspect ratio for preview container (matches how image will be displayed) */
+  aspectRatio?: '2:1' | '16:9' | '1:1' | '4:3';
 }
 
 const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
@@ -63,6 +65,16 @@ const isVideoUrl = (url: string) => {
   return /\.(mp4|webm|mov)(\?|$)/i.test(url);
 };
 
+const getAspectRatioClass = (ratio?: '2:1' | '16:9' | '1:1' | '4:3') => {
+  switch (ratio) {
+    case '2:1': return 'aspect-[2/1]';
+    case '16:9': return 'aspect-video';
+    case '1:1': return 'aspect-square';
+    case '4:3': return 'aspect-[4/3]';
+    default: return 'h-32'; // Default fixed height
+  }
+};
+
 export function MediaUpload({ 
   value, 
   onChange, 
@@ -72,6 +84,7 @@ export function MediaUpload({
   required = false,
   uploadEndpoint = '/api/admin/upload-media',
   hideLabel = false,
+  aspectRatio,
 }: MediaUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -210,7 +223,7 @@ export function MediaUpload({
                     className="w-full h-auto max-h-48 object-contain bg-black"
                   />
                 ) : (
-                  <div className="relative h-32 w-full">
+                  <div className={`relative w-full ${getAspectRatioClass(aspectRatio)}`}>
                     <Image
                       src={value}
                       alt="Preview"
@@ -236,7 +249,7 @@ export function MediaUpload({
             <div
               onClick={() => !uploading && fileInputRef.current?.click()}
               className={`
-                relative h-32 w-full rounded-lg border-2 border-dashed transition-colors
+                relative w-full ${getAspectRatioClass(aspectRatio)} rounded-lg border-2 border-dashed transition-colors
                 ${uploading
                   ? 'border-[#a07855] bg-[#a07855]/5 cursor-wait' 
                   : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] hover:bg-[#faf8f6] dark:hover:bg-white/5 cursor-pointer'

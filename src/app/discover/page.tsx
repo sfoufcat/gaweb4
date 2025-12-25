@@ -14,13 +14,11 @@ import {
   SectionHeader,
   ArticleCard,
 } from '@/components/discover';
-import type { ArticleType } from '@/types/discover';
 
 export default function DiscoverPage() {
   const { upcomingEvents, pastEvents, courses, articles, categories, trending, recommended, groupPrograms, individualPrograms, enrollmentConstraints, loading } = useDiscover();
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedArticleType, setSelectedArticleType] = useState<ArticleType | 'all'>('all');
 
   // Filter out programs where user is already enrolled
   const availableGroupPrograms = useMemo(() => {
@@ -54,27 +52,10 @@ export default function DiscoverPage() {
     return articles.filter(a => a.category === selectedCategoryName);
   }, [articles, selectedCategoryName]);
 
-  // Filter "All Articles" section by article type (only this section is affected)
-  const allArticlesFiltered = useMemo(() => {
-    let result = filteredArticles;
-    if (selectedArticleType !== 'all') {
-      result = result.filter(a => a.articleType === selectedArticleType);
-    }
-    return result;
-  }, [filteredArticles, selectedArticleType]);
-
-  // Limit to 10 articles for the "All Articles" section
-  const allArticlesDisplay = useMemo(() => {
-    return allArticlesFiltered.slice(0, 10);
-  }, [allArticlesFiltered]);
-
-  // Article type filter options
-  const articleTypeOptions: { value: ArticleType | 'all'; label: string }[] = [
-    { value: 'all', label: 'All Types' },
-    { value: 'playbook', label: 'Playbooks' },
-    { value: 'trend', label: 'Trends' },
-    { value: 'caseStudy', label: 'Case Studies' },
-  ];
+  // Limit articles display to 10 for the main section
+  const articlesDisplay = useMemo(() => {
+    return filteredArticles.slice(0, 10);
+  }, [filteredArticles]);
 
   if (loading) {
     return (
@@ -351,58 +332,27 @@ export default function DiscoverPage() {
       {!selectedCategory && (trending.length > 0 || recommended.length > 0 || articles.length > 0) && (
         <section className="px-4 py-5">
           <div className="flex flex-col gap-6">
-            {/* Articles Header */}
-            <h2 className="font-albert font-medium text-2xl text-text-primary tracking-[-1.5px] leading-[1.3]">
-              Articles
-            </h2>
-
-            {/* Browse by Type Filter */}
-            <div className="flex flex-col gap-2">
-              <span className="font-sans text-sm text-text-secondary dark:text-[#b2b6c2]">Browse by Type</span>
-              <div className="flex gap-2 flex-wrap">
-                {articleTypeOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => setSelectedArticleType(option.value)}
-                    className={`px-4 py-2 rounded-full text-sm font-sans transition-all ${
-                      selectedArticleType === option.value
-                        ? 'bg-earth-600 dark:bg-[#b8896a] text-white'
-                        : 'bg-white/70 dark:bg-[#1e222a] text-text-secondary dark:text-[#b2b6c2] hover:bg-white dark:hover:bg-[#262b35] hover:text-text-primary dark:hover:text-[#f5f5f8] border border-[#e1ddd8]/50 dark:border-[#262b35]'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+            {/* Articles Header with View More */}
+            <div className="flex items-center justify-between">
+              <h2 className="font-albert font-medium text-2xl text-text-primary tracking-[-1.5px] leading-[1.3]">
+                Articles
+              </h2>
+              {articlesDisplay.length > 0 && (
+                <Link 
+                  href="/articles"
+                  className="font-sans text-sm text-earth-600 hover:text-earth-700 font-medium transition-colors"
+                >
+                  View More →
+                </Link>
+              )}
             </div>
 
-            {/* All Articles Section (Filtered by Type) */}
-            {filteredArticles.length > 0 && (
-              <div className="flex flex-col gap-3 overflow-hidden">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-albert font-medium text-lg text-text-primary tracking-[-0.5px] leading-[1.3]">
-                    All Articles
-                  </h3>
-                  <Link 
-                    href={`/articles${selectedArticleType !== 'all' ? `?type=${selectedArticleType}` : ''}`}
-                    className="font-sans text-sm text-earth-600 hover:text-earth-700 font-medium transition-colors"
-                  >
-                    View More →
-                  </Link>
-                </div>
-                
-                {/* Horizontal scrollable list */}
-                {allArticlesDisplay.length > 0 ? (
-                  <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-                    {allArticlesDisplay.map((article) => (
-                      <ArticleCard key={article.id} article={article} variant="horizontal" />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-text-muted text-sm font-sans py-2">
-                    No articles found for this type.
-                  </p>
-                )}
+            {/* Articles List */}
+            {articlesDisplay.length > 0 && (
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+                {articlesDisplay.map((article) => (
+                  <ArticleCard key={article.id} article={article} variant="horizontal" />
+                ))}
               </div>
             )}
 
