@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
+import useSWR from 'swr';
 import { useUser } from '@clerk/nextjs';
 import type { SquadMember } from '@/types';
 import { generateStoryContentHash } from './useStoryViewTracking';
@@ -23,13 +24,23 @@ export interface FeedStoryUser {
   hasGoal: boolean;
 }
 
-/** Story status data from API */
+/** Story status data from batch API */
 interface StoryStatusData {
   hasStory: boolean;
   hasDayClosed: boolean;
   hasWeekClosed: boolean;
   hasTasks: boolean;
   hasGoal: boolean;
+  taskCount: number;
+  user: {
+    firstName: string;
+    lastName: string;
+    imageUrl: string;
+  } | null;
+}
+
+interface BatchStoriesResponse {
+  statuses: Record<string, StoryStatusData>;
 }
 
 interface CommunityMember {
@@ -37,6 +48,10 @@ interface CommunityMember {
   firstName: string;
   lastName: string;
   imageUrl: string;
+}
+
+interface CommunityResponse {
+  members: CommunityMember[];
 }
 
 interface UseFeedStoriesReturn {
@@ -47,47 +62,52 @@ interface UseFeedStoriesReturn {
 }
 
 // =============================================================================
+// FETCHERS
+// =============================================================================
+
+const communityFetcher = async (url: string): Promise<CommunityResponse> => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to fetch community');
+  return res.json();
+};
+
+const batchStoriesFetcher = async (userIds: string[]): Promise<BatchStoriesResponse> => {
+  if (userIds.length === 0) {
+    return { statuses: {} };
+  }
+  
+  const res = await fetch('/api/stories/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userIds }),
+  });
+  
+  if (!res.ok) {
+    throw new Error('Failed to fetch story statuses');
+  }
+  
+  return res.json();
+};
+
+// =============================================================================
 // HOOK
 // =============================================================================
 
 /**
  * Hook to fetch community members with their story status for the Feed page.
  * 
- * Takes squad members as input and also fetches org community members.
- * Returns them formatted for the StoriesRow with story availability status.
+ * Uses the optimized /api/stories/batch endpoint to fetch all story statuses
+ * in a single request instead of N individual requests.
+ * 
+ * Features:
+ * - Single batch API call for all users
+ * - SWR caching with 30s stale time for instant re-renders
+ * - Background revalidation without loading states
  */
 export function useFeedStories(squadMembers: SquadMember[]): UseFeedStoriesReturn {
   const { user } = useUser();
-  const [communityMembers, setCommunityMembers] = useState<CommunityMember[]>([]);
-  const [storyStatus, setStoryStatus] = useState<Map<string, StoryStatusData>>(new Map());
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [fetchTrigger, setFetchTrigger] = useState(0);
 
-  // Fetch community members if no squad members
-  useEffect(() => {
-    const fetchCommunity = async () => {
-      if (squadMembers.length > 0) {
-        // Use squad members, no need to fetch community
-        setCommunityMembers([]);
-        return;
-      }
-
-      try {
-        const response = await fetch('/api/feed/community');
-        if (response.ok) {
-          const data = await response.json();
-          setCommunityMembers(data.members || []);
-        }
-      } catch (err) {
-        console.error('[useFeedStories] Error fetching community:', err);
-      }
-    };
-
-    fetchCommunity();
-  }, [squadMembers.length]);
-
-  // Combine squad members and community members
+  // Combine squad members into a stable list
   const allMembers = useMemo(() => {
     if (squadMembers.length > 0) {
       return squadMembers
@@ -99,7 +119,46 @@ export function useFeedStories(squadMembers: SquadMember[]): UseFeedStoriesRetur
           imageUrl: m.imageUrl || '',
         }));
     }
-    return communityMembers
+    return [];
+  }, [squadMembers, user?.id]);
+
+  // Get member IDs for batch fetch
+  const memberIds = useMemo(() => allMembers.map(m => m.id), [allMembers]);
+  
+  // Stable cache key based on member IDs
+  const cacheKey = useMemo(() => {
+    if (memberIds.length === 0) return null;
+    // Sort IDs for consistent cache key regardless of order
+    return ['stories-batch', ...memberIds.sort()].join(',');
+  }, [memberIds]);
+
+  // Fetch community members only if no squad members
+  const shouldFetchCommunity = squadMembers.length === 0;
+  const { data: communityData } = useSWR<CommunityResponse>(
+    shouldFetchCommunity ? '/api/feed/community' : null,
+    communityFetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 60 * 1000, // 1 minute
+    }
+  );
+
+  // Merge community members with squad members
+  const finalMemberIds = useMemo(() => {
+    if (squadMembers.length > 0) {
+      return memberIds;
+    }
+    // Use community members
+    return (communityData?.members || [])
+      .filter(m => m.userId !== user?.id)
+      .map(m => m.userId);
+  }, [squadMembers.length, memberIds, communityData?.members, user?.id]);
+
+  const finalMembers = useMemo(() => {
+    if (squadMembers.length > 0) {
+      return allMembers;
+    }
+    return (communityData?.members || [])
       .filter(m => m.userId !== user?.id)
       .map(m => ({
         id: m.userId,
@@ -107,99 +166,55 @@ export function useFeedStories(squadMembers: SquadMember[]): UseFeedStoriesRetur
         lastName: m.lastName,
         imageUrl: m.imageUrl,
       }));
-  }, [squadMembers, communityMembers, user?.id]);
+  }, [squadMembers.length, allMembers, communityData?.members, user?.id]);
 
-  // Get member IDs
-  const memberIds = useMemo(() => allMembers.map(m => m.id), [allMembers]);
+  // Final cache key for batch stories
+  const finalCacheKey = useMemo(() => {
+    if (finalMemberIds.length === 0) return null;
+    return ['stories-batch', ...finalMemberIds.sort()].join(',');
+  }, [finalMemberIds]);
 
-  // Fetch story status for all members
-  const fetchStoryStatus = useCallback(async () => {
-    if (memberIds.length === 0) {
-      setIsLoading(false);
-      return;
+  // Batch fetch story statuses with SWR caching
+  const { 
+    data: batchData, 
+    error: batchError, 
+    isLoading: isBatchLoading,
+    mutate: mutateBatch,
+  } = useSWR<BatchStoriesResponse>(
+    finalCacheKey,
+    () => batchStoriesFetcher(finalMemberIds),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 30 * 1000, // 30 seconds - stories don't change that often
+      revalidateOnReconnect: true,
+      // Keep stale data while revalidating for instant renders
+      keepPreviousData: true,
     }
+  );
 
-    setIsLoading(true);
-    setError(null);
-
-    const results = new Map<string, StoryStatusData>();
-    const defaultStatus: StoryStatusData = {
-      hasStory: false,
-      hasDayClosed: false,
-      hasWeekClosed: false,
-      hasTasks: false,
-      hasGoal: false,
-    };
-
-    try {
-      // Batch fetch in groups of 5 to avoid overwhelming the API
-      const batches: string[][] = [];
-      for (let i = 0; i < memberIds.length; i += 5) {
-        batches.push(memberIds.slice(i, i + 5));
-      }
-
-      for (const batch of batches) {
-        await Promise.all(
-          batch.map(async (userId) => {
-            try {
-              const response = await fetch(`/api/stories?userId=${userId}`);
-              if (response.ok) {
-                const data = await response.json();
-                // Extract story status from API response
-                const autoData = data.autoGeneratedData || {};
-                results.set(userId, {
-                  hasStory: data.hasStory === true,
-                  hasDayClosed: autoData.hasDayClosed === true,
-                  hasWeekClosed: autoData.hasWeekClosed === true,
-                  hasTasks: (autoData.tasks?.length || 0) > 0,
-                  hasGoal: !!autoData.goal,
-                });
-              } else {
-                results.set(userId, defaultStatus);
-              }
-            } catch {
-              results.set(userId, defaultStatus);
-            }
-          })
-        );
-      }
-
-      setStoryStatus(results);
-    } catch (err) {
-      console.error('[useFeedStories] Error fetching story status:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch stories');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [memberIds]);
-
-  // Fetch on mount and when members change
-  useEffect(() => {
-    fetchStoryStatus();
-  }, [fetchStoryStatus, fetchTrigger]);
-
-  // Convert members to FeedStoryUser format
+  // Convert to FeedStoryUser format
   const storyUsers = useMemo((): FeedStoryUser[] => {
+    const statuses = batchData?.statuses || {};
     const defaultStatus: StoryStatusData = {
       hasStory: false,
       hasDayClosed: false,
       hasWeekClosed: false,
       hasTasks: false,
       hasGoal: false,
+      taskCount: 0,
+      user: null,
     };
     
-    return allMembers
+    return finalMembers
       .map(member => {
-        const status = storyStatus.get(member.id) || defaultStatus;
+        const status = statuses[member.id] || defaultStatus;
         return {
           id: member.id,
-          firstName: member.firstName,
-          lastName: member.lastName,
-          imageUrl: member.imageUrl,
+          firstName: status.user?.firstName || member.firstName,
+          lastName: status.user?.lastName || member.lastName,
+          imageUrl: status.user?.imageUrl || member.imageUrl,
           hasStory: status.hasStory,
-          // For now, all stories are "unseen" - we can add viewed tracking later
-          hasUnseenStory: status.hasStory,
-          // Story state for ring colors
+          hasUnseenStory: status.hasStory, // All stories unseen by default
           hasDayClosed: status.hasDayClosed,
           hasWeekClosed: status.hasWeekClosed,
           hasTasks: status.hasTasks,
@@ -212,19 +227,26 @@ export function useFeedStories(squadMembers: SquadMember[]): UseFeedStoriesRetur
         if (!a.hasStory && b.hasStory) return 1;
         return 0;
       });
-  }, [allMembers, storyStatus]);
+  }, [finalMembers, batchData?.statuses]);
 
   const refetch = useCallback(() => {
-    setFetchTrigger(prev => prev + 1);
-  }, []);
+    mutateBatch();
+  }, [mutateBatch]);
+
+  // Determine loading state - only true on initial load without cached data
+  const isLoading = finalMemberIds.length > 0 && isBatchLoading && !batchData;
 
   return {
     storyUsers,
     isLoading,
-    error,
+    error: batchError?.message || null,
     refetch,
   };
 }
+
+// =============================================================================
+// CURRENT USER STORY STATUS
+// =============================================================================
 
 /** Current user's story status including ring state data */
 export interface CurrentUserStoryStatus {
@@ -238,60 +260,69 @@ export interface CurrentUserStoryStatus {
   isLoading: boolean;
 }
 
+interface CurrentUserStoriesResponse {
+  hasStory: boolean;
+  autoGeneratedData: {
+    hasDayClosed?: boolean;
+    hasWeekClosed?: boolean;
+    tasks?: Array<{ id: string }>;
+    goal?: { title: string } | null;
+  };
+}
+
 /**
  * Hook to check current user's story status including ring state.
  * Returns data needed for StoryAvatar rendering.
+ * 
+ * Uses SWR for caching with 30s stale time for instant re-renders.
  */
 export function useCurrentUserHasStory(): CurrentUserStoryStatus {
   const { user } = useUser();
-  const [status, setStatus] = useState<Omit<CurrentUserStoryStatus, 'isLoading' | 'contentHash'>>({
-    hasStory: false,
-    hasDayClosed: false,
-    hasWeekClosed: false,
-    hasTasks: false,
-    hasGoal: false,
-    taskCount: 0,
-  });
-  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const checkStory = async () => {
-      if (!user?.id) {
-        setIsLoading(false);
-        return;
-      }
+  const { data, isLoading } = useSWR<CurrentUserStoriesResponse>(
+    user?.id ? `/api/stories?userId=${user.id}` : null,
+    async (url: string) => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch story status');
+      return res.json();
+    },
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 30 * 1000, // 30 seconds
+      keepPreviousData: true,
+    }
+  );
 
-      try {
-        const response = await fetch(`/api/stories?userId=${user.id}`);
-        if (response.ok) {
-          const data = await response.json();
-          const autoData = data.autoGeneratedData || {};
-          const taskCount = autoData.tasks?.length || 0;
-          setStatus({
-            hasStory: data.hasStory === true,
-            hasDayClosed: autoData.hasDayClosed === true,
-            hasWeekClosed: autoData.hasWeekClosed === true,
-            hasTasks: taskCount > 0,
-            hasGoal: !!autoData.goal,
-            taskCount,
-          });
-        }
-      } catch {
-        // Keep default status on error
-      } finally {
-        setIsLoading(false);
-      }
+  const status = useMemo(() => {
+    if (!data) {
+      return {
+        hasStory: false,
+        hasDayClosed: false,
+        hasWeekClosed: false,
+        hasTasks: false,
+        hasGoal: false,
+        taskCount: 0,
+      };
+    }
+
+    const autoData = data.autoGeneratedData || {};
+    const taskCount = autoData.tasks?.length || 0;
+    
+    return {
+      hasStory: data.hasStory === true,
+      hasDayClosed: autoData.hasDayClosed === true,
+      hasWeekClosed: autoData.hasWeekClosed === true,
+      hasTasks: taskCount > 0,
+      hasGoal: !!autoData.goal,
+      taskCount,
     };
+  }, [data]);
 
-    checkStory();
-  }, [user?.id]);
-
-  // Generate content hash for view tracking (matches home page logic)
+  // Generate content hash for view tracking
   const contentHash = useMemo(
     () => generateStoryContentHash(status.hasTasks, status.hasDayClosed, status.taskCount, status.hasWeekClosed),
     [status.hasTasks, status.hasDayClosed, status.taskCount, status.hasWeekClosed]
   );
 
-  return { ...status, contentHash, isLoading };
+  return { ...status, contentHash, isLoading: isLoading && !data };
 }
-

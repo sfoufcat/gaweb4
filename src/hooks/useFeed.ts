@@ -177,6 +177,22 @@ export function useFeed() {
     }, false);
   }, [mutate]);
 
+  // Optimistic update to decrement comment count
+  const decrementCommentCount = useCallback((postId: string) => {
+    mutate((currentData) => {
+      if (!currentData) return currentData;
+      
+      return currentData.map((page) => ({
+        ...page,
+        posts: (page.posts || []).map((post) =>
+          post.id === postId
+            ? { ...post, commentCount: Math.max(0, post.commentCount - 1) }
+            : post
+        ),
+      }));
+    }, false);
+  }, [mutate]);
+
   // Add new post to feed (optimistic)
   const addPost = useCallback((post: FeedPost) => {
     mutate((currentData) => {
@@ -219,6 +235,7 @@ export function useFeed() {
     optimisticLike,
     optimisticBookmark,
     incrementCommentCount,
+    decrementCommentCount,
     addPost,
     removePost,
   };
@@ -303,6 +320,17 @@ export function useComments(postId: string | null) {
     }, false);
   }, [mutate]);
 
+  const removeComment = useCallback((commentId: string) => {
+    mutate((currentData) => {
+      if (!currentData) return currentData;
+      
+      return currentData.map((page) => ({
+        ...page,
+        comments: (page.comments || []).filter((c) => c.id !== commentId),
+      }));
+    }, false);
+  }, [mutate]);
+
   return {
     comments,
     isLoading,
@@ -311,6 +339,7 @@ export function useComments(postId: string | null) {
     hasMore,
     loadMore,
     addComment,
+    removeComment,
     refresh: mutate,
   };
 }

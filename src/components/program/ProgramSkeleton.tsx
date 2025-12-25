@@ -1,11 +1,17 @@
-export function ProgramSkeleton() {
+interface ProgramSkeletonProps {
+  showPillMenu?: boolean;
+}
+
+export function ProgramSkeleton({ showPillMenu = true }: ProgramSkeletonProps) {
   return (
     <div className="space-y-6">
       {/* Pill Switcher Skeleton */}
-      <div className="bg-[#f3f1ef] dark:bg-[#11141b] rounded-[40px] p-2 flex gap-2">
-        <div className="flex-1 rounded-[32px] h-[44px] bg-white dark:bg-[#171b22] animate-pulse shadow-[0px_4px_10px_0px_rgba(0,0,0,0.1)]" />
-        <div className="flex-1 rounded-[32px] h-[44px] bg-transparent" />
-      </div>
+      {showPillMenu && (
+        <div className="bg-[#f3f1ef] dark:bg-[#11141b] rounded-[40px] p-2 flex gap-2">
+          <div className="flex-1 rounded-[32px] h-[44px] bg-white dark:bg-[#171b22] animate-pulse shadow-[0px_4px_10px_0px_rgba(0,0,0,0.1)]" />
+          <div className="flex-1 rounded-[32px] h-[44px] bg-transparent" />
+        </div>
+      )}
 
       {/* Program Card Skeleton */}
       <div className="bg-white dark:bg-[#171b22] rounded-[20px] overflow-hidden animate-pulse">

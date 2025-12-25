@@ -148,7 +148,7 @@ export function StoriesRow({
             </div>
           ) : (
             // No stories - clean avatar with subtle hover ring
-            <div className="w-14 h-14 rounded-full overflow-hidden bg-earth-200 border-2 border-transparent group-hover:border-earth-300 dark:group-hover:border-[#4a4f5a] transition-all">
+            <div className="w-14 h-14 rounded-full overflow-hidden bg-earth-200 dark:bg-[#262b35] border-2 border-earth-200 dark:border-[#262b35] group-hover:border-earth-400 dark:group-hover:border-[#5a6070] transition-all">
               {user?.imageUrl ? (
                 <Image
                   src={user.imageUrl}

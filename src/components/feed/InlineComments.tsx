@@ -18,6 +18,8 @@ interface InlineCommentsProps {
   onExpandChange?: (expanded: boolean) => void;
   /** Callback when a comment is successfully added */
   onCommentAdded?: () => void;
+  /** Callback when a comment is successfully deleted */
+  onCommentDeleted?: () => void;
 }
 
 /**
@@ -32,6 +34,7 @@ export function InlineComments({
   expanded = false,
   onExpandChange,
   onCommentAdded,
+  onCommentDeleted,
 }: InlineCommentsProps) {
   const router = useRouter();
   const { user } = useUser();
@@ -43,7 +46,10 @@ export function InlineComments({
     hasMore,
     loadMore,
     addComment: addCommentToList,
+    removeComment: removeCommentFromList,
   } = useComments(postId);
+  
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
 
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -117,6 +123,34 @@ export function InlineComments({
   const handleProfileClick = (authorId: string) => {
     router.push(getProfileUrl(authorId, user?.id || ''));
   };
+
+  // Handle delete comment
+  const handleDeleteComment = useCallback(async (commentId: string) => {
+    if (deletingCommentId) return; // Prevent multiple deletes
+
+    setDeletingCommentId(commentId);
+
+    try {
+      const response = await fetch(`/api/feed/${postId}/comment?commentId=${commentId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete comment');
+      }
+
+      // Remove from local list
+      removeCommentFromList(commentId);
+      
+      // Notify parent to update comment count
+      onCommentDeleted?.();
+    } catch (error) {
+      console.error('Delete comment error:', error);
+      setErrorMessage('Failed to delete comment. Please try again.');
+    } finally {
+      setDeletingCommentId(null);
+    }
+  }, [postId, deletingCommentId, removeCommentFromList, onCommentDeleted]);
 
   // Determine which comments to show
   const visibleComments = expanded ? comments : comments.slice(-2);
@@ -208,7 +242,10 @@ export function InlineComments({
           <CommentItem
             key={comment.id}
             comment={comment}
+            currentUserId={user?.id}
+            isDeleting={deletingCommentId === comment.id}
             onProfileClick={() => handleProfileClick(comment.authorId)}
+            onDelete={() => handleDeleteComment(comment.id)}
           />
         ))}
         
@@ -281,11 +318,18 @@ export function InlineComments({
 // Individual comment item (compact version for inline)
 function CommentItem({
   comment,
+  currentUserId,
+  isDeleting,
   onProfileClick,
+  onDelete,
 }: {
   comment: FeedComment;
+  currentUserId?: string;
+  isDeleting?: boolean;
   onProfileClick: () => void;
+  onDelete: () => void;
 }) {
+  const [showMenu, setShowMenu] = useState(false);
   const authorName = comment.author
     ? `${comment.author.firstName || ''} ${comment.author.lastName || ''}`.trim() || 'User'
     : 'User';
@@ -297,9 +341,12 @@ function CommentItem({
     .substring(0, 2)
     .toUpperCase();
   const timeAgo = formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true });
+  
+  // Can delete if user is the comment author
+  const canDelete = currentUserId === comment.authorId;
 
   return (
-    <div className="flex gap-2">
+    <div className={`flex gap-2 group ${isDeleting ? 'opacity-50' : ''}`}>
       {/* Avatar */}
       <button
         onClick={onProfileClick}
@@ -337,6 +384,46 @@ function CommentItem({
           {timeAgo}
         </p>
       </div>
+
+      {/* Delete menu (only for comment author) */}
+      {canDelete && (
+        <div className="relative">
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className="p-1 rounded-full opacity-0 group-hover:opacity-100 hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-all"
+            disabled={isDeleting}
+          >
+            <svg className="w-4 h-4 text-[#8a857f]" fill="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="6" r="1.5" />
+              <circle cx="12" cy="12" r="1.5" />
+              <circle cx="12" cy="18" r="1.5" />
+            </svg>
+          </button>
+
+          {showMenu && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setShowMenu(false)}
+              />
+              <div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-20 overflow-hidden">
+                <button
+                  onClick={() => {
+                    setShowMenu(false);
+                    onDelete();
+                  }}
+                  className="w-full px-3 py-2 text-left text-[13px] text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Delete
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

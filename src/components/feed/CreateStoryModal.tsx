@@ -173,18 +173,18 @@ export function CreateStoryModal({
       {/* Modal Container - uses flex centering */}
       <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 pointer-events-none">
         <div 
-          className="w-full md:w-full md:max-w-md bg-[#171b22] rounded-t-2xl md:rounded-2xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden pointer-events-auto animate-modal-slide-up md:animate-modal-zoom-in"
+          className="w-full md:w-full md:max-w-md bg-white dark:bg-[#171b22] rounded-t-2xl md:rounded-2xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden pointer-events-auto animate-modal-slide-up md:animate-modal-zoom-in"
           onClick={(e) => e.stopPropagation()}
         >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[#262b35]">
+        <div className="flex items-center justify-between p-4 border-b border-[#e8e4df] dark:border-[#262b35]">
           <button
             onClick={handleClose}
-            className="text-[15px] text-[#8a857f] hover:text-white transition-colors"
+            className="text-[15px] text-[#8a857f] hover:text-[#1a1a1a] dark:hover:text-white transition-colors"
           >
             Cancel
           </button>
-          <h2 className="font-semibold text-[16px] text-white">
+          <h2 className="font-semibold text-[16px] text-[#1a1a1a] dark:text-white">
             Add to Story
           </h2>
           <button
@@ -204,7 +204,7 @@ export function CreateStoryModal({
         <div className="flex-1 flex flex-col items-center justify-center p-4 min-h-[300px]">
           {/* Upload state */}
           {isUploading && (
-            <div className="flex flex-col items-center gap-4 text-white">
+            <div className="flex flex-col items-center gap-4 text-[#1a1a1a] dark:text-white">
               <div className="w-12 h-12 border-3 border-current border-t-transparent rounded-full animate-spin" />
               <p className="text-[15px]">Uploading...</p>
             </div>
@@ -214,7 +214,7 @@ export function CreateStoryModal({
           {!isUploading && !mediaUrl && (
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex flex-col items-center gap-4 p-8 rounded-2xl border-2 border-dashed border-[#3a3f4a] hover:border-[#5a5f6a] transition-colors"
+              className="flex flex-col items-center gap-4 p-8 rounded-2xl border-2 border-dashed border-[#e8e4df] dark:border-[#3a3f4a] hover:border-[#c5c0ba] dark:hover:border-[#5a5f6a] transition-colors"
             >
               <div
                 className="w-16 h-16 rounded-full flex items-center justify-center"
@@ -225,7 +225,7 @@ export function CreateStoryModal({
                 </svg>
               </div>
               <div className="text-center">
-                <p className="text-white font-medium text-[15px]">Add Photo or Video</p>
+                <p className="text-[#1a1a1a] dark:text-white font-medium text-[15px]">Add Photo or Video</p>
                 <p className="text-[#8a857f] text-[13px] mt-1">Stories disappear after 24 hours</p>
               </div>
             </button>
@@ -306,13 +306,13 @@ export function CreateStoryModal({
 
         {/* Footer - Caption input */}
         {mediaUrl && (
-          <div className="p-4 border-t border-[#262b35]">
+          <div className="p-4 border-t border-[#e8e4df] dark:border-[#262b35]">
             <input
               type="text"
               value={caption}
               onChange={(e) => setCaption(e.target.value.slice(0, 200))}
               placeholder="Add a caption..."
-              className="w-full px-4 py-3 rounded-xl bg-[#1a1f2a] text-white text-[15px] placeholder-[#8a857f] focus:outline-none focus:ring-2 focus:ring-opacity-50"
+              className="w-full px-4 py-3 rounded-xl bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[#1a1a1a] dark:text-white text-[15px] placeholder-[#8a857f] focus:outline-none focus:ring-2 focus:ring-opacity-50"
               style={{ '--tw-ring-color': accentColor } as React.CSSProperties}
             />
           </div>

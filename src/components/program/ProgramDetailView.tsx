@@ -184,8 +184,9 @@ export function ProgramDetailView({
     (program.defaultHabits && program.defaultHabits.length > 0);
 
   // Show full-page skeleton while content is loading
+  // Hide pill menu in skeleton since parent already renders it
   if (content.isLoading) {
-    return <ProgramSkeleton />;
+    return <ProgramSkeleton showPillMenu={false} />;
   }
 
   return (

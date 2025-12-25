@@ -183,6 +183,79 @@ export async function POST(
 }
 
 /**
+ * DELETE /api/feed/[postId]/comment?commentId=xxx
+ * Delete a comment from a post
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ postId: string }> }
+) {
+  try {
+    const { postId } = await params;
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get org context
+    const organizationId = await getEffectiveOrgId();
+    if (!organizationId) {
+      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
+    }
+
+    // Get commentId from query params
+    const { searchParams } = new URL(request.url);
+    const commentId = searchParams.get('commentId');
+
+    if (!commentId) {
+      return NextResponse.json({ error: 'Comment ID required' }, { status: 400 });
+    }
+
+    // Get the comment to verify ownership
+    const commentRef = adminDb.collection('feed_comments').doc(commentId);
+    const commentDoc = await commentRef.get();
+
+    if (!commentDoc.exists) {
+      return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
+    }
+
+    const commentData = commentDoc.data()!;
+
+    // Verify the comment belongs to this post
+    if (commentData.postId !== postId) {
+      return NextResponse.json({ error: 'Comment does not belong to this post' }, { status: 400 });
+    }
+
+    // Check if user is the comment author or the post author
+    const postDoc = await adminDb.collection('feed_posts').doc(postId).get();
+    const postData = postDoc.data();
+    const isCommentAuthor = commentData.authorId === userId;
+    const isPostAuthor = postData?.authorId === userId;
+
+    if (!isCommentAuthor && !isPostAuthor) {
+      return NextResponse.json({ error: 'Not authorized to delete this comment' }, { status: 403 });
+    }
+
+    // Delete the comment
+    await commentRef.delete();
+
+    // Decrement comment count on post
+    await adminDb.collection('feed_posts').doc(postId).update({
+      commentCount: FieldValue.increment(-1),
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('[FEED_COMMENT_DELETE] Error:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete comment' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * Helper to notify post author of a comment
  */
 async function notifyPostAuthor(

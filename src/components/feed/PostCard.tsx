@@ -23,6 +23,7 @@ interface PostCardProps {
   onEdit?: (post: FeedPost) => void;
   onReport?: (postId: string) => void;
   onCommentAdded?: (postId: string) => void;
+  onCommentDeleted?: (postId: string) => void;
 }
 
 export function PostCard({
@@ -34,6 +35,7 @@ export function PostCard({
   onEdit,
   onReport,
   onCommentAdded,
+  onCommentDeleted,
 }: PostCardProps) {
   const router = useRouter();
   const { user } = useUser();
@@ -433,6 +435,7 @@ export function PostCard({
             expanded={commentsExpanded}
             onExpandChange={setCommentsExpanded}
             onCommentAdded={() => onCommentAdded?.(post.id)}
+            onCommentDeleted={() => onCommentDeleted?.(post.id)}
           />
         </div>
       )}

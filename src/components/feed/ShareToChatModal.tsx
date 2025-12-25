@@ -42,12 +42,16 @@ export function ShareToChatModal({ postUrl, onClose, onSuccess }: ShareToChatMod
 
       try {
         setIsLoading(true);
+        // Query all messaging and squad channels where user is a member
         const filter = { 
-          type: 'messaging', 
           members: { $in: [client.userID] } 
         };
         const sort = [{ last_message_at: -1 as const }];
-        const result = await client.queryChannels(filter, sort, { limit: 30 });
+        const result = await client.queryChannels(filter, sort, { 
+          limit: 30,
+          watch: false,
+          state: true,
+        });
         setChannels(result);
       } catch (err) {
         console.error('Failed to fetch channels:', err);
@@ -164,10 +168,18 @@ export function ShareToChatModal({ postUrl, onClose, onSuccess }: ShareToChatMod
               ))}
             </div>
           ) : channels.length === 0 ? (
-            // Empty state
-            <div className="text-center py-8">
-              <p className="text-[14px] text-[#8a857f]">
-                No conversations found
+            // Empty state with helpful message
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="w-16 h-16 rounded-full bg-[#f5f3f0] dark:bg-[#262b35] flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-[#8a857f]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </div>
+              <p className="text-[15px] font-medium text-[#1a1a1a] dark:text-[#faf8f6] mb-1">
+                No conversations yet
+              </p>
+              <p className="text-[13px] text-[#8a857f] text-center max-w-[200px]">
+                Start a chat with someone first to share posts with them
               </p>
             </div>
           ) : (

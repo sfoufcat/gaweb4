@@ -44,6 +44,7 @@ export default function FeedPage() {
     optimisticLike,
     optimisticBookmark,
     incrementCommentCount,
+    decrementCommentCount,
     addPost,
     removePost,
   } = useFeed();
@@ -248,6 +249,7 @@ export default function FeedPage() {
                 onEdit={handleEdit}
                 onReport={handleReport}
                 onCommentAdded={incrementCommentCount}
+                onCommentDeleted={decrementCommentCount}
                 onCreatePost={() => setShowCreatePostModal(true)}
               />
             </div>
