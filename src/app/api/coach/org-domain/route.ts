@@ -162,6 +162,7 @@ export async function PATCH(request: Request) {
         colors: brandingData.colors || DEFAULT_TENANT_BRANDING.colors,
         menuTitles: brandingData.menuTitles || DEFAULT_TENANT_BRANDING.menuTitles,
         menuIcons: brandingData.menuIcons || DEFAULT_TENANT_BRANDING.menuIcons,
+        menuOrder: brandingData.menuOrder || DEFAULT_TENANT_BRANDING.menuOrder,
       } : DEFAULT_TENANT_BRANDING;
       
       // Get verified custom domain if exists

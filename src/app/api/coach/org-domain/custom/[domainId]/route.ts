@@ -204,6 +204,7 @@ export async function PATCH(
             colors: brandingData.colors || DEFAULT_TENANT_BRANDING.colors,
             menuTitles: brandingData.menuTitles || DEFAULT_TENANT_BRANDING.menuTitles,
             menuIcons: brandingData.menuIcons || DEFAULT_TENANT_BRANDING.menuIcons,
+            menuOrder: brandingData.menuOrder || DEFAULT_TENANT_BRANDING.menuOrder,
           } : DEFAULT_TENANT_BRANDING;
           
           // Sync with verified custom domain
@@ -371,6 +372,7 @@ export async function DELETE(
           colors: brandingData.colors || DEFAULT_TENANT_BRANDING.colors,
           menuTitles: brandingData.menuTitles || DEFAULT_TENANT_BRANDING.menuTitles,
           menuIcons: brandingData.menuIcons || DEFAULT_TENANT_BRANDING.menuIcons,
+          menuOrder: brandingData.menuOrder || DEFAULT_TENANT_BRANDING.menuOrder,
         } : DEFAULT_TENANT_BRANDING;
         
         // Sync WITHOUT verifiedCustomDomain to remove the redirect
