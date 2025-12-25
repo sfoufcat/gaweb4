@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useUser } from '@clerk/nextjs';
+import { mutate } from 'swr';
 import type { FirebaseUser } from '@/types';
 import { compressImage } from '@/lib/uploadProfilePicture';
 
@@ -151,21 +152,40 @@ export function ProfileEditForm({ initialData, clerkUser, onSave, onCancel, from
       // This ensures chat/feed shows the updated name and/or profile image immediately
       if (user) {
         try {
-          // Reload user to ensure we have the absolute latest data from Clerk
+          // Reload user to ensure we have the latest imageUrl from Clerk
           await user.reload();
           
-          console.log('[PROFILE] Syncing profile to Stream/Firebase...');
+          // Parse the name we just saved (don't rely on Clerk's potentially stale data)
+          const nameParts = formData.name.trim().split(/\s+/);
+          const syncFirstName = nameParts[0] || '';
+          const syncLastName = nameParts.slice(1).join(' ') || '';
+          
+          console.log('[PROFILE] Syncing profile to Stream/Firebase...', {
+            name: formData.name,
+            firstName: syncFirstName,
+            lastName: syncLastName,
+          });
+          
           await fetch('/api/user/sync-stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               name: formData.name,
-              firstName: user.firstName,
-              lastName: user.lastName,
+              firstName: syncFirstName,
+              lastName: syncLastName,
               imageUrl: user.imageUrl,
             }),
           });
           console.log('[PROFILE] Stream/Firebase sync complete');
+          
+          // Invalidate all feed-related SWR caches to show updated author info
+          // This forces the feed to refetch fresh data from the API
+          await mutate(
+            (key) => typeof key === 'string' && key.startsWith('/api/feed'),
+            undefined,
+            { revalidate: true }
+          );
+          console.log('[PROFILE] Feed cache invalidated');
         } catch (streamError) {
           console.error('[STREAM_SYNC_ERROR]', streamError);
           // Non-fatal - don't fail the save

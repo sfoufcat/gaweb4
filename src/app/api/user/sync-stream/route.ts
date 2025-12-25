@@ -76,24 +76,25 @@ export async function POST(req: Request) {
       updatedAt: new Date().toISOString(),
     };
     
-    // Always update name fields to ensure feed shows correct author name
-    if (displayName && displayName !== firebaseUser?.name) {
+    // ALWAYS update name fields when provided from body (user just saved their profile)
+    // Don't compare with firebaseUser since that data might be stale
+    if (bodyData.name) {
       firebaseUpdates.name = displayName;
     }
-    if (firstName && firstName !== firebaseUser?.firstName) {
+    if (bodyData.firstName) {
       firebaseUpdates.firstName = firstName;
     }
-    if (lastName && lastName !== firebaseUser?.lastName) {
+    if (bodyData.lastName !== undefined) { // Allow empty string for lastName
       firebaseUpdates.lastName = lastName;
     }
-    if (imageUrl && imageUrl !== firebaseUser?.imageUrl) {
+    if (imageUrl) {
       firebaseUpdates.imageUrl = imageUrl;
     }
     
-    // Only update if there are changes
+    // Always update when we have data from the client
     if (Object.keys(firebaseUpdates).length > 1) { // More than just updatedAt
       await userRef.set(firebaseUpdates, { merge: true });
-      console.log('[SYNC_STREAM] Updated Firebase:', Object.keys(firebaseUpdates));
+      console.log('[SYNC_STREAM] Updated Firebase:', firebaseUpdates);
     }
 
     // Sync to Stream Chat

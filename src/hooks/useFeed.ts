@@ -98,9 +98,9 @@ export function useFeed() {
     getKey,
     fetcher,
     {
-      revalidateFirstPage: false,
+      revalidateFirstPage: true, // Always fetch fresh first page to get updated author info
       revalidateOnFocus: false,
-      dedupingInterval: 10000, // 10 seconds
+      dedupingInterval: 5000, // 5 seconds - reduced to get fresher author data
     }
   );
 

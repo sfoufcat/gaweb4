@@ -55,7 +55,7 @@ export interface MergedStoryData {
 
 /**
  * Hook to fetch and merge stories from both sources:
- * - User-posted stories from Stream (ephemeral, 24hr)
+ * - User-posted stories from Firestore (ephemeral, 24hr)
  * - Auto-generated stories from Firebase (tasks, goals, check-ins)
  * 
  * Returns a unified array of StorySlide[] for the StoryPlayer.
