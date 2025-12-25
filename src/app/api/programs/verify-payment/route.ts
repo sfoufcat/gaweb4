@@ -312,6 +312,7 @@ export async function POST(request: NextRequest) {
 
     const programId = session.metadata?.programId;
     const cohortId = session.metadata?.cohortId || null;
+    const joinCommunity = session.metadata?.joinCommunity !== 'false';
 
     if (!programId) {
       return NextResponse.json({ error: 'Invalid session metadata' }, { status: 400 });
@@ -407,6 +408,23 @@ export async function POST(request: NextRequest) {
         ...clerkUser,
         email: clerkUser.emailAddresses?.[0]?.emailAddress,
       });
+      
+      // Add to client community squad if enabled and user opted in
+      if (program.clientCommunitySquadId && joinCommunity) {
+        try {
+          await addUserToSquad(userId, program.clientCommunitySquadId, clerkUser);
+          
+          // Update enrollment record with joinedCommunity flag
+          await adminDb.collection('program_enrollments').doc(enrollmentRef.id).update({
+            joinedCommunity: true,
+          });
+          
+          console.log(`[VERIFY_PAYMENT] Added user ${userId} to client community squad ${program.clientCommunitySquadId}`);
+        } catch (communityError) {
+          console.error(`[VERIFY_PAYMENT] Failed to add user to community squad:`, communityError);
+          // Don't fail enrollment if community join fails
+        }
+      }
     }
 
     console.log(`[VERIFY_PAYMENT] Created enrollment ${enrollmentRef.id} for user ${userId} in program ${program.id}`);

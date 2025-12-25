@@ -202,21 +202,24 @@ export default function FeedPage() {
                   index = 0;
                 }
                 
-                // Fallback: if user still not found, add them dynamically
-                // This can happen when SWR cache is stale
+                // Fallback: if user still not found, try finding in storyUsers
                 if (index === -1) {
-                  // Find the user in storyUsers
-                  const storyUser = storyUsers.find(u => u.id === userId);
-                  if (storyUser) {
-                    // User is in storyUsers but not fullStoryQueue - this is a bug, but let's handle it
-                    // Add them to the queue at their position
-                    index = storyUsers.findIndex(u => u.id === userId) + 1; // +1 for current user at 0
+                  const storyUserIndex = storyUsers.findIndex(u => u.id === userId);
+                  if (storyUserIndex !== -1) {
+                    // +1 for current user at position 0 (if they have a story)
+                    index = user && currentUserStoryStatus.hasStory 
+                      ? storyUserIndex + 1 
+                      : storyUserIndex;
                   }
                 }
                 
-                if (index !== -1) {
-                  setSelectedStoryStartIndex(index);
+                // Final fallback: always open something rather than do nothing
+                // This ensures clicks always work even if data is stale
+                if (index === -1) {
+                  index = 0;
                 }
+                
+                setSelectedStoryStartIndex(index);
               }}
             />
           </div>
@@ -449,4 +452,5 @@ export default function FeedPage() {
     </div>
   );
 }
+
 

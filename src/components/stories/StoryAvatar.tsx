@@ -293,10 +293,13 @@ export function StoryAvatar({
       <button
         onClick={handleClick}
         className={`relative ${config.container} ${className} ${
-          hasStory && !disableStory ? 'cursor-pointer' : ''
+          // Always show pointer cursor when onClick is provided OR when has story
+          (onClick || (hasStory && !disableStory)) ? 'cursor-pointer' : ''
         }`}
         type="button"
         aria-label={hasStory ? `View ${userName}'s story` : userName}
+        // Ensure touch events work on mobile
+        style={{ touchAction: 'manipulation' }}
       >
         {/* Avatar */}
         <div className={`${config.avatar} rounded-full overflow-hidden bg-earth-200`}>

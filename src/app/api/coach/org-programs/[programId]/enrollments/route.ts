@@ -11,7 +11,9 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { isUserOrgAdmin } from '@/lib/clerk-organizations';
-import type { ProgramEnrollment, Program } from '@/types';
+import { getStreamServerClient } from '@/lib/stream';
+import { FieldValue } from 'firebase-admin/firestore';
+import type { ProgramEnrollment, Program, Squad, SquadMember } from '@/types';
 
 interface EnrollmentWithUser extends ProgramEnrollment {
   user?: {
@@ -113,6 +115,220 @@ export async function GET(
   } catch (error) {
     console.error('[COACH_PROGRAM_ENROLLMENTS_GET] Error:', error);
     return NextResponse.json({ error: 'Failed to fetch enrollments' }, { status: 500 });
+  }
+}
+
+/**
+ * PATCH /api/coach/org-programs/[programId]/enrollments
+ * Toggle community membership for an enrollment
+ * 
+ * Body:
+ * - enrollmentId: string (required)
+ * - joinCommunity: boolean (required) - true to add to community, false to remove
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ programId: string }> }
+) {
+  try {
+    const { userId: coachUserId } = await auth();
+    const { programId } = await params;
+
+    if (!coachUserId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // MULTI-TENANCY: Get org from tenant domain
+    const organizationId = await getEffectiveOrgId();
+    if (!organizationId) {
+      return NextResponse.json({ error: 'Coach features require tenant domain' }, { status: 403 });
+    }
+
+    // Verify user is an admin (coach) of the organization
+    const isCoach = await isUserOrgAdmin(coachUserId, organizationId);
+    if (!isCoach) {
+      return NextResponse.json({ error: 'Not authorized - coaches only' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { enrollmentId, joinCommunity } = body as { enrollmentId: string; joinCommunity: boolean };
+
+    if (!enrollmentId) {
+      return NextResponse.json({ error: 'enrollmentId is required' }, { status: 400 });
+    }
+
+    if (typeof joinCommunity !== 'boolean') {
+      return NextResponse.json({ error: 'joinCommunity must be a boolean' }, { status: 400 });
+    }
+
+    // Get enrollment
+    const enrollmentRef = adminDb.collection('program_enrollments').doc(enrollmentId);
+    const enrollmentDoc = await enrollmentRef.get();
+    
+    if (!enrollmentDoc.exists) {
+      return NextResponse.json({ error: 'Enrollment not found' }, { status: 404 });
+    }
+
+    const enrollment = { id: enrollmentDoc.id, ...enrollmentDoc.data() } as ProgramEnrollment;
+
+    if (enrollment.programId !== programId) {
+      return NextResponse.json({ error: 'Enrollment does not belong to this program' }, { status: 403 });
+    }
+
+    // Get program
+    const programDoc = await adminDb.collection('programs').doc(programId).get();
+    if (!programDoc.exists) {
+      return NextResponse.json({ error: 'Program not found' }, { status: 404 });
+    }
+
+    const program = programDoc.data() as Program;
+    
+    if (program.organizationId !== organizationId) {
+      return NextResponse.json({ error: 'Program does not belong to your organization' }, { status: 403 });
+    }
+
+    if (program.type !== 'individual') {
+      return NextResponse.json({ error: 'Community membership only applies to individual programs' }, { status: 400 });
+    }
+
+    if (!program.clientCommunitySquadId) {
+      return NextResponse.json({ error: 'This program does not have a client community enabled' }, { status: 400 });
+    }
+
+    const now = new Date().toISOString();
+    const clientUserId = enrollment.userId;
+
+    if (joinCommunity) {
+      // Add user to community squad
+      const squadRef = adminDb.collection('squads').doc(program.clientCommunitySquadId);
+      const squadDoc = await squadRef.get();
+      
+      if (!squadDoc.exists) {
+        return NextResponse.json({ error: 'Community squad not found' }, { status: 404 });
+      }
+
+      const squad = squadDoc.data() as Squad;
+
+      // Check if user is already in squad
+      const existingMembershipSnapshot = await adminDb.collection('squadMembers')
+        .where('squadId', '==', program.clientCommunitySquadId)
+        .where('userId', '==', clientUserId)
+        .limit(1)
+        .get();
+
+      if (existingMembershipSnapshot.empty) {
+        // Get user info from Clerk
+        const clerk = await clerkClient();
+        const clerkUser = await clerk.users.getUser(clientUserId);
+
+        // Add to squad memberIds
+        await squadRef.update({
+          memberIds: FieldValue.arrayUnion(clientUserId),
+          updatedAt: now,
+        });
+
+        // Create squadMember document
+        const memberData: Omit<SquadMember, 'id'> = {
+          squadId: program.clientCommunitySquadId,
+          userId: clientUserId,
+          roleInSquad: 'member',
+          firstName: clerkUser.firstName || '',
+          lastName: clerkUser.lastName || '',
+          imageUrl: clerkUser.imageUrl || '',
+          createdAt: now,
+          updatedAt: now,
+        };
+        await adminDb.collection('squadMembers').add(memberData);
+
+        // Add to Stream Chat channel
+        try {
+          const streamClient = await getStreamServerClient();
+          const channelId = squad.chatChannelId || `squad-${program.clientCommunitySquadId}`;
+          
+          await streamClient.upsertUser({
+            id: clientUserId,
+            name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 'User',
+            image: clerkUser.imageUrl,
+          });
+
+          const channel = streamClient.channel('messaging', channelId);
+          await channel.addMembers([clientUserId]);
+        } catch (streamError) {
+          console.error('[COACH_ENROLLMENT_COMMUNITY] Error adding to Stream:', streamError);
+        }
+
+        // Update user's squadIds
+        await adminDb.collection('users').doc(clientUserId).update({
+          squadIds: FieldValue.arrayUnion(program.clientCommunitySquadId),
+          updatedAt: now,
+        });
+      }
+
+      // Update enrollment
+      await enrollmentRef.update({
+        joinedCommunity: true,
+        updatedAt: now,
+      });
+
+      console.log(`[COACH_ENROLLMENT_COMMUNITY] Added user ${clientUserId} to community squad ${program.clientCommunitySquadId}`);
+
+    } else {
+      // Remove user from community squad
+      const squadRef = adminDb.collection('squads').doc(program.clientCommunitySquadId);
+      const squadDoc = await squadRef.get();
+
+      if (squadDoc.exists) {
+        const squad = squadDoc.data() as Squad;
+
+        // Remove from squad memberIds
+        await squadRef.update({
+          memberIds: FieldValue.arrayRemove(clientUserId),
+          updatedAt: now,
+        });
+
+        // Delete squadMember document
+        const membershipSnapshot = await adminDb.collection('squadMembers')
+          .where('squadId', '==', program.clientCommunitySquadId)
+          .where('userId', '==', clientUserId)
+          .get();
+
+        const batch = adminDb.batch();
+        membershipSnapshot.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+
+        // Remove from Stream Chat channel
+        try {
+          const streamClient = await getStreamServerClient();
+          const channelId = squad.chatChannelId || `squad-${program.clientCommunitySquadId}`;
+          const channel = streamClient.channel('messaging', channelId);
+          await channel.removeMembers([clientUserId]);
+        } catch (streamError) {
+          console.error('[COACH_ENROLLMENT_COMMUNITY] Error removing from Stream:', streamError);
+        }
+
+        // Update user's squadIds
+        await adminDb.collection('users').doc(clientUserId).update({
+          squadIds: FieldValue.arrayRemove(program.clientCommunitySquadId),
+          updatedAt: now,
+        });
+      }
+
+      // Update enrollment
+      await enrollmentRef.update({
+        joinedCommunity: false,
+        updatedAt: now,
+      });
+
+      console.log(`[COACH_ENROLLMENT_COMMUNITY] Removed user ${clientUserId} from community squad ${program.clientCommunitySquadId}`);
+    }
+
+    return NextResponse.json({
+      success: true,
+      joinedCommunity: joinCommunity,
+    });
+  } catch (error) {
+    console.error('[COACH_PROGRAM_ENROLLMENTS_PATCH] Error:', error);
+    return NextResponse.json({ error: 'Failed to update community membership' }, { status: 500 });
   }
 }
 

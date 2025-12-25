@@ -374,21 +374,7 @@ function CommentItem({
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const [editText, setEditText] = useState(comment.text);
-  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
-  const menuButtonRef = useRef<HTMLButtonElement>(null);
-
-  // Handle menu toggle with position calculation
-  const handleMenuToggle = () => {
-    if (!showMenu && menuButtonRef.current) {
-      const rect = menuButtonRef.current.getBoundingClientRect();
-      setMenuPosition({
-        top: rect.bottom + 4,
-        right: window.innerWidth - rect.right,
-      });
-    }
-    setShowMenu(!showMenu);
-  };
   
   const authorName = comment.author
     ? `${comment.author.firstName || ''} ${comment.author.lastName || ''}`.trim() || 'User'
@@ -508,10 +494,9 @@ function CommentItem({
 
       {/* Menu (only for comment author, not when editing) */}
       {canModify && !isEditing && (
-        <div className="relative">
+        <div className="relative overflow-visible">
           <button
-            ref={menuButtonRef}
-            onClick={handleMenuToggle}
+            onClick={() => setShowMenu(!showMenu)}
             className="p-1 rounded-full opacity-0 group-hover:opacity-100 hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-all"
             disabled={isDeleting}
           >
@@ -522,16 +507,13 @@ function CommentItem({
             </svg>
           </button>
 
-          {showMenu && menuPosition && (
+          {showMenu && (
             <>
               <div
                 className="fixed inset-0 z-10"
                 onClick={() => setShowMenu(false)}
               />
-              <div 
-                className="fixed w-32 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-20 overflow-hidden"
-                style={{ top: menuPosition.top, right: menuPosition.right }}
-              >
+              <div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-20 overflow-hidden">
                 <button
                   onClick={() => {
                     setShowMenu(false);

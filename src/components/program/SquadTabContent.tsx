@@ -1,12 +1,15 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { ArrowLeft, LogOut, Loader2 } from 'lucide-react';
 import { useSquad } from '@/hooks/useSquad';
 import { SquadHeader } from '@/components/squad/SquadHeader';
 import { SquadMemberList } from '@/components/squad/SquadMemberList';
 import { SquadInviteCards } from '@/components/squad/SquadInviteCards';
 import { useMenuTitles } from '@/contexts/BrandingContext';
+import { Button } from '@/components/ui/button';
 
 /**
  * SquadTabContent Component
@@ -22,20 +25,43 @@ import { useMenuTitles } from '@/contexts/BrandingContext';
  * - "Go to chat" button
  * - Invite friends cards
  * 
+ * Props:
+ * - programId: optional program ID to scope the squad
+ * - squadId: optional specific squad ID to display
+ * - onBack: optional callback for back navigation
+ * 
  * NOTE: Squad stats are on a separate screen accessed via button.
  */
 
-export function SquadTabContent() {
+interface SquadTabContentProps {
+  programId?: string;
+  squadId?: string;
+  onBack?: () => void;
+}
+
+export function SquadTabContent({ programId, squadId, onBack }: SquadTabContentProps) {
   const router = useRouter();
   const { squad: squadTitle, squadLower } = useMenuTitles();
 
   // Fetch squad data internally
   const {
-    squad,
-    members,
+    squad: activeSquad,
+    squads,
+    members: activeMembers,
+    membersBySquad,
     isLoading,
     refetch: onRefetch,
   } = useSquad();
+  
+  // If squadId is provided, use that specific squad; otherwise use active squad
+  const { squad, members } = useMemo(() => {
+    if (squadId && squads.length > 0) {
+      const targetSquad = squads.find(s => s.id === squadId);
+      const targetMembers = membersBySquad[squadId] || [];
+      return { squad: targetSquad || null, members: targetMembers };
+    }
+    return { squad: activeSquad, members: activeMembers };
+  }, [squadId, squads, membersBySquad, activeSquad, activeMembers]);
 
   // Loading state
   if (isLoading) {
@@ -91,6 +117,17 @@ export function SquadTabContent() {
 
   return (
     <div className="space-y-5 px-4">
+      {/* Back Button (when viewing specific program's squad) */}
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors mb-2"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span className="font-albert text-[14px]">Back to program</span>
+        </button>
+      )}
+      
       {/* Squad Header */}
       <SquadHeader squad={squad} onSquadUpdated={onRefetch} />
 

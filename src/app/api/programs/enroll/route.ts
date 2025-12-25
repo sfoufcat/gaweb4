@@ -323,10 +323,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { programId, cohortId, discountCode } = body as { 
+    const { programId, cohortId, discountCode, joinCommunity } = body as { 
       programId: string; 
       cohortId?: string;
       discountCode?: string;
+      joinCommunity?: boolean;
     };
 
     if (!programId) {
@@ -510,6 +511,7 @@ export async function POST(request: NextRequest) {
           discountCodeId: appliedDiscountCode?.id || '',
           originalAmountCents: String(program.priceInCents),
           discountAmountCents: String(discountAmountCents),
+          joinCommunity: joinCommunity !== false ? 'true' : 'false',
         },
       },
       success_url: successUrl,
@@ -523,6 +525,7 @@ export async function POST(request: NextRequest) {
         organizationId: program.organizationId,
         type: 'program_enrollment',
         discountCodeId: appliedDiscountCode?.id || '',
+        joinCommunity: joinCommunity !== false ? 'true' : 'false',
       },
     };
 
@@ -629,6 +632,23 @@ async function createEnrollment(
       ...clerkUser,
       email: clerkUser.emailAddresses?.[0]?.emailAddress,
     });
+    
+    // Add to client community squad if enabled and user opted in
+    if (program.clientCommunitySquadId && joinCommunity !== false) {
+      try {
+        await addUserToSquad(userId, program.clientCommunitySquadId, clerkUser);
+        
+        // Update enrollment record with joinedCommunity flag
+        await adminDb.collection('program_enrollments').doc(enrollmentRef.id).update({
+          joinedCommunity: true,
+        });
+        
+        console.log(`[PROGRAM_ENROLL] Added user ${userId} to client community squad ${program.clientCommunitySquadId}`);
+      } catch (communityError) {
+        console.error(`[PROGRAM_ENROLL] Failed to add user to community squad:`, communityError);
+        // Don't fail enrollment if community join fails
+      }
+    }
   }
 
   console.log(`[PROGRAM_ENROLL] Created enrollment ${enrollmentRef.id} for user ${userId} in program ${program.id}`);

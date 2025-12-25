@@ -58,10 +58,20 @@ export default function ProgramHubPage() {
   const [activeTab, setActiveTab] = useState<TabType>('program');
   const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
   
-  // Determine if Squad tab should be visible
-  // Show tab if user has a group program (even if squad not created yet)
-  // SquadTabContent handles the empty/pending squad state
-  const showSquadTab = hasGroupProgram;
+  // Determine if Squad tab should be visible for the selected program
+  // For group programs: always show squad tab
+  // For individual programs: show if client community is enabled and user joined
+  const getShowSquadTab = (enrollment: typeof selectedProgram) => {
+    if (!enrollment) return false;
+    if (enrollment.program.type === 'group') return true;
+    // For individual programs, show if community is enabled and user joined
+    return enrollment.program.clientCommunityEnabled && enrollment.joinedCommunity;
+  };
+  
+  // Legacy: for main view when single program
+  const showSquadTab = hasGroupProgram || (
+    individualProgram?.program.clientCommunityEnabled && individualProgram?.joinedCommunity
+  );
   
   useEffect(() => {
     setMounted(true);
@@ -144,63 +154,89 @@ export default function ProgramHubPage() {
     );
   }
   
-  // If showing program details view
+  // If showing program details view (selected a specific program)
   if (selectedProgram) {
+    const programShowSquadTab = getShowSquadTab(selectedProgram);
+    // Get the squad ID for this program (community squad for individual, cohort squad for group)
+    const programSquadId = selectedProgram.program.type === 'individual'
+      ? selectedProgram.program.clientCommunitySquadId
+      : selectedProgram.squadId; // squadId from enrollment for group programs
+    
     return (
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
-        {/* Top Pill Switcher - Full width like Profile */}
+        {/* Top Pill Switcher - Show for this specific program */}
+        {programShowSquadTab && (
+          <div className="mb-6">
+            <PillSwitcher
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+              showSquadTab={programShowSquadTab}
+              programTitle={programTitle}
+              squadTitle={selectedProgram.program.type === 'individual' ? 'Community' : squadTitle}
+            />
+          </div>
+        )}
+        
+        {activeTab === 'program' || !programShowSquadTab ? (
+          <ProgramDetailView 
+            program={selectedProgram}
+            onBack={handleBackFromDetails}
+          />
+        ) : (
+          <SquadTabContent 
+            programId={selectedProgram.program.id}
+            squadId={programSquadId || undefined}
+            onBack={handleBackFromDetails}
+          />
+        )}
+      </div>
+    );
+  }
+  
+  // Main view - when user has multiple programs, just show list (no pill menu)
+  if (hasBothPrograms) {
+    return (
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
+        <ProgramListView 
+          enrollments={enrollments}
+          onSelectProgram={handleSelectProgram}
+        />
+      </div>
+    );
+  }
+  
+  // Single program view - show pill menu if has squad
+  const singleProgram = groupProgram || individualProgram!;
+  const singleProgramSquadId = singleProgram.program.type === 'individual'
+    ? singleProgram.program.clientCommunitySquadId
+    : singleProgram.squadId;
+    
+  return (
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
+      {/* Top Pill Switcher - Only if has squad */}
+      {showSquadTab && (
         <div className="mb-6">
           <PillSwitcher
             activeTab={activeTab}
             onTabChange={handleTabChange}
             showSquadTab={showSquadTab}
             programTitle={programTitle}
-            squadTitle={squadTitle}
+            squadTitle={singleProgram.program.type === 'individual' ? 'Community' : squadTitle}
           />
         </div>
-        
-        <ProgramDetailView 
-          program={selectedProgram}
-          onBack={handleBackFromDetails}
-        />
-      </div>
-    );
-  }
-  
-  // Main view with tabs
-  return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
-      {/* Top Pill Switcher - Full width like Profile */}
-      <div className="mb-6">
-        <PillSwitcher
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-          showSquadTab={showSquadTab}
-          programTitle={programTitle}
-          squadTitle={squadTitle}
-        />
-      </div>
+      )}
       
       {/* Tab Content */}
-      {activeTab === 'program' ? (
-        <div>
-          {hasBothPrograms ? (
-            // User has 2 programs - show list view
-            <ProgramListView 
-              enrollments={enrollments}
-              onSelectProgram={handleSelectProgram}
-            />
-          ) : (
-            // User has 1 program - show details directly
-            <ProgramDetailView 
-              program={groupProgram || individualProgram!}
-              showBackButton={false}
-            />
-          )}
-        </div>
+      {activeTab === 'program' || !showSquadTab ? (
+        <ProgramDetailView 
+          program={singleProgram}
+          showBackButton={false}
+        />
       ) : (
-        // Squad tab - self-sufficient component
-        <SquadTabContent />
+        <SquadTabContent 
+          programId={singleProgram.program.id}
+          squadId={singleProgramSquadId || undefined}
+        />
       )}
     </div>
   );

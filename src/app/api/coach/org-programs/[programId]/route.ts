@@ -10,7 +10,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { Program, ProgramDay, ProgramCohort, ProgramHabitTemplate, ProgramFeature, ProgramTestimonial, ProgramFAQ } from '@/types';
+import { clerkClient } from '@clerk/nextjs/server';
+import { getStreamServerClient } from '@/lib/stream';
+import type { Program, ProgramDay, ProgramCohort, ProgramHabitTemplate, ProgramFeature, ProgramTestimonial, ProgramFAQ, Squad } from '@/types';
 
 export async function GET(
   request: NextRequest,
@@ -199,6 +201,79 @@ export async function PUT(
     if (body.isPublished !== undefined) updateData.isPublished = body.isPublished;
     if (body.coachInSquads !== undefined && currentData?.type === 'group') {
       updateData.coachInSquads = body.coachInSquads;
+    }
+    
+    // Handle clientCommunityEnabled for individual programs
+    if (body.clientCommunityEnabled !== undefined && currentData?.type === 'individual') {
+      updateData.clientCommunityEnabled = body.clientCommunityEnabled;
+      
+      // If enabling community and no squad exists yet, auto-create one
+      if (body.clientCommunityEnabled === true && !currentData?.clientCommunitySquadId) {
+        const now = new Date().toISOString();
+        
+        // Generate invite code for the community
+        const inviteCode = `GA-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        
+        // Create the community squad
+        const squadData: Omit<Squad, 'id'> = {
+          name: `${currentData?.name || 'Program'} Community`,
+          description: `Client community for ${currentData?.name || 'program'} participants`,
+          avatarUrl: currentData?.coverImageUrl || '',
+          visibility: 'private',
+          timezone: 'UTC',
+          memberIds: [],
+          inviteCode,
+          hasCoach: true,
+          coachId: userId, // Coach is the creator
+          organizationId,
+          programId,
+          createdAt: now,
+          updatedAt: now,
+        };
+        
+        const squadRef = await adminDb.collection('squads').add(squadData);
+        const squadId = squadRef.id;
+        
+        console.log(`[COACH_ORG_PROGRAM_PUT] Created client community squad: ${squadId} for program ${programId}`);
+        
+        // Create Stream Chat channel for the community
+        try {
+          const streamClient = await getStreamServerClient();
+          const channelId = `squad-${squadId}`;
+          
+          // Get coach's details from Clerk
+          const clerk = await clerkClient();
+          const coachClerkUser = await clerk.users.getUser(userId);
+          
+          // Upsert coach in Stream
+          await streamClient.upsertUser({
+            id: userId,
+            name: `${coachClerkUser.firstName || ''} ${coachClerkUser.lastName || ''}`.trim() || 'Coach',
+            image: coachClerkUser.imageUrl,
+          });
+          
+          // Create the community chat channel with coach as initial member
+          const channel = streamClient.channel('messaging', channelId, {
+            members: [userId],
+            created_by_id: userId,
+            name: `${currentData?.name || 'Program'} Community`,
+            image: currentData?.coverImageUrl || undefined,
+            isSquadChannel: true,
+          } as Record<string, unknown>);
+          await channel.create();
+          
+          // Update squad with chatChannelId
+          await squadRef.update({ chatChannelId: channelId });
+          
+          console.log(`[COACH_ORG_PROGRAM_PUT] Created chat channel ${channelId} for community squad`);
+        } catch (chatError) {
+          console.error(`[COACH_ORG_PROGRAM_PUT] Failed to create chat channel for community:`, chatError);
+          // Continue anyway - squad is created, chat can be added later
+        }
+        
+        // Add the squad ID to the program update
+        updateData.clientCommunitySquadId = squadId;
+      }
     }
     
     // Handle assignedCoachIds for group programs

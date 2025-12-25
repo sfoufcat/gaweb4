@@ -64,6 +64,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [loadingEnrollments, setLoadingEnrollments] = useState(false);
   const [removeConfirmEnrollment, setRemoveConfirmEnrollment] = useState<EnrollmentWithUser | null>(null);
   const [removingEnrollment, setRemovingEnrollment] = useState(false);
+  const [togglingCommunity, setTogglingCommunity] = useState<string | null>(null); // enrollment ID being toggled
   
   // Modal states
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
@@ -88,6 +89,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     isPublished: boolean;
     defaultHabits: ProgramHabitTemplate[];
     applyCoachesToExistingSquads: boolean;
+    clientCommunityEnabled: boolean;
   }>({
     name: '',
     type: 'group',
@@ -103,6 +105,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     isPublished: false,
     defaultHabits: [],
     applyCoachesToExistingSquads: false,
+    clientCommunityEnabled: false,
   });
   
   // Available coaches for selection
@@ -310,6 +313,41 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     }
   };
 
+  // Toggle community membership for an enrollment
+  const handleToggleCommunity = async (enrollment: EnrollmentWithUser, joinCommunity: boolean) => {
+    if (!selectedProgram) return;
+    
+    try {
+      setTogglingCommunity(enrollment.id);
+      
+      const response = await fetch(`${apiBasePath}/${selectedProgram.id}/enrollments`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          enrollmentId: enrollment.id,
+          joinCommunity,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update community membership');
+      }
+
+      // Update local state
+      setProgramEnrollments(prev => prev.map(e => 
+        e.id === enrollment.id 
+          ? { ...e, joinedCommunity: joinCommunity }
+          : e
+      ));
+    } catch (err) {
+      console.error('Error toggling community membership:', err);
+      alert(err instanceof Error ? err.message : 'Failed to update community membership');
+    } finally {
+      setTogglingCommunity(null);
+    }
+  };
+
   useEffect(() => {
     fetchPrograms();
   }, [fetchPrograms]);
@@ -367,6 +405,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         isPublished: program.isPublished,
         defaultHabits: program.defaultHabits || [],
         applyCoachesToExistingSquads: false, // Reset on each edit
+        clientCommunityEnabled: program.clientCommunityEnabled || false,
       });
     } else {
       setEditingProgram(null);
@@ -385,6 +424,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         isPublished: false,
         defaultHabits: [],
         applyCoachesToExistingSquads: false,
+        clientCommunityEnabled: false,
       });
     }
     setSaveError(null);
@@ -1438,6 +1478,27 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
+                        {/* Community Badge & Toggle - Only for individual programs with community enabled */}
+                        {selectedProgram?.type === 'individual' && selectedProgram?.clientCommunitySquadId && (
+                          <button
+                            onClick={() => handleToggleCommunity(enrollment, !enrollment.joinedCommunity)}
+                            disabled={togglingCommunity === enrollment.id}
+                            className={`px-2 py-0.5 rounded-full text-xs flex items-center gap-1 transition-colors ${
+                              enrollment.joinedCommunity
+                                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800'
+                                : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                            }`}
+                            title={enrollment.joinedCommunity ? 'Remove from community' : 'Add to community'}
+                          >
+                            <Users className="w-3 h-3" />
+                            {togglingCommunity === enrollment.id 
+                              ? '...' 
+                              : enrollment.joinedCommunity 
+                                ? 'Community' 
+                                : 'Add to community'
+                            }
+                          </button>
+                        )}
                         <div className="text-right">
                           <span className={`px-2 py-0.5 rounded-full text-xs ${
                             enrollment.status === 'active' 
@@ -1813,6 +1874,38 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                             <span className="cursor-pointer" onClick={() => setProgramFormData({ ...programFormData, applyCoachesToExistingSquads: !programFormData.applyCoachesToExistingSquads })}>Apply coach changes to existing squads</span>
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* Individual program settings */}
+                    {programFormData.type === 'individual' && (
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                          Community Settings
+                        </h4>
+                        <div className="flex items-start gap-2">
+                          <BrandedCheckbox
+                            checked={programFormData.clientCommunityEnabled}
+                            onChange={(checked) => setProgramFormData({ 
+                              ...programFormData, 
+                              clientCommunityEnabled: checked 
+                            })}
+                          />
+                          <div 
+                            className="cursor-pointer" 
+                            onClick={() => setProgramFormData({ 
+                              ...programFormData, 
+                              clientCommunityEnabled: !programFormData.clientCommunityEnabled 
+                            })}
+                          >
+                            <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                              Enable Client Community
+                            </span>
+                            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
+                              Create a shared group chat for all clients in this program. Clients can opt in during enrollment.
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     )}
 
@@ -2210,6 +2303,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             isPublished: false,
             defaultHabits: [],
             applyCoachesToExistingSquads: false,
+            clientCommunityEnabled: false,
           });
           setIsProgramModalOpen(true);
         }}

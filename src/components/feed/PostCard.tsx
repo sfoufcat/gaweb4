@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
@@ -54,22 +54,8 @@ export function PostCard({
   const [imageError, setImageError] = useState<Record<string, boolean>>({});
   const [likeAnimating, setLikeAnimating] = useState(false);
   const [bookmarkAnimating, setBookmarkAnimating] = useState(false);
-  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null);
-  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   const isOwnPost = user?.id === post.authorId;
-
-  // Handle menu toggle with position calculation
-  const handleMenuToggle = () => {
-    if (!showMenu && menuButtonRef.current) {
-      const rect = menuButtonRef.current.getBoundingClientRect();
-      setMenuPosition({
-        top: rect.bottom + 4,
-        right: window.innerWidth - rect.right,
-      });
-    }
-    setShowMenu(!showMenu);
-  };
 
   // Get author display info
   const authorName = post.author 
@@ -245,10 +231,9 @@ export function PostCard({
         </div>
 
         {/* Menu button */}
-        <div className="relative">
+        <div className="relative overflow-visible">
           <button
-            ref={menuButtonRef}
-            onClick={handleMenuToggle}
+            onClick={() => setShowMenu(!showMenu)}
             className="p-2 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
           >
             <svg className="w-5 h-5 text-[#8a857f]" fill="currentColor" viewBox="0 0 24 24">
@@ -259,16 +244,13 @@ export function PostCard({
           </button>
 
           {/* Dropdown menu */}
-          {showMenu && menuPosition && (
+          {showMenu && (
             <>
               <div
                 className="fixed inset-0 z-10"
                 onClick={() => setShowMenu(false)}
               />
-              <div 
-                className="fixed w-48 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-20 overflow-hidden"
-                style={{ top: menuPosition.top, right: menuPosition.right }}
-              >
+              <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-20 overflow-hidden">
                 {isOwnPost ? (
                   <>
                     {/* Edit button - only for own posts that aren't reposts */}

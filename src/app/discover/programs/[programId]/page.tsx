@@ -220,6 +220,7 @@ export default function ProgramDetailPage() {
   const [successModal, setSuccessModal] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
   const [errorModal, setErrorModal] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+  const [joinCommunity, setJoinCommunity] = useState(true); // Default to opt-in for client community
 
   useEffect(() => {
     const fetchProgram = async () => {
@@ -282,6 +283,7 @@ export default function ProgramDetailPage() {
         body: JSON.stringify({
           programId,
           cohortId: selectedCohortId,
+          joinCommunity: joinCommunity, // For individual programs with client community
         }),
       });
 
@@ -703,6 +705,30 @@ export default function ProgramDetailPage() {
                       Work directly with your coach at your own pace.
                     </p>
                   </div>
+                )}
+
+                {/* Client Community Opt-in - For individual programs with community enabled */}
+                {program.type === 'individual' && program.clientCommunityEnabled && !enrollment && (
+                  <label className="flex items-start gap-3 mb-6 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl cursor-pointer hover:bg-[#f5f2ef] dark:hover:bg-[#1d222b] transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={joinCommunity}
+                      onChange={(e) => setJoinCommunity(e.target.checked)}
+                      className="w-5 h-5 mt-0.5 rounded border-2 border-[#d4cfc9] dark:border-[#3a3f4b] text-[#a07855] focus:ring-[#a07855] focus:ring-offset-0"
+                      style={{ accentColor: accentLight }}
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-[#a07855]" style={{ color: accentLight }} />
+                        <span className="font-semibold font-albert text-[14px] text-text-primary">
+                          Join the Client Community
+                        </span>
+                      </div>
+                      <p className="text-[13px] text-text-secondary mt-1 leading-[1.5]">
+                        Connect with other participants in a shared group chat. Share wins, ask questions, and support each other.
+                      </p>
+                    </div>
+                  </label>
                 )}
 
                 {/* Cannot Enroll Reason */}

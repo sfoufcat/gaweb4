@@ -703,6 +703,10 @@ export interface Program {
   coachInSquads?: boolean; // Whether coach joins each squad
   assignedCoachIds?: string[]; // Coach IDs for round-robin assignment (used when coachInSquads is false)
   
+  // Individual program settings (only applicable when type = 'individual')
+  clientCommunityEnabled?: boolean; // Coach toggle to enable client community squad
+  clientCommunitySquadId?: string | null; // Auto-created squad ID for client community
+  
   // Content
   defaultHabits?: ProgramHabitTemplate[]; // Default habits for enrolled users
   
@@ -801,6 +805,9 @@ export interface ProgramEnrollment {
   stoppedAt?: string; // ISO timestamp if stopped early
   lastAssignedDayIndex: number; // Last program day with generated tasks
   currentDayIndex?: number; // Current day user is on (calculated)
+  
+  // Community membership (for individual programs with client community)
+  joinedCommunity?: boolean; // Whether user opted into client community squad
   
   // Metadata
   createdAt: string;

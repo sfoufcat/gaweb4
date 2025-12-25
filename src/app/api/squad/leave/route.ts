@@ -193,6 +193,29 @@ export async function POST(req: Request) {
 
     await batch.commit();
 
+    // If this squad is a client community squad (attached to a program), update enrollment record
+    if (squad.programId && !squad.cohortId) {
+      // This is a client community squad (has programId but no cohortId)
+      try {
+        const enrollmentSnapshot = await adminDb.collection('program_enrollments')
+          .where('userId', '==', userId)
+          .where('programId', '==', squad.programId)
+          .limit(1)
+          .get();
+        
+        if (!enrollmentSnapshot.empty) {
+          await enrollmentSnapshot.docs[0].ref.update({
+            joinedCommunity: false,
+            updatedAt: now,
+          });
+          console.log(`[SQUAD_LEAVE] Updated enrollment ${enrollmentSnapshot.docs[0].id} - user left client community`);
+        }
+      } catch (enrollmentError) {
+        console.error('[SQUAD_LEAVE] Error updating enrollment joinedCommunity:', enrollmentError);
+        // Don't fail the leave if enrollment update fails
+      }
+    }
+
     // Remove from Stream Chat channel
     const channelIdsToTry = [
       squad.chatChannelId,
