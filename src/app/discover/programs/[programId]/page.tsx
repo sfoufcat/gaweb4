@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth } from '@clerk/nextjs';
@@ -20,7 +20,7 @@ import {
   Users, User, Calendar, Clock, Check, 
   ChevronRight, AlertCircle, Loader2, CheckCircle, XCircle,
   Star, Video, MessageCircle, Book, Target, Zap, Heart,
-  ChevronDown, Quote, Shield, Sparkles
+  ChevronDown, Shield
 } from 'lucide-react';
 import type { Program, ProgramCohort, ProgramDay, ProgramFeature, ProgramTestimonial, ProgramFAQ } from '@/types';
 
@@ -86,70 +86,22 @@ const featureIcons: Record<string, React.ComponentType<{ className?: string }>> 
   'star': Star,
 };
 
-// Animation variants
-const fadeInUp = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0 }
-};
-
+// Stagger animation variants
 const staggerContainer = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1,
+      staggerChildren: 0.08,
       delayChildren: 0.1
     }
   }
 };
 
 const staggerItem = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 }
+  hidden: { opacity: 0, y: 15 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
 };
-
-// Hook for intersection observer animation triggers
-function useInView(threshold = 0.1) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [isInView, setIsInView] = useState(false);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsInView(true);
-        }
-      },
-      { threshold }
-    );
-
-    if (ref.current) {
-      observer.observe(ref.current);
-    }
-
-    return () => observer.disconnect();
-  }, [threshold]);
-
-  return { ref, isInView };
-}
-
-// Animated Section Wrapper
-function AnimatedSection({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  const { ref, isInView } = useInView(0.15);
-  
-  return (
-    <motion.div
-      ref={ref}
-      initial="hidden"
-      animate={isInView ? "visible" : "hidden"}
-      variants={fadeInUp}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
-}
 
 // Enrolled Members Avatar Stack
 function EnrolledMembersDisplay({ 
@@ -165,7 +117,6 @@ function EnrolledMembersDisplay({
   
   return (
     <div className="flex items-center gap-3">
-      {/* Stacked Avatars */}
       {avatars.length > 0 && (
         <div className="flex -space-x-2">
           {avatars.slice(0, 3).map((avatar, index) => (
@@ -185,8 +136,6 @@ function EnrolledMembersDisplay({
           ))}
         </div>
       )}
-      
-      {/* Count and Label */}
       <div className="flex items-center gap-1.5">
         <span 
           className="font-albert font-semibold text-[14px]"
@@ -195,7 +144,7 @@ function EnrolledMembersDisplay({
           {count.toLocaleString()}
         </span>
         <span className="font-albert text-[14px] text-text-secondary">
-          enrolled members
+          enrolled
         </span>
       </div>
     </div>
@@ -215,22 +164,22 @@ function FAQItem({
   accentLight: string;
 }) {
   return (
-    <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden bg-white dark:bg-[#171b22]">
+    <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] overflow-hidden">
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between p-4 sm:p-5 text-left hover:bg-[#faf8f6] dark:hover:bg-[#1d222b] transition-colors"
+        className="w-full flex items-center justify-between p-5 text-left hover:bg-[#faf8f6] dark:hover:bg-[#1d222b] transition-colors"
       >
-        <span className="font-albert text-[14px] sm:text-[15px] font-medium text-text-primary pr-4">
+        <span className="font-albert text-[15px] font-medium text-text-primary pr-4">
           {faq.question}
         </span>
         <motion.div
           animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.25, ease: "easeInOut" }}
+          transition={{ duration: 0.2 }}
           className="flex-shrink-0"
         >
           <ChevronDown 
-            className="w-5 h-5" 
-            style={{ color: isOpen ? accentLight : undefined }}
+            className="w-5 h-5 text-text-secondary" 
+            style={isOpen ? { color: accentLight } : undefined}
           />
         </motion.div>
       </button>
@@ -241,11 +190,11 @@ function FAQItem({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
+            transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="px-4 sm:px-5 pb-4 sm:pb-5 pt-0">
-              <p className="font-albert text-[13px] sm:text-[14px] text-text-secondary leading-[1.6]">
+            <div className="px-5 pb-5">
+              <p className="font-albert text-[14px] text-text-secondary leading-[1.6]">
                 {faq.answer}
               </p>
             </div>
@@ -286,7 +235,6 @@ export default function ProgramDetailPage() {
         const result = await response.json();
         setData(result);
         
-        // Pre-select first available cohort
         if (result.cohorts?.length > 0) {
           const firstAvailable = result.cohorts.find((c: CohortWithAvailability) => c.isAvailableToUser);
           if (firstAvailable) {
@@ -343,13 +291,11 @@ export default function ProgramDetailPage() {
         throw new Error(result.error || 'Failed to enroll');
       }
 
-      // For paid programs, redirect to checkout
       if (result.checkoutUrl) {
         window.location.href = result.checkoutUrl;
         return;
       }
 
-      // For free programs, show success modal
       setSuccessModal({ open: true, message: result.message || 'Successfully enrolled!' });
     } catch (err) {
       console.error('Enrollment error:', err);
@@ -361,10 +307,10 @@ export default function ProgramDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[#faf8f6] dark:bg-[#05070b]">
         <div className="text-center">
           <div className="w-10 h-10 border-3 border-[#a07855] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-[14px]">Loading program...</p>
+          <p className="text-text-secondary font-albert text-[14px]">Loading program...</p>
         </div>
       </div>
     );
@@ -372,11 +318,11 @@ export default function ProgramDetailPage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen px-4 py-8">
+      <div className="min-h-screen px-4 py-8 bg-[#faf8f6] dark:bg-[#05070b]">
         <BackButton />
         <div className="text-center mt-12">
           <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-4" />
-          <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
+          <h2 className="text-lg font-semibold text-text-primary font-albert mb-2">
             {error || 'Program not found'}
           </h2>
           <Button
@@ -393,49 +339,20 @@ export default function ProgramDetailPage() {
   const { program, cohorts, enrollment, canEnroll, cannotEnrollReason, totalEnrollments, enrolledMemberAvatars, days, branding } = data;
   const selectedCohort = cohorts?.find(c => c.id === selectedCohortId);
   
-  // Use coach's branding colors or defaults
   const accentLight = branding?.accentLight || '#a07855';
   const accentDark = branding?.accentDark || '#b8896a';
   const accentLightHover = branding?.accentLight ? adjustColorBrightness(branding.accentLight, -15) : '#8c6245';
 
-  // Get curriculum days if showCurriculum is enabled
   const curriculumDays = program.showCurriculum && days 
     ? days.filter(d => d.title).sort((a, b) => a.dayIndex - b.dayIndex)
     : [];
 
-  // Enrollment CTA Button
-  const EnrollButton = ({ className = '', size = 'normal' }: { className?: string; size?: 'normal' | 'large' }) => (
-    <Button
-      onClick={handleEnroll}
-      disabled={!canEnroll || enrolling || (program.type === 'group' && !selectedCohortId)}
-      className={`${size === 'large' ? 'py-4 text-[15px]' : 'py-3 text-[14px]'} text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] ${className}`}
-      style={{ 
-        background: `linear-gradient(135deg, ${accentLight}, ${accentDark})`,
-        boxShadow: `0 8px 20px -4px ${hexToRgba(accentLight, 0.35)}`
-      }}
-    >
-      {enrolling ? (
-        <>
-          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          Processing...
-        </>
-      ) : !isSignedIn ? (
-        'Sign in to enroll'
-      ) : program.priceInCents === 0 ? (
-        'Enroll for free'
-      ) : (
-        `Enroll for ${formatPrice(program.priceInCents)}`
-      )}
-    </Button>
-  );
-
   return (
-    <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b]">
-      {/* Hero Section */}
+    <div className="min-h-[100dvh] bg-[#faf8f6] dark:bg-[#05070b] flex flex-col">
+      {/* Hero Section - Full Width */}
       <div className="relative">
-        {/* Cover Image */}
         <div 
-          className="h-[220px] sm:h-[280px] w-full relative"
+          className="h-[200px] sm:h-[260px] w-full relative"
           style={{ background: `linear-gradient(to bottom right, ${hexToRgba(accentLight, 0.3)}, ${hexToRgba(accentLightHover, 0.1)})` }}
         >
           {program.coverImageUrl ? (
@@ -452,16 +369,16 @@ export default function ProgramDetailPage() {
               style={{ background: `linear-gradient(to bottom right, ${hexToRgba(accentLight, 0.2)}, ${hexToRgba(accentLightHover, 0.1)})` }}
             >
               {program.type === 'group' ? (
-                <Users className="w-20 h-20" style={{ color: hexToRgba(accentLight, 0.3) }} />
+                <Users className="w-16 h-16" style={{ color: hexToRgba(accentLight, 0.4) }} />
               ) : (
-                <User className="w-20 h-20" style={{ color: hexToRgba(accentLight, 0.3) }} />
+                <User className="w-16 h-16" style={{ color: hexToRgba(accentLight, 0.4) }} />
               )}
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
         </div>
 
-        {/* Back button overlay */}
+        {/* Back button */}
         <div className="absolute top-4 left-4">
           <BackButton />
         </div>
@@ -487,25 +404,23 @@ export default function ProgramDetailPage() {
         </div>
       </div>
 
-      {/* Main Content - Two Column Layout */}
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 -mt-16 relative z-10">
-        <div className="grid lg:grid-cols-5 gap-6 lg:gap-8 items-start">
-          {/* Left Column - Program Info */}
-          <motion.div 
-            className="lg:col-span-3"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            <div className="bg-white dark:bg-[#171b22] rounded-2xl shadow-xl p-5 sm:p-6 border border-[#e1ddd8] dark:border-[#262b35]">
+      {/* Main Content Container */}
+      <div className="bg-[#faf8f6] dark:bg-[#05070b] flex-shrink-0">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pt-8 pb-16">
+          
+          {/* Top Section - Two Column Grid */}
+          <div className="grid lg:grid-cols-5 gap-8 lg:gap-12 items-start">
+            
+            {/* Left Column - Program Info */}
+            <div className="lg:col-span-3">
               {/* Badge */}
               <div 
-                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 mb-3"
-                style={{ background: `linear-gradient(to right, ${hexToRgba(accentLight, 0.1)}, ${hexToRgba(accentLightHover, 0.1)})` }}
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2 mb-4"
+                style={{ background: `linear-gradient(to right, ${hexToRgba(accentLight, 0.1)}, ${hexToRgba(accentDark, 0.1)})` }}
               >
                 <Star className="w-4 h-4" style={{ color: accentLight }} />
                 <span 
-                  className="font-albert text-[12px] font-semibold"
+                  className="font-albert text-[13px] font-semibold"
                   style={{ color: accentLight }}
                 >
                   {program.type === 'group' ? 'Personal Coaching' : 'Personal Coaching'}
@@ -513,15 +428,15 @@ export default function ProgramDetailPage() {
               </div>
 
               {/* Title */}
-              <h1 className="font-albert text-[24px] sm:text-[28px] lg:text-[32px] font-semibold text-text-primary leading-[1.15] tracking-[-1.5px] mb-3">
+              <h1 className="font-albert text-[28px] sm:text-[36px] lg:text-[42px] font-semibold text-text-primary leading-[1.1] tracking-[-2px] mb-4">
                 {program.name}
               </h1>
 
-              {/* Meta info */}
-              <div className="flex flex-wrap items-center gap-4 mb-4 text-text-secondary">
-                <div className="flex items-center gap-1.5">
+              {/* Meta Row */}
+              <div className="flex flex-wrap items-center gap-4 mb-5">
+                <div className="flex items-center gap-1.5 text-text-secondary">
                   <Clock className="w-4 h-4" />
-                  <span className="font-albert text-[13px]">{program.lengthDays} days</span>
+                  <span className="font-albert text-[14px]">{program.lengthDays} days</span>
                 </div>
                 {program.showEnrollmentCount && totalEnrollments && totalEnrollments > 0 && (
                   <EnrolledMembersDisplay 
@@ -534,36 +449,36 @@ export default function ProgramDetailPage() {
 
               {/* Description */}
               {program.description && (
-                <p className="font-albert text-[14px] sm:text-[15px] text-text-secondary leading-[1.6] mb-5">
+                <p className="font-albert text-[16px] text-text-secondary leading-[1.6] mb-6">
                   {program.description}
                 </p>
               )}
 
-              {/* Coach Card */}
-              <div className="flex items-center gap-3 p-3 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
+              {/* Coach Info */}
+              <div className="flex items-center gap-4 p-4 bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35]">
                 {program.coachImageUrl ? (
                   <Image
                     src={program.coachImageUrl}
                     alt={program.coachName}
-                    width={48}
-                    height={48}
-                    className="rounded-full border-2 border-white dark:border-[#262b35] shadow-sm"
+                    width={56}
+                    height={56}
+                    className="rounded-full border-2 border-white dark:border-[#262b35] shadow-md"
                   />
                 ) : (
                   <div 
-                    className="w-12 h-12 rounded-full flex items-center justify-center border-2 border-white dark:border-[#262b35] shadow-sm"
+                    className="w-14 h-14 rounded-full flex items-center justify-center border-2 border-white dark:border-[#262b35] shadow-md"
                     style={{ background: `linear-gradient(to bottom right, ${accentLight}, ${accentDark})` }}
                   >
-                    <span className="text-white font-albert font-bold text-lg">
+                    <span className="text-white font-albert font-bold text-xl">
                       {program.coachName.charAt(0).toUpperCase()}
                     </span>
                   </div>
                 )}
                 <div>
-                  <div className="font-semibold text-[15px] text-text-primary font-albert">
+                  <div className="font-semibold text-[16px] text-text-primary font-albert">
                     {program.coachName}
                   </div>
-                  <div className="text-[12px] text-text-secondary font-albert">
+                  <div className="text-[13px] text-text-secondary font-albert">
                     Your Coach
                   </div>
                 </div>
@@ -571,481 +486,492 @@ export default function ProgramDetailPage() {
 
               {/* Coach Bio */}
               {program.coachBio && (
-                <div className="mt-5 pt-5 border-t border-[#e1ddd8] dark:border-[#262b35]">
-                  <h2 className="font-albert text-[15px] font-semibold text-text-primary mb-2">
+                <div className="mt-6">
+                  <h3 className="font-albert text-[16px] font-semibold text-text-primary mb-2">
                     About Your Coach
-                  </h2>
-                  <p className="font-albert text-[13px] text-text-secondary leading-[1.6] whitespace-pre-line">
+                  </h3>
+                  <p className="font-albert text-[14px] text-text-secondary leading-[1.6] whitespace-pre-line">
                     {program.coachBio}
                   </p>
                 </div>
               )}
-            </div>
-          </motion.div>
 
-          {/* Right Column - Pricing Card (Sticky) */}
-          <motion.div 
-            className="lg:col-span-2 lg:sticky lg:top-6"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-          >
-            <div className="bg-white dark:bg-[#171b22] rounded-2xl shadow-xl p-5 sm:p-6 border border-[#e1ddd8] dark:border-[#262b35]">
-              {/* Program badge */}
-              <div className="flex items-center justify-center gap-2 mb-4">
-                <div 
-                  className="flex items-center gap-1.5 rounded-full px-3 py-1.5"
-                  style={{ background: `linear-gradient(to right, ${hexToRgba(accentLight, 0.1)}, ${hexToRgba(accentLightHover, 0.1)})` }}
-                >
-                  {program.type === 'group' ? (
-                    <Users className="w-4 h-4" style={{ color: accentLight }} />
-                  ) : (
-                    <User className="w-4 h-4" style={{ color: accentLight }} />
-                  )}
-                  <span 
-                    className="font-albert text-[12px] font-semibold"
-                    style={{ color: accentLight }}
-                  >
-                    {program.type === 'group' ? 'Group Program' : '1:1 Coaching'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Price */}
-              <div className="text-center mb-4">
-                <div className="flex items-baseline justify-center gap-1">
-                  <span className="font-albert text-[36px] sm:text-[40px] font-bold text-text-primary tracking-[-2px]">
-                    {formatPrice(program.priceInCents)}
-                  </span>
-                </div>
-                {program.priceInCents > 0 && (
-                  <p className="font-albert text-[12px] text-text-secondary mt-0.5">
-                    one-time payment
-                  </p>
-                )}
-              </div>
-
-              {/* Duration callout */}
-              <div 
-                className="rounded-lg p-2.5 mb-4 text-center"
-                style={{ background: `linear-gradient(to right, ${hexToRgba(accentLight, 0.08)}, ${hexToRgba(accentLightHover, 0.08)})` }}
-              >
-                <p className="font-albert text-[13px] text-text-primary">
-                  <span className="font-semibold">{program.lengthDays}-day</span> transformation program
-                </p>
-              </div>
-
-              {/* Enrolled Status */}
-              {enrollment && (
-                <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                  <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
-                    <CheckCircle className="w-4 h-4" />
-                    <span className="font-semibold font-albert text-[13px]">
-                      {enrollment.status === 'active' ? 'You\'re enrolled!' : 'Enrollment confirmed'}
-                    </span>
-                  </div>
-                  {enrollment.status === 'upcoming' && (
-                    <p className="text-[12px] text-green-600 dark:text-green-400 mt-1">
-                      Starts {formatDate(enrollment.startedAt)}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Cohort Selection */}
-              {program.type === 'group' && cohorts && cohorts.length > 0 && !enrollment && (
-                <div className="mb-4">
-                  <h3 className="font-albert text-[12px] font-semibold text-text-primary mb-2">
-                    Select a cohort
-                  </h3>
-                  <div className="space-y-2">
-                    {cohorts.map((cohort) => (
-                      <button
-                        key={cohort.id}
-                        onClick={() => cohort.isAvailableToUser && setSelectedCohortId(cohort.id)}
-                        disabled={!cohort.isAvailableToUser}
-                        className={`w-full p-3 rounded-lg border-2 text-left transition-all ${
-                          !cohort.isAvailableToUser 
-                            ? 'border-[#e1ddd8] dark:border-[#262b35] opacity-50 cursor-not-allowed'
-                            : 'border-[#e1ddd8] dark:border-[#262b35]'
-                        }`}
-                        style={selectedCohortId === cohort.id ? {
-                          borderColor: accentLight,
-                          backgroundColor: hexToRgba(accentLight, 0.05)
-                        } : cohort.isAvailableToUser ? {
-                          borderColor: undefined,
-                        } : undefined}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-semibold text-text-primary font-albert text-[13px]">
-                              {cohort.name}
-                            </div>
-                            <div className="text-[11px] text-text-secondary flex items-center gap-1.5 mt-0.5">
-                              <Calendar className="w-3 h-3" />
-                              {formatDate(cohort.startDate)} - {formatDate(cohort.endDate)}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            {cohort.isAvailableToUser ? (
-                              <>
-                                {cohort.spotsRemaining > 0 && cohort.spotsRemaining !== -1 ? (
-                                  <div className="text-[11px] text-green-600 dark:text-green-400 font-medium">
-                                    {cohort.spotsRemaining} spots left
-                                  </div>
-                                ) : cohort.spotsRemaining === -1 ? (
-                                  <div className="text-[11px] text-text-secondary">
-                                    Open enrollment
-                                  </div>
-                                ) : null}
-                                {selectedCohortId === cohort.id && (
-                                  <Check className="w-4 h-4 mt-0.5 ml-auto" style={{ color: accentLight }} />
-                                )}
-                              </>
-                            ) : (
-                              <div className="text-[11px] text-red-500">
-                                {cohort.unavailableReason || 'Unavailable'}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Individual Program Info */}
-              {program.type === 'individual' && !enrollment && (
-                <div className="mb-4 p-3 bg-[#faf8f6] dark:bg-[#11141b] rounded-lg">
-                  <div className="flex items-center gap-2 text-text-primary">
-                    <Calendar className="w-4 h-4 text-green-500" />
-                    <span className="font-semibold font-albert text-[13px]">Start anytime</span>
-                  </div>
-                  <p className="text-[12px] text-text-secondary mt-1">
-                    Work directly with your coach at your own pace.
-                  </p>
-                </div>
-              )}
-
-              {/* Cannot Enroll Reason */}
-              {!canEnroll && cannotEnrollReason && !enrollment && (
-                <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                  <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
-                    <AlertCircle className="w-4 h-4" />
-                    <span className="font-semibold font-albert text-[12px]">{cannotEnrollReason}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* CTA Button */}
-              {!enrollment ? (
-                <EnrollButton className="w-full" size="large" />
-              ) : (
-                <Button
-                  onClick={() => router.push('/program')}
-                  className="w-full py-3 text-[14px] text-white rounded-xl font-semibold transition-all"
-                  style={{ 
-                    background: `linear-gradient(135deg, ${accentLight}, ${accentDark})`,
-                    boxShadow: `0 8px 20px -4px ${hexToRgba(accentLight, 0.3)}`
-                  }}
-                >
-                  Go to My Programs
-                  <ChevronRight className="w-4 h-4 ml-2" />
-                </Button>
-              )}
-
-              {/* Trust badges */}
-              <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-                <div className="flex items-center gap-1.5 text-text-secondary">
-                  <Shield className="w-3.5 h-3.5" />
-                  <span className="font-albert text-[11px]">Secure checkout</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-text-secondary">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span className="font-albert text-[11px]">Full access</span>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Full-Width Sections Below */}
-        <div className="mt-12 space-y-0">
-          {/* What You'll Learn Section */}
-          {program.keyOutcomes && program.keyOutcomes.length > 0 && (
-            <AnimatedSection>
-              <div 
-                className="py-10 sm:py-12 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8"
-                style={{ background: `linear-gradient(to bottom, ${hexToRgba(accentLight, 0.04)}, transparent)` }}
-              >
-                <div className="max-w-[900px] mx-auto">
-                  <h2 className="font-albert text-[18px] sm:text-[20px] font-semibold text-text-primary mb-6 tracking-[-0.5px] text-center">
+              {/* Benefits List (Key Outcomes) */}
+              {program.keyOutcomes && program.keyOutcomes.length > 0 && (
+                <div className="mt-8">
+                  <h3 className="font-albert text-[16px] font-semibold text-text-primary mb-4">
                     What you&apos;ll learn
-                  </h2>
+                  </h3>
                   <motion.div 
-                    className="grid sm:grid-cols-2 gap-3 sm:gap-4"
+                    className="space-y-3"
                     variants={staggerContainer}
                     initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true, margin: "-50px" }}
+                    animate="visible"
                   >
                     {program.keyOutcomes.map((outcome, index) => (
-                      <motion.div 
-                        key={index} 
-                        className="flex items-start gap-3 p-3 sm:p-4 bg-white dark:bg-[#171b22] rounded-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50"
-                        variants={staggerItem}
-                      >
+                      <motion.div key={index} className="flex items-start gap-3" variants={staggerItem}>
                         <div 
                           className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                          style={{ background: `linear-gradient(135deg, ${accentLight}, ${accentDark})` }}
+                          style={{ background: `linear-gradient(to right, ${hexToRgba(accentLight, 0.1)}, ${hexToRgba(accentDark, 0.1)})` }}
                         >
-                          <Check className="w-3.5 h-3.5 text-white" />
+                          <Check className="w-3.5 h-3.5" style={{ color: accentLight }} />
                         </div>
-                        <span className="font-albert text-[13px] sm:text-[14px] text-text-primary leading-[1.5]">
+                        <span className="font-albert text-[15px] text-text-primary leading-[1.5]">
                           {outcome}
                         </span>
                       </motion.div>
                     ))}
                   </motion.div>
                 </div>
-              </div>
-            </AnimatedSection>
-          )}
+              )}
 
-          {/* What's Included Section */}
-          {program.features && program.features.length > 0 && (
-            <AnimatedSection>
-              <div className="py-10 sm:py-12">
-                <div className="max-w-[900px] mx-auto">
-                  <h2 className="font-albert text-[18px] sm:text-[20px] font-semibold text-text-primary mb-6 tracking-[-0.5px] text-center">
-                    What&apos;s included
-                  </h2>
-                  <motion.div 
-                    className="grid sm:grid-cols-2 gap-4"
-                    variants={staggerContainer}
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true, margin: "-50px" }}
-                  >
-                    {program.features.map((feature: ProgramFeature, index: number) => {
-                      const IconComponent = feature.icon ? featureIcons[feature.icon] || Star : Star;
-                      return (
-                        <motion.div 
-                          key={index} 
-                          className="group flex items-start gap-4 p-4 sm:p-5 bg-white dark:bg-[#171b22] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] hover:shadow-lg hover:border-transparent transition-all duration-300"
-                          style={{ '--hover-shadow': hexToRgba(accentLight, 0.15) } as React.CSSProperties}
-                          variants={staggerItem}
-                        >
-                          <div 
-                            className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform"
-                            style={{ background: `linear-gradient(135deg, ${hexToRgba(accentLight, 0.15)}, ${hexToRgba(accentDark, 0.1)})` }}
-                          >
-                            <IconComponent className="w-5 h-5" style={{ color: accentLight }} />
-                          </div>
-                          <div>
-                            <div className="font-albert font-semibold text-[14px] text-text-primary">
-                              {feature.title}
-                            </div>
-                            {feature.description && (
-                              <div className="font-albert text-[12px] text-text-secondary mt-1 leading-[1.5]">
-                                {feature.description}
-                              </div>
-                            )}
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </motion.div>
-                </div>
-              </div>
-            </AnimatedSection>
-          )}
-
-          {/* Program Curriculum Section */}
-          {curriculumDays.length > 0 && (
-            <AnimatedSection>
-              <div 
-                className="py-10 sm:py-12 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8"
-                style={{ background: `linear-gradient(to bottom, ${hexToRgba(accentLight, 0.03)}, transparent)` }}
-              >
-                <div className="max-w-[900px] mx-auto">
-                  <h2 className="font-albert text-[18px] sm:text-[20px] font-semibold text-text-primary mb-6 tracking-[-0.5px] text-center">
-                    Program Curriculum
-                  </h2>
-                  <motion.div 
-                    className="space-y-2"
-                    variants={staggerContainer}
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true, margin: "-50px" }}
-                  >
-                    {curriculumDays.slice(0, 10).map((day, index) => (
-                      <motion.div 
-                        key={day.id} 
-                        className="flex items-center gap-4 p-3 sm:p-4 bg-white dark:bg-[#171b22] rounded-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 hover:border-transparent hover:shadow-md transition-all"
-                        variants={staggerItem}
-                      >
-                        <div 
-                          className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ backgroundColor: hexToRgba(accentLight, 0.1) }}
-                        >
-                          <span className="font-albert font-semibold text-[13px]" style={{ color: accentLight }}>
-                            {day.dayIndex}
-                          </span>
-                        </div>
-                        <span className="font-albert text-[13px] sm:text-[14px] text-text-primary">
-                          {day.title}
-                        </span>
-                      </motion.div>
+              {/* Testimonial Preview (single) */}
+              {program.testimonials && program.testimonials.length > 0 && (
+                <div className="mt-8 bg-white dark:bg-[#171b22] rounded-2xl p-6 border border-[#e1ddd8] dark:border-[#262b35]">
+                  <div className="flex items-center gap-1 mb-3">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={`w-4 h-4 ${
+                          star <= (program.testimonials![0].rating || 5)
+                            ? 'text-[#FFB800] fill-[#FFB800]'
+                            : 'text-[#d1ccc5]'
+                        }`}
+                      />
                     ))}
-                    {curriculumDays.length > 10 && (
-                      <p className="text-center text-[12px] text-text-secondary font-albert pt-2">
-                        + {curriculumDays.length - 10} more days
+                  </div>
+                  <p className="font-albert text-[14px] text-text-secondary leading-[1.6] italic mb-4">
+                    &quot;{program.testimonials[0].text}&quot;
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <div 
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-white font-albert font-semibold text-[13px]"
+                      style={{ background: `linear-gradient(to bottom right, ${accentLight}, ${accentDark})` }}
+                    >
+                      {program.testimonials[0].author.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-albert text-[13px] font-medium text-text-primary">
+                        {program.testimonials[0].author}
+                      </p>
+                      {program.testimonials[0].role && (
+                        <p className="font-albert text-[11px] text-text-secondary">
+                          {program.testimonials[0].role}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right Column - Sticky Pricing Card */}
+            <div className="lg:col-span-2 lg:sticky lg:top-8">
+              <div className="bg-white dark:bg-[#171b22] rounded-3xl p-6 sm:p-8 shadow-lg border border-[#e1ddd8] dark:border-[#262b35]">
+                {/* Program badge */}
+                <div className="flex items-center justify-center gap-2 mb-6">
+                  <div 
+                    className="flex items-center gap-2 rounded-full px-4 py-2"
+                    style={{ background: `linear-gradient(to right, ${hexToRgba(accentLight, 0.1)}, ${hexToRgba(accentDark, 0.1)})` }}
+                  >
+                    {program.type === 'group' ? (
+                      <Users className="w-4 h-4" style={{ color: accentLight }} />
+                    ) : (
+                      <User className="w-4 h-4" style={{ color: accentLight }} />
+                    )}
+                    <span 
+                      className="font-albert text-[13px] font-semibold"
+                      style={{ color: accentLight }}
+                    >
+                      {program.type === 'group' ? 'Group Program' : '1:1 Coaching'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Price */}
+                <div className="text-center mb-2">
+                  <div className="flex items-baseline justify-center gap-1">
+                    <span className="font-albert text-[42px] font-bold text-text-primary tracking-[-2px]">
+                      {formatPrice(program.priceInCents)}
+                    </span>
+                  </div>
+                  {program.priceInCents > 0 && (
+                    <p className="font-albert text-[13px] text-text-secondary mt-1">
+                      one-time payment
+                    </p>
+                  )}
+                </div>
+
+                {/* Duration callout */}
+                <div 
+                  className="rounded-xl p-3 mb-6 text-center"
+                  style={{ background: `linear-gradient(to right, ${hexToRgba(accentLight, 0.08)}, ${hexToRgba(accentDark, 0.08)})` }}
+                >
+                  <p className="font-albert text-[14px] text-text-primary">
+                    <span className="font-semibold">{program.lengthDays}-day</span> transformation program
+                  </p>
+                </div>
+
+                {/* Enrolled Status */}
+                {enrollment && (
+                  <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+                    <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
+                      <CheckCircle className="w-5 h-5" />
+                      <span className="font-semibold font-albert text-[14px]">
+                        {enrollment.status === 'active' ? 'You\'re enrolled!' : 'Enrollment confirmed'}
+                      </span>
+                    </div>
+                    {enrollment.status === 'upcoming' && (
+                      <p className="text-[12px] text-green-600 dark:text-green-400 mt-1 ml-7">
+                        Starts {formatDate(enrollment.startedAt)}
                       </p>
                     )}
-                  </motion.div>
+                  </div>
+                )}
+
+                {/* Cohort Selection */}
+                {program.type === 'group' && cohorts && cohorts.length > 0 && !enrollment && (
+                  <div className="mb-6">
+                    <h3 className="font-albert text-[13px] font-semibold text-text-primary mb-3">
+                      Select a cohort
+                    </h3>
+                    <div className="space-y-2">
+                      {cohorts.map((cohort) => (
+                        <button
+                          key={cohort.id}
+                          onClick={() => cohort.isAvailableToUser && setSelectedCohortId(cohort.id)}
+                          disabled={!cohort.isAvailableToUser}
+                          className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                            !cohort.isAvailableToUser 
+                              ? 'border-[#e1ddd8] dark:border-[#262b35] opacity-50 cursor-not-allowed'
+                              : selectedCohortId === cohort.id
+                                ? ''
+                                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#d1ccc5]'
+                          }`}
+                          style={selectedCohortId === cohort.id ? {
+                            borderColor: accentLight,
+                            backgroundColor: hexToRgba(accentLight, 0.05)
+                          } : undefined}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-semibold text-text-primary font-albert text-[14px]">
+                                {cohort.name}
+                              </div>
+                              <div className="text-[12px] text-text-secondary flex items-center gap-1.5 mt-1">
+                                <Calendar className="w-3 h-3" />
+                                {formatDate(cohort.startDate)} - {formatDate(cohort.endDate)}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              {cohort.isAvailableToUser ? (
+                                <>
+                                  {cohort.spotsRemaining > 0 && cohort.spotsRemaining !== -1 ? (
+                                    <div className="text-[11px] text-green-600 dark:text-green-400 font-medium">
+                                      {cohort.spotsRemaining} spots left
+                                    </div>
+                                  ) : cohort.spotsRemaining === -1 ? (
+                                    <div className="text-[11px] text-text-secondary">
+                                      Open enrollment
+                                    </div>
+                                  ) : null}
+                                  {selectedCohortId === cohort.id && (
+                                    <Check className="w-4 h-4 mt-1 ml-auto" style={{ color: accentLight }} />
+                                  )}
+                                </>
+                              ) : (
+                                <div className="text-[11px] text-red-500">
+                                  {cohort.unavailableReason || 'Unavailable'}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Individual Program Info */}
+                {program.type === 'individual' && !enrollment && (
+                  <div className="mb-6 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
+                    <div className="flex items-center gap-2 text-text-primary">
+                      <Calendar className="w-5 h-5 text-green-500" />
+                      <span className="font-semibold font-albert text-[14px]">Start anytime</span>
+                    </div>
+                    <p className="text-[13px] text-text-secondary mt-1 ml-7">
+                      Work directly with your coach at your own pace.
+                    </p>
+                  </div>
+                )}
+
+                {/* Cannot Enroll Reason */}
+                {!canEnroll && cannotEnrollReason && !enrollment && (
+                  <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+                    <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+                      <AlertCircle className="w-5 h-5" />
+                      <span className="font-semibold font-albert text-[13px]">{cannotEnrollReason}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* CTA Button */}
+                {!enrollment ? (
+                  <Button
+                    onClick={handleEnroll}
+                    disabled={!canEnroll || enrolling || (program.type === 'group' && !selectedCohortId)}
+                    className="w-full py-4 text-[16px] text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-2xl font-semibold transition-all hover:scale-[1.01] active:scale-[0.99]"
+                    style={{ 
+                      background: `linear-gradient(135deg, ${accentLight}, ${accentDark})`,
+                      boxShadow: `0 8px 20px -4px ${hexToRgba(accentLight, 0.35)}`
+                    }}
+                  >
+                    {enrolling ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : !isSignedIn ? (
+                      'Sign in to enroll'
+                    ) : program.priceInCents === 0 ? (
+                      'Enroll for free'
+                    ) : (
+                      `Enroll for ${formatPrice(program.priceInCents)}`
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => router.push('/program')}
+                    className="w-full py-4 text-[16px] text-white rounded-2xl font-semibold transition-all"
+                    style={{ 
+                      background: `linear-gradient(135deg, ${accentLight}, ${accentDark})`,
+                      boxShadow: `0 8px 20px -4px ${hexToRgba(accentLight, 0.3)}`
+                    }}
+                  >
+                    Go to My Programs
+                    <ChevronRight className="w-5 h-5 ml-2" />
+                  </Button>
+                )}
+
+                {/* Trust badges */}
+                <div className="flex items-center justify-center gap-4 mt-6 pt-6 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                  <div className="flex items-center gap-2 text-text-secondary">
+                    <Shield className="w-4 h-4" />
+                    <span className="font-albert text-[12px]">Secure checkout</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-text-secondary">
+                    <CheckCircle className="w-4 h-4" />
+                    <span className="font-albert text-[12px]">Full access</span>
+                  </div>
                 </div>
               </div>
-            </AnimatedSection>
-          )}
+            </div>
+          </div>
 
-          {/* Testimonials Section */}
-          {program.testimonials && program.testimonials.length > 0 && (
-            <AnimatedSection>
-              <div 
-                className="py-10 sm:py-14 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8"
-                style={{ background: `linear-gradient(135deg, #1a1a1a, #2d2d2d)` }}
+          {/* Middle Sections - Stacked Cards */}
+          
+          {/* What's Included Card */}
+          {program.features && program.features.length > 0 && (
+            <div className="mt-12 bg-white dark:bg-[#171b22] rounded-3xl p-6 sm:p-10 border border-[#e1ddd8] dark:border-[#262b35]">
+              <h2 className="font-albert text-[22px] sm:text-[26px] font-semibold text-text-primary text-center mb-8 tracking-[-1px]">
+                What&apos;s included
+              </h2>
+              <motion.div 
+                className="grid sm:grid-cols-2 gap-4"
+                variants={staggerContainer}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-50px" }}
               >
-                <div className="max-w-[900px] mx-auto">
-                  <h2 className="font-albert text-[18px] sm:text-[20px] font-semibold text-white mb-8 tracking-[-0.5px] text-center">
-                    What others are saying
-                  </h2>
-                  <motion.div 
-                    className="grid sm:grid-cols-2 gap-4 sm:gap-6"
-                    variants={staggerContainer}
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true, margin: "-50px" }}
-                  >
-                    {program.testimonials.map((testimonial: ProgramTestimonial, index: number) => (
-                      <motion.div 
-                        key={index} 
-                        className="relative p-5 sm:p-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10"
-                        variants={staggerItem}
+                {program.features.map((feature: ProgramFeature, index: number) => {
+                  const IconComponent = feature.icon ? featureIcons[feature.icon] || Star : Star;
+                  return (
+                    <motion.div 
+                      key={index} 
+                      className="flex items-start gap-4 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl"
+                      variants={staggerItem}
+                    >
+                      <div 
+                        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ background: `linear-gradient(135deg, ${hexToRgba(accentLight, 0.15)}, ${hexToRgba(accentDark, 0.1)})` }}
                       >
-                        {/* Quote icon */}
-                        <Quote 
-                          className="absolute top-4 right-4 w-8 h-8 opacity-20" 
-                          style={{ color: accentLight }} 
-                        />
-                        
-                        {/* Stars */}
-                        {testimonial.rating && (
-                          <div className="flex items-center gap-0.5 mb-3">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Star
-                                key={star}
-                                className={`w-4 h-4 ${
-                                  star <= testimonial.rating!
-                                    ? 'text-[#FFB800] fill-[#FFB800]'
-                                    : 'text-white/20'
-                                }`}
-                              />
-                            ))}
+                        <IconComponent className="w-5 h-5" style={{ color: accentLight }} />
+                      </div>
+                      <div>
+                        <div className="font-albert font-semibold text-[15px] text-text-primary">
+                          {feature.title}
+                        </div>
+                        {feature.description && (
+                          <div className="font-albert text-[13px] text-text-secondary mt-1 leading-[1.5]">
+                            {feature.description}
                           </div>
                         )}
-                        
-                        <p className="font-albert text-[13px] sm:text-[14px] text-white/80 leading-[1.6] italic mb-4">
-                          &quot;{testimonial.text}&quot;
-                        </p>
-                        
-                        <div className="flex items-center gap-3">
-                          <div 
-                            className="w-9 h-9 rounded-full flex items-center justify-center text-white font-albert font-semibold text-[13px]"
-                            style={{ background: `linear-gradient(135deg, ${accentLight}, ${accentDark})` }}
-                          >
-                            {testimonial.author.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="font-albert text-[13px] font-medium text-white">
-                              {testimonial.author}
-                            </p>
-                            {testimonial.role && (
-                              <p className="font-albert text-[11px] text-white/60">
-                                {testimonial.role}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
+            </div>
+          )}
+
+          {/* Curriculum Card */}
+          {curriculumDays.length > 0 && (
+            <div className="mt-8 bg-white dark:bg-[#171b22] rounded-3xl p-6 sm:p-10 border border-[#e1ddd8] dark:border-[#262b35]">
+              <h2 className="font-albert text-[22px] sm:text-[26px] font-semibold text-text-primary text-center mb-8 tracking-[-1px]">
+                Program Curriculum
+              </h2>
+              <motion.div 
+                className="space-y-2"
+                variants={staggerContainer}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-50px" }}
+              >
+                {curriculumDays.slice(0, 10).map((day) => (
+                  <motion.div 
+                    key={day.id} 
+                    className="flex items-center gap-4 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl"
+                    variants={staggerItem}
+                  >
+                    <div 
+                      className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: hexToRgba(accentLight, 0.1) }}
+                    >
+                      <span className="font-albert font-semibold text-[14px]" style={{ color: accentLight }}>
+                        {day.dayIndex}
+                      </span>
+                    </div>
+                    <span className="font-albert text-[15px] text-text-primary">
+                      {day.title}
+                    </span>
                   </motion.div>
-                </div>
-              </div>
-            </AnimatedSection>
+                ))}
+                {curriculumDays.length > 10 && (
+                  <p className="text-center text-[13px] text-text-secondary font-albert pt-2">
+                    + {curriculumDays.length - 10} more days
+                  </p>
+                )}
+              </motion.div>
+            </div>
+          )}
+
+          {/* All Testimonials Card */}
+          {program.testimonials && program.testimonials.length > 1 && (
+            <div className="mt-8 bg-white dark:bg-[#171b22] rounded-3xl p-6 sm:p-10 border border-[#e1ddd8] dark:border-[#262b35]">
+              <h2 className="font-albert text-[22px] sm:text-[26px] font-semibold text-text-primary text-center mb-8 tracking-[-1px]">
+                What others are saying
+              </h2>
+              <motion.div 
+                className="grid sm:grid-cols-2 gap-4"
+                variants={staggerContainer}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-50px" }}
+              >
+                {program.testimonials.slice(1).map((testimonial: ProgramTestimonial, index: number) => (
+                  <motion.div 
+                    key={index} 
+                    className="p-5 bg-[#faf8f6] dark:bg-[#11141b] rounded-2xl"
+                    variants={staggerItem}
+                  >
+                    {testimonial.rating && (
+                      <div className="flex items-center gap-0.5 mb-3">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={`w-4 h-4 ${
+                              star <= testimonial.rating!
+                                ? 'text-[#FFB800] fill-[#FFB800]'
+                                : 'text-[#d1ccc5]'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    <p className="font-albert text-[14px] text-text-secondary leading-[1.6] italic mb-4">
+                      &quot;{testimonial.text}&quot;
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white font-albert font-semibold text-[12px]"
+                        style={{ background: `linear-gradient(to bottom right, ${accentLight}, ${accentDark})` }}
+                      >
+                        {testimonial.author.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-albert text-[13px] font-medium text-text-primary">
+                          {testimonial.author}
+                        </p>
+                        {testimonial.role && (
+                          <p className="font-albert text-[11px] text-text-secondary">
+                            {testimonial.role}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
           )}
 
           {/* FAQ Section */}
           {program.faqs && program.faqs.length > 0 && (
-            <AnimatedSection>
-              <div className="py-10 sm:py-12">
-                <div className="max-w-[700px] mx-auto">
-                  <h2 className="font-albert text-[18px] sm:text-[20px] font-semibold text-text-primary mb-6 tracking-[-0.5px] text-center">
-                    Frequently asked questions
-                  </h2>
-                  <div className="space-y-2">
-                    {program.faqs.map((faq: ProgramFAQ, index: number) => (
-                      <FAQItem
-                        key={index}
-                        faq={faq}
-                        isOpen={openFaqIndex === index}
-                        onToggle={() => setOpenFaqIndex(openFaqIndex === index ? null : index)}
-                        accentLight={accentLight}
-                      />
-                    ))}
-                  </div>
-                </div>
+            <div className="mt-12 max-w-[800px] mx-auto">
+              <h2 className="font-albert text-[22px] sm:text-[26px] font-semibold text-text-primary text-center mb-8 tracking-[-1px]">
+                Frequently asked questions
+              </h2>
+              <div className="space-y-3">
+                {program.faqs.map((faq: ProgramFAQ, index: number) => (
+                  <FAQItem
+                    key={index}
+                    faq={faq}
+                    isOpen={openFaqIndex === index}
+                    onToggle={() => setOpenFaqIndex(openFaqIndex === index ? null : index)}
+                    accentLight={accentLight}
+                  />
+                ))}
               </div>
-            </AnimatedSection>
-          )}
-
-          {/* Final CTA Section */}
-          {!enrollment && (
-            <AnimatedSection>
-              <div 
-                className="py-10 sm:py-14 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 mb-8"
-                style={{ background: `linear-gradient(135deg, ${hexToRgba(accentLight, 0.08)}, ${hexToRgba(accentDark, 0.04)})` }}
-              >
-                <div className="max-w-[600px] mx-auto text-center">
-                  <h2 className="font-albert text-[20px] sm:text-[24px] font-semibold text-text-primary mb-2 tracking-[-1px]">
-                    Ready to transform?
-                  </h2>
-                  <p className="font-albert text-[13px] sm:text-[14px] text-text-secondary mb-6">
-                    Join {totalEnrollments ? `${totalEnrollments}+` : 'other'} members who are already on their journey.
-                  </p>
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                    <EnrollButton className="w-full sm:w-auto px-8" size="large" />
-                    <div className="flex items-center gap-4 text-text-secondary">
-                      <div className="flex items-center gap-1.5">
-                        <Shield className="w-4 h-4" />
-                        <span className="font-albert text-[12px]">Secure</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Sparkles className="w-4 h-4" />
-                        <span className="font-albert text-[12px]">Full access</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </AnimatedSection>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Bottom Padding */}
-      <div className="h-16 sm:h-24" />
+      {/* Bottom Floating CTA - Dark Card */}
+      {!enrollment && (
+        <div 
+          className="bg-[#1a1a1a] pt-12 pb-24 md:pb-12 rounded-[32px] mt-auto mx-4 sm:mx-6 lg:mx-10 mb-8"
+        >
+          <div className="max-w-[600px] mx-auto px-4 text-center">
+            <h2 className="font-albert text-[24px] sm:text-[28px] font-semibold text-white mb-3 tracking-[-1px]">
+              Ready to start your transformation?
+            </h2>
+            <p className="font-albert text-[15px] text-white/70 mb-6">
+              Join {totalEnrollments ? `${totalEnrollments}+` : ''} members who are already on their growth journey.
+            </p>
+            <Button
+              onClick={handleEnroll}
+              disabled={!canEnroll || enrolling || (program.type === 'group' && !selectedCohortId)}
+              className="inline-block py-4 px-8 rounded-3xl font-albert text-[16px] font-semibold transition-all duration-200 text-white"
+              style={{ 
+                background: `linear-gradient(135deg, ${accentLight}, ${accentDark})`,
+                boxShadow: `0 8px 25px -4px ${hexToRgba(accentLight, 0.4)}`
+              }}
+            >
+              {enrolling ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : program.priceInCents === 0 ? (
+                'Enroll Now — It\'s Free'
+              ) : (
+                `Enroll for ${formatPrice(program.priceInCents)}`
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Success Modal */}
       <AlertDialog open={successModal.open} onOpenChange={(open) => {
@@ -1056,13 +982,13 @@ export default function ProgramDetailPage() {
       }}>
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-3 text-[#1a1a1a] dark:text-[#f5f5f8]">
-              <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+            <AlertDialogTitle className="flex items-center gap-3 text-text-primary">
+              <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
                 <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
               </div>
               Success!
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-[#5f5a55] dark:text-[#b2b6c2] text-[14px]">
+            <AlertDialogDescription className="text-text-secondary text-[14px]">
               {successModal.message}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1087,13 +1013,13 @@ export default function ProgramDetailPage() {
       }}>
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-3 text-[#1a1a1a] dark:text-[#f5f5f8]">
-              <div className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+            <AlertDialogTitle className="flex items-center gap-3 text-text-primary">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                 <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
               </div>
               Enrollment Failed
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-[#5f5a55] dark:text-[#b2b6c2] text-[14px]">
+            <AlertDialogDescription className="text-text-secondary text-[14px]">
               {errorModal.message}
             </AlertDialogDescription>
           </AlertDialogHeader>
