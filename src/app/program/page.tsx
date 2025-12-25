@@ -65,12 +65,12 @@ export default function ProgramHubPage() {
     if (!enrollment) return false;
     if (enrollment.program.type === 'group') return true;
     // For individual programs, show if community is enabled and user joined
-    return enrollment.program.clientCommunityEnabled && enrollment.joinedCommunity;
+    return enrollment.program.clientCommunityEnabled && enrollment.enrollment.joinedCommunity;
   };
   
   // Legacy: for main view when single program
   const showSquadTab = hasGroupProgram || (
-    individualProgram?.program.clientCommunityEnabled && individualProgram?.joinedCommunity
+    individualProgram?.program.clientCommunityEnabled && individualProgram?.enrollment.joinedCommunity
   );
   
   useEffect(() => {
