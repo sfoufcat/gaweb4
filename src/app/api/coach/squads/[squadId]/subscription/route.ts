@@ -136,7 +136,6 @@ export async function POST(
     const intervalCount = interval === 'quarterly' ? 3 : 1;
 
     let productId = squad.stripeProductId;
-    let priceId: string;
 
     // Create or reuse product
     if (!productId) {
@@ -173,7 +172,7 @@ export async function POST(
       },
       { stripeAccount }
     );
-    priceId = price.id;
+    const priceId = price.id;
 
     // Archive old price if exists
     if (squad.stripePriceId && squad.stripePriceId !== priceId) {
