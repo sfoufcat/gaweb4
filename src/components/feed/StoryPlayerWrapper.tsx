@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { StoryPlayer } from '@/components/stories/StoryPlayer';
-import { useStoryPrefetch, type PrefetchedStoryData } from '@/hooks/useStoryPrefetch';
+import { useStoryData, prefetchStories, type StoryData } from '@/hooks/useStoryPrefetch';
 import { useStoryViewTracking } from '@/hooks/useStoryViewTracking';
 import type { FeedStoryUser } from '@/hooks/useFeedStories';
 import type { StorySlide } from '@/components/stories/StoryPlayer';
@@ -43,7 +43,7 @@ const PREFETCH_WINDOW = 5; // Number of stories to prefetch ahead
  * 
  * Features:
  * - Shows story player shell instantly with user info
- * - Loads content for current story
+ * - Uses SWR cache for instant loads on previously-viewed stories
  * - Prefetches next N stories in background
  * - Auto-advances to next user when story completes
  * - Handles both own story and other users' stories
@@ -56,18 +56,10 @@ export function StoryPlayerWrapper({
 }: StoryPlayerWrapperProps) {
   const { user: clerkUser } = useUser();
   const [currentIndex, setCurrentIndex] = useState(startIndex);
-  const [currentStoryData, setCurrentStoryData] = useState<PrefetchedStoryData | null>(null);
-  const [isLoadingCurrent, setIsLoadingCurrent] = useState(true);
   const [initialSlideIndex, setInitialSlideIndex] = useState(0);
   const { markStoryAsViewed, markSlideAsViewed, getFirstUnviewedSlideIndex } = useStoryViewTracking();
-  
-  const {
-    prefetchStories,
-    fetchStoryData,
-    getCachedStoryData,
-  } = useStoryPrefetch();
 
-  // Track if we've started prefetching to avoid duplicate calls
+  // Track if we've triggered initial prefetch
   const hasPrefetchedRef = useRef(false);
 
   // Get all user IDs for the story queue
@@ -76,6 +68,13 @@ export function StoryPlayerWrapper({
   // Get current user in the queue
   const currentStoryUser = storyUsers[currentIndex];
   const isViewingOwnStory = currentStoryUser?.id === clerkUser?.id;
+
+  // Use SWR to fetch story data - this provides global caching
+  const { 
+    data: storyData, 
+    slides, 
+    isLoading 
+  } = useStoryData(currentStoryUser?.id || null);
 
   // Build user object for StoryPlayer
   const storyPlayerUser = useMemo(() => {
@@ -100,55 +99,30 @@ export function StoryPlayerWrapper({
     };
   }, [currentStoryUser, isViewingOwnStory, currentUser]);
 
-  // Calculate resume slide index for a given user's slides
-  const calculateResumeIndex = useCallback((userId: string, slides: StorySlide[]): number => {
-    if (!userId || slides.length === 0) return 0;
-    return getFirstUnviewedSlideIndex(userId, slides);
-  }, [getFirstUnviewedSlideIndex]);
-
-  // Fetch story data for current user and prefetch upcoming
-  const loadCurrentStory = useCallback(async () => {
-    if (!currentStoryUser) return;
-
-    setIsLoadingCurrent(true);
-
-    // Check cache first for instant loading
-    const cached = getCachedStoryData(currentStoryUser.id);
-    if (cached) {
-      setCurrentStoryData(cached);
-      // Calculate resume index based on what's been viewed
-      setInitialSlideIndex(calculateResumeIndex(currentStoryUser.id, cached.slides));
-      setIsLoadingCurrent(false);
+  // Calculate resume slide index when story data changes
+  useEffect(() => {
+    if (currentStoryUser?.id && slides.length > 0) {
+      const resumeIndex = getFirstUnviewedSlideIndex(currentStoryUser.id, slides);
+      setInitialSlideIndex(resumeIndex);
+    } else {
+      setInitialSlideIndex(0);
     }
+  }, [currentStoryUser?.id, slides, getFirstUnviewedSlideIndex]);
 
-    // Fetch (or re-validate) current story
-    const data = await fetchStoryData(currentStoryUser.id);
-    if (data) {
-      setCurrentStoryData(data);
-      // Recalculate resume index with fresh data
-      setInitialSlideIndex(calculateResumeIndex(currentStoryUser.id, data.slides));
-    }
-    setIsLoadingCurrent(false);
-
-    // Prefetch next stories in background
+  // Prefetch next stories when current index changes
+  useEffect(() => {
     if (currentIndex < userIds.length - 1) {
       prefetchStories(userIds, currentIndex + 1, PREFETCH_WINDOW);
     }
-  }, [currentStoryUser, currentIndex, userIds, getCachedStoryData, fetchStoryData, prefetchStories, calculateResumeIndex]);
+  }, [currentIndex, userIds]);
 
-  // Load current story when index changes
-  useEffect(() => {
-    loadCurrentStory();
-  }, [currentIndex, loadCurrentStory]);
-
-  // Initial prefetch on mount (prefetch from start)
+  // Initial prefetch on mount
   useEffect(() => {
     if (!hasPrefetchedRef.current && userIds.length > 0) {
       hasPrefetchedRef.current = true;
-      // Prefetch stories starting from current index
       prefetchStories(userIds, startIndex, PREFETCH_WINDOW);
     }
-  }, [userIds, startIndex, prefetchStories]);
+  }, [userIds, startIndex]);
 
   // Handle individual slide viewed - mark in localStorage
   const handleSlideViewed = useCallback((slideId: string) => {
@@ -165,28 +139,14 @@ export function StoryPlayerWrapper({
 
     // Check if there are more users
     if (currentIndex < storyUsers.length - 1) {
-      // Try to get next story from cache for instant transition
-      const nextUser = storyUsers[currentIndex + 1];
-      if (nextUser) {
-        const cached = getCachedStoryData(nextUser.id);
-        if (cached) {
-          // Pre-set data for instant transition
-          setCurrentStoryData(cached);
-          // Calculate resume index for next user
-          setInitialSlideIndex(calculateResumeIndex(nextUser.id, cached.slides));
-          setIsLoadingCurrent(false);
-        } else {
-          // Will need to fetch - show loading
-          setIsLoadingCurrent(true);
-          setInitialSlideIndex(0);
-        }
-      }
+      // Reset initial slide index for next user
+      setInitialSlideIndex(0);
       setCurrentIndex(prev => prev + 1);
     } else {
       // No more users - close the viewer
       onClose();
     }
-  }, [currentIndex, storyUsers, currentStoryUser, getCachedStoryData, markStoryAsViewed, calculateResumeIndex, onClose]);
+  }, [currentIndex, storyUsers.length, currentStoryUser, markStoryAsViewed, onClose]);
 
   // Handle close - mark story as viewed and close
   const handleClose = useCallback(() => {
@@ -206,13 +166,12 @@ export function StoryPlayerWrapper({
     <StoryPlayer
       isOpen={true}
       onClose={handleClose}
-      slides={currentStoryData?.slides || []}
+      slides={slides}
       user={storyPlayerUser}
-      isLoading={isLoadingCurrent}
+      isLoading={isLoading}
       onStoryComplete={handleStoryComplete}
       initialSlideIndex={initialSlideIndex}
       onSlideViewed={handleSlideViewed}
     />
   );
 }
-

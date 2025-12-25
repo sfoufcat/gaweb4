@@ -1,10 +1,12 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useUser } from '@clerk/nextjs';
 import { StoryAvatar } from '@/components/stories/StoryAvatar';
 import { useCurrentUserHasStory, type FeedStoryUser } from '@/hooks/useFeedStories';
 import { useStoryViewStatus, useStoryViewTracking } from '@/hooks/useStoryViewTracking';
+import { prefetchStories } from '@/hooks/useStoryPrefetch';
 
 // Ring colors matching StoryAvatar
 const RING_COLORS = {
@@ -85,6 +87,37 @@ export function StoriesRow({
   const { user } = useUser();
   const currentUserStatus = useCurrentUserHasStory();
   const { markStoryAsViewed } = useStoryViewTracking();
+  const hasPrefetchedRef = useRef(false);
+
+  // Pre-load stories in the background when Feed loads
+  // This ensures stories are cached before user clicks on them
+  useEffect(() => {
+    // Only prefetch once and after stories are loaded
+    if (hasPrefetchedRef.current || isLoading || storyUsers.length === 0) {
+      return;
+    }
+
+    // Wait a short delay to not block initial page render
+    const timeout = setTimeout(() => {
+      // Get user IDs with stories
+      const userIdsWithStories = storyUsers
+        .filter(u => u.hasStory || u.hasUnseenStory)
+        .map(u => u.id);
+
+      // Also include current user if they have a story
+      const allUserIds = user?.id && currentUserStatus.hasStory 
+        ? [user.id, ...userIdsWithStories]
+        : userIdsWithStories;
+
+      if (allUserIds.length > 0) {
+        // Prefetch first 5-10 stories (most likely to be viewed)
+        prefetchStories(allUserIds, 0, 10);
+        hasPrefetchedRef.current = true;
+      }
+    }, 1000); // 1 second delay to prioritize visible content
+
+    return () => clearTimeout(timeout);
+  }, [storyUsers, isLoading, user?.id, currentUserStatus.hasStory]);
   
   // Check if current user has viewed their own story (using contentHash for accurate tracking)
   const hasViewedOwnStory = useStoryViewStatus(
