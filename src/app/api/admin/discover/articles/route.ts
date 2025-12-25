@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
     const articleData = {
       title: body.title,
       coverImageUrl: body.coverImageUrl,
+      thumbnailUrl: body.thumbnailUrl || null, // Optional thumbnail for cards/lists
       content: body.content,
       // Author fields
       authorId: body.authorId || null, // New: User ID for dynamic bio lookup

@@ -220,15 +220,19 @@ function EventFormDialog({
             </div>
 
             {/* Cover Image */}
-            <MediaUpload
-              value={formData.coverImageUrl}
-              onChange={(url) => setFormData(prev => ({ ...prev, coverImageUrl: url }))}
-              folder="events"
-              type="image"
-              label="Cover Image"
-              required
-              uploadEndpoint={uploadEndpoint}
-            />
+            <div>
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+                Cover Image <span className="text-text-muted text-xs font-normal">(1200 x 675px)</span> *
+              </label>
+              <MediaUpload
+                value={formData.coverImageUrl}
+                onChange={(url) => setFormData(prev => ({ ...prev, coverImageUrl: url }))}
+                folder="events"
+                type="image"
+                required
+                uploadEndpoint={uploadEndpoint}
+              />
+            </div>
 
             {/* Date & Time Row */}
             <div className="grid grid-cols-4 gap-3">

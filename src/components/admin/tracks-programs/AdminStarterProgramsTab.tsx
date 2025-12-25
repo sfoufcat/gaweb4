@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
+import { Circle, Target, X, Plus, ListTodo, Repeat, ChevronDown, Clock } from 'lucide-react';
 
 const TRACK_LABELS: Record<UserTrack, string> = {
   content_creator: 'Content Creator',
@@ -521,109 +522,174 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
 
                   {/* Tasks */}
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                        Tasks (up to 3 recommended)
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                        Tasks
                       </label>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={addTask}
-                        className="text-[#a07855] hover:text-[#8c6245]"
-                      >
-                        + Add Task
-                      </Button>
+                      <span className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
+                        Up to 3 recommended
+                      </span>
                     </div>
                     <div className="space-y-2">
                       {dayFormData.tasks.map((task, index) => (
-                        <div key={index} className="flex items-center gap-2 p-3 bg-[#faf8f6] dark:bg-[#11141b] rounded-lg">
+                        <div 
+                          key={index} 
+                          className="group relative flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:shadow-sm hover:border-[#d4d0cb] dark:hover:border-[#313746] transition-all duration-200"
+                        >
+                          {/* Task Icon */}
+                          <div className="w-5 h-5 rounded-full border-2 border-[#e1ddd8] dark:border-[#3d4351] flex-shrink-0" />
+                          
+                          {/* Input */}
                           <input
                             type="text"
                             value={task.label}
                             onChange={(e) => updateTask(index, { label: e.target.value })}
-                            placeholder="Task title..."
-                            className="flex-1 px-3 py-1.5 border border-[#e1ddd8] dark:border-[#262b35] rounded bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+                            placeholder="What should they accomplish?"
+                            className="flex-1 bg-transparent border-none outline-none font-albert text-[15px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190]"
                           />
-                          <label className="flex items-center gap-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                          
+                          {/* Time Estimate */}
+                          <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#f3f1ef] dark:bg-[#1d222b]">
+                            <Clock className="w-3 h-3 text-[#a7a39e] dark:text-[#7d8190]" />
                             <input
-                              type="checkbox"
-                              checked={task.isPrimary}
-                              onChange={(e) => updateTask(index, { isPrimary: e.target.checked })}
-                              className="rounded"
+                              type="number"
+                              value={task.estimatedMinutes || ''}
+                              onChange={(e) => updateTask(index, { estimatedMinutes: parseInt(e.target.value) || undefined })}
+                              placeholder="min"
+                              className="w-10 bg-transparent border-none outline-none font-albert text-xs text-[#5f5a55] dark:text-[#b2b6c2] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] text-center"
                             />
-                            Focus
-                          </label>
-                          <input
-                            type="number"
-                            value={task.estimatedMinutes || ''}
-                            onChange={(e) => updateTask(index, { estimatedMinutes: parseInt(e.target.value) || undefined })}
-                            placeholder="min"
-                            className="w-16 px-2 py-1.5 border border-[#e1ddd8] dark:border-[#262b35] rounded bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
-                          />
+                          </div>
+                          
+                          {/* Focus Toggle */}
                           <button
-                            onClick={() => removeTask(index)}
-                            className="text-red-500 hover:text-red-700"
+                            type="button"
+                            onClick={() => updateTask(index, { isPrimary: !task.isPrimary })}
+                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                              task.isPrimary 
+                                ? 'bg-[#a07855]/15 text-[#a07855] dark:bg-[#a07855]/20 dark:text-[#b8896a]' 
+                                : 'bg-[#f3f1ef] dark:bg-[#1d222b] text-[#5f5a55] dark:text-[#7d8190] hover:bg-[#eae7e3] dark:hover:bg-[#262b35]'
+                            }`}
                           >
-                            ×
+                            <Target className="w-3.5 h-3.5" />
+                            Focus
+                          </button>
+                          
+                          {/* Delete Button */}
+                          <button
+                            type="button"
+                            onClick={() => removeTask(index)}
+                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-[#a7a39e] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200"
+                          >
+                            <X className="w-4 h-4" />
                           </button>
                         </div>
                       ))}
+                      
+                      {/* Empty State */}
                       {dayFormData.tasks.length === 0 && (
-                        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert italic">
-                          No tasks for this day
-                        </p>
+                        <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
+                          <div className="w-12 h-12 rounded-full bg-[#f3f1ef] dark:bg-[#1d222b] flex items-center justify-center mb-3">
+                            <ListTodo className="w-5 h-5 text-[#a7a39e] dark:text-[#7d8190]" />
+                          </div>
+                          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">No tasks yet</p>
+                          <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
+                            Add tasks to guide users through this day
+                          </p>
+                        </div>
                       )}
+                      
+                      {/* Add Task Button */}
+                      <button
+                        type="button"
+                        onClick={addTask}
+                        className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#a07855] hover:border-[#a07855]/50 hover:bg-[#a07855]/5 dark:hover:bg-[#a07855]/10 transition-all duration-200 font-albert font-medium text-sm"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Task
+                      </button>
                     </div>
                   </div>
 
                   {/* Habits (only show for Day 1 or if habits exist) */}
                   {(selectedDayIndex === 1 || dayFormData.habits.length > 0) && (
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                          Default Habits {selectedDayIndex === 1 ? '(Day 1 sets program defaults)' : ''}
-                        </label>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={addHabit}
-                          className="text-[#a07855] hover:text-[#8c6245]"
-                        >
-                          + Add Habit
-                        </Button>
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <label className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                            Default Habits
+                          </label>
+                          {selectedDayIndex === 1 && (
+                            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">
+                              Day 1 sets program defaults
+                            </p>
+                          )}
+                        </div>
                       </div>
                       <div className="space-y-2">
                         {dayFormData.habits.map((habit, index) => (
-                          <div key={index} className="flex items-center gap-2 p-3 bg-[#faf8f6] dark:bg-[#11141b] rounded-lg">
+                          <div 
+                            key={index} 
+                            className="group relative flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:shadow-sm hover:border-[#d4d0cb] dark:hover:border-[#313746] transition-all duration-200"
+                          >
+                            {/* Habit Icon - Dashed Ring */}
+                            <div className="w-5 h-5 rounded-full border-2 border-dashed border-[#a07855]/40 dark:border-[#b8896a]/40 flex-shrink-0" />
+                            
+                            {/* Input */}
                             <input
                               type="text"
                               value={habit.title}
                               onChange={(e) => updateHabit(index, { title: e.target.value })}
-                              placeholder="Habit title..."
-                              className="flex-1 px-3 py-1.5 border border-[#e1ddd8] dark:border-[#262b35] rounded bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+                              placeholder="What habit should they build?"
+                              className="flex-1 bg-transparent border-none outline-none font-albert text-[15px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190]"
                             />
-                            <select
-                              value={habit.frequency}
-                              onChange={(e) => updateHabit(index, { frequency: e.target.value as 'daily' | 'weekday' | 'custom' })}
-                              className="px-2 py-1.5 border border-[#e1ddd8] dark:border-[#262b35] rounded bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
-                            >
-                              <option value="daily">Daily</option>
-                              <option value="weekday">Weekday</option>
-                              <option value="custom">Custom</option>
-                            </select>
+                            
+                            {/* Frequency Dropdown */}
+                            <div className="relative">
+                              <select
+                                value={habit.frequency}
+                                onChange={(e) => updateHabit(index, { frequency: e.target.value as 'daily' | 'weekday' | 'custom' })}
+                                className="appearance-none pl-3 pr-8 py-1.5 bg-[#f3f1ef] dark:bg-[#1d222b] border-none rounded-lg text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#a07855]/30"
+                              >
+                                <option value="daily">Daily</option>
+                                <option value="weekday">Weekday</option>
+                                <option value="custom">Custom</option>
+                              </select>
+                              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#a7a39e] dark:text-[#7d8190] pointer-events-none" />
+                            </div>
+                            
+                            {/* Delete Button */}
                             <button
+                              type="button"
                               onClick={() => removeHabit(index)}
-                              className="text-red-500 hover:text-red-700"
+                              className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-[#a7a39e] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200"
                             >
-                              ×
+                              <X className="w-4 h-4" />
                             </button>
                           </div>
                         ))}
+                        
+                        {/* Empty State */}
                         {dayFormData.habits.length === 0 && selectedDayIndex === 1 && (
-                          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert italic">
-                            Add default habits for this program
-                          </p>
+                          <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
+                            <div className="w-12 h-12 rounded-full bg-[#f3f1ef] dark:bg-[#1d222b] flex items-center justify-center mb-3">
+                              <Repeat className="w-5 h-5 text-[#a7a39e] dark:text-[#7d8190]" />
+                            </div>
+                            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">No habits yet</p>
+                            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert">
+                              Add default habits for this program
+                            </p>
+                          </div>
                         )}
+                        
+                        {/* Add Habit Button */}
+                        <button
+                          type="button"
+                          onClick={addHabit}
+                          className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#a07855] hover:border-[#a07855]/50 hover:bg-[#a07855]/5 dark:hover:bg-[#a07855]/10 transition-all duration-200 font-albert font-medium text-sm"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Add Habit
+                        </button>
                       </div>
                     </div>
                   )}
@@ -783,37 +849,49 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
 
                     {/* Default Habits */}
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                           Default Habits
                         </label>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={addProgramHabit}
-                          className="text-[#a07855] hover:text-[#8c6245]"
-                        >
-                          + Add
-                        </Button>
                       </div>
                       <div className="space-y-2">
                         {programFormData.defaultHabits.map((habit, index) => (
-                          <div key={index} className="flex items-center gap-2">
+                          <div 
+                            key={index} 
+                            className="group relative flex items-center gap-3 p-3 bg-[#faf8f6] dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:border-[#d4d0cb] dark:hover:border-[#313746] transition-all duration-200"
+                          >
+                            {/* Habit Icon - Dashed Ring */}
+                            <div className="w-4 h-4 rounded-full border-2 border-dashed border-[#a07855]/40 dark:border-[#b8896a]/40 flex-shrink-0" />
+                            
+                            {/* Input */}
                             <input
                               type="text"
                               value={habit.title}
                               onChange={(e) => updateProgramHabit(index, { title: e.target.value })}
-                              placeholder="Habit title..."
-                              className="flex-1 px-3 py-1.5 border border-[#e1ddd8] dark:border-[#262b35] rounded bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+                              placeholder="What habit should they build?"
+                              className="flex-1 bg-transparent border-none outline-none font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190]"
                             />
+                            
+                            {/* Delete Button */}
                             <button
+                              type="button"
                               onClick={() => removeProgramHabit(index)}
-                              className="text-red-500 hover:text-red-700"
+                              className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-[#a7a39e] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200"
                             >
-                              ×
+                              <X className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         ))}
+                        
+                        {/* Add Habit Button */}
+                        <button
+                          type="button"
+                          onClick={addProgramHabit}
+                          className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#a07855] hover:border-[#a07855]/50 hover:bg-[#a07855]/5 dark:hover:bg-[#a07855]/10 transition-all duration-200 font-albert font-medium text-sm"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Add Habit
+                        </button>
                       </div>
                     </div>
 

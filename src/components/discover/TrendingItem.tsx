@@ -46,15 +46,18 @@ export function TrendingItem({ item, index }: TrendingItemProps) {
   const badgeColor = isArticle && item.articleType 
     ? getArticleTypeBadgeColor(item.articleType) 
     : 'bg-earth-500/90';
+  
+  // Use thumbnail for cards if available, fallback to cover image
+  const cardImageUrl = item.thumbnailUrl || item.coverImageUrl;
 
   return (
     <Link href={href}>
       <div className="bg-white/70 dark:bg-[#171b22] rounded-[20px] w-[180px] flex-shrink-0 hover:shadow-md dark:hover:shadow-none transition-shadow cursor-pointer overflow-hidden">
         {/* Cover Image */}
         <div className="relative h-[100px] w-full bg-earth-100 dark:bg-[#11141b]">
-          {item.coverImageUrl ? (
+          {cardImageUrl ? (
             <Image
-              src={item.coverImageUrl}
+              src={cardImageUrl}
               alt={item.title}
               fill
               className="object-cover"

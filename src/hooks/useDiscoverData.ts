@@ -321,6 +321,7 @@ export function useDiscoverData() {
         title: a.title,
         snippet: a.content?.substring(0, 100) + '...' || '',
         coverImageUrl: a.coverImageUrl,
+        thumbnailUrl: a.thumbnailUrl,
         articleType: a.articleType,
       }));
     trendingItems.push(...trendingArticles);

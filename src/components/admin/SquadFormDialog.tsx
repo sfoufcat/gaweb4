@@ -615,14 +615,18 @@ export function SquadFormDialog({
           </div>
 
           {/* Squad Picture */}
-          <MediaUpload
-            value={avatarUrl}
-            onChange={setAvatarUrl}
-            folder="squads"
-            type="image"
-            label="Squad Picture"
-            uploadEndpoint={uploadEndpoint}
-          />
+          <div>
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+              Squad Picture <span className="text-text-muted text-xs font-normal">(512 x 512px)</span>
+            </label>
+            <MediaUpload
+              value={avatarUrl}
+              onChange={setAvatarUrl}
+              folder="squads"
+              type="image"
+              uploadEndpoint={uploadEndpoint}
+            />
+          </div>
 
           {/* Coach Selection */}
           <div>

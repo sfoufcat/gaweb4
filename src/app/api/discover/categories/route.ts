@@ -1,21 +1,42 @@
 /**
  * API Route: Get Discover Categories
  * 
- * GET /api/discover/categories - Get all categories
+ * GET /api/discover/categories - Get coach-defined categories for the organization
+ * 
+ * Categories are created by coaches via the article creation form and stored
+ * in org_settings.articleCategories. This replaces the old hardcoded
+ * discoverCategories collection.
  */
 
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
 
 export async function GET() {
   try {
-    const categoriesSnapshot = await adminDb
-      .collection('discoverCategories')
+    // Get the user's organization ID
+    const organizationId = await getEffectiveOrgId();
+
+    if (!organizationId) {
+      // No organization context - return empty categories
+      return NextResponse.json({ categories: [] });
+    }
+
+    // Fetch articleCategories from org_settings
+    const settingsDoc = await adminDb
+      .collection('org_settings')
+      .doc(organizationId)
       .get();
 
-    const categories = categoriesSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
+    const articleCategories: string[] = settingsDoc.exists
+      ? (settingsDoc.data()?.articleCategories || [])
+      : [];
+
+    // Transform to DiscoverCategory format
+    // Use a slugified version of the name as the ID for URL-friendliness
+    const categories = articleCategories.map((name: string) => ({
+      id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+      name,
     }));
 
     return NextResponse.json({ categories });

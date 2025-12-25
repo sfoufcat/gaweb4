@@ -50,6 +50,7 @@ function ArticleFormDialog({
     title: '',
     content: '',
     coverImageUrl: '',
+    thumbnailUrl: '',
     authorId: null as string | null,
     authorName: '',
     authorTitle: '',
@@ -72,6 +73,7 @@ function ArticleFormDialog({
         title: article.title || '',
         content: article.content || '',
         coverImageUrl: article.coverImageUrl || '',
+        thumbnailUrl: article.thumbnailUrl || '',
         authorId: article.authorId || null,
         authorName: article.authorName || '',
         authorTitle: article.authorTitle || '',
@@ -87,6 +89,7 @@ function ArticleFormDialog({
         title: '',
         content: '',
         coverImageUrl: '',
+        thumbnailUrl: '',
         authorId: null,
         authorName: '',
         authorTitle: '',
@@ -106,6 +109,7 @@ function ArticleFormDialog({
     try {
       const payload = {
         ...formData,
+        thumbnailUrl: formData.thumbnailUrl || null,
         publishedAt: formData.publishedAt ? new Date(formData.publishedAt).toISOString() : new Date().toISOString(),
         programIds: formData.programIds,
       };
@@ -174,15 +178,33 @@ function ArticleFormDialog({
             />
 
             {/* Cover Image */}
-            <MediaUpload
-              value={formData.coverImageUrl}
-              onChange={(url) => setFormData(prev => ({ ...prev, coverImageUrl: url }))}
-              folder="articles"
-              type="image"
-              label="Cover Image"
-              required
-              uploadEndpoint={uploadEndpoint}
-            />
+            <div>
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+                Cover Image <span className="text-text-muted text-xs font-normal">(1600 x 800px)</span> *
+              </label>
+              <MediaUpload
+                value={formData.coverImageUrl}
+                onChange={(url) => setFormData(prev => ({ ...prev, coverImageUrl: url }))}
+                folder="articles"
+                type="image"
+                required
+                uploadEndpoint={uploadEndpoint}
+              />
+            </div>
+
+            {/* Thumbnail */}
+            <div>
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+                Thumbnail <span className="text-text-muted text-xs font-normal">(1200 x 675px)</span>
+              </label>
+              <MediaUpload
+                value={formData.thumbnailUrl}
+                onChange={(url) => setFormData(prev => ({ ...prev, thumbnailUrl: url }))}
+                folder="articles"
+                type="image"
+                uploadEndpoint={uploadEndpoint}
+              />
+            </div>
 
             {/* Author Selection */}
             <div>

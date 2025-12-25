@@ -54,6 +54,8 @@ export type DiscoverArticle = {
   id: string;
   title: string;
   coverImageUrl: string;
+  /** Optional thumbnail for cards/lists (16:9). Falls back to coverImageUrl if not set. */
+  thumbnailUrl?: string;
   content: string;       // rich text / markdown
   /** User ID of the author - used for dynamic bio/avatar lookup */
   authorId?: string;
@@ -134,6 +136,7 @@ export type TrendingItem = {
   title: string;
   snippet: string;
   coverImageUrl?: string;
+  thumbnailUrl?: string; // Optional thumbnail for cards (16:9)
   articleType?: ArticleType; // Only for articles
 };
 

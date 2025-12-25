@@ -95,7 +95,7 @@ export async function PATCH(
     // Note: authorId is new for dynamic bio lookup
     // articleType and track are deprecated but still supported for backward compatibility
     const allowedFields = [
-      'title', 'coverImageUrl', 'content', 
+      'title', 'coverImageUrl', 'thumbnailUrl', 'content', 
       'authorId', 'authorName', 'authorTitle', 'authorAvatarUrl', 'authorBio',
       'publishedAt', 'category', 'articleType', 'track', 'programIds', 
       'featured', 'trending'

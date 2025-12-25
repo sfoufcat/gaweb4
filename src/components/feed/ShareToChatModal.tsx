@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { useChatContext } from 'stream-chat-react';
+import { useStreamChatClient } from '@/contexts/StreamChatContext';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 import { useSquad } from '@/hooks/useSquad';
 import { useCoachingData } from '@/hooks/useCoachingData';
@@ -25,7 +25,7 @@ interface ShareToChatModalProps {
  * - Allows selecting one and sending the post link
  */
 export function ShareToChatModal({ postUrl, onClose, onSuccess }: ShareToChatModalProps) {
-  const { client } = useChatContext();
+  const { client } = useStreamChatClient();
   const { colors, isDefault } = useBrandingValues();
   
   // Get squad and coaching info to find relevant channels

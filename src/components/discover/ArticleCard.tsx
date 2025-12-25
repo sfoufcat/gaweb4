@@ -33,6 +33,8 @@ function getArticleTypeBadgeColor(articleType?: string): string {
 export function ArticleCard({ article, variant = 'horizontal' }: ArticleCardProps) {
   const badgeLabel = getArticleTypeLabel(article.articleType);
   const badgeColor = getArticleTypeBadgeColor(article.articleType);
+  // Use thumbnail for cards if available, fallback to cover image
+  const cardImageUrl = article.thumbnailUrl || article.coverImageUrl;
 
   if (variant === 'grid') {
     return (
@@ -40,9 +42,9 @@ export function ArticleCard({ article, variant = 'horizontal' }: ArticleCardProp
         <div className="bg-white/70 dark:bg-[#171b22] rounded-[20px] overflow-hidden hover:shadow-md dark:hover:shadow-black/30 transition-shadow cursor-pointer h-full flex flex-col">
           {/* Cover Image */}
           <div className="relative h-[140px] w-full bg-earth-100 dark:bg-[#262b35] flex-shrink-0">
-            {article.coverImageUrl ? (
+            {cardImageUrl ? (
               <Image
-                src={article.coverImageUrl}
+                src={cardImageUrl}
                 alt={article.title}
                 fill
                 className="object-cover"
@@ -87,9 +89,9 @@ export function ArticleCard({ article, variant = 'horizontal' }: ArticleCardProp
       <div className="bg-white/70 dark:bg-[#171b22] rounded-[20px] w-[220px] flex-shrink-0 overflow-hidden hover:shadow-md dark:hover:shadow-black/30 transition-shadow cursor-pointer">
         {/* Cover Image */}
         <div className="relative h-[120px] w-full bg-earth-100 dark:bg-[#262b35]">
-          {article.coverImageUrl ? (
+          {cardImageUrl ? (
             <Image
-              src={article.coverImageUrl}
+              src={cardImageUrl}
               alt={article.title}
               fill
               className="object-cover"
