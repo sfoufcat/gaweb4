@@ -151,12 +151,17 @@ export function ProfileEditForm({ initialData, clerkUser, onSave, onCancel, from
       // This ensures chat/feed shows the updated name and/or profile image immediately
       if (user) {
         try {
+          // Reload user to ensure we have the absolute latest data from Clerk
+          await user.reload();
+          
           console.log('[PROFILE] Syncing profile to Stream/Firebase...');
           await fetch('/api/user/sync-stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               name: formData.name,
+              firstName: user.firstName,
+              lastName: user.lastName,
               imageUrl: user.imageUrl,
             }),
           });

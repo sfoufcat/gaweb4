@@ -9,9 +9,12 @@ import { adminDb } from '@/lib/firebase-admin';
  * Explicitly syncs the current user's profile to Stream Chat AND Firebase.
  * Called after profile updates to ensure chat/feed shows the latest data.
  * 
- * This handles the race condition where Clerk's setProfileImage()
- * returns before the imageUrl is fully updated on their backend.
- * By calling this AFTER user.reload(), we ensure Stream and Firebase get the correct URL.
+ * This handles race conditions where:
+ * 1. Clerk's setProfileImage() returns before imageUrl is ready
+ * 2. Clerk's user.update() returns before firstName/lastName propagate
+ * 3. Clerk webhook is delayed
+ * 
+ * By calling this AFTER user.reload(), we ensure Stream and Firebase get the correct data.
  */
 export async function POST(req: Request) {
   try {
@@ -20,8 +23,8 @@ export async function POST(req: Request) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    // Parse optional body data (may include pre-fetched imageUrl from client)
-    let bodyData: { name?: string; imageUrl?: string } = {};
+    // Parse body data - should include name and imageUrl from freshly reloaded Clerk user
+    let bodyData: { name?: string; imageUrl?: string; firstName?: string; lastName?: string } = {};
     try {
       bodyData = await req.json();
     } catch {
@@ -32,37 +35,65 @@ export async function POST(req: Request) {
     const clerk = await clerkClient();
     const clerkUser = await clerk.users.getUser(userId);
     
-    // Get Firebase user data for the display name
+    // Get Firebase user data
     const userRef = adminDb.collection('users').doc(userId);
     const userDoc = await userRef.get();
     const firebaseUser = userDoc.data();
 
-    // Build display name: prefer body name, then Firebase name, then Clerk name
+    // Parse the display name into firstName/lastName
+    // Prefer body data (from client's freshly updated Clerk user), then server Clerk data
+    let firstName = bodyData.firstName || clerkUser.firstName || '';
+    let lastName = bodyData.lastName || clerkUser.lastName || '';
+    
+    // If name was provided but not firstName/lastName, parse it
+    if (bodyData.name && !bodyData.firstName) {
+      const nameParts = bodyData.name.trim().split(/\s+/);
+      firstName = nameParts[0] || firstName;
+      lastName = nameParts.slice(1).join(' ') || lastName;
+    }
+
+    // Build display name
     const displayName = bodyData.name 
+      || `${firstName} ${lastName}`.trim() 
       || firebaseUser?.name 
-      || `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() 
       || 'User';
     
     // CRITICAL: Use the imageUrl from body if provided (freshly reloaded from client)
-    // The client calls user.reload() AFTER setProfileImage, so it has the latest URL
-    // Server-side clerkClient().users.getUser() might have stale data due to caching
     const imageUrl = bodyData.imageUrl || clerkUser.imageUrl || undefined;
 
     console.log('[SYNC_STREAM] Syncing user profile:', {
       userId,
       name: displayName,
+      firstName,
+      lastName,
       imageUrlFromBody: !!bodyData.imageUrl,
       imageUrl: imageUrl?.substring(0, 80),
     });
 
-    // Update Firebase with the new imageUrl
-    // This ensures the feed (which reads from Firebase) shows the correct image
+    // Update Firebase with ALL profile fields
+    // This ensures the feed (which reads firstName/lastName from Firebase) shows correct data
+    const firebaseUpdates: Record<string, unknown> = {
+      updatedAt: new Date().toISOString(),
+    };
+    
+    // Always update name fields to ensure feed shows correct author name
+    if (displayName && displayName !== firebaseUser?.name) {
+      firebaseUpdates.name = displayName;
+    }
+    if (firstName && firstName !== firebaseUser?.firstName) {
+      firebaseUpdates.firstName = firstName;
+    }
+    if (lastName && lastName !== firebaseUser?.lastName) {
+      firebaseUpdates.lastName = lastName;
+    }
     if (imageUrl && imageUrl !== firebaseUser?.imageUrl) {
-      await userRef.set({
-        imageUrl: imageUrl,
-        updatedAt: new Date().toISOString(),
-      }, { merge: true });
-      console.log('[SYNC_STREAM] Updated Firebase imageUrl');
+      firebaseUpdates.imageUrl = imageUrl;
+    }
+    
+    // Only update if there are changes
+    if (Object.keys(firebaseUpdates).length > 1) { // More than just updatedAt
+      await userRef.set(firebaseUpdates, { merge: true });
+      console.log('[SYNC_STREAM] Updated Firebase:', Object.keys(firebaseUpdates));
     }
 
     // Sync to Stream Chat
@@ -79,8 +110,9 @@ export async function POST(req: Request) {
       success: true,
       synced: {
         name: displayName,
+        firstName,
+        lastName,
         hasImage: !!imageUrl,
-        firebaseUpdated: imageUrl !== firebaseUser?.imageUrl,
       }
     });
   } catch (error) {

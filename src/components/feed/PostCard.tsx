@@ -65,6 +65,10 @@ export function PostCard({
 
   // Format timestamp
   const timeAgo = formatDistanceToNow(new Date(post.createdAt), { addSuffix: true });
+  
+  // Check if post was actually edited (updatedAt is significantly different from createdAt)
+  const wasEdited = post.updatedAt && post.createdAt && 
+    new Date(post.updatedAt).getTime() - new Date(post.createdAt).getTime() > 60000; // More than 1 minute difference
 
   // Handle like
   const handleLike = useCallback(async () => {
@@ -210,7 +214,7 @@ export function PostCard({
             </button>
             <p className="text-[13px] text-[#8a857f] dark:text-[#787470]">
               {timeAgo}
-              {post.updatedAt && (
+              {wasEdited && (
                 <span className="ml-1 italic"> • edited</span>
               )}
             </p>

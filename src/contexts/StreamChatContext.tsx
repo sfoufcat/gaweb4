@@ -127,15 +127,8 @@ export function StreamChatProvider({ children }: StreamChatProviderProps) {
             throw new Error('Invalid token response');
           }
 
-          // First, upsert the user to ensure Stream has the latest profile
-          // This prevents the "flickering" where old cached data overwrites new data
-          await chatClient.upsertUser({
-            id: userId,
-            name: expectedName,
-            image: expectedImage,
-          });
-
           // Connect user with profile data
+          // The connectUser call sends our profile data to Stream
           await chatClient.connectUser(
             {
               id: userId,
@@ -144,6 +137,14 @@ export function StreamChatProvider({ children }: StreamChatProviderProps) {
             },
             data.token
           );
+          
+          // After connecting, upsert the user to ensure Stream's server-side
+          // user record has the latest profile (prevents flickering)
+          await chatClient.upsertUser({
+            id: userId,
+            name: expectedName,
+            image: expectedImage,
+          });
           
           // Fire-and-forget: Join global channels in background
           // This ensures user is a member of global channels without blocking
