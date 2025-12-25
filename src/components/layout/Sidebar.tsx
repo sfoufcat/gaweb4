@@ -365,7 +365,7 @@ export function Sidebar() {
                 }
               `}
               style={isActive(item.path) ? {
-                color: accentLightIsDark ? '#1a1a1a' : '#1a1a1a',
+                color: theme === 'dark' ? '#f5f5f8' : '#1a1a1a',
               } : undefined}
             >
               <span 

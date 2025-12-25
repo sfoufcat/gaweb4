@@ -14,7 +14,7 @@ import type { Squad, SquadMember, SquadStats, ClerkPublicMetadata } from '@/type
  * - admin/super_admin: Can access any squad
  * 
  * Returns real alignment data based on UserAlignment docs.
- * NOTE: Coach is EXCLUDED from all alignment calculations - only regular members count.
+ * NOTE: Coach and super_coach are EXCLUDED from all alignment calculations - only regular members count.
  */
 export async function GET(
   request: Request,

@@ -106,6 +106,21 @@ export function StreamChatProvider({ children }: StreamChatProviderProps) {
           fetch('/api/chat/join-global-channels', { method: 'POST' }).catch(() => {
             // Silently ignore - user might already be a member
           });
+        } else {
+          // Already connected - check if profile needs update
+          const currentUser = chatClient.user;
+          const expectedName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'User';
+          const expectedImage = userData.imageUrl;
+          
+          // Update Stream user if Clerk profile has changed
+          if (currentUser && (currentUser.name !== expectedName || currentUser.image !== expectedImage)) {
+            console.log('[StreamChatContext] Updating user profile in Stream...');
+            await chatClient.upsertUser({
+              id: userId,
+              name: expectedName,
+              image: expectedImage,
+            });
+          }
         }
 
         globalClient = chatClient;

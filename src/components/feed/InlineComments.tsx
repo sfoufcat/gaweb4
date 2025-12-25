@@ -142,7 +142,7 @@ export function InlineComments({
   // No comments yet - show input directly
   if (comments.length === 0 && !isLoading) {
     return (
-      <div className="px-4 pb-3">
+      <div className="px-4 pt-1 pb-3">
         <form onSubmit={handleSubmit} className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-full overflow-hidden bg-[#f5f3f0] dark:bg-[#262b35] flex-shrink-0">
             {user?.imageUrl ? (
@@ -165,7 +165,7 @@ export function InlineComments({
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Write a comment..."
-            className="flex-1 px-3 py-1.5 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] placeholder-[#8a857f] focus:outline-none focus:ring-1"
+            className="flex-1 px-3 py-1.5 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] placeholder-[#8a857f] focus:outline-none focus:ring-2 focus:ring-inset"
             style={{ '--tw-ring-color': accentColor } as React.CSSProperties}
           />
           <button
@@ -187,7 +187,7 @@ export function InlineComments({
   }
 
   return (
-    <div className="px-4 pb-3">
+    <div className="px-4 pt-1 pb-3">
       {/* View all comments link */}
       {hasMoreToShow && (
         <button
@@ -244,7 +244,7 @@ export function InlineComments({
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Write a comment..."
-            className="flex-1 px-3 py-1.5 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] placeholder-[#8a857f] focus:outline-none focus:ring-1"
+            className="flex-1 px-3 py-1.5 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] placeholder-[#8a857f] focus:outline-none focus:ring-2 focus:ring-inset"
             style={{ '--tw-ring-color': accentColor } as React.CSSProperties}
           />
           <button

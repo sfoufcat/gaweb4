@@ -10,6 +10,7 @@ import { useFeedStories, useCurrentUserHasStory } from '@/hooks/useFeedStories';
 import { useStoryViewTracking } from '@/hooks/useStoryViewTracking';
 import { FeedList } from '@/components/feed/FeedList';
 import { CreatePostModal } from '@/components/feed/CreatePostModal';
+import { EditPostModal } from '@/components/feed/EditPostModal';
 import { CreateStoryModal } from '@/components/feed/CreateStoryModal';
 import { ShareSheet } from '@/components/feed/ShareSheet';
 import { ReportModal } from '@/components/feed/ReportModal';
@@ -49,6 +50,7 @@ export default function FeedPage() {
 
   const [showCreatePostModal, setShowCreatePostModal] = useState(false);
   const [showCreateStoryModal, setShowCreateStoryModal] = useState(false);
+  const [editingPost, setEditingPost] = useState<FeedPost | null>(null);
   const [selectedPostForShare, setSelectedPostForShare] = useState<string | null>(null);
   const [selectedPostForReport, setSelectedPostForReport] = useState<string | null>(null);
   const [selectedStoryUserId, setSelectedStoryUserId] = useState<string | null>(null);
@@ -106,6 +108,18 @@ export default function FeedPage() {
     setSelectedPostForReport(postId);
   }, []);
 
+  // Handle edit
+  const handleEdit = useCallback((post: FeedPost) => {
+    setEditingPost(post);
+  }, []);
+
+  // Handle post updated
+  const handlePostUpdated = useCallback((updatedPost: FeedPost) => {
+    // Update post in the feed (will trigger re-render)
+    refresh();
+    setEditingPost(null);
+  }, [refresh]);
+
   // Handle delete
   const handleDelete = useCallback((postId: string) => {
     removePost(postId);
@@ -160,8 +174,8 @@ export default function FeedPage() {
       </section>
 
       {/* Stories Row */}
-      <section className="px-4 py-3 overflow-hidden">
-        <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+      <section className="px-4 pt-4 pb-3">
+        <div className="flex gap-3 overflow-x-auto pb-2 pt-1 -mx-4 px-4 scrollbar-hide">
           <StoriesRow 
             storyUsers={storyUsers}
             isLoading={isLoadingSquad || isLoadingStories}
@@ -231,6 +245,7 @@ export default function FeedPage() {
                 onBookmark={optimisticBookmark}
                 onShare={handleShare}
                 onDelete={handleDelete}
+                onEdit={handleEdit}
                 onReport={handleReport}
                 onCommentAdded={incrementCommentCount}
                 onCreatePost={() => setShowCreatePostModal(true)}
@@ -284,6 +299,16 @@ export default function FeedPage() {
         <ReportModal
           postId={selectedPostForReport}
           onClose={() => setSelectedPostForReport(null)}
+        />
+      )}
+
+      {/* Edit post modal */}
+      {editingPost && (
+        <EditPostModal
+          isOpen={!!editingPost}
+          post={editingPost}
+          onClose={() => setEditingPost(null)}
+          onPostUpdated={handlePostUpdated}
         />
       )}
 

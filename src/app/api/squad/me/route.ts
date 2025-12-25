@@ -41,7 +41,7 @@ import type { Squad, SquadMember, SquadStats } from '@/types';
  * 
  * For expensive stats (percentile, contribution history), use /api/squad/stats endpoint.
  * 
- * NOTE: Coach is EXCLUDED from all alignment calculations - only regular members count.
+ * NOTE: Coach and super_coach are EXCLUDED from all alignment calculations - only regular members count.
  */
 
 interface SquadData {

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import { createStory, getUserStories, setupStreamUser } from '@/lib/stream-feeds';
 import { adminDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * GET /api/stories
  * Get stories for a user (or current user if no userId specified)
- * Returns both user-posted stories AND auto-generated story data (tasks, goals, check-ins)
+ * Returns both user-posted stories (from Firestore) AND auto-generated story data (tasks, goals, check-ins)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -36,7 +36,10 @@ export async function GET(request: NextRequest) {
     const targetUserId = searchParams.get('userId') || currentUserId;
     const isOwnProfile = currentUserId === targetUserId;
 
-    // Get user-posted stories from Stream
+    // Get user-posted stories from Firestore (24hr TTL)
+    const now = new Date();
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    
     let stories: Array<{
       id: string;
       type: 'user_post';
@@ -49,23 +52,30 @@ export async function GET(request: NextRequest) {
     }> = [];
     
     try {
-      const streamStories = await getUserStories(targetUserId);
-      stories = streamStories.map((activity) => {
-        const activityData = activity as Record<string, unknown>;
+      const storiesSnapshot = await adminDb
+        .collection('feed_stories')
+        .where('authorId', '==', targetUserId)
+        .where('organizationId', '==', organizationId)
+        .where('createdAt', '>=', twentyFourHoursAgo)
+        .orderBy('createdAt', 'desc')
+        .limit(20)
+        .get();
+      
+      stories = storiesSnapshot.docs.map(doc => {
+        const data = doc.data();
         return {
-          id: activityData.id as string,
+          id: doc.id,
           type: 'user_post' as const,
-          authorId: activityData.actor as string,
-          imageUrl: activityData.imageUrl as string | undefined,
-          videoUrl: activityData.videoUrl as string | undefined,
-          caption: activityData.caption as string | undefined,
-          expiresAt: activityData.expiresAt as string,
-          createdAt: activityData.time as string,
+          authorId: data.authorId,
+          imageUrl: data.imageUrl,
+          videoUrl: data.videoUrl,
+          caption: data.caption,
+          expiresAt: data.expiresAt?.toDate?.()?.toISOString() || data.expiresAt,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
         };
       });
-    } catch (streamError) {
-      // Stream might not be configured, continue with auto-generated stories
-      console.warn('[STORIES_GET] Stream error (continuing):', streamError);
+    } catch (firestoreError) {
+      console.warn('[STORIES_GET] Firestore error (continuing):', firestoreError);
     }
 
     // ===== FETCH AUTO-GENERATED STORY DATA FROM FIREBASE =====
@@ -108,10 +118,11 @@ export async function GET(request: NextRequest) {
     const hasDayClosed = !!(eveningCheckInData?.completedAt);
 
     // Check if weekly reflection is completed for current week
-    const now = new Date();
-    const day = now.getDay();
-    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(now.setDate(diff));
+    const nowDate = new Date();
+    const day = nowDate.getDay();
+    const diff = nowDate.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(nowDate);
+    monday.setDate(diff);
     const weekId = monday.toISOString().split('T')[0];
 
     const weeklyReflectionRef = adminDb
@@ -197,6 +208,7 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/stories
  * Create a new user-posted story (24hr ephemeral)
+ * Stories are stored in Firestore with automatic expiration
  */
 export async function POST(request: NextRequest) {
   try {
@@ -232,36 +244,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user data for Stream user setup
-    const userDoc = await adminDb.collection('users').doc(userId).get();
-    const userData = userDoc.data();
-    
-    if (userData) {
-      // Ensure user exists in Stream with profile data
-      await setupStreamUser(userId, {
-        name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'User',
-        profileImage: userData.avatarUrl || userData.imageUrl,
-      });
-    }
+    // Calculate expiry (24 hours from now)
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-    // Create the story
-    const result = await createStory(userId, organizationId, {
-      imageUrl,
-      videoUrl,
-      caption,
-    });
+    // Create story document in Firestore
+    const storyData = {
+      authorId: userId,
+      organizationId,
+      imageUrl: imageUrl || null,
+      videoUrl: videoUrl || null,
+      caption: caption || null,
+      createdAt: FieldValue.serverTimestamp(),
+      expiresAt,
+    };
+
+    const storyRef = await adminDb.collection('feed_stories').add(storyData);
 
     return NextResponse.json({
       success: true,
       story: {
-        id: result.id,
+        id: storyRef.id,
         type: 'user_post',
         authorId: userId,
         imageUrl,
         videoUrl,
         caption,
-        expiresAt: result.activity.expiresAt,
-        createdAt: result.activity.time,
+        expiresAt: expiresAt.toISOString(),
+        createdAt: now.toISOString(),
       },
     });
   } catch (error) {
@@ -272,4 +282,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

@@ -20,7 +20,7 @@ import { getStatsTabData, computeContributionHistory } from '@/lib/squad-alignme
  * This endpoint is designed to be called AFTER the initial page load
  * to avoid blocking the Squad tab display.
  * 
- * NOTE: Coach is EXCLUDED from all calculations - only regular members count.
+ * NOTE: Coach and super_coach are EXCLUDED from all calculations - only regular members count.
  */
 export async function GET(request: Request) {
   try {
@@ -117,6 +117,7 @@ export async function GET(request: Request) {
         squadId,
         limit,
         coachId,
+        null, // superCoachId - let the function fetch it
         offset,
         squadCreatedAt
       );

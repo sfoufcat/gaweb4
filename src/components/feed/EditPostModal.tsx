@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { useUser } from '@clerk/nextjs';
 import { useBrandingValues } from '@/contexts/BrandingContext';
@@ -8,64 +8,82 @@ import { DiscardConfirmationModal } from './ConfirmationModal';
 import { RichTextEditor } from '@/components/editor';
 import type { FeedPost } from '@/hooks/useFeed';
 
-interface CreatePostModalProps {
+interface EditPostModalProps {
   isOpen: boolean;
+  post: FeedPost;
   onClose: () => void;
-  onPostCreated: (post: FeedPost) => void;
+  onPostUpdated: (post: FeedPost) => void;
 }
 
 const MAX_IMAGES = 4;
 
-export function CreatePostModal({
+export function EditPostModal({
   isOpen,
+  post,
   onClose,
-  onPostCreated,
-}: CreatePostModalProps) {
+  onPostUpdated,
+}: EditPostModalProps) {
   const { user } = useUser();
   const { colors, isDefault } = useBrandingValues();
   const [content, setContent] = useState<{ json: object; html: string; text: string } | null>(null);
-  const [images, setImages] = useState<string[]>([]);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [images, setImages] = useState<string[]>(post.images || []);
+  const [videoUrl, setVideoUrl] = useState<string | null>(post.videoUrl || null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [addToStory, setAddToStory] = useState(false);
   const [showDiscardModal, setShowDiscardModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [editorKey, setEditorKey] = useState(0); // Force editor remount
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const accentColor = isDefault ? '#a07855' : colors.accentLight;
+
+  // Track if content has changed
+  const originalContent = useRef({
+    text: post.text || '',
+    html: post.contentHtml || '',
+    images: post.images || [],
+    videoUrl: post.videoUrl || null,
+  });
+
+  const hasChanges = 
+    (content?.text || '') !== originalContent.current.text ||
+    JSON.stringify(images) !== JSON.stringify(originalContent.current.images) ||
+    videoUrl !== originalContent.current.videoUrl;
 
   const hasContent = (content?.text?.trim()) || images.length > 0 || videoUrl;
   const canAddImage = images.length < MAX_IMAGES && !videoUrl;
   const canAddVideo = images.length === 0 && !videoUrl;
 
-  // Reset form
-  const resetForm = useCallback(() => {
-    setContent(null);
-    setImages([]);
-    setVideoUrl(null);
-    setAddToStory(false);
-    setIsUploading(false);
-    setIsSubmitting(false);
-    setErrorMessage(null);
-    setShowDiscardModal(false);
-  }, []);
+  // Reset form when post changes
+  useEffect(() => {
+    if (isOpen) {
+      setImages(post.images || []);
+      setVideoUrl(post.videoUrl || null);
+      setContent(null); // Will be set by editor
+      setEditorKey(prev => prev + 1); // Force editor remount with new content
+      originalContent.current = {
+        text: post.text || '',
+        html: post.contentHtml || '',
+        images: post.images || [],
+        videoUrl: post.videoUrl || null,
+      };
+    }
+  }, [isOpen, post]);
 
-  // Handle close - show discard modal if there's content
+  // Handle close - show discard modal if there are changes
   const handleClose = useCallback(() => {
-    if (hasContent) {
+    if (hasChanges) {
       setShowDiscardModal(true);
       return;
     }
-    resetForm();
     onClose();
-  }, [hasContent, resetForm, onClose]);
+  }, [hasChanges, onClose]);
 
   // Confirm discard
   const handleConfirmDiscard = useCallback(() => {
-    resetForm();
+    setShowDiscardModal(false);
     onClose();
-  }, [resetForm, onClose]);
+  }, [onClose]);
 
   // Handle image upload for rich text editor
   const handleUploadImage = useCallback(async (file: File): Promise<string> => {
@@ -85,7 +103,7 @@ export function CreatePostModal({
     return data.url;
   }, []);
 
-  // Handle file selection for attachments
+  // Handle file selection
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -101,6 +119,7 @@ export function CreatePostModal({
       const formData = new FormData();
       formData.append('file', file);
 
+      // Upload to file storage
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
@@ -148,54 +167,55 @@ export function CreatePostModal({
 
   // Handle submit
   const handleSubmit = useCallback(async () => {
-    if (!hasContent || isSubmitting) return;
+    if (!hasContent || isSubmitting || !hasChanges) return;
 
     setIsSubmitting(true);
     setErrorMessage(null);
 
     try {
-      const response = await fetch('/api/feed', {
-        method: 'POST',
+      const response = await fetch(`/api/feed/${post.id}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: content?.text?.trim() || undefined,
           content: content?.json || undefined,
           contentHtml: content?.html || undefined,
-          images: images.length > 0 ? images : undefined,
+          images: images.length > 0 ? images : [],
           videoUrl: videoUrl || undefined,
-          addToStory,
         }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to create post');
+        throw new Error(error.error || 'Failed to update post');
       }
 
       const data = await response.json();
 
-      // Call callback with new post
-      onPostCreated({
-        ...data.post,
-        author: {
-          id: user?.id,
-          firstName: user?.firstName,
-          lastName: user?.lastName,
-          imageUrl: user?.imageUrl,
-        },
+      // Call callback with updated post
+      onPostUpdated({
+        ...post,
+        text: data.post.text,
+        content: data.post.content,
+        contentHtml: data.post.contentHtml,
+        images: data.post.images,
+        videoUrl: data.post.videoUrl,
+        updatedAt: data.post.updatedAt,
       });
 
-      resetForm();
       onClose();
     } catch (error) {
       console.error('Submit error:', error);
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to create post');
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to update post');
     } finally {
       setIsSubmitting(false);
     }
-  }, [hasContent, isSubmitting, content, images, videoUrl, addToStory, onPostCreated, user, resetForm, onClose]);
+  }, [hasContent, isSubmitting, hasChanges, post, content, images, videoUrl, onPostUpdated, onClose]);
 
   if (!isOpen) return null;
+
+  // Initial content for editor (use HTML if available, otherwise plain text)
+  const initialEditorContent = post.contentHtml || post.text || '';
 
   return (
     <>
@@ -220,18 +240,18 @@ export function CreatePostModal({
             Cancel
           </button>
           <h2 className="font-semibold text-[16px] text-[#1a1a1a] dark:text-[#faf8f6]">
-            Create Post
+            Edit Post
           </h2>
           <button
             onClick={handleSubmit}
-            disabled={!hasContent || isSubmitting}
+            disabled={!hasContent || isSubmitting || !hasChanges}
             className="px-4 py-1.5 rounded-full text-[14px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
-              backgroundColor: hasContent ? accentColor : '#e8e4df',
-              color: hasContent ? '#fff' : '#8a857f',
+              backgroundColor: hasChanges && hasContent ? accentColor : '#e8e4df',
+              color: hasChanges && hasContent ? '#fff' : '#8a857f',
             }}
           >
-            {isSubmitting ? 'Posting...' : 'Post'}
+            {isSubmitting ? 'Saving...' : 'Save'}
           </button>
         </div>
 
@@ -258,11 +278,14 @@ export function CreatePostModal({
               <p className="font-semibold text-[15px] text-[#1a1a1a] dark:text-[#faf8f6]">
                 {user?.firstName} {user?.lastName}
               </p>
+              <p className="text-[12px] text-[#8a857f]">Editing post</p>
             </div>
           </div>
 
           {/* Rich Text Editor */}
           <RichTextEditor
+            key={editorKey}
+            initialContent={initialEditorContent}
             placeholder="What's on your mind?"
             onChange={handleContentChange}
             onUploadImage={handleUploadImage}
@@ -272,7 +295,7 @@ export function CreatePostModal({
             maxHeight="300px"
           />
 
-          {/* Image preview (attachments) */}
+          {/* Image preview */}
           {images.length > 0 && (
             <div className={`grid gap-2 mt-4 ${
               images.length === 1 ? 'grid-cols-1' :
@@ -348,39 +371,9 @@ export function CreatePostModal({
               </div>
             </div>
           )}
-
-          {/* Add to story toggle */}
-          <label className="flex items-center gap-3 p-3 mt-4 rounded-xl bg-[#f5f3f0] dark:bg-[#1a1f2a] cursor-pointer">
-            <input
-              type="checkbox"
-              checked={addToStory}
-              onChange={(e) => setAddToStory(e.target.checked)}
-              className="sr-only"
-            />
-            <div
-              className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${
-                addToStory ? '' : 'border-2 border-[#d1ccc6] dark:border-[#3a3f4a]'
-              }`}
-              style={addToStory ? { backgroundColor: accentColor } : undefined}
-            >
-              {addToStory && (
-                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              )}
-            </div>
-            <div>
-              <p className="text-[14px] font-medium text-[#1a1a1a] dark:text-[#faf8f6]">
-                Add to your Story
-              </p>
-              <p className="text-[12px] text-[#8a857f]">
-                Post will also appear as a 24-hour story
-              </p>
-            </div>
-          </label>
         </div>
 
-        {/* Footer - Media buttons (for attachments separate from inline images) */}
+        {/* Footer - Media buttons */}
         <div className="p-4 border-t border-[#e8e4df] dark:border-[#262b35]">
           <div className="flex items-center gap-2">
             {/* Hidden file input */}
@@ -392,7 +385,7 @@ export function CreatePostModal({
               className="hidden"
             />
 
-            {/* Add attachment button */}
+            {/* Add image button */}
             <button
               onClick={() => canAddImage && fileInputRef.current?.click()}
               disabled={!canAddImage || isUploading}
@@ -401,7 +394,7 @@ export function CreatePostModal({
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              Attach Photo
+              Photo
             </button>
 
             {/* Add video button */}
@@ -430,7 +423,7 @@ export function CreatePostModal({
         isOpen={showDiscardModal}
         onClose={() => setShowDiscardModal(false)}
         onConfirm={handleConfirmDiscard}
-        itemName="post"
+        itemName="changes"
       />
     </>
   );

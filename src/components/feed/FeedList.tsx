@@ -16,6 +16,7 @@ interface FeedListProps {
   onBookmark: (postId: string, isBookmarked: boolean) => void;
   onShare: (postId: string) => void;
   onDelete: (postId: string) => void;
+  onEdit?: (post: FeedPost) => void;
   onReport: (postId: string) => void;
   onCommentAdded?: (postId: string) => void;
   onCreatePost?: () => void;
@@ -119,6 +120,7 @@ export function FeedList({
   onBookmark,
   onShare,
   onDelete,
+  onEdit,
   onReport,
   onCommentAdded,
   onCreatePost,
@@ -181,6 +183,7 @@ export function FeedList({
             onBookmark={onBookmark}
             onShare={onShare}
             onDelete={onDelete}
+            onEdit={onEdit}
             onReport={onReport}
             onCommentAdded={onCommentAdded}
           />

@@ -10,6 +10,7 @@ import { useBrandingValues } from '@/contexts/BrandingContext';
 import { DeleteConfirmationModal } from './ConfirmationModal';
 import { InlineComments } from './InlineComments';
 import { SIDEBAR_BOOKMARKS_KEY } from './FeedSidebar';
+import { RichTextPreview } from '@/components/editor';
 import type { FeedPost } from '@/hooks/useFeed';
 import { getProfileUrl } from '@/lib/utils';
 
@@ -19,6 +20,7 @@ interface PostCardProps {
   onBookmark?: (postId: string, isBookmarked: boolean) => void;
   onShare?: (postId: string) => void;
   onDelete?: (postId: string) => void;
+  onEdit?: (post: FeedPost) => void;
   onReport?: (postId: string) => void;
   onCommentAdded?: (postId: string) => void;
 }
@@ -29,6 +31,7 @@ export function PostCard({
   onBookmark,
   onShare,
   onDelete,
+  onEdit,
   onReport,
   onCommentAdded,
 }: PostCardProps) {
@@ -130,6 +133,12 @@ export function PostCard({
     }
   }, [post.id, post.hasBookmarked, isBookmarking, onBookmark]);
 
+  // Handle edit
+  const handleEditClick = useCallback(() => {
+    setShowMenu(false);
+    onEdit?.(post);
+  }, [post, onEdit]);
+
   // Handle delete - show modal
   const handleDeleteClick = useCallback(() => {
     setShowMenu(false);
@@ -201,6 +210,9 @@ export function PostCard({
             </button>
             <p className="text-[13px] text-[#8a857f] dark:text-[#787470]">
               {timeAgo}
+              {post.updatedAt && (
+                <span className="ml-1 italic"> • edited</span>
+              )}
             </p>
           </div>
         </div>
@@ -227,15 +239,29 @@ export function PostCard({
               />
               <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-20 overflow-hidden">
                 {isOwnPost ? (
-                  <button
-                    onClick={handleDeleteClick}
-                    className="w-full px-4 py-3 text-left text-[14px] text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors flex items-center gap-2"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Delete post
-                  </button>
+                  <>
+                    {/* Edit button - only for own posts that aren't reposts */}
+                    {!post.isRepost && (
+                      <button
+                        onClick={handleEditClick}
+                        className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Edit post
+                      </button>
+                    )}
+                    <button
+                      onClick={handleDeleteClick}
+                      className="w-full px-4 py-3 text-left text-[14px] text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Delete post
+                    </button>
+                  </>
                 ) : (
                   <button
                     onClick={handleReport}
@@ -254,11 +280,18 @@ export function PostCard({
       </div>
 
       {/* Content */}
-      {post.text && (
+      {(post.contentHtml || post.text) && (
         <div className="px-4 pb-3">
-          <p className="text-[15px] text-[#1a1a1a] dark:text-[#faf8f6] whitespace-pre-wrap break-words leading-relaxed">
-            {post.text}
-          </p>
+          {post.contentHtml ? (
+            <RichTextPreview 
+              content={post.contentHtml}
+              className="text-[15px] text-[#1a1a1a] dark:text-[#faf8f6]"
+            />
+          ) : (
+            <p className="text-[15px] text-[#1a1a1a] dark:text-[#faf8f6] whitespace-pre-wrap break-words leading-relaxed">
+              {post.text}
+            </p>
+          )}
         </div>
       )}
 

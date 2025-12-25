@@ -21,9 +21,12 @@ export interface FeedPost {
   id: string;
   authorId: string;
   text?: string;
+  content?: object; // TipTap JSON content
+  contentHtml?: string; // Pre-rendered HTML
   images?: string[];
   videoUrl?: string;
   createdAt: string;
+  updatedAt?: string;
   likeCount: number;
   commentCount: number;
   repostCount: number;
@@ -31,6 +34,7 @@ export interface FeedPost {
   hasLiked?: boolean;
   hasBookmarked?: boolean;
   hasReposted?: boolean;
+  isRepost?: boolean;
   author?: FeedPostAuthor;
   // For reposts
   originalPostId?: string;
