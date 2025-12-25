@@ -11,7 +11,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
 import { clerkClient } from '@clerk/nextjs/server';
-import { getStreamServerClient } from '@/lib/stream';
+import { getStreamServerClient } from '@/lib/stream-server';
 import type { Program, ProgramDay, ProgramCohort, ProgramHabitTemplate, ProgramFeature, ProgramTestimonial, ProgramFAQ, Squad } from '@/types';
 
 export async function GET(

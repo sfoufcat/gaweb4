@@ -11,7 +11,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { isUserOrgAdmin } from '@/lib/clerk-organizations';
-import { getStreamServerClient } from '@/lib/stream';
+import { getStreamServerClient } from '@/lib/stream-server';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { ProgramEnrollment, Program, Squad, SquadMember } from '@/types';
 
