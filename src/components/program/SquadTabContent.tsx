@@ -286,7 +286,7 @@ export function SquadTabContent({ programId, squadId, onBack }: SquadTabContentP
                   Cancel
                 </Button>
                 <Button
-                  variant="destructive"
+                  variant="default"
                   onClick={handleLeaveCommunity}
                   disabled={isLeaving}
                   className="flex-1 bg-red-500 hover:bg-red-600 text-white"
