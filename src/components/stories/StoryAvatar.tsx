@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import { StoryPlayer, type StorySlide } from './StoryPlayer';
+import { useStoryViewTracking } from '@/hooks/useStoryViewTracking';
 import type { Task } from '@/types';
 import type { UserPostedStory } from '@/hooks/useUserStoryAvailability';
 
@@ -93,6 +94,13 @@ export function StoryAvatar({
   onClick,
 }: StoryAvatarProps) {
   const [showStoryPlayer, setShowStoryPlayer] = useState(false);
+  
+  // Story view tracking for resume functionality
+  const { 
+    markStoryAsViewed, 
+    markSlideAsViewed, 
+    getFirstUnviewedSlideIndex 
+  } = useStoryViewTracking();
 
   // Size configurations
   const sizeConfig = {
@@ -133,17 +141,30 @@ export function StoryAvatar({
   const config = sizeConfig[size];
   const userName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'User';
 
-  // Build story slides in CHRONOLOGICAL order (oldest first, newest last)
-  // This matches Instagram behavior and allows resuming where left off
-  // Order: Goal → Tasks → Day Closed → Week Closed → User Posts (oldest → newest)
-  const buildSlides = (): StorySlide[] => {
-    const slides: StorySlide[] = [];
+  // Helper to get week start (Monday) for goal timestamp
+  const getWeekStart = (): string => {
+    const nowDate = new Date();
+    const day = nowDate.getDay();
+    const diff = nowDate.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(nowDate);
+    monday.setDate(diff);
+    monday.setHours(0, 0, 0, 0);
+    return monday.toISOString();
+  };
 
-    // 1. Goal slide first (constant anchor - base context)
+  // Build story slides in CHRONOLOGICAL order (oldest first, newest last)
+  // All slides have timestamps and are sorted together
+  const buildSlides = (): StorySlide[] => {
+    const allSlides: StorySlide[] = [];
+    const now = new Date().toISOString();
+    const weekStart = getWeekStart();
+
+    // Goal slide - uses week start as base timestamp (shown early in the week)
     if (goal) {
-      slides.push({
+      allSlides.push({
         id: 'goal',
         type: 'goal',
+        timestamp: weekStart,
         data: {
           goalTitle: goal.title,
           targetDate: goal.targetDate,
@@ -152,25 +173,26 @@ export function StoryAvatar({
       });
     }
 
-    // 2. Tasks slide (daily work)
+    // Tasks slide - use current time since we don't have individual task timestamps here
     if (tasks.length > 0) {
-      slides.push({
+      allSlides.push({
         id: 'tasks',
         type: 'tasks',
+        timestamp: now,
         data: { tasks },
       });
     }
 
-    // 3. Day Closed slide (daily achievement)
+    // Day Closed slide
     if (hasDayClosed) {
-      // Compute completed tasks from tasks array if prop is empty (fallback for stale data)
       const actualCompletedTasks = completedTasks.length > 0 
         ? completedTasks 
         : tasks.filter(t => t.status === 'completed');
       
-      slides.push({
+      allSlides.push({
         id: 'dayClosed',
         type: 'dayClosed',
+        timestamp: now,
         data: {
           completedTasks: actualCompletedTasks,
           tasksCompleted: eveningCheckIn?.tasksCompleted || actualCompletedTasks.length,
@@ -179,11 +201,12 @@ export function StoryAvatar({
       });
     }
 
-    // 4. Week Closed slide (weekly achievement)
+    // Week Closed slide
     if (hasWeekClosed && weeklyReflection) {
-      slides.push({
+      allSlides.push({
         id: 'weekClosed',
         type: 'weekClosed',
+        timestamp: now,
         data: {
           progressChange: weeklyReflection.progressChange,
           publicFocus: weeklyReflection.publicFocus,
@@ -191,24 +214,26 @@ export function StoryAvatar({
       });
     }
 
-    // 5. User-posted stories LAST, in chronological order (oldest → newest)
-    userPostedStories
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-      .forEach((story) => {
-        slides.push({
-          id: story.id,
-          type: 'user_post',
-          data: {
-            imageUrl: story.imageUrl,
-            videoUrl: story.videoUrl,
-            caption: story.caption,
-            createdAt: story.createdAt,
-            expiresAt: story.expiresAt,
-          },
-        });
+    // User-posted stories with their createdAt as timestamp
+    userPostedStories.forEach((story) => {
+      allSlides.push({
+        id: story.id,
+        type: 'user_post',
+        timestamp: story.createdAt,
+        data: {
+          imageUrl: story.imageUrl,
+          videoUrl: story.videoUrl,
+          caption: story.caption,
+          createdAt: story.createdAt,
+          expiresAt: story.expiresAt,
+        },
       });
+    });
 
-    return slides;
+    // Sort all slides by timestamp (oldest first, newest last)
+    allSlides.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    return allSlides;
   };
 
   const handleClick = () => {
@@ -237,7 +262,31 @@ export function StoryAvatar({
     return hasDayClosed ? COLORS.brown : COLORS.green;
   };
 
-  const slides = buildSlides();
+  // Memoize slides to prevent unnecessary recalculations
+  const slides = useMemo(() => buildSlides(), [
+    goal, tasks, hasDayClosed, completedTasks, eveningCheckIn, 
+    hasWeekClosed, weeklyReflection, userPostedStories
+  ]);
+
+  // Calculate initial slide index (resume where user left off)
+  const initialSlideIndex = useMemo(() => {
+    if (!userId || slides.length === 0) return 0;
+    return getFirstUnviewedSlideIndex(userId, slides);
+  }, [userId, slides, getFirstUnviewedSlideIndex]);
+
+  // Handle slide viewed - mark in localStorage
+  const handleSlideViewed = useCallback((slideId: string) => {
+    if (!userId) return;
+    markSlideAsViewed(userId, slideId);
+  }, [userId, markSlideAsViewed]);
+
+  // Handle story complete - mark entire story as viewed
+  const handleStoryComplete = useCallback(() => {
+    if (userId && contentHash) {
+      markStoryAsViewed(userId, contentHash);
+    }
+    setShowStoryPlayer(false);
+  }, [userId, contentHash, markStoryAsViewed]);
 
   return (
     <>
@@ -298,13 +347,16 @@ export function StoryAvatar({
         )}
       </button>
 
-      {/* Story Player */}
+      {/* Story Player with resume functionality */}
       {hasStory && slides.length > 0 && (
         <StoryPlayer
           isOpen={showStoryPlayer}
           onClose={() => setShowStoryPlayer(false)}
           slides={slides}
           user={{ ...user, id: userId }}
+          initialSlideIndex={initialSlideIndex}
+          onSlideViewed={handleSlideViewed}
+          onStoryComplete={handleStoryComplete}
         />
       )}
     </>

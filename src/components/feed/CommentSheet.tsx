@@ -321,6 +321,17 @@ function CommentItem({
   const [showMenu, setShowMenu] = useState(false);
   const [editText, setEditText] = useState(comment.text);
   const editInputRef = useRef<HTMLInputElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Get menu position for fixed positioning (escapes overflow containers)
+  const getMenuPosition = () => {
+    if (!menuButtonRef.current) return {};
+    const rect = menuButtonRef.current.getBoundingClientRect();
+    return {
+      top: rect.bottom + 4,
+      right: window.innerWidth - rect.right,
+    };
+  };
 
   const authorName = comment.author
     ? `${comment.author.firstName || ''} ${comment.author.lastName || ''}`.trim() || 'User'
@@ -442,6 +453,7 @@ function CommentItem({
       {canModify && !isEditing && (
         <div className="relative">
           <button
+            ref={menuButtonRef}
             onClick={() => setShowMenu(!showMenu)}
             className="p-1 rounded-full opacity-0 group-hover:opacity-100 hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-all"
             disabled={isDeleting}
@@ -459,7 +471,10 @@ function CommentItem({
                 className="fixed inset-0 z-10"
                 onClick={() => setShowMenu(false)}
               />
-              <div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-20 overflow-hidden">
+              <div 
+                className="fixed w-32 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-20 overflow-hidden"
+                style={getMenuPosition()}
+              >
                 <button
                   onClick={() => {
                     setShowMenu(false);

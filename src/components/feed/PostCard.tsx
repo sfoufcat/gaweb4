@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
@@ -54,8 +54,19 @@ export function PostCard({
   const [imageError, setImageError] = useState<Record<string, boolean>>({});
   const [likeAnimating, setLikeAnimating] = useState(false);
   const [bookmarkAnimating, setBookmarkAnimating] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   const isOwnPost = user?.id === post.authorId;
+
+  // Get menu position for fixed positioning (escapes overflow containers)
+  const getMenuPosition = () => {
+    if (!menuButtonRef.current) return {};
+    const rect = menuButtonRef.current.getBoundingClientRect();
+    return {
+      top: rect.bottom + 4,
+      right: window.innerWidth - rect.right,
+    };
+  };
 
   // Get author display info
   const authorName = post.author 
@@ -233,6 +244,7 @@ export function PostCard({
         {/* Menu button */}
         <div className="relative">
           <button
+            ref={menuButtonRef}
             onClick={() => setShowMenu(!showMenu)}
             className="p-2 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
           >
@@ -250,7 +262,10 @@ export function PostCard({
                 className="fixed inset-0 z-10"
                 onClick={() => setShowMenu(false)}
               />
-              <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-20 overflow-hidden">
+              <div 
+                className="fixed w-48 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-20 overflow-hidden"
+                style={getMenuPosition()}
+              >
                 {isOwnPost ? (
                   <>
                     {/* Edit button - only for own posts that aren't reposts */}

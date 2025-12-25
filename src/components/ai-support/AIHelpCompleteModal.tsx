@@ -206,7 +206,7 @@ export function AIHelpCompleteModal({
               {/* Suggested New Title */}
               {hasNewTitle && (
                 <div className="px-6 py-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-                  <div className="flex items-start gap-3 p-4 bg-[#a07855]/15 dark:bg-[#b8896a]/20 border border-[#a07855]/25 dark:border-[#b8896a]/35 rounded-[16px]">
+                  <div className="flex items-start gap-3 p-4 bg-[#a07855]/20 dark:bg-[#b8896a]/25 rounded-[16px]">
                     <Edit3 className="w-5 h-5 text-[#a07855] dark:text-[#b8896a] flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <p className="font-sans text-[12px] text-[#a07855] dark:text-[#b8896a] font-medium mb-1">

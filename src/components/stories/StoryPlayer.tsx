@@ -18,6 +18,8 @@ export interface StorySlide {
   /** Unique identifier for this slide (used for view tracking) */
   id: string;
   type: 'tasks' | 'goal' | 'dayClosed' | 'weekClosed' | 'user_post';
+  /** Timestamp for chronological ordering (ISO string) */
+  timestamp: string;
   data: {
     tasks?: Task[];
     goalTitle?: string;

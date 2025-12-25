@@ -34,7 +34,7 @@ export default function FeedPage() {
   
   // Get squad data for stories - use squadId mode for instant loading (no waterfall)
   const { members: squadMembers, activeSquadId, isLoading: isLoadingSquad } = useSquad();
-  const { storyUsers, isLoading: isLoadingStories } = useFeedStories({ 
+  const { storyUsers, isLoading: isLoadingStories, refetch: refetchStories } = useFeedStories({ 
     squadId: activeSquadId,
     squadMembers, // Fallback for when squadId is not yet available
   });
@@ -134,10 +134,12 @@ export default function FeedPage() {
     removePost(postId);
   }, [removePost]);
 
-  // Handle story viewer close
+  // Handle story viewer close - also refetch stories to get fresh data
   const handleStoryClose = useCallback(() => {
     setSelectedStoryStartIndex(null);
-  }, []);
+    // Refetch stories to update cache after viewing
+    refetchStories();
+  }, [refetchStories]);
 
   // Handle back to feed
   const handleBackToFeed = useCallback(() => {
@@ -193,7 +195,25 @@ export default function FeedPage() {
               onCreateStory={() => setShowCreateStoryModal(true)}
               onViewStory={(userId) => {
                 // Find the index in the full queue (current user is at index 0)
-                const index = fullStoryQueue.findIndex(u => u.id === userId);
+                let index = fullStoryQueue.findIndex(u => u.id === userId);
+                
+                // Fallback: if user not found but is current user, use index 0
+                if (index === -1 && userId === user?.id) {
+                  index = 0;
+                }
+                
+                // Fallback: if user still not found, add them dynamically
+                // This can happen when SWR cache is stale
+                if (index === -1) {
+                  // Find the user in storyUsers
+                  const storyUser = storyUsers.find(u => u.id === userId);
+                  if (storyUser) {
+                    // User is in storyUsers but not fullStoryQueue - this is a bug, but let's handle it
+                    // Add them to the queue at their position
+                    index = storyUsers.findIndex(u => u.id === userId) + 1; // +1 for current user at 0
+                  }
+                }
+                
                 if (index !== -1) {
                   setSelectedStoryStartIndex(index);
                 }
