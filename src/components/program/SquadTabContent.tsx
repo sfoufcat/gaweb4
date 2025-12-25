@@ -62,6 +62,50 @@ export function SquadTabContent({ programId, squadId, onBack }: SquadTabContentP
     }
     return { squad: activeSquad, members: activeMembers };
   }, [squadId, squads, membersBySquad, activeSquad, activeMembers]);
+  
+  // State for leaving community
+  const [isLeaving, setIsLeaving] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  
+  // Check if this is an individual program community squad
+  // (has programId but no cohortId)
+  const isClientCommunity = squad?.programId && !squad?.cohortId;
+  
+  // Handle leaving the community
+  const handleLeaveCommunity = async () => {
+    if (!squad) return;
+    
+    try {
+      setIsLeaving(true);
+      
+      const response = await fetch('/api/squad/leave', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ squadId: squad.id }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to leave community');
+      }
+
+      // Refresh data and navigate back
+      await onRefetch();
+      setShowLeaveConfirm(false);
+      
+      // Navigate back to program view
+      if (onBack) {
+        onBack();
+      } else {
+        router.push('/program');
+      }
+    } catch (err) {
+      console.error('Error leaving community:', err);
+      alert(err instanceof Error ? err.message : 'Failed to leave community');
+    } finally {
+      setIsLeaving(false);
+    }
+  };
 
   // Loading state
   if (isLoading) {
@@ -223,6 +267,52 @@ export function SquadTabContent({ programId, squadId, onBack }: SquadTabContentP
         memberCount={members.length}
         onLeaveSquad={onRefetch}
       />
+      
+      {/* Leave Community Button - Only for individual program communities */}
+      {isClientCommunity && (
+        <div className="mt-6 pt-6 border-t border-[#e1ddd8] dark:border-[#262b35]">
+          {showLeaveConfirm ? (
+            <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 space-y-4">
+              <p className="text-sm text-red-700 dark:text-red-300 font-albert">
+                Are you sure you want to leave the community? You can rejoin later through your program settings.
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowLeaveConfirm(false)}
+                  disabled={isLeaving}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleLeaveCommunity}
+                  disabled={isLeaving}
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                >
+                  {isLeaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Leaving...
+                    </>
+                  ) : (
+                    'Leave Community'
+                  )}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowLeaveConfirm(true)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-colors font-albert text-sm"
+            >
+              <LogOut className="w-4 h-4" />
+              Leave Community
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
