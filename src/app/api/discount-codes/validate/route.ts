@@ -195,7 +195,7 @@ async function validateDiscountCode(
   }
 
   // Check max uses
-  if (code.maxUses !== null && code.useCount >= code.maxUses) {
+  if (code.maxUses != null && code.useCount >= code.maxUses) {
     return 'This discount code has reached its maximum uses';
   }
 

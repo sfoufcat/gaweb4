@@ -952,8 +952,13 @@ export interface Squad {
   cohortId?: string | null; // FK to program_cohorts collection
   capacity?: number; // Max members (overrides program's squadCapacity if set)
   // Pricing (for standalone squads with payment)
-  priceInCents?: number; // Squad join price (0 = free)
+  priceInCents?: number; // Squad join price (0 = free, one-time legacy)
   currency?: string; // Currency code (default 'usd')
+  // Subscription settings (standalone squads only)
+  subscriptionEnabled?: boolean; // If true, joining requires recurring subscription
+  stripePriceId?: string; // Stripe Price ID for recurring subscription
+  stripeProductId?: string; // Stripe Product ID for the subscription
+  billingInterval?: 'monthly' | 'quarterly' | 'yearly';
   // Auto-created squad info
   isAutoCreated?: boolean; // True if created automatically by enrollment system
   squadNumber?: number; // Sequential number within cohort (e.g., 1, 2, 3)
@@ -973,6 +978,10 @@ export interface SquadMember {
   firstName: string;
   lastName: string;
   imageUrl: string;
+  // Subscription info (for paid squads)
+  stripeSubscriptionId?: string; // User's subscription to this squad
+  subscriptionStatus?: 'active' | 'past_due' | 'canceled' | 'none';
+  subscriptionCurrentPeriodEnd?: string; // ISO timestamp
   // TODO: Real calculations will be implemented later
   alignmentScore?: number | null; // Placeholder
   streak?: number | null; // Placeholder
@@ -2614,6 +2623,63 @@ export type FeedReportResolution =
   | 'content_removed'
   | 'user_warned'
   | 'no_action';
+
+// =============================================================================
+// SQUAD ANALYTICS TYPES
+// =============================================================================
+
+export type SquadHealthStatus = 'thriving' | 'active' | 'inactive';
+
+/**
+ * Squad Analytics - Daily computed metrics for community health
+ * Stored in Firestore 'squad_analytics' collection
+ */
+export interface SquadAnalytics {
+  id: string;
+  squadId: string;
+  organizationId: string;
+  date: string; // YYYY-MM-DD
+  
+  // Member activity
+  totalMembers: number;
+  activeMembers: number; // Members with activity in last 7 days
+  activityRate: number; // activeMembers / totalMembers * 100
+  
+  // Engagement metrics
+  messageCount: number; // Chat messages in the period
+  taskCompletionRate: number; // 0-100
+  checkInCount: number; // Number of check-ins
+  avgAlignmentScore: number; // Average across active members
+  
+  // Health status (computed)
+  healthStatus: SquadHealthStatus;
+  
+  // Timestamp
+  computedAt: string;
+}
+
+/**
+ * Squad Analytics Summary - Aggregated view for coach dashboard
+ */
+export interface SquadAnalyticsSummary {
+  squadId: string;
+  squadName: string;
+  squadAvatarUrl?: string;
+  coachId?: string;
+  
+  // Current state
+  totalMembers: number;
+  activeMembers: number;
+  activityRate: number;
+  healthStatus: SquadHealthStatus;
+  
+  // Trend (comparing to previous period)
+  activityTrend: 'up' | 'down' | 'stable';
+  trendPercent: number; // Change in activity rate
+  
+  // Last activity
+  lastActivityDate?: string;
+}
 
 // =============================================================================
 // DISCOUNT CODE TYPES

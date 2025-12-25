@@ -83,6 +83,12 @@ export function SquadFormDialog({
   // Pricing state
   const [priceInCents, setPriceInCents] = useState<number | ''>('');
   
+  // Subscription state
+  const [subscriptionEnabled, setSubscriptionEnabled] = useState(false);
+  const [billingInterval, setBillingInterval] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
+  const [savingSubscription, setSavingSubscription] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+  
   // Grace period conversion state
   const [converting, setConverting] = useState(false);
   const [convertSuccess, setConvertSuccess] = useState(false);
@@ -129,6 +135,8 @@ export function SquadFormDialog({
       setInviteCode(squad.inviteCode || '');
       setCoachId(squad.coachId || '');
       setPriceInCents(squad.priceInCents || '');
+      setSubscriptionEnabled(squad.subscriptionEnabled || false);
+      setBillingInterval(squad.billingInterval || 'monthly');
     } else {
       setName('');
       setDescription('');
@@ -138,6 +146,8 @@ export function SquadFormDialog({
       setInviteCode('');
       setCoachId('');
       setPriceInCents('');
+      setSubscriptionEnabled(false);
+      setBillingInterval('monthly');
       setMembers([]);
     }
   }, [squad]);
@@ -370,6 +380,9 @@ export function SquadFormDialog({
           // Pricing
           priceInCents: priceInCents !== '' ? Number(priceInCents) : 0,
           currency: 'usd',
+          // Subscription settings (only for standalone squads)
+          subscriptionEnabled: subscriptionEnabled && priceInCents && priceInCents > 0,
+          billingInterval: subscriptionEnabled ? billingInterval : undefined,
         }),
       });
 
@@ -655,9 +668,68 @@ export function SquadFormDialog({
               />
             </div>
             <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
-              Set to 0 for free squads. Used in funnel payment flows.
+              Set to 0 for free squads. Used for one-time payments or subscription pricing.
             </p>
           </div>
+
+          {/* Subscription Settings - Only for standalone squads with price */}
+          {!squad?.programId && priceInCents && priceInCents > 0 && (
+            <div className="p-4 rounded-xl bg-[#faf8f6] dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35]">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h4 className="font-medium text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    Recurring Subscription
+                  </h4>
+                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                    Members pay automatically on a recurring basis
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSubscriptionEnabled(!subscriptionEnabled)}
+                  className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${
+                    subscriptionEnabled ? 'bg-[#a07855]' : 'bg-[#d1ccc6] dark:bg-[#3a3f4a]'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                      subscriptionEnabled ? 'translate-x-5' : ''
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {subscriptionEnabled && (
+                <div className="space-y-3 pt-3 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                  <div>
+                    <label className="block text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-1 font-albert">
+                      Billing Interval
+                    </label>
+                    <Select value={billingInterval} onValueChange={(val) => setBillingInterval(val as 'monthly' | 'quarterly' | 'yearly')}>
+                      <SelectTrigger className="w-full font-albert text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monthly" className="font-albert">Monthly (${((priceInCents || 0) / 100).toFixed(2)}/month)</SelectItem>
+                        <SelectItem value="quarterly" className="font-albert">Quarterly (${((priceInCents || 0) / 100).toFixed(2)}/3 months)</SelectItem>
+                        <SelectItem value="yearly" className="font-albert">Yearly (${((priceInCents || 0) / 100).toFixed(2)}/year)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {subscriptionError && (
+                    <p className="text-xs text-red-500">{subscriptionError}</p>
+                  )}
+                  
+                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                    {squad?.stripePriceId 
+                      ? '✓ Subscription pricing is configured' 
+                      : 'Save squad to enable subscription billing via Stripe'}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Members Section - Only show when editing */}
           {squad && (

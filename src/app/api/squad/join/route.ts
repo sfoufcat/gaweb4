@@ -5,7 +5,15 @@ import { adminDb } from '@/lib/firebase-admin';
 import { getStreamServerClient } from '@/lib/stream-server';
 import { MAX_SQUAD_MEMBERS } from '@/lib/squad-constants';
 import { addUserToOrganization } from '@/lib/clerk-organizations';
-import type { Squad } from '@/types';
+import type { Squad, OrgSettings } from '@/types';
+import Stripe from 'stripe';
+
+// Initialize Stripe
+function getStripe(): Stripe {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error('STRIPE_SECRET_KEY not configured');
+  return new Stripe(key, { apiVersion: '2025-02-24.acacia' });
+}
 
 /**
  * POST /api/squad/join
@@ -87,7 +95,74 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'You are already a member of this squad' }, { status: 400 });
     }
 
-    // Add user to squad
+    // Check if squad requires subscription payment
+    if (squad.subscriptionEnabled && squad.stripePriceId && squad.priceInCents && squad.priceInCents > 0) {
+      // Get org settings for Stripe Connect
+      const orgSettingsDoc = await adminDb.collection('org_settings').doc(squad.organizationId!).get();
+      const orgSettings = orgSettingsDoc.data() as OrgSettings | undefined;
+
+      if (!orgSettings?.stripeConnectAccountId) {
+        return NextResponse.json({ 
+          error: 'Payment is not configured for this squad' 
+        }, { status: 400 });
+      }
+
+      const stripe = getStripe();
+      const stripeAccount = orgSettings.stripeConnectAccountId;
+
+      // Get or create Stripe customer for this user
+      const clerk = await clerkClient();
+      const clerkUser = await clerk.users.getUser(userId);
+      const email = clerkUser.emailAddresses[0]?.emailAddress;
+
+      // Create Stripe checkout session for subscription
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const successUrl = `${baseUrl}/squad?joined=${squadId}&session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${baseUrl}/discover/squads/${squadId}?checkout=canceled`;
+
+      const session = await stripe.checkout.sessions.create(
+        {
+          mode: 'subscription',
+          payment_method_types: ['card'],
+          line_items: [
+            {
+              price: squad.stripePriceId,
+              quantity: 1,
+            },
+          ],
+          subscription_data: {
+            metadata: {
+              squadId,
+              userId,
+              organizationId: squad.organizationId || '',
+              type: 'squad_subscription',
+            },
+          },
+          success_url: successUrl,
+          cancel_url: cancelUrl,
+          customer_email: email,
+          metadata: {
+            squadId,
+            userId,
+            organizationId: squad.organizationId || '',
+            type: 'squad_subscription',
+          },
+        },
+        { stripeAccount }
+      );
+
+      console.log(`[SQUAD_JOIN] Created subscription checkout session ${session.id} for squad ${squadId}`);
+
+      return NextResponse.json({ 
+        requiresPayment: true,
+        checkoutUrl: session.url,
+        sessionId: session.id,
+        priceInCents: squad.priceInCents,
+        billingInterval: squad.billingInterval || 'monthly',
+      });
+    }
+
+    // Add user to squad (free squad or no subscription)
     const now = new Date().toISOString();
 
     // Update squad memberIds

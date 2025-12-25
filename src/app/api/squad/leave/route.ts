@@ -2,7 +2,15 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getStreamServerClient } from '@/lib/stream-server';
-import type { Squad } from '@/types';
+import type { Squad, SquadMember, OrgSettings } from '@/types';
+import Stripe from 'stripe';
+
+// Initialize Stripe
+function getStripe(): Stripe {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error('STRIPE_SECRET_KEY not configured');
+  return new Stripe(key, { apiVersion: '2025-02-24.acacia' });
+}
 
 /**
  * POST /api/squad/leave
@@ -113,6 +121,44 @@ export async function POST(req: Request) {
     }
 
     const now = new Date().toISOString();
+
+    // Check for and cancel Stripe subscription if exists
+    if (squad.subscriptionEnabled && squad.organizationId) {
+      try {
+        // Find the user's membership to get subscription ID
+        const membershipSnapshot = await adminDb.collection('squadMembers')
+          .where('squadId', '==', squadIdToLeave)
+          .where('userId', '==', userId)
+          .limit(1)
+          .get();
+
+        if (!membershipSnapshot.empty) {
+          const memberData = membershipSnapshot.docs[0].data() as SquadMember;
+          
+          if (memberData.stripeSubscriptionId) {
+            // Get org settings for Stripe Connect
+            const orgSettingsDoc = await adminDb.collection('org_settings').doc(squad.organizationId).get();
+            const orgSettings = orgSettingsDoc.data() as OrgSettings | undefined;
+
+            if (orgSettings?.stripeConnectAccountId) {
+              const stripe = getStripe();
+              
+              // Cancel the subscription at period end (graceful cancellation)
+              await stripe.subscriptions.update(
+                memberData.stripeSubscriptionId,
+                { cancel_at_period_end: true },
+                { stripeAccount: orgSettings.stripeConnectAccountId }
+              );
+
+              console.log(`[SQUAD_LEAVE] Scheduled subscription ${memberData.stripeSubscriptionId} cancellation for user ${userId}`);
+            }
+          }
+        }
+      } catch (subError) {
+        console.error('[SQUAD_LEAVE] Error canceling subscription:', subError);
+        // Continue with leave - subscription can be cleaned up manually
+      }
+    }
 
     // Remove from memberIds array
     const memberIds = squad.memberIds || [];

@@ -370,17 +370,56 @@ export async function POST(request: NextRequest) {
     const clerk = await clerkClient();
     const clerkUser = await clerk.users.getUser(userId);
 
-    // If program is free, create enrollment directly
-    if (program.priceInCents === 0) {
+    // Get organization settings for Stripe Connect and discounts
+    const orgSettingsDoc = await adminDb.collection('org_settings').doc(program.organizationId).get();
+    const orgSettings = orgSettingsDoc.data() as OrgSettings | undefined;
+
+    // Calculate final price after discounts
+    let finalPrice = program.priceInCents;
+    let discountAmountCents = 0;
+    let appliedDiscountCode: DiscountCode | null = null;
+
+    if (discountCode && program.priceInCents > 0) {
+      const discountResult = await validateAndApplyDiscount(
+        discountCode,
+        userId,
+        program.organizationId,
+        programId,
+        undefined, // squadId
+        program.priceInCents,
+        orgSettings
+      );
+      
+      if (discountResult.valid) {
+        discountAmountCents = discountResult.discountAmountCents;
+        finalPrice = discountResult.finalAmountCents;
+        appliedDiscountCode = discountResult.discountCode || null;
+      } else if (discountResult.error && discountCode.toUpperCase() !== 'ALUMNI') {
+        // Only return error for explicit discount codes, not silent alumni check
+        return NextResponse.json({ error: discountResult.error }, { status: 400 });
+      }
+    }
+
+    // If program is free (or fully discounted), create enrollment directly
+    if (finalPrice === 0) {
+      // Record discount usage if a code was applied
+      if (appliedDiscountCode) {
+        await recordDiscountUsage(
+          appliedDiscountCode.id,
+          userId,
+          program.organizationId,
+          programId,
+          undefined,
+          program.priceInCents,
+          discountAmountCents,
+          finalPrice
+        );
+      }
       return await createEnrollment(userId, program, cohort, clerkUser);
     }
 
     // For paid programs, create Stripe checkout session
     const stripe = getStripe();
-
-    // Get organization settings for Stripe Connect
-    const orgSettingsDoc = await adminDb.collection('org_settings').doc(program.organizationId).get();
-    const orgSettings = orgSettingsDoc.data() as OrgSettings | undefined;
 
     const stripeConnectAccountId = orgSettings?.stripeConnectAccountId;
     if (!stripeConnectAccountId) {
@@ -389,14 +428,25 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Calculate platform fee
+    // Calculate platform fee based on final discounted price
     const platformFeePercent = orgSettings?.platformFeePercent ?? 1;
-    const applicationFeeAmount = Math.round(program.priceInCents * (platformFeePercent / 100));
+    const applicationFeeAmount = Math.round(finalPrice * (platformFeePercent / 100));
 
     // Build success/cancel URLs
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const successUrl = `${baseUrl}/programs/enrollment-success?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${baseUrl}/discover/programs/${programId}?checkout=canceled`;
+
+    // Build line item description including discount info
+    let description = cohort 
+      ? `${program.name} - ${cohort.name} (${program.lengthDays} days)`
+      : `${program.name} (${program.lengthDays} days)`;
+    
+    if (discountAmountCents > 0) {
+      const originalFormatted = (program.priceInCents / 100).toFixed(2);
+      const discountFormatted = (discountAmountCents / 100).toFixed(2);
+      description += ` (Originally $${originalFormatted}, -$${discountFormatted} discount)`;
+    }
 
     // Create Stripe checkout session
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
@@ -408,12 +458,10 @@ export async function POST(request: NextRequest) {
             currency: program.currency || 'usd',
             product_data: {
               name: program.name,
-              description: cohort 
-                ? `${program.name} - ${cohort.name} (${program.lengthDays} days)`
-                : `${program.name} (${program.lengthDays} days)`,
+              description,
               images: program.coverImageUrl ? [program.coverImageUrl] : undefined,
             },
-            unit_amount: program.priceInCents,
+            unit_amount: finalPrice, // Use discounted price
           },
           quantity: 1,
         },
@@ -426,6 +474,9 @@ export async function POST(request: NextRequest) {
           cohortId: cohortId || '',
           programType: program.type,
           organizationId: program.organizationId,
+          discountCodeId: appliedDiscountCode?.id || '',
+          originalAmountCents: String(program.priceInCents),
+          discountAmountCents: String(discountAmountCents),
         },
       },
       success_url: successUrl,
@@ -438,6 +489,7 @@ export async function POST(request: NextRequest) {
         programType: program.type,
         organizationId: program.organizationId,
         type: 'program_enrollment',
+        discountCodeId: appliedDiscountCode?.id || '',
       },
     };
 
@@ -558,5 +610,174 @@ async function createEnrollment(
       ? `Enrolled! Program starts on ${cohort?.startDate}`
       : 'Enrolled! Your program starts now',
   }, { status: 201 });
+}
+
+/**
+ * Validate and apply discount code
+ */
+interface DiscountValidationResult {
+  valid: boolean;
+  discountAmountCents: number;
+  finalAmountCents: number;
+  discountCode?: DiscountCode;
+  error?: string;
+  isAlumniDiscount?: boolean;
+}
+
+async function validateAndApplyDiscount(
+  code: string,
+  userId: string,
+  organizationId: string,
+  programId: string | undefined,
+  squadId: string | undefined,
+  originalAmountCents: number,
+  orgSettings: OrgSettings | undefined
+): Promise<DiscountValidationResult> {
+  const normalizedCode = code.trim().toUpperCase();
+
+  // Check for alumni auto-discount
+  if (normalizedCode === 'ALUMNI') {
+    if (!orgSettings?.alumniDiscountEnabled || !orgSettings.alumniDiscountValue) {
+      return { valid: false, discountAmountCents: 0, finalAmountCents: originalAmountCents, error: 'Alumni discount is not available' };
+    }
+
+    // Check if user is alumni
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    if (!userDoc.exists || !userDoc.data()?.isAlumni) {
+      return { valid: false, discountAmountCents: 0, finalAmountCents: originalAmountCents, error: 'Alumni discount is only available to program alumni' };
+    }
+
+    // Calculate discount
+    let discountAmountCents: number;
+    if (orgSettings.alumniDiscountType === 'percentage') {
+      discountAmountCents = Math.round(originalAmountCents * (orgSettings.alumniDiscountValue / 100));
+    } else {
+      discountAmountCents = Math.min(orgSettings.alumniDiscountValue, originalAmountCents);
+    }
+
+    return {
+      valid: true,
+      discountAmountCents,
+      finalAmountCents: Math.max(0, originalAmountCents - discountAmountCents),
+      isAlumniDiscount: true,
+    };
+  }
+
+  // Look up discount code
+  const codeSnapshot = await adminDb
+    .collection('discount_codes')
+    .where('organizationId', '==', organizationId)
+    .where('code', '==', normalizedCode)
+    .limit(1)
+    .get();
+
+  if (codeSnapshot.empty) {
+    return { valid: false, discountAmountCents: 0, finalAmountCents: originalAmountCents, error: 'Invalid discount code' };
+  }
+
+  const codeDoc = codeSnapshot.docs[0];
+  const discountCode = {
+    id: codeDoc.id,
+    ...codeDoc.data(),
+  } as DiscountCode;
+
+  // Validate constraints
+  if (!discountCode.isActive) {
+    return { valid: false, discountAmountCents: 0, finalAmountCents: originalAmountCents, error: 'This discount code is no longer active' };
+  }
+  if (discountCode.startsAt && new Date(discountCode.startsAt) > new Date()) {
+    return { valid: false, discountAmountCents: 0, finalAmountCents: originalAmountCents, error: 'This discount code is not yet active' };
+  }
+  if (discountCode.expiresAt && new Date(discountCode.expiresAt) < new Date()) {
+    return { valid: false, discountAmountCents: 0, finalAmountCents: originalAmountCents, error: 'This discount code has expired' };
+  }
+  if (discountCode.maxUses !== null && discountCode.maxUses !== undefined && discountCode.useCount >= discountCode.maxUses) {
+    return { valid: false, discountAmountCents: 0, finalAmountCents: originalAmountCents, error: 'This discount code has reached its maximum uses' };
+  }
+
+  // Check per-user limit
+  if (discountCode.maxUsesPerUser) {
+    const userUsages = await adminDb
+      .collection('discount_code_usages')
+      .where('discountCodeId', '==', discountCode.id)
+      .where('userId', '==', userId)
+      .count()
+      .get();
+
+    if (userUsages.data().count >= discountCode.maxUsesPerUser) {
+      return { valid: false, discountAmountCents: 0, finalAmountCents: originalAmountCents, error: 'You have already used this discount code' };
+    }
+  }
+
+  // Check applicability
+  if (discountCode.applicableTo === 'programs' && !programId) {
+    return { valid: false, discountAmountCents: 0, finalAmountCents: originalAmountCents, error: 'This discount code is only valid for programs' };
+  }
+  if (discountCode.applicableTo === 'squads' && !squadId) {
+    return { valid: false, discountAmountCents: 0, finalAmountCents: originalAmountCents, error: 'This discount code is only valid for squads' };
+  }
+  if (programId && discountCode.programIds?.length && !discountCode.programIds.includes(programId)) {
+    return { valid: false, discountAmountCents: 0, finalAmountCents: originalAmountCents, error: 'This discount code is not valid for this program' };
+  }
+  if (squadId && discountCode.squadIds?.length && !discountCode.squadIds.includes(squadId)) {
+    return { valid: false, discountAmountCents: 0, finalAmountCents: originalAmountCents, error: 'This discount code is not valid for this squad' };
+  }
+
+  // Calculate discount
+  let discountAmountCents: number;
+  if (discountCode.type === 'percentage') {
+    discountAmountCents = Math.round(originalAmountCents * (discountCode.value / 100));
+  } else {
+    discountAmountCents = Math.min(discountCode.value, originalAmountCents);
+  }
+
+  return {
+    valid: true,
+    discountAmountCents,
+    finalAmountCents: Math.max(0, originalAmountCents - discountAmountCents),
+    discountCode,
+  };
+}
+
+/**
+ * Record discount code usage for analytics
+ */
+async function recordDiscountUsage(
+  discountCodeId: string,
+  userId: string,
+  organizationId: string,
+  programId: string | undefined,
+  squadId: string | undefined,
+  originalAmountCents: number,
+  discountAmountCents: number,
+  finalAmountCents: number
+): Promise<void> {
+  try {
+    const now = new Date().toISOString();
+    
+    // Record usage
+    await adminDb.collection('discount_code_usages').add({
+      discountCodeId,
+      userId,
+      organizationId,
+      programId: programId || null,
+      squadId: squadId || null,
+      originalAmountCents,
+      discountAmountCents,
+      finalAmountCents,
+      createdAt: now,
+    });
+
+    // Increment use count
+    await adminDb.collection('discount_codes').doc(discountCodeId).update({
+      useCount: FieldValue.increment(1),
+      updatedAt: now,
+    });
+
+    console.log(`[PROGRAM_ENROLL] Recorded discount usage for code ${discountCodeId}, user ${userId}`);
+  } catch (error) {
+    console.error('[PROGRAM_ENROLL] Error recording discount usage:', error);
+    // Don't throw - discount still applied successfully
+  }
 }
 
