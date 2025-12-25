@@ -160,7 +160,7 @@ export default function ProgramHubPage() {
     // Get the squad ID for this program (community squad for individual, cohort squad for group)
     const programSquadId = selectedProgram.program.type === 'individual'
       ? selectedProgram.program.clientCommunitySquadId
-      : selectedProgram.squadId; // squadId from enrollment for group programs
+      : selectedProgram.squad?.id; // squad ID from enrollment for group programs
     
     return (
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
@@ -209,7 +209,7 @@ export default function ProgramHubPage() {
   const singleProgram = groupProgram || individualProgram!;
   const singleProgramSquadId = singleProgram.program.type === 'individual'
     ? singleProgram.program.clientCommunitySquadId
-    : singleProgram.squadId;
+    : singleProgram.squad?.id;
     
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
