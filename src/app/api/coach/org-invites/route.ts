@@ -3,7 +3,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { sendTenantEmail, getLogoUrlForEmail, getAppTitleForEmail, APP_BASE_URL } from '@/lib/email-sender';
 import { nanoid } from 'nanoid';
-import type { ProgramInvite, Funnel, Program } from '@/types';
+import type { ProgramInvite, Funnel, Program, Squad } from '@/types';
 
 /**
  * GET /api/coach/org-invites
@@ -108,6 +108,16 @@ export async function POST(req: Request) {
       program = programDoc.exists ? (programDoc.data() as Program) : null;
     }
 
+    // Get squad for the invite link (only if funnel targets a squad)
+    let squad: (Squad & { slug?: string }) | null = null;
+    if (funnel.squadId) {
+      const squadDoc = await adminDb.collection('squads').doc(funnel.squadId).get();
+      if (squadDoc.exists) {
+        const squadData = squadDoc.data();
+        squad = { id: squadDoc.id, ...squadData } as Squad & { slug?: string };
+      }
+    }
+
     // Generate invite code
     const inviteCode = nanoid(8).toUpperCase();
 
@@ -137,16 +147,20 @@ export async function POST(req: Request) {
 
     // Send invite email if requested and email is provided
     let emailSent = false;
-    if (sendEmail && inviteData.email && program) {
+    if (sendEmail && inviteData.email && (program || squad)) {
       try {
         const emailResult = await sendInviteEmail({
           email: inviteData.email,
           name: inviteData.name,
           inviteCode,
-          programSlug: program.slug,
           funnelSlug: funnel.slug,
-          programName: program.name,
           organizationId,
+          // Program funnel params
+          programSlug: program?.slug,
+          programName: program?.name,
+          // Squad funnel params
+          squadSlug: squad?.slug,
+          squadName: squad?.name,
         });
         emailSent = emailResult.success;
         if (emailResult.success) {
@@ -172,32 +186,55 @@ export async function POST(req: Request) {
 
 /**
  * Send an invite email to a prospective client
+ * Supports both program funnels and squad funnels
  */
 async function sendInviteEmail({
   email,
   name,
   inviteCode,
-  programSlug,
   funnelSlug,
-  programName,
   organizationId,
+  // Program funnel params (optional)
+  programSlug,
+  programName,
+  // Squad funnel params (optional)
+  squadSlug,
+  squadName,
 }: {
   email: string;
   name?: string;
   inviteCode: string;
-  programSlug: string;
   funnelSlug: string;
-  programName: string;
   organizationId: string;
+  programSlug?: string;
+  programName?: string;
+  squadSlug?: string;
+  squadName?: string;
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const appTitle = await getAppTitleForEmail(organizationId);
   const logoUrl = await getLogoUrlForEmail(organizationId);
   const teamName = appTitle === 'GrowthAddicts' ? 'Growth Addicts' : appTitle;
   
-  const inviteUrl = `${APP_BASE_URL}/join/${programSlug}/${funnelSlug}?invite=${inviteCode}`;
+  // Generate the correct invite URL based on funnel type
+  let inviteUrl: string;
+  let targetName: string;
+  
+  if (programSlug && programName) {
+    // Program funnel: /join/{programSlug}/{funnelSlug}?invite={code}
+    inviteUrl = `${APP_BASE_URL}/join/${programSlug}/${funnelSlug}?invite=${inviteCode}`;
+    targetName = programName;
+  } else if (squadSlug && squadName) {
+    // Squad funnel: /join/squad/{squadSlug}/{funnelSlug}?invite={code}
+    inviteUrl = `${APP_BASE_URL}/join/squad/${squadSlug}/${funnelSlug}?invite=${inviteCode}`;
+    targetName = squadName;
+  } else {
+    // Fallback - shouldn't happen but handle gracefully
+    return { success: false, error: 'Missing program or squad information for invite email' };
+  }
+  
   const recipientName = name || 'there';
 
-  const subject = `You're Invited to Join ${programName} 🎉`;
+  const subject = `You're Invited to Join ${targetName} 🎉`;
 
   const htmlBody = `
 <!DOCTYPE html>
@@ -215,7 +252,7 @@ async function sendInviteEmail({
     
     <p style="font-size: 18px; margin-bottom: 20px;">Hey ${recipientName},</p>
     
-    <p style="margin-bottom: 20px;">You've been personally invited to join <strong>${programName}</strong>.</p>
+    <p style="margin-bottom: 20px;">You've been personally invited to join <strong>${targetName}</strong>.</p>
     
     <p style="margin-bottom: 25px;">Click the button below to get started:</p>
     
@@ -244,7 +281,7 @@ async function sendInviteEmail({
   const textBody = `
 Hey ${recipientName},
 
-You've been personally invited to join ${programName}.
+You've been personally invited to join ${targetName}.
 
 Click here to get started: ${inviteUrl}
 

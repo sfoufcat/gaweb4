@@ -191,8 +191,8 @@ export default function StandaloneSquadPage() {
             onClick={() => setShowSquadSwitcher(!showSquadSwitcher)}
             className="flex items-center gap-2 group"
           >
-            <h1 className="font-albert text-[28px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.2]">
-              {squad.name}
+            <h1 className="font-albert font-normal text-4xl text-text-primary tracking-[-2px] leading-[1.2]">
+              {squadTitle}
             </h1>
             <ChevronDown 
               className={`w-6 h-6 text-text-secondary dark:text-[#7d8190] transition-transform ${
@@ -202,8 +202,8 @@ export default function StandaloneSquadPage() {
           </button>
         ) : (
           // Static title for single squad
-          <h1 className="font-albert text-[28px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.2]">
-            {squad.name}
+          <h1 className="font-albert font-normal text-4xl text-text-primary tracking-[-2px] leading-[1.2]">
+            {squadTitle}
           </h1>
         )}
         

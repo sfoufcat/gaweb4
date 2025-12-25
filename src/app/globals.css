@@ -855,6 +855,73 @@ div[class*="LoadingIndicator"],
 
 .dark .bg-accent-branded {
   background-color: var(--brand-accent-dark, #b8896a);
+}
+
+/* ===========================================
+   Brand Accent Utility Classes
+   Dynamic org accent colors via CSS variables
+   =========================================== */
+
+/* Text color */
+.text-brand-accent {
+  color: var(--brand-accent-light, #a07855);
+}
+
+.dark .text-brand-accent {
+  color: var(--brand-accent-dark, #b8896a);
+}
+
+/* Background color - solid */
+.bg-brand-accent {
+  background-color: var(--brand-accent-light, #a07855);
+}
+
+.dark .bg-brand-accent {
+  background-color: var(--brand-accent-dark, #b8896a);
+}
+
+/* Background color - subtle/transparent */
+.bg-brand-accent-subtle {
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 12%, transparent);
+}
+
+.dark .bg-brand-accent-subtle {
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 15%, transparent);
+}
+
+/* Foreground text on accent background */
+.text-brand-accent-foreground {
+  color: var(--brand-accent-light-foreground, #ffffff);
+}
+
+.dark .text-brand-accent-foreground {
+  color: var(--brand-accent-dark-foreground, #ffffff);
+}
+
+/* Border colors */
+.border-brand-accent {
+  border-color: var(--brand-accent-light, #a07855);
+}
+
+.dark .border-brand-accent {
+  border-color: var(--brand-accent-dark, #b8896a);
+}
+
+.border-brand-accent-subtle {
+  border-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 25%, transparent);
+}
+
+.dark .border-brand-accent-subtle {
+  border-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent);
+}
+
+/* Hover states */
+.hover\:border-brand-accent:hover {
+  border-color: var(--brand-accent-light, #a07855);
+}
+
+.dark .hover\:border-brand-accent:hover {
+  border-color: var(--brand-accent-dark, #b8896a);
   /* Auto-contrast text color on accent background */
   color: var(--brand-accent-dark-foreground, #ffffff);
 }

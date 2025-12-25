@@ -14,7 +14,7 @@ import type { EnrolledProgramWithDetails } from '@/hooks/useMyPrograms';
  * - Program name and description
  * - Enrolled badge + progress pill (same height)
  * - Program overview row (real member avatars + coach info)
- * - "View program details" button
+ * - "Go to program" button
  */
 
 interface ProgramListViewProps {
@@ -25,9 +25,9 @@ interface ProgramListViewProps {
 export function ProgramListView({ enrollments, onSelectProgram }: ProgramListViewProps) {
   return (
     <div className="space-y-5">
-      <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
+      <h1 className="font-albert font-normal text-4xl text-text-primary tracking-[-2px] leading-[1.2]">
         Your Programs
-      </h2>
+      </h1>
 
       <div className="space-y-4">
         {enrollments.map((enrolled) => (
@@ -125,34 +125,33 @@ function ProgramListCard({ enrolled, onClick }: ProgramListCardProps) {
           {isGroup ? (
             /* Group: Real member avatars + members + coach */
             <>
-              {/* Stacked Avatars - Real member photos */}
-              <div className="flex items-center -space-x-2">
-                {(squadMembers && squadMembers.length > 0 
-                  ? squadMembers.slice(0, 3) 
-                  : [null, null, null]
-                ).map((member, i) => (
-                  <div
-                    key={member?.id || i}
-                    className="w-8 h-8 rounded-full border-2 border-[#f3f1ef] dark:border-[#171b22] overflow-hidden bg-[#d4cfc9] dark:bg-[#7d8190]"
-                  >
-                    {member?.imageUrl ? (
-                      <Image
-                        src={member.imageUrl}
-                        alt={`${member.firstName} ${member.lastName}`}
-                        width={32}
-                        height={32}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <span className="text-xs font-medium text-white">
-                          {member?.firstName?.[0] || '?'}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+              {/* Stacked Avatars - Only show actual members (1-3) */}
+              {squadMembers && squadMembers.length > 0 && (
+                <div className="flex items-center -space-x-2">
+                  {squadMembers.slice(0, 3).map((member) => (
+                    <div
+                      key={member.id}
+                      className="w-8 h-8 rounded-full border-2 border-[#f3f1ef] dark:border-[#171b22] overflow-hidden bg-[#d4cfc9] dark:bg-[#7d8190]"
+                    >
+                      {member.imageUrl ? (
+                        <Image
+                          src={member.imageUrl}
+                          alt={`${member.firstName} ${member.lastName}`}
+                          width={32}
+                          height={32}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="text-xs font-medium text-white">
+                            {member.firstName?.[0] || '?'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="flex flex-col ml-1">
                 <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px] tracking-[0.1px]">
@@ -163,10 +162,8 @@ function ProgramListCard({ enrolled, onClick }: ProgramListCardProps) {
                 </span>
               </div>
 
-              <div className="flex-1" />
-
-              {/* Coach */}
-              <div className="w-[38px] h-[38px] rounded-full overflow-hidden bg-white dark:bg-[#262b35]">
+              {/* Coach - positioned next to member info */}
+              <div className="w-[38px] h-[38px] rounded-full overflow-hidden bg-white dark:bg-[#262b35] ml-2">
                 {program.coachImageUrl ? (
                   <Image
                     src={program.coachImageUrl}
@@ -207,10 +204,8 @@ function ProgramListCard({ enrolled, onClick }: ProgramListCardProps) {
                 </span>
               </div>
 
-              <div className="flex-1" />
-
-              {/* Coach */}
-              <div className="w-[38px] h-[38px] rounded-full overflow-hidden bg-white dark:bg-[#262b35]">
+              {/* Coach - positioned next to 1:1 info */}
+              <div className="w-[38px] h-[38px] rounded-full overflow-hidden bg-white dark:bg-[#262b35] ml-2">
                 {program.coachImageUrl ? (
                   <Image
                     src={program.coachImageUrl}
@@ -240,12 +235,12 @@ function ProgramListCard({ enrolled, onClick }: ProgramListCardProps) {
           )}
         </div>
 
-        {/* View Program Details Button */}
+        {/* Go to Program Button */}
         <button
           onClick={onClick}
           className="w-full bg-white dark:bg-[#11141b] border border-[rgba(215,210,204,0.5)] rounded-[32px] px-4 py-4 font-bold text-[16px] text-[#2c2520] dark:text-[#f5f5f8] leading-[1.4] tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.1)] hover:shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
         >
-          <span>View program details</span>
+          <span>Go to program</span>
           <ArrowRight className="w-5 h-5" />
         </button>
       </div>

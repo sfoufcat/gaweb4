@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
-import { UserPlus, RefreshCw, X, Plus } from 'lucide-react';
+import { UserPlus, RefreshCw } from 'lucide-react';
+import { SquadManagerPopover } from './SquadManagerPopover';
 import type { UserRole, UserTier, CoachingStatus, OrgRole, Squad } from '@/types';
 import { validateSubdomain } from '@/types';
 import { 
@@ -962,89 +963,17 @@ export function AdminUsersTab({
                       </TableCell>
                     )}
 
-                    {/* Squad - Multi-squad support with tags */}
+                    {/* Squad - Compact display with popover for management */}
                     {showColumn('squad') && (
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        {(() => {
-                          const userSquadIds = user.squadIds || (user.squadId ? [user.squadId] : []);
-                          const isUpdating = updatingSquadUserId === user.id;
-                          // Squads available to add (not already a member)
-                          const availableSquads = squads.filter(s => !userSquadIds.includes(s.id));
-                          
-                          if (isOrgScopedApi && !readOnly) {
-                            return (
-                              <div className={`flex flex-wrap gap-1.5 items-center min-w-[150px] ${isUpdating ? 'opacity-50 pointer-events-none' : ''}`}>
-                                {/* Squad tags */}
-                                {userSquadIds.map((squadId) => {
-                                  const squad = squads.find(s => s.id === squadId);
-                                  return (
-                                    <span
-                                      key={squadId}
-                                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#a07855]/10 dark:bg-[#b8896a]/10 text-[#a07855] dark:text-[#b8896a] rounded-full text-xs font-medium font-albert"
-                                    >
-                                      {squad?.name || 'Unknown'}
-                                      <button
-                                        onClick={() => handleRemoveFromSquad(user.id, squadId)}
-                                        className="hover:bg-[#a07855]/20 dark:hover:bg-[#b8896a]/20 rounded-full p-0.5 transition-colors"
-                                        title={`Remove from ${squad?.name || 'squad'}`}
-                                      >
-                                        <X className="w-3 h-3" />
-                                      </button>
-                                    </span>
-                                  );
-                                })}
-                                
-                                {/* Add squad dropdown */}
-                                {availableSquads.length > 0 && (
-                                  <Select
-                                    value=""
-                                    onValueChange={(squadId) => handleAddToSquad(user.id, squadId)}
-                                  >
-                                    <SelectTrigger className="w-auto h-6 px-1.5 py-0 border-dashed border-[#e1ddd8] dark:border-[#262b35] bg-transparent hover:bg-[#faf8f6] dark:hover:bg-[#11141b]">
-                                      <Plus className="w-3.5 h-3.5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {availableSquads.map((squad) => (
-                                        <SelectItem key={squad.id} value={squad.id} className="font-albert text-sm">
-                                          {squad.name}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                )}
-                                
-                                {/* Show "None" if no squads */}
-                                {userSquadIds.length === 0 && availableSquads.length === 0 && (
-                                  <span className="text-[#8c8c8c] dark:text-[#7d8190] text-sm font-albert">-</span>
-                                )}
-                                {userSquadIds.length === 0 && availableSquads.length > 0 && (
-                                  <span className="text-[#8c8c8c] dark:text-[#7d8190] text-xs font-albert mr-1">None</span>
-                                )}
-                              </div>
-                            );
-                          } else {
-                            // Read-only mode - just show squad names
-                            return (
-                              <div className="flex flex-wrap gap-1">
-                                {userSquadIds.length > 0 ? (
-                                  userSquadIds.map((squadId) => {
-                                    const squad = squads.find(s => s.id === squadId);
-                                    return (
-                                      <span
-                                        key={squadId}
-                                        className="inline-flex items-center px-2 py-0.5 bg-[#a07855]/10 dark:bg-[#b8896a]/10 text-[#a07855] dark:text-[#b8896a] rounded-full text-xs font-medium font-albert"
-                                      >
-                                        {squad?.name || 'Unknown'}
-                                      </span>
-                                    );
-                                  })
-                                ) : (
-                                  <span className="text-[#8c8c8c] dark:text-[#7d8190] text-sm font-albert">-</span>
-                                )}
-                              </div>
-                            );
-                          }
-                        })()}
+                        <SquadManagerPopover
+                          userSquadIds={user.squadIds || (user.squadId ? [user.squadId] : [])}
+                          squads={squads}
+                          onAddSquad={(squadId) => handleAddToSquad(user.id, squadId)}
+                          onRemoveSquad={(squadId) => handleRemoveFromSquad(user.id, squadId)}
+                          disabled={updatingSquadUserId === user.id}
+                          readOnly={!isOrgScopedApi || readOnly}
+                        />
                       </TableCell>
                     )}
 

@@ -24,6 +24,12 @@ const config: Config = {
   			'button-disabled': 'hsl(var(--border))',
   			'border-secondary': 'hsl(var(--border-subtle) / 0.5)',
   			'accent-secondary': 'hsl(var(--accent))',
+  			'brand-accent': {
+  				DEFAULT: 'var(--brand-accent-light)',
+  				dark: 'var(--brand-accent-dark)',
+  				foreground: 'var(--brand-accent-light-foreground)',
+  				subtle: 'color-mix(in srgb, var(--brand-accent-light) 12%, transparent)',
+  			},
   			earth: {
   				'50': '#fbfaf9',
   				'100': '#f5f2ee',

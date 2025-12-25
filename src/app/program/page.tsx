@@ -8,6 +8,7 @@ import { useUser } from '@clerk/nextjs';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useMyPrograms } from '@/hooks/useMyPrograms';
 import { useMenuTitles } from '@/contexts/BrandingContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Components for different sections
 import { ProgramDiscovery } from '@/components/program/ProgramDiscovery';
@@ -94,7 +95,7 @@ export default function ProgramHubPage() {
     }
   }, [searchParams, showSquadTab]);
   
-  // Handle tab change
+  // Handle tab change (for main view - clears program selection)
   const handleTabChange = useCallback((tab: TabType) => {
     setActiveTab(tab);
     setSelectedProgramId(null); // Clear selected program when switching tabs
@@ -103,6 +104,18 @@ export default function ProgramHubPage() {
     const newUrl = tab === 'squad' ? '/program?tab=squad' : '/program';
     router.replace(newUrl, { scroll: false });
   }, [router]);
+  
+  // Handle tab change within a specific program (preserves program context)
+  const handleProgramTabChange = useCallback((tab: TabType) => {
+    setActiveTab(tab);
+    // Preserve programId when switching tabs within a program
+    if (selectedProgramId) {
+      const newUrl = tab === 'squad' 
+        ? `/program?programId=${selectedProgramId}&tab=squad` 
+        : `/program?programId=${selectedProgramId}`;
+      router.replace(newUrl, { scroll: false });
+    }
+  }, [router, selectedProgramId]);
   
   // Handle program selection
   const handleSelectProgram = useCallback((programId: string) => {
@@ -155,8 +168,32 @@ export default function ProgramHubPage() {
     );
   }
   
-  // If showing program details view (selected a specific program)
-  if (selectedProgram) {
+  // Animation variants for slide transitions
+  const slideVariants = {
+    enterFromRight: {
+      x: '100%',
+      opacity: 0,
+    },
+    enterFromLeft: {
+      x: '-100%',
+      opacity: 0,
+    },
+    center: {
+      x: 0,
+      opacity: 1,
+    },
+    exitToLeft: {
+      x: '-100%',
+      opacity: 0,
+    },
+    exitToRight: {
+      x: '100%',
+      opacity: 0,
+    },
+  };
+
+  // If showing program details view (selected a specific program) - when user has both programs
+  if (hasBothPrograms && selectedProgram) {
     const programShowSquadTab = getShowSquadTab(selectedProgram);
     // Get the squad ID for this program (community squad for individual, cohort squad for group)
     const programSquadId = selectedProgram.program.type === 'individual'
@@ -164,13 +201,85 @@ export default function ProgramHubPage() {
       : selectedProgram.squad?.id; // squad ID from enrollment for group programs
     
     return (
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4 overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key="program-detail"
+            initial="enterFromRight"
+            animate="center"
+            exit="exitToRight"
+            variants={slideVariants}
+            transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+          >
+            {/* Top Pill Switcher - Show for this specific program */}
+            {programShowSquadTab && (
+              <div className="mb-6">
+                <PillSwitcher
+                  activeTab={activeTab}
+                  onTabChange={handleProgramTabChange}
+                  showSquadTab={programShowSquadTab}
+                  programTitle={programTitle}
+                  squadTitle={selectedProgram.program.type === 'individual' ? 'Community' : squadTitle}
+                />
+              </div>
+            )}
+            
+            {activeTab === 'program' || !programShowSquadTab ? (
+              <ProgramDetailView 
+                program={selectedProgram}
+                onBack={handleBackFromDetails}
+                onRefresh={refreshPrograms}
+              />
+            ) : (
+              <SquadTabContent 
+                programId={selectedProgram.program.id}
+                squadId={programSquadId || undefined}
+                onBack={handleBackFromDetails}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    );
+  }
+  
+  // Main view - when user has multiple programs, just show list (no pill menu)
+  if (hasBothPrograms) {
+    return (
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4 overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key="program-list"
+            initial="enterFromLeft"
+            animate="center"
+            exit="exitToLeft"
+            variants={slideVariants}
+            transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+          >
+            <ProgramListView 
+              enrollments={enrollments}
+              onSelectProgram={handleSelectProgram}
+            />
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    );
+  }
+  
+  // If showing program details view (single program mode - selected from URL)
+  if (selectedProgram) {
+    const programShowSquadTab = getShowSquadTab(selectedProgram);
+    const programSquadId = selectedProgram.program.type === 'individual'
+      ? selectedProgram.program.clientCommunitySquadId
+      : selectedProgram.squad?.id;
+    
+    return (
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
-        {/* Top Pill Switcher - Show for this specific program */}
         {programShowSquadTab && (
           <div className="mb-6">
             <PillSwitcher
               activeTab={activeTab}
-              onTabChange={handleTabChange}
+              onTabChange={handleProgramTabChange}
               showSquadTab={programShowSquadTab}
               programTitle={programTitle}
               squadTitle={selectedProgram.program.type === 'individual' ? 'Community' : squadTitle}
@@ -191,18 +300,6 @@ export default function ProgramHubPage() {
             onBack={handleBackFromDetails}
           />
         )}
-      </div>
-    );
-  }
-  
-  // Main view - when user has multiple programs, just show list (no pill menu)
-  if (hasBothPrograms) {
-    return (
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
-        <ProgramListView 
-          enrollments={enrollments}
-          onSelectProgram={handleSelectProgram}
-        />
       </div>
     );
   }

@@ -75,6 +75,12 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
   // Copy feedback state
   const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
 
+  // Success message state
+  const [successMessage, setSuccessMessage] = useState<{
+    type: 'success' | 'warning';
+    message: string;
+  } | null>(null);
+
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -127,6 +133,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
     if (isOpen) {
       fetchData();
       setCurrentView('list');
+      setSuccessMessage(null);
     }
   }, [isOpen, fetchData]);
 
@@ -222,6 +229,8 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
     if (!selectedFunnelId) return;
     
     setIsCreating(true);
+    const emailRequested = createForm.sendEmail && !!createForm.email;
+    const emailAddress = createForm.email;
 
     try {
       const response = await fetch('/api/coach/org-invites', {
@@ -233,7 +242,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
           name: createForm.name || undefined,
           paymentStatus: createForm.paymentStatus,
           prePaidNote: createForm.prePaidNote || undefined,
-          sendEmail: createForm.sendEmail && !!createForm.email,
+          sendEmail: emailRequested,
         }),
       });
 
@@ -242,6 +251,9 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
         throw new Error(data.error || 'Failed to create invite');
       }
 
+      const data = await response.json();
+
+      // Reset form
       setCreateForm({
         email: '',
         name: '',
@@ -251,6 +263,27 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
       });
       setCurrentView('list');
       await fetchInvites();
+
+      // Set success message based on email status
+      if (emailRequested && data.emailSent) {
+        setSuccessMessage({
+          type: 'success',
+          message: `Email successfully sent to ${emailAddress}`,
+        });
+      } else if (emailRequested && !data.emailSent) {
+        setSuccessMessage({
+          type: 'warning',
+          message: 'Invite created, but email could not be sent',
+        });
+      } else {
+        setSuccessMessage({
+          type: 'success',
+          message: 'Invite created successfully',
+        });
+      }
+
+      // Auto-dismiss success message after 5 seconds
+      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to create invite');
     } finally {
@@ -503,6 +536,55 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                 {/* LIST VIEW */}
                 {currentView === 'list' && (
                   <div className="space-y-6">
+                    {/* Success Message Banner */}
+                    <AnimatePresence>
+                      {successMessage && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className={`p-4 rounded-xl flex items-center gap-3 ${
+                            successMessage.type === 'success'
+                              ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                              : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'
+                          }`}
+                        >
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                            successMessage.type === 'success'
+                              ? 'bg-green-100 dark:bg-green-900/30'
+                              : 'bg-amber-100 dark:bg-amber-900/30'
+                          }`}>
+                            {successMessage.type === 'success' ? (
+                              <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                            ) : (
+                              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                            )}
+                          </div>
+                          <p className={`text-sm font-albert flex-1 ${
+                            successMessage.type === 'success'
+                              ? 'text-green-700 dark:text-green-300'
+                              : 'text-amber-700 dark:text-amber-300'
+                          }`}>
+                            {successMessage.message}
+                          </p>
+                          <button
+                            onClick={() => setSuccessMessage(null)}
+                            className={`p-1 rounded-lg transition-colors ${
+                              successMessage.type === 'success'
+                                ? 'hover:bg-green-100 dark:hover:bg-green-900/30'
+                                : 'hover:bg-amber-100 dark:hover:bg-amber-900/30'
+                            }`}
+                          >
+                            <X className={`w-4 h-4 ${
+                              successMessage.type === 'success'
+                                ? 'text-green-600 dark:text-green-400'
+                                : 'text-amber-600 dark:text-amber-400'
+                            }`} />
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
                     {/* Funnel Selector */}
                     <div>
                       <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
