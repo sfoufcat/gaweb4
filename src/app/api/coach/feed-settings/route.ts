@@ -3,7 +3,7 @@ import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { adminDb } from '@/lib/firebase-admin';
 import { syncTenantToEdgeConfig, buildTenantConfigData, setTenantByCustomDomain, type TenantBrandingData } from '@/lib/tenant-edge-config';
 import type { OrgBranding, OrgCustomDomain } from '@/types';
-import { DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL } from '@/types';
+import { DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_ORDER } from '@/types';
 
 /**
  * GET /api/coach/feed-settings
@@ -95,6 +95,7 @@ export async function POST(request: NextRequest) {
         colors: brandingData?.colors ?? DEFAULT_BRANDING_COLORS,
         menuTitles: brandingData?.menuTitles ?? DEFAULT_MENU_TITLES,
         menuIcons: brandingData?.menuIcons ?? DEFAULT_MENU_ICONS,
+        menuOrder: brandingData?.menuOrder ?? DEFAULT_MENU_ORDER,
       };
       
       if (subdomain) {
