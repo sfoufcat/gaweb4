@@ -196,11 +196,11 @@ function EventFormDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 overflow-y-auto py-8">
-      <div className="bg-white dark:bg-[#171b22] rounded-2xl w-full max-w-2xl mx-4 shadow-xl">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-start justify-center z-50 overflow-y-auto py-8">
+      <div className="bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl w-full max-w-2xl mx-4 shadow-2xl shadow-black/10 dark:shadow-black/30">
         <form onSubmit={handleSubmit}>
-          <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35]">
-            <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] font-albert">
+          <div className="p-6 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+            <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
               {isEditing ? 'Edit Event' : 'Create Event'}
             </h2>
           </div>
@@ -492,7 +492,7 @@ function EventFormDialog({
             </div>
           </div>
 
-          <div className="p-6 border-t border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] flex justify-end gap-3">
+          <div className="p-6 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50 flex justify-end gap-3">
             <Button
               type="button"
               variant="outline"

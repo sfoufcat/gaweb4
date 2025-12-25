@@ -345,23 +345,23 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
             onClick={(e) => e.target === e.currentTarget && setShowCreateDialog(false)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl w-full max-w-md shadow-xl"
+              className="bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl shadow-black/10 dark:shadow-black/30"
             >
-              <div className="p-6 border-b border-[#e1ddd8]">
+              <div className="p-6 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-text-primary">Create Invite</h3>
+                  <h3 className="text-lg font-semibold text-text-primary dark:text-[#f5f5f8]">Create Invite</h3>
                   <button
                     onClick={() => setShowCreateDialog(false)}
-                    className="p-2 hover:bg-[#f5f3f0] rounded-lg transition-colors"
+                    className="p-2 hover:bg-[#f5f3f0] dark:hover:bg-white/10 rounded-lg transition-colors"
                   >
-                    <X className="w-5 h-5 text-text-secondary" />
+                    <X className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
                   </button>
                 </div>
               </div>
@@ -458,26 +458,26 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
             onClick={(e) => e.target === e.currentTarget && setShowBulkDialog(false)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl w-full max-w-lg shadow-xl"
+              className="bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl shadow-black/10 dark:shadow-black/30"
             >
-              <div className="p-6 border-b border-[#e1ddd8]">
+              <div className="p-6 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-text-primary">Bulk Import</h3>
+                  <h3 className="text-lg font-semibold text-text-primary dark:text-[#f5f5f8]">Bulk Import</h3>
                   <button
                     onClick={() => {
                       setShowBulkDialog(false);
                       setBulkResult(null);
                     }}
-                    className="p-2 hover:bg-[#f5f3f0] rounded-lg transition-colors"
+                    className="p-2 hover:bg-[#f5f3f0] dark:hover:bg-white/10 rounded-lg transition-colors"
                   >
-                    <X className="w-5 h-5 text-text-secondary" />
+                    <X className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
                   </button>
                 </div>
               </div>

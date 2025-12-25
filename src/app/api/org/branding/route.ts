@@ -6,7 +6,7 @@ import { requireCoachWithOrg, TenantRequiredError } from '@/lib/admin-utils-cler
 import { syncTenantToEdgeConfig, setTenantByCustomDomain, buildTenantConfigData, type TenantBrandingData } from '@/lib/tenant-edge-config';
 import type { OrgCustomDomain } from '@/types';
 import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgDefaultTheme, UserRole } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_THEME } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_THEME } from '@/types';
 
 /**
  * GET /api/org/branding
@@ -212,6 +212,7 @@ export async function POST(request: Request) {
         colors: brandingData.colors,
         menuTitles: brandingData.menuTitles || DEFAULT_MENU_TITLES,
         menuIcons: brandingData.menuIcons || DEFAULT_MENU_ICONS,
+        menuOrder: brandingData.menuOrder || DEFAULT_MENU_ORDER,
       };
       
       // Get subdomain from org_domains

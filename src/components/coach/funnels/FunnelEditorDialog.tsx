@@ -131,22 +131,22 @@ export function FunnelEditorDialog({
 
   const content = (
     <div 
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl shadow-black/10 dark:shadow-black/30 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#e1ddd8]">
-          <h2 className="text-xl font-semibold text-text-primary">
+        <div className="flex items-center justify-between p-6 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+          <h2 className="text-xl font-semibold text-text-primary dark:text-[#f5f5f8]">
             {mode === 'create' ? 'Create New Funnel' : 'Edit Funnel'}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-[#f5f3f0] rounded-lg transition-colors"
+            className="p-2 hover:bg-[#f5f3f0] dark:hover:bg-white/10 rounded-lg transition-colors"
           >
-            <X className="w-5 h-5 text-text-secondary" />
+            <X className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
           </button>
         </div>
 
@@ -359,11 +359,11 @@ export function FunnelEditorDialog({
           )}
 
           {/* Actions */}
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-4 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50 mt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2 px-4 text-text-secondary hover:text-text-primary border border-[#e1ddd8] rounded-lg transition-colors"
+              className="flex-1 py-2 px-4 text-text-secondary dark:text-[#b2b6c2] hover:text-text-primary dark:hover:text-[#f5f5f8] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg transition-colors"
             >
               Cancel
             </button>

@@ -7,6 +7,7 @@ import {
   DEFAULT_TENANT_COACHING_PROMO, 
   type TenantCoachingPromoData 
 } from '@/lib/tenant-edge-config';
+import { useTheme } from '@/contexts/ThemeContext';
 
 /**
  * Calculate relative luminance of a hex color
@@ -296,6 +297,17 @@ export function BrandingProvider({
     }
     return branding;
   }, [isPreviewMode, previewBranding, branding]);
+
+  // Get theme context to sync organization's default theme
+  const { setOrgDefaultTheme } = useTheme();
+  
+  // Sync organization's default theme to ThemeContext
+  // This ensures "system" theme option works correctly
+  useEffect(() => {
+    if (!mounted) return;
+    const orgDefaultTheme = effectiveBranding.defaultTheme || DEFAULT_THEME;
+    setOrgDefaultTheme(orgDefaultTheme);
+  }, [mounted, effectiveBranding.defaultTheme, setOrgDefaultTheme]);
 
   // Don't render until mounted to avoid hydration issues
   if (!mounted) {

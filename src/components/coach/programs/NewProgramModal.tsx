@@ -86,7 +86,7 @@ export function NewProgramModal({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -100,7 +100,7 @@ export function NewProgramModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className={`w-full transform overflow-hidden rounded-2xl bg-white dark:bg-[#171b22] shadow-2xl transition-all ${
+              <Dialog.Panel className={`w-full transform overflow-hidden rounded-2xl bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all ${
                 view === 'choice' ? 'max-w-2xl' : 'max-w-5xl'
               }`}>
                 {/* Header - Only show for choice view */}

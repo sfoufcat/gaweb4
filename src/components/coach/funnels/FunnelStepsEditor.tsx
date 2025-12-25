@@ -514,18 +514,18 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
               onClick={(e) => e.target === e.currentTarget && setShowAddStep(false)}
             >
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-white rounded-2xl w-full max-w-md shadow-xl"
+                className="bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl shadow-black/10 dark:shadow-black/30"
               >
-                <div className="p-6 border-b border-[#e1ddd8]">
-                  <h3 className="text-lg font-semibold text-text-primary">Add Step</h3>
-                  <p className="text-sm text-text-secondary">Choose the type of step to add</p>
+                <div className="p-6 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+                  <h3 className="text-lg font-semibold text-text-primary dark:text-[#f5f5f8]">Add Step</h3>
+                  <p className="text-sm text-text-secondary dark:text-[#b2b6c2]">Choose the type of step to add</p>
                 </div>
                 
                 <div className="p-4 grid grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto">
@@ -562,10 +562,10 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
                   })}
                 </div>
 
-                <div className="p-4 border-t border-[#e1ddd8]">
+                <div className="p-4 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
                   <button
                     onClick={() => setShowAddStep(false)}
-                    className="w-full py-2 text-text-secondary hover:text-text-primary transition-colors"
+                    className="w-full py-2 text-text-secondary dark:text-[#b2b6c2] hover:text-text-primary dark:hover:text-[#f5f5f8] transition-colors"
                   >
                     Cancel
                   </button>

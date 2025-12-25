@@ -366,7 +366,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-black/25 backdrop-blur-sm" />
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
           </Transition.Child>
 
           <div className="fixed inset-0 overflow-y-auto">
@@ -380,7 +380,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-[#171b22] p-6 shadow-xl transition-all">
+                <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 p-6 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all">
                   <Dialog.Title className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-4">
                     {editingCode ? 'Edit Discount Code' : 'Create Discount Code'}
                   </Dialog.Title>
@@ -424,7 +424,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                         <select
                           value={formData.type}
                           onChange={(e) => setFormData({ ...formData, type: e.target.value as DiscountType })}
-                          disabled={editingCode && editingCode.useCount > 0}
+                          disabled={!!editingCode && editingCode.useCount > 0}
                           className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert disabled:opacity-50"
                         >
                           <option value="percentage">Percentage (%)</option>
@@ -450,7 +450,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                             })}
                             min="0"
                             max={formData.type === 'percentage' ? 100 : undefined}
-                            disabled={editingCode && editingCode.useCount > 0}
+                            disabled={!!editingCode && editingCode.useCount > 0}
                             className="w-full pl-8 pr-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert disabled:opacity-50"
                           />
                         </div>
@@ -566,7 +566,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
           </Transition.Child>
 
           <div className="fixed inset-0 overflow-y-auto">
@@ -580,7 +580,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-[#171b22] p-6 shadow-xl transition-all">
+                <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 p-6 shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all">
                   <Dialog.Title className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
                     Delete Discount Code?
                   </Dialog.Title>

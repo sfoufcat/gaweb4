@@ -13,7 +13,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import type { OrgDomain, OrgCustomDomain, OrgBranding } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER } from '@/types';
 import type { TenantBrandingData, TenantCoachingPromoData } from '@/lib/tenant-edge-config';
 
 /**
@@ -32,6 +32,7 @@ async function getOrgBranding(organizationId: string): Promise<TenantBrandingDat
         colors: data.colors ?? DEFAULT_BRANDING_COLORS,
         menuTitles: data.menuTitles ?? DEFAULT_MENU_TITLES,
         menuIcons: data.menuIcons ?? DEFAULT_MENU_ICONS,
+        menuOrder: data.menuOrder ?? DEFAULT_MENU_ORDER,
       };
     }
     
@@ -43,6 +44,7 @@ async function getOrgBranding(organizationId: string): Promise<TenantBrandingDat
       colors: DEFAULT_BRANDING_COLORS,
       menuTitles: DEFAULT_MENU_TITLES,
       menuIcons: DEFAULT_MENU_ICONS,
+      menuOrder: DEFAULT_MENU_ORDER,
     };
   } catch (error) {
     console.error('[TENANT_RESOLVE] Error fetching branding:', error);
@@ -54,6 +56,7 @@ async function getOrgBranding(organizationId: string): Promise<TenantBrandingDat
       colors: DEFAULT_BRANDING_COLORS,
       menuTitles: DEFAULT_MENU_TITLES,
       menuIcons: DEFAULT_MENU_ICONS,
+      menuOrder: DEFAULT_MENU_ORDER,
     };
   }
 }

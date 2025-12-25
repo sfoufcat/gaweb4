@@ -13,8 +13,8 @@
  */
 
 import { get } from '@vercel/edge-config';
-import type { OrgBrandingColors, OrgMenuTitles, OrgMenuIcons } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS } from '@/types';
+import type { OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, MenuItemKey } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER } from '@/types';
 
 // =============================================================================
 // TYPES
@@ -30,6 +30,7 @@ export interface TenantBrandingData {
   colors: OrgBrandingColors;
   menuTitles: OrgMenuTitles;
   menuIcons: OrgMenuIcons;
+  menuOrder: MenuItemKey[];
 }
 
 /**
@@ -66,6 +67,7 @@ export const DEFAULT_TENANT_BRANDING: TenantBrandingData = {
   colors: DEFAULT_BRANDING_COLORS,
   menuTitles: DEFAULT_MENU_TITLES,
   menuIcons: DEFAULT_MENU_ICONS,
+  menuOrder: DEFAULT_MENU_ORDER,
 };
 
 /**
@@ -243,6 +245,7 @@ export function buildTenantConfigData(
       colors: branding?.colors ?? DEFAULT_TENANT_BRANDING.colors,
       menuTitles: branding?.menuTitles ?? DEFAULT_TENANT_BRANDING.menuTitles,
       menuIcons: branding?.menuIcons ?? DEFAULT_TENANT_BRANDING.menuIcons,
+      menuOrder: branding?.menuOrder ?? DEFAULT_TENANT_BRANDING.menuOrder,
     },
     feedEnabled: feedEnabled ?? false,
     coachingPromo: coachingPromo ? {
