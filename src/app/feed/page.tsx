@@ -8,7 +8,6 @@ import { useFeed, type FeedPost, usePost } from '@/hooks/useFeed';
 import { useBrandingValues, useMenuTitles, useFeedEnabled } from '@/contexts/BrandingContext';
 import { useSquad } from '@/hooks/useSquad';
 import { useFeedStories, useCurrentUserHasStory } from '@/hooks/useFeedStories';
-import { useStoryViewTracking } from '@/hooks/useStoryViewTracking';
 import { FeedList } from '@/components/feed/FeedList';
 import { CreatePostModal } from '@/components/feed/CreatePostModal';
 import { EditPostModal } from '@/components/feed/EditPostModal';
@@ -18,8 +17,7 @@ import { ReportModal } from '@/components/feed/ReportModal';
 import { StoriesRow } from '@/components/feed/StoriesRow';
 import { FeedSidebar } from '@/components/feed/FeedSidebar';
 import { PostDetailModal } from '@/components/feed/PostDetailModal';
-import { StoryPlayer } from '@/components/stories/StoryPlayer';
-import { useUserStories } from '@/hooks/useUserStories';
+import { StoryPlayerWrapper } from '@/components/feed/StoryPlayerWrapper';
 
 export default function FeedPage() {
   const { user } = useUser();
@@ -41,9 +39,8 @@ export default function FeedPage() {
     squadMembers, // Fallback for when squadId is not yet available
   });
   
-  // Story view tracking (for marking stories as viewed)
+  // Story status for current user
   const currentUserStoryStatus = useCurrentUserHasStory();
-  const { markStoryAsViewed } = useStoryViewTracking();
   
   const {
     posts,
@@ -67,44 +64,42 @@ export default function FeedPage() {
   const [selectedPostForShare, setSelectedPostForShare] = useState<string | null>(null);
   const [selectedPostForReport, setSelectedPostForReport] = useState<string | null>(null);
   const [selectedPostForView, setSelectedPostForView] = useState<string | null>(null);
-  const [selectedStoryUserId, setSelectedStoryUserId] = useState<string | null>(null);
+  const [selectedStoryStartIndex, setSelectedStoryStartIndex] = useState<number | null>(null);
 
   const accentColor = isDefault ? '#a07855' : colors.accentLight;
 
-  // Check if viewing own story
-  const isViewingOwnStory = selectedStoryUserId === user?.id;
+  // Current user info for story viewer
+  const currentUserInfo = useMemo(() => {
+    if (!user) return null;
+    return {
+      id: user.id,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      imageUrl: user.imageUrl || '',
+    };
+  }, [user]);
 
-  // Get selected story user data
-  // For own story, use Clerk user data; for others, look in storyUsers array
-  const selectedStoryUser = useMemo(() => {
-    if (!selectedStoryUserId) return null;
+  // Build full story user queue including current user at the start
+  const fullStoryQueue = useMemo(() => {
+    if (!user) return storyUsers;
     
-    // If viewing own story, build from Clerk user data
-    if (isViewingOwnStory && user) {
-      return {
-        id: user.id,
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        imageUrl: user.imageUrl || '',
-      };
-    }
+    // Add current user at the beginning if they have a story
+    const currentUserStory = {
+      id: user.id,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      imageUrl: user.imageUrl || '',
+      hasUnseenStory: !currentUserStoryStatus.isLoading && currentUserStoryStatus.hasStory,
+      hasStory: currentUserStoryStatus.hasStory,
+      hasDayClosed: currentUserStoryStatus.hasDayClosed,
+      hasWeekClosed: currentUserStoryStatus.hasWeekClosed,
+      hasTasks: currentUserStoryStatus.hasTasks,
+      hasGoal: currentUserStoryStatus.hasGoal,
+      contentHash: currentUserStoryStatus.contentHash,
+    };
     
-    // Otherwise look in storyUsers (other community members)
-    const foundUser = storyUsers.find(u => u.id === selectedStoryUserId);
-    if (foundUser) {
-      return {
-        id: foundUser.id,
-        firstName: foundUser.firstName,
-        lastName: foundUser.lastName,
-        imageUrl: foundUser.imageUrl || '',
-      };
-    }
-    
-    return null;
-  }, [selectedStoryUserId, storyUsers, isViewingOwnStory, user]);
-
-  // Fetch stories for selected user
-  const { slides: selectedUserStories, isLoading: isSelectedUserStoriesLoading } = useUserStories(selectedStoryUserId || '');
+    return [currentUserStory, ...storyUsers];
+  }, [user, storyUsers, currentUserStoryStatus]);
 
   // Handle post creation
   const handlePostCreated = useCallback((post: FeedPost) => {
@@ -139,14 +134,10 @@ export default function FeedPage() {
     removePost(postId);
   }, [removePost]);
 
-  // Handle story viewer close - marks own story as viewed
+  // Handle story viewer close
   const handleStoryClose = useCallback(() => {
-    // If viewing own story, mark as viewed with current content hash
-    if (isViewingOwnStory && user?.id && currentUserStoryStatus.contentHash) {
-      markStoryAsViewed(user.id, currentUserStoryStatus.contentHash);
-    }
-    setSelectedStoryUserId(null);
-  }, [isViewingOwnStory, user?.id, currentUserStoryStatus.contentHash, markStoryAsViewed]);
+    setSelectedStoryStartIndex(null);
+  }, []);
 
   // Handle back to feed
   const handleBackToFeed = useCallback(() => {
@@ -201,7 +192,11 @@ export default function FeedPage() {
               isLoading={isLoadingSquad || isLoadingStories}
               onCreateStory={() => setShowCreateStoryModal(true)}
               onViewStory={(userId) => {
-                setSelectedStoryUserId(userId);
+                // Find the index in the full queue (current user is at index 0)
+                const index = fullStoryQueue.findIndex(u => u.id === userId);
+                if (index !== -1) {
+                  setSelectedStoryStartIndex(index);
+                }
               }}
             />
           </div>
@@ -422,19 +417,13 @@ export default function FeedPage() {
         />
       )}
 
-      {/* Story viewer - Render immediately with loading state */}
-      {selectedStoryUser && (
-        <StoryPlayer
-          isOpen={!!selectedStoryUserId}
+      {/* Story viewer with prefetching and auto-advance */}
+      {selectedStoryStartIndex !== null && (
+        <StoryPlayerWrapper
+          storyUsers={fullStoryQueue}
+          startIndex={selectedStoryStartIndex}
           onClose={handleStoryClose}
-          slides={selectedUserStories}
-          user={{
-            id: selectedStoryUser.id,
-            firstName: selectedStoryUser.firstName,
-            lastName: selectedStoryUser.lastName,
-            imageUrl: selectedStoryUser.imageUrl || '',
-          }}
-          isLoading={isSelectedUserStoriesLoading}
+          currentUser={currentUserInfo}
         />
       )}
     </div>

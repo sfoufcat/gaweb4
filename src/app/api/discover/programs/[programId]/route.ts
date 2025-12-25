@@ -209,15 +209,49 @@ export async function GET(
       coachBio,
     };
 
-    // Get total enrollments count for social proof (if showEnrollmentCount is enabled)
+    // Get total enrollments count and recent member avatars for social proof (if showEnrollmentCount is enabled)
     let totalEnrollments = 0;
+    let enrolledMemberAvatars: string[] = [];
     if (programData.showEnrollmentCount) {
+      // Get enrollment count
       const enrollmentCount = await adminDb
         .collection('program_enrollments')
         .where('programId', '==', programId)
         .count()
         .get();
       totalEnrollments = enrollmentCount.data().count;
+      
+      // Get recent enrollments for avatar display (max 3)
+      if (totalEnrollments > 0) {
+        try {
+          const { clerkClient } = await import('@clerk/nextjs/server');
+          const clerk = await clerkClient();
+          
+          const recentEnrollments = await adminDb
+            .collection('program_enrollments')
+            .where('programId', '==', programId)
+            .orderBy('enrolledAt', 'desc')
+            .limit(3)
+            .get();
+          
+          // Fetch user profile images from Clerk
+          const userIds = recentEnrollments.docs.map(doc => doc.data().userId as string);
+          const avatarPromises = userIds.map(async (uid) => {
+            try {
+              const user = await clerk.users.getUser(uid);
+              return user.imageUrl || null;
+            } catch {
+              return null;
+            }
+          });
+          
+          const avatars = await Promise.all(avatarPromises);
+          enrolledMemberAvatars = avatars.filter((url): url is string => url !== null);
+        } catch (err) {
+          console.error('[DISCOVER_PROGRAM_GET] Error fetching enrolled member avatars:', err);
+          // Continue without avatars
+        }
+      }
     }
 
     // Get program days for curriculum preview (if showCurriculum is enabled)
@@ -267,6 +301,7 @@ export async function GET(
       cohorts: programData.type === 'group' ? cohorts : undefined,
       days: programData.showCurriculum ? days : undefined,
       totalEnrollments: programData.showEnrollmentCount ? totalEnrollments : undefined,
+      enrolledMemberAvatars: programData.showEnrollmentCount ? enrolledMemberAvatars : undefined,
       enrollment: existingEnrollment ? {
         id: existingEnrollment.id,
         status: existingEnrollment.status,
