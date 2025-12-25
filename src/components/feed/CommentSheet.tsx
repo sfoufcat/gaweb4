@@ -456,10 +456,10 @@ function CommentItem({
           {showMenu && (
             <>
               <div
-                className="fixed inset-0 z-10"
+                className="fixed inset-0 z-50"
                 onClick={() => setShowMenu(false)}
               />
-              <div className="absolute right-0 bottom-full mb-1 w-32 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-20 overflow-hidden">
+              <div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-[100] overflow-hidden">
                 <button
                   onClick={() => {
                     setShowMenu(false);

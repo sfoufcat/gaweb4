@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, X, Trash2 } from 'lucide-react';
-import type { Squad } from '@/types';
+import { Calendar, Clock, MapPin, X, Trash2, Repeat, Users } from 'lucide-react';
+import type { Squad, RecurrenceFrequency, EventVisibility } from '@/types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,8 +16,8 @@ import {
 /**
  * SquadCallEditForm Component
  * 
- * Modal form for coaches to schedule/update the next squad call.
- * Used in the Coach Dashboard for premium squads.
+ * Modal form for coaches to schedule/update squad calls.
+ * Uses the unified events API.
  * 
  * Features:
  * - Date picker
@@ -25,6 +25,8 @@ import {
  * - Timezone selector
  * - Location input
  * - Optional title
+ * - Recurrence settings (new)
+ * - Program visibility toggle (new)
  */
 
 interface SquadCallEditFormProps {
@@ -32,6 +34,7 @@ interface SquadCallEditFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  existingEventId?: string; // If editing an existing event
 }
 
 // Common timezones for the dropdown
@@ -61,7 +64,33 @@ const LOCATION_PRESETS = [
   'Microsoft Teams',
 ];
 
-export function SquadCallEditForm({ squad, isOpen, onClose, onSuccess }: SquadCallEditFormProps) {
+// Recurrence options
+const RECURRENCE_OPTIONS: { value: RecurrenceFrequency | 'none'; label: string }[] = [
+  { value: 'none', label: 'Does not repeat' },
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Every 2 weeks' },
+  { value: 'monthly', label: 'Monthly' },
+];
+
+// Day of week options
+const DAY_OPTIONS = [
+  { value: 0, label: 'Sunday' },
+  { value: 1, label: 'Monday' },
+  { value: 2, label: 'Tuesday' },
+  { value: 3, label: 'Wednesday' },
+  { value: 4, label: 'Thursday' },
+  { value: 5, label: 'Friday' },
+  { value: 6, label: 'Saturday' },
+];
+
+export function SquadCallEditForm({ 
+  squad, 
+  isOpen, 
+  onClose, 
+  onSuccess,
+  existingEventId,
+}: SquadCallEditFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,38 +106,49 @@ export function SquadCallEditForm({ squad, isOpen, onClose, onSuccess }: SquadCa
   // Track if using a preset or custom location
   const [useCustomLocation, setUseCustomLocation] = useState(false);
   
+  // Recurrence settings
+  const [recurrence, setRecurrence] = useState<RecurrenceFrequency | 'none'>('none');
+  const [recurrenceDayOfWeek, setRecurrenceDayOfWeek] = useState(1); // Monday
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
+  
+  // Visibility setting
+  const [visibility, setVisibility] = useState<EventVisibility>('squad_only');
+  
+  // Whether we're editing an existing call (legacy or unified)
+  const isEditing = !!existingEventId || !!squad.nextCallDateTime;
+  
   // Initialize form with existing call data
   useEffect(() => {
     if (isOpen && squad) {
-      if (squad.nextCallDateTime) {
-        const callDate = new Date(squad.nextCallDateTime);
-        const callTz = squad.nextCallTimezone || 'America/New_York';
+      // Check if there's an existing event to load
+      if (existingEventId) {
+        // Load from unified events API
+        loadExistingEvent(existingEventId);
+      } else if (squad.nextCallDateTime) {
+        // Legacy: Load from squad fields
+        loadFromSquadFields();
+      } else {
+        // Default values for new call
+        setDefaultValues();
+      }
+      setError(null);
+    }
+  }, [isOpen, squad, existingEventId]);
+  
+  const loadExistingEvent = async (eventId: string) => {
+    try {
+      const response = await fetch(`/api/events/${eventId}`);
+      if (response.ok) {
+        const { event } = await response.json();
         
-        // Format date in the call's timezone
-        const dateFormatter = new Intl.DateTimeFormat('en-CA', {
-          timeZone: callTz,
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-        });
-        setDate(dateFormatter.format(callDate));
+        const callDate = new Date(event.startDateTime);
+        const callTz = event.timezone || 'America/New_York';
         
-        // Format time in the call's timezone
-        const timeFormatter = new Intl.DateTimeFormat('en-US', {
-          timeZone: callTz,
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false,
-        });
-        const timeParts = timeFormatter.formatToParts(callDate);
-        const hour = timeParts.find(p => p.type === 'hour')?.value || '10';
-        const minute = timeParts.find(p => p.type === 'minute')?.value || '00';
-        setTime(`${hour}:${minute}`);
-        
+        setDate(formatDateForInput(callDate, callTz));
+        setTime(formatTimeForInput(callDate, callTz));
         setTimezone(callTz);
         
-        // Check if location is a preset
-        const loc = squad.nextCallLocation || 'Squad chat';
+        const loc = event.locationLabel || 'Squad chat';
         if (LOCATION_PRESETS.includes(loc)) {
           setLocation(loc);
           setUseCustomLocation(false);
@@ -117,22 +157,86 @@ export function SquadCallEditForm({ squad, isOpen, onClose, onSuccess }: SquadCa
           setCustomLocation(loc);
         }
         
-        setTitle(squad.nextCallTitle || '');
-      } else {
-        // Default values for new call
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 7); // Default to next week
-        setDate(tomorrow.toISOString().split('T')[0]);
-        setTime('10:00');
-        setTimezone(squad.timezone || 'America/New_York');
-        setLocation('Squad chat');
-        setCustomLocation('');
-        setUseCustomLocation(false);
-        setTitle('');
+        setTitle(event.title || '');
+        setVisibility(event.visibility || 'squad_only');
+        
+        // Load recurrence settings
+        if (event.isRecurring && event.recurrence) {
+          setRecurrence(event.recurrence.frequency);
+          if (event.recurrence.dayOfWeek !== undefined) {
+            setRecurrenceDayOfWeek(event.recurrence.dayOfWeek);
+          }
+          if (event.recurrence.endDate) {
+            setRecurrenceEndDate(event.recurrence.endDate);
+          }
+        } else {
+          setRecurrence('none');
+        }
       }
-      setError(null);
+    } catch (err) {
+      console.error('Error loading event:', err);
     }
-  }, [isOpen, squad]);
+  };
+  
+  const loadFromSquadFields = () => {
+    const callDate = new Date(squad.nextCallDateTime!);
+    const callTz = squad.nextCallTimezone || 'America/New_York';
+    
+    setDate(formatDateForInput(callDate, callTz));
+    setTime(formatTimeForInput(callDate, callTz));
+    setTimezone(callTz);
+    
+    const loc = squad.nextCallLocation || 'Squad chat';
+    if (LOCATION_PRESETS.includes(loc)) {
+      setLocation(loc);
+      setUseCustomLocation(false);
+    } else {
+      setUseCustomLocation(true);
+      setCustomLocation(loc);
+    }
+    
+    setTitle(squad.nextCallTitle || '');
+    setRecurrence('none');
+    setVisibility('squad_only');
+  };
+  
+  const setDefaultValues = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 7); // Default to next week
+    setDate(tomorrow.toISOString().split('T')[0]);
+    setTime('10:00');
+    setTimezone(squad.timezone || 'America/New_York');
+    setLocation('Squad chat');
+    setCustomLocation('');
+    setUseCustomLocation(false);
+    setTitle('');
+    setRecurrence('none');
+    setRecurrenceEndDate('');
+    setVisibility('squad_only');
+  };
+  
+  const formatDateForInput = (date: Date, tz: string): string => {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    return formatter.format(date);
+  };
+  
+  const formatTimeForInput = (date: Date, tz: string): string => {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(date);
+    const hour = parts.find(p => p.type === 'hour')?.value || '10';
+    const minute = parts.find(p => p.type === 'minute')?.value || '00';
+    return `${hour}:${minute}`;
+  };
   
   const handleSubmit = async () => {
     if (isSubmitting) return;
@@ -155,29 +259,99 @@ export function SquadCallEditForm({ squad, isOpen, onClose, onSuccess }: SquadCa
       setIsSubmitting(true);
       
       // Construct the datetime in the selected timezone
-      // Parse the local date/time and convert to ISO
       const [year, month, day] = date.split('-').map(Number);
       const [hours, minutes] = time.split(':').map(Number);
       
       // Create a date string that includes timezone context
-      // We'll send the datetime and timezone separately to the API
       const localDate = new Date(year, month - 1, day, hours, minutes);
       
       // Convert to UTC for storage
-      // Using Intl to handle timezone conversion properly
       const dateInTz = new Date(localDate.toLocaleString('en-US', { timeZone: timezone }));
       const utcDate = new Date(localDate.getTime() - (dateInTz.getTime() - localDate.getTime()));
       
-      const response = await fetch(`/api/coach/squads/${squad.id}/call`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dateTime: utcDate.toISOString(),
-          timezone,
-          location: finalLocation,
-          title: title.trim() || undefined,
-        }),
-      });
+      // Build recurrence pattern if needed
+      const recurrencePattern = recurrence !== 'none' ? {
+        frequency: recurrence,
+        dayOfWeek: recurrence === 'weekly' || recurrence === 'biweekly' 
+          ? recurrenceDayOfWeek 
+          : undefined,
+        dayOfMonth: recurrence === 'monthly' ? day : undefined,
+        time: time,
+        timezone: timezone,
+        startDate: date,
+        endDate: recurrenceEndDate || undefined,
+      } : undefined;
+      
+      // Build event data
+      const eventData = {
+        title: title.trim() || 'Squad call',
+        description: `Squad call for ${squad.name}`,
+        startDateTime: utcDate.toISOString(),
+        timezone,
+        durationMinutes: 60,
+        
+        locationType: finalLocation.startsWith('http') ? 'online' : 'chat',
+        locationLabel: finalLocation,
+        meetingLink: finalLocation.startsWith('http') ? finalLocation : undefined,
+        
+        eventType: 'squad_call',
+        scope: 'squad',
+        participantModel: 'squad_members',
+        approvalType: 'none',
+        
+        visibility,
+        
+        organizationId: squad.organizationId || undefined,
+        programId: squad.programId || undefined,
+        squadId: squad.id,
+        cohortId: squad.cohortId || undefined,
+        
+        isRecurring: recurrence !== 'none',
+        recurrence: recurrencePattern,
+        
+        isCoachLed: true,
+        
+        chatChannelId: squad.chatChannelId || undefined,
+        sendChatReminders: true,
+      };
+      
+      let response;
+      
+      if (existingEventId) {
+        // Update existing unified event
+        response = await fetch(`/api/events/${existingEventId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(eventData),
+        });
+      } else if (squad.nextCallDateTime) {
+        // Legacy: Also update squad fields for backward compatibility
+        // First create the unified event
+        response = await fetch('/api/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(eventData),
+        });
+        
+        // Also update legacy squad fields (will be removed after migration)
+        await fetch(`/api/coach/squads/${squad.id}/call`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dateTime: utcDate.toISOString(),
+            timezone,
+            location: finalLocation,
+            title: title.trim() || undefined,
+          }),
+        });
+      } else {
+        // Create new event
+        response = await fetch('/api/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(eventData),
+        });
+      }
       
       if (!response.ok) {
         const data = await response.json();
@@ -197,19 +371,32 @@ export function SquadCallEditForm({ squad, isOpen, onClose, onSuccess }: SquadCa
   };
   
   const handleDelete = async () => {
-    if (isDeleting || !squad.nextCallDateTime) return;
+    if (isDeleting) return;
     
     try {
       setIsDeleting(true);
       setError(null);
       
-      const response = await fetch(`/api/coach/squads/${squad.id}/call`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to remove call');
+      if (existingEventId) {
+        // Delete unified event
+        const response = await fetch(`/api/events/${existingEventId}`, {
+          method: 'DELETE',
+        });
+        
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to remove call');
+        }
+      } else if (squad.nextCallDateTime) {
+        // Legacy: Delete via squad API
+        const response = await fetch(`/api/coach/squads/${squad.id}/call`, {
+          method: 'DELETE',
+        });
+        
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to remove call');
+        }
       }
       
       onClose();
@@ -227,18 +414,24 @@ export function SquadCallEditForm({ squad, isOpen, onClose, onSuccess }: SquadCa
   // Get minimum date (today)
   const minDate = new Date().toISOString().split('T')[0];
   
+  // Show recurrence day selector for weekly/biweekly
+  const showDaySelector = recurrence === 'weekly' || recurrence === 'biweekly';
+  
+  // Show program visibility toggle only if squad has a program
+  const showVisibilityToggle = !!squad.programId;
+  
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
-      <AlertDialogContent className="max-w-md">
+      <AlertDialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <AlertDialogHeader>
           <div className="flex items-center justify-between">
             <AlertDialogTitle className="font-albert text-[20px] tracking-[-0.5px] flex items-center gap-2">
               <Calendar className="w-5 h-5 text-[#a07855]" />
-              {squad.nextCallDateTime ? 'Edit squad call' : 'Schedule squad call'}
+              {isEditing ? 'Edit squad call' : 'Schedule squad call'}
             </AlertDialogTitle>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-full hover:bg-[#f3f1ef] transition-colors"
+              className="p-1.5 rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
             >
               <X className="w-5 h-5 text-text-secondary" />
             </button>
@@ -247,8 +440,8 @@ export function SquadCallEditForm({ squad, isOpen, onClose, onSuccess }: SquadCa
 
         <div className="space-y-5 py-3">
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
-              <p className="text-red-600 text-sm font-albert">{error}</p>
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+              <p className="text-red-600 dark:text-red-400 text-sm font-albert">{error}</p>
             </div>
           )}
           
@@ -256,7 +449,7 @@ export function SquadCallEditForm({ squad, isOpen, onClose, onSuccess }: SquadCa
           <div className="grid grid-cols-2 gap-3">
             {/* Date */}
             <div>
-              <label className="block font-albert font-medium text-[14px] text-text-primary mb-2">
+              <label className="block font-albert font-medium text-[14px] text-text-primary dark:text-[#f5f5f8] mb-2">
                 Date
               </label>
               <input
@@ -264,22 +457,22 @@ export function SquadCallEditForm({ squad, isOpen, onClose, onSuccess }: SquadCa
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 min={minDate}
-                className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-xl font-albert text-[14px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all"
+                className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all"
               />
             </div>
             
             {/* Time */}
             <div>
-              <label className="block font-albert font-medium text-[14px] text-text-primary mb-2">
+              <label className="block font-albert font-medium text-[14px] text-text-primary dark:text-[#f5f5f8] mb-2">
                 Time
               </label>
               <div className="relative">
-                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
+                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary dark:text-[#7d8190]" />
                 <input
                   type="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-white border border-[#e1ddd8] rounded-xl font-albert text-[14px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all"
+                  className="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all"
                 />
               </div>
             </div>
@@ -287,13 +480,13 @@ export function SquadCallEditForm({ squad, isOpen, onClose, onSuccess }: SquadCa
           
           {/* Timezone */}
           <div>
-            <label className="block font-albert font-medium text-[14px] text-text-primary mb-2">
+            <label className="block font-albert font-medium text-[14px] text-text-primary dark:text-[#f5f5f8] mb-2">
               Timezone
             </label>
             <select
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
-              className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-xl font-albert text-[14px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all appearance-none cursor-pointer"
+              className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all appearance-none cursor-pointer"
             >
               {COMMON_TIMEZONES.map((tz) => (
                 <option key={tz.value} value={tz.value}>
@@ -303,9 +496,64 @@ export function SquadCallEditForm({ squad, isOpen, onClose, onSuccess }: SquadCa
             </select>
           </div>
           
+          {/* Recurrence */}
+          <div>
+            <label className="block font-albert font-medium text-[14px] text-text-primary dark:text-[#f5f5f8] mb-2">
+              <Repeat className="inline w-4 h-4 mr-1 -mt-0.5" />
+              Repeat
+            </label>
+            <select
+              value={recurrence}
+              onChange={(e) => setRecurrence(e.target.value as RecurrenceFrequency | 'none')}
+              className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all appearance-none cursor-pointer"
+            >
+              {RECURRENCE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Day of Week (for weekly/biweekly) */}
+          {showDaySelector && (
+            <div>
+              <label className="block font-albert font-medium text-[14px] text-text-primary dark:text-[#f5f5f8] mb-2">
+                On
+              </label>
+              <select
+                value={recurrenceDayOfWeek}
+                onChange={(e) => setRecurrenceDayOfWeek(Number(e.target.value))}
+                className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all appearance-none cursor-pointer"
+              >
+                {DAY_OPTIONS.map((day) => (
+                  <option key={day.value} value={day.value}>
+                    {day.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          
+          {/* End Date (for recurring) */}
+          {recurrence !== 'none' && (
+            <div>
+              <label className="block font-albert font-medium text-[14px] text-text-primary dark:text-[#f5f5f8] mb-2">
+                End date <span className="text-text-secondary font-normal">(optional)</span>
+              </label>
+              <input
+                type="date"
+                value={recurrenceEndDate}
+                onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                min={date}
+                className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all"
+              />
+            </div>
+          )}
+          
           {/* Location */}
           <div>
-            <label className="block font-albert font-medium text-[14px] text-text-primary mb-2">
+            <label className="block font-albert font-medium text-[14px] text-text-primary dark:text-[#f5f5f8] mb-2">
               <MapPin className="inline w-4 h-4 mr-1 -mt-0.5" />
               Location
             </label>
@@ -321,7 +569,7 @@ export function SquadCallEditForm({ squad, isOpen, onClose, onSuccess }: SquadCa
                       className={`px-3 py-1.5 rounded-full font-albert text-[13px] transition-all ${
                         location === preset
                           ? 'bg-[#a07855] text-white'
-                          : 'bg-[#f3f1ef] text-text-primary hover:bg-[#e9e5e0]'
+                          : 'bg-[#f3f1ef] dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#2e333d]'
                       }`}
                     >
                       {preset}
@@ -343,7 +591,7 @@ export function SquadCallEditForm({ squad, isOpen, onClose, onSuccess }: SquadCa
                   value={customLocation}
                   onChange={(e) => setCustomLocation(e.target.value)}
                   placeholder="e.g., https://zoom.us/j/... or meeting room name"
-                  className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-xl font-albert text-[14px] text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all"
+                  className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-secondary/60 dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all"
                 />
                 <button
                   type="button"
@@ -361,26 +609,51 @@ export function SquadCallEditForm({ squad, isOpen, onClose, onSuccess }: SquadCa
           
           {/* Title (Optional) */}
           <div>
-            <label className="block font-albert font-medium text-[14px] text-text-primary mb-2">
-              Title <span className="text-text-secondary font-normal">(optional)</span>
+            <label className="block font-albert font-medium text-[14px] text-text-primary dark:text-[#f5f5f8] mb-2">
+              Title <span className="text-text-secondary dark:text-[#7d8190] font-normal">(optional)</span>
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Squad coaching call"
-              className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-xl font-albert text-[14px] text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all"
+              className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-secondary/60 dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all"
             />
           </div>
+          
+          {/* Program Visibility Toggle */}
+          {showVisibilityToggle && (
+            <div className="p-4 bg-[#f3f1ef] dark:bg-[#171b22] rounded-xl">
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={visibility === 'program_wide'}
+                  onChange={(e) => setVisibility(e.target.checked ? 'program_wide' : 'squad_only')}
+                  className="mt-1 w-5 h-5 rounded-md border-2 border-[#d4cfc9] dark:border-[#3a3f4a] text-[#a07855] focus:ring-[#a07855] focus:ring-offset-0 cursor-pointer"
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-[#a07855]" />
+                    <span className="font-albert font-medium text-[14px] text-text-primary dark:text-[#f5f5f8]">
+                      Show on program calendar
+                    </span>
+                  </div>
+                  <p className="text-[12px] text-text-secondary dark:text-[#7d8190] mt-1 leading-relaxed">
+                    Make this call visible to all program enrollees, not just squad members.
+                  </p>
+                </div>
+              </label>
+            </div>
+          )}
         </div>
 
         <AlertDialogFooter className="gap-2 sm:gap-2 flex-col-reverse sm:flex-row">
-          {/* Delete button - only show if there's an existing call */}
-          {squad.nextCallDateTime && (
+          {/* Delete button - only show if editing */}
+          {isEditing && (
             <button
               onClick={handleDelete}
               disabled={isDeleting || isSubmitting}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-red-600 hover:bg-red-50 rounded-full font-albert text-sm transition-colors disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full font-albert text-sm transition-colors disabled:opacity-50"
             >
               <Trash2 className="w-4 h-4" />
               {isDeleting ? 'Removing...' : 'Remove call'}
@@ -390,7 +663,7 @@ export function SquadCallEditForm({ squad, isOpen, onClose, onSuccess }: SquadCa
           <div className="flex gap-2 w-full sm:w-auto sm:ml-auto">
             <AlertDialogCancel 
               disabled={isSubmitting || isDeleting}
-              className="font-albert rounded-full border-[#e1ddd8] flex-1 sm:flex-none"
+              className="font-albert rounded-full border-[#e1ddd8] dark:border-[#262b35] flex-1 sm:flex-none"
             >
               Cancel
             </AlertDialogCancel>
@@ -399,7 +672,7 @@ export function SquadCallEditForm({ squad, isOpen, onClose, onSuccess }: SquadCa
               disabled={isSubmitting || isDeleting}
               className="font-albert rounded-full bg-[#a07855] hover:bg-[#8c6245] text-white flex-1 sm:flex-none"
             >
-              {isSubmitting ? 'Saving...' : squad.nextCallDateTime ? 'Update call' : 'Schedule call'}
+              {isSubmitting ? 'Saving...' : isEditing ? 'Update call' : 'Schedule call'}
             </AlertDialogAction>
           </div>
         </AlertDialogFooter>
@@ -407,4 +680,3 @@ export function SquadCallEditForm({ squad, isOpen, onClose, onSuccess }: SquadCa
     </AlertDialog>
   );
 }
-

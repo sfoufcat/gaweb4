@@ -3,4 +3,5 @@ export { PlatformEmptyState } from './PlatformEmptyState';
 export { ProgramListView } from './ProgramListView';
 export { ProgramDetailView } from './ProgramDetailView';
 export { SquadTabContent } from './SquadTabContent';
+export { ProgramEventsSection, FeaturedEventCard } from './ProgramEventsSection';
 

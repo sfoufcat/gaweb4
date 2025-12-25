@@ -1221,6 +1221,14 @@ export type NotificationType =
   | 'squad_call_24h'
   | 'squad_call_1h'
   | 'squad_call_live'
+  // Coaching call notifications
+  | 'coaching_call_24h'
+  | 'coaching_call_1h'
+  | 'coaching_call_live'
+  // Event notifications
+  | 'event_reminder_24h'
+  | 'event_reminder_1h'
+  | 'event_live'
   // Feed notifications
   | 'feed_like'
   | 'feed_comment'
@@ -2774,4 +2782,301 @@ export interface DiscountCodeUsage {
   
   createdAt: string;
 }
+
+// =============================================================================
+// UNIFIED EVENT TYPES
+// =============================================================================
+
+/**
+ * Event Type - Classification of what kind of event this is
+ */
+export type EventType = 
+  | 'workshop'           // Discover workshops/webinars
+  | 'community_event'    // General community events
+  | 'squad_call'         // Squad group calls (coach or peer)
+  | 'coaching_1on1';     // Individual coaching sessions
+
+/**
+ * Event Scope - Who can see/access this event
+ */
+export type EventScope = 
+  | 'global'             // Public discover events
+  | 'organization'       // Org-specific events
+  | 'program'            // Program-enrolled users (visible on program page)
+  | 'squad'              // Squad members only (not visible on program page by default)
+  | 'private';           // Invite-only (1-on-1)
+
+/**
+ * Event Visibility - For squad events, controls program-level visibility
+ * Coach can choose to make squad events visible to entire program
+ */
+export type EventVisibility = 
+  | 'squad_only'         // Only visible to squad members
+  | 'program_wide';      // Visible to all program enrollees (shows on program page)
+
+/**
+ * Participant Model - How participants are determined
+ */
+export type ParticipantModel = 
+  | 'rsvp'               // Open RSVP (discover events)
+  | 'squad_members'      // Auto-includes squad members
+  | 'program_enrollees'  // Auto-includes program enrollees
+  | 'invite_only';       // Specific attendeeIds
+
+/**
+ * Approval Type - How event confirmation works
+ */
+export type EventApprovalType = 
+  | 'none'               // Immediately confirmed
+  | 'voting';            // Requires member votes (for peer-led squad calls)
+
+/**
+ * Event Status - Lifecycle state of the event
+ */
+export type EventStatus = 
+  | 'draft'              // Not yet published
+  | 'pending_approval'   // Awaiting votes or approval
+  | 'confirmed'          // Scheduled and confirmed
+  | 'live'               // Currently happening
+  | 'completed'          // Past event
+  | 'canceled';          // Canceled
+
+/**
+ * Recurrence Frequency - How often a recurring event repeats
+ */
+export type RecurrenceFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly';
+
+/**
+ * Recurrence Pattern - Configuration for recurring events
+ */
+export interface RecurrencePattern {
+  frequency: RecurrenceFrequency;
+  dayOfWeek?: number;        // 0=Sun, 1=Mon, ... 6=Sat (for weekly/biweekly)
+  dayOfMonth?: number;       // 1-31 (for monthly)
+  time: string;              // "15:00" (HH:mm format)
+  timezone: string;          // IANA timezone
+  startDate: string;         // ISO date when recurrence starts
+  endDate?: string;          // ISO date when recurrence ends (optional)
+  count?: number;            // Number of occurrences (alternative to endDate)
+}
+
+/**
+ * Voting Config - For events that require member approval
+ */
+export interface EventVotingConfig {
+  yesCount: number;
+  noCount: number;
+  requiredVotes: number;      // Threshold to confirm (e.g., floor(members/2) + 1)
+  totalEligibleVoters: number;
+}
+
+/**
+ * UnifiedEvent - The consolidated event type for all events and calls
+ * Stored in Firestore 'events' collection
+ * 
+ * This replaces:
+ * - DiscoverEvent (community workshops/webinars)
+ * - squads.nextCall* fields (coach-scheduled calls)
+ * - standardSquadCalls (peer-proposed calls)
+ * - coaching_relationships.nextCall (1-on-1 coaching)
+ */
+export interface UnifiedEvent {
+  id: string;
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CORE INFO
+  // ═══════════════════════════════════════════════════════════════════════════
+  title: string;
+  description?: string;
+  startDateTime: string;      // ISO 8601 UTC
+  endDateTime?: string;       // Optional end time (UTC)
+  timezone: string;           // IANA timezone for display
+  durationMinutes?: number;   // Default 60
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LOCATION
+  // ═══════════════════════════════════════════════════════════════════════════
+  locationType: 'online' | 'in_person' | 'chat';
+  locationLabel: string;      // "Online via Zoom", "Squad Chat", etc.
+  meetingLink?: string;       // Zoom/Meet URL (hidden until RSVP for public events)
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CLASSIFICATION
+  // ═══════════════════════════════════════════════════════════════════════════
+  eventType: EventType;
+  scope: EventScope;
+  participantModel: ParticipantModel;
+  approvalType: EventApprovalType;
+  status: EventStatus;
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // VISIBILITY CONTROL (for squad events)
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Coach can choose: squad_only (default) or program_wide
+  visibility?: EventVisibility;
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SCOPING
+  // ═══════════════════════════════════════════════════════════════════════════
+  organizationId?: string;    // Clerk Organization ID for multi-tenancy
+  programId?: string;         // Single program association (for squad calls)
+  programIds?: string[];      // Multiple programs (for discover events)
+  squadId?: string;           // Squad association
+  cohortId?: string;          // Cohort association
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RECURRENCE
+  // ═══════════════════════════════════════════════════════════════════════════
+  isRecurring: boolean;
+  recurrence?: RecurrencePattern;
+  parentEventId?: string;     // For generated instances, points to the recurring parent
+  instanceDate?: string;      // For generated instances, the specific date (YYYY-MM-DD)
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // HOST
+  // ═══════════════════════════════════════════════════════════════════════════
+  createdByUserId: string;
+  hostUserId: string;         // May differ from creator
+  hostName: string;
+  hostAvatarUrl?: string;
+  isCoachLed: boolean;        // Coach-managed vs. peer-organized
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PARTICIPANTS
+  // ═══════════════════════════════════════════════════════════════════════════
+  attendeeIds: string[];      // Users who RSVPed or are confirmed
+  maxAttendees?: number;
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // VOTING (when approvalType === 'voting')
+  // ═══════════════════════════════════════════════════════════════════════════
+  votingConfig?: EventVotingConfig;
+  confirmedAt?: string;       // When event reached required votes
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RICH CONTENT (for discover events)
+  // ═══════════════════════════════════════════════════════════════════════════
+  coverImageUrl?: string;
+  bulletPoints?: string[];    // "By the end of the session, you'll…"
+  additionalInfo?: {
+    type: string;
+    language: string;
+    difficulty: string;
+  };
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // POST-EVENT
+  // ═══════════════════════════════════════════════════════════════════════════
+  recordingUrl?: string;
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CHAT INTEGRATION
+  // ═══════════════════════════════════════════════════════════════════════════
+  chatChannelId?: string;     // Stream chat channel to notify
+  sendChatReminders: boolean; // Whether to post reminders in chat
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LEGACY COMPATIBILITY (for existing DiscoverEvent fields)
+  // ═══════════════════════════════════════════════════════════════════════════
+  /** @deprecated Use startDateTime instead */
+  date?: string;              // Legacy: ISO date string
+  /** @deprecated Use startDateTime time component instead */
+  startTime?: string;         // Legacy: "18:00"
+  /** @deprecated Use endDateTime time component instead */
+  endTime?: string;           // Legacy: "20:00"
+  /** @deprecated Use bulletPoints instead */
+  shortDescription?: string;
+  /** @deprecated Use description instead */
+  longDescription?: string;
+  /** @deprecated Use additionalInfo.category instead */
+  category?: string;
+  /** @deprecated Use programIds instead - track-based filtering is phased out */
+  track?: UserTrack | null;
+  /** @deprecated Use isCoachLed + role checks instead */
+  featured?: boolean;
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // METADATA
+  // ═══════════════════════════════════════════════════════════════════════════
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * EventVote - Individual vote for events with voting approval
+ * Stored in Firestore 'eventVotes' collection
+ */
+export interface EventVote {
+  id: string;           // Format: `${eventId}_${userId}`
+  eventId: string;
+  userId: string;
+  vote: 'yes' | 'no';
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Event Job Type - Types of scheduled jobs for events
+ */
+export type EventJobType = 
+  | 'notification_24h'      // Push notification 24 hours before
+  | 'notification_1h'       // Push notification 1 hour before
+  | 'notification_live'     // Push notification when event starts
+  | 'email_24h'             // Email 24 hours before
+  | 'email_1h'              // Email 1 hour before
+  | 'chat_reminder_1h'      // Chat message 1 hour before
+  | 'chat_reminder_live';   // Chat message when event starts
+
+/**
+ * EventScheduledJob - Scheduled notification/email jobs for events
+ * Stored in Firestore 'eventScheduledJobs' collection
+ * 
+ * This replaces:
+ * - squadCallScheduledJobs
+ * - coachingCallScheduledJobs
+ * - squadCallReminders
+ */
+export interface EventScheduledJob {
+  id: string;                   // Format: `${eventId}_${jobType}`
+  eventId: string;
+  jobType: EventJobType;
+  scheduledTime: string;        // ISO timestamp when job should execute
+  
+  // Denormalized for execution (avoid reads during cron)
+  eventTitle: string;
+  eventDateTime: string;
+  eventTimezone: string;
+  eventLocation: string;
+  eventType: EventType;
+  scope: EventScope;
+  squadId?: string;
+  squadName?: string;
+  programId?: string;
+  organizationId?: string;
+  chatChannelId?: string;
+  
+  // For 1-on-1 coaching
+  hostUserId?: string;
+  hostName?: string;
+  clientUserId?: string;
+  clientName?: string;
+  
+  // Execution state
+  executed: boolean;
+  executedAt?: string;
+  error?: string;
+  
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Helper type for event creation (omits auto-generated fields)
+ */
+export type CreateEventInput = Omit<UnifiedEvent, 'id' | 'createdAt' | 'updatedAt' | 'confirmedAt'>;
+
+/**
+ * Helper type for event update (all fields optional except id)
+ */
+export type UpdateEventInput = Partial<Omit<UnifiedEvent, 'id' | 'createdAt'>> & { id: string };
 

@@ -4,6 +4,18 @@ import { getStreamServerClient, ensureSystemBotUser, SYSTEM_BOT_USER_ID } from '
 import type { StandardSquadCall } from '@/types';
 
 /**
+ * @deprecated This route is deprecated and will be removed in a future version.
+ * Chat reminders are now handled by the unified event notification system:
+ * - /api/notifications/cron/squad-call-jobs (processes eventScheduledJobs including chat_reminder_1h and chat_reminder_live)
+ * 
+ * This route is kept temporarily for backward compatibility during migration.
+ * The unified system handles:
+ * - eventScheduledJobs collection with jobType: 'chat_reminder_1h' or 'chat_reminder_live'
+ * 
+ * See: scripts/migrate-events.ts
+ * 
+ * ============================================================================
+ * 
  * GET/POST /api/notifications/cron/squad-call-reminder
  * 
  * Cron job to send 1-hour-before reminders for scheduled squad calls.

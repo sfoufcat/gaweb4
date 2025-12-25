@@ -4,14 +4,14 @@ import { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { Calendar, MessageCircle, Download, Pencil, Check, X, Users } from 'lucide-react';
-import type { Squad, StandardSquadCall } from '@/types';
+import type { Squad, UnifiedEvent, EventVote } from '@/types';
 import { CallSuggestionModal } from './CallSuggestionModal';
 
 /**
  * StandardSquadCallCard Component
  * 
  * Displays the squad call card for squads without coaches.
- * Supports voting-based call confirmation:
+ * Supports voting-based call confirmation using the unified events system:
  * - State A: No call - "Suggest a call" prompt
  * - State B: Pending call - Voting UI with yes/no buttons
  * - State C: Confirmed call - Similar to coach-scheduled with ICS download
@@ -24,9 +24,9 @@ interface StandardSquadCallCardProps {
   onCallUpdated?: () => void;
 }
 
-interface CallDataResponse {
-  call: StandardSquadCall | null;
-  userVote: 'yes' | 'no' | null;
+interface EventDataResponse {
+  events: UnifiedEvent[];
+  userVotes: Record<string, 'yes' | 'no'>; // eventId -> vote
 }
 
 /**
@@ -83,13 +83,13 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
 
   const userTimezone = getUserTimezone();
 
-  // Fetch call data with SWR for instant loading from cache
-  const { data, error, isLoading, mutate } = useSWR<CallDataResponse>(
-    `/api/squad/${squad.id}/standard-call`,
+  // Fetch squad events using unified events API
+  const { data, error, isLoading, mutate } = useSWR<EventDataResponse>(
+    `/api/events?squadId=${squad.id}&eventType=squad_call&approvalType=voting&includeVotes=true`,
     async (url: string) => {
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error('Failed to fetch call data');
+        throw new Error('Failed to fetch events');
       }
       return response.json();
     },
@@ -98,28 +98,32 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
     }
   );
 
-  const call = data?.call ?? null;
-  const userVote = data?.userVote ?? null;
+  // Get the most relevant event (pending first, then confirmed, sorted by date)
+  const events = data?.events ?? [];
+  const userVotes = data?.userVotes ?? {};
+  
+  // Find the active event - prefer pending_approval, then confirmed
+  const pendingEvent = events.find(e => e.status === 'pending_approval');
+  const confirmedEvent = events.find(e => e.status === 'confirmed');
+  const event = pendingEvent || confirmedEvent || null;
+  const userVote = event ? (userVotes[event.id] ?? null) : null;
 
   // Function to refetch data
-  const fetchCallData = useCallback(async () => {
+  const fetchEventData = useCallback(async () => {
     await mutate();
   }, [mutate]);
 
-  // Vote handler
+  // Vote handler using unified events API
   const handleVote = async (voteChoice: 'yes' | 'no') => {
-    if (isVoting || !call) return;
+    if (isVoting || !event) return;
 
     try {
       setIsVoting(true);
 
-      const response = await fetch(`/api/squad/${squad.id}/standard-call`, {
-        method: 'PUT',
+      const response = await fetch(`/api/events/${event.id}/vote`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          callId: call.id,
-          vote: voteChoice,
-        }),
+        body: JSON.stringify({ vote: voteChoice }),
       });
 
       if (!response.ok) {
@@ -127,13 +131,8 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
         throw new Error(responseData.error || 'Failed to vote');
       }
 
-      const responseData = await response.json();
-      
-      // Update SWR cache with new data
-      await mutate({
-        call: responseData.call,
-        userVote: responseData.userVote,
-      }, { revalidate: false });
+      // Revalidate to get updated event data
+      await mutate();
 
       if (onCallUpdated) {
         onCallUpdated();
@@ -145,30 +144,30 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
     }
   };
 
-  // Call time info for confirmed/pending calls
+  // Event time info for confirmed/pending events
   const callTimeInfo = useMemo(() => {
-    if (!call?.startDateTimeUtc) return null;
+    if (!event?.startDateTime) return null;
     
-    const callDate = new Date(call.startDateTimeUtc);
-    const callTimezone = call.timezone || 'UTC';
-    const squadTime = formatDateInTimezone(callDate, callTimezone);
-    const userTime = formatDateInTimezone(callDate, userTimezone);
-    const sameTimezone = callTimezone === userTimezone;
+    const eventDate = new Date(event.startDateTime);
+    const eventTimezone = event.timezone || 'UTC';
+    const squadTime = formatDateInTimezone(eventDate, eventTimezone);
+    const userTime = formatDateInTimezone(eventDate, userTimezone);
+    const sameTimezone = eventTimezone === userTimezone;
     
     return {
       squadTime,
       userTime,
       sameTimezone,
-      callTimezone,
+      callTimezone: eventTimezone,
     };
-  }, [call, userTimezone]);
+  }, [event, userTimezone]);
 
-  // Download ICS handler
+  // Download ICS handler using unified events API
   const handleAddToCalendar = async () => {
-    if (!call || call.status !== 'confirmed') return;
+    if (!event || event.status !== 'confirmed') return;
     
     const link = document.createElement('a');
-    link.href = `/api/squad/${squad.id}/next-call.ics?type=standard`;
+    link.href = `/api/events/${event.id}/calendar.ics`;
     link.download = 'squad-call.ics';
     document.body.appendChild(link);
     link.click();
@@ -183,7 +182,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
 
   const handleModalSuccess = () => {
     setShowSuggestModal(false);
-    fetchCallData();
+    fetchEventData();
     if (onCallUpdated) {
       onCallUpdated();
     }
@@ -210,8 +209,8 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
     );
   }
 
-  // State A: No active call
-  if (!call || call.status === 'canceled') {
+  // State A: No active event
+  if (!event || event.status === 'canceled') {
     return (
       <>
         <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-5 shadow-sm mb-6">
@@ -250,10 +249,12 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
     );
   }
 
-  // State B: Pending call (voting)
-  if (call.status === 'pending') {
-    const votesNeeded = call.requiredVotes - call.yesCount;
-    const isDeleteProposal = call.proposalType === 'delete';
+  // State B: Pending approval (voting)
+  if (event.status === 'pending_approval') {
+    const votingConfig = event.votingConfig;
+    const votesNeeded = votingConfig ? votingConfig.requiredVotes - votingConfig.yesCount : 0;
+    const totalMembers = votingConfig?.totalEligibleVoters ?? 0;
+    const yesCount = votingConfig?.yesCount ?? 0;
 
     return (
       <>
@@ -263,12 +264,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
             <div className="flex items-center gap-2">
               <Calendar className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
               <h3 className="font-albert text-[16px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px]">
-                {isDeleteProposal 
-                  ? 'Proposed: Cancel call'
-                  : call.proposalType === 'edit'
-                    ? 'Proposed: Update call time'
-                    : 'Suggested squad call'
-                }
+                Suggested squad call
               </h3>
             </div>
             
@@ -283,9 +279,9 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
           </div>
 
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-            {/* Left: Call Details */}
+            {/* Left: Event Details */}
             <div className="space-y-2 flex-1">
-              {!isDeleteProposal && callTimeInfo && (
+              {callTimeInfo && (
                 <>
                   {/* Date & Time */}
                   <p className="font-albert text-[15px] text-text-primary">
@@ -302,17 +298,17 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
                   {/* Location */}
                   <p className="font-albert text-[14px] text-text-secondary">
                     <span className="font-medium text-text-primary">Location:</span>{' '}
-                    {call.location.startsWith('http') ? (
+                    {event.locationLabel.startsWith('http') ? (
                       <a
-                        href={call.location}
+                        href={event.locationLabel}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-[#a07855] hover:underline"
                       >
-                        {call.location}
+                        {event.locationLabel}
                       </a>
                     ) : (
-                      call.location
+                      event.locationLabel
                     )}
                   </p>
                 </>
@@ -322,7 +318,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
               <div className="flex items-center gap-2 pt-1">
                 <Users className="w-4 h-4 text-text-secondary" />
                 <p className="font-albert text-[14px] text-text-secondary">
-                  <span className="font-medium text-text-primary">{call.yesCount} of {call.totalMembers}</span> members confirmed
+                  <span className="font-medium text-text-primary">{yesCount} of {totalMembers}</span> members confirmed
                   {votesNeeded > 0 && (
                     <span className="text-[#a07855]"> · {votesNeeded} more needed</span>
                   )}
@@ -342,7 +338,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
                 } disabled:opacity-50`}
               >
                 <Check className="w-4 h-4" />
-                {isDeleteProposal ? 'Yes, cancel' : "I'm in"}
+                I&apos;m in
               </button>
               
               <button
@@ -355,7 +351,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
                 } disabled:opacity-50`}
               >
                 <X className="w-4 h-4" />
-                {isDeleteProposal ? 'Keep it' : "Can't make it"}
+                Can&apos;t make it
               </button>
             </div>
           </div>
@@ -366,14 +362,14 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
           isOpen={showSuggestModal}
           onClose={() => setShowSuggestModal(false)}
           onSuccess={handleModalSuccess}
-          existingCall={call}
+          existingEvent={event}
         />
       </>
     );
   }
 
-  // State C: Confirmed call
-  if (call.status === 'confirmed' && callTimeInfo) {
+  // State C: Confirmed event
+  if (event.status === 'confirmed' && callTimeInfo) {
     return (
       <>
         <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-5 shadow-sm mb-6">
@@ -397,7 +393,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            {/* Left: Call Details */}
+            {/* Left: Event Details */}
             <div className="space-y-2">
               {/* Date & Time */}
               <p className="font-albert text-[15px] text-text-primary">
@@ -419,24 +415,24 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
               {/* Location */}
               <p className="font-albert text-[14px] text-text-secondary">
                 <span className="font-medium text-text-primary">Location:</span>{' '}
-                {call.location.startsWith('http') ? (
+                {event.locationLabel.startsWith('http') ? (
                   <a
-                    href={call.location}
+                    href={event.locationLabel}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[#a07855] hover:underline"
                   >
-                    {call.location}
+                    {event.locationLabel}
                   </a>
                 ) : (
-                  call.location
+                  event.locationLabel
                 )}
               </p>
               
               {/* Title if custom */}
-              {call.title && call.title !== 'Squad accountability call' && (
+              {event.title && event.title !== 'Squad accountability call' && (
                 <p className="font-albert text-[13px] text-text-secondary italic">
-                  {call.title}
+                  {event.title}
                 </p>
               )}
             </div>
@@ -469,7 +465,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
           isOpen={showSuggestModal}
           onClose={() => setShowSuggestModal(false)}
           onSuccess={handleModalSuccess}
-          existingCall={call}
+          existingEvent={event}
         />
       </>
     );

@@ -4,6 +4,15 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { Squad, StandardSquadCall } from '@/types';
 
 /**
+ * @deprecated This route is deprecated and will be removed in a future version.
+ * Use the unified events API instead:
+ * - GET /api/events/[eventId]/calendar.ics
+ * 
+ * This route is kept temporarily for backward compatibility during migration.
+ * See: scripts/migrate-events.ts
+ * 
+ * ============================================================================
+ * 
  * GET /api/squad/[squadId]/next-call.ics
  * 
  * Generates and returns an ICS calendar file for the squad's next scheduled call.

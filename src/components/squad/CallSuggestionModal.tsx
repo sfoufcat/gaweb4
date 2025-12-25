@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, X, Trash2 } from 'lucide-react';
-import type { Squad, StandardSquadCall } from '@/types';
+import type { Squad, UnifiedEvent } from '@/types';
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -17,6 +17,7 @@ import {
  * 
  * Modal for suggesting a new squad call or proposing edits/deletion.
  * Used by StandardSquadCallCard for standard (non-premium) squads.
+ * Uses the unified events API.
  * 
  * Features:
  * - Date picker
@@ -24,7 +25,7 @@ import {
  * - Timezone selector
  * - Location input (presets + custom)
  * - Optional title
- * - Delete option (when editing existing call)
+ * - Delete option (when editing existing event)
  */
 
 interface CallSuggestionModalProps {
@@ -32,7 +33,7 @@ interface CallSuggestionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
-  existingCall?: StandardSquadCall | null; // For editing existing calls
+  existingEvent?: UnifiedEvent | null; // For editing existing events
 }
 
 // Common timezones for the dropdown
@@ -67,7 +68,7 @@ export function CallSuggestionModal({
   isOpen, 
   onClose, 
   onSuccess,
-  existingCall,
+  existingEvent,
 }: CallSuggestionModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -84,40 +85,40 @@ export function CallSuggestionModal({
   // Track if using a preset or custom location
   const [useCustomLocation, setUseCustomLocation] = useState(false);
 
-  const isEditMode = existingCall && existingCall.status === 'confirmed';
+  const isEditMode = existingEvent && existingEvent.status === 'confirmed';
   
-  // Initialize form with existing call data or defaults
+  // Initialize form with existing event data or defaults
   useEffect(() => {
     if (isOpen) {
-      if (existingCall && existingCall.startDateTimeUtc) {
-        const callDate = new Date(existingCall.startDateTimeUtc);
-        const callTz = existingCall.timezone || 'America/New_York';
+      if (existingEvent && existingEvent.startDateTime) {
+        const eventDate = new Date(existingEvent.startDateTime);
+        const eventTz = existingEvent.timezone || 'America/New_York';
         
-        // Format date in the call's timezone
+        // Format date in the event's timezone
         const dateFormatter = new Intl.DateTimeFormat('en-CA', {
-          timeZone: callTz,
+          timeZone: eventTz,
           year: 'numeric',
           month: '2-digit',
           day: '2-digit',
         });
-        setDate(dateFormatter.format(callDate));
+        setDate(dateFormatter.format(eventDate));
         
-        // Format time in the call's timezone
+        // Format time in the event's timezone
         const timeFormatter = new Intl.DateTimeFormat('en-US', {
-          timeZone: callTz,
+          timeZone: eventTz,
           hour: '2-digit',
           minute: '2-digit',
           hour12: false,
         });
-        const timeParts = timeFormatter.formatToParts(callDate);
+        const timeParts = timeFormatter.formatToParts(eventDate);
         const hour = timeParts.find(p => p.type === 'hour')?.value || '10';
         const minute = timeParts.find(p => p.type === 'minute')?.value || '00';
         setTime(`${hour}:${minute}`);
         
-        setTimezone(callTz);
+        setTimezone(eventTz);
         
         // Check if location is a preset
-        const loc = existingCall.location || 'Squad chat';
+        const loc = existingEvent.locationLabel || 'Squad chat';
         if (LOCATION_PRESETS.includes(loc)) {
           setLocation(loc);
           setUseCustomLocation(false);
@@ -126,9 +127,9 @@ export function CallSuggestionModal({
           setCustomLocation(loc);
         }
         
-        setTitle(existingCall.title !== 'Squad accountability call' ? existingCall.title : '');
+        setTitle(existingEvent.title !== 'Squad accountability call' ? existingEvent.title : '');
       } else {
-        // Default values for new call
+        // Default values for new event
         const nextWeek = new Date();
         nextWeek.setDate(nextWeek.getDate() + 7);
         setDate(nextWeek.toISOString().split('T')[0]);
@@ -153,7 +154,7 @@ export function CallSuggestionModal({
       }
       setError(null);
     }
-  }, [isOpen, squad, existingCall]);
+  }, [isOpen, squad, existingEvent]);
   
   const handleSubmit = async () => {
     if (isSubmitting) return;
@@ -185,22 +186,44 @@ export function CallSuggestionModal({
       const dateInTz = new Date(localDate.toLocaleString('en-US', { timeZone: timezone }));
       const utcDate = new Date(localDate.getTime() - (dateInTz.getTime() - localDate.getTime()));
       
-      const requestBody = {
-        dateTime: utcDate.toISOString(),
+      // Use unified events API
+      const eventData = {
+        title: title.trim() || 'Squad accountability call',
+        startDateTime: utcDate.toISOString(),
         timezone,
-        location: finalLocation,
-        title: title.trim() || undefined,
-        proposalType: isEditMode ? 'edit' : 'new',
-        originalCallId: isEditMode ? existingCall?.id : undefined,
+        locationType: 'chat' as const,
+        locationLabel: finalLocation,
+        meetingLink: finalLocation.startsWith('http') ? finalLocation : undefined,
+        eventType: 'squad_call' as const,
+        scope: 'squad' as const,
+        participantModel: 'squad_members' as const,
+        approvalType: 'voting' as const,
+        status: 'pending_approval' as const,
+        squadId: squad.id,
+        isCoachLed: false,
+        sendChatReminders: true,
+        chatChannelId: squad.chatChannelId,
       };
       
-      console.log('[CallSuggestionModal] Submitting call suggestion:', requestBody);
+      let response: Response;
       
-      const response = await fetch(`/api/squad/${squad.id}/standard-call`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-      });
+      if (isEditMode && existingEvent) {
+        // Update existing event
+        console.log('[CallSuggestionModal] Updating event:', existingEvent.id, eventData);
+        response = await fetch(`/api/events/${existingEvent.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(eventData),
+        });
+      } else {
+        // Create new event
+        console.log('[CallSuggestionModal] Creating new event:', eventData);
+        response = await fetch('/api/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(eventData),
+        });
+      }
       
       const data = await response.json();
       console.log('[CallSuggestionModal] Response:', response.status, data);
@@ -222,24 +245,22 @@ export function CallSuggestionModal({
   };
   
   const handleDelete = async () => {
-    if (isDeleting || !existingCall) return;
+    if (isDeleting || !existingEvent) return;
     
     try {
       setIsDeleting(true);
       setError(null);
       
-      const response = await fetch(`/api/squad/${squad.id}/standard-call`, {
-        method: 'POST',
+      // Cancel the event using unified events API
+      const response = await fetch(`/api/events/${existingEvent.id}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          proposalType: 'delete',
-          originalCallId: existingCall.id,
-        }),
+        body: JSON.stringify({ status: 'canceled' }),
       });
       
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to propose deletion');
+        throw new Error(data.error || 'Failed to cancel event');
       }
       
       onClose();
@@ -247,8 +268,8 @@ export function CallSuggestionModal({
         onSuccess();
       }
     } catch (err) {
-      console.error('Error proposing deletion:', err);
-      setError(err instanceof Error ? err.message : 'Failed to propose deletion');
+      console.error('Error canceling event:', err);
+      setError(err instanceof Error ? err.message : 'Failed to cancel event');
     } finally {
       setIsDeleting(false);
     }
@@ -424,15 +445,15 @@ export function CallSuggestionModal({
         </div>
 
         <AlertDialogFooter className="gap-2 sm:gap-2 flex-col-reverse sm:flex-row">
-          {/* Delete button - only show if editing existing confirmed call */}
-          {isEditMode && existingCall && (
+          {/* Delete button - only show if editing existing confirmed event */}
+          {isEditMode && existingEvent && (
             <button
               onClick={handleDelete}
               disabled={isDeleting || isSubmitting}
               className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-red-600 hover:bg-red-50 rounded-full font-albert text-sm transition-colors disabled:opacity-50"
             >
               <Trash2 className="w-4 h-4" />
-              {isDeleting ? 'Proposing...' : 'Propose cancel'}
+              {isDeleting ? 'Canceling...' : 'Cancel call'}
             </button>
           )}
           

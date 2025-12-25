@@ -1,4 +1,16 @@
 /**
+ * @deprecated This module is deprecated and will be removed in a future version.
+ * Use the unified event notification system instead:
+ * - src/lib/event-notifications.ts
+ * 
+ * The unified system handles all event types (workshops, squad calls, coaching, etc.)
+ * and uses the eventScheduledJobs collection.
+ * 
+ * This module is kept temporarily for backward compatibility during migration.
+ * See: scripts/migrate-events.ts
+ * 
+ * ============================================================================
+ * 
  * Coaching Call Notifications and Emails
  * 
  * This module handles scheduling and sending notifications/emails for 1:1 coaching calls.

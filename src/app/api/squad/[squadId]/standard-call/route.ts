@@ -6,6 +6,17 @@ import { scheduleSquadCallJobs, cancelSquadCallJobs } from '@/lib/squad-call-not
 import type { Squad, StandardSquadCall, SquadCallVote } from '@/types';
 
 /**
+ * @deprecated This route is deprecated and will be removed in a future version.
+ * Use the unified events API instead:
+ * - POST /api/events (create event with eventType: 'squad_call', approvalType: 'voting')
+ * - GET /api/events?squadId=xxx (list squad events)
+ * - POST /api/events/[eventId]/vote (cast vote)
+ * 
+ * This route is kept temporarily for backward compatibility during migration.
+ * See: scripts/migrate-events.ts
+ * 
+ * ============================================================================
+ * 
  * Standard Squad Call API
  * 
  * Handles call management for peer-led (non-coached) squads.

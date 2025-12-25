@@ -3,14 +3,16 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import useSWR from 'swr';
 import { Calendar, MessageCircle, Download, Pencil } from 'lucide-react';
-import type { Squad } from '@/types';
+import type { Squad, UnifiedEvent } from '@/types';
 import { SquadCallEditForm } from './SquadCallEditForm';
 
 /**
  * NextSquadCallCard Component
  * 
  * Displays the next scheduled squad call for squads with coaches.
+ * Uses the unified events API to fetch event data.
  * Shows:
  * - Date & time in squad timezone and user's local timezone
  * - Location (e.g., "Squad chat", "Zoom")
@@ -33,6 +35,10 @@ interface NextSquadCallCardProps {
   isCoach?: boolean; // If true, shows edit button
   onCallUpdated?: () => void; // Callback when call is updated/created
   coachInfo?: CoachInfo; // Coach details for "Guided by" display
+}
+
+interface EventsResponse {
+  events: UnifiedEvent[];
 }
 
 /**
@@ -91,17 +97,33 @@ function getUserTimezone(): string {
 export function NextSquadCallCard({ squad, isCoach = false, onCallUpdated, coachInfo }: NextSquadCallCardProps) {
   const router = useRouter();
   const [showEditModal, setShowEditModal] = useState(false);
-  
-  const hasScheduledCall = squad.nextCallDateTime != null;
-  const callTimezone = squad.nextCallTimezone || squad.timezone || 'UTC';
   const userTimezone = getUserTimezone();
+  
+  // Only show for squads with a coach
+  const hasCoach = !!squad.coachId;
+  
+  // Fetch upcoming confirmed squad call using unified events API
+  const { data, mutate } = useSWR<EventsResponse>(
+    hasCoach ? `/api/events?squadId=${squad.id}&eventType=squad_call&status=confirmed&limit=1` : null,
+    async (url: string) => {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch events');
+      return response.json();
+    },
+    { revalidateOnFocus: false }
+  );
+  
+  // Get the next confirmed event
+  const event = data?.events?.[0] ?? null;
+  const hasScheduledCall = event != null;
+  const callTimezone = event?.timezone || squad.timezone || 'UTC';
   const sameTimezone = callTimezone === userTimezone;
   
-  // Parse and format the call time - must be called before any early returns
+  // Parse and format the call time
   const callTimeInfo = useMemo(() => {
-    if (!squad.nextCallDateTime) return null;
+    if (!event?.startDateTime) return null;
     
-    const callDate = new Date(squad.nextCallDateTime);
+    const callDate = new Date(event.startDateTime);
     
     // Format in squad/coach timezone
     const squadTime = formatDateInTimezone(callDate, callTimezone);
@@ -114,20 +136,19 @@ export function NextSquadCallCard({ squad, isCoach = false, onCallUpdated, coach
       userTime,
       sameTimezone,
     };
-  }, [squad.nextCallDateTime, callTimezone, userTimezone, sameTimezone]);
+  }, [event?.startDateTime, callTimezone, userTimezone, sameTimezone]);
   
-  // Only show for squads with a coach - must be after all hooks
-  const hasCoach = !!squad.coachId;
+  // Don't render for squads without a coach
   if (!hasCoach) {
     return null;
   }
   
   const handleAddToCalendar = async () => {
-    if (!hasScheduledCall) return;
+    if (!event) return;
     
-    // Trigger ICS download
+    // Trigger ICS download using unified events API
     const link = document.createElement('a');
-    link.href = `/api/squad/${squad.id}/next-call.ics`;
+    link.href = `/api/events/${event.id}/calendar.ics`;
     link.download = 'squad-call.ics';
     document.body.appendChild(link);
     link.click();
@@ -142,11 +163,10 @@ export function NextSquadCallCard({ squad, isCoach = false, onCallUpdated, coach
   
   const handleEditSuccess = () => {
     setShowEditModal(false);
+    // Revalidate the events data
+    mutate();
     if (onCallUpdated) {
       onCallUpdated();
-    } else {
-      // Refresh page if no callback provided
-      window.location.reload();
     }
   };
   
@@ -196,20 +216,20 @@ export function NextSquadCallCard({ squad, isCoach = false, onCallUpdated, coach
             </p>
             
             {/* Location */}
-            {squad.nextCallLocation && (
+            {event.locationLabel && (
               <p className="font-albert text-[14px] text-text-secondary">
                 <span className="font-medium text-text-primary">Location:</span>{' '}
-                {squad.nextCallLocation.startsWith('http') ? (
+                {event.locationLabel.startsWith('http') ? (
                   <a
-                    href={squad.nextCallLocation}
+                    href={event.locationLabel}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[#a07855] hover:underline"
                   >
-                    {squad.nextCallLocation}
+                    {event.locationLabel}
                   </a>
                 ) : (
-                  squad.nextCallLocation
+                  event.locationLabel
                 )}
               </p>
             )}
@@ -239,9 +259,9 @@ export function NextSquadCallCard({ squad, isCoach = false, onCallUpdated, coach
             )}
             
             {/* Optional Title */}
-            {squad.nextCallTitle && squad.nextCallTitle !== 'Squad coaching call' && (
+            {event.title && event.title !== 'Squad coaching call' && (
               <p className="font-albert text-[13px] text-text-secondary italic">
-                {squad.nextCallTitle}
+                {event.title}
               </p>
             )}
           </div>

@@ -189,7 +189,7 @@ export default function StandaloneSquadPage() {
           onSquadUpdated={refetch}
           isCoach={isCoach}
           standaloneSquads={standaloneSquads}
-          activeSquadId={activeStandaloneSquadId}
+          activeSquadId={activeStandaloneSquadId ?? undefined}
           onSquadSwitch={handleSquadSwitch}
           memberCountsBySquad={memberCountsBySquad}
         />

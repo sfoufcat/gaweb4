@@ -392,9 +392,9 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
     }
   };
 
-  // Schedule or update call
+  // Schedule or update call (uses unified events API)
   const handleScheduleCall = async () => {
-    if (!callDate || !callTime || !hasCoaching) return;
+    if (!callDate || !callTime || !hasCoaching || !user) return;
 
     try {
       setSchedulingCall(true);
@@ -408,7 +408,48 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
 
       const finalLocation = useCustomLocation ? customLocation.trim() : callLocation;
 
-      const response = await fetch(`/api/coaching/clients/${clientId}/call`, {
+      // Build event data for unified API
+      const eventData = {
+        title: 'Coaching Call',
+        description: `1-on-1 coaching session with ${user.firstName || 'Client'}`,
+        startDateTime: utcDate.toISOString(),
+        timezone: callTimezone,
+        durationMinutes: 60,
+        
+        locationType: finalLocation.startsWith('http') ? 'online' : 'chat',
+        locationLabel: finalLocation,
+        meetingLink: finalLocation.startsWith('http') ? finalLocation : undefined,
+        
+        eventType: 'coaching_1on1',
+        scope: 'private',
+        participantModel: 'invite_only',
+        approvalType: 'none',
+        
+        organizationId: coachingData?.organizationId,
+        
+        isRecurring: false,
+        isCoachLed: true,
+        
+        attendeeIds: [clientId],
+        maxAttendees: 2,
+        
+        chatChannelId: coachingData?.chatChannelId,
+        sendChatReminders: true,
+      };
+
+      // Create or update via unified events API
+      const response = await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to schedule call');
+      }
+
+      // Also update legacy coaching data for backward compatibility
+      await fetch(`/api/coaching/clients/${clientId}/call`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -418,10 +459,6 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
           title: 'Coaching Call',
         }),
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to schedule call');
-      }
 
       setShowCallModal(false);
       await fetchData();
@@ -440,6 +477,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
     try {
       setSchedulingCall(true);
 
+      // Delete from legacy API (will also be handled by unified system after migration)
       const response = await fetch(`/api/coaching/clients/${clientId}/call`, {
         method: 'DELETE',
       });
