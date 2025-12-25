@@ -449,7 +449,7 @@ export async function POST(request: NextRequest) {
           finalPrice
         );
       }
-      return await createEnrollment(userId, program, cohort, clerkUser);
+      return await createEnrollment(userId, program, cohort, clerkUser, joinCommunity);
     }
 
     // For paid programs, create Stripe checkout session
@@ -559,7 +559,8 @@ async function createEnrollment(
     lastName?: string | null; 
     imageUrl?: string;
     emailAddresses?: Array<{ emailAddress: string }>;
-  }
+  },
+  joinCommunity?: boolean
 ): Promise<NextResponse> {
   const now = new Date().toISOString();
   
