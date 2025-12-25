@@ -125,7 +125,7 @@ export async function PUT(
   { params }: { params: Promise<{ programId: string }> }
 ) {
   try {
-    const { organizationId } = await requireCoachWithOrg();
+    const { userId, organizationId } = await requireCoachWithOrg();
     const { programId } = await params;
     const body = await request.json();
 
