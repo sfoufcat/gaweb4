@@ -3,7 +3,89 @@ import { NextResponse } from 'next/server';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { getOrgCoachingPromo, DEFAULT_COACHING_PROMO } from '@/lib/org-channels';
 import { adminDb } from '@/lib/firebase-admin';
-import type { Program, Funnel } from '@/types';
+import type { Program, Funnel, ProgramEnrollment, ClientCoachingData } from '@/types';
+
+/**
+ * Helper to check if user has an active individual program enrollment
+ */
+async function checkActiveIndividualEnrollment(
+  userId: string,
+  organizationId: string
+): Promise<boolean> {
+  try {
+    // Get all active enrollments for user in this org
+    const enrollmentsSnapshot = await adminDb
+      .collection('program_enrollments')
+      .where('userId', '==', userId)
+      .where('organizationId', '==', organizationId)
+      .where('status', '==', 'active')
+      .get();
+
+    if (enrollmentsSnapshot.empty) {
+      return false;
+    }
+
+    // Check if any enrollment is for an individual program
+    for (const enrollmentDoc of enrollmentsSnapshot.docs) {
+      const enrollment = enrollmentDoc.data() as ProgramEnrollment;
+      
+      // Fetch the program to check its type
+      const programDoc = await adminDb.collection('programs').doc(enrollment.programId).get();
+      if (programDoc.exists) {
+        const program = programDoc.data() as Program;
+        if (program.type === 'individual') {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  } catch (err) {
+    console.error('[USER_ORG_COACHING_PROMO] Error checking active enrollment:', err);
+    return false;
+  }
+}
+
+/**
+ * Helper to get coaching data for user (chatChannelId and coach info)
+ */
+async function getCoachingDataForUser(
+  userId: string,
+  organizationId: string
+): Promise<{ chatChannelId: string | null; coachInfo: { name: string; imageUrl: string } | null }> {
+  try {
+    // ClientCoachingData doc ID format: ${organizationId}_${userId}
+    const coachingDocId = `${organizationId}_${userId}`;
+    const coachingDoc = await adminDb.collection('clientCoachingData').doc(coachingDocId).get();
+
+    if (!coachingDoc.exists) {
+      return { chatChannelId: null, coachInfo: null };
+    }
+
+    const coachingData = coachingDoc.data() as ClientCoachingData;
+    const chatChannelId = coachingData.chatChannelId || null;
+
+    // Get coach info
+    let coachInfo: { name: string; imageUrl: string } | null = null;
+    if (coachingData.coachId) {
+      try {
+        const clerk = await clerkClient();
+        const coachUser = await clerk.users.getUser(coachingData.coachId);
+        coachInfo = {
+          name: `${coachUser.firstName || ''} ${coachUser.lastName || ''}`.trim() || 'Coach',
+          imageUrl: coachUser.imageUrl || '',
+        };
+      } catch (err) {
+        console.warn('[USER_ORG_COACHING_PROMO] Could not fetch coach user:', err);
+      }
+    }
+
+    return { chatChannelId, coachInfo };
+  } catch (err) {
+    console.error('[USER_ORG_COACHING_PROMO] Error fetching coaching data:', err);
+    return { chatChannelId: null, coachInfo: null };
+  }
+}
 
 /**
  * Helper to get the coach's profile picture for an organization
@@ -122,6 +204,10 @@ export async function GET() {
         organizationId: null,
         isEnabled: false,
         destinationUrl: null,
+        // No individual program enrollment on platform domain
+        hasActiveIndividualEnrollment: false,
+        coachingChatChannelId: null,
+        coachInfo: null,
       });
     }
 
@@ -142,6 +228,12 @@ export async function GET() {
       ? await computeDestinationUrl(promo.programId, promo.destinationType, promo.funnelId)
       : null;
 
+    // Check if user has an active individual program enrollment
+    const hasActiveIndividualEnrollment = await checkActiveIndividualEnrollment(userId, organizationId);
+    
+    // Get coaching data (chatChannelId and coach info) if exists
+    const { chatChannelId: coachingChatChannelId, coachInfo } = await getCoachingDataForUser(userId, organizationId);
+
     return NextResponse.json({
       promo: {
         ...promo,
@@ -150,6 +242,10 @@ export async function GET() {
       organizationId,
       isEnabled,
       destinationUrl,
+      // New fields for program-based coaching
+      hasActiveIndividualEnrollment,
+      coachingChatChannelId,
+      coachInfo,
     });
   } catch (error) {
     console.error('[USER_ORG_COACHING_PROMO_ERROR]', error);

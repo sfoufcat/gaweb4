@@ -38,7 +38,7 @@ export function EditorToolbar({
     `${buttonBase} ${isActive ? buttonActive : buttonInactive}`;
 
   return (
-    <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-[#e8e4df] dark:border-[#262b35] bg-[#faf8f6] dark:bg-[#11141b] rounded-t-xl -mx-0 mb-2">
+    <div className="flex flex-wrap items-center gap-0.5 px-2 py-2.5 border-b border-[#e8e4df]/60 dark:border-[#262b35]/60 bg-white dark:bg-[#171b22] mb-3">
       {/* Text formatting group */}
       <div className="flex items-center gap-0.5 mr-2">
         {/* Bold */}

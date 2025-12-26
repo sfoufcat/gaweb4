@@ -4,14 +4,16 @@ import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { mutate } from 'swr';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 import { DeleteConfirmationModal } from './ConfirmationModal';
 import { InlineComments } from './InlineComments';
 import { SIDEBAR_BOOKMARKS_KEY } from './FeedSidebar';
 import { RichTextPreview } from '@/components/editor';
+import { PollMessageCard } from '@/components/chat/PollMessageCard';
 import type { FeedPost } from '@/hooks/useFeed';
+import type { ChatPollState } from '@/types/poll';
 import { getProfileUrl } from '@/lib/utils';
 
 interface PostCardProps {
@@ -54,6 +56,7 @@ export function PostCard({
   const [imageError, setImageError] = useState<Record<string, boolean>>({});
   const [likeAnimating, setLikeAnimating] = useState(false);
   const [bookmarkAnimating, setBookmarkAnimating] = useState(false);
+  const [pollData, setPollData] = useState<ChatPollState | null>(post.pollData || null);
 
   const isOwnPost = user?.id === post.authorId;
 
@@ -184,6 +187,62 @@ export function PostCard({
 
   // Accent color for interactions
   const accentColor = isDefault ? '#a07855' : colors.accentLight;
+
+  // Poll handlers
+  const handlePollVote = useCallback(async (pollId: string, optionIds: string[]) => {
+    try {
+      const response = await fetch('/api/polls/vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pollId, optionIds }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to vote');
+      }
+      
+      // Refresh poll data
+      const pollResponse = await fetch(`/api/polls?id=${pollId}`);
+      const data = await pollResponse.json();
+      if (data.poll) {
+        setPollData(data.poll);
+      }
+    } catch (error) {
+      console.error('Failed to vote:', error);
+      throw error;
+    }
+  }, []);
+
+  const handleAddPollOption = useCallback(async (pollId: string, optionText: string) => {
+    try {
+      const response = await fetch('/api/polls/add-option', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pollId, optionText }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to add option');
+      }
+      
+      // Refresh poll data
+      const pollResponse = await fetch(`/api/polls?id=${pollId}`);
+      const data = await pollResponse.json();
+      if (data.poll) {
+        setPollData(data.poll);
+      }
+    } catch (error) {
+      console.error('Failed to add option:', error);
+      throw error;
+    }
+  }, []);
+
+  const handleViewPollResults = useCallback((poll: ChatPollState) => {
+    // For now, just log - could open a modal with detailed results
+    console.log('View poll results:', poll);
+  }, []);
 
   // Card vs embedded styling
   const isEmbedded = variant === 'embedded';
@@ -363,6 +422,24 @@ export function PostCard({
             className="w-full h-full object-contain"
             playsInline
           />
+        </div>
+      )}
+
+      {/* Poll */}
+      {pollData && (
+        <div className={`${isEmbedded ? 'pb-3' : 'px-4 pb-3'}`}>
+          <div className="p-4 bg-[#f5f3f0] dark:bg-[#1a1f2a] rounded-xl">
+            <PollMessageCard
+              poll={pollData}
+              currentUserId={user?.id || ''}
+              onVote={handlePollVote}
+              onAddOption={pollData.settings.participantsCanAddOptions ? handleAddPollOption : undefined}
+              onViewResults={handleViewPollResults}
+              timestamp={format(new Date(post.createdAt), 'h:mm a')}
+              senderName={authorName}
+              isOwnMessage={false}
+            />
+          </div>
         </div>
       )}
 

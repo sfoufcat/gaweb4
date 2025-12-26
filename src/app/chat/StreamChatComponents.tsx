@@ -786,6 +786,13 @@ function ChatContent({
   const [promoDestinationUrl, setPromoDestinationUrl] = useState<string | null>(null);
   const [showPromoNotEnabledModal, setShowPromoNotEnabledModal] = useState(false);
   
+  // Program-based coaching (independent of legacy hasCoaching flag)
+  const [hasActiveIndividualEnrollment, setHasActiveIndividualEnrollment] = useState(false);
+  const [programCoachingChannelId, setProgramCoachingChannelId] = useState<string | null>(null);
+  const [programCoachInfo, setProgramCoachInfo] = useState<{ name: string; imageUrl: string } | null>(null);
+  const [programCoachingUnread, setProgramCoachingUnread] = useState(0);
+  const [programCoachingLastMessage, setProgramCoachingLastMessage] = useState<Date | null>(null);
+  
   // Fetch org channels for users in organizations
   useEffect(() => {
     const fetchOrgChannels = async () => {
@@ -817,7 +824,7 @@ function ChatContent({
     fetchOrgChannels();
   }, []);
 
-  // Fetch coaching promo enabled status and destination URL
+  // Fetch coaching promo enabled status, destination URL, and program-based coaching data
   useEffect(() => {
     const fetchPromoData = async () => {
       try {
@@ -826,6 +833,10 @@ function ChatContent({
           const data = await response.json();
           setPromoIsEnabled(data.isEnabled || false);
           setPromoDestinationUrl(data.destinationUrl || null);
+          // Program-based coaching fields
+          setHasActiveIndividualEnrollment(data.hasActiveIndividualEnrollment || false);
+          setProgramCoachingChannelId(data.coachingChatChannelId || null);
+          setProgramCoachInfo(data.coachInfo || null);
         }
       } catch (error) {
         console.warn('Failed to fetch coaching promo data:', error);
@@ -920,6 +931,18 @@ function ChatContent({
         coachingTime = new Date(lastMessageAt);
       }
       
+      // Track program-based coaching channel specifically
+      let programCoachingUnreadCount = 0;
+      let programCoachingTime: Date | null = null;
+      if (programCoachingChannelId && channelId === programCoachingChannelId) {
+        if (lastMessageAt) {
+          programCoachingTime = new Date(lastMessageAt);
+          setProgramCoachingLastMessage(programCoachingTime);
+        }
+        programCoachingUnreadCount = channel.countUnread();
+        setProgramCoachingUnread(programCoachingUnreadCount);
+      }
+      
       if (unread > 0) {
         // Track specific channel unread counts
         if (channelId === ANNOUNCEMENTS_CHANNEL_ID) announcements = unread;
@@ -952,8 +975,8 @@ function ChatContent({
         
         if (channelId?.startsWith('coaching-')) {
           coaching += unread;
-          // Check if this is an orphan coaching channel (not current coaching channel)
-          if (channelId !== coachingChannelId) {
+          // Check if this is an orphan coaching channel (not current coaching channel and not program coaching)
+          if (channelId !== coachingChannelId && channelId !== programCoachingChannelId) {
             orphanCoaching.push(channel);
           }
         }
@@ -997,7 +1020,7 @@ function ChatContent({
     setOrphanCoachingChannels(orphanCoaching);
     setOrgChannelUnreads(orgChannelUnreadMap);
     setOrgChannelLastMessages(orgChannelLastMessageMap);
-  }, [client, coachSquads, squadChannelId, premiumSquadChannelId, standardSquadChannelId, coachingChannelId, orgChannels]);
+  }, [client, coachSquads, squadChannelId, premiumSquadChannelId, standardSquadChannelId, coachingChannelId, programCoachingChannelId, orgChannels]);
 
   // Watch global channels to ensure we get updates/counts even if not in active list
   useEffect(() => {
@@ -1007,6 +1030,11 @@ function ChatContent({
       const channelsToWatch = [ANNOUNCEMENTS_CHANNEL_ID, SOCIAL_CORNER_CHANNEL_ID, SHARE_WINS_CHANNEL_ID];
       if (squadChannelId) channelsToWatch.push(squadChannelId);
       if (coachingChannelId) channelsToWatch.push(coachingChannelId);
+      
+      // Add program-based coaching channel (independent of legacy coachingChannelId)
+      if (programCoachingChannelId && !channelsToWatch.includes(programCoachingChannelId)) {
+        channelsToWatch.push(programCoachingChannelId);
+      }
       
       // Add all coach squad channels
       for (const coachSquad of coachSquads) {
@@ -1035,7 +1063,7 @@ function ChatContent({
     };
     
     watchGlobalChannels();
-  }, [client, squadChannelId, coachingChannelId, coachSquads, orgChannels, calculateUnreadCounts]);
+  }, [client, squadChannelId, coachingChannelId, programCoachingChannelId, coachSquads, orgChannels, calculateUnreadCounts]);
   
   // Listen for message events to update unread counts
   useEffect(() => {
@@ -1509,6 +1537,29 @@ function ChatContent({
               </div>
             )}
 
+            {/* Program-based Coaching Chat - Shows for users enrolled in individual programs */}
+            {/* Independent of legacy hasCoaching flag - works via ClientCoachingData */}
+            {/* Only show if not already showing legacy coaching chat to avoid duplicates */}
+            {!isPlatformMode && !hasCoaching && programCoachingChannelId && (
+              <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                <SpecialChannelItem
+                  avatarUrl={programCoachInfo?.imageUrl}
+                  icon={
+                    <svg className="w-6 h-6 text-[#a07855]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  }
+                  name={programCoachInfo?.name || 'My Coach'}
+                  description="1:1 coaching chat"
+                  onClick={() => handleChannelSelect(programCoachingChannelId)}
+                  isActive={activeChannel?.id === programCoachingChannelId}
+                  isPinned={true}
+                  unreadCount={programCoachingUnread}
+                  lastMessageTime={programCoachingLastMessage}
+                />
+              </div>
+            )}
+
             {/* Orphan Coaching Channels - Previous coaching chats with unread messages */}
             {/* Don't show on platform domain - these are tenant-specific */}
             {!isPlatformMode && orphanCoachingChannels.map((channel) => {
@@ -1538,9 +1589,9 @@ function ChatContent({
 
             {/* Get Your Personal Coach - Promo Item */}
             {/* Show to coaches even if not enabled (with disabled state) */}
-            {/* Show to users only if enabled and visible */}
+            {/* Show to users only if enabled and visible AND not in active individual program */}
             {/* Don't show on platform domain */}
-            {!isPlatformMode && !hasCoaching && coachingPromo.isVisible && (
+            {!isPlatformMode && !hasCoaching && !hasActiveIndividualEnrollment && coachingPromo.isVisible && (
               <div className="p-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
                 <CoachPromoItem 
                   title={coachingPromo.title}

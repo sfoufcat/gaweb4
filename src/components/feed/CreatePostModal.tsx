@@ -6,7 +6,9 @@ import { useUser } from '@clerk/nextjs';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 import { DiscardConfirmationModal } from './ConfirmationModal';
 import { RichTextEditor } from '@/components/editor';
+import { PollComposer } from '@/components/chat/PollComposer';
 import type { FeedPost } from '@/hooks/useFeed';
+import type { PollFormData, ChatPollState } from '@/types/poll';
 
 interface CreatePostModalProps {
   isOpen: boolean;
@@ -31,12 +33,17 @@ export function CreatePostModal({
   const [showDiscardModal, setShowDiscardModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Poll state
+  const [showPollComposer, setShowPollComposer] = useState(false);
+  const [attachedPoll, setAttachedPoll] = useState<ChatPollState | null>(null);
 
   const accentColor = isDefault ? '#a07855' : colors.accentLight;
 
-  const hasContent = (content?.text?.trim()) || images.length > 0 || videoUrl;
+  const hasContent = (content?.text?.trim()) || images.length > 0 || videoUrl || attachedPoll;
   const canAddImage = images.length < MAX_IMAGES && !videoUrl;
   const canAddVideo = images.length === 0 && !videoUrl;
+  const canAddPoll = !attachedPoll;
 
   // Reset form
   const resetForm = useCallback(() => {
@@ -47,6 +54,8 @@ export function CreatePostModal({
     setIsSubmitting(false);
     setErrorMessage(null);
     setShowDiscardModal(false);
+    setAttachedPoll(null);
+    setShowPollComposer(false);
   }, []);
 
   // Handle close - show discard modal if there's content
@@ -144,6 +153,46 @@ export function CreatePostModal({
     setContent(newContent);
   }, []);
 
+  // Handle poll creation
+  const handlePollSubmit = useCallback(async (pollData: PollFormData) => {
+    try {
+      // Create poll via API (without channelId for feed posts)
+      const response = await fetch('/api/polls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: pollData.question,
+          options: pollData.options,
+          settings: {
+            activeTill: pollData.settings.activeTill.toISOString(),
+            anonymous: pollData.settings.anonymous,
+            multipleAnswers: pollData.settings.multipleAnswers,
+            participantsCanAddOptions: pollData.settings.participantsCanAddOptions,
+          },
+          // No channelId - this is for feed
+          forFeed: true,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create poll');
+      }
+
+      const { poll } = await response.json() as { poll: ChatPollState };
+      setAttachedPoll(poll);
+      setShowPollComposer(false);
+    } catch (error) {
+      console.error('Failed to create poll:', error);
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to create poll');
+    }
+  }, []);
+
+  // Remove attached poll
+  const removePoll = useCallback(() => {
+    setAttachedPoll(null);
+  }, []);
+
   // Handle submit
   const handleSubmit = useCallback(async () => {
     if (!hasContent || isSubmitting) return;
@@ -161,6 +210,7 @@ export function CreatePostModal({
           contentHtml: content?.html || undefined,
           images: images.length > 0 ? images : undefined,
           videoUrl: videoUrl || undefined,
+          pollId: attachedPoll?.id || undefined,
         }),
       });
 
@@ -180,6 +230,8 @@ export function CreatePostModal({
           lastName: user?.lastName,
           imageUrl: user?.imageUrl,
         },
+        pollId: attachedPoll?.id,
+        pollData: attachedPoll || undefined,
       });
 
       resetForm();
@@ -190,7 +242,7 @@ export function CreatePostModal({
     } finally {
       setIsSubmitting(false);
     }
-  }, [hasContent, isSubmitting, content, images, videoUrl, onPostCreated, user, resetForm, onClose]);
+  }, [hasContent, isSubmitting, content, images, videoUrl, attachedPoll, onPostCreated, user, resetForm, onClose]);
 
   if (!isOpen) return null;
 
@@ -316,6 +368,44 @@ export function CreatePostModal({
             </div>
           )}
 
+          {/* Poll preview */}
+          {attachedPoll && (
+            <div className="relative mt-4 p-4 bg-[#f5f3f0] dark:bg-[#1a1f2a] rounded-xl">
+              <button
+                onClick={removePoll}
+                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors z-10"
+              >
+                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-5 h-5 text-[#a07855]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <span className="text-[13px] font-medium text-[#a07855]">Poll attached</span>
+              </div>
+              <h4 className="font-semibold text-[15px] text-[#1a1a1a] dark:text-[#faf8f6] mb-2">
+                {attachedPoll.question}
+              </h4>
+              <div className="space-y-1">
+                {attachedPoll.options.slice(0, 3).map((option) => (
+                  <div 
+                    key={option.id}
+                    className="px-3 py-2 bg-white dark:bg-[#262b35] rounded-lg text-[14px] text-[#5f5a55] dark:text-[#b5b0ab]"
+                  >
+                    {option.text}
+                  </div>
+                ))}
+                {attachedPoll.options.length > 3 && (
+                  <div className="text-[13px] text-[#8a857f] pl-3">
+                    +{attachedPoll.options.length - 3} more options
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Upload progress */}
           {isUploading && (
             <div className="flex items-center gap-2 mt-4 text-[14px] text-[#8a857f]">
@@ -388,6 +478,18 @@ export function CreatePostModal({
               </svg>
               Video
             </button>
+
+            {/* Add poll button */}
+            <button
+              onClick={() => setShowPollComposer(true)}
+              disabled={!canAddPoll || isUploading}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#ebe7e2] dark:hover:bg-[#262b35] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Poll
+            </button>
           </div>
         </div>
         </div>
@@ -399,6 +501,13 @@ export function CreatePostModal({
         onClose={() => setShowDiscardModal(false)}
         onConfirm={handleConfirmDiscard}
         itemName="post"
+      />
+
+      {/* Poll composer modal */}
+      <PollComposer
+        isOpen={showPollComposer}
+        onClose={() => setShowPollComposer(false)}
+        onSubmit={handlePollSubmit}
       />
     </>
   );

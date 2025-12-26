@@ -81,11 +81,28 @@ export async function GET(request: NextRequest) {
       userReactions.get(data.postId)!.add(data.type);
     });
 
+    // Get poll IDs for batch fetch
+    const pollIds = docs
+      .map(doc => doc.data().pollId)
+      .filter((id): id is string => !!id);
+    
+    // Batch fetch poll data
+    const pollMap = new Map();
+    if (pollIds.length > 0) {
+      const pollDocs = await Promise.all(
+        pollIds.map(id => adminDb.collection('polls').doc(id).get())
+      );
+      pollDocs.filter(doc => doc.exists).forEach(doc => {
+        pollMap.set(doc.id, { id: doc.id, ...doc.data() });
+      });
+    }
+
     // Transform to frontend format
     const posts = docs.map(doc => {
       const data = doc.data();
       const author = authorMap.get(data.authorId);
       const reactions = userReactions.get(doc.id) || new Set();
+      const pollData = data.pollId ? pollMap.get(data.pollId) : undefined;
       
       return {
         id: doc.id,
@@ -95,6 +112,8 @@ export async function GET(request: NextRequest) {
         contentHtml: data.contentHtml,
         images: data.images,
         videoUrl: data.videoUrl,
+        pollId: data.pollId || undefined,
+        pollData: pollData,
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
         likeCount: data.likeCount || 0,
@@ -159,12 +178,12 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { text, content, contentHtml, images, videoUrl } = body;
+    const { text, content, contentHtml, images, videoUrl, pollId } = body;
 
-    // Validate - must have text or media
-    if (!text && !content && !images?.length && !videoUrl) {
+    // Validate - must have text or media or poll
+    if (!text && !content && !images?.length && !videoUrl && !pollId) {
       return NextResponse.json(
-        { error: 'Post must have text or media' },
+        { error: 'Post must have text, media, or a poll' },
         { status: 400 }
       );
     }
@@ -185,6 +204,7 @@ export async function POST(request: NextRequest) {
       contentHtml: contentHtml || null, // Pre-rendered HTML
       images: images || [],
       videoUrl: videoUrl || null,
+      pollId: pollId || null,
       likeCount: 0,
       commentCount: 0,
       repostCount: 0,
@@ -194,6 +214,15 @@ export async function POST(request: NextRequest) {
     };
     
     await postRef.set(postData);
+
+    // Fetch poll data if pollId provided
+    let pollData = null;
+    if (pollId) {
+      const pollDoc = await adminDb.collection('polls').doc(pollId).get();
+      if (pollDoc.exists) {
+        pollData = { id: pollDoc.id, ...pollDoc.data() };
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -205,6 +234,8 @@ export async function POST(request: NextRequest) {
         contentHtml: postData.contentHtml,
         images: postData.images,
         videoUrl: postData.videoUrl,
+        pollId: postData.pollId,
+        pollData: pollData,
         createdAt: now,
         likeCount: 0,
         commentCount: 0,

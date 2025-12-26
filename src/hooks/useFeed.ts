@@ -25,6 +25,8 @@ export interface FeedPost {
   contentHtml?: string; // Pre-rendered HTML
   images?: string[];
   videoUrl?: string;
+  pollId?: string; // Poll attachment
+  pollData?: import('@/types/poll').ChatPollState; // Embedded poll data
   createdAt: string;
   updatedAt?: string;
   likeCount: number;
