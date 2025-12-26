@@ -189,16 +189,28 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   };
 
   const copyFunnelLink = (funnel: Funnel) => {
+    // Debug logging to help diagnose issues
+    console.log('[DEBUG] Copying funnel link:', {
+      funnelId: funnel.id,
+      funnelName: funnel.name,
+      funnelSquadId: funnel.squadId,
+      funnelProgramId: funnel.programId,
+      loadedSquadsCount: squads.length,
+      loadedSquads: squads.map(s => ({ id: s.id, name: s.name, slug: s.slug })),
+      loadedProgramsCount: programs.length,
+    });
+
     let url: string | null = null;
     let errorMessage: string | null = null;
     
     // Check if it's a squad funnel
     if (funnel.squadId) {
       const squad = squads.find(s => s.id === funnel.squadId);
+      console.log('[DEBUG] Squad lookup result:', squad ? { id: squad.id, name: squad.name, slug: squad.slug } : 'NOT FOUND');
       if (!squad) {
-        errorMessage = 'Squad not found. Please refresh the page.';
+        errorMessage = `Squad not found. Funnel references squadId "${funnel.squadId}" but only ${squads.length} squads are loaded. Try refreshing.`;
       } else if (!squad.slug) {
-        errorMessage = 'Squad needs a URL slug. Edit the squad to add one.';
+        errorMessage = `Squad "${squad.name}" needs a URL slug. Edit the squad to add one.`;
       } else {
         url = `${window.location.origin}/join/squad/${squad.slug}/${funnel.slug}`;
       }
@@ -206,9 +218,9 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
       // Program funnel
       const program = programs.find(p => p.id === funnel.programId);
       if (!program) {
-        errorMessage = 'Program not found. Please refresh the page.';
+        errorMessage = `Program not found. Funnel references programId "${funnel.programId}" but only ${programs.length} programs are loaded. Try refreshing.`;
       } else if (!program.slug) {
-        errorMessage = 'Program needs a URL slug. Edit the program to add one.';
+        errorMessage = `Program "${program.name}" needs a URL slug. Edit the program to add one.`;
       } else {
         url = `${window.location.origin}/join/${program.slug}/${funnel.slug}`;
       }
@@ -222,6 +234,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
       setCopyError(null);
       setTimeout(() => setCopiedFunnelId(null), 2000);
     } else if (errorMessage) {
+      console.error('[DEBUG] Copy link error:', errorMessage);
       setCopyError(errorMessage);
       setTimeout(() => setCopyError(null), 4000);
     }

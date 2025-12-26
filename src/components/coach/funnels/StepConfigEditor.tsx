@@ -1412,21 +1412,51 @@ function LandingPageConfigEditor({ config, onChange, onClose }: LandingPageConfi
     );
   }
 
-  const hasPuckData = config.puckData && 
-    (config.puckData as { content?: unknown[] }).content && 
-    ((config.puckData as { content: unknown[] }).content.length > 0);
+  const puckContent = (config.puckData as { content?: unknown[] } | undefined)?.content;
+  const hasPuckData = Boolean(puckContent && puckContent.length > 0);
+  const sectionCount = puckContent?.length ?? 0;
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border border-violet-200 dark:border-violet-800 rounded-xl p-6">
+      {/* Status Banner - Show when landing page is configured */}
+      {hasPuckData && (
+        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 dark:from-emerald-600 dark:to-teal-600 rounded-2xl p-6 text-white shadow-lg">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center flex-shrink-0">
+              <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold mb-1">Landing Page Ready!</h3>
+              <p className="text-white/90 text-sm">
+                Your landing page is configured with <span className="font-semibold">{sectionCount} section{sectionCount !== 1 ? 's' : ''}</span>
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleOpenEditor}
+              className="px-5 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur rounded-lg font-semibold transition-colors inline-flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Edit
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Builder Card */}
+      <div className="bg-gradient-to-br from-[#a07855]/5 to-[#8c6245]/10 dark:from-[#a07855]/10 dark:to-[#8c6245]/20 border border-[#a07855]/20 dark:border-[#a07855]/30 rounded-2xl p-6">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center flex-shrink-0">
-            <svg className="w-6 h-6 text-violet-600 dark:text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="w-14 h-14 rounded-xl bg-[#a07855]/10 dark:bg-[#a07855]/20 flex items-center justify-center flex-shrink-0">
+            <svg className="w-7 h-7 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
             </svg>
           </div>
           <div className="flex-1">
-            <h4 className="font-semibold text-text-primary dark:text-[#f5f5f8] mb-1">
+            <h4 className="text-lg font-semibold text-text-primary dark:text-[#f5f5f8] mb-1">
               Visual Landing Page Builder
             </h4>
             <p className="text-sm text-text-secondary dark:text-[#b2b6c2] mb-4">
@@ -1435,18 +1465,18 @@ function LandingPageConfigEditor({ config, onChange, onClose }: LandingPageConfi
             <button
               type="button"
               onClick={handleOpenEditor}
-              className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium transition-colors inline-flex items-center gap-2"
+              className="px-5 py-2.5 bg-[#a07855] hover:bg-[#8c6245] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white rounded-xl font-semibold transition-colors inline-flex items-center gap-2 shadow-sm"
             >
               {hasPuckData ? (
                 <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
                   Edit Landing Page
                 </>
               ) : (
                 <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
                   Create Landing Page
@@ -1455,17 +1485,6 @@ function LandingPageConfigEditor({ config, onChange, onClose }: LandingPageConfi
             </button>
           </div>
         </div>
-        
-        {hasPuckData ? (
-          <div className="mt-4 pt-4 border-t border-violet-200 dark:border-violet-800">
-            <p className="text-xs text-violet-600 dark:text-violet-400 font-medium flex items-center gap-1">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              Landing page configured with {((config.puckData as { content: unknown[] }).content.length)} section(s)
-            </p>
-          </div>
-        ) : null}
       </div>
 
       {/* Page Settings */}

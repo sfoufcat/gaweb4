@@ -170,10 +170,10 @@ export function LandingPageEditor({
             {/* Start Fresh Section */}
             <div className="mb-10">
               <h2 className="text-lg font-semibold mb-5 text-text-primary dark:text-[#f5f5f8]">Start Fresh</h2>
-              <div className="flex gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                 <button
                   onClick={handleStartBlank}
-                  className="w-72 h-48 border-2 border-dashed border-border dark:border-[#262b35] rounded-2xl hover:border-[#a07855] hover:bg-[#a07855]/5 dark:hover:bg-[#a07855]/10 transition-all duration-200 flex flex-col items-center justify-center gap-4 group"
+                  className="h-48 border-2 border-dashed border-border dark:border-[#262b35] rounded-2xl hover:border-[#a07855] hover:bg-[#a07855]/5 dark:hover:bg-[#a07855]/10 transition-all duration-200 flex flex-col items-center justify-center gap-4 group"
                 >
                   <div className="w-14 h-14 rounded-2xl bg-surface-elevated dark:bg-[#1d222b] flex items-center justify-center group-hover:bg-[#a07855]/10 transition-colors border border-border dark:border-[#262b35]">
                     <Layout className="w-7 h-7 text-text-muted dark:text-[#7d8190] group-hover:text-[#a07855] transition-colors" />
@@ -209,12 +209,12 @@ export function LandingPageEditor({
                   </div>
                   
                   {/* Horizontal grid of templates */}
-                  <div className="flex gap-5 flex-wrap">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                     {categoryTemplates.map((template) => (
                       <button
                         key={template.id}
                         onClick={() => handleSelectTemplate(template)}
-                        className="w-72 text-left bg-card dark:bg-[#171b22] border border-border dark:border-[#262b35] rounded-2xl overflow-hidden hover:border-[#a07855] hover:shadow-lg dark:hover:shadow-[#a07855]/10 transition-all duration-200 group flex-shrink-0"
+                        className="text-left bg-card dark:bg-[#171b22] border border-border dark:border-[#262b35] rounded-2xl overflow-hidden hover:border-[#a07855] hover:shadow-lg dark:hover:shadow-[#a07855]/10 transition-all duration-200 group"
                       >
                         {/* Thumbnail/Preview */}
                         <div className="aspect-[4/3] relative overflow-hidden border-b border-border dark:border-[#262b35]">
