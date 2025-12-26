@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { StoryAvatar } from '@/components/stories/StoryAvatar';
 import { useUserStoryAvailability } from '@/hooks/useUserStoryAvailability';
-import { useStoryViewTracking, useStoryViewStatus } from '@/hooks/useStoryViewTracking';
+import { useStoryViewTracking, useStoryViewStatus, generateStoryContentData } from '@/hooks/useStoryViewTracking';
 import { getProfileUrl } from '@/lib/utils';
 
 interface SquadMemberStoryAvatarProps {
@@ -38,13 +38,23 @@ export function SquadMemberStoryAvatar({
   const { hasStory, showRing, showCheck, contentHash, data } = useUserStoryAvailability(userId);
   const { markStoryAsViewed } = useStoryViewTracking();
   
+  // Generate full content data for smart view tracking
+  // This ensures content removal (story expiry) doesn't turn the ring green
+  const contentData = generateStoryContentData(
+    data.hasTasksToday,
+    data.hasDayClosed,
+    data.tasks?.length || 0,
+    data.hasWeekClosed,
+    data.userPostedStories?.length || 0
+  );
+  
   // Use reactive hook for cross-component sync
-  const hasViewedFromHook = useStoryViewStatus(userId, contentHash);
+  const hasViewedFromHook = useStoryViewStatus(userId, contentData);
   const hasViewed = hasStory && contentHash ? hasViewedFromHook : false;
 
   // Handler to mark story as viewed when opened
-  const handleStoryViewed = (hash: string) => {
-    markStoryAsViewed(userId, hash);
+  const handleStoryViewed = () => {
+    markStoryAsViewed(userId, contentData);
   };
 
   // Parse name from Stream user data

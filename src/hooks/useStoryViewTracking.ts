@@ -4,13 +4,26 @@ import { useCallback, useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import type { StorySlide } from '@/components/stories/StoryPlayer';
 
-const STORAGE_KEY = 'ga_story_views';
+const STORAGE_KEY = 'ga_story_views_v2'; // v2 for new format with component values
 const SLIDE_STORAGE_KEY = 'ga_story_slides_viewed';
 const STORY_VIEWED_EVENT = 'ga:story-viewed';
 const SLIDE_VIEWED_EVENT = 'ga:slide-viewed';
 
+/**
+ * Data representing the story content state when it was viewed
+ * Used to determine if content has increased (new) or decreased (expired)
+ */
+export interface StoryContentData {
+  hash: string;
+  taskCount: number;
+  userPostCount: number;
+  hasDayClosed: boolean;
+  hasWeekClosed: boolean;
+  hasTasksToday: boolean;
+}
+
 interface StoryViewRecord {
-  [key: string]: string; // key: `${viewerUserId}:${storyUserId}`, value: contentHash
+  [key: string]: StoryContentData; // key: `${viewerUserId}:${storyUserId}`, value: content data
 }
 
 interface SlideViewState {
@@ -84,39 +97,55 @@ export function useStoryViewTracking() {
   /**
    * Mark a story as viewed by the current user
    * @param storyUserId - The ID of the user whose story was viewed
-   * @param contentHash - A hash representing the current story content
+   * @param contentData - The content data representing current story state
    */
-  const markStoryAsViewed = useCallback((storyUserId: string, contentHash: string) => {
+  const markStoryAsViewed = useCallback((storyUserId: string, contentData: StoryContentData) => {
     if (!viewerId || !storyUserId) return;
     
     const views = getStoredViews();
     const key = `${viewerId}:${storyUserId}`;
-    views[key] = contentHash;
+    views[key] = contentData;
     saveViews(views);
     
     // Dispatch custom event for cross-component reactivity
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent(STORY_VIEWED_EVENT, {
-        detail: { storyUserId, contentHash }
+        detail: { storyUserId, contentData }
       }));
     }
   }, [viewerId, getStoredViews, saveViews]);
 
   /**
-   * Check if the current user has viewed a story with the given content hash
+   * Check if the current user has viewed a story
+   * A story is considered "viewed" (gray ring) unless NEW content was added.
+   * Content decreasing (story expiry) keeps the viewed status.
+   * 
    * @param storyUserId - The ID of the user whose story to check
-   * @param contentHash - The current content hash of the story
-   * @returns true if the story has been viewed with this exact content hash
+   * @param currentData - The current content data of the story
+   * @returns true if the story has been viewed (no new content added)
    */
-  const hasViewedStory = useCallback((storyUserId: string, contentHash: string): boolean => {
+  const hasViewedStory = useCallback((storyUserId: string, currentData: StoryContentData): boolean => {
     if (!viewerId || !storyUserId) return false;
     
     const views = getStoredViews();
     const key = `${viewerId}:${storyUserId}`;
-    const storedHash = views[key];
+    const storedData = views[key];
     
-    // Story is "viewed" only if the stored hash matches the current content hash
-    return storedHash === contentHash;
+    // Never viewed before
+    if (!storedData) return false;
+    
+    // Check if content has INCREASED (new content added = unseen)
+    // If any of these are true, we have new content -> return false (not viewed)
+    const hasNewContent = 
+      currentData.taskCount > storedData.taskCount ||
+      currentData.userPostCount > storedData.userPostCount ||
+      (currentData.hasDayClosed && !storedData.hasDayClosed) ||
+      (currentData.hasWeekClosed && !storedData.hasWeekClosed) ||
+      (currentData.hasTasksToday && !storedData.hasTasksToday);
+    
+    // If content has increased, consider it unseen (not viewed)
+    // If content decreased or stayed same, keep viewed status
+    return !hasNewContent;
   }, [viewerId, getStoredViews]);
 
   /**
@@ -298,26 +327,66 @@ export function generateStoryContentHash(
 }
 
 /**
+ * Generate full content data for a story based on its current state
+ * This is used for smart view tracking that distinguishes between
+ * content being added (show green) vs removed (stay gray)
+ * 
+ * @param hasTasksToday - Whether the user has tasks today
+ * @param hasDayClosed - Whether the user has completed evening check-in
+ * @param taskCount - Number of tasks
+ * @param hasWeekClosed - Whether the user has completed weekly check-in
+ * @param userPostCount - Number of user-posted stories
+ * @returns StoryContentData object with all component values
+ */
+export function generateStoryContentData(
+  hasTasksToday: boolean,
+  hasDayClosed: boolean,
+  taskCount: number = 0,
+  hasWeekClosed: boolean = false,
+  userPostCount: number = 0
+): StoryContentData {
+  return {
+    hash: generateStoryContentHash(hasTasksToday, hasDayClosed, taskCount, hasWeekClosed, userPostCount),
+    hasTasksToday,
+    hasDayClosed,
+    taskCount,
+    hasWeekClosed,
+    userPostCount,
+  };
+}
+
+/**
  * useStoryViewStatus Hook
  * 
  * Reactive hook that returns whether a story has been viewed.
+ * A story is considered "viewed" (gray ring) unless NEW content was added.
+ * Content decreasing (story expiry) keeps the viewed status.
+ * 
  * Automatically updates when:
  * - The story is marked as viewed (via custom event)
  * - localStorage changes (cross-tab sync via storage event)
  * 
  * @param storyUserId - The ID of the user whose story to track
- * @param contentHash - The current content hash of the story
- * @returns hasViewed - Whether the story has been viewed with the current content hash
+ * @param currentData - The current content data of the story (or just contentHash for backwards compat)
+ * @returns hasViewed - Whether the story has been viewed (no new content added)
  */
-export function useStoryViewStatus(storyUserId?: string, contentHash?: string): boolean {
+export function useStoryViewStatus(
+  storyUserId?: string, 
+  currentData?: StoryContentData | string // Accept either full data or just hash for backwards compat
+): boolean {
   const { user } = useUser();
   const viewerId = user?.id;
   
   const [hasViewed, setHasViewed] = useState(false);
   
+  // Normalize currentData - if it's a string (old hash format), we can't do smart comparison
+  const normalizedData: StoryContentData | null = typeof currentData === 'string' 
+    ? null // Can't do smart comparison with just a hash
+    : currentData || null;
+  
   // Check localStorage for initial state and on dependency changes
   useEffect(() => {
-    if (!viewerId || !storyUserId || !contentHash) {
+    if (!viewerId || !storyUserId || !currentData) {
       setHasViewed(false);
       return;
     }
@@ -325,12 +394,35 @@ export function useStoryViewStatus(storyUserId?: string, contentHash?: string): 
     const checkViewStatus = () => {
       try {
         const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const views = JSON.parse(stored);
-          const key = `${viewerId}:${storyUserId}`;
-          setHasViewed(views[key] === contentHash);
-        } else {
+        if (!stored) {
           setHasViewed(false);
+          return;
+        }
+        
+        const views: StoryViewRecord = JSON.parse(stored);
+        const key = `${viewerId}:${storyUserId}`;
+        const storedData = views[key];
+        
+        if (!storedData) {
+          setHasViewed(false);
+          return;
+        }
+        
+        // If we have full data, do smart comparison
+        if (normalizedData) {
+          // Check if content has INCREASED (new content added = unseen)
+          const hasNewContent = 
+            normalizedData.taskCount > storedData.taskCount ||
+            normalizedData.userPostCount > storedData.userPostCount ||
+            (normalizedData.hasDayClosed && !storedData.hasDayClosed) ||
+            (normalizedData.hasWeekClosed && !storedData.hasWeekClosed) ||
+            (normalizedData.hasTasksToday && !storedData.hasTasksToday);
+          
+          setHasViewed(!hasNewContent);
+        } else {
+          // Fallback: just compare hashes (old behavior)
+          const currentHash = typeof currentData === 'string' ? currentData : currentData.hash;
+          setHasViewed(storedData.hash === currentHash);
         }
       } catch {
         setHasViewed(false);
@@ -342,8 +434,9 @@ export function useStoryViewStatus(storyUserId?: string, contentHash?: string): 
     
     // Listen for custom event (same-page sync)
     const handleStoryViewed = (event: Event) => {
-      const customEvent = event as CustomEvent<{ storyUserId: string; contentHash: string }>;
-      if (customEvent.detail.storyUserId === storyUserId && customEvent.detail.contentHash === contentHash) {
+      const customEvent = event as CustomEvent<{ storyUserId: string; contentData: StoryContentData }>;
+      if (customEvent.detail.storyUserId === storyUserId) {
+        // When a story is just viewed, mark it as viewed
         setHasViewed(true);
       }
     };
@@ -362,7 +455,7 @@ export function useStoryViewStatus(storyUserId?: string, contentHash?: string): 
       window.removeEventListener(STORY_VIEWED_EVENT, handleStoryViewed);
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [viewerId, storyUserId, contentHash]);
+  }, [viewerId, storyUserId, currentData, normalizedData]);
   
   return hasViewed;
 }

@@ -312,6 +312,10 @@ export function QuestionStep({
 
   // Check if any option has an image
   const hasImageOptions = options.some(o => o.imageUrl);
+  // Determine image display mode: 'card' (default) or 'inline'
+  const imageDisplayMode = config.imageDisplayMode || 'card';
+  // Use card layout only when there are images AND mode is 'card'
+  const useCardLayout = hasImageOptions && imageDisplayMode === 'card';
 
   // Render choice options (single or multi)
   return (
@@ -343,8 +347,8 @@ export function QuestionStep({
         )}
       </motion.div>
 
-      {/* Image cards layout: grid on desktop, 2x2 on mobile */}
-      {hasImageOptions ? (
+      {/* Card layout: grid on desktop, 2x2 on mobile */}
+      {useCardLayout ? (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -405,7 +409,7 @@ export function QuestionStep({
           })}
         </motion.div>
       ) : (
-        /* Standard vertical list layout */
+        /* Standard vertical list layout (with optional inline thumbnails) */
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -432,9 +436,21 @@ export function QuestionStep({
                 transition={{ delay: 0.1 + index * 0.05 }}
               >
                 <div className="flex items-center gap-4">
-                  {option.emoji && (
+                  {/* Inline image thumbnail (when imageDisplayMode is 'inline') */}
+                  {option.imageUrl && imageDisplayMode === 'inline' ? (
+                    <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
+                      <Image
+                        src={option.imageUrl}
+                        alt={option.label}
+                        width={40}
+                        height={40}
+                        className="w-full h-full object-cover"
+                        unoptimized={option.imageUrl.startsWith('http')}
+                      />
+                    </div>
+                  ) : option.emoji ? (
                     <span className="text-2xl">{option.emoji}</span>
-                  )}
+                  ) : null}
                   <div className="flex-1">
                     <p className="font-medium text-text-primary">{option.label}</p>
                     {option.description && (
@@ -443,7 +459,7 @@ export function QuestionStep({
                   </div>
                   {isMultiChoice ? (
                     <div 
-                      className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
                         isSelected ? '' : 'border-[#d4d0cb]'
                       }`}
                       style={isSelected ? { borderColor: primaryVar, backgroundColor: primaryVar } : undefined}
@@ -456,7 +472,7 @@ export function QuestionStep({
                     </div>
                   ) : (
                     <div 
-                      className={`w-5 h-5 rounded-full border-2 ${
+                      className={`w-5 h-5 rounded-full border-2 flex-shrink-0 ${
                         isSelected ? '' : 'border-[#d4d0cb]'
                       }`}
                       style={isSelected ? { borderColor: primaryVar, backgroundColor: primaryVar } : undefined}

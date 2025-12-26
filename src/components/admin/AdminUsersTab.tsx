@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
 import { UserPlus, RefreshCw } from 'lucide-react';
 import { SquadManagerPopover } from './SquadManagerPopover';
-import type { UserRole, UserTier, CoachingStatus, OrgRole, Squad } from '@/types';
+import type { UserRole, UserTier, CoachingStatus, OrgRole, Squad, ProgramType } from '@/types';
 import { validateSubdomain } from '@/types';
 import { 
   canModifyUserRole, 
@@ -53,6 +53,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { InviteClientsDialog } from '@/components/coach/InviteClientsDialog';
 
+// Program enrollment info returned from API
+interface UserProgramEnrollment {
+  programId: string;
+  programName: string;
+  programType: ProgramType;
+  status: 'active' | 'upcoming' | 'completed';
+}
+
 interface ClerkAdminUser {
   id: string;
   email: string;
@@ -74,6 +82,8 @@ interface ClerkAdminUser {
   // Assigned coach (for displaying in Coach column)
   coachId?: string | null;
   coachName?: string | null;
+  // Program enrollments
+  programs?: UserProgramEnrollment[];
   // Referral tracking
   invitedBy?: string | null;
   invitedByName?: string | null;
@@ -84,13 +94,13 @@ interface ClerkAdminUser {
 }
 
 // Available column keys for visibility control
-export type ColumnKey = 'select' | 'avatar' | 'name' | 'email' | 'role' | 'orgRole' | 'tier' | 'squad' | 'coach' | 'coaching' | 'invitedBy' | 'invitedAt' | 'created' | 'actions';
+export type ColumnKey = 'select' | 'avatar' | 'name' | 'email' | 'role' | 'orgRole' | 'tier' | 'squad' | 'coach' | 'coaching' | 'programs' | 'invitedBy' | 'invitedAt' | 'created' | 'actions';
 
 // Default columns for full access (select column added for bulk operations)
 const ALL_COLUMNS: ColumnKey[] = ['select', 'avatar', 'name', 'email', 'role', 'tier', 'squad', 'coaching', 'invitedBy', 'invitedAt', 'created', 'actions'];
 
 // Limited columns for org coaches (read-only, no select)
-const LIMITED_COLUMNS: ColumnKey[] = ['avatar', 'name', 'email', 'coach', 'coaching', 'created'];
+const LIMITED_COLUMNS: ColumnKey[] = ['avatar', 'name', 'email', 'coach', 'programs', 'created'];
 
 // Simplified squad info for dropdown
 interface SquadOption {
@@ -791,6 +801,7 @@ export function AdminUsersTab({
                 {showColumn('squad') && <TableHead className="font-albert">Squad</TableHead>}
                 {showColumn('coach') && <TableHead className="font-albert">Coach</TableHead>}
                 {showColumn('coaching') && <TableHead className="font-albert">Coaching</TableHead>}
+                {showColumn('programs') && <TableHead className="font-albert">Programs</TableHead>}
                 {showColumn('invitedBy') && <TableHead className="font-albert">Invited By</TableHead>}
                 {showColumn('invitedAt') && <TableHead className="font-albert">Invited At</TableHead>}
                 {showColumn('created') && <TableHead className="font-albert">Created</TableHead>}
@@ -1000,6 +1011,31 @@ export function AdminUsersTab({
                             </span>
                           );
                         })()}
+                      </TableCell>
+                    )}
+                    
+                    {/* Programs - Shows enrolled programs with (1:1)/(Group) prefix */}
+                    {showColumn('programs') && (
+                      <TableCell>
+                        {user.programs && user.programs.length > 0 ? (
+                          <div className="flex flex-col gap-1 max-w-[200px]">
+                            {user.programs.map((program) => (
+                              <span
+                                key={program.programId}
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium font-albert truncate ${
+                                  program.programType === 'individual'
+                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                }`}
+                                title={`${program.programType === 'individual' ? '(1:1)' : '(Group)'} ${program.programName}`}
+                              >
+                                {program.programType === 'individual' ? '(1:1)' : '(Group)'} {program.programName}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-[#8c8c8c] dark:text-[#7d8190]">—</span>
+                        )}
                       </TableCell>
                     )}
                     

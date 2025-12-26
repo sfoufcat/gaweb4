@@ -8,7 +8,7 @@ import { useHabits } from '@/hooks/useHabits';
 import { useAlignment } from '@/hooks/useAlignment';
 import { useDashboard } from '@/hooks/useDashboard';
 import { useCurrentUserStoryAvailability } from '@/hooks/useUserStoryAvailability';
-import { useStoryViewTracking, useStoryViewStatus } from '@/hooks/useStoryViewTracking';
+import { useStoryViewTracking, useStoryViewStatus, generateStoryContentData } from '@/hooks/useStoryViewTracking';
 import { HabitCheckInModal } from '@/components/habits/HabitCheckInModal';
 import { DailyFocusSection } from '@/components/tasks/DailyFocusSection';
 import { StoryAvatar } from '@/components/stories/StoryAvatar';
@@ -192,16 +192,27 @@ export default function Dashboard() {
   // Story view tracking for current user's own story - use reactive hook for cross-component sync
   const { markStoryAsViewed } = useStoryViewTracking();
   const currentUserId = user?.id || '';
-  const hasViewedFromHook = useStoryViewStatus(currentUserId, storyAvailability.contentHash);
+  
+  // Generate full content data for smart view tracking
+  // This ensures content removal (story expiry) doesn't turn the ring green
+  const ownContentData = useMemo(() => generateStoryContentData(
+    storyAvailability.data.hasTasksToday,
+    storyAvailability.data.hasDayClosed,
+    storyAvailability.data.tasks?.length || 0,
+    storyAvailability.data.hasWeekClosed,
+    storyAvailability.data.userPostedStories?.length || 0
+  ), [storyAvailability.data]);
+  
+  const hasViewedFromHook = useStoryViewStatus(currentUserId, ownContentData);
   const hasViewedOwnStory = storyAvailability.hasStory && storyAvailability.contentHash 
     ? hasViewedFromHook 
     : false;
   
-  const handleOwnStoryViewed = useCallback((hash: string) => {
+  const handleOwnStoryViewed = useCallback(() => {
     if (currentUserId) {
-      markStoryAsViewed(currentUserId, hash);
+      markStoryAsViewed(currentUserId, ownContentData);
     }
-  }, [currentUserId, markStoryAsViewed]);
+  }, [currentUserId, markStoryAsViewed, ownContentData]);
 
   // Check if current time is within morning window (7 AM - 12 PM)
   const isMorningWindow = useCallback(() => {

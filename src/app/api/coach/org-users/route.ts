@@ -2,7 +2,7 @@ import { clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
-import type { UserRole, UserTier, UserTrack, CoachingStatus, OrgRole, OrgMembership } from '@/types';
+import type { UserRole, UserTier, UserTrack, CoachingStatus, OrgRole, OrgMembership, ProgramType } from '@/types';
 
 interface FirebaseUserData {
   tier?: UserTier;
@@ -33,6 +33,14 @@ interface ClerkUserMetadata {
   organizationId?: string;
   coaching?: boolean;
   coachingStatus?: CoachingStatus;
+}
+
+// Program enrollment info to return with each user
+interface UserProgramEnrollment {
+  programId: string;
+  programName: string;
+  programType: ProgramType;
+  status: 'active' | 'upcoming' | 'completed';
 }
 
 /**
@@ -99,6 +107,7 @@ export async function GET() {
     const firebaseUserData = new Map<string, FirebaseUserData>();
     const orgMembershipData = new Map<string, OrgMembershipData>();
     const userSquadIds = new Map<string, string[]>(); // userId -> squadIds from squadMembers
+    const userProgramEnrollments = new Map<string, UserProgramEnrollment[]>(); // userId -> program enrollments
     
     if (userIds.length > 0) {
       // Batch fetch user data in chunks of 10 (Firestore 'in' query limit)
@@ -168,6 +177,62 @@ export async function GET() {
           }
         });
       }
+      
+      // Fetch program enrollments for all users in this organization
+      // Get active and upcoming enrollments
+      const enrollmentsSnapshot = await adminDb
+        .collection('program_enrollments')
+        .where('organizationId', '==', organizationId)
+        .where('status', 'in', ['active', 'upcoming'])
+        .get();
+      
+      // Build a map of programId -> program data for efficient lookup
+      const programIds = new Set<string>();
+      enrollmentsSnapshot.forEach((doc) => {
+        const data = doc.data();
+        programIds.add(data.programId as string);
+      });
+      
+      const programDataMap = new Map<string, { name: string; type: ProgramType }>();
+      
+      // Fetch program data in chunks
+      const programIdsArray = Array.from(programIds);
+      for (let i = 0; i < programIdsArray.length; i += 10) {
+        const chunk = programIdsArray.slice(i, i + 10);
+        const programsSnapshot = await adminDb
+          .collection('programs')
+          .where('__name__', 'in', chunk)
+          .get();
+        
+        programsSnapshot.forEach((doc) => {
+          const data = doc.data();
+          programDataMap.set(doc.id, {
+            name: data.name as string,
+            type: data.type as ProgramType,
+          });
+        });
+      }
+      
+      // Map enrollments to users
+      enrollmentsSnapshot.forEach((doc) => {
+        const data = doc.data();
+        const userId = data.userId as string;
+        const programId = data.programId as string;
+        const program = programDataMap.get(programId);
+        
+        if (program) {
+          const enrollment: UserProgramEnrollment = {
+            programId,
+            programName: program.name,
+            programType: program.type,
+            status: data.status as 'active' | 'upcoming' | 'completed',
+          };
+          
+          const existing = userProgramEnrollments.get(userId) || [];
+          existing.push(enrollment);
+          userProgramEnrollments.set(userId, existing);
+        }
+      });
     }
 
     // Build a map of user IDs to names for inviter lookup
@@ -203,6 +268,13 @@ export async function GET() {
         }
       }
       
+      // Org role resolution: Clerk metadata is source of truth (synced from session)
+      // Falls back to org_memberships collection, then 'member' as default
+      const resolvedOrgRole = (clerkMetadata?.orgRole as OrgRole) || membershipData?.orgRole || 'member';
+      
+      // Get program enrollments for this user
+      const programs = userProgramEnrollments.get(user.id) || [];
+      
       // Org membership data takes precedence (multi-tenant), fallback to Firebase user data
       return {
         id: user.id,
@@ -212,7 +284,7 @@ export async function GET() {
         name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unnamed User',
         imageUrl: user.imageUrl || '',
         role: (clerkMetadata?.role as UserRole) || 'user',
-        orgRole: membershipData?.orgRole || (clerkMetadata?.orgRole as OrgRole) || 'member',
+        orgRole: resolvedOrgRole,
         tier: membershipData?.tier || fbData?.tier || 'free',
         track: membershipData?.track ?? fbData?.track ?? null,
         // Multi-squad support - return array of squad IDs
@@ -222,6 +294,8 @@ export async function GET() {
         premiumSquadId: membershipData?.premiumSquadId ?? fbData?.premiumSquadId ?? null,
         coachingStatus: clerkMetadata?.coachingStatus || fbData?.coaching?.status || 'none',
         coaching: clerkMetadata?.coaching,
+        // Program enrollments with type and name
+        programs,
         invitedBy: fbData?.invitedBy || null,
         invitedByName,
         inviteCode: fbData?.inviteCode || null,

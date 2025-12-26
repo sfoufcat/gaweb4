@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useUser } from '@clerk/nextjs';
 import { StoryAvatar } from '@/components/stories/StoryAvatar';
 import { useCurrentUserHasStory, type FeedStoryUser } from '@/hooks/useFeedStories';
-import { useStoryViewStatus, useStoryViewTracking } from '@/hooks/useStoryViewTracking';
+import { useStoryViewStatus, useStoryViewTracking, generateStoryContentData } from '@/hooks/useStoryViewTracking';
 import { prefetchStories } from '@/hooks/useStoryPrefetch';
 
 // Ring colors matching StoryAvatar
@@ -39,11 +39,16 @@ function FeedStoryAvatar({
   storyUser: FeedStoryUser; 
   onViewStory?: (userId: string) => void;
 }) {
-  // Track viewed status using content hash
-  const hasViewed = useStoryViewStatus(
-    storyUser.id,
-    storyUser.contentHash
+  // Track viewed status using full content data
+  // This ensures content removal (story expiry) doesn't turn the ring green
+  const contentData = generateStoryContentData(
+    storyUser.hasTasks,
+    storyUser.hasDayClosed,
+    storyUser.taskCount,
+    storyUser.hasWeekClosed,
+    storyUser.userPostCount
   );
+  const hasViewed = useStoryViewStatus(storyUser.id, contentData);
 
   // This callback is passed to StoryAvatar's onClick prop
   // StoryAvatar will call this instead of opening its internal player
@@ -129,11 +134,16 @@ export function StoriesRow({
     return () => clearTimeout(timeout);
   }, [storyUsers, isLoading, user?.id, currentUserStatus.hasStory]);
   
-  // Check if current user has viewed their own story (using contentHash for accurate tracking)
-  const hasViewedOwnStory = useStoryViewStatus(
-    user?.id || '',
-    currentUserStatus.contentHash
+  // Check if current user has viewed their own story (using full content data for accurate tracking)
+  // This ensures content removal (story expiry) doesn't turn the ring green
+  const ownContentData = generateStoryContentData(
+    currentUserStatus.hasTasks,
+    currentUserStatus.hasDayClosed,
+    currentUserStatus.taskCount,
+    currentUserStatus.hasWeekClosed,
+    currentUserStatus.userStoryCount
   );
+  const hasViewedOwnStory = useStoryViewStatus(user?.id || '', ownContentData);
   
   // Determine ring color based on status (matches StoryAvatar logic from Home)
   // Gray = viewed, Brown = day closed (not viewed), Green = default (not viewed)

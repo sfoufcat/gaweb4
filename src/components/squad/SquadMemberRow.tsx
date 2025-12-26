@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
 import type { SquadMember } from '@/types';
 import { useUserStoryAvailability } from '@/hooks/useUserStoryAvailability';
-import { useStoryViewTracking, useStoryViewStatus } from '@/hooks/useStoryViewTracking';
+import { useStoryViewTracking, useStoryViewStatus, generateStoryContentData } from '@/hooks/useStoryViewTracking';
 import { StoryAvatar } from '@/components/stories/StoryAvatar';
 import { getProfileUrl } from '@/lib/utils';
 
@@ -48,18 +48,28 @@ export function SquadMemberRow({ member }: SquadMemberRowProps) {
   // Fetch story availability for this member
   const storyAvailability = useUserStoryAvailability(member.userId);
   
+  // Generate full content data for smart view tracking
+  // This ensures content removal (story expiry) doesn't turn the ring green
+  const contentData = generateStoryContentData(
+    storyAvailability.data.hasTasksToday,
+    storyAvailability.data.hasDayClosed,
+    storyAvailability.data.tasks?.length || 0,
+    storyAvailability.data.hasWeekClosed,
+    storyAvailability.data.userPostedStories?.length || 0
+  );
+  
   // Story view tracking - use reactive hook for cross-component sync
   const { markStoryAsViewed } = useStoryViewTracking();
   const hasViewedFromHook = useStoryViewStatus(
     isCoach ? undefined : member.userId,
-    isCoach ? undefined : storyAvailability.contentHash
+    isCoach ? undefined : contentData
   );
   const hasViewed = !isCoach && storyAvailability.hasStory && storyAvailability.contentHash
     ? hasViewedFromHook
     : false;
   
-  const handleStoryViewed = (hash: string) => {
-    markStoryAsViewed(member.userId, hash);
+  const handleStoryViewed = () => {
+    markStoryAsViewed(member.userId, contentData);
   };
 
   // Generate profile URL for this member

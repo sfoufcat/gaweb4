@@ -66,7 +66,7 @@ export function ShareSheet({ postId, onClose }: ShareSheetProps) {
       <ShareToChatModal
         postId={postId}
         postUrl={postUrl}
-        onClose={() => setShowChatModal(false)}
+        onClose={onClose}
         onSuccess={onClose}
       />
     );

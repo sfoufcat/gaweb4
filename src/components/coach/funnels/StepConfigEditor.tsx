@@ -1,13 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { X, Plus, Trash2, GripVertical } from 'lucide-react';
+import { X, Plus, Trash2, GripVertical, ImageIcon } from 'lucide-react';
+import Image from 'next/image';
 import type { FunnelStep, FunnelStepType, FunnelQuestionOption } from '@/types';
 import { nanoid } from 'nanoid';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface StepConfigEditorProps {
   step: FunnelStep;
@@ -75,7 +77,7 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
         {/* Header */}
         <div className="p-6 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-text-primary dark:text-[#f5f5f8] capitalize">
+            <h3 className="text-lg font-semibold font-albert text-text-primary dark:text-[#f5f5f8] capitalize">
               {step.type.replace(/_/g, ' ')} Configuration
             </h3>
             <button
@@ -88,18 +90,18 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+        <div className="p-6 overflow-y-auto flex-1 space-y-6 font-albert">
           {/* Step Name - shown for all step types */}
           <div>
-            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">Step Name</label>
+            <label className="block text-sm font-medium font-albert text-text-primary dark:text-[#f5f5f8] mb-2">Step Name</label>
             <input
               type="text"
               value={stepName}
               onChange={(e) => setStepName(e.target.value)}
-              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8]"
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
               placeholder={`e.g., "${step.type.replace(/_/g, ' ')} - Main"`}
             />
-            <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">A custom name to help you identify this step</p>
+            <p className="text-xs font-albert text-text-muted dark:text-[#b2b6c2] mt-1">A custom name to help you identify this step</p>
           </div>
 
           {/* Step-specific config */}
@@ -132,6 +134,8 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
 // Question Config Editor
 function QuestionConfigEditor({ config, onChange }: { config: Record<string, unknown>; onChange: (c: Record<string, unknown>) => void }) {
   const options = (config.options as FunnelQuestionOption[]) || [];
+  const [uploadingOptionId, setUploadingOptionId] = useState<string | null>(null);
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const addOption = () => {
     const newOption: FunnelQuestionOption = {
@@ -157,46 +161,74 @@ function QuestionConfigEditor({ config, onChange }: { config: Record<string, unk
     });
   };
 
+  // Check if any option has an image
+  const hasImageOptions = options.some(o => o.imageUrl);
+
+  // Handle inline image upload
+  const handleImageUpload = async (optionId: string, file: File) => {
+    setUploadingOptionId(optionId);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'programs');
+
+      const response = await fetch('/api/admin/upload-media', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Upload failed');
+      
+      const data = await response.json();
+      updateOption(optionId, { imageUrl: data.url });
+    } catch (err) {
+      console.error('Failed to upload image:', err);
+    } finally {
+      setUploadingOptionId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-text-primary mb-2">Question Type</label>
-        <select
+        <label className="block text-sm font-medium font-albert text-text-primary dark:text-[#f5f5f8] mb-2">Question Type</label>
+        <Select
           value={config.questionType as string || 'single_choice'}
-          onChange={(e) => onChange({ ...config, questionType: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+          onValueChange={(value) => onChange({ ...config, questionType: value })}
         >
-          <option value="single_choice">Single Choice</option>
-          <option value="multi_choice">Multiple Choice</option>
-          <option value="text">Text Input</option>
-          <option value="scale">Scale</option>
-          <option value="workday">Preset: Workday Style</option>
-          <option value="obstacles">Preset: Obstacles</option>
-          <option value="business_stage">Preset: Business Stage</option>
-        </select>
+          <SelectTrigger className="w-full font-albert">
+            <SelectValue placeholder="Select question type" />
+          </SelectTrigger>
+          <SelectContent className="font-albert">
+            <SelectItem value="single_choice">Single Choice</SelectItem>
+            <SelectItem value="multi_choice">Multiselect</SelectItem>
+            <SelectItem value="text">Text Input</SelectItem>
+            <SelectItem value="scale">Scale</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-text-primary mb-2">Question Text</label>
+        <label className="block text-sm font-medium font-albert text-text-primary dark:text-[#f5f5f8] mb-2">Question Text</label>
         <textarea
           value={config.question as string || ''}
           onChange={(e) => onChange({ ...config, question: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] resize-none"
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] resize-none font-albert"
           rows={2}
           placeholder="Enter your question..."
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-text-primary mb-2">Field Name</label>
+        <label className="block text-sm font-medium font-albert text-text-primary dark:text-[#f5f5f8] mb-2">Field Name</label>
         <input
           type="text"
           value={config.fieldName as string || 'answer'}
           onChange={(e) => onChange({ ...config, fieldName: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
           placeholder="e.g., workdayStyle"
         />
-        <p className="text-xs text-text-muted mt-1">This is the key used to store the answer</p>
+        <p className="text-xs font-albert text-text-muted dark:text-[#b2b6c2] mt-1">This is the key used to store the answer</p>
       </div>
 
       {/* Scale customization - only show for scale type */}
@@ -204,33 +236,33 @@ function QuestionConfigEditor({ config, onChange }: { config: Record<string, unk
         <>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">Scale Min</label>
+              <label className="block text-sm font-medium font-albert text-text-primary dark:text-[#f5f5f8] mb-2">Scale Min</label>
               <input
                 type="number"
                 value={config.scaleMin as number || 1}
                 onChange={(e) => onChange({ ...config, scaleMin: parseInt(e.target.value) || 1 })}
-                className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+                className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
                 min={0}
                 max={10}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">Scale Max</label>
+              <label className="block text-sm font-medium font-albert text-text-primary dark:text-[#f5f5f8] mb-2">Scale Max</label>
               <input
                 type="number"
                 value={config.scaleMax as number || 10}
                 onChange={(e) => onChange({ ...config, scaleMax: parseInt(e.target.value) || 10 })}
-                className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+                className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
                 min={1}
                 max={20}
               />
             </div>
           </div>
-          <p className="text-xs text-text-muted -mt-4">Number of scale points: {((config.scaleMax as number || 10) - (config.scaleMin as number || 1) + 1)}</p>
+          <p className="text-xs font-albert text-text-muted dark:text-[#b2b6c2] -mt-4">Number of scale points: {((config.scaleMax as number || 10) - (config.scaleMin as number || 1) + 1)}</p>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">Start Label</label>
+              <label className="block text-sm font-medium font-albert text-text-primary dark:text-[#f5f5f8] mb-2">Start Label</label>
               <input
                 type="text"
                 value={(config.scaleLabels as { min?: string; max?: string })?.min || ''}
@@ -241,12 +273,12 @@ function QuestionConfigEditor({ config, onChange }: { config: Record<string, unk
                     min: e.target.value 
                   }
                 })}
-                className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+                className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
                 placeholder="e.g., Strongly disagree"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">End Label</label>
+              <label className="block text-sm font-medium font-albert text-text-primary dark:text-[#f5f5f8] mb-2">End Label</label>
               <input
                 type="text"
                 value={(config.scaleLabels as { min?: string; max?: string })?.max || ''}
@@ -257,7 +289,7 @@ function QuestionConfigEditor({ config, onChange }: { config: Record<string, unk
                     max: e.target.value 
                   }
                 })}
-                className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+                className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
                 placeholder="e.g., Strongly agree"
               />
             </div>
@@ -267,47 +299,104 @@ function QuestionConfigEditor({ config, onChange }: { config: Record<string, unk
 
       {(config.questionType === 'single_choice' || config.questionType === 'multi_choice' || !config.questionType) && (
         <div>
-          <label className="block text-sm font-medium text-text-primary mb-2">Options</label>
-          <div className="space-y-4">
+          <label className="block text-sm font-medium font-albert text-text-primary dark:text-[#f5f5f8] mb-2">Options</label>
+          <div className="space-y-3">
             {options.map((option) => (
-              <div key={option.id} className="border border-[#e1ddd8] rounded-lg p-3 space-y-3">
+              <div key={option.id} className="border border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-3">
                 <div className="flex items-center gap-2">
                   <GripVertical className="w-4 h-4 text-text-muted cursor-grab flex-shrink-0" />
                   <input
                     type="text"
                     value={option.label}
                     onChange={(e) => updateOption(option.id, { label: e.target.value })}
-                    className="flex-1 px-3 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] text-sm"
+                    className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] text-sm font-albert"
                     placeholder="Option label (emojis allowed)"
                   />
+                  {/* Inline image thumbnail/upload */}
+                  <div className="flex-shrink-0">
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                      className="hidden"
+                      ref={(el) => { fileInputRefs.current[option.id] = el; }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleImageUpload(option.id, file);
+                      }}
+                    />
+                    {option.imageUrl ? (
+                      <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-[#e1ddd8] dark:border-[#262b35] group">
+                        <Image
+                          src={option.imageUrl}
+                          alt={option.label}
+                          fill
+                          className="object-cover"
+                          sizes="40px"
+                        />
+                        <button
+                          onClick={() => updateOption(option.id, { imageUrl: undefined })}
+                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                          title="Remove image"
+                        >
+                          <X className="w-4 h-4 text-white" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => fileInputRefs.current[option.id]?.click()}
+                        disabled={uploadingOptionId === option.id}
+                        className="w-10 h-10 rounded-lg border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] transition-colors flex items-center justify-center"
+                        title="Add image"
+                      >
+                        {uploadingOptionId === option.id ? (
+                          <div className="w-4 h-4 border-2 border-[#a07855] border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <ImageIcon className="w-4 h-4 text-text-muted" />
+                        )}
+                      </button>
+                    )}
+                  </div>
                   <button
                     onClick={() => removeOption(option.id)}
-                    className="p-2 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                    className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors flex-shrink-0"
                   >
                     <Trash2 className="w-4 h-4 text-red-500" />
                   </button>
-                </div>
-                {/* Optional image upload */}
-                <div className="pl-6">
-                  <MediaUpload
-                    value={option.imageUrl || ''}
-                    onChange={(url) => updateOption(option.id, { imageUrl: url })}
-                    folder="programs"
-                    type="image"
-                    label="Option Image (optional)"
-                  />
                 </div>
               </div>
             ))}
             <button
               onClick={addOption}
-              className="w-full py-2 border-2 border-dashed border-[#e1ddd8] rounded-lg text-text-secondary hover:border-[#a07855] hover:text-[#a07855] transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-secondary dark:text-[#b2b6c2] hover:border-[#a07855] hover:text-[#a07855] transition-colors flex items-center justify-center gap-2 font-albert"
             >
               <Plus className="w-4 h-4" />
               Add Option
             </button>
           </div>
-          <p className="text-xs text-text-muted mt-2">Options with images display as cards in a grid layout</p>
+
+          {/* Image Display Mode - only show when options have images */}
+          {hasImageOptions && (
+            <div className="mt-4 p-3 bg-[#faf8f6] dark:bg-[#11141b] rounded-lg border border-[#e1ddd8] dark:border-[#262b35]">
+              <label className="block text-sm font-medium font-albert text-text-primary dark:text-[#f5f5f8] mb-2">Image Display Mode</label>
+              <Select
+                value={config.imageDisplayMode as string || 'card'}
+                onValueChange={(value) => onChange({ ...config, imageDisplayMode: value })}
+              >
+                <SelectTrigger className="w-full font-albert">
+                  <SelectValue placeholder="Select display mode" />
+                </SelectTrigger>
+                <SelectContent className="font-albert">
+                  <SelectItem value="inline">Inline (small thumbnail next to text)</SelectItem>
+                  <SelectItem value="card">Card (2x2 grid on mobile, 4 on desktop)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs font-albert text-text-muted dark:text-[#b2b6c2] mt-1.5">
+                {config.imageDisplayMode === 'inline' 
+                  ? 'Images appear as small thumbnails beside each option label'
+                  : 'Images appear as larger cards in a grid layout'}
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -712,11 +801,77 @@ function InfoConfigEditor({ config, onChange }: { config: Record<string, unknown
 // Success Config Editor
 function SuccessConfigEditor({ config, onChange }: { config: Record<string, unknown>; onChange: (c: Record<string, unknown>) => void }) {
   const skipSuccessPage = config.skipSuccessPage as boolean || false;
+  const showConfetti = config.showConfetti !== false;
+  
+  // Music tracks state
+  const [tracks, setTracks] = React.useState<Array<{ id: string; name: string; url: string }>>([]);
+  const [isLoadingTracks, setIsLoadingTracks] = React.useState(false);
+  const [previewAudio, setPreviewAudio] = React.useState<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = React.useState(false);
+  
+  // Fetch music tracks on mount
+  React.useEffect(() => {
+    async function fetchTracks() {
+      setIsLoadingTracks(true);
+      try {
+        const res = await fetch('/api/music/list');
+        const data = await res.json();
+        if (data.success && data.tracks) {
+          setTracks(data.tracks);
+        }
+      } catch (err) {
+        console.error('Failed to fetch music tracks:', err);
+      } finally {
+        setIsLoadingTracks(false);
+      }
+    }
+    fetchTracks();
+  }, []);
+  
+  // Cleanup audio on unmount
+  React.useEffect(() => {
+    return () => {
+      if (previewAudio) {
+        previewAudio.pause();
+        previewAudio.src = '';
+      }
+    };
+  }, [previewAudio]);
+  
+  const handlePreviewToggle = () => {
+    const selectedTrackId = config.celebrationSound as string;
+    if (!selectedTrackId) return;
+    
+    const track = tracks.find(t => t.id === selectedTrackId);
+    if (!track) return;
+    
+    if (isPlaying && previewAudio) {
+      previewAudio.pause();
+      setIsPlaying(false);
+    } else {
+      // Create new audio or reuse existing
+      const audio = previewAudio || new Audio();
+      audio.src = track.url;
+      audio.volume = 0.5;
+      audio.onended = () => setIsPlaying(false);
+      audio.play().then(() => setIsPlaying(true)).catch(console.error);
+      setPreviewAudio(audio);
+    }
+  };
+  
+  const handleTrackChange = (trackId: string) => {
+    // Stop preview if playing
+    if (previewAudio) {
+      previewAudio.pause();
+      setIsPlaying(false);
+    }
+    onChange({ ...config, celebrationSound: trackId || undefined });
+  };
   
   return (
     <div className="space-y-6">
       {/* Skip success page option */}
-      <div className="p-4 bg-[#faf8f6] rounded-lg border border-[#e1ddd8]">
+      <div className="p-4 bg-[#faf8f6] dark:bg-[#1a1f28] rounded-lg border border-[#e1ddd8] dark:border-[#262b35]">
         <div className="flex items-start gap-3">
           <BrandedCheckbox
             checked={skipSuccessPage}
@@ -724,8 +879,8 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
             className="mt-0.5"
           />
           <div className="cursor-pointer" onClick={() => onChange({ ...config, skipSuccessPage: !skipSuccessPage })}>
-            <span className="text-text-primary font-medium">Skip success page</span>
-            <p className="text-xs text-text-muted mt-1">
+            <span className="text-text-primary dark:text-[#f5f5f8] font-medium">Skip success page</span>
+            <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
               Redirect users directly to homepage after completing the funnel
             </p>
           </div>
@@ -733,17 +888,17 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
         
         {skipSuccessPage && (
           <div className="mt-4 pl-6">
-            <label className="block text-sm font-medium text-text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
               Custom Redirect URL (optional)
             </label>
             <input
               type="text"
               value={config.skipSuccessRedirect as string || ''}
               onChange={(e) => onChange({ ...config, skipSuccessRedirect: e.target.value })}
-              className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8]"
               placeholder="/ (homepage)"
             />
-            <p className="text-xs text-text-muted mt-1">
+            <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
               Leave empty to redirect to homepage. Use relative paths like /dashboard
             </p>
           </div>
@@ -756,41 +911,92 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
           <div>
             <div className="flex items-center gap-2">
               <BrandedCheckbox
-                checked={config.showConfetti !== false}
+                checked={showConfetti}
                 onChange={(checked) => onChange({ ...config, showConfetti: checked })}
               />
-              <span className="text-text-primary cursor-pointer" onClick={() => onChange({ ...config, showConfetti: config.showConfetti === false })}>Show confetti animation</span>
+              <span className="text-text-primary dark:text-[#f5f5f8] cursor-pointer" onClick={() => onChange({ ...config, showConfetti: !showConfetti })}>Show confetti animation</span>
             </div>
           </div>
 
+          {/* Celebration Music - only show when confetti is enabled */}
+          {showConfetti && (
+            <div>
+              <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+                Celebration Music
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={config.celebrationSound as string || ''}
+                  onChange={(e) => handleTrackChange(e.target.value)}
+                  disabled={isLoadingTracks}
+                  className="flex-1 px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] disabled:opacity-50"
+                >
+                  <option value="">None</option>
+                  {tracks.map(track => (
+                    <option key={track.id} value={track.id}>
+                      {track.name}
+                    </option>
+                  ))}
+                </select>
+                {config.celebrationSound && (
+                  <button
+                    type="button"
+                    onClick={handlePreviewToggle}
+                    className="px-4 py-2 bg-[#a07855] hover:bg-[#8c6245] text-white rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    {isPlaying ? (
+                      <>
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <rect x="6" y="4" width="4" height="16" />
+                          <rect x="14" y="4" width="4" height="16" />
+                        </svg>
+                        Stop
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                        Preview
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
+                {isLoadingTracks ? 'Loading tracks...' : 'Music plays with confetti animation'}
+              </p>
+            </div>
+          )}
+
           <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">Redirect Delay (ms)</label>
+            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">Redirect Delay (ms)</label>
             <input
               type="number"
               value={config.redirectDelay as number || 3000}
               onChange={(e) => onChange({ ...config, redirectDelay: parseInt(e.target.value) || 3000 })}
-              className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8]"
             />
-            <p className="text-xs text-text-muted mt-1">Time before redirecting to dashboard</p>
+            <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">Time before redirecting to dashboard</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">Custom Heading</label>
+            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">Custom Heading</label>
             <input
               type="text"
               value={config.heading as string || ''}
               onChange={(e) => onChange({ ...config, heading: e.target.value })}
-              className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8]"
               placeholder="Welcome to [Program]! 🎉"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">Custom Body</label>
+            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">Custom Body</label>
             <textarea
               value={config.body as string || ''}
               onChange={(e) => onChange({ ...config, body: e.target.value })}
-              className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] resize-none"
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] resize-none"
               rows={2}
               placeholder="You're all set! Taking you to your dashboard..."
             />

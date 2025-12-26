@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import type { FirebaseUser } from '@/types';
 import { StoryAvatar } from '@/components/stories/StoryAvatar';
 import { useCurrentUserStoryAvailability, useUserStoryAvailability } from '@/hooks/useUserStoryAvailability';
-import { useStoryViewTracking, useStoryViewStatus } from '@/hooks/useStoryViewTracking';
+import { useStoryViewTracking, useStoryViewStatus, generateStoryContentData } from '@/hooks/useStoryViewTracking';
 
 interface ProfileHeaderProps {
   user: FirebaseUser;
@@ -40,13 +40,23 @@ export function ProfileHeader({
   const storyData = isOwnProfile ? currentUserStory : otherUserStory;
   const { hasStory, showRing, showCheck, contentHash, data: storyDetails } = storyData;
   
+  // Generate full content data for smart view tracking
+  // This ensures content removal (story expiry) doesn't turn the ring green
+  const contentData = generateStoryContentData(
+    storyDetails.hasTasksToday,
+    storyDetails.hasDayClosed,
+    storyDetails.tasks?.length || 0,
+    storyDetails.hasWeekClosed,
+    storyDetails.userPostedStories?.length || 0
+  );
+  
   // Use reactive hook for cross-component sync
-  const hasViewedFromHook = useStoryViewStatus(userId, contentHash);
+  const hasViewedFromHook = useStoryViewStatus(userId, contentData);
   const hasViewed = hasStory && contentHash ? hasViewedFromHook : false;
   
   // Handler to mark story as viewed when opened
-  const handleStoryViewed = (hash: string) => {
-    markStoryAsViewed(userId, hash);
+  const handleStoryViewed = () => {
+    markStoryAsViewed(userId, contentData);
   };
   
   const displayName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim();

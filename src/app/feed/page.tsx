@@ -96,6 +96,9 @@ export default function FeedPage() {
       hasTasks: currentUserStoryStatus.hasTasks,
       hasGoal: currentUserStoryStatus.hasGoal,
       contentHash: currentUserStoryStatus.contentHash,
+      // Counts for smart view tracking
+      taskCount: currentUserStoryStatus.taskCount,
+      userPostCount: currentUserStoryStatus.userStoryCount,
     };
     
     return [currentUserStory, ...storyUsers];

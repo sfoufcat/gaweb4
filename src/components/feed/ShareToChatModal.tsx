@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { useStreamChatClient } from '@/contexts/StreamChatContext';
 import { useBrandingValues } from '@/contexts/BrandingContext';
@@ -52,6 +52,9 @@ export function ShareToChatModal({ postId, postUrl, onClose, onSuccess }: ShareT
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [postData, setPostData] = useState<PostData | null>(null);
+  
+  // Track if initial fetch has been done to prevent double fetching
+  const hasFetchedRef = useRef(false);
 
   const accentColor = isDefault ? '#a07855' : colors.accentLight;
 
@@ -82,6 +85,12 @@ export function ShareToChatModal({ postId, postUrl, onClose, onSuccess }: ShareT
         setIsLoading(false);
         return;
       }
+      
+      // Prevent double fetching - only fetch once
+      if (hasFetchedRef.current) {
+        return;
+      }
+      hasFetchedRef.current = true;
 
       try {
         setIsLoading(true);

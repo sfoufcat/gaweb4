@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import { StoryPlayer, type StorySlide } from './StoryPlayer';
-import { useStoryViewTracking } from '@/hooks/useStoryViewTracking';
+import { useStoryViewTracking, generateStoryContentData } from '@/hooks/useStoryViewTracking';
 import type { Task } from '@/types';
 import type { UserPostedStory } from '@/hooks/useUserStoryAvailability';
 
@@ -282,11 +282,20 @@ export function StoryAvatar({
 
   // Handle story complete - mark entire story as viewed
   const handleStoryComplete = useCallback(() => {
-    if (userId && contentHash) {
-      markStoryAsViewed(userId, contentHash);
+    if (userId) {
+      // Use full content data for smart view tracking
+      // This ensures content removal (story expiry) doesn't turn the ring green
+      const contentData = generateStoryContentData(
+        tasks.length > 0, // hasTasksToday
+        hasDayClosed,
+        tasks.length,
+        hasWeekClosed,
+        userPostedStories.length
+      );
+      markStoryAsViewed(userId, contentData);
     }
     setShowStoryPlayer(false);
-  }, [userId, contentHash, markStoryAsViewed]);
+  }, [userId, tasks.length, hasDayClosed, hasWeekClosed, userPostedStories.length, markStoryAsViewed]);
 
   return (
     <>

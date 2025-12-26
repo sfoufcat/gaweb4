@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { StoryPlayer } from '@/components/stories/StoryPlayer';
 import { useStoryData, prefetchStories, type StoryData } from '@/hooks/useStoryPrefetch';
-import { useStoryViewTracking } from '@/hooks/useStoryViewTracking';
+import { useStoryViewTracking, generateStoryContentData } from '@/hooks/useStoryViewTracking';
 import type { FeedStoryUser } from '@/hooks/useFeedStories';
 import type { StorySlide } from '@/components/stories/StoryPlayer';
 
@@ -133,8 +133,16 @@ export function StoryPlayerWrapper({
   // Handle story complete - advance to next user
   const handleStoryComplete = useCallback(() => {
     // Mark current story as viewed (for the ring color tracking)
+    // Use full content data so we can distinguish between content added vs removed
     if (currentStoryUser) {
-      markStoryAsViewed(currentStoryUser.id, currentStoryUser.contentHash);
+      const contentData = generateStoryContentData(
+        currentStoryUser.hasTasks,
+        currentStoryUser.hasDayClosed,
+        currentStoryUser.taskCount,
+        currentStoryUser.hasWeekClosed,
+        currentStoryUser.userPostCount
+      );
+      markStoryAsViewed(currentStoryUser.id, contentData);
     }
 
     // Check if there are more users
@@ -150,9 +158,16 @@ export function StoryPlayerWrapper({
 
   // Handle close - mark story as viewed and close
   const handleClose = useCallback(() => {
-    // Mark current story as viewed
+    // Mark current story as viewed with full content data
     if (currentStoryUser) {
-      markStoryAsViewed(currentStoryUser.id, currentStoryUser.contentHash);
+      const contentData = generateStoryContentData(
+        currentStoryUser.hasTasks,
+        currentStoryUser.hasDayClosed,
+        currentStoryUser.taskCount,
+        currentStoryUser.hasWeekClosed,
+        currentStoryUser.userPostCount
+      );
+      markStoryAsViewed(currentStoryUser.id, contentData);
     }
     onClose();
   }, [currentStoryUser, markStoryAsViewed, onClose]);

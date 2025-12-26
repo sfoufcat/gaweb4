@@ -23,6 +23,7 @@ import {
 import type { FunnelStep, FunnelStepType, CoachTier, Funnel, Program, Squad } from '@/types';
 import { StepConfigEditor } from './StepConfigEditor';
 import { canUseFunnelStep, TIER_PRICING } from '@/lib/coach-permissions';
+import { DeleteConfirmationModal } from '@/components/feed/ConfirmationModal';
 
 interface FunnelStepsEditorProps {
   funnelId: string;
@@ -44,7 +45,7 @@ const STEP_TYPE_INFO: Record<FunnelStepType, {
   signup: { 
     icon: UserPlus, 
     label: 'Sign Up', 
-    description: 'User creates an account',
+    description: 'User signs in or creates an account',
     color: 'bg-green-100 text-green-600'
   },
   payment: { 
@@ -124,6 +125,9 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
   
   // Coach tier for permission checks
   const [coachTier, setCoachTier] = useState<CoachTier>('starter');
+  
+  // Delete confirmation modal
+  const [stepToDelete, setStepToDelete] = useState<{id: string; type: FunnelStepType} | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -198,22 +202,22 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
     const stepsToCreate: { type: FunnelStepType; config: unknown; order: number }[] = [];
     let currentMaxOrder = Math.max(...currentSteps.map(s => s.order), -1);
     
-    // Signup should come before payment and success
-    if (!hasSignup) {
-      currentMaxOrder++;
-      stepsToCreate.push({
-        type: 'signup',
-        config: { showSocialLogin: true },
-        order: currentMaxOrder,
-      });
-    }
-    
-    // Payment should come after signup (only if paid)
+    // Payment should come first (only if paid)
     if (!hasPayment && isPaid) {
       currentMaxOrder++;
       stepsToCreate.push({
         type: 'payment',
         config: { useProgramPricing: true },
+        order: currentMaxOrder,
+      });
+    }
+    
+    // Signup should come after payment
+    if (!hasSignup) {
+      currentMaxOrder++;
+      stepsToCreate.push({
+        type: 'signup',
+        config: { showSocialLogin: true },
         order: currentMaxOrder,
       });
     }
@@ -318,23 +322,29 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
     }
   };
 
-  const handleDeleteStep = async (stepId: string, stepType: FunnelStepType) => {
+  const handleDeleteStep = (stepId: string, stepType: FunnelStepType) => {
     // Prevent deletion of fixed steps
     if (FIXED_STEP_TYPES.includes(stepType)) {
       alert('This step is required and cannot be deleted.');
       return;
     }
     
-    if (!confirm('Are you sure you want to delete this step?')) return;
+    // Open confirmation modal
+    setStepToDelete({ id: stepId, type: stepType });
+  };
+
+  const executeDeleteStep = async () => {
+    if (!stepToDelete) return;
 
     try {
       setIsSaving(true);
-      const response = await fetch(`/api/coach/org-funnels/${funnelId}/steps/${stepId}`, {
+      const response = await fetch(`/api/coach/org-funnels/${funnelId}/steps/${stepToDelete.id}`, {
         method: 'DELETE',
       });
 
       if (!response.ok) throw new Error('Failed to delete step');
       await fetchSteps();
+      setStepToDelete(null);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete step');
     } finally {
@@ -366,6 +376,7 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
     const typeInfo = STEP_TYPE_INFO[step.type];
     const Icon = typeInfo?.icon || Info;
     const isRequired = FIXED_STEP_TYPES.includes(step.type);
+    const isSignupStep = step.type === 'signup';
 
     return (
       <div className="p-4 bg-white hover:bg-[#faf8f6] transition-colors">
@@ -392,9 +403,21 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
                 </span>
               )}
             </div>
-            <p className="text-sm text-text-secondary">
-              {step.name ? typeInfo?.label : typeInfo?.description}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm text-text-secondary">
+                {step.name ? typeInfo?.label : typeInfo?.description}
+              </p>
+              {/* Info tooltip for signup step */}
+              {isSignupStep && (
+                <div className="relative group/tooltip">
+                  <Info className="w-3.5 h-3.5 text-text-muted cursor-help" />
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-2 bg-[#2c2520] text-white text-xs rounded-lg whitespace-nowrap opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-50 shadow-lg">
+                    Existing users will sign in, new users will create an account.
+                    <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-[#2c2520]" />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Actions */}
@@ -585,6 +608,15 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
           onSave={(config, name) => handleSaveStepConfig(editingStep.id, config, name)}
         />
       )}
+
+      {/* Delete Step Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={!!stepToDelete}
+        onClose={() => setStepToDelete(null)}
+        onConfirm={executeDeleteStep}
+        itemName="step"
+        isLoading={isSaving}
+      />
     </div>
   );
 }

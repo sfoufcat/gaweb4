@@ -24,6 +24,9 @@ export interface FeedStoryUser {
   hasTasks: boolean;
   hasGoal: boolean;
   contentHash: string; // Used for view tracking
+  // Counts for smart view tracking (content added vs removed)
+  taskCount: number;
+  userPostCount: number;
 }
 
 /** Story status data from batch API */
@@ -297,6 +300,9 @@ export function useFeedStories(
           hasTasks: status.hasTasks,
           hasGoal: status.hasGoal,
           contentHash,
+          // Counts for smart view tracking
+          taskCount: status.taskCount,
+          userPostCount: status.userStoryCount,
         };
       })
       // Sort: users with stories first

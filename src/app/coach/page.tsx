@@ -40,7 +40,8 @@ type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 
 const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'referrals', 'analytics', 'discounts', 'discover', 'upgrade-forms', 'coaching-forms', 'funnels', 'channels', 'customize', 'plan'];
 
 // Columns for Coach Dashboard (excludes 'tier' - tiers are not used in coach context)
-const COACH_DASHBOARD_COLUMNS: ColumnKey[] = ['select', 'avatar', 'name', 'email', 'role', 'squad', 'coaching', 'invitedBy', 'invitedAt', 'created', 'actions'];
+// Uses 'programs' column instead of 'coaching' to show enrolled programs with (1:1)/(Group) prefixes
+const COACH_DASHBOARD_COLUMNS: ColumnKey[] = ['select', 'avatar', 'name', 'email', 'role', 'squad', 'programs', 'invitedBy', 'invitedAt', 'created', 'actions'];
 
 export default function CoachPage() {
   const router = useRouter();
@@ -369,7 +370,7 @@ export default function CoachPage() {
                 showOrgRole={hasFullAccess && (role === 'coach' || orgRole === 'super_coach')}
                 currentUserOrgRole={orgRole}
                 readOnly={isLimitedOrgCoach}
-                visibleColumns={isLimitedOrgCoach ? ['avatar', 'name', 'email', 'coach', 'coaching', 'created'] : COACH_DASHBOARD_COLUMNS}
+                visibleColumns={isLimitedOrgCoach ? ['avatar', 'name', 'email', 'coach', 'programs', 'created'] : COACH_DASHBOARD_COLUMNS}
                 showInviteButton={!isLimitedOrgCoach}
               />
             )}

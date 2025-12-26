@@ -2365,6 +2365,7 @@ export interface FunnelStepConfigQuestion {
   scaleMax?: number;             // For scale type
   scaleLabels?: { min: string; max: string }; // For scale type
   fieldName: string;             // Key to store answer in flow session data
+  imageDisplayMode?: 'inline' | 'card'; // How to display option images (inline: small thumbnail next to text, card: larger grid)
 }
 
 export interface FunnelStepConfigSignup {
@@ -2425,6 +2426,7 @@ export interface FunnelStepConfigSuccess {
   heading?: string;
   body?: string;
   showConfetti?: boolean;
+  celebrationSound?: string;     // Music file ID from Firebase Storage (empty = no sound)
   redirectDelay?: number;        // ms before redirect to dashboard
   skipSuccessPage?: boolean;     // Skip success page and redirect immediately
   skipSuccessRedirect?: string;  // Custom redirect URL (default: homepage)

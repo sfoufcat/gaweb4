@@ -21,6 +21,13 @@ import {
 import type { Funnel, Program } from '@/types';
 import { FunnelEditorDialog } from './FunnelEditorDialog';
 import { FunnelStepsEditor } from './FunnelStepsEditor';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 type ViewMode = 'list' | 'editing';
 
@@ -55,9 +62,6 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   const [editingFunnelId, setEditingFunnelId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedProgramId, setSelectedProgramId] = useState<string>(programId || '');
-  
-  // Dropdown menu state
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   
   // Copy link feedback state
   const [copiedFunnelId, setCopiedFunnelId] = useState<string | null>(null);
@@ -186,9 +190,23 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   };
 
   const copyFunnelLink = (funnel: Funnel) => {
-    const program = programs.find(p => p.id === funnel.programId);
-    if (program) {
-      const url = `${window.location.origin}/join/${program.slug}/${funnel.slug}`;
+    let url: string | null = null;
+    
+    // Check if it's a squad funnel
+    if (funnel.squadId) {
+      const squad = squads.find(s => s.id === funnel.squadId);
+      if (squad?.slug) {
+        url = `${window.location.origin}/join/squad/${squad.slug}/${funnel.slug}`;
+      }
+    } else if (funnel.programId) {
+      // Program funnel
+      const program = programs.find(p => p.id === funnel.programId);
+      if (program) {
+        url = `${window.location.origin}/join/${program.slug}/${funnel.slug}`;
+      }
+    }
+    
+    if (url) {
       navigator.clipboard.writeText(url);
       setCopiedFunnelId(funnel.id);
       setTimeout(() => setCopiedFunnelId(null), 2000);
@@ -208,21 +226,38 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
     return (
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleBackToList}
-            className="p-2 rounded-lg hover:bg-[#f5f3f0] transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5 text-text-secondary" />
-          </button>
-          <div>
-            <h2 className="text-xl font-semibold text-text-primary">
-              {editingFunnel?.name || 'Edit Funnel Steps'}
-            </h2>
-            <p className="text-sm text-text-secondary">
-              Configure the steps users will go through
-            </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleBackToList}
+              className="p-2 rounded-lg hover:bg-[#f5f3f0] transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-text-secondary" />
+            </button>
+            <div>
+              <h2 className="text-xl font-semibold text-text-primary">
+                {editingFunnel?.name || 'Edit Funnel Steps'}
+              </h2>
+              <p className="text-sm text-text-secondary">
+                Configure the steps users will go through
+              </p>
+            </div>
           </div>
+          
+          {/* Copy link button */}
+          {editingFunnel && (
+            <button
+              onClick={() => copyFunnelLink(editingFunnel)}
+              className="p-2 hover:bg-[#f5f3f0] rounded-lg transition-colors"
+              title={copiedFunnelId === editingFunnel.id ? "Copied!" : "Copy link"}
+            >
+              {copiedFunnelId === editingFunnel.id ? (
+                <Check className="w-5 h-5 text-green-600" />
+              ) : (
+                <Link2 className="w-5 h-5 text-text-secondary" />
+              )}
+            </button>
+          )}
         </div>
 
         <FunnelStepsEditor 
@@ -401,75 +436,55 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
                   </button>
 
                   {/* More menu */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setOpenMenuId(openMenuId === funnel.id ? null : funnel.id)}
-                      className="p-2 hover:bg-[#f5f3f0] rounded-lg transition-colors"
-                    >
-                      <MoreVertical className="w-4 h-4 text-text-secondary" />
-                    </button>
-
-                    <AnimatePresence>
-                      {openMenuId === funnel.id && (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.95 }}
-                          className="absolute right-0 top-full mt-1 w-48 bg-white border border-[#e1ddd8] rounded-xl shadow-lg py-1 z-10"
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="p-2 hover:bg-[#f5f3f0] rounded-lg transition-colors">
+                        <MoreVertical className="w-4 h-4 text-text-secondary" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48 rounded-xl border-[#e1ddd8]">
+                      <DropdownMenuItem 
+                        onClick={() => handleEditDetails(funnel)}
+                        className="flex items-center gap-2 cursor-pointer"
+                      >
+                        <Pencil className="w-4 h-4" />
+                        Edit Details
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => handleToggleActive(funnel)}
+                        className="flex items-center gap-2 cursor-pointer"
+                      >
+                        {funnel.isActive ? (
+                          <>
+                            <EyeOff className="w-4 h-4" />
+                            Deactivate
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="w-4 h-4" />
+                            Activate
+                          </>
+                        )}
+                      </DropdownMenuItem>
+                      {!funnel.isDefault && (
+                        <DropdownMenuItem 
+                          onClick={() => handleSetDefault(funnel)}
+                          className="flex items-center gap-2 cursor-pointer"
                         >
-                          <button
-                            onClick={() => handleEditDetails(funnel)}
-                            className="w-full px-4 py-2 text-left text-sm text-text-primary hover:bg-[#f5f3f0] flex items-center gap-2"
-                          >
-                            <Pencil className="w-4 h-4" />
-                            Edit Details
-                          </button>
-                          <button
-                            onClick={() => {
-                              handleToggleActive(funnel);
-                              setOpenMenuId(null);
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm text-text-primary hover:bg-[#f5f3f0] flex items-center gap-2"
-                          >
-                            {funnel.isActive ? (
-                              <>
-                                <EyeOff className="w-4 h-4" />
-                                Deactivate
-                              </>
-                            ) : (
-                              <>
-                                <Eye className="w-4 h-4" />
-                                Activate
-                              </>
-                            )}
-                          </button>
-                          {!funnel.isDefault && (
-                            <button
-                              onClick={() => {
-                                handleSetDefault(funnel);
-                                setOpenMenuId(null);
-                              }}
-                              className="w-full px-4 py-2 text-left text-sm text-text-primary hover:bg-[#f5f3f0] flex items-center gap-2"
-                            >
-                              <Users className="w-4 h-4" />
-                              Set as Default
-                            </button>
-                          )}
-                          <div className="border-t border-[#e1ddd8] my-1" />
-                          <button
-                            onClick={() => {
-                              handleDelete(funnel);
-                              setOpenMenuId(null);
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            Delete
-                          </button>
-                        </motion.div>
+                          <Users className="w-4 h-4" />
+                          Set as Default
+                        </DropdownMenuItem>
                       )}
-                    </AnimatePresence>
-                  </div>
+                      <DropdownMenuSeparator className="bg-[#e1ddd8]" />
+                      <DropdownMenuItem 
+                        onClick={() => handleDelete(funnel)}
+                        className="flex items-center gap-2 text-red-600 focus:text-red-600 cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             </motion.div>
