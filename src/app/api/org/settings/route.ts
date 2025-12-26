@@ -4,8 +4,22 @@ import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { syncTenantToEdgeConfig, buildTenantConfigData, setTenantByCustomDomain, type TenantBrandingData } from '@/lib/tenant-edge-config';
-import type { OrgSettings, OrgBranding, OrgCustomDomain, EmptyStateBehavior } from '@/types';
+import type { OrgSettings, OrgBranding, OrgCustomDomain, EmptyStateBehavior, AlignmentActivityKey, CompletionThreshold, AlignmentActivityConfig } from '@/types';
 import { DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_ORDER } from '@/types';
+
+// Valid alignment activity keys
+const VALID_ALIGNMENT_ACTIVITIES: AlignmentActivityKey[] = [
+  'morning_checkin',
+  'evening_checkin',
+  'set_tasks',
+  'complete_tasks',
+  'chat_with_squad',
+  'active_goal',
+  'complete_habits',
+];
+
+// Valid completion thresholds
+const VALID_THRESHOLDS: CompletionThreshold[] = ['at_least_one', 'half', 'all'];
 
 /**
  * GET /api/org/settings
@@ -105,6 +119,45 @@ export async function PATCH(request: NextRequest) {
         return NextResponse.json({ error: 'Daily focus slots must be between 1 and 6' }, { status: 400 });
       }
       updateData.defaultDailyFocusSlots = slots;
+    }
+
+    // Alignment config settings
+    if (body.alignmentConfig !== undefined) {
+      const config = body.alignmentConfig as AlignmentActivityConfig;
+      
+      // Validate enabledActivities
+      if (!config.enabledActivities || !Array.isArray(config.enabledActivities)) {
+        return NextResponse.json({ error: 'enabledActivities must be an array' }, { status: 400 });
+      }
+      
+      if (config.enabledActivities.length === 0) {
+        return NextResponse.json({ error: 'At least one alignment activity must be enabled' }, { status: 400 });
+      }
+      
+      // Validate each activity key
+      for (const activity of config.enabledActivities) {
+        if (!VALID_ALIGNMENT_ACTIVITIES.includes(activity)) {
+          return NextResponse.json({ error: `Invalid alignment activity: ${activity}` }, { status: 400 });
+        }
+      }
+      
+      // Validate thresholds if provided
+      if (config.taskCompletionThreshold !== undefined && 
+          !VALID_THRESHOLDS.includes(config.taskCompletionThreshold)) {
+        return NextResponse.json({ error: 'Invalid task completion threshold' }, { status: 400 });
+      }
+      
+      if (config.habitCompletionThreshold !== undefined && 
+          !VALID_THRESHOLDS.includes(config.habitCompletionThreshold)) {
+        return NextResponse.json({ error: 'Invalid habit completion threshold' }, { status: 400 });
+      }
+      
+      // Store the validated config
+      updateData.alignmentConfig = {
+        enabledActivities: config.enabledActivities,
+        taskCompletionThreshold: config.taskCompletionThreshold || 'at_least_one',
+        habitCompletionThreshold: config.habitCompletionThreshold || 'at_least_one',
+      };
     }
 
     // Check if settings doc exists

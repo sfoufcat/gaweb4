@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import type { UserAlignment, UserAlignmentSummary } from '@/types';
+import { useEffect, useRef, useState } from 'react';
+import type { UserAlignment, UserAlignmentSummary, AlignmentActivityConfig, AlignmentActivityKey, CompletionThreshold } from '@/types';
+import { DEFAULT_ALIGNMENT_CONFIG } from '@/types';
 
 // Fire icon SVG component
 function FireIcon({ size = 24, className = '' }: { size?: number; className?: string }) {
@@ -41,6 +42,72 @@ interface AlignmentSheetProps {
  * - Complete: https://www.figma.com/design/.../node-id=1760-8609
  * - Incomplete: https://www.figma.com/design/.../node-id=1760-8721
  */
+// Activity display configuration
+const ACTIVITY_LABELS: Record<AlignmentActivityKey, string> = {
+  morning_checkin: 'Confidence check-in',
+  evening_checkin: 'Evening check-in',
+  set_tasks: "Set today's tasks",
+  complete_tasks: 'Complete tasks',
+  chat_with_squad: 'Chat with your squad',
+  active_goal: 'Have an active goal',
+  complete_habits: 'Complete habits',
+};
+
+// Threshold display labels
+const THRESHOLD_LABELS: Record<CompletionThreshold, string> = {
+  at_least_one: 'at least one',
+  half: '50% of',
+  all: 'all',
+};
+
+// Activity order in UI
+const ACTIVITY_ORDER: AlignmentActivityKey[] = [
+  'morning_checkin',
+  'evening_checkin',
+  'set_tasks',
+  'complete_tasks',
+  'chat_with_squad',
+  'active_goal',
+  'complete_habits',
+];
+
+// Get activity label with threshold if applicable
+function getActivityLabel(activity: AlignmentActivityKey, config: AlignmentActivityConfig): string {
+  if (activity === 'complete_tasks') {
+    const threshold = config.taskCompletionThreshold || 'at_least_one';
+    return `Complete ${THRESHOLD_LABELS[threshold]} task${threshold === 'at_least_one' ? '' : 's'}`;
+  }
+  if (activity === 'complete_habits') {
+    const threshold = config.habitCompletionThreshold || 'at_least_one';
+    return `Complete ${THRESHOLD_LABELS[threshold]} habit${threshold === 'at_least_one' ? '' : 's'}`;
+  }
+  return ACTIVITY_LABELS[activity];
+}
+
+// Get activity completion status from alignment
+function getActivityStatus(activity: AlignmentActivityKey, alignment: UserAlignment | null): boolean {
+  if (!alignment) return false;
+  
+  switch (activity) {
+    case 'morning_checkin':
+      return alignment.didMorningCheckin ?? false;
+    case 'evening_checkin':
+      return alignment.didEveningCheckin ?? false;
+    case 'set_tasks':
+      return alignment.didSetTasks ?? false;
+    case 'complete_tasks':
+      return alignment.didCompleteTasks ?? false;
+    case 'chat_with_squad':
+      return alignment.didInteractWithSquad ?? false;
+    case 'active_goal':
+      return alignment.hasActiveGoal ?? false;
+    case 'complete_habits':
+      return alignment.didCompleteHabits ?? false;
+    default:
+      return false;
+  }
+}
+
 export function AlignmentSheet({
   isOpen,
   onClose,
@@ -48,6 +115,28 @@ export function AlignmentSheet({
   summary,
 }: AlignmentSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
+  const [config, setConfig] = useState<AlignmentActivityConfig>(DEFAULT_ALIGNMENT_CONFIG);
+
+  // Fetch org alignment config
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const response = await fetch('/api/org/settings');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.settings?.alignmentConfig) {
+            setConfig(data.settings.alignmentConfig);
+          }
+        }
+      } catch {
+        console.error('Failed to fetch org alignment config');
+      }
+    };
+
+    if (isOpen) {
+      fetchConfig();
+    }
+  }, [isOpen]);
 
   // Close on escape key
   useEffect(() => {
@@ -76,13 +165,13 @@ export function AlignmentSheet({
   const fullyAligned = alignment?.fullyAligned ?? false;
   const progress = score / 100;
 
-  // Alignment items
-  const alignmentItems = [
-    { label: 'Confidence check-in', completed: alignment?.didMorningCheckin ?? false },
-    { label: "Set today's tasks", completed: alignment?.didSetTasks ?? false },
-    { label: 'Chat with your squad', completed: alignment?.didInteractWithSquad ?? false },
-    { label: 'Have an active goal', completed: alignment?.hasActiveGoal ?? false },
-  ];
+  // Build alignment items based on org config
+  const alignmentItems = ACTIVITY_ORDER
+    .filter(activity => config.enabledActivities.includes(activity))
+    .map(activity => ({
+      label: getActivityLabel(activity, config),
+      completed: getActivityStatus(activity, alignment),
+    }));
 
   // Check if it's a weekend
   const isWeekend = (() => {

@@ -323,11 +323,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { programId, cohortId, discountCode, joinCommunity } = body as { 
+    const { programId, cohortId, discountCode, joinCommunity, startDate } = body as { 
       programId: string; 
       cohortId?: string;
       discountCode?: string;
       joinCommunity?: boolean;
+      startDate?: string; // ISO date string (YYYY-MM-DD) for individual programs
     };
 
     if (!programId) {
@@ -428,6 +429,35 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validate start date for individual programs
+    let validatedStartDate: string | undefined = undefined;
+    if (program.type === 'individual' && startDate) {
+      // If user provided a start date, validate it
+      const userStartDate = new Date(startDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Ensure start date is in the future (at least today)
+      if (userStartDate < today) {
+        return NextResponse.json({ error: 'Start date cannot be in the past' }, { status: 400 });
+      }
+      
+      // If program has a default start date, ensure user date is >= default
+      if (program.defaultStartDate) {
+        const defaultStart = new Date(program.defaultStartDate);
+        if (userStartDate < defaultStart) {
+          return NextResponse.json({ 
+            error: `Start date must be on or after ${program.defaultStartDate}` 
+          }, { status: 400 });
+        }
+      }
+      
+      // Only accept custom start date if program allows it
+      if (program.allowCustomStartDate !== false) {
+        validatedStartDate = startDate;
+      }
+    }
+
     // Get user info from Clerk
     const clerk = await clerkClient();
     const clerkUser = await clerk.users.getUser(userId);
@@ -477,7 +507,7 @@ export async function POST(request: NextRequest) {
           finalPrice
         );
       }
-      return await createEnrollment(userId, program, cohort, clerkUser, joinCommunity);
+      return await createEnrollment(userId, program, cohort, clerkUser, joinCommunity, validatedStartDate);
     }
 
     // For paid programs, create Stripe checkout session
@@ -540,6 +570,7 @@ export async function POST(request: NextRequest) {
           originalAmountCents: String(program.priceInCents),
           discountAmountCents: String(discountAmountCents),
           joinCommunity: joinCommunity !== false ? 'true' : 'false',
+          startDate: validatedStartDate || '',
         },
       },
       success_url: successUrl,
@@ -554,6 +585,7 @@ export async function POST(request: NextRequest) {
         type: 'program_enrollment',
         discountCodeId: appliedDiscountCode?.id || '',
         joinCommunity: joinCommunity !== false ? 'true' : 'false',
+        startDate: validatedStartDate || '',
       },
     };
 
@@ -588,9 +620,12 @@ async function createEnrollment(
     imageUrl?: string;
     emailAddresses?: Array<{ emailAddress: string }>;
   },
-  joinCommunity?: boolean
+  joinCommunity?: boolean,
+  startDate?: string // User-selected or validated start date for individual programs
 ): Promise<NextResponse> {
   const now = new Date().toISOString();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
   
   // Determine start date
   let startedAt: string;
@@ -599,8 +634,6 @@ async function createEnrollment(
   if (cohort) {
     // Group program - start on cohort start date
     const cohortStart = new Date(cohort.startDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     
     if (cohortStart > today) {
       startedAt = cohort.startDate;
@@ -610,16 +643,29 @@ async function createEnrollment(
       status = 'active';
     }
   } else {
-    // Individual program - start today or tomorrow based on time
-    const hour = new Date().getHours();
-    if (hour < 12) {
-      startedAt = now.split('T')[0];
+    // Individual program - use provided start date, program default, or auto-calculate
+    if (startDate) {
+      // User selected a start date
+      startedAt = startDate;
+      const selectedDate = new Date(startDate);
+      status = selectedDate > today ? 'upcoming' : 'active';
+    } else if (program.defaultStartDate) {
+      // Coach set a default start date
+      startedAt = program.defaultStartDate;
+      const defaultDate = new Date(program.defaultStartDate);
+      status = defaultDate > today ? 'upcoming' : 'active';
     } else {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      startedAt = tomorrow.toISOString().split('T')[0];
+      // No start date specified - use original auto-calc (before noon = today, after = tomorrow)
+      const hour = new Date().getHours();
+      if (hour < 12) {
+        startedAt = now.split('T')[0];
+      } else {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        startedAt = tomorrow.toISOString().split('T')[0];
+      }
+      status = 'active';
     }
-    status = 'active';
   }
 
   // Find or create squad for group programs

@@ -313,6 +313,7 @@ export async function POST(request: NextRequest) {
     const programId = session.metadata?.programId;
     const cohortId = session.metadata?.cohortId || null;
     const joinCommunity = session.metadata?.joinCommunity !== 'false';
+    const selectedStartDate = session.metadata?.startDate || null;
 
     if (!programId) {
       return NextResponse.json({ error: 'Invalid session metadata' }, { status: 400 });
@@ -339,14 +340,15 @@ export async function POST(request: NextRequest) {
 
     // Create enrollment
     const now = new Date().toISOString();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
     let startedAt: string;
     let status: 'upcoming' | 'active';
     
     if (cohort) {
+      // Group program - start on cohort start date
       const cohortStart = new Date(cohort.startDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
       
       if (cohortStart > today) {
         startedAt = cohort.startDate;
@@ -356,15 +358,29 @@ export async function POST(request: NextRequest) {
         status = 'active';
       }
     } else {
-      const hour = new Date().getHours();
-      if (hour < 12) {
-        startedAt = now.split('T')[0];
+      // Individual program - use selected start date, program default, or auto-calculate
+      if (selectedStartDate) {
+        // User selected a start date during checkout
+        startedAt = selectedStartDate;
+        const selectedDate = new Date(selectedStartDate);
+        status = selectedDate > today ? 'upcoming' : 'active';
+      } else if (program.defaultStartDate) {
+        // Coach set a default start date
+        startedAt = program.defaultStartDate;
+        const defaultDate = new Date(program.defaultStartDate);
+        status = defaultDate > today ? 'upcoming' : 'active';
       } else {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        startedAt = tomorrow.toISOString().split('T')[0];
+        // No start date specified - use original auto-calc (before noon = today, after = tomorrow)
+        const hour = new Date().getHours();
+        if (hour < 12) {
+          startedAt = now.split('T')[0];
+        } else {
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          startedAt = tomorrow.toISOString().split('T')[0];
+        }
+        status = 'active';
       }
-      status = 'active';
     }
 
     // Find or create squad for group programs

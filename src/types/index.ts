@@ -706,6 +706,8 @@ export interface Program {
   // Individual program settings (only applicable when type = 'individual')
   clientCommunityEnabled?: boolean; // Coach toggle to enable client community squad
   clientCommunitySquadId?: string | null; // Auto-created squad ID for client community
+  defaultStartDate?: string; // ISO date string - coach-set default start date (e.g., "2025-02-01")
+  allowCustomStartDate?: boolean; // If true, users can pick their own start date during enrollment
   
   // Content
   defaultHabits?: ProgramHabitTemplate[]; // Default habits for enrolled users
@@ -1168,11 +1170,17 @@ export interface UserAlignment {
   userId: string;
   organizationId: string;              // Multi-tenancy: Clerk Organization ID
   date: string; // "YYYY-MM-DD" — normalized date
+  // Original alignment activities
   didMorningCheckin: boolean;
   didSetTasks: boolean;
   didInteractWithSquad: boolean;
   hasActiveGoal: boolean;
-  alignmentScore: number; // 0, 25, 50, 75, 100
+  // New alignment activities (optional for backward compatibility)
+  didEveningCheckin?: boolean;
+  didCompleteTasks?: boolean;
+  didCompleteHabits?: boolean;
+  // Score tracking
+  alignmentScore: number; // Dynamically calculated based on org config
   fullyAligned: boolean; // alignmentScore === 100
   streakOnThisDay: number; // integer >= 0, streak snapshot for that day
   createdAt: string;
@@ -1193,6 +1201,10 @@ export interface AlignmentUpdatePayload {
   didSetTasks?: boolean;
   didInteractWithSquad?: boolean;
   hasActiveGoal?: boolean;
+  // New alignment activities
+  didEveningCheckin?: boolean;
+  didCompleteTasks?: boolean;
+  didCompleteHabits?: boolean;
 }
 
 export interface AlignmentState {
@@ -1201,6 +1213,41 @@ export interface AlignmentState {
   isLoading: boolean;
   error: string | null;
 }
+
+// Alignment Activity Configuration Types (for coach customization)
+export type AlignmentActivityKey = 
+  | 'morning_checkin'
+  | 'evening_checkin'
+  | 'set_tasks'
+  | 'complete_tasks'
+  | 'chat_with_squad'
+  | 'active_goal'
+  | 'complete_habits';
+
+// Threshold options for task/habit completion activities
+export type CompletionThreshold = 'at_least_one' | 'half' | 'all';
+
+// Alignment settings stored per-org
+export interface AlignmentActivityConfig {
+  enabledActivities: AlignmentActivityKey[];
+  taskCompletionThreshold?: CompletionThreshold;  // default: 'at_least_one'
+  habitCompletionThreshold?: CompletionThreshold; // default: 'at_least_one'
+}
+
+// Default alignment activities (for backward compatibility)
+export const DEFAULT_ALIGNMENT_ACTIVITIES: AlignmentActivityKey[] = [
+  'morning_checkin',
+  'set_tasks',
+  'chat_with_squad',
+  'active_goal',
+];
+
+// Default alignment config
+export const DEFAULT_ALIGNMENT_CONFIG: AlignmentActivityConfig = {
+  enabledActivities: DEFAULT_ALIGNMENT_ACTIVITIES,
+  taskCompletionThreshold: 'at_least_one',
+  habitCompletionThreshold: 'at_least_one',
+};
 
 // Squad Alignment Types
 export interface SquadAlignmentDay {
@@ -1920,6 +1967,9 @@ export interface OrgSettings {
   // Daily Focus settings
   defaultDailyFocusSlots?: number;     // 1-6, default 3 - hard cap for all users in this org
   
+  // Alignment score customization (which activities count toward alignment)
+  alignmentConfig?: AlignmentActivityConfig;
+  
   createdAt: string;                   // ISO timestamp
   updatedAt: string;                   // ISO timestamp
 }
@@ -1948,6 +1998,7 @@ export const DEFAULT_ORG_SETTINGS: Omit<OrgSettings, 'id' | 'organizationId' | '
   programEmptyStateBehavior: 'discover', // Show find program page by default
   squadEmptyStateBehavior: 'discover',   // Show find squad page by default
   defaultDailyFocusSlots: 3,             // Default: 3 daily focus tasks (matches current behavior)
+  alignmentConfig: DEFAULT_ALIGNMENT_CONFIG, // Default alignment activities
 };
 
 /**

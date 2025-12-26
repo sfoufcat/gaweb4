@@ -221,6 +221,7 @@ export default function ProgramDetailPage() {
   const [errorModal, setErrorModal] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [joinCommunity, setJoinCommunity] = useState(true); // Default to opt-in for client community
+  const [selectedStartDate, setSelectedStartDate] = useState<string>('');
 
   useEffect(() => {
     const fetchProgram = async () => {
@@ -284,6 +285,7 @@ export default function ProgramDetailPage() {
           programId,
           cohortId: selectedCohortId,
           joinCommunity: joinCommunity, // For individual programs with client community
+          startDate: selectedStartDate || undefined, // For individual programs with custom start date
         }),
       });
 
@@ -694,16 +696,54 @@ export default function ProgramDetailPage() {
                   </div>
                 )}
 
-                {/* Individual Program Info */}
+                {/* Individual Program Start Date */}
                 {program.type === 'individual' && !enrollment && (
                   <div className="mb-6 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
-                    <div className="flex items-center gap-2 text-text-primary">
-                      <Calendar className="w-5 h-5 text-green-500" />
-                      <span className="font-semibold font-albert text-[14px]">Start anytime</span>
-                    </div>
-                    <p className="text-[13px] text-text-secondary mt-1 ml-7">
-                      Work directly with your coach at your own pace.
-                    </p>
+                    {program.allowCustomStartDate ? (
+                      // User can select their start date
+                      <>
+                        <div className="flex items-center gap-2 text-text-primary mb-3">
+                          <Calendar className="w-5 h-5" style={{ color: accentLight }} />
+                          <span className="font-semibold font-albert text-[14px]">Choose your start date</span>
+                        </div>
+                        <input
+                          type="date"
+                          value={selectedStartDate}
+                          onChange={(e) => setSelectedStartDate(e.target.value)}
+                          min={program.defaultStartDate || new Date().toISOString().split('T')[0]}
+                          className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#3a3f4b] rounded-lg bg-white dark:bg-[#1d222b] text-text-primary font-albert text-[14px] focus:outline-none focus:ring-2 transition-colors"
+                          style={{ ['--tw-ring-color' as string]: accentLight }}
+                        />
+                        <p className="text-[12px] text-text-secondary mt-2">
+                          {program.defaultStartDate 
+                            ? `Earliest start date: ${formatDate(program.defaultStartDate)}`
+                            : 'Select when you want to begin your journey'
+                          }
+                        </p>
+                      </>
+                    ) : program.defaultStartDate ? (
+                      // Fixed start date set by coach
+                      <>
+                        <div className="flex items-center gap-2 text-text-primary">
+                          <Calendar className="w-5 h-5" style={{ color: accentLight }} />
+                          <span className="font-semibold font-albert text-[14px]">Program starts {formatDate(program.defaultStartDate)}</span>
+                        </div>
+                        <p className="text-[13px] text-text-secondary mt-1 ml-7">
+                          Work directly with your coach on this schedule.
+                        </p>
+                      </>
+                    ) : (
+                      // No start date configured - immediate start (backward compatible)
+                      <>
+                        <div className="flex items-center gap-2 text-text-primary">
+                          <Calendar className="w-5 h-5 text-green-500" />
+                          <span className="font-semibold font-albert text-[14px]">Start anytime</span>
+                        </div>
+                        <p className="text-[13px] text-text-secondary mt-1 ml-7">
+                          Work directly with your coach at your own pace.
+                        </p>
+                      </>
+                    )}
                   </div>
                 )}
 

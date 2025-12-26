@@ -336,6 +336,16 @@ export async function PUT(
       }
     }
     
+    // Handle start date settings for individual programs
+    if (currentData?.type === 'individual') {
+      if (body.defaultStartDate !== undefined) {
+        updateData.defaultStartDate = body.defaultStartDate || null;
+      }
+      if (body.allowCustomStartDate !== undefined) {
+        updateData.allowCustomStartDate = body.allowCustomStartDate;
+      }
+    }
+    
     // Handle assignedCoachIds for group programs
     if (body.assignedCoachIds !== undefined && currentData?.type === 'group') {
       if (Array.isArray(body.assignedCoachIds) && body.assignedCoachIds.length > 0) {

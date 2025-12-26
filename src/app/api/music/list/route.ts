@@ -92,10 +92,13 @@ export async function GET() {
         const filename = file.name.replace(/^music\//, '');
         const displayName = parseDisplayName(filename);
         
+        // URL-encode the path for special characters (spaces, parentheses, etc.)
+        const encodedPath = file.name.split('/').map(part => encodeURIComponent(part)).join('/');
+        
         return {
           id: filename,
           name: displayName,
-          url: `https://storage.googleapis.com/${bucketName}/${file.name}`,
+          url: `https://storage.googleapis.com/${bucketName}/${encodedPath}`,
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));

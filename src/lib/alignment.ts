@@ -2,11 +2,18 @@
  * Daily Alignment Service
  * 
  * Handles computing and updating daily alignment scores and streaks.
- * The alignment score is composed of four behaviors, each worth 25%:
- * 1. Morning confidence check-in done
- * 2. Set today's tasks (Daily Focus)
- * 3. Chat with your squad (send a message)
- * 4. Have an active goal
+ * The alignment score is now CONFIGURABLE per-organization.
+ * 
+ * Available activities:
+ * 1. Morning check-in (confidence check-in)
+ * 2. Evening check-in (day reflection)
+ * 3. Set today's tasks (Daily Focus)
+ * 4. Complete tasks (with configurable threshold: at_least_one, half, all)
+ * 5. Chat with your squad (send a message)
+ * 6. Have an active goal
+ * 7. Complete habits (with configurable threshold: at_least_one, half, all)
+ * 
+ * Each enabled activity is worth 100 / (enabled count) %.
  * 
  * MULTI-TENANCY: All alignment data is scoped per-organization.
  * Each user has separate alignment scores/streaks for each org they belong to.
@@ -14,7 +21,16 @@
 
 import { adminDb } from './firebase-admin';
 import { invalidateSquadCache } from './squad-alignment';
-import type { UserAlignment, UserAlignmentSummary, AlignmentUpdatePayload } from '@/types';
+import type { 
+  UserAlignment, 
+  UserAlignmentSummary, 
+  AlignmentUpdatePayload, 
+  AlignmentActivityConfig, 
+  AlignmentActivityKey,
+  CompletionThreshold,
+  OrgSettings 
+} from '@/types';
+import { DEFAULT_ALIGNMENT_CONFIG } from '@/types';
 
 /**
  * Get today's date in YYYY-MM-DD format
@@ -76,9 +92,191 @@ function getAlignmentSummaryDocId(organizationId: string, userId: string): strin
 }
 
 /**
- * Calculate alignment score from the four boolean flags
+ * Get org alignment configuration
+ * Falls back to default config for backward compatibility
+ */
+async function getOrgAlignmentConfig(organizationId: string): Promise<AlignmentActivityConfig> {
+  try {
+    const settingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
+    
+    if (settingsDoc.exists) {
+      const settings = settingsDoc.data() as OrgSettings;
+      if (settings.alignmentConfig) {
+        return settings.alignmentConfig;
+      }
+    }
+    
+    return DEFAULT_ALIGNMENT_CONFIG;
+  } catch (error) {
+    console.error('[ALIGNMENT] Error fetching org config:', error);
+    return DEFAULT_ALIGNMENT_CONFIG;
+  }
+}
+
+/**
+ * Export for use by other components (like AlignmentSheet)
+ */
+export { getOrgAlignmentConfig };
+
+/**
+ * Check if user has completed their evening check-in for today
+ */
+async function checkUserDidEveningCheckin(userId: string, organizationId: string, date: string): Promise<boolean> {
+  try {
+    const checkInId = `${organizationId}_${userId}_${date}`;
+    const eveningCheckInDoc = await adminDb
+      .collection('evening_checkins')
+      .doc(checkInId)
+      .get();
+
+    return eveningCheckInDoc.exists;
+  } catch (error) {
+    console.error('[ALIGNMENT] Error checking evening checkin:', error);
+    return false;
+  }
+}
+
+/**
+ * Check if user has completed tasks based on threshold
+ */
+async function checkUserCompletedTasks(
+  userId: string, 
+  organizationId: string, 
+  date: string,
+  threshold: CompletionThreshold = 'at_least_one'
+): Promise<boolean> {
+  try {
+    // Get all focus tasks for today
+    const tasksSnapshot = await adminDb
+      .collection('tasks')
+      .where('userId', '==', userId)
+      .where('organizationId', '==', organizationId)
+      .where('date', '==', date)
+      .where('listType', '==', 'focus')
+      .get();
+    
+    if (tasksSnapshot.empty) {
+      return false; // No tasks to complete
+    }
+    
+    const tasks = tasksSnapshot.docs.map(doc => doc.data());
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(t => t.status === 'completed').length;
+    
+    switch (threshold) {
+      case 'at_least_one':
+        return completedTasks >= 1;
+      case 'half':
+        return completedTasks >= Math.ceil(totalTasks / 2);
+      case 'all':
+        return completedTasks === totalTasks;
+      default:
+        return completedTasks >= 1;
+    }
+  } catch (error) {
+    console.error('[ALIGNMENT] Error checking completed tasks:', error);
+    return false;
+  }
+}
+
+/**
+ * Check if user has completed habits based on threshold
+ */
+async function checkUserCompletedHabits(
+  userId: string, 
+  organizationId: string, 
+  date: string,
+  threshold: CompletionThreshold = 'at_least_one'
+): Promise<boolean> {
+  try {
+    // Get user's active habits for this organization
+    const habitsSnapshot = await adminDb
+      .collection('habits')
+      .where('userId', '==', userId)
+      .where('organizationId', '==', organizationId)
+      .where('isActive', '==', true)
+      .get();
+    
+    if (habitsSnapshot.empty) {
+      return false; // No habits to complete
+    }
+    
+    // Check completions for today
+    const habitIds = habitsSnapshot.docs.map(doc => doc.id);
+    let completedCount = 0;
+    
+    for (const habitId of habitIds) {
+      const completionDoc = await adminDb
+        .collection('habits')
+        .doc(habitId)
+        .collection('completions')
+        .doc(date)
+        .get();
+      
+      if (completionDoc.exists) {
+        completedCount++;
+      }
+    }
+    
+    const totalHabits = habitIds.length;
+    
+    switch (threshold) {
+      case 'at_least_one':
+        return completedCount >= 1;
+      case 'half':
+        return completedCount >= Math.ceil(totalHabits / 2);
+      case 'all':
+        return completedCount === totalHabits;
+      default:
+        return completedCount >= 1;
+    }
+  } catch (error) {
+    console.error('[ALIGNMENT] Error checking completed habits:', error);
+    return false;
+  }
+}
+
+/**
+ * Activity completion status for all possible activities
+ */
+interface ActivityStatus {
+  morning_checkin: boolean;
+  evening_checkin: boolean;
+  set_tasks: boolean;
+  complete_tasks: boolean;
+  chat_with_squad: boolean;
+  active_goal: boolean;
+  complete_habits: boolean;
+}
+
+/**
+ * Calculate alignment score based on org config and activity status
  */
 function calculateAlignmentScore(
+  activityStatus: ActivityStatus,
+  config: AlignmentActivityConfig
+): number {
+  const enabledActivities = config.enabledActivities;
+  if (enabledActivities.length === 0) return 0;
+  
+  const pointsPerActivity = 100 / enabledActivities.length;
+  let score = 0;
+  
+  for (const activity of enabledActivities) {
+    if (activityStatus[activity]) {
+      score += pointsPerActivity;
+    }
+  }
+  
+  // Round to avoid floating point issues
+  return Math.round(score);
+}
+
+/**
+ * Legacy: Calculate alignment score from the four boolean flags
+ * Used for backward compatibility when no config is set
+ */
+function calculateLegacyAlignmentScore(
   didMorningCheckin: boolean,
   didSetTasks: boolean,
   didInteractWithSquad: boolean,
@@ -246,6 +444,9 @@ export async function updateAlignmentForToday(
   const now = new Date().toISOString();
 
   try {
+    // Fetch org alignment config
+    const config = await getOrgAlignmentConfig(organizationId);
+    
     // Fetch existing alignment doc or create new one
     const existingDoc = await docRef.get();
     let existingData: Partial<UserAlignment> = {};
@@ -270,14 +471,46 @@ export async function updateAlignmentForToday(
     
     // Always recompute hasActiveGoal to ensure it's current (org-scoped)
     const hasActiveGoal = await checkUserHasActiveGoal(userId, organizationId);
+    
+    // New activities - check if enabled in config and compute status
+    let didEveningCheckin = existingData.didEveningCheckin || false;
+    if (!didEveningCheckin && config.enabledActivities.includes('evening_checkin')) {
+      didEveningCheckin = updates.didEveningCheckin ?? await checkUserDidEveningCheckin(userId, organizationId, today);
+    }
+    
+    let didCompleteTasks = existingData.didCompleteTasks || false;
+    if (!didCompleteTasks && config.enabledActivities.includes('complete_tasks')) {
+      didCompleteTasks = updates.didCompleteTasks ?? await checkUserCompletedTasks(
+        userId, 
+        organizationId, 
+        today,
+        config.taskCompletionThreshold
+      );
+    }
+    
+    let didCompleteHabits = existingData.didCompleteHabits || false;
+    if (!didCompleteHabits && config.enabledActivities.includes('complete_habits')) {
+      didCompleteHabits = updates.didCompleteHabits ?? await checkUserCompletedHabits(
+        userId, 
+        organizationId, 
+        today,
+        config.habitCompletionThreshold
+      );
+    }
 
-    // Calculate score
-    const alignmentScore = calculateAlignmentScore(
-      didMorningCheckin,
-      didSetTasks,
-      didInteractWithSquad,
-      hasActiveGoal
-    );
+    // Build activity status for scoring
+    const activityStatus: ActivityStatus = {
+      morning_checkin: didMorningCheckin,
+      evening_checkin: didEveningCheckin,
+      set_tasks: didSetTasks,
+      complete_tasks: didCompleteTasks,
+      chat_with_squad: didInteractWithSquad,
+      active_goal: hasActiveGoal,
+      complete_habits: didCompleteHabits,
+    };
+
+    // Calculate score based on org config
+    const alignmentScore = calculateAlignmentScore(activityStatus, config);
     const fullyAligned = alignmentScore === 100;
 
     // Get current streak info
@@ -293,10 +526,16 @@ export async function updateAlignmentForToday(
       userId,
       organizationId,
       date: today,
+      // Original activities
       didMorningCheckin,
       didSetTasks,
       didInteractWithSquad,
       hasActiveGoal,
+      // New activities
+      didEveningCheckin,
+      didCompleteTasks,
+      didCompleteHabits,
+      // Score tracking
       alignmentScore,
       fullyAligned,
       streakOnThisDay,
@@ -490,6 +729,9 @@ export async function initializeAlignmentForToday(userId: string, organizationId
   // This ensures users see their streak as 0 immediately if they missed a day
   await checkAndResetBrokenStreak(userId, organizationId, today);
   
+  // Get org config to know which activities to check
+  const config = await getOrgAlignmentConfig(organizationId);
+  
   const existing = await getUserAlignment(userId, organizationId, today);
   
   if (existing) {
@@ -503,9 +745,38 @@ export async function initializeAlignmentForToday(userId: string, organizationId
       didSetTasks = await checkUserHasSetTasks(userId, organizationId, today);
     }
     
+    // Check new activities if enabled and not already true
+    let didCompleteTasks = existing.didCompleteTasks || false;
+    if (!didCompleteTasks && config.enabledActivities.includes('complete_tasks')) {
+      didCompleteTasks = await checkUserCompletedTasks(userId, organizationId, today, config.taskCompletionThreshold);
+    }
+    
+    let didCompleteHabits = existing.didCompleteHabits || false;
+    if (!didCompleteHabits && config.enabledActivities.includes('complete_habits')) {
+      didCompleteHabits = await checkUserCompletedHabits(userId, organizationId, today, config.habitCompletionThreshold);
+    }
+    
+    let didEveningCheckin = existing.didEveningCheckin || false;
+    if (!didEveningCheckin && config.enabledActivities.includes('evening_checkin')) {
+      didEveningCheckin = await checkUserDidEveningCheckin(userId, organizationId, today);
+    }
+    
     // Only update if something changed
-    if (existing.hasActiveGoal !== hasActiveGoal || existing.didSetTasks !== didSetTasks) {
-      return (await updateAlignmentForToday(userId, organizationId, { hasActiveGoal, didSetTasks }))!;
+    const needsUpdate = 
+      existing.hasActiveGoal !== hasActiveGoal || 
+      existing.didSetTasks !== didSetTasks ||
+      existing.didCompleteTasks !== didCompleteTasks ||
+      existing.didCompleteHabits !== didCompleteHabits ||
+      existing.didEveningCheckin !== didEveningCheckin;
+      
+    if (needsUpdate) {
+      return (await updateAlignmentForToday(userId, organizationId, { 
+        hasActiveGoal, 
+        didSetTasks,
+        didCompleteTasks,
+        didCompleteHabits,
+        didEveningCheckin,
+      }))!;
     }
     
     return existing;

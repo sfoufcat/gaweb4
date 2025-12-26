@@ -268,6 +268,9 @@ export async function POST(request: NextRequest) {
       assignedCoachIds: body.type === 'group' && Array.isArray(body.assignedCoachIds) && body.assignedCoachIds.length > 0 
         ? body.assignedCoachIds 
         : undefined,
+      // Individual program settings
+      defaultStartDate: body.type === 'individual' && body.defaultStartDate ? body.defaultStartDate : undefined,
+      allowCustomStartDate: body.type === 'individual' ? body.allowCustomStartDate !== false : undefined,
       defaultHabits: defaultHabits.length > 0 ? defaultHabits : undefined,
       dailyFocusSlots: typeof body.dailyFocusSlots === 'number' && body.dailyFocusSlots >= 1 && body.dailyFocusSlots <= 4
         ? body.dailyFocusSlots

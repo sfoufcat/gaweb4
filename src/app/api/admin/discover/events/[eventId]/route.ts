@@ -184,7 +184,7 @@ export async function PATCH(
         id: eventId,
         ...eventDoc.data(),
         ...updateData,
-      } as import('@/types').UnifiedEvent;
+      } as unknown as import('@/types').UnifiedEvent;
       await generateRecurringInstances(updatedEventData);
     }
 

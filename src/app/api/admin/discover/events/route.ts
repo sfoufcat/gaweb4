@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
     // If this is a recurring event, generate initial instances
     if (eventData.isRecurring && recurrence) {
       const { generateRecurringInstances } = await import('@/lib/event-recurrence');
-      const createdEvent = { id: docRef.id, ...eventData } as import('@/types').UnifiedEvent;
+      const createdEvent = { id: docRef.id, ...eventData } as unknown as import('@/types').UnifiedEvent;
       await generateRecurringInstances(createdEvent);
     }
 

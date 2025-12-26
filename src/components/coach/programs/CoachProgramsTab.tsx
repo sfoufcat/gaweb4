@@ -92,6 +92,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     applyCoachesToExistingSquads: boolean;
     clientCommunityEnabled: boolean;
     dailyFocusSlots: number;
+    defaultStartDate: string;
+    allowCustomStartDate: boolean;
   }>({
     name: '',
     type: 'group',
@@ -109,6 +111,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     applyCoachesToExistingSquads: false,
     clientCommunityEnabled: false,
     dailyFocusSlots: 2,
+    defaultStartDate: '',
+    allowCustomStartDate: true,
   });
   
   // Available coaches for selection
@@ -410,6 +414,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         applyCoachesToExistingSquads: false, // Reset on each edit
         clientCommunityEnabled: program.clientCommunityEnabled || false,
         dailyFocusSlots: program.dailyFocusSlots ?? 2,
+        defaultStartDate: program.defaultStartDate || '',
+        allowCustomStartDate: program.allowCustomStartDate !== false,
       });
     } else {
       setEditingProgram(null);
@@ -430,6 +436,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         applyCoachesToExistingSquads: false,
         clientCommunityEnabled: false,
         dailyFocusSlots: 2,
+        defaultStartDate: '',
+        allowCustomStartDate: true,
       });
     }
     setSaveError(null);
@@ -1969,6 +1977,48 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     {programFormData.type === 'individual' && (
                       <div className="space-y-4">
                         <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                          Start Date Settings
+                        </h4>
+                        <div>
+                          <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+                            Default Start Date
+                          </label>
+                          <input
+                            type="date"
+                            value={programFormData.defaultStartDate}
+                            onChange={(e) => setProgramFormData({ ...programFormData, defaultStartDate: e.target.value })}
+                            min={new Date().toISOString().split('T')[0]}
+                            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                          />
+                          <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1">
+                            Leave empty for immediate start (users begin when they enroll)
+                          </p>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <BrandedCheckbox
+                            checked={programFormData.allowCustomStartDate}
+                            onChange={(checked) => setProgramFormData({ 
+                              ...programFormData, 
+                              allowCustomStartDate: checked 
+                            })}
+                          />
+                          <div 
+                            className="cursor-pointer" 
+                            onClick={() => setProgramFormData({ 
+                              ...programFormData, 
+                              allowCustomStartDate: !programFormData.allowCustomStartDate 
+                            })}
+                          >
+                            <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                              Allow users to select their own start date
+                            </span>
+                            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5">
+                              When enabled, users can choose when to start the program during enrollment
+                            </p>
+                          </div>
+                        </div>
+
+                        <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert pt-2">
                           Community Settings
                         </h4>
                         <div className="flex items-start gap-2">
@@ -2393,6 +2443,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             applyCoachesToExistingSquads: false,
             clientCommunityEnabled: false,
             dailyFocusSlots: 2,
+            defaultStartDate: '',
+            allowCustomStartDate: true,
           });
           setIsProgramModalOpen(true);
         }}

@@ -1138,7 +1138,7 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
   const [tracks, setTracks] = React.useState<Array<{ id: string; name: string; url: string }>>([]);
   const [isLoadingTracks, setIsLoadingTracks] = React.useState(false);
   const [previewAudio, setPreviewAudio] = React.useState<HTMLAudioElement | null>(null);
-  const [isPlaying, setIsPlaying] = React.useState(false);
+  const [playingTrackId, setPlayingTrackId] = React.useState<string | null>(null);
   
   // Fetch music tracks on mount
   React.useEffect(() => {
@@ -1169,32 +1169,44 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
     };
   }, [previewAudio]);
   
-  const handlePreviewToggle = () => {
-    const selectedTrackId = config.celebrationSound as string;
-    if (!selectedTrackId) return;
-    
-    const track = tracks.find(t => t.id === selectedTrackId);
+  const handlePreviewToggle = (trackId: string) => {
+    const track = tracks.find(t => t.id === trackId);
     if (!track) return;
     
-    if (isPlaying && previewAudio) {
+    // If clicking the same track that's playing, stop it
+    if (playingTrackId === trackId && previewAudio) {
       previewAudio.pause();
-      setIsPlaying(false);
-    } else {
-      // Create new audio or reuse existing
-      const audio = previewAudio || new Audio();
-      audio.src = track.url;
-      audio.volume = 0.5;
-      audio.onended = () => setIsPlaying(false);
-      audio.play().then(() => setIsPlaying(true)).catch(console.error);
-      setPreviewAudio(audio);
+      setPlayingTrackId(null);
+      return;
     }
+    
+    // Stop any currently playing audio
+    if (previewAudio) {
+      previewAudio.pause();
+    }
+    
+    // Create new audio and play
+    const audio = new Audio(track.url);
+    audio.volume = 0.5;
+    audio.onended = () => setPlayingTrackId(null);
+    audio.onerror = () => {
+      console.error('Failed to play track:', track.url);
+      setPlayingTrackId(null);
+    };
+    audio.play()
+      .then(() => setPlayingTrackId(trackId))
+      .catch(err => {
+        console.error('Failed to play:', err);
+        setPlayingTrackId(null);
+      });
+    setPreviewAudio(audio);
   };
   
   const handleTrackChange = (trackId: string) => {
     // Stop preview if playing
     if (previewAudio) {
       previewAudio.pause();
-      setIsPlaying(false);
+      setPlayingTrackId(null);
     }
     onChange({ ...config, celebrationSound: trackId || undefined });
   };
@@ -1255,47 +1267,64 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
               <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
                 Celebration Music
               </label>
-              <div className="flex gap-2">
-                <select
-                  value={config.celebrationSound as string || ''}
-                  onChange={(e) => handleTrackChange(e.target.value)}
-                  disabled={isLoadingTracks}
-                  className="flex-1 px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] disabled:opacity-50"
-                >
-                  <option value="">None</option>
+              {isLoadingTracks ? (
+                <p className="text-sm text-text-muted dark:text-[#b2b6c2]">Loading tracks...</p>
+              ) : (
+                <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-lg divide-y divide-[#e1ddd8] dark:divide-[#262b35] max-h-[240px] overflow-y-auto">
+                  {/* None option */}
+                  <label className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-[#faf8f6] dark:hover:bg-[#1a1f28] transition-colors">
+                    <input
+                      type="radio"
+                      name="celebrationSound"
+                      value=""
+                      checked={!config.celebrationSound}
+                      onChange={() => handleTrackChange('')}
+                      className="w-4 h-4 accent-[#a07855]"
+                    />
+                    <span className="text-sm text-text-primary dark:text-[#f5f5f8] flex-1">None</span>
+                  </label>
+                  {/* Track options */}
                   {tracks.map(track => (
-                    <option key={track.id} value={track.id}>
-                      {track.name}
-                    </option>
+                    <label 
+                      key={track.id} 
+                      className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-[#faf8f6] dark:hover:bg-[#1a1f28] transition-colors"
+                    >
+                      <input
+                        type="radio"
+                        name="celebrationSound"
+                        value={track.id}
+                        checked={config.celebrationSound === track.id}
+                        onChange={() => handleTrackChange(track.id)}
+                        className="w-4 h-4 accent-[#a07855]"
+                      />
+                      <span className="text-sm text-text-primary dark:text-[#f5f5f8] flex-1">{track.name}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handlePreviewToggle(track.id);
+                        }}
+                        className="p-1.5 rounded-full hover:bg-[#a07855]/10 transition-colors"
+                        title={playingTrackId === track.id ? 'Stop' : 'Preview'}
+                      >
+                        {playingTrackId === track.id ? (
+                          <svg className="w-4 h-4 text-[#a07855]" fill="currentColor" viewBox="0 0 24 24">
+                            <rect x="6" y="4" width="4" height="16" />
+                            <rect x="14" y="4" width="4" height="16" />
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4 text-text-muted dark:text-[#b2b6c2]" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        )}
+                      </button>
+                    </label>
                   ))}
-                </select>
-                {!!config.celebrationSound && (
-                  <button
-                    type="button"
-                    onClick={handlePreviewToggle}
-                    className="px-4 py-2 bg-[#a07855] hover:bg-[#8c6245] text-white rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    {isPlaying ? (
-                      <>
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                          <rect x="6" y="4" width="4" height="16" />
-                          <rect x="14" y="4" width="4" height="16" />
-                        </svg>
-                        Stop
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z" />
-                        </svg>
-                        Preview
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
-              <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
-                {isLoadingTracks ? 'Loading tracks...' : 'Music plays with confetti animation'}
+                </div>
+              )}
+              <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1.5">
+                Music plays with confetti animation
               </p>
             </div>
           )}
