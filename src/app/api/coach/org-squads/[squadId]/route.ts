@@ -52,7 +52,7 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { name, description, avatarUrl, visibility, timezone, coachId, programId, capacity, priceInCents, currency } = body;
+    const { name, slug, description, avatarUrl, visibility, timezone, coachId, programId, capacity, priceInCents, currency } = body;
 
     // Build update data
     const updateData: Record<string, unknown> = {
@@ -60,6 +60,32 @@ export async function PATCH(
     };
 
     if (name !== undefined) updateData.name = name.trim();
+    
+    // Handle slug update with uniqueness check
+    if (slug !== undefined && slug !== existingData?.slug) {
+      const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+      if (!cleanSlug) {
+        return NextResponse.json({ error: 'Invalid slug format' }, { status: 400 });
+      }
+      
+      // Check if slug already exists in this organization (excluding this squad)
+      const existingSlug = await adminDb
+        .collection('squads')
+        .where('organizationId', '==', organizationId)
+        .where('slug', '==', cleanSlug)
+        .limit(1)
+        .get();
+
+      if (!existingSlug.empty && existingSlug.docs[0].id !== squadId) {
+        return NextResponse.json(
+          { error: `Squad with slug "${cleanSlug}" already exists in your organization` },
+          { status: 400 }
+        );
+      }
+      
+      updateData.slug = cleanSlug;
+    }
+    
     if (description !== undefined) updateData.description = description.trim();
     if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl;
     if (visibility !== undefined) {

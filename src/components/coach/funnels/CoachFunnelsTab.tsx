@@ -65,6 +65,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   
   // Copy link feedback state
   const [copiedFunnelId, setCopiedFunnelId] = useState<string | null>(null);
+  const [copyError, setCopyError] = useState<string | null>(null);
 
   const fetchFunnels = useCallback(async () => {
     try {
@@ -189,25 +190,40 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
 
   const copyFunnelLink = (funnel: Funnel) => {
     let url: string | null = null;
+    let errorMessage: string | null = null;
     
     // Check if it's a squad funnel
     if (funnel.squadId) {
       const squad = squads.find(s => s.id === funnel.squadId);
-      if (squad?.slug) {
+      if (!squad) {
+        errorMessage = 'Squad not found. Please refresh the page.';
+      } else if (!squad.slug) {
+        errorMessage = 'Squad needs a URL slug. Edit the squad to add one.';
+      } else {
         url = `${window.location.origin}/join/squad/${squad.slug}/${funnel.slug}`;
       }
     } else if (funnel.programId) {
       // Program funnel
       const program = programs.find(p => p.id === funnel.programId);
-      if (program) {
+      if (!program) {
+        errorMessage = 'Program not found. Please refresh the page.';
+      } else if (!program.slug) {
+        errorMessage = 'Program needs a URL slug. Edit the program to add one.';
+      } else {
         url = `${window.location.origin}/join/${program.slug}/${funnel.slug}`;
       }
+    } else {
+      errorMessage = 'Funnel is not linked to a program or squad.';
     }
     
     if (url) {
       navigator.clipboard.writeText(url);
       setCopiedFunnelId(funnel.id);
+      setCopyError(null);
       setTimeout(() => setCopiedFunnelId(null), 2000);
+    } else if (errorMessage) {
+      setCopyError(errorMessage);
+      setTimeout(() => setCopyError(null), 4000);
     }
   };
 
@@ -267,6 +283,38 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
 
   return (
     <div className="space-y-6">
+      {/* Copy Error Toast */}
+      <AnimatePresence>
+        {copyError && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-4 right-4 z-50 bg-red-50 border border-red-200 rounded-lg px-4 py-3 shadow-lg max-w-sm"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-red-100 flex items-center justify-center">
+                <svg className="w-3 h-3 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-red-800">Can&apos;t copy link</p>
+                <p className="text-xs text-red-600 mt-0.5">{copyError}</p>
+              </div>
+              <button
+                onClick={() => setCopyError(null)}
+                className="flex-shrink-0 text-red-400 hover:text-red-600"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

@@ -157,6 +157,20 @@ function generateInviteCode(): string {
 }
 
 /**
+ * Generate a URL-friendly slug from a name
+ * Converts to lowercase, replaces spaces with hyphens, removes special characters
+ */
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-')     // Replace spaces with hyphens
+    .replace(/-+/g, '-')      // Replace multiple hyphens with single
+    .replace(/^-|-$/g, '');   // Remove leading/trailing hyphens
+}
+
+/**
  * POST /api/coach/org-squads
  * Creates a new squad within the coach's organization
  * 
@@ -170,8 +184,9 @@ export async function POST(req: Request) {
     console.log(`[COACH_ORG_SQUADS] Creating squad for organization: ${organizationId}`);
 
     const body = await req.json();
-    const { name, description, avatarUrl, visibility, timezone, coachId, programId, capacity, priceInCents, currency } = body as {
+    const { name, slug: providedSlug, description, avatarUrl, visibility, timezone, coachId, programId, capacity, priceInCents, currency } = body as {
       name: string;
+      slug?: string;
       description?: string;
       avatarUrl?: string;
       visibility?: SquadVisibility;
@@ -185,6 +200,28 @@ export async function POST(req: Request) {
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Squad name is required' }, { status: 400 });
+    }
+
+    // Generate slug from name if not provided
+    const slug = providedSlug?.trim() || generateSlug(name);
+    
+    if (!slug) {
+      return NextResponse.json({ error: 'Could not generate a valid slug from the squad name' }, { status: 400 });
+    }
+
+    // Check if slug already exists in this organization
+    const existingSlug = await adminDb
+      .collection('squads')
+      .where('organizationId', '==', organizationId)
+      .where('slug', '==', slug)
+      .limit(1)
+      .get();
+
+    if (!existingSlug.empty) {
+      return NextResponse.json(
+        { error: `Squad with slug "${slug}" already exists in your organization` },
+        { status: 400 }
+      );
     }
 
     // Generate invite code for private squads
@@ -207,6 +244,7 @@ export async function POST(req: Request) {
     const now = new Date().toISOString();
     const squadRef = await adminDb.collection('squads').add({
       name: name.trim(),
+      slug, // URL-friendly identifier for funnel links
       description: description?.trim() || '',
       avatarUrl: avatarUrl || '',
       visibility: squadVisibility,
@@ -319,6 +357,7 @@ export async function POST(req: Request) {
 
     const squadData: Partial<Squad> = {
       name: name.trim(),
+      slug,
       description: description?.trim() || '',
       avatarUrl: avatarUrl || '',
       visibility: squadVisibility,

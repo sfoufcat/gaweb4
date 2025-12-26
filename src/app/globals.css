@@ -1289,3 +1289,713 @@ div[class*="LoadingIndicator"],
 .dark .dark\:active\:bg-\[\#96714d\]:active {
   background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 70%, black) !important;
 }
+
+/* ===========================================
+   Puck Landing Page Builder Styles
+   Overrides default Puck styling to match GA Design System
+   =========================================== */
+
+/* Puck CSS Variable Overrides - Light Mode */
+.Puck {
+  --puck-color-azure-03: #faf8f6 !important; /* app-bg */
+  --puck-color-azure-04: #f3f1ef !important; /* surface-elevated */
+  --puck-color-azure-05: #e1ddd8 !important; /* border */
+  --puck-color-azure-06: #d4cfc9 !important; /* border darker */
+  --puck-color-azure-07: #a7a39e !important; /* muted */
+  --puck-color-azure-08: #5f5a55 !important; /* secondary */
+  --puck-color-azure-09: #a07855 !important; /* accent */
+  --puck-color-azure-10: #8c6245 !important; /* accent darker */
+  --puck-color-azure-11: #1a1a1a !important; /* text primary */
+  --puck-color-azure-12: #1a1a1a !important; /* text primary */
+  --puck-color-grey-01: #ffffff !important; /* white */
+  --puck-color-grey-02: #faf8f6 !important; /* light bg */
+  --puck-color-grey-03: #f3f1ef !important; /* surface */
+  --puck-color-grey-04: #e1ddd8 !important; /* border */
+  --puck-color-grey-05: #d4cfc9 !important; /* border dark */
+  --puck-color-grey-06: #a7a39e !important; /* muted */
+  --puck-color-grey-07: #7d7975 !important; /* muted dark */
+  --puck-color-grey-08: #5f5a55 !important; /* secondary */
+  --puck-color-grey-09: #3d3a37 !important; /* secondary dark */
+  --puck-color-grey-10: #2d2a27 !important; /* dark */
+  --puck-color-grey-11: #1a1a1a !important; /* darker */
+  --puck-color-grey-12: #0d0d0d !important; /* darkest */
+  --puck-color-rose-07: #a07855 !important; /* accent as selection */
+  --puck-color-rose-09: #a07855 !important; /* accent */
+  --puck-font-family: var(--font-albert-sans), system-ui, sans-serif !important;
+  font-family: var(--font-albert-sans), system-ui, sans-serif !important;
+}
+
+/* Puck CSS Variable Overrides - Dark Mode */
+.dark .Puck {
+  --puck-color-azure-03: #05070b !important; /* app-bg */
+  --puck-color-azure-04: #11141b !important; /* surface-elevated */
+  --puck-color-azure-05: #1d222b !important; /* card soft */
+  --puck-color-azure-06: #262b35 !important; /* border */
+  --puck-color-azure-07: #313746 !important; /* border dark */
+  --puck-color-azure-08: #7d8190 !important; /* muted */
+  --puck-color-azure-09: #b8896a !important; /* accent */
+  --puck-color-azure-10: #a07855 !important; /* accent darker */
+  --puck-color-azure-11: #f5f5f8 !important; /* text primary */
+  --puck-color-azure-12: #f5f5f8 !important; /* text primary */
+  --puck-color-grey-01: #171b22 !important; /* card */
+  --puck-color-grey-02: #11141b !important; /* elevated */
+  --puck-color-grey-03: #1d222b !important; /* card soft */
+  --puck-color-grey-04: #262b35 !important; /* border */
+  --puck-color-grey-05: #313746 !important; /* border dark */
+  --puck-color-grey-06: #7d8190 !important; /* muted */
+  --puck-color-grey-07: #9a9da8 !important; /* muted light */
+  --puck-color-grey-08: #b2b6c2 !important; /* secondary */
+  --puck-color-grey-09: #d1d4dc !important; /* secondary light */
+  --puck-color-grey-10: #e8eaed !important; /* light */
+  --puck-color-grey-11: #f5f5f8 !important; /* lighter */
+  --puck-color-grey-12: #ffffff !important; /* white */
+  --puck-color-rose-07: #b8896a !important; /* accent as selection */
+  --puck-color-rose-09: #b8896a !important; /* accent */
+}
+
+/* Puck Main Container */
+.Puck {
+  height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background: #faf8f6 !important;
+}
+
+.dark .Puck {
+  background: #05070b !important;
+}
+
+/* Puck Header */
+.Puck-header {
+  background: #ffffff !important;
+  border-bottom: 1px solid #e1ddd8 !important;
+  padding: 0.75rem 1rem !important;
+  min-height: 56px !important;
+  flex-shrink: 0 !important;
+}
+
+.dark .Puck-header {
+  background: #171b22 !important;
+  border-bottom-color: #262b35 !important;
+}
+
+/* Puck Header Title */
+.Puck-headerTitle {
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+  color: #1a1a1a !important;
+}
+
+.dark .Puck-headerTitle {
+  color: #f5f5f8 !important;
+}
+
+/* Puck Main Layout */
+.Puck-leftSideBar,
+.Puck-rightSideBar {
+  background: #ffffff !important;
+  border-color: #e1ddd8 !important;
+}
+
+.dark .Puck-leftSideBar,
+.dark .Puck-rightSideBar {
+  background: #171b22 !important;
+  border-color: #262b35 !important;
+}
+
+/* Sidebar Scrolling Fix */
+.Puck-leftSideBar,
+.Puck-rightSideBar {
+  overflow-y: auto !important;
+  max-height: calc(100vh - 56px) !important;
+}
+
+/* Puck Frame/Canvas Area - Critical for scrolling */
+.Puck-frame {
+  background: #f3f1ef !important;
+  flex: 1 !important;
+  overflow: auto !important;
+  height: 100% !important;
+}
+
+.dark .Puck-frame {
+  background: #11141b !important;
+}
+
+/* Canvas inner container */
+.Puck-root {
+  height: 100% !important;
+  overflow: auto !important;
+}
+
+/* Component List Sections */
+.ComponentList-title {
+  color: #5f5a55 !important;
+  font-weight: 600 !important;
+  font-size: 0.75rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  padding: 1rem 1rem 0.5rem !important;
+}
+
+.dark .ComponentList-title {
+  color: #7d8190 !important;
+}
+
+/* Component List Items */
+.ComponentList-item {
+  background: #f3f1ef !important;
+  border: 1px solid #e1ddd8 !important;
+  border-radius: 0.75rem !important;
+  margin: 0.25rem 0.75rem !important;
+  padding: 0.75rem !important;
+  transition: all 0.2s ease !important;
+  cursor: grab !important;
+}
+
+.ComponentList-item:hover {
+  background: #ebe7e2 !important;
+  border-color: #a07855 !important;
+  box-shadow: 0 2px 8px rgba(160, 120, 85, 0.15) !important;
+}
+
+.dark .ComponentList-item {
+  background: #1d222b !important;
+  border-color: #262b35 !important;
+}
+
+.dark .ComponentList-item:hover {
+  background: #262b35 !important;
+  border-color: #b8896a !important;
+  box-shadow: 0 2px 8px rgba(184, 137, 106, 0.2) !important;
+}
+
+/* Component Item Text */
+.ComponentList-itemLabel {
+  color: #1a1a1a !important;
+  font-weight: 500 !important;
+  font-size: 0.875rem !important;
+}
+
+.dark .ComponentList-itemLabel {
+  color: #f5f5f8 !important;
+}
+
+/* Field Labels */
+.Puck-fieldLabel,
+.FieldLabel-label {
+  color: #1a1a1a !important;
+  font-weight: 500 !important;
+  font-size: 0.875rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.dark .Puck-fieldLabel,
+.dark .FieldLabel-label {
+  color: #f5f5f8 !important;
+}
+
+/* Input Fields */
+.Puck input[type="text"],
+.Puck input[type="number"],
+.Puck input[type="url"],
+.Puck textarea,
+.Puck select {
+  background: #ffffff !important;
+  border: 1px solid #e1ddd8 !important;
+  border-radius: 0.5rem !important;
+  padding: 0.625rem 0.75rem !important;
+  color: #1a1a1a !important;
+  font-size: 0.875rem !important;
+  transition: all 0.2s ease !important;
+}
+
+.Puck input[type="text"]:focus,
+.Puck input[type="number"]:focus,
+.Puck input[type="url"]:focus,
+.Puck textarea:focus,
+.Puck select:focus {
+  border-color: #a07855 !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(160, 120, 85, 0.15) !important;
+}
+
+.dark .Puck input[type="text"],
+.dark .Puck input[type="number"],
+.dark .Puck input[type="url"],
+.dark .Puck textarea,
+.dark .Puck select {
+  background: #181d26 !important;
+  border-color: #313746 !important;
+  color: #f5f5f8 !important;
+}
+
+.dark .Puck input[type="text"]:focus,
+.dark .Puck input[type="number"]:focus,
+.dark .Puck input[type="url"]:focus,
+.dark .Puck textarea:focus,
+.dark .Puck select:focus {
+  border-color: #b8896a !important;
+  box-shadow: 0 0 0 3px rgba(184, 137, 106, 0.2) !important;
+}
+
+/* Buttons in Puck */
+.Puck button {
+  border-radius: 0.5rem !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Primary Buttons */
+.Puck-button,
+.Puck button[class*="Button--primary"],
+.Puck [class*="ActionBar-action"] {
+  background: #a07855 !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.Puck-button:hover,
+.Puck button[class*="Button--primary"]:hover {
+  background: #8c6245 !important;
+}
+
+.dark .Puck-button,
+.dark .Puck button[class*="Button--primary"] {
+  background: #b8896a !important;
+}
+
+.dark .Puck-button:hover,
+.dark .Puck button[class*="Button--primary"]:hover {
+  background: #a07855 !important;
+}
+
+/* Secondary/Outline Buttons */
+.Puck button[class*="Button--secondary"],
+.Puck button[class*="outline"] {
+  background: transparent !important;
+  border: 1px solid #e1ddd8 !important;
+  color: #1a1a1a !important;
+}
+
+.Puck button[class*="Button--secondary"]:hover,
+.Puck button[class*="outline"]:hover {
+  background: #f3f1ef !important;
+  border-color: #a07855 !important;
+}
+
+.dark .Puck button[class*="Button--secondary"],
+.dark .Puck button[class*="outline"] {
+  border-color: #262b35 !important;
+  color: #f5f5f8 !important;
+}
+
+.dark .Puck button[class*="Button--secondary"]:hover,
+.dark .Puck button[class*="outline"]:hover {
+  background: #262b35 !important;
+  border-color: #b8896a !important;
+}
+
+/* Component Selection Outline */
+.Puck [class*="DraggableComponent--isSelected"],
+.Puck [class*="selected"] {
+  outline: 2px solid #a07855 !important;
+  outline-offset: 2px !important;
+}
+
+.dark .Puck [class*="DraggableComponent--isSelected"],
+.dark .Puck [class*="selected"] {
+  outline-color: #b8896a !important;
+}
+
+/* Drag Handle */
+.Puck [class*="DragHandle"],
+.Puck [class*="dragHandle"] {
+  background: #a07855 !important;
+  color: #ffffff !important;
+  border-radius: 0.375rem !important;
+}
+
+.dark .Puck [class*="DragHandle"],
+.dark .Puck [class*="dragHandle"] {
+  background: #b8896a !important;
+}
+
+/* Action Bar (component actions) */
+.Puck [class*="ActionBar"] {
+  background: #ffffff !important;
+  border: 1px solid #e1ddd8 !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+.dark .Puck [class*="ActionBar"] {
+  background: #171b22 !important;
+  border-color: #262b35 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Action Bar Buttons */
+.Puck [class*="ActionBar"] button {
+  color: #5f5a55 !important;
+  padding: 0.5rem !important;
+}
+
+.Puck [class*="ActionBar"] button:hover {
+  color: #a07855 !important;
+  background: #f3f1ef !important;
+}
+
+.dark .Puck [class*="ActionBar"] button {
+  color: #b2b6c2 !important;
+}
+
+.dark .Puck [class*="ActionBar"] button:hover {
+  color: #b8896a !important;
+  background: #262b35 !important;
+}
+
+/* Dropzones */
+.Puck [class*="DropZone--isActive"],
+.Puck [class*="dropzone--active"] {
+  background: rgba(160, 120, 85, 0.1) !important;
+  border: 2px dashed #a07855 !important;
+}
+
+.dark .Puck [class*="DropZone--isActive"],
+.dark .Puck [class*="dropzone--active"] {
+  background: rgba(184, 137, 106, 0.1) !important;
+  border-color: #b8896a !important;
+}
+
+/* Empty DropZone */
+.Puck [class*="DropZone--isEmpty"] {
+  border: 2px dashed #e1ddd8 !important;
+  background: #f9f7f5 !important;
+  border-radius: 0.75rem !important;
+  min-height: 120px !important;
+}
+
+.dark .Puck [class*="DropZone--isEmpty"] {
+  border-color: #262b35 !important;
+  background: #11141b !important;
+}
+
+/* Viewport Switcher */
+.Puck [class*="ViewportControls"],
+.Puck [class*="Viewport"] button {
+  background: #f3f1ef !important;
+  border: 1px solid #e1ddd8 !important;
+  color: #5f5a55 !important;
+  border-radius: 0.5rem !important;
+}
+
+.Puck [class*="ViewportControls"] button:hover,
+.Puck [class*="Viewport"] button:hover {
+  background: #ebe7e2 !important;
+  border-color: #a07855 !important;
+  color: #a07855 !important;
+}
+
+.Puck [class*="ViewportControls"] button[class*="active"],
+.Puck [class*="Viewport"] button[class*="active"] {
+  background: #a07855 !important;
+  border-color: #a07855 !important;
+  color: #ffffff !important;
+}
+
+.dark .Puck [class*="ViewportControls"],
+.dark .Puck [class*="Viewport"] button {
+  background: #1d222b !important;
+  border-color: #262b35 !important;
+  color: #b2b6c2 !important;
+}
+
+.dark .Puck [class*="ViewportControls"] button:hover,
+.dark .Puck [class*="Viewport"] button:hover {
+  background: #262b35 !important;
+  border-color: #b8896a !important;
+  color: #b8896a !important;
+}
+
+.dark .Puck [class*="ViewportControls"] button[class*="active"],
+.dark .Puck [class*="Viewport"] button[class*="active"] {
+  background: #b8896a !important;
+  border-color: #b8896a !important;
+  color: #ffffff !important;
+}
+
+/* Drawer / Panel */
+.Puck [class*="Drawer"],
+.Puck [class*="Panel"] {
+  background: #ffffff !important;
+  border-color: #e1ddd8 !important;
+}
+
+.dark .Puck [class*="Drawer"],
+.dark .Puck [class*="Panel"] {
+  background: #171b22 !important;
+  border-color: #262b35 !important;
+}
+
+/* Array Field Items */
+.Puck [class*="ArrayField-item"],
+.Puck [class*="arrayField-item"] {
+  background: #f3f1ef !important;
+  border: 1px solid #e1ddd8 !important;
+  border-radius: 0.75rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.dark .Puck [class*="ArrayField-item"],
+.dark .Puck [class*="arrayField-item"] {
+  background: #1d222b !important;
+  border-color: #262b35 !important;
+}
+
+/* External Fields Container */
+.Puck [class*="ExternalFields"],
+.Puck [class*="Fields"] {
+  padding: 1rem !important;
+}
+
+/* Heading in sidebar */
+.Puck [class*="Heading"],
+.Puck h2,
+.Puck h3,
+.Puck h4 {
+  color: #1a1a1a !important;
+  font-weight: 600 !important;
+}
+
+.dark .Puck [class*="Heading"],
+.dark .Puck h2,
+.dark .Puck h3,
+.dark .Puck h4 {
+  color: #f5f5f8 !important;
+}
+
+/* Icon styling */
+.Puck svg {
+  color: currentColor !important;
+}
+
+/* Scrollbar styling for Puck */
+.Puck ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.Puck ::-webkit-scrollbar-track {
+  background: #f3f1ef;
+  border-radius: 4px;
+}
+
+.Puck ::-webkit-scrollbar-thumb {
+  background: #d4cfc9;
+  border-radius: 4px;
+}
+
+.Puck ::-webkit-scrollbar-thumb:hover {
+  background: #a7a39e;
+}
+
+.dark .Puck ::-webkit-scrollbar-track {
+  background: #1d222b;
+}
+
+.dark .Puck ::-webkit-scrollbar-thumb {
+  background: #313746;
+}
+
+.dark .Puck ::-webkit-scrollbar-thumb:hover {
+  background: #7d8190;
+}
+
+/* Puck Preview iframe */
+.Puck iframe {
+  background: #ffffff !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+.dark .Puck iframe {
+  background: #171b22 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Publish Button Override */
+.Puck [class*="headerActions"] button[class*="publish"],
+.Puck header button:last-child {
+  background: #a07855 !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  padding: 0.5rem 1.25rem !important;
+  border-radius: 0.5rem !important;
+  border: none !important;
+}
+
+.Puck [class*="headerActions"] button[class*="publish"]:hover,
+.Puck header button:last-child:hover {
+  background: #8c6245 !important;
+}
+
+.dark .Puck [class*="headerActions"] button[class*="publish"],
+.dark .Puck header button:last-child {
+  background: #b8896a !important;
+}
+
+.dark .Puck [class*="headerActions"] button[class*="publish"]:hover,
+.dark .Puck header button:last-child:hover {
+  background: #a07855 !important;
+}
+
+/* Animation for selection */
+@keyframes puckSelectionPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgba(160, 120, 85, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(160, 120, 85, 0.2);
+  }
+}
+
+.Puck [class*="--isSelected"] {
+  animation: puckSelectionPulse 2s ease-in-out infinite !important;
+}
+
+.dark .Puck [class*="--isSelected"] {
+  animation: puckSelectionPulse 2s ease-in-out infinite !important;
+}
+
+@keyframes darkPuckSelectionPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgba(184, 137, 106, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(184, 137, 106, 0.2);
+  }
+}
+
+/* ===========================================
+   Puck Scrolling & Layout Fixes
+   Critical for proper scrolling behavior
+   =========================================== */
+
+/* Main Puck container - must fill available space */
+.Puck {
+  height: 100% !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Puck body wrapper */
+.Puck > div:first-child,
+.Puck-body {
+  flex: 1 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  overflow: hidden !important;
+}
+
+/* Left sidebar - scrollable */
+.Puck-leftSideBar {
+  flex-shrink: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  height: 100% !important;
+  max-height: 100% !important;
+}
+
+/* Right sidebar - scrollable */
+.Puck-rightSideBar {
+  flex-shrink: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  height: 100% !important;
+  max-height: 100% !important;
+}
+
+/* Frame container - must allow internal scrolling */
+.Puck-frame {
+  flex: 1 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Canvas area inside frame */
+.Puck-canvas {
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow: auto !important;
+  padding: 1.5rem !important;
+}
+
+/* Preview container - scrollable */
+.Puck-preview,
+.Puck [class*="Preview"] {
+  overflow: auto !important;
+  max-height: 100% !important;
+}
+
+/* Root render area - scrollable content */
+.Puck-root {
+  min-height: min-content !important;
+  overflow: visible !important;
+}
+
+/* DropZone container - allow scrolling */
+.Puck [class*="DropZone"] {
+  min-height: 100px !important;
+}
+
+/* Component list in sidebar */
+.Puck [class*="ComponentList"] {
+  overflow-y: auto !important;
+  max-height: none !important;
+}
+
+/* Fields container in right sidebar */
+.Puck [class*="Fields"],
+.Puck [class*="fields"] {
+  overflow-y: auto !important;
+  max-height: none !important;
+  padding-bottom: 2rem !important;
+}
+
+/* Layers panel */
+.Puck [class*="LayerTree"],
+.Puck [class*="layers"] {
+  overflow-y: auto !important;
+  max-height: none !important;
+}
+
+/* Action bar positioning */
+.Puck [class*="ActionBar"] {
+  position: sticky !important;
+  z-index: 100 !important;
+}
+
+/* Viewport controls */
+.Puck [class*="PuckPreview"],
+.Puck [class*="puckPreview"] {
+  height: 100% !important;
+  overflow: auto !important;
+}
+
+/* Modal/Dialog scrolling */
+.Puck [class*="Modal"],
+.Puck [class*="Drawer"] {
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+}
+
+/* External input modals */
+.Puck [class*="ExternalInput"] {
+  max-height: 80vh !important;
+  overflow-y: auto !important;
+}

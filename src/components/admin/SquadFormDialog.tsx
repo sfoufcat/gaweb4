@@ -70,6 +70,7 @@ export function SquadFormDialog({
   uploadEndpoint = '/api/admin/upload-media',
 }: SquadFormDialogProps) {
   const [name, setName] = useState('');
+  const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [visibility, setVisibility] = useState<SquadVisibility>('public');
@@ -95,6 +96,26 @@ export function SquadFormDialog({
 
   // Check if squad is in grace period
   const isInGracePeriod = squad?.programId && squad?.gracePeriodStartDate && !squad?.isClosed;
+
+  // Generate slug from name (kebab-case)
+  const generateSlugFromName = (name: string) => {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '') // Remove special characters
+      .replace(/\s+/g, '-')     // Replace spaces with hyphens
+      .replace(/-+/g, '-')      // Replace multiple hyphens with single
+      .replace(/^-|-$/g, '');   // Remove leading/trailing hyphens
+  };
+
+  // Handle name change - auto-generate slug only when creating new squad
+  const handleNameChange = (newName: string) => {
+    setName(newName);
+    // Auto-generate slug from name only when creating (not editing)
+    if (!squad) {
+      setSlug(generateSlugFromName(newName));
+    }
+  };
 
   // Handle conversion to community
   const handleConvertToCommunity = async () => {
@@ -128,6 +149,7 @@ export function SquadFormDialog({
   useEffect(() => {
     if (squad) {
       setName(squad.name);
+      setSlug(squad.slug || '');
       setDescription(squad.description || '');
       setAvatarUrl(squad.avatarUrl || '');
       setVisibility(squad.visibility || 'public');
@@ -139,6 +161,7 @@ export function SquadFormDialog({
       setBillingInterval(squad.billingInterval || 'monthly');
     } else {
       setName('');
+      setSlug('');
       setDescription('');
       setAvatarUrl('');
       setVisibility('public');
@@ -372,6 +395,7 @@ export function SquadFormDialog({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
+          slug: slug.trim() || undefined, // API will auto-generate if not provided
           description: description.trim() || undefined,
           avatarUrl: avatarUrl.trim() || undefined,
           visibility,
@@ -483,11 +507,32 @@ export function SquadFormDialog({
               id="name"
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => handleNameChange(e.target.value)}
               placeholder="Enter squad name"
               className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert"
               required
             />
+          </div>
+
+          {/* URL Slug */}
+          <div>
+            <label htmlFor="slug" className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+              URL Slug
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">/join/squad/</span>
+              <input
+                id="slug"
+                type="text"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                placeholder="my-squad"
+                className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert font-mono text-sm"
+              />
+            </div>
+            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
+              Used in funnel links. Auto-generated from name if left empty.
+            </p>
           </div>
 
           {/* Description */}
