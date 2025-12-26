@@ -2530,57 +2530,30 @@ export interface FunnelStepConfigSuccess {
 }
 
 // ============================================================================
-// LANDING PAGE BUILDER TYPES (Puck)
+// LANDING PAGE TYPES
 // ============================================================================
 
 /**
- * Puck content item - a single section in the landing page
+ * Landing page template type
  */
-export interface PuckContent {
-  type: string;
-  props: Record<string, unknown>;
-}
+export type LandingPageTemplate = 'classic' | 'modern' | 'minimal';
 
 /**
- * Puck data format - the serialized state of a landing page
- */
-export interface PuckData {
-  content: PuckContent[];
-  root?: { props?: Record<string, unknown> };
-}
-
-/**
- * Landing page template category
- */
-export type LandingPageTemplateCategory = 
-  | 'minimal' 
-  | 'sales' 
-  | 'webinar' 
-  | 'course' 
-  | 'coaching';
-
-/**
- * Landing page template definition
- */
-export interface LandingPageTemplate {
-  id: string;
-  name: string;
-  description: string;
-  thumbnail: string;
-  category: LandingPageTemplateCategory;
-  puckData: PuckData;
-}
-
-/**
- * Landing page step configuration
+ * Landing page step configuration - unified for both Programs and Funnels
  */
 export interface FunnelStepConfigLandingPage {
-  puckData: PuckData;            // Puck's serialized page state
-  templateId?: string;           // Template this was based on
-  settings?: {
-    backgroundColor?: string;    // Page background color
-    maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | 'full'; // Content max width
-  };
+  template: LandingPageTemplate;
+  headline?: string;
+  subheadline?: string;
+  coachBio?: string;
+  keyOutcomes?: string[];
+  features?: ProgramFeature[];
+  testimonials?: ProgramTestimonial[];
+  faqs?: ProgramFAQ[];
+  ctaText?: string;
+  ctaSubtext?: string;
+  showTestimonials?: boolean;
+  showFAQ?: boolean;
 }
 
 export type FunnelStepConfig = 

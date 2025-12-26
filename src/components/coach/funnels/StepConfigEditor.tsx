@@ -10,6 +10,7 @@ import { nanoid } from 'nanoid';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { LandingPageEditor, type LandingPageFormData } from '@/components/shared/LandingPageEditor';
 
 interface StepConfigEditorProps {
   step: FunnelStep;
@@ -1373,187 +1374,36 @@ interface LandingPageConfigEditorProps {
   onClose: () => void;
 }
 
-function LandingPageConfigEditor({ config, onChange, onClose }: LandingPageConfigEditorProps) {
-  const [showEditor, setShowEditor] = useState(false);
-  
-  // Dynamic import of the LandingPageEditor
-  const handleOpenEditor = () => {
-    setShowEditor(true);
+function LandingPageConfigEditor({ config, onChange }: LandingPageConfigEditorProps) {
+  // Map config to form data format
+  const formData: LandingPageFormData = {
+    template: (config.template as LandingPageFormData['template']) || 'classic',
+    headline: config.headline as string | undefined,
+    subheadline: config.subheadline as string | undefined,
+    coachBio: config.coachBio as string | undefined,
+    keyOutcomes: config.keyOutcomes as string[] | undefined,
+    features: config.features as LandingPageFormData['features'],
+    testimonials: config.testimonials as LandingPageFormData['testimonials'],
+    faqs: config.faqs as LandingPageFormData['faqs'],
+    ctaText: config.ctaText as string | undefined,
+    ctaSubtext: config.ctaSubtext as string | undefined,
+    showTestimonials: config.showTestimonials as boolean | undefined,
+    showFAQ: config.showFAQ as boolean | undefined,
   };
 
-  const handleSaveFromEditor = async (puckData: unknown) => {
+  const handleFormChange = (newData: LandingPageFormData) => {
     onChange({
       ...config,
-      puckData,
+      ...newData,
     });
-    setShowEditor(false);
   };
 
-  if (showEditor) {
-    // Dynamically import the editor component
-    const LandingPageEditorLazy = React.lazy(() => 
-      import('@/components/landing-builder/LandingPageEditor').then(mod => ({
-        default: mod.LandingPageEditor
-      }))
-    );
-
-    return (
-      <React.Suspense fallback={
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#a07855]"></div>
-        </div>
-      }>
-        <LandingPageEditorLazy
-          initialData={config.puckData as import('@measured/puck').Data | undefined}
-          onSave={handleSaveFromEditor}
-          onCancel={() => setShowEditor(false)}
-        />
-      </React.Suspense>
-    );
-  }
-
-  const puckContent = (config.puckData as { content?: unknown[] } | undefined)?.content;
-  const hasPuckData = Boolean(puckContent && puckContent.length > 0);
-  const sectionCount = puckContent?.length ?? 0;
-
   return (
-    <div className="space-y-6">
-      {/* Status Banner - Show when landing page is configured */}
-      {hasPuckData && (
-        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 dark:from-emerald-600 dark:to-teal-600 rounded-2xl p-6 text-white shadow-lg">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center flex-shrink-0">
-              <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-xl font-bold mb-1">Landing Page Ready!</h3>
-              <p className="text-white/90 text-sm">
-                Your landing page is configured with <span className="font-semibold">{sectionCount} section{sectionCount !== 1 ? 's' : ''}</span>
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleOpenEditor}
-              className="px-5 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur rounded-lg font-semibold transition-colors inline-flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              Edit
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Builder Card */}
-      <div className="bg-gradient-to-br from-[#a07855]/5 to-[#8c6245]/10 dark:from-[#a07855]/10 dark:to-[#8c6245]/20 border border-[#a07855]/20 dark:border-[#a07855]/30 rounded-2xl p-6">
-        <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-xl bg-[#a07855]/10 dark:bg-[#a07855]/20 flex items-center justify-center flex-shrink-0">
-            <svg className="w-7 h-7 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-            </svg>
-          </div>
-          <div className="flex-1">
-            <h4 className="text-lg font-semibold text-text-primary dark:text-[#f5f5f8] mb-1">
-              Visual Landing Page Builder
-            </h4>
-            <p className="text-sm text-text-secondary dark:text-[#b2b6c2] mb-4">
-              Create beautiful landing pages with our drag-and-drop editor. Choose from templates or build from scratch.
-            </p>
-            <button
-              type="button"
-              onClick={handleOpenEditor}
-              className="px-5 py-2.5 bg-[#a07855] hover:bg-[#8c6245] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white rounded-xl font-semibold transition-colors inline-flex items-center gap-2 shadow-sm"
-            >
-              {hasPuckData ? (
-                <>
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                  Edit Landing Page
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  Create Landing Page
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Page Settings */}
-      <div>
-        <h4 className="font-medium text-text-primary dark:text-[#f5f5f8] mb-3">Page Settings</h4>
-        
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
-              Background Color
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="color"
-                value={(config.settings as { backgroundColor?: string })?.backgroundColor || '#ffffff'}
-                onChange={(e) => onChange({
-                  ...config,
-                  settings: {
-                    ...(config.settings as Record<string, unknown> || {}),
-                    backgroundColor: e.target.value,
-                  },
-                })}
-                className="w-10 h-10 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] cursor-pointer"
-              />
-              <input
-                type="text"
-                value={(config.settings as { backgroundColor?: string })?.backgroundColor || ''}
-                onChange={(e) => onChange({
-                  ...config,
-                  settings: {
-                    ...(config.settings as Record<string, unknown> || {}),
-                    backgroundColor: e.target.value,
-                  },
-                })}
-                placeholder="#ffffff"
-                className="flex-1 px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8]"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
-              Max Content Width
-            </label>
-            <Select
-              value={(config.settings as { maxWidth?: string })?.maxWidth || 'full'}
-              onValueChange={(value) => onChange({
-                ...config,
-                settings: {
-                  ...(config.settings as Record<string, unknown> || {}),
-                  maxWidth: value,
-                },
-              })}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select max width" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="sm">Small (640px)</SelectItem>
-                <SelectItem value="md">Medium (768px)</SelectItem>
-                <SelectItem value="lg">Large (1024px)</SelectItem>
-                <SelectItem value="xl">Extra Large (1280px)</SelectItem>
-                <SelectItem value="full">Full Width</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-    </div>
+    <LandingPageEditor 
+      formData={formData} 
+      onChange={handleFormChange}
+      showHeadline={true}
+    />
   );
 }
 
