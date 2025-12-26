@@ -250,13 +250,14 @@ export default function CoachPage() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
           <TabsList className="mb-6 w-full flex-nowrap overflow-x-auto justify-start bg-white/60 dark:bg-[#11141b]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 p-1 scrollbar-hide">
+            {/* 1. Clients - always visible */}
             <TabsTrigger 
               value="clients"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
             >
               Clients
             </TabsTrigger>
-            {/* Programs tab - before Squads (full access only) */}
+            {/* 2. Programs - full access only */}
             {!isLimitedOrgCoach && (
               <TabsTrigger 
                 value="programs"
@@ -265,13 +266,14 @@ export default function CoachPage() {
                 Programs
               </TabsTrigger>
             )}
+            {/* 3. Squads - always visible */}
             <TabsTrigger 
               value="squads"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
             >
               Squads
             </TabsTrigger>
-            {/* Analytics tab - full access only */}
+            {/* 4. Analytics - full access only */}
             {!isLimitedOrgCoach && (
               <TabsTrigger 
                 value="analytics"
@@ -280,14 +282,21 @@ export default function CoachPage() {
                 Analytics
               </TabsTrigger>
             )}
-            {/* Full access tabs - Discounts, Channels, Funnels */}
+            {/* 5. Content - always visible */}
+            <TabsTrigger 
+              value="discover"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+            >
+              Content
+            </TabsTrigger>
+            {/* 6-9. Funnels, Channels, Referrals, Discounts - full access only */}
             {!isLimitedOrgCoach && (
               <>
                 <TabsTrigger 
-                  value="discounts"
+                  value="funnels"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
                 >
-                  Discounts
+                  Funnels
                 </TabsTrigger>
                 <TabsTrigger 
                   value="channels"
@@ -296,51 +305,33 @@ export default function CoachPage() {
                   Channels
                 </TabsTrigger>
                 <TabsTrigger 
-                  value="funnels"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
-                >
-                  Funnels
-                </TabsTrigger>
-                <TabsTrigger 
                   value="referrals"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
                 >
                   Referrals
                 </TabsTrigger>
+                <TabsTrigger 
+                  value="discounts"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Discounts
+                </TabsTrigger>
               </>
             )}
-            <TabsTrigger 
-              value="discover"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
-            >
-              Content
-            </TabsTrigger>
-            {/* Full access tabs - second group (Forms, Customize) */}
+            {/* 10-11. Customize, Plan - full access only */}
             {!isLimitedOrgCoach && (
               <>
-                <TabsTrigger 
-                  value="upgrade-forms"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
-                >
-                  Upgrade Forms
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="coaching-forms"
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
-                >
-                  Coaching Intake Forms
-                </TabsTrigger>
                 <TabsTrigger 
                   value="customize"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
                 >
-                  Customize & Settings
+                  Customize
                 </TabsTrigger>
                 <TabsTrigger 
                   value="plan"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
                 >
-                  Plan & Billing
+                  Plan
                 </TabsTrigger>
               </>
             )}

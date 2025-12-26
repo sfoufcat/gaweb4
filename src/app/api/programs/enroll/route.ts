@@ -385,17 +385,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Already enrolled in this program' }, { status: 400 });
     }
 
-    // Check type constraints (max 1 active group, max 1 active individual)
+    // Check type constraints (max 1 active group, max 1 active individual at a time)
+    // But allow enrollment in future programs if start date is on/after current program ends
     for (const doc of existingEnrollments.docs) {
       const enrollment = doc.data() as ProgramEnrollment;
-      if (enrollment.status === 'active') {
+      if (enrollment.status === 'active' || enrollment.status === 'upcoming') {
         const enrolledProgramDoc = await adminDb.collection('programs').doc(enrollment.programId).get();
         const enrolledProgram = enrolledProgramDoc.data() as Program | undefined;
         
         if (enrolledProgram?.type === program.type) {
-          return NextResponse.json({ 
-            error: `You already have an active ${program.type} program` 
-          }, { status: 400 });
+          // Calculate existing program's end date
+          const existingStartDate = new Date(enrollment.startedAt);
+          const existingEndDate = new Date(existingStartDate);
+          existingEndDate.setDate(existingEndDate.getDate() + (enrolledProgram.lengthDays - 1));
+          
+          // Determine new program's start date
+          let newStartDate: Date;
+          if (cohort) {
+            // Group program - starts on cohort start date
+            newStartDate = new Date(cohort.startDate);
+          } else {
+            // Individual program - starts today or tomorrow based on time
+            const hour = new Date().getHours();
+            if (hour < 12) {
+              newStartDate = new Date();
+              newStartDate.setHours(0, 0, 0, 0);
+            } else {
+              newStartDate = new Date();
+              newStartDate.setDate(newStartDate.getDate() + 1);
+              newStartDate.setHours(0, 0, 0, 0);
+            }
+          }
+          
+          // Block if new program starts before existing program ends
+          if (newStartDate <= existingEndDate) {
+            const existingEndDateStr = existingEndDate.toISOString().split('T')[0];
+            return NextResponse.json({ 
+              error: `You already have an active ${program.type} program (ends ${existingEndDateStr}). You can enroll in a future program starting after that date.` 
+            }, { status: 400 });
+          }
         }
       }
     }

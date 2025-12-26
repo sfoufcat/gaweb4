@@ -382,7 +382,7 @@ export interface SyncProgramTasksResult {
  * 1. Finds the user's active enrollment (if any)
  * 2. Calculates what program day they're on
  * 3. Creates tasks from the program day template if needed
- * 4. Places tasks in Daily Focus (up to 3) or Backlog
+ * 4. Places tasks in Daily Focus (up to org's defaultDailyFocusSlots) or Backlog
  */
 export async function syncProgramTasksForToday(
   userId: string,
@@ -472,7 +472,20 @@ export async function syncProgramTasksForToday(
   const existingFocusTasks = await getExistingFocusTasks(userId, today);
   const existingBacklogTasks = await getExistingBacklogTasks(userId, today);
   
-  let availableFocusSlots = 3 - existingFocusTasks.length;
+  // Get org focus limit (defaultDailyFocusSlots or fallback to 3)
+  let focusLimit = 3;
+  const orgId = (enrollment as { organizationId?: string }).organizationId;
+  if (orgId) {
+    try {
+      const orgSettingsDoc = await adminDb.collection('org_settings').doc(orgId).get();
+      const orgSettings = orgSettingsDoc.data();
+      focusLimit = orgSettings?.defaultDailyFocusSlots ?? 3;
+    } catch {
+      // Fallback to 3 if org settings can't be fetched
+    }
+  }
+  
+  let availableFocusSlots = focusLimit - existingFocusTasks.length;
   let nextFocusOrder = existingFocusTasks.length > 0 
     ? Math.max(...existingFocusTasks.map(t => t.order)) + 1 
     : 0;

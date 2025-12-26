@@ -27,6 +27,7 @@ import { TaskSheetDefine } from './TaskSheetDefine';
 import { TaskSheetManage } from './TaskSheetManage';
 import { useTasks } from '@/hooks/useTasks';
 import { useActiveEnrollment } from '@/hooks/useActiveEnrollment';
+import { useDailyFocusLimit } from '@/hooks/useDailyFocusLimit';
 import type { Task } from '@/types';
 
 // Empty drop zone component for when Daily Focus has no tasks
@@ -92,6 +93,9 @@ export function DailyFocusSection({
   // Get enrollment for program badge
   const { hasEnrollment, enrollment, program } = useActiveEnrollment();
   
+  // Get org's daily focus limit
+  const { limit: focusLimit } = useDailyFocusLimit();
+  
   // Determine if we should show the starter program badge
   const programBadge = hasEnrollment && enrollment?.status === 'active' && program?.name
     ? `${program.name} Program`
@@ -122,7 +126,7 @@ export function DailyFocusSection({
     (isOverEmptyFocusZone && activeTask.listType === 'backlog')
   );
   const isDraggingToBacklog = activeTask && overTask && activeTask.listType === 'focus' && overTask.listType === 'backlog';
-  const canMoveToFocus = isDraggingToFocus && focusTasks.length < 3;
+  const canMoveToFocus = isDraggingToFocus && focusTasks.length < focusLimit;
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -184,10 +188,10 @@ export function DailyFocusSection({
 
     // If moving between lists
     if (activeListType !== overListType) {
-      // If moving TO focus and focus already has 3 items (excluding the active task if it's already in focus)
+      // If moving TO focus and focus is already at limit (excluding the active task if it's already in focus)
       const currentFocusCount = focusTasks.filter(t => t.id !== active.id).length;
-      if (overListType === 'focus' && currentFocusCount >= 3) {
-        console.log('Cannot move to focus: limit of 3 tasks reached');
+      if (overListType === 'focus' && currentFocusCount >= focusLimit) {
+        console.log(`Cannot move to focus: limit of ${focusLimit} tasks reached`);
         return;
       }
 
@@ -481,7 +485,7 @@ export function DailyFocusSection({
                     You&apos;ve closed the day. Time to rest, so you can do great tomorrow.
                   </p>
                 </div>
-              ) : focusTasks.length < 3 && !activeId ? (
+              ) : focusTasks.length < focusLimit && !activeId ? (
                 <button
                   onClick={() => handleAddTask(false)}
                   className="w-full bg-[#f3f1ef] dark:bg-[#11141b] rounded-[20px] p-4 flex items-center justify-center text-text-muted dark:text-[#7d8190] hover:text-text-secondary dark:hover:text-[#b2b6c2] transition-colors"

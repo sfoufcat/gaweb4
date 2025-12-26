@@ -269,6 +269,9 @@ export async function POST(request: NextRequest) {
         ? body.assignedCoachIds 
         : undefined,
       defaultHabits: defaultHabits.length > 0 ? defaultHabits : undefined,
+      dailyFocusSlots: typeof body.dailyFocusSlots === 'number' && body.dailyFocusSlots >= 1 && body.dailyFocusSlots <= 4
+        ? body.dailyFocusSlots
+        : undefined,
       isActive: body.isActive !== false,
       isPublished: body.isPublished === true,
       // Landing page content

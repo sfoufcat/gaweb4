@@ -710,6 +710,9 @@ export interface Program {
   // Content
   defaultHabits?: ProgramHabitTemplate[]; // Default habits for enrolled users
   
+  // Daily Focus settings
+  dailyFocusSlots?: number;            // 1-4, default 2 - how many focus tasks this program contributes per day
+  
   // Status
   isActive: boolean; // Whether program can accept enrollments
   isPublished: boolean; // Whether visible in Discover
@@ -1913,6 +1916,9 @@ export interface OrgSettings {
   // Content categories (coach-defined)
   articleCategories?: string[];        // Coach-defined article categories for the org
   
+  // Daily Focus settings
+  defaultDailyFocusSlots?: number;     // 1-6, default 3 - hard cap for all users in this org
+  
   createdAt: string;                   // ISO timestamp
   updatedAt: string;                   // ISO timestamp
 }
@@ -1940,6 +1946,7 @@ export const DEFAULT_ORG_SETTINGS: Omit<OrgSettings, 'id' | 'organizationId' | '
   alumniDiscountValue: 0,
   programEmptyStateBehavior: 'discover', // Show find program page by default
   squadEmptyStateBehavior: 'discover',   // Show find squad page by default
+  defaultDailyFocusSlots: 3,             // Default: 3 daily focus tasks (matches current behavior)
 };
 
 /**

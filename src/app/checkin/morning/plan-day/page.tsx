@@ -27,6 +27,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Pencil, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTasks } from '@/hooks/useTasks';
+import { useDailyFocusLimit } from '@/hooks/useDailyFocusLimit';
 import { TaskSheetDefine } from '@/components/tasks/TaskSheetDefine';
 import { CheckInPageWrapper } from '@/components/checkin/CheckInPageWrapper';
 import type { Task } from '@/types';
@@ -280,6 +281,9 @@ export default function PlanDayPage() {
     reorderTasks,
     fetchTasks,
   } = useTasks({ date: today });
+  
+  // Get org's daily focus limit
+  const { limit: focusLimit } = useDailyFocusLimit();
 
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -335,7 +339,7 @@ export default function PlanDayPage() {
     (overTask && activeTask.listType === 'backlog' && overTask.listType === 'focus') ||
     (isOverEmptyFocusZone && activeTask.listType === 'backlog')
   );
-  const canMoveToFocus = isDraggingToFocus && focusTasks.length < 3;
+  const canMoveToFocus = isDraggingToFocus && focusTasks.length < focusLimit;
 
   // Drag sensors
   const sensors = useSensors(
@@ -390,7 +394,7 @@ export default function PlanDayPage() {
     // If moving between lists
     if (draggedTask.listType !== targetTask.listType) {
       // Enforce focus limit with warning
-      if (targetTask.listType === 'focus' && focusTasks.length >= 3) {
+      if (targetTask.listType === 'focus' && focusTasks.length >= focusLimit) {
         setShowFocusFullWarning(true);
         setTimeout(() => setShowFocusFullWarning(false), 3000);
         return;
@@ -581,7 +585,7 @@ export default function PlanDayPage() {
               )}
 
               {/* Add focus task button */}
-              {focusTasks.length < 3 && !activeId && (
+              {focusTasks.length < focusLimit && !activeId && (
                 <button
                   onClick={() => handleAddTask('focus')}
                   className="w-full bg-[#f3f1ef] dark:bg-[#1d222b] rounded-[20px] p-4 flex items-center justify-center"

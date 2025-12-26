@@ -221,6 +221,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
     }
 
+    // Get org settings to determine focus limit
+    const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
+    const orgSettings = orgSettingsDoc.data();
+    const focusLimit = orgSettings?.defaultDailyFocusSlots ?? 3;
+
     // Get existing tasks for this date to determine order and listType (within org)
     const existingTasksSnapshot = await adminDb
       .collection('tasks')
@@ -238,11 +243,11 @@ export async function POST(request: NextRequest) {
     const focusTasks = existingTasks.filter((t) => t.listType === 'focus');
     const backlogTasks = existingTasks.filter((t) => t.listType === 'backlog');
 
-    // Determine listType: if focus has < 3 tasks, add to focus, otherwise backlog
-    let finalListType: 'focus' | 'backlog' = listType || (focusTasks.length < 3 ? 'focus' : 'backlog');
+    // Determine listType: if focus has space, add to focus, otherwise backlog
+    let finalListType: 'focus' | 'backlog' = listType || (focusTasks.length < focusLimit ? 'focus' : 'backlog');
 
     // If explicitly requesting focus but focus is full, move to backlog
-    if (finalListType === 'focus' && focusTasks.length >= 3) {
+    if (finalListType === 'focus' && focusTasks.length >= focusLimit) {
       finalListType = 'backlog';
     }
 

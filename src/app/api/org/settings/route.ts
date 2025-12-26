@@ -98,6 +98,15 @@ export async function PATCH(request: NextRequest) {
       updateData.squadEmptyStateBehavior = body.squadEmptyStateBehavior;
     }
 
+    // Daily focus settings
+    if (body.defaultDailyFocusSlots !== undefined) {
+      const slots = Number(body.defaultDailyFocusSlots);
+      if (isNaN(slots) || slots < 1 || slots > 6) {
+        return NextResponse.json({ error: 'Daily focus slots must be between 1 and 6' }, { status: 400 });
+      }
+      updateData.defaultDailyFocusSlots = slots;
+    }
+
     // Check if settings doc exists
     const settingsRef = adminDb.collection('org_settings').doc(organizationId);
     const settingsDoc = await settingsRef.get();

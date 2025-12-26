@@ -8,6 +8,7 @@ import { FeedSettingsToggle } from './FeedSettingsToggle';
 import { CommunitySettingsToggle } from './CommunitySettingsToggle';
 import { AlumniDiscountToggle } from './AlumniDiscountToggle';
 import { MenuEmptyStateSettings } from './MenuEmptyStateSettings';
+import { DailyFocusSettings } from './DailyFocusSettings';
 import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus, OrgEmailDefaults, MenuItemKey } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_EMAIL_SETTINGS, DEFAULT_EMAIL_DEFAULTS, validateSubdomain } from '@/types';
 import { IconPicker } from './IconPicker';
@@ -1658,6 +1659,11 @@ export function CustomizeBrandingTab() {
         {/* Menu Empty State Settings */}
         <div className="mt-4">
           <MenuEmptyStateSettings />
+        </div>
+        
+        {/* Daily Focus Settings */}
+        <div className="mt-4">
+          <DailyFocusSettings />
         </div>
       </div>
 

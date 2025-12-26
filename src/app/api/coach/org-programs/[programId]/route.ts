@@ -361,6 +361,14 @@ export async function PUT(
       updateData.defaultHabits = defaultHabits.length > 0 ? defaultHabits : null;
     }
 
+    // Handle daily focus slots
+    if (body.dailyFocusSlots !== undefined) {
+      const slots = Number(body.dailyFocusSlots);
+      if (!isNaN(slots) && slots >= 1 && slots <= 4) {
+        updateData.dailyFocusSlots = slots;
+      }
+    }
+
     // Handle landing page content fields
     if (body.coachBio !== undefined) {
       updateData.coachBio = body.coachBio?.trim() || null;

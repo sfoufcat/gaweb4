@@ -27,6 +27,7 @@ import { useWeeklyFocus } from '@/hooks/useWeeklyFocus';
 import { useHomeTutorial } from '@/hooks/useHomeTutorial';
 import { HomeTutorialOverlay } from '@/components/tutorial';
 import { useMenuTitles } from '@/contexts/BrandingContext';
+import { useDailyFocusLimit } from '@/hooks/useDailyFocusLimit';
 import { ProgramCarousel } from '@/components/home/ProgramCarousel';
 import { SquadCarousel } from '@/components/home/SquadCarousel';
 
@@ -75,6 +76,9 @@ export default function Dashboard() {
   const weeklyReflection = dashboardCheckIns?.weekly as { completedAt?: string } | null;
   const focusTasks = dashboardTasks?.focus || [];
   const checkInLoading = dashboardLoading;
+  
+  // Get org's daily focus limit
+  const { limit: focusLimit } = useDailyFocusLimit();
   const eveningCheckInLoading = dashboardLoading;
   const tasksLoading = dashboardLoading;
   const enrollmentsLoading = dashboardLoading;
@@ -287,8 +291,8 @@ export default function Dashboard() {
     );
   }, [hasEnrollment, programIsCompleted, programPending, tasksLoading, focusTasks.length, isMorningCheckInCompleted, isMorningWindow]);
   
-  // Check if all 3 focus tasks are completed
-  const allFocusTasksCompleted = focusTasks.length === 3 && 
+  // Check if all focus tasks are completed (when focus is at limit)
+  const allFocusTasksCompleted = focusTasks.length >= focusLimit && 
     focusTasks.every(task => task.status === 'completed');
   
   // Should show morning check-in CTA (during morning hours when not completed, not on weekends)

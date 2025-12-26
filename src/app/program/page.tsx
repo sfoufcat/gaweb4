@@ -261,7 +261,6 @@ export default function ProgramHubPage() {
                   <SquadTabContent 
                     programId={selectedProgram.program.id}
                     squadId={programSquadId || undefined}
-                    onBack={handleBackFromDetails}
                   />
                 </motion.div>
               )}
@@ -345,7 +344,6 @@ export default function ProgramHubPage() {
               <SquadTabContent 
                 programId={selectedProgram.program.id}
                 squadId={programSquadId || undefined}
-                onBack={handleBackFromDetails}
               />
             </motion.div>
           )}

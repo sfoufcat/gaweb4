@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Sparkles, Lightbulb, Target, Loader2 } from 'lucide-react';
 import { useActiveEnrollment } from '@/hooks/useActiveEnrollment';
 import { useTasks } from '@/hooks/useTasks';
+import { useDailyFocusLimit } from '@/hooks/useDailyFocusLimit';
 import { AISuggestTasksModal } from './AISuggestTasksModal';
 import { AIHelpCompleteModal } from './AIHelpCompleteModal';
 import { AITrackHelpModal } from './AITrackHelpModal';
@@ -17,6 +18,7 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
   const { enrollment, program, progress, isLoading: enrollmentLoading } = useActiveEnrollment();
   const today = new Date().toISOString().split('T')[0];
   const { focusTasks, backlogTasks, isLoading: tasksLoading, createTask, updateTask, fetchTasks } = useTasks({ date: today });
+  const { limit: focusLimit } = useDailyFocusLimit();
   
   const [activeAction, setActiveAction] = useState<AIAction | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -127,9 +129,9 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
   
   // Handle "Suggest tasks for today" button
   function handleSuggestTasks() {
-    // If already 3 tasks, show message
-    if (focusTasks.length >= 3) {
-      setError('You already have 3 tasks planned. Remove one or complete a task first.');
+    // If already at focus limit, show message
+    if (focusTasks.length >= focusLimit) {
+      setError(`You already have ${focusLimit} tasks planned. Remove one or complete a task first.`);
       return;
     }
     callAISupport('suggest_tasks_for_today');
@@ -191,7 +193,7 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
   
   // Handle adding track-specific task
   async function handleAddTrackTask(title: string) {
-    if (focusTasks.length >= 3) {
+    if (focusTasks.length >= focusLimit) {
       setError('Daily Focus is full. Remove a task first.');
       return;
     }

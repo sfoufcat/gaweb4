@@ -94,8 +94,8 @@ export async function GET(request: NextRequest) {
       const referredUser = userMap.get(data.referredUserId);
 
       return {
-        id: doc.id,
         ...data,
+        id: doc.id, // Use doc.id as the authoritative ID
         referredUserName: referredUser 
           ? `${referredUser.firstName || ''} ${referredUser.lastName || ''}`.trim() || referredUser.email 
           : undefined,

@@ -71,8 +71,16 @@ export async function PATCH(
     }
 
     if (body.listType !== undefined) {
-      // If moving to focus, ensure focus doesn't exceed 3 tasks
+      // If moving to focus, ensure focus doesn't exceed the limit
       if (body.listType === 'focus' && existingTask.listType !== 'focus') {
+        // Get org settings to determine focus limit
+        let focusLimit = 3; // Default fallback
+        if (organizationId) {
+          const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
+          const orgSettings = orgSettingsDoc.data();
+          focusLimit = orgSettings?.defaultDailyFocusSlots ?? 3;
+        }
+
         const focusTasksSnapshot = await adminDb
           .collection('tasks')
           .where('userId', '==', userId)
@@ -80,9 +88,9 @@ export async function PATCH(
           .where('listType', '==', 'focus')
           .get();
 
-        if (focusTasksSnapshot.size >= 3) {
+        if (focusTasksSnapshot.size >= focusLimit) {
           return NextResponse.json(
-            { error: 'Focus list is full. Maximum 3 tasks allowed.' },
+            { error: `Focus list is full. Maximum ${focusLimit} tasks allowed.` },
             { status: 400 }
           );
         }

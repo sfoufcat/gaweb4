@@ -91,6 +91,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     defaultHabits: ProgramHabitTemplate[];
     applyCoachesToExistingSquads: boolean;
     clientCommunityEnabled: boolean;
+    dailyFocusSlots: number;
   }>({
     name: '',
     type: 'group',
@@ -107,6 +108,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     defaultHabits: [],
     applyCoachesToExistingSquads: false,
     clientCommunityEnabled: false,
+    dailyFocusSlots: 2,
   });
   
   // Available coaches for selection
@@ -407,6 +409,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         defaultHabits: program.defaultHabits || [],
         applyCoachesToExistingSquads: false, // Reset on each edit
         clientCommunityEnabled: program.clientCommunityEnabled || false,
+        dailyFocusSlots: program.dailyFocusSlots ?? 2,
       });
     } else {
       setEditingProgram(null);
@@ -426,6 +429,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         defaultHabits: [],
         applyCoachesToExistingSquads: false,
         clientCommunityEnabled: false,
+        dailyFocusSlots: 2,
       });
     }
     setSaveError(null);
@@ -1143,6 +1147,22 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                         Tasks
                       </label>
                     </div>
+                    {/* Warning if too many focus tasks */}
+                    {(() => {
+                      const focusCount = dayFormData.tasks.filter(t => t.isPrimary).length;
+                      const programSlots = selectedProgram?.dailyFocusSlots ?? 2;
+                      if (focusCount > programSlots) {
+                        return (
+                          <div className="mb-3 flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl">
+                            <Target className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                            <p className="text-sm text-amber-800 dark:text-amber-300 font-albert">
+                              This day has {focusCount} focus tasks, but your program contributes {programSlots}. Extra tasks will go to users&apos; backlog.
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                     <div className="space-y-2">
                       {dayFormData.tasks.map((task, index) => (
                         <div 
@@ -1853,6 +1873,24 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       </div>
                     </div>
 
+                    {/* Daily Focus Settings */}
+                    <div>
+                      <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+                        Daily Focus Tasks
+                      </label>
+                      <input
+                        type="number"
+                        value={programFormData.dailyFocusSlots}
+                        onChange={(e) => setProgramFormData({ ...programFormData, dailyFocusSlots: Math.max(1, Math.min(4, parseInt(e.target.value) || 2)) })}
+                        min={1}
+                        max={4}
+                        className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                      />
+                      <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1">
+                        How many focus tasks this program contributes per day (1-4). Extra tasks go to users&apos; backlog.
+                      </p>
+                    </div>
+
                     {/* Group-specific settings */}
                     {programFormData.type === 'group' && (
                       <div className="space-y-4">
@@ -2354,6 +2392,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             defaultHabits: [],
             applyCoachesToExistingSquads: false,
             clientCommunityEnabled: false,
+            dailyFocusSlots: 2,
           });
           setIsProgramModalOpen(true);
         }}
