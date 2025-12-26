@@ -11,6 +11,7 @@ interface FeedListProps {
   isValidating?: boolean;
   hasMore: boolean;
   isEmpty: boolean;
+  isCoach?: boolean; // Whether current user can access post settings
   onLoadMore: () => void;
   onLike: (postId: string, isLiked: boolean) => void;
   onBookmark: (postId: string, isBookmarked: boolean) => void;
@@ -21,6 +22,7 @@ interface FeedListProps {
   onCommentAdded?: (postId: string) => void;
   onCommentDeleted?: (postId: string) => void;
   onCreatePost?: () => void;
+  onOpenSettings?: (post: FeedPost) => void;
 }
 
 // Skeleton post card with shimmer animation
@@ -116,6 +118,7 @@ export function FeedList({
   isValidating,
   hasMore,
   isEmpty,
+  isCoach = false,
   onLoadMore,
   onLike,
   onBookmark,
@@ -126,6 +129,7 @@ export function FeedList({
   onCommentAdded,
   onCommentDeleted,
   onCreatePost,
+  onOpenSettings,
 }: FeedListProps) {
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const { colors, isDefault } = useBrandingValues();
@@ -181,6 +185,7 @@ export function FeedList({
         >
           <PostCard
             post={post}
+            isCoach={isCoach}
             onLike={onLike}
             onBookmark={onBookmark}
             onShare={onShare}
@@ -189,6 +194,7 @@ export function FeedList({
             onReport={onReport}
             onCommentAdded={onCommentAdded}
             onCommentDeleted={onCommentDeleted}
+            onOpenSettings={onOpenSettings}
           />
         </div>
       ))}

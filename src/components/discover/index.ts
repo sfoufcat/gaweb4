@@ -11,3 +11,4 @@ export { ShareButton } from './ShareButton';
 export { AttendeeAvatars } from './AttendeeAvatars';
 export { ArticleCard } from './ArticleCard';
 export { RichContent } from './RichContent';
+export { AddToCalendarButton } from './AddToCalendarButton';

@@ -17,7 +17,8 @@ import {
   Sparkles,
   Info,
   CheckCircle,
-  Lock
+  Lock,
+  PlayCircle
 } from 'lucide-react';
 // Note: Lock is still used in the Add Step modal for tier-gated steps
 import type { FunnelStep, FunnelStepType, CoachTier, Funnel, Program, Squad } from '@/types';
@@ -39,7 +40,7 @@ const STEP_TYPE_INFO: Record<FunnelStepType, {
   question: { 
     icon: MessageSquare, 
     label: 'Question', 
-    description: 'Ask the user a question',
+    description: 'Single choice, multi-select, open question, and more',
     color: 'bg-blue-100 text-blue-600'
   },
   signup: { 
@@ -84,10 +85,16 @@ const STEP_TYPE_INFO: Record<FunnelStepType, {
     description: 'Show transformation graph',
     color: 'bg-amber-100 text-amber-600'
   },
+  explainer: { 
+    icon: PlayCircle, 
+    label: 'Explainer', 
+    description: 'Rich media with image, video, YouTube, or embed',
+    color: 'bg-indigo-100 text-indigo-600'
+  },
   info: { 
     icon: Info, 
     label: 'Info Card', 
-    description: 'Display information',
+    description: '[Legacy] Use Explainer instead',
     color: 'bg-cyan-100 text-cyan-600'
   },
   success: { 
@@ -102,7 +109,7 @@ const STEP_TYPE_INFO: Record<FunnelStepType, {
 const FIXED_STEP_TYPES: FunnelStepType[] = ['signup', 'payment', 'success'];
 
 // Step types available for adding (exclude fixed types)
-const ADDABLE_STEP_TYPES: FunnelStepType[] = ['question', 'goal_setting', 'identity', 'analyzing', 'plan_reveal', 'transformation', 'info'];
+const ADDABLE_STEP_TYPES: FunnelStepType[] = ['question', 'explainer', 'goal_setting', 'identity', 'analyzing', 'plan_reveal', 'transformation'];
 
 export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) {
   const [steps, setSteps] = useState<FunnelStep[]>([]);

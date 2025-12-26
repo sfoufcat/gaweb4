@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useState, useCallback, useMemo } from 'react';
+import { useUser, useAuth } from '@clerk/nextjs';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useFeed, type FeedPost, usePost } from '@/hooks/useFeed';
@@ -18,9 +18,13 @@ import { StoriesRow } from '@/components/feed/StoriesRow';
 import { FeedSidebar } from '@/components/feed/FeedSidebar';
 import { PostDetailModal } from '@/components/feed/PostDetailModal';
 import { StoryPlayerWrapper } from '@/components/feed/StoryPlayerWrapper';
+import { PostSettingsModal } from '@/components/feed/PostSettingsModal';
+import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
+import type { UserRole, OrgRole } from '@/types';
 
 export default function FeedPage() {
   const { user } = useUser();
+  const { sessionClaims } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
   const postId = searchParams.get('post');
@@ -31,6 +35,15 @@ export default function FeedPage() {
   const { colors, isDefault } = useBrandingValues();
   const { feed: feedTitle } = useMenuTitles();
   const feedEnabled = useFeedEnabled(); // From Edge Config via SSR - instant, no flash
+
+  // Check if user is a coach/admin (can access post settings)
+  const publicMetadata = sessionClaims?.publicMetadata as {
+    role?: UserRole;
+    orgRole?: OrgRole;
+  } | undefined;
+  const role = publicMetadata?.role;
+  const orgRole = publicMetadata?.orgRole;
+  const isCoach = canAccessCoachDashboard(role, orgRole);
   
   // Get squad data for stories - use squadId mode for instant loading (no waterfall)
   const { members: squadMembers, activeSquadId, isLoading: isLoadingSquad } = useSquad();
@@ -61,6 +74,7 @@ export default function FeedPage() {
   const [showCreatePostModal, setShowCreatePostModal] = useState(false);
   const [showCreateStoryModal, setShowCreateStoryModal] = useState(false);
   const [editingPost, setEditingPost] = useState<FeedPost | null>(null);
+  const [settingsPost, setSettingsPost] = useState<FeedPost | null>(null);
   const [selectedPostForShare, setSelectedPostForShare] = useState<string | null>(null);
   const [selectedPostForReport, setSelectedPostForReport] = useState<string | null>(null);
   const [selectedPostForView, setSelectedPostForView] = useState<string | null>(null);
@@ -130,6 +144,18 @@ export default function FeedPage() {
     // Update post in the feed (will trigger re-render)
     refresh();
     setEditingPost(null);
+  }, [refresh]);
+
+  // Handle open settings (coach only)
+  const handleOpenSettings = useCallback((post: FeedPost) => {
+    setSettingsPost(post);
+  }, []);
+
+  // Handle settings updated
+  const handleSettingsUpdated = useCallback((updatedPost: FeedPost) => {
+    // Refresh the feed to show updated settings
+    refresh();
+    setSettingsPost(null);
   }, [refresh]);
 
   // Handle delete
@@ -290,6 +316,7 @@ export default function FeedPage() {
                     isValidating={false}
                     hasMore={false}
                     isEmpty={false}
+                    isCoach={isCoach}
                     onLoadMore={() => {}}
                     onLike={optimisticLike}
                     onBookmark={optimisticBookmark}
@@ -300,6 +327,7 @@ export default function FeedPage() {
                     onCommentAdded={incrementCommentCount}
                     onCommentDeleted={decrementCommentCount}
                     onCreatePost={() => setShowCreatePostModal(true)}
+                    onOpenSettings={handleOpenSettings}
                   />
                 ) : null}
               </div>
@@ -354,6 +382,7 @@ export default function FeedPage() {
                     isValidating={isValidating}
                     hasMore={hasMore}
                     isEmpty={isEmpty}
+                    isCoach={isCoach}
                     onLoadMore={loadMore}
                     onLike={optimisticLike}
                     onBookmark={optimisticBookmark}
@@ -364,6 +393,7 @@ export default function FeedPage() {
                     onCommentAdded={incrementCommentCount}
                     onCommentDeleted={decrementCommentCount}
                     onCreatePost={() => setShowCreatePostModal(true)}
+                    onOpenSettings={handleOpenSettings}
                   />
                 </div>
               </>
@@ -426,6 +456,16 @@ export default function FeedPage() {
           post={editingPost}
           onClose={() => setEditingPost(null)}
           onPostUpdated={handlePostUpdated}
+        />
+      )}
+
+      {/* Post settings modal (coach only) */}
+      {settingsPost && (
+        <PostSettingsModal
+          isOpen={!!settingsPost}
+          post={settingsPost}
+          onClose={() => setSettingsPost(null)}
+          onSettingsUpdated={handleSettingsUpdated}
         />
       )}
 

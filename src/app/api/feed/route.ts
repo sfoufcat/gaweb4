@@ -7,6 +7,8 @@ import { adminDb } from '@/lib/firebase-admin';
  * GET /api/feed
  * Fetch posts from the organization's feed with pagination
  * Uses Firestore for storage (simpler than Stream Activity Feeds which requires dashboard setup)
+ * 
+ * On first page (no cursor), pinned posts are prepended to the feed
  */
 export async function GET(request: NextRequest) {
   try {
@@ -35,12 +37,27 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20', 10);
     const cursor = searchParams.get('cursor') || undefined;
 
-    // Fetch posts from Firestore
+    // On first page, fetch pinned posts
+    let pinnedDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+    if (!cursor) {
+      const pinnedSnapshot = await adminDb
+        .collection('feed_posts')
+        .where('organizationId', '==', organizationId)
+        .where('pinnedToFeed', '==', true)
+        .orderBy('pinnedAt', 'desc')
+        .get();
+      pinnedDocs = pinnedSnapshot.docs;
+    }
+
+    // Get IDs of pinned posts to exclude from regular feed
+    const pinnedIds = new Set(pinnedDocs.map(doc => doc.id));
+
+    // Fetch regular posts from Firestore
     let query = adminDb
       .collection('feed_posts')
       .where('organizationId', '==', organizationId)
       .orderBy('createdAt', 'desc')
-      .limit(limit + 1); // Fetch one extra to check if there's more
+      .limit(limit + 1 + pinnedIds.size); // Fetch extra to account for excluding pinned
 
     if (cursor) {
       const cursorDoc = await adminDb.collection('feed_posts').doc(cursor).get();
@@ -50,11 +67,17 @@ export async function GET(request: NextRequest) {
     }
 
     const snapshot = await query.get();
-    const hasMore = snapshot.docs.length > limit;
-    const docs = hasMore ? snapshot.docs.slice(0, limit) : snapshot.docs;
+    
+    // Filter out pinned posts from regular results (they're shown at top)
+    const regularDocs = snapshot.docs.filter(doc => !pinnedIds.has(doc.id));
+    const hasMore = regularDocs.length > limit;
+    const docs = hasMore ? regularDocs.slice(0, limit) : regularDocs;
+
+    // Combine pinned + regular docs for data fetching
+    const allDocs = [...pinnedDocs, ...docs];
 
     // Get unique author IDs
-    const authorIds = [...new Set(docs.map(doc => doc.data().authorId))];
+    const authorIds = [...new Set(allDocs.map(doc => doc.data().authorId))];
     
     // Batch fetch author data
     const authorDocs = await Promise.all(
@@ -65,7 +88,7 @@ export async function GET(request: NextRequest) {
     );
 
     // Get user's reactions for these posts
-    const postIds = docs.map(doc => doc.id);
+    const postIds = allDocs.map(doc => doc.id);
     const userReactionsSnapshot = await adminDb
       .collection('feed_reactions')
       .where('userId', '==', userId)
@@ -82,7 +105,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Get poll IDs for batch fetch
-    const pollIds = docs
+    const pollIds = allDocs
       .map(doc => doc.data().pollId)
       .filter((id): id is string => !!id);
     
@@ -97,8 +120,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Transform to frontend format
-    const posts = docs.map(doc => {
+    // Helper to transform a doc to post format
+    const transformPost = (doc: FirebaseFirestore.QueryDocumentSnapshot) => {
       const data = doc.data();
       const author = authorMap.get(data.authorId);
       const reactions = userReactions.get(doc.id) || new Set();
@@ -123,6 +146,12 @@ export async function GET(request: NextRequest) {
         hasLiked: reactions.has('like'),
         hasBookmarked: reactions.has('bookmark'),
         hasReposted: reactions.has('repost'),
+        // Coach settings
+        pinnedToFeed: data.pinnedToFeed || false,
+        pinnedToSidebar: data.pinnedToSidebar || false,
+        hideMetadata: data.hideMetadata || false,
+        disableInteractions: data.disableInteractions || false,
+        pinnedAt: data.pinnedAt || null,
         author: author ? {
           id: data.authorId,
           firstName: author.firstName,
@@ -131,7 +160,14 @@ export async function GET(request: NextRequest) {
           name: `${author.firstName || ''} ${author.lastName || ''}`.trim(),
         } : undefined,
       };
-    });
+    };
+
+    // Transform pinned and regular posts
+    const pinnedPosts = pinnedDocs.map(transformPost);
+    const regularPosts = docs.map(transformPost);
+    
+    // Combine: pinned first, then regular (on first page only)
+    const posts = cursor ? regularPosts : [...pinnedPosts, ...regularPosts];
 
     const nextCursor = hasMore && docs.length > 0 ? docs[docs.length - 1].id : null;
 
@@ -244,6 +280,12 @@ export async function POST(request: NextRequest) {
         hasLiked: false,
         hasBookmarked: false,
         hasReposted: false,
+        // Coach settings (default to false for new posts)
+        pinnedToFeed: false,
+        pinnedToSidebar: false,
+        hideMetadata: false,
+        disableInteractions: false,
+        pinnedAt: null,
         author: userData ? {
           id: userId,
           firstName: userData.firstName,

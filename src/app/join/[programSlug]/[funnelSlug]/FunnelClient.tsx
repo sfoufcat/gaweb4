@@ -17,6 +17,7 @@ import type {
   FunnelStepConfigAnalyzing,
   FunnelStepConfigPlanReveal,
   FunnelStepConfigInfo,
+  FunnelStepConfigExplainer,
   FunnelStepConfigSuccess,
 } from '@/types';
 
@@ -54,6 +55,7 @@ import { GoalStep } from '@/components/funnel/steps/GoalStep';
 import { IdentityStep } from '@/components/funnel/steps/IdentityStep';
 import { AnalyzingStep } from '@/components/funnel/steps/AnalyzingStep';
 import { PlanRevealStep } from '@/components/funnel/steps/PlanRevealStep';
+import { ExplainerStep } from '@/components/funnel/steps/ExplainerStep';
 import { InfoStep } from '@/components/funnel/steps/InfoStep';
 import { SuccessStep } from '@/components/funnel/steps/SuccessStep';
 
@@ -406,8 +408,16 @@ export default function FunnelClient({
       case 'transformation':
         return <PlanRevealStep {...commonProps} config={stepConfig.config as FunnelStepConfigPlanReveal} />;
       
+      case 'explainer':
+        return <ExplainerStep {...commonProps} config={stepConfig.config as FunnelStepConfigExplainer} />;
+      
       case 'info':
-        return <InfoStep {...commonProps} config={stepConfig.config as FunnelStepConfigInfo} />;
+        // Legacy support: treat 'info' as 'explainer' with defaults
+        return <ExplainerStep {...commonProps} config={{
+          ...stepConfig.config as FunnelStepConfigInfo,
+          mediaType: 'image',
+          layout: 'media_top',
+        } as FunnelStepConfigExplainer} />;
       
       case 'success':
         return <SuccessStep {...commonProps} config={stepConfig.config as FunnelStepConfigSuccess} />;

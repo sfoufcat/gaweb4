@@ -4,9 +4,8 @@ import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { adminDb } from '@/lib/firebase-admin';
 
 /**
- * GET /api/feed/trending
- * Fetch trending posts from the last 7 days, sorted by combined likes + comments
- * Returns top 5 posts with most engagement (no minimum threshold)
+ * GET /api/feed/pinned
+ * Fetch posts pinned to the sidebar
  */
 export async function GET(request: NextRequest) {
   try {
@@ -34,39 +33,21 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '5', 10);
 
-    // Calculate date 7 days ago
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const sevenDaysAgoISO = sevenDaysAgo.toISOString();
-
-    // Fetch posts from last 7 days
-    // Note: Firestore doesn't support ordering by computed fields,
-    // so we fetch recent posts and sort in memory by combined engagement
+    // Fetch posts pinned to sidebar, ordered by pinnedAt descending
     const snapshot = await adminDb
       .collection('feed_posts')
       .where('organizationId', '==', organizationId)
-      .where('createdAt', '>=', sevenDaysAgoISO)
+      .where('pinnedToSidebar', '==', true)
+      .orderBy('pinnedAt', 'desc')
+      .limit(limit)
       .get();
 
-    // Sort by combined likeCount + commentCount descending and take top N
-    // No minimum threshold - return top posts regardless of engagement level
-    const sortedDocs = snapshot.docs
-      .map(doc => {
-        const data = doc.data();
-        const engagement = (data.likeCount || 0) + (data.commentCount || 0);
-        return { doc, engagement };
-      })
-      .sort((a, b) => b.engagement - a.engagement)
-      .slice(0, limit)
-      .map(item => item.doc);
-
-    // Return empty array if no posts from this week (section won't show)
-    if (sortedDocs.length === 0) {
+    if (snapshot.empty) {
       return NextResponse.json({ posts: [] });
     }
 
     // Get unique author IDs
-    const authorIds = [...new Set(sortedDocs.map(doc => doc.data().authorId))];
+    const authorIds = [...new Set(snapshot.docs.map(doc => doc.data().authorId))];
     
     // Batch fetch author data
     const authorDocs = await Promise.all(
@@ -77,7 +58,7 @@ export async function GET(request: NextRequest) {
     );
 
     // Get user's reactions for these posts
-    const postIds = sortedDocs.map(doc => doc.id);
+    const postIds = snapshot.docs.map(doc => doc.id);
     const userReactionsSnapshot = await adminDb
       .collection('feed_reactions')
       .where('userId', '==', userId)
@@ -94,7 +75,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Transform to frontend format
-    const posts = sortedDocs.map(doc => {
+    const posts = snapshot.docs.map(doc => {
       const data = doc.data();
       const author = authorMap.get(data.authorId);
       const reactions = userReactions.get(doc.id) || new Set();
@@ -113,7 +94,7 @@ export async function GET(request: NextRequest) {
         hasLiked: reactions.has('like'),
         hasBookmarked: reactions.has('bookmark'),
         hasReposted: reactions.has('repost'),
-        // Coach settings
+        // Settings
         pinnedToFeed: data.pinnedToFeed || false,
         pinnedToSidebar: data.pinnedToSidebar || false,
         hideMetadata: data.hideMetadata || false,
@@ -131,9 +112,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ posts });
   } catch (error) {
-    console.error('[FEED_TRENDING] Error fetching trending posts:', error);
+    console.error('[FEED_PINNED] Error fetching pinned posts:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch trending posts' },
+      { error: 'Failed to fetch pinned posts' },
       { status: 500 }
     );
   }

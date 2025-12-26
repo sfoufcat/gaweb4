@@ -114,10 +114,8 @@ function EventCard({ event }: { event: UnifiedEvent }) {
     hour12: true 
   });
 
-  // Determine the link based on event type
-  const eventLink = event.eventType === 'squad_call'
-    ? `/squad?event=${event.id}`
-    : `/discover/events/${event.id}`;
+  // All events now use the unified event detail page
+  const eventLink = `/discover/events/${event.id}`;
 
   // Get event type badge
   const getEventTypeBadge = () => {
@@ -214,9 +212,8 @@ export function FeaturedEventCard({ event }: { event: UnifiedEvent }) {
     timeZoneName: 'short'
   });
 
-  const eventLink = event.eventType === 'squad_call'
-    ? `/squad?event=${event.id}`
-    : `/discover/events/${event.id}`;
+  // All events now use the unified event detail page
+  const eventLink = `/discover/events/${event.id}`;
 
   return (
     <Link

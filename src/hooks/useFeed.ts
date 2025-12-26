@@ -45,6 +45,12 @@ export interface FeedPost {
   originalImages?: string[];
   originalVideoUrl?: string;
   quote?: string;
+  // Coach-only settings
+  pinnedToFeed?: boolean;
+  pinnedToSidebar?: boolean;
+  hideMetadata?: boolean;
+  disableInteractions?: boolean;
+  pinnedAt?: string;
 }
 
 export interface FeedComment {

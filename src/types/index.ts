@@ -2270,7 +2270,8 @@ export type FunnelStepType =
   | 'analyzing'      // Loading/analyzing animation
   | 'plan_reveal'    // Show personalized plan
   | 'transformation' // Transformation graph visualization
-  | 'info'           // Information/welcome card
+  | 'explainer'      // Rich media explainer (image, video, embed)
+  | 'info'           // [DEPRECATED] Use 'explainer' - kept for backward compatibility
   | 'success';       // Completion step
 
 /**
@@ -2423,6 +2424,49 @@ export interface FunnelStepConfigInfo {
   ctaText?: string;
 }
 
+/**
+ * Explainer media types
+ */
+export type ExplainerMediaType = 
+  | 'image'          // Uploaded or URL image
+  | 'video_upload'   // Uploaded video file
+  | 'youtube'        // YouTube embed
+  | 'vimeo'          // Vimeo embed
+  | 'loom'           // Loom embed
+  | 'iframe';        // Generic iframe/embed code
+
+/**
+ * Explainer layout options
+ */
+export type ExplainerLayout = 
+  | 'media_top'      // Media above text (default)
+  | 'media_bottom'   // Text above media
+  | 'fullscreen'     // Media only, no text (just CTA)
+  | 'side_by_side';  // Media + text side-by-side (desktop)
+
+/**
+ * Explainer step configuration - rich media with layouts
+ */
+export interface FunnelStepConfigExplainer {
+  heading?: string;
+  body?: string;
+  ctaText?: string;
+  // Media configuration
+  mediaType?: ExplainerMediaType;
+  imageUrl?: string;           // For 'image' type
+  videoUrl?: string;           // For 'video_upload' type
+  youtubeUrl?: string;         // For 'youtube' type (full URL)
+  vimeoUrl?: string;           // For 'vimeo' type
+  loomUrl?: string;            // For 'loom' type
+  iframeCode?: string;         // For 'iframe' type (raw embed code or URL)
+  // Layout
+  layout?: ExplainerLayout;
+  // Video options
+  autoplay?: boolean;
+  muted?: boolean;
+  loop?: boolean;
+}
+
 export interface FunnelStepConfigSuccess {
   heading?: string;
   body?: string;
@@ -2442,7 +2486,8 @@ export type FunnelStepConfig =
   | { type: 'analyzing'; config: FunnelStepConfigAnalyzing }
   | { type: 'plan_reveal'; config: FunnelStepConfigPlanReveal }
   | { type: 'transformation'; config: FunnelStepConfigPlanReveal }
-  | { type: 'info'; config: FunnelStepConfigInfo }
+  | { type: 'explainer'; config: FunnelStepConfigExplainer }
+  | { type: 'info'; config: FunnelStepConfigInfo }  // [DEPRECATED] Use 'explainer'
   | { type: 'success'; config: FunnelStepConfigSuccess };
 
 /**
@@ -2577,6 +2622,17 @@ export function getFlowSessionStatus(session: FlowSession): FlowSessionStatus {
 // =============================================================================
 
 /**
+ * Feed Post Settings - Coach-only settings for post display and interactions
+ */
+export interface FeedPostSettings {
+  pinnedToFeed?: boolean;           // Pin to top of feed
+  pinnedToSidebar?: boolean;        // Pin to sidebar section
+  hideMetadata?: boolean;           // Hide author name, avatar, date
+  disableInteractions?: boolean;    // Disable likes/comments/share/save
+  pinnedAt?: string;                // ISO timestamp for sort order
+}
+
+/**
  * Feed Post - A post in the social feed
  * Stored in Stream Activity Feeds, mirrored to Firestore for search/reporting
  */
@@ -2597,6 +2653,13 @@ export interface FeedPost {
   // Timestamps
   createdAt: string;                // ISO timestamp
   updatedAt?: string;               // ISO timestamp (for edits)
+  
+  // Coach-only settings
+  pinnedToFeed?: boolean;           // Pin to top of feed
+  pinnedToSidebar?: boolean;        // Pin to sidebar section
+  hideMetadata?: boolean;           // Hide author name, avatar, date
+  disableInteractions?: boolean;    // Disable likes/comments/share/save
+  pinnedAt?: string;                // ISO timestamp for sort order
 }
 
 /**

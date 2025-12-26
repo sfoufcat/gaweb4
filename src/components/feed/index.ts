@@ -5,4 +5,5 @@ export { PostDetailModal } from './PostDetailModal';
 export { CommentSheet } from './CommentSheet';
 export { ShareSheet } from './ShareSheet';
 export { ReportModal } from './ReportModal';
+export { PostSettingsModal } from './PostSettingsModal';
 

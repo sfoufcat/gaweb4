@@ -47,8 +47,11 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
       case 'plan_reveal':
       case 'transformation':
         return <PlanRevealConfigEditor config={config} onChange={setConfig} />;
+      case 'explainer':
+        return <ExplainerConfigEditor config={config} onChange={setConfig} />;
       case 'info':
-        return <InfoConfigEditor config={config} onChange={setConfig} />;
+        // Legacy support - use ExplainerConfigEditor for info steps too
+        return <ExplainerConfigEditor config={config} onChange={setConfig} />;
       case 'success':
         return <SuccessConfigEditor config={config} onChange={setConfig} />;
       default:
@@ -90,7 +93,7 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-6 font-albert">
+        <div className="p-6 overflow-y-auto flex-1 space-y-6 font-albert overscroll-contain">
           {/* Step Name - shown for all step types */}
           <div>
             <label className="block text-sm font-medium font-albert text-text-primary dark:text-[#f5f5f8] mb-2">Step Name</label>
@@ -209,13 +212,14 @@ function QuestionConfigEditor({ config, onChange }: { config: Record<string, unk
       </div>
 
       <div>
-        <label className="block text-sm font-medium font-albert text-text-primary dark:text-[#f5f5f8] mb-2">Question Text</label>
+        <label className="block text-sm font-medium font-albert text-text-primary dark:text-[#f5f5f8] mb-2">Question Text *</label>
         <textarea
           value={config.question as string || ''}
           onChange={(e) => onChange({ ...config, question: e.target.value })}
           className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] resize-none font-albert"
           rows={2}
           placeholder="Enter your question..."
+          required
         />
       </div>
 
@@ -299,7 +303,7 @@ function QuestionConfigEditor({ config, onChange }: { config: Record<string, unk
 
       {(config.questionType === 'single_choice' || config.questionType === 'multi_choice' || !config.questionType) && (
         <div>
-          <label className="block text-sm font-medium font-albert text-text-primary dark:text-[#f5f5f8] mb-2">Options</label>
+          <label className="block text-sm font-medium font-albert text-text-primary dark:text-[#f5f5f8] mb-2">Options *</label>
           <div className="space-y-3">
             {options.map((option) => (
               <div key={option.id} className="border border-[#e1ddd8] dark:border-[#262b35] rounded-lg p-3">
@@ -311,6 +315,7 @@ function QuestionConfigEditor({ config, onChange }: { config: Record<string, unk
                     onChange={(e) => updateOption(option.id, { label: e.target.value })}
                     className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] text-sm font-albert"
                     placeholder="Option label (emojis allowed)"
+                    required
                   />
                   {/* Inline image thumbnail/upload */}
                   <div className="flex-shrink-0">
@@ -747,55 +752,381 @@ function PlanRevealConfigEditor({ config, onChange }: { config: Record<string, u
   );
 }
 
-// Info Config Editor
-function InfoConfigEditor({ config, onChange }: { config: Record<string, unknown>; onChange: (c: Record<string, unknown>) => void }) {
+// Explainer Config Editor - rich media step with layouts
+import type { ExplainerMediaType, ExplainerLayout } from '@/types';
+
+const MEDIA_TYPE_OPTIONS: { value: ExplainerMediaType; label: string; description: string }[] = [
+  { value: 'image', label: 'Image', description: 'Upload or paste an image URL' },
+  { value: 'video_upload', label: 'Video Upload', description: 'Upload a video file' },
+  { value: 'youtube', label: 'YouTube', description: 'Paste a YouTube video URL' },
+  { value: 'vimeo', label: 'Vimeo', description: 'Paste a Vimeo video URL' },
+  { value: 'loom', label: 'Loom', description: 'Paste a Loom share URL' },
+  { value: 'iframe', label: 'Embed Code', description: 'Paste an iframe embed code or URL' },
+];
+
+const LAYOUT_OPTIONS: { value: ExplainerLayout; label: string; icon: React.ReactNode }[] = [
+  { 
+    value: 'media_top', 
+    label: 'Media Top',
+    icon: (
+      <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="4" y="4" width="24" height="10" rx="2" className="fill-current opacity-30" />
+        <line x1="6" y1="18" x2="26" y2="18" />
+        <line x1="6" y1="22" x2="20" y2="22" />
+        <line x1="6" y1="26" x2="26" y2="26" />
+      </svg>
+    ),
+  },
+  { 
+    value: 'media_bottom', 
+    label: 'Media Bottom',
+    icon: (
+      <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <line x1="6" y1="6" x2="26" y2="6" />
+        <line x1="6" y1="10" x2="20" y2="10" />
+        <rect x="4" y="18" width="24" height="10" rx="2" className="fill-current opacity-30" />
+      </svg>
+    ),
+  },
+  { 
+    value: 'fullscreen', 
+    label: 'Fullscreen',
+    icon: (
+      <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="4" y="4" width="24" height="24" rx="2" className="fill-current opacity-30" />
+      </svg>
+    ),
+  },
+  { 
+    value: 'side_by_side', 
+    label: 'Side by Side',
+    icon: (
+      <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="4" y="4" width="12" height="24" rx="2" className="fill-current opacity-30" />
+        <line x1="20" y1="8" x2="28" y2="8" />
+        <line x1="20" y1="12" x2="26" y2="12" />
+        <line x1="20" y1="16" x2="28" y2="16" />
+        <line x1="20" y1="20" x2="24" y2="20" />
+      </svg>
+    ),
+  },
+];
+
+function ExplainerConfigEditor({ config, onChange }: { config: Record<string, unknown>; onChange: (c: Record<string, unknown>) => void }) {
+  const mediaType = (config.mediaType as ExplainerMediaType) || 'image';
+  const layout = (config.layout as ExplainerLayout) || 'media_top';
+  const isFullscreen = layout === 'fullscreen';
+
+  // Helper to render the appropriate media input based on type
+  const renderMediaInput = () => {
+    switch (mediaType) {
+      case 'image':
+        return (
+          <div>
+            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">Image</label>
+            <MediaUpload
+              value={config.imageUrl as string || ''}
+              onChange={(url) => onChange({ ...config, imageUrl: url })}
+              folder="programs"
+              type="image"
+              label="Image"
+            />
+          </div>
+        );
+      
+      case 'video_upload':
+        return (
+          <div>
+            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">Video</label>
+            <MediaUpload
+              value={config.videoUrl as string || ''}
+              onChange={(url) => onChange({ ...config, videoUrl: url })}
+              folder="programs"
+              type="video"
+              label="Video"
+            />
+          </div>
+        );
+      
+      case 'youtube':
+        return (
+          <div>
+            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">YouTube URL</label>
+            <input
+              type="url"
+              value={config.youtubeUrl as string || ''}
+              onChange={(e) => onChange({ ...config, youtubeUrl: e.target.value })}
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8]"
+              placeholder="https://www.youtube.com/watch?v=..."
+            />
+            <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
+              Paste the full YouTube video URL
+            </p>
+            {config.youtubeUrl && (
+              <div className="mt-3 aspect-video rounded-lg overflow-hidden bg-black/5">
+                <iframe
+                  src={`https://www.youtube-nocookie.com/embed/${getYouTubeId(config.youtubeUrl as string)}`}
+                  className="w-full h-full"
+                  allowFullScreen
+                />
+              </div>
+            )}
+          </div>
+        );
+      
+      case 'vimeo':
+        return (
+          <div>
+            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">Vimeo URL</label>
+            <input
+              type="url"
+              value={config.vimeoUrl as string || ''}
+              onChange={(e) => onChange({ ...config, vimeoUrl: e.target.value })}
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8]"
+              placeholder="https://vimeo.com/..."
+            />
+            <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
+              Paste the full Vimeo video URL
+            </p>
+            {config.vimeoUrl && getVimeoId(config.vimeoUrl as string) && (
+              <div className="mt-3 aspect-video rounded-lg overflow-hidden bg-black/5">
+                <iframe
+                  src={`https://player.vimeo.com/video/${getVimeoId(config.vimeoUrl as string)}?dnt=1`}
+                  className="w-full h-full"
+                  allowFullScreen
+                />
+              </div>
+            )}
+          </div>
+        );
+      
+      case 'loom':
+        return (
+          <div>
+            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">Loom URL</label>
+            <input
+              type="url"
+              value={config.loomUrl as string || ''}
+              onChange={(e) => onChange({ ...config, loomUrl: e.target.value })}
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8]"
+              placeholder="https://www.loom.com/share/..."
+            />
+            <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
+              Paste the Loom share URL
+            </p>
+            {config.loomUrl && getLoomId(config.loomUrl as string) && (
+              <div className="mt-3 aspect-video rounded-lg overflow-hidden bg-black/5">
+                <iframe
+                  src={`https://www.loom.com/embed/${getLoomId(config.loomUrl as string)}?hide_owner=true&hide_share=true`}
+                  className="w-full h-full"
+                  allowFullScreen
+                />
+              </div>
+            )}
+          </div>
+        );
+      
+      case 'iframe':
+        return (
+          <div>
+            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">Embed Code or URL</label>
+            <textarea
+              value={config.iframeCode as string || ''}
+              onChange={(e) => onChange({ ...config, iframeCode: e.target.value })}
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] resize-none font-mono text-sm"
+              rows={4}
+              placeholder='<iframe src="..." ...></iframe> or https://...'
+            />
+            <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
+              Paste an iframe embed code or a direct URL
+            </p>
+          </div>
+        );
+      
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Media Type Selector */}
       <div>
-        <label className="block text-sm font-medium text-text-primary mb-2">Heading *</label>
-        <input
-          type="text"
-          value={config.heading as string || ''}
-          onChange={(e) => onChange({ ...config, heading: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
-          placeholder="Welcome"
-        />
+        <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">Media Type</label>
+        <Select
+          value={mediaType}
+          onValueChange={(value) => onChange({ ...config, mediaType: value as ExplainerMediaType })}
+        >
+          <SelectTrigger className="w-full font-albert">
+            <SelectValue placeholder="Select media type" />
+          </SelectTrigger>
+          <SelectContent className="font-albert">
+            {MEDIA_TYPE_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                <div className="flex flex-col">
+                  <span>{option.label}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
+          {MEDIA_TYPE_OPTIONS.find(o => o.value === mediaType)?.description}
+        </p>
       </div>
 
+      {/* Media Input (dynamic based on type) */}
+      {renderMediaInput()}
+
+      {/* Video Options - show for video types */}
+      {(mediaType === 'video_upload' || mediaType === 'youtube' || mediaType === 'vimeo') && (
+        <div className="p-4 bg-[#faf8f6] dark:bg-[#1a1f28] rounded-lg border border-[#e1ddd8] dark:border-[#262b35] space-y-3">
+          <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8]">Video Options</label>
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <BrandedCheckbox
+                checked={config.autoplay as boolean || false}
+                onChange={(checked) => onChange({ ...config, autoplay: checked, muted: checked ? true : config.muted })}
+              />
+              <span className="text-sm text-text-primary dark:text-[#f5f5f8]">Autoplay</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <BrandedCheckbox
+                checked={config.muted as boolean || false}
+                onChange={(checked) => onChange({ ...config, muted: checked })}
+              />
+              <span className="text-sm text-text-primary dark:text-[#f5f5f8]">Muted</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <BrandedCheckbox
+                checked={config.loop as boolean || false}
+                onChange={(checked) => onChange({ ...config, loop: checked })}
+              />
+              <span className="text-sm text-text-primary dark:text-[#f5f5f8]">Loop</span>
+            </label>
+          </div>
+          {config.autoplay && (
+            <p className="text-xs text-text-muted dark:text-[#b2b6c2]">
+              Note: Autoplay requires video to be muted (browser policy)
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Layout Selector */}
       <div>
-        <label className="block text-sm font-medium text-text-primary mb-2">Body *</label>
-        <textarea
-          value={config.body as string || ''}
-          onChange={(e) => onChange({ ...config, body: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] resize-none"
-          rows={4}
-          placeholder="Your information text..."
-        />
+        <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">Layout</label>
+        <div className="grid grid-cols-4 gap-2">
+          {LAYOUT_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onChange({ ...config, layout: option.value })}
+              className={`p-3 rounded-lg border-2 transition-all flex flex-col items-center gap-1 ${
+                layout === option.value
+                  ? 'border-[#a07855] bg-[#a07855]/5 text-[#a07855]'
+                  : 'border-[#e1ddd8] dark:border-[#262b35] text-text-muted hover:border-[#a07855]/50'
+              }`}
+            >
+              {option.icon}
+              <span className="text-xs font-medium">{option.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-text-primary mb-2">Image (optional)</label>
-        <MediaUpload
-          value={config.imageUrl as string || ''}
-          onChange={(url) => onChange({ ...config, imageUrl: url })}
-          folder="programs"
-          type="image"
-          label="Image"
-        />
-      </div>
+      {/* Text Content - hide heading/body for fullscreen layout */}
+      {!isFullscreen && (
+        <>
+          <div>
+            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">Heading</label>
+            <input
+              type="text"
+              value={config.heading as string || ''}
+              onChange={(e) => onChange({ ...config, heading: e.target.value })}
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8]"
+              placeholder="Welcome"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">Body</label>
+            <textarea
+              value={config.body as string || ''}
+              onChange={(e) => onChange({ ...config, body: e.target.value })}
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] resize-none"
+              rows={4}
+              placeholder="Your information text..."
+            />
+          </div>
+        </>
+      )}
 
       <div>
-        <label className="block text-sm font-medium text-text-primary mb-2">Button Text</label>
+        <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">Button Text</label>
         <input
           type="text"
           value={config.ctaText as string || ''}
           onChange={(e) => onChange({ ...config, ctaText: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8]"
           placeholder="Continue"
         />
       </div>
     </div>
   );
+}
+
+// URL ID extraction helpers for preview
+function getYouTubeId(url: string): string | null {
+  if (!url) return null;
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([^&?#]+)/,
+    /youtube\.com\/shorts\/([^&?#]+)/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match?.[1]) return match[1];
+  }
+  return null;
+}
+
+function getVimeoId(url: string): string | null {
+  if (!url) return null;
+  const patterns = [
+    /vimeo\.com\/(\d+)/,
+    /vimeo\.com\/video\/(\d+)/,
+    /player\.vimeo\.com\/video\/(\d+)/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match?.[1]) return match[1];
+  }
+  return null;
+}
+
+function getLoomId(url: string): string | null {
+  if (!url) return null;
+  const patterns = [
+    /loom\.com\/share\/([a-zA-Z0-9]+)/,
+    /loom\.com\/embed\/([a-zA-Z0-9]+)/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match?.[1]) return match[1];
+  }
+  return null;
+}
+
+// Info Config Editor - Legacy, redirects to ExplainerConfigEditor
+// Kept for backward compatibility
+function InfoConfigEditor({ config, onChange }: { config: Record<string, unknown>; onChange: (c: Record<string, unknown>) => void }) {
+  // Migrate legacy config to new format
+  const migratedConfig = {
+    ...config,
+    mediaType: config.mediaType || 'image',
+    layout: config.layout || 'media_top',
+  };
+  return <ExplainerConfigEditor config={migratedConfig} onChange={onChange} />;
 }
 
 // Success Config Editor

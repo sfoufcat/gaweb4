@@ -162,6 +162,12 @@ export async function GET(
       originalText: data.originalText,
       originalImages: data.originalImages,
       originalVideoUrl: data.originalVideoUrl,
+      // Coach settings
+      pinnedToFeed: data.pinnedToFeed || false,
+      pinnedToSidebar: data.pinnedToSidebar || false,
+      hideMetadata: data.hideMetadata || false,
+      disableInteractions: data.disableInteractions || false,
+      pinnedAt: data.pinnedAt || null,
       // Author data
       author: authorData ? {
         id: data.authorId,
@@ -297,6 +303,122 @@ export async function PUT(
     console.error('[FEED_UPDATE_POST] Error:', error);
     return NextResponse.json(
       { error: 'Failed to update post' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PATCH /api/feed/[postId]
+ * Update post settings (coach/admin only)
+ * Settings: pinnedToFeed, pinnedToSidebar, hideMetadata, disableInteractions
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ postId: string }> }
+) {
+  try {
+    const { postId } = await params;
+    const { userId, sessionClaims } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get org from tenant context
+    const organizationId = await getEffectiveOrgId();
+    if (!organizationId) {
+      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
+    }
+
+    // Check if user is coach/admin
+    const publicMetadata = sessionClaims?.publicMetadata as {
+      role?: UserRole;
+      orgRole?: OrgRole;
+    } | undefined;
+    const role = publicMetadata?.role;
+    const orgRole = publicMetadata?.orgRole;
+    const canModerate = isAdmin(role) || canAccessCoachDashboard(role, orgRole);
+
+    if (!canModerate) {
+      return NextResponse.json(
+        { error: 'Only coaches and admins can update post settings' },
+        { status: 403 }
+      );
+    }
+
+    // Check if feed is enabled
+    const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
+    const orgSettings = orgSettingsDoc.data();
+    
+    if (!orgSettings?.feedEnabled) {
+      return NextResponse.json({ error: 'Feed is not enabled' }, { status: 403 });
+    }
+
+    // Get the post
+    const postDoc = await adminDb.collection('feed_posts').doc(postId).get();
+    if (!postDoc.exists) {
+      return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+    }
+
+    const postData = postDoc.data()!;
+
+    // Verify post belongs to this organization
+    if (postData.organizationId !== organizationId) {
+      return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+    }
+
+    // Parse request body
+    const body = await request.json();
+    const { pinnedToFeed, pinnedToSidebar, hideMetadata, disableInteractions } = body;
+
+    // Build update object with only provided fields
+    const updateData: Record<string, unknown> = {
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    if (pinnedToFeed !== undefined) {
+      updateData.pinnedToFeed = pinnedToFeed;
+      // Set pinnedAt timestamp when pinning
+      if (pinnedToFeed) {
+        updateData.pinnedAt = new Date().toISOString();
+      }
+    }
+    if (pinnedToSidebar !== undefined) {
+      updateData.pinnedToSidebar = pinnedToSidebar;
+      // Set pinnedAt timestamp when pinning (if not already set by pinnedToFeed)
+      if (pinnedToSidebar && !updateData.pinnedAt) {
+        updateData.pinnedAt = new Date().toISOString();
+      }
+    }
+    if (hideMetadata !== undefined) {
+      updateData.hideMetadata = hideMetadata;
+    }
+    if (disableInteractions !== undefined) {
+      updateData.disableInteractions = disableInteractions;
+    }
+
+    await postDoc.ref.update(updateData);
+
+    // Return updated post with settings
+    const updatedDoc = await postDoc.ref.get();
+    const updatedData = updatedDoc.data()!;
+
+    return NextResponse.json({
+      success: true,
+      post: {
+        id: postId,
+        pinnedToFeed: updatedData.pinnedToFeed || false,
+        pinnedToSidebar: updatedData.pinnedToSidebar || false,
+        hideMetadata: updatedData.hideMetadata || false,
+        disableInteractions: updatedData.disableInteractions || false,
+        pinnedAt: updatedData.pinnedAt || null,
+      },
+    });
+  } catch (error) {
+    console.error('[FEED_UPDATE_SETTINGS] Error:', error);
+    return NextResponse.json(
+      { error: 'Failed to update post settings' },
       { status: 500 }
     );
   }

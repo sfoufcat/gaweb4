@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, X, Trash2, Repeat, Users, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, Clock, MapPin, X, Trash2, Repeat, Users, ChevronDown, ChevronUp, Image as ImageIcon, FileText, Plus } from 'lucide-react';
 import type { Squad, RecurrenceFrequency, EventVisibility } from '@/types';
+import { MediaUpload } from '@/components/admin/MediaUpload';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -124,6 +125,17 @@ export function SquadCallEditForm({
   // Visibility setting
   const [visibility, setVisibility] = useState<EventVisibility>('squad_only');
   
+  // Rich content fields (optional)
+  const [showRichContent, setShowRichContent] = useState(false);
+  const [coverImageUrl, setCoverImageUrl] = useState('');
+  const [description, setDescription] = useState('');
+  const [bulletPoints, setBulletPoints] = useState<string[]>(['']);
+  const [additionalInfo, setAdditionalInfo] = useState({
+    type: '',
+    language: 'English',
+    difficulty: 'All levels',
+  });
+  
   // Cancel confirmation dialog for recurring events
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   
@@ -219,6 +231,13 @@ export function SquadCallEditForm({
           setRecurrence('none');
           setIsRecurringEvent(false);
         }
+        
+        // Load rich content fields
+        setCoverImageUrl(event.coverImageUrl || '');
+        setDescription(event.description || event.longDescription || '');
+        setBulletPoints(event.bulletPoints?.length ? event.bulletPoints : ['']);
+        setAdditionalInfo(event.additionalInfo || { type: '', language: 'English', difficulty: 'All levels' });
+        setShowRichContent(!!(event.coverImageUrl || event.description || event.bulletPoints?.length));
       }
     } catch (err) {
       console.error('Error loading event:', err);
@@ -263,6 +282,12 @@ export function SquadCallEditForm({
     setShowRecurrenceDetails(false);
     setIsRecurringEvent(false);
     setVisibility('squad_only');
+    // Reset rich content
+    setShowRichContent(false);
+    setCoverImageUrl('');
+    setDescription('');
+    setBulletPoints(['']);
+    setAdditionalInfo({ type: '', language: 'English', difficulty: 'All levels' });
   };
   
   const formatDateForInput = (date: Date, tz: string): string => {
@@ -335,7 +360,7 @@ export function SquadCallEditForm({
       // Build event data
       const eventData = {
         title: title.trim() || 'Squad call',
-        description: `Squad call for ${squad.name}`,
+        description: description.trim() || `Squad call for ${squad.name}`,
         startDateTime: utcDate.toISOString(),
         timezone,
         durationMinutes: 60,
@@ -363,6 +388,15 @@ export function SquadCallEditForm({
         
         chatChannelId: squad.chatChannelId || undefined,
         sendChatReminders: true,
+        
+        // Rich content fields
+        coverImageUrl: coverImageUrl || undefined,
+        bulletPoints: bulletPoints.filter(bp => bp.trim()),
+        additionalInfo: (additionalInfo.type || additionalInfo.language || additionalInfo.difficulty) 
+          ? additionalInfo 
+          : undefined,
+        longDescription: description.trim() || undefined,
+        shortDescription: description.trim() ? description.substring(0, 200) : undefined,
       };
       
       let response;
@@ -721,6 +755,136 @@ export function SquadCallEditForm({
               </label>
             </div>
           )}
+          
+          {/* Rich Content Section (Collapsible) */}
+          <div className="border-t border-[#e1ddd8] dark:border-[#262b35] pt-4">
+            <button
+              type="button"
+              onClick={() => setShowRichContent(!showRichContent)}
+              className="w-full flex items-center justify-between text-left group"
+            >
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-[#a07855]" />
+                <span className="font-albert font-medium text-[14px] text-text-primary dark:text-[#f5f5f8]">
+                  Add details for event page
+                </span>
+                <span className="text-[12px] text-text-secondary dark:text-[#7d8190]">(optional)</span>
+              </div>
+              {showRichContent ? (
+                <ChevronUp className="w-4 h-4 text-text-secondary group-hover:text-[#a07855] transition-colors" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-text-secondary group-hover:text-[#a07855] transition-colors" />
+              )}
+            </button>
+            
+            {showRichContent && (
+              <div className="mt-4 space-y-4 p-4 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
+                {/* Cover Image */}
+                <div>
+                  <label className="block font-albert font-medium text-[13px] text-text-primary dark:text-[#f5f5f8] mb-2">
+                    <ImageIcon className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />
+                    Cover Image
+                  </label>
+                  <MediaUpload
+                    value={coverImageUrl}
+                    onChange={setCoverImageUrl}
+                    folder="events"
+                    type="image"
+                    uploadEndpoint="/api/coach/org-upload-media"
+                    hideLabel
+                    aspectRatio="16:9"
+                  />
+                </div>
+                
+                {/* Description */}
+                <div>
+                  <label className="block font-albert font-medium text-[13px] text-text-primary dark:text-[#f5f5f8] mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="What will this call cover?"
+                    rows={3}
+                    className="w-full px-3 py-2 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg font-albert text-[13px] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all resize-none"
+                  />
+                </div>
+                
+                {/* Bullet Points */}
+                <div>
+                  <label className="block font-albert font-medium text-[13px] text-text-primary dark:text-[#f5f5f8] mb-2">
+                    Key takeaways
+                  </label>
+                  <div className="space-y-2">
+                    {bulletPoints.map((bp, index) => (
+                      <div key={index} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={bp}
+                          onChange={(e) => {
+                            const newPoints = [...bulletPoints];
+                            newPoints[index] = e.target.value;
+                            setBulletPoints(newPoints);
+                          }}
+                          placeholder="What attendees will learn..."
+                          className="flex-1 px-3 py-2 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg font-albert text-[13px] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all"
+                        />
+                        {bulletPoints.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setBulletPoints(bulletPoints.filter((_, i) => i !== index))}
+                            className="px-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setBulletPoints([...bulletPoints, ''])}
+                      className="flex items-center gap-1 text-[12px] text-[#a07855] hover:text-[#8c6245] font-albert"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Add bullet point
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Additional Info */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-[11px] text-text-secondary mb-1">Type</label>
+                    <input
+                      type="text"
+                      value={additionalInfo.type}
+                      onChange={(e) => setAdditionalInfo({ ...additionalInfo, type: e.target.value })}
+                      placeholder="Q&A"
+                      className="w-full px-2 py-1.5 text-[12px] bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855]/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-text-secondary mb-1">Language</label>
+                    <input
+                      type="text"
+                      value={additionalInfo.language}
+                      onChange={(e) => setAdditionalInfo({ ...additionalInfo, language: e.target.value })}
+                      className="w-full px-2 py-1.5 text-[12px] bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855]/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-text-secondary mb-1">Level</label>
+                    <input
+                      type="text"
+                      value={additionalInfo.difficulty}
+                      onChange={(e) => setAdditionalInfo({ ...additionalInfo, difficulty: e.target.value })}
+                      className="w-full px-2 py-1.5 text-[12px] bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855]/30"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <AlertDialogFooter className="gap-2 sm:gap-2 flex-col-reverse sm:flex-row">

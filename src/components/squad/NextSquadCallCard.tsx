@@ -102,9 +102,10 @@ export function NextSquadCallCard({ squad, isCoach = false, onCallUpdated, coach
   // Only show for squads with a coach
   const hasCoach = !!squad.coachId;
   
-  // Fetch upcoming confirmed squad call using unified events API
+  // Fetch upcoming confirmed event for this squad using unified events API
+  // Note: We don't filter by eventType to catch both squad_calls and regular events attached to this squad
   const { data, mutate } = useSWR<EventsResponse>(
-    hasCoach ? `/api/events?squadId=${squad.id}&eventType=squad_call&status=confirmed&limit=1` : null,
+    hasCoach ? `/api/events?squadId=${squad.id}&status=confirmed&upcoming=true&limit=1` : null,
     async (url: string) => {
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch events');

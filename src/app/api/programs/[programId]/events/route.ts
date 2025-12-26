@@ -1,13 +1,12 @@
 /**
  * API Route: Program Events
  * 
- * GET /api/programs/[programId]/events - Get events for a program
+ * GET /api/programs/[programId]/events - Get events for a specific program
  * 
- * Returns:
- * - Events scoped to the program (scope: 'program')
- * - Squad calls with visibility: 'program_wide'
- * 
- * Filters out squad-only events that aren't visible to the full program.
+ * Returns events that:
+ * - Have programId matching this program
+ * - Have programIds array containing this program
+ * - Are squad_calls for squads belonging to this program
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -29,92 +28,117 @@ export async function GET(
     const { programId } = await params;
     const { searchParams } = new URL(request.url);
     
-    const upcoming = searchParams.get('upcoming') !== 'false';
+    const upcoming = searchParams.get('upcoming') === 'true';
     const limit = parseInt(searchParams.get('limit') || '50', 10);
 
-    // Verify program exists
-    const programDoc = await adminDb.collection('programs').doc(programId).get();
-    if (!programDoc.exists) {
-      return NextResponse.json({ error: 'Program not found' }, { status: 404 });
-    }
-
-    // Build query for program-scoped events
-    // We need to get events that are either:
-    // 1. Directly scoped to this program (scope: 'program', programId matches)
-    // 2. Squad calls with visibility: 'program_wide' and programId matches
-    
     const now = new Date().toISOString();
-    
-    // Query 1: Events directly scoped to program
-    let programEventsQuery = adminDb.collection('events')
+    const events: UnifiedEvent[] = [];
+
+    // Query 1: Events with programId directly
+    let query1: FirebaseFirestore.Query = adminDb
+      .collection('events')
       .where('programId', '==', programId)
-      .where('status', 'in', ['confirmed', 'live']);
+      .where('status', 'in', ['confirmed', 'live', 'completed']);
     
     if (upcoming) {
-      programEventsQuery = programEventsQuery.where('startDateTime', '>=', now);
+      query1 = query1.where('startDateTime', '>=', now);
     }
     
-    programEventsQuery = programEventsQuery.orderBy('startDateTime', 'asc').limit(limit);
+    query1 = query1.orderBy('startDateTime', 'asc').limit(limit);
     
-    const programEventsSnapshot = await programEventsQuery.get();
-    
-    // Query 2: Events with this program in programIds array
-    let programIdsEventsQuery = adminDb.collection('events')
-      .where('programIds', 'array-contains', programId)
-      .where('status', 'in', ['confirmed', 'live']);
-    
-    if (upcoming) {
-      programIdsEventsQuery = programIdsEventsQuery.where('startDateTime', '>=', now);
-    }
-    
-    programIdsEventsQuery = programIdsEventsQuery.orderBy('startDateTime', 'asc').limit(limit);
-    
-    const programIdsEventsSnapshot = await programIdsEventsQuery.get();
-
-    // Merge and deduplicate events
-    const eventMap = new Map<string, UnifiedEvent>();
-    
-    const processDoc = (doc: FirebaseFirestore.QueryDocumentSnapshot) => {
-      const data = doc.data();
-      const event: UnifiedEvent = {
+    const snapshot1 = await query1.get();
+    snapshot1.docs.forEach(doc => {
+      events.push({
         id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
-        updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
-      } as UnifiedEvent;
-      
-      // Filter: Only include if not a squad call OR if visibility is program_wide
-      if (event.eventType === 'squad_call' && event.visibility !== 'program_wide') {
-        return;
-      }
-      
-      // Filter: Exclude recurring parents (we want instances)
-      if (event.isRecurring) {
-        return;
-      }
-      
-      eventMap.set(doc.id, event);
-    };
-    
-    programEventsSnapshot.docs.forEach(processDoc);
-    programIdsEventsSnapshot.docs.forEach(processDoc);
-    
-    // Convert to array and sort by start time
-    const events = Array.from(eventMap.values())
-      .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime())
-      .slice(0, limit);
-
-    return NextResponse.json({ 
-      events,
-      programId,
-      count: events.length,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
+        updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
+      } as UnifiedEvent);
     });
+
+    // Query 2: Events with programIds array containing this program
+    // Note: Firestore array-contains with other conditions can be tricky
+    // We'll do a separate query and merge
+    let query2: FirebaseFirestore.Query = adminDb
+      .collection('events')
+      .where('programIds', 'array-contains', programId)
+      .where('status', 'in', ['confirmed', 'live', 'completed']);
+    
+    if (upcoming) {
+      query2 = query2.where('startDateTime', '>=', now);
+    }
+    
+    query2 = query2.orderBy('startDateTime', 'asc').limit(limit);
+    
+    const snapshot2 = await query2.get();
+    snapshot2.docs.forEach(doc => {
+      // Avoid duplicates
+      if (!events.find(e => e.id === doc.id)) {
+        events.push({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
+          updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
+        } as UnifiedEvent);
+      }
+    });
+
+    // Query 3: Get squad calls from squads belonging to this program
+    // First, find squads for this program
+    const squadsSnapshot = await adminDb
+      .collection('squads')
+      .where('programId', '==', programId)
+      .get();
+    
+    const squadIds = squadsSnapshot.docs.map(doc => doc.id);
+    
+    // Fetch events for each squad (in batches if needed)
+    if (squadIds.length > 0) {
+      // Firestore 'in' query supports max 30 values
+      const batchSize = 30;
+      for (let i = 0; i < squadIds.length; i += batchSize) {
+        const batch = squadIds.slice(i, i + batchSize);
+        
+        let query3: FirebaseFirestore.Query = adminDb
+          .collection('events')
+          .where('squadId', 'in', batch)
+          .where('status', 'in', ['confirmed', 'live', 'completed']);
+        
+        if (upcoming) {
+          query3 = query3.where('startDateTime', '>=', now);
+        }
+        
+        query3 = query3.orderBy('startDateTime', 'asc').limit(limit);
+        
+        const snapshot3 = await query3.get();
+        snapshot3.docs.forEach(doc => {
+          // Avoid duplicates
+          if (!events.find(e => e.id === doc.id)) {
+            events.push({
+              id: doc.id,
+              ...doc.data(),
+              createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
+              updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
+            } as UnifiedEvent);
+          }
+        });
+      }
+    }
+
+    // Sort all events by startDateTime
+    events.sort((a, b) => 
+      new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime()
+    );
+
+    // Apply final limit
+    const finalEvents = events.slice(0, limit);
+
+    return NextResponse.json({ events: finalEvents });
   } catch (error) {
     console.error('[PROGRAM_EVENTS_GET] Error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch program events', events: [] },
+      { error: 'Failed to fetch events', events: [] },
       { status: 500 }
     );
   }
 }
-

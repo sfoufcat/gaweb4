@@ -11,6 +11,7 @@ interface CompactPostPreview {
   text?: string;
   images?: string[];
   likeCount: number;
+  commentCount?: number;
   author?: {
     firstName?: string;
     lastName?: string;
@@ -32,15 +33,33 @@ const fetcher = async (url: string) => {
 // SWR cache keys - exported so they can be used for revalidation
 export const SIDEBAR_BOOKMARKS_KEY = '/api/feed/bookmarks?limit=5';
 export const SIDEBAR_TRENDING_KEY = '/api/feed/trending?limit=5';
+export const SIDEBAR_PINNED_KEY = '/api/feed/pinned?limit=5';
 
 /**
- * FeedSidebar - Desktop right sidebar showing bookmarks and trending posts
+ * FeedSidebar - Desktop right sidebar showing pinned, bookmarks and trending posts
  * 
  * Hidden on mobile, visible on lg: breakpoints
  * Uses SWR for caching - bookmarks auto-refresh when feed bookmarks change
+ * 
+ * Sections:
+ * - Pinned: Only shows if there are pinned posts
+ * - Saved: Always shows (with empty state)
+ * - Trending: Only shows if there are trending posts from the past week
  */
 export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
   const { colors, isDefault } = useBrandingValues();
+  
+  // Use SWR for pinned posts
+  const { data: pinnedData, isLoading: isLoadingPinned } = useSWR<{ posts: CompactPostPreview[] }>(
+    SIDEBAR_PINNED_KEY,
+    fetcher,
+    { 
+      revalidateOnFocus: false, 
+      dedupingInterval: 10000,
+      errorRetryCount: 0,
+      shouldRetryOnError: false,
+    }
+  );
   
   // Use SWR for bookmarks - will auto-revalidate
   const { data: bookmarksData, isLoading: isLoadingBookmarks } = useSWR<{ posts: CompactPostPreview[] }>(
@@ -66,12 +85,42 @@ export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
     }
   );
 
+  const pinnedPosts = pinnedData?.posts || [];
   const bookmarkedPosts = bookmarksData?.posts || [];
   const trendingPosts = trendingData?.posts || [];
   const accentColor = isDefault ? '#a07855' : colors.accentLight;
+  
+  // Only show pinned section if there are pinned posts (after loading)
+  const showPinnedSection = !isLoadingPinned && pinnedPosts.length > 0;
+  
+  // Only show trending section if there are trending posts (after loading)
+  const showTrendingSection = !isLoadingTrending && trendingPosts.length > 0;
 
   return (
     <aside className="hidden lg:block w-[340px] flex-shrink-0 space-y-6">
+      {/* Pinned Posts Section - Only shows if there are pinned posts */}
+      {showPinnedSection && (
+        <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden">
+          <div className="px-5 py-4 border-b border-[#e8e4df] dark:border-[#262b35]">
+            <h3 className="font-semibold text-[16px] text-[#1a1a1a] dark:text-[#faf8f6] flex items-center gap-2.5">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" style={{ color: accentColor }}>
+                <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" />
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+              </svg>
+              Pinned
+            </h3>
+          </div>
+
+          <div className="p-3">
+            <div className="space-y-1">
+              {pinnedPosts.map((post) => (
+                <CompactPostItem key={post.id} post={post} onSelect={onSelectPost} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Bookmarked Posts Section */}
       <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden">
         <div className="px-5 py-4 border-b border-[#e8e4df] dark:border-[#262b35]">
@@ -128,51 +177,28 @@ export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
         </div>
       </div>
 
-      {/* Trending Posts Section */}
-      <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#e8e4df] dark:border-[#262b35]">
-          <h3 className="font-semibold text-[16px] text-[#1a1a1a] dark:text-[#faf8f6] flex items-center gap-2.5">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} style={{ color: accentColor }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-            </svg>
-            Trending
-          </h3>
-          <p className="text-[12px] text-[#8a857f] mt-1">Popular this week</p>
-        </div>
+      {/* Trending Posts Section - Only shows if there are trending posts */}
+      {showTrendingSection && (
+        <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden">
+          <div className="px-5 py-4 border-b border-[#e8e4df] dark:border-[#262b35]">
+            <h3 className="font-semibold text-[16px] text-[#1a1a1a] dark:text-[#faf8f6] flex items-center gap-2.5">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} style={{ color: accentColor }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+              Trending
+            </h3>
+            <p className="text-[12px] text-[#8a857f] mt-1">Popular this week</p>
+          </div>
 
-        <div className="p-3">
-          {isLoadingTrending ? (
-            // Loading skeleton
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="p-2 rounded-xl animate-pulse">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#f5f3f0] dark:bg-[#262b35]" />
-                    <div className="flex-1 space-y-2">
-                      <div className="w-24 h-3.5 bg-[#f5f3f0] dark:bg-[#262b35] rounded" />
-                      <div className="w-full h-3.5 bg-[#f5f3f0] dark:bg-[#262b35] rounded" />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : trendingPosts.length === 0 ? (
-            // Empty state
-            <div className="py-8 text-center">
-              <p className="text-[14px] text-[#8a857f]">
-                No trending posts yet
-              </p>
-            </div>
-          ) : (
-            // Posts list
+          <div className="p-3">
             <div className="space-y-1">
               {trendingPosts.map((post, index) => (
                 <CompactPostItem key={post.id} post={post} rank={index + 1} onSelect={onSelectPost} />
               ))}
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </aside>
   );
 }

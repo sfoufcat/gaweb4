@@ -12,7 +12,8 @@ export { GoalStep } from './GoalStep';
 export { IdentityStep } from './IdentityStep';
 export { AnalyzingStep } from './AnalyzingStep';
 export { PlanRevealStep } from './PlanRevealStep';
-export { InfoStep } from './InfoStep';
+export { ExplainerStep } from './ExplainerStep';
+export { InfoStep } from './InfoStep'; // Legacy - use ExplainerStep
 export { SuccessStep } from './SuccessStep';
 
 

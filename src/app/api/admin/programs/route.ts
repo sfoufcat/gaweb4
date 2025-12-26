@@ -24,20 +24,21 @@ export async function GET() {
       return NextResponse.json({ error: 'No organization selected' }, { status: 400 });
     }
 
-    // Fetch all programs for this organization
+    // Fetch all programs for this organization (don't filter by isActive - may not be set)
     const programsSnapshot = await adminDb
       .collection('programs')
       .where('organizationId', '==', organizationId)
-      .where('isActive', '==', true)
-      .orderBy('name', 'asc')
       .get();
 
-    const programs = programsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      name: doc.data().name,
-      type: doc.data().type,
-      slug: doc.data().slug,
-    }));
+    const programs = programsSnapshot.docs
+      .filter(doc => doc.data().isActive !== false) // Only exclude explicitly inactive
+      .map(doc => ({
+        id: doc.id,
+        name: doc.data().name,
+        type: doc.data().type || 'group',
+        slug: doc.data().slug,
+      }))
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     return NextResponse.json({
       success: true,
