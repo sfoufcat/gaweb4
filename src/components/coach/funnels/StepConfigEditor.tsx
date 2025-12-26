@@ -888,10 +888,10 @@ function ExplainerConfigEditor({ config, onChange }: { config: Record<string, un
             <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
               Paste the full Vimeo video URL
             </p>
-            {config.vimeoUrl && getVimeoId(config.vimeoUrl as string) && (
+            {typeof config.vimeoUrl === 'string' && config.vimeoUrl && getVimeoId(config.vimeoUrl) && (
               <div className="mt-3 aspect-video rounded-lg overflow-hidden bg-black/5">
                 <iframe
-                  src={`https://player.vimeo.com/video/${getVimeoId(config.vimeoUrl as string)}?dnt=1`}
+                  src={`https://player.vimeo.com/video/${getVimeoId(config.vimeoUrl)}?dnt=1`}
                   className="w-full h-full"
                   allowFullScreen
                 />
@@ -914,10 +914,10 @@ function ExplainerConfigEditor({ config, onChange }: { config: Record<string, un
             <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
               Paste the Loom share URL
             </p>
-            {config.loomUrl && getLoomId(config.loomUrl as string) && (
+            {typeof config.loomUrl === 'string' && config.loomUrl && getLoomId(config.loomUrl) && (
               <div className="mt-3 aspect-video rounded-lg overflow-hidden bg-black/5">
                 <iframe
-                  src={`https://www.loom.com/embed/${getLoomId(config.loomUrl as string)}?hide_owner=true&hide_share=true`}
+                  src={`https://www.loom.com/embed/${getLoomId(config.loomUrl)}?hide_owner=true&hide_share=true`}
                   className="w-full h-full"
                   allowFullScreen
                 />
@@ -1005,7 +1005,7 @@ function ExplainerConfigEditor({ config, onChange }: { config: Record<string, un
               <span className="text-sm text-text-primary dark:text-[#f5f5f8]">Loop</span>
             </label>
           </div>
-          {config.autoplay && (
+          {!!config.autoplay && (
             <p className="text-xs text-text-muted dark:text-[#b2b6c2]">
               Note: Autoplay requires video to be muted (browser policy)
             </p>

@@ -2322,6 +2322,7 @@ export type FunnelStepType =
   | 'plan_reveal'    // Show personalized plan
   | 'transformation' // Transformation graph visualization
   | 'explainer'      // Rich media explainer (image, video, embed)
+  | 'landing_page'   // Full drag-and-drop landing page builder
   | 'info'           // [DEPRECATED] Use 'explainer' - kept for backward compatibility
   | 'success';       // Completion step
 
@@ -2528,6 +2529,60 @@ export interface FunnelStepConfigSuccess {
   skipSuccessRedirect?: string;  // Custom redirect URL (default: homepage)
 }
 
+// ============================================================================
+// LANDING PAGE BUILDER TYPES (Puck)
+// ============================================================================
+
+/**
+ * Puck content item - a single section in the landing page
+ */
+export interface PuckContent {
+  type: string;
+  props: Record<string, unknown>;
+}
+
+/**
+ * Puck data format - the serialized state of a landing page
+ */
+export interface PuckData {
+  content: PuckContent[];
+  root?: { props?: Record<string, unknown> };
+}
+
+/**
+ * Landing page template category
+ */
+export type LandingPageTemplateCategory = 
+  | 'minimal' 
+  | 'sales' 
+  | 'webinar' 
+  | 'course' 
+  | 'coaching';
+
+/**
+ * Landing page template definition
+ */
+export interface LandingPageTemplate {
+  id: string;
+  name: string;
+  description: string;
+  thumbnail: string;
+  category: LandingPageTemplateCategory;
+  puckData: PuckData;
+}
+
+/**
+ * Landing page step configuration
+ */
+export interface FunnelStepConfigLandingPage {
+  puckData: PuckData;            // Puck's serialized page state
+  templateId?: string;           // Template this was based on
+  settings?: {
+    backgroundColor?: string;    // Page background color
+    maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | 'full'; // Content max width
+  };
+}
+
 export type FunnelStepConfig = 
   | { type: 'question'; config: FunnelStepConfigQuestion }
   | { type: 'signup'; config: FunnelStepConfigSignup }
@@ -2538,6 +2593,7 @@ export type FunnelStepConfig =
   | { type: 'plan_reveal'; config: FunnelStepConfigPlanReveal }
   | { type: 'transformation'; config: FunnelStepConfigPlanReveal }
   | { type: 'explainer'; config: FunnelStepConfigExplainer }
+  | { type: 'landing_page'; config: FunnelStepConfigLandingPage }
   | { type: 'info'; config: FunnelStepConfigInfo }  // [DEPRECATED] Use 'explainer'
   | { type: 'success'; config: FunnelStepConfigSuccess };
 
