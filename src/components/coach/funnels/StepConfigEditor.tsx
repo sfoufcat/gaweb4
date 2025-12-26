@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { X, Plus, Trash2, GripVertical, ImageIcon } from 'lucide-react';
+import { X, Plus, Trash2, GripVertical, ImageIcon, Video, Youtube, PlayCircle, Monitor, Code } from 'lucide-react';
 import Image from 'next/image';
 import type { FunnelStep, FunnelStepType, FunnelQuestionOption } from '@/types';
 import { nanoid } from 'nanoid';
@@ -757,13 +757,13 @@ function PlanRevealConfigEditor({ config, onChange }: { config: Record<string, u
 // Explainer Config Editor - rich media step with layouts
 import type { ExplainerMediaType, ExplainerLayout } from '@/types';
 
-const MEDIA_TYPE_OPTIONS: { value: ExplainerMediaType; label: string; description: string }[] = [
-  { value: 'image', label: 'Image', description: 'Upload or paste an image URL' },
-  { value: 'video_upload', label: 'Video Upload', description: 'Upload a video file' },
-  { value: 'youtube', label: 'YouTube', description: 'Paste a YouTube video URL' },
-  { value: 'vimeo', label: 'Vimeo', description: 'Paste a Vimeo video URL' },
-  { value: 'loom', label: 'Loom', description: 'Paste a Loom share URL' },
-  { value: 'iframe', label: 'Embed Code', description: 'Paste an iframe embed code or URL' },
+const MEDIA_TYPE_OPTIONS: { value: ExplainerMediaType; label: string; description: string; icon: React.ReactNode }[] = [
+  { value: 'image', label: 'Image', description: 'Upload or paste an image URL', icon: <ImageIcon className="w-5 h-5" /> },
+  { value: 'video_upload', label: 'Video', description: 'Upload a video file', icon: <Video className="w-5 h-5" /> },
+  { value: 'youtube', label: 'YouTube', description: 'Paste a YouTube video URL', icon: <Youtube className="w-5 h-5" /> },
+  { value: 'vimeo', label: 'Vimeo', description: 'Paste a Vimeo video URL', icon: <PlayCircle className="w-5 h-5" /> },
+  { value: 'loom', label: 'Loom', description: 'Paste a Loom share URL', icon: <Monitor className="w-5 h-5" /> },
+  { value: 'iframe', label: 'Embed', description: 'Paste an iframe embed code or URL', icon: <Code className="w-5 h-5" /> },
 ];
 
 const LAYOUT_OPTIONS: { value: ExplainerLayout; label: string; icon: React.ReactNode }[] = [
@@ -824,30 +824,24 @@ function ExplainerConfigEditor({ config, onChange }: { config: Record<string, un
     switch (mediaType) {
       case 'image':
         return (
-          <div>
-            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">Image</label>
-            <MediaUpload
-              value={config.imageUrl as string || ''}
-              onChange={(url) => onChange({ ...config, imageUrl: url })}
-              folder="programs"
-              type="image"
-              label="Image"
-            />
-          </div>
+          <MediaUpload
+            value={config.imageUrl as string || ''}
+            onChange={(url) => onChange({ ...config, imageUrl: url })}
+            folder="programs"
+            type="image"
+            label="Image"
+          />
         );
       
       case 'video_upload':
         return (
-          <div>
-            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">Video</label>
-            <MediaUpload
-              value={config.videoUrl as string || ''}
-              onChange={(url) => onChange({ ...config, videoUrl: url })}
-              folder="programs"
-              type="video"
-              label="Video"
-            />
-          </div>
+          <MediaUpload
+            value={config.videoUrl as string || ''}
+            onChange={(url) => onChange({ ...config, videoUrl: url })}
+            folder="programs"
+            type="video"
+            label="Video"
+          />
         );
       
       case 'youtube':
@@ -955,24 +949,24 @@ function ExplainerConfigEditor({ config, onChange }: { config: Record<string, un
       {/* Media Type Selector */}
       <div>
         <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">Media Type</label>
-        <Select
-          value={mediaType}
-          onValueChange={(value) => onChange({ ...config, mediaType: value as ExplainerMediaType })}
-        >
-          <SelectTrigger className="w-full font-albert">
-            <SelectValue placeholder="Select media type" />
-          </SelectTrigger>
-          <SelectContent className="font-albert">
-            {MEDIA_TYPE_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                <div className="flex flex-col">
-                  <span>{option.label}</span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
+        <div className="grid grid-cols-3 gap-2">
+          {MEDIA_TYPE_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onChange({ ...config, mediaType: option.value })}
+              className={`p-3 rounded-lg border-2 transition-all flex flex-col items-center gap-1 ${
+                mediaType === option.value
+                  ? 'border-[#a07855] bg-[#a07855]/5 text-[#a07855]'
+                  : 'border-[#e1ddd8] dark:border-[#262b35] text-text-muted hover:border-[#a07855]/50'
+              }`}
+            >
+              {option.icon}
+              <span className="text-xs font-medium">{option.label}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-2">
           {MEDIA_TYPE_OPTIONS.find(o => o.value === mediaType)?.description}
         </p>
       </div>
