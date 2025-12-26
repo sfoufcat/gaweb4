@@ -9,6 +9,11 @@ export type DiscoverEvent = {
   startTime: string;     // e.g. "18:00"
   endTime: string;       // e.g. "20:00"
   timezone: string;      // e.g. "CET"
+  // UnifiedEvent compatibility fields
+  startDateTime?: string;  // ISO 8601 (for UnifiedEvent compatibility)
+  endDateTime?: string;    // ISO 8601 (for UnifiedEvent compatibility)
+  durationMinutes?: number; // (for UnifiedEvent compatibility)
+  meetingLink?: string;    // Meeting URL (UnifiedEvent uses this instead of zoomLink)
   locationType: "online" | "in_person";
   locationLabel: string; // "Online via Zoom" etc.
   shortDescription: string;
