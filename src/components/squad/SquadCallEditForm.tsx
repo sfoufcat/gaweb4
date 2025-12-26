@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, X, Trash2, Repeat, Users } from 'lucide-react';
+import { Calendar, Clock, MapPin, X, Trash2, Repeat, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Squad, RecurrenceFrequency, EventVisibility } from '@/types';
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -25,8 +26,9 @@ import {
  * - Timezone selector
  * - Location input
  * - Optional title
- * - Recurrence settings (new)
- * - Program visibility toggle (new)
+ * - Recurrence settings with smart summary
+ * - Program visibility toggle
+ * - Cancel confirmation for recurring events
  */
 
 interface SquadCallEditFormProps {
@@ -73,16 +75,23 @@ const RECURRENCE_OPTIONS: { value: RecurrenceFrequency | 'none'; label: string }
   { value: 'monthly', label: 'Monthly' },
 ];
 
-// Day of week options
-const DAY_OPTIONS = [
-  { value: 0, label: 'Sunday' },
-  { value: 1, label: 'Monday' },
-  { value: 2, label: 'Tuesday' },
-  { value: 3, label: 'Wednesday' },
-  { value: 4, label: 'Thursday' },
-  { value: 5, label: 'Friday' },
-  { value: 6, label: 'Saturday' },
-];
+// Day names for display (plural form for recurrence summary)
+const DAY_NAMES_PLURAL = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'];
+
+// Helper to format time in 12-hour format
+function formatTime12Hour(time: string): string {
+  const [hours, minutes] = time.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hour12 = hours % 12 || 12;
+  return `${hour12}:${String(minutes).padStart(2, '0')} ${period}`;
+}
+
+// Helper to get day of week from date string (YYYY-MM-DD)
+function getDayOfWeekFromDate(dateStr: string): number {
+  if (!dateStr) return 1; // Default to Monday
+  const date = new Date(dateStr + 'T12:00:00'); // Add time to avoid timezone issues
+  return date.getDay();
+}
 
 export function SquadCallEditForm({ 
   squad, 
@@ -110,12 +119,48 @@ export function SquadCallEditForm({
   const [recurrence, setRecurrence] = useState<RecurrenceFrequency | 'none'>('none');
   const [recurrenceDayOfWeek, setRecurrenceDayOfWeek] = useState(1); // Monday
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
+  const [showRecurrenceDetails, setShowRecurrenceDetails] = useState(false);
   
   // Visibility setting
   const [visibility, setVisibility] = useState<EventVisibility>('squad_only');
   
+  // Cancel confirmation dialog for recurring events
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  
+  // Track if the event is recurring (for showing cancel options)
+  const [isRecurringEvent, setIsRecurringEvent] = useState(false);
+  
   // Whether we're editing an existing call (legacy or unified)
   const isEditing = !!existingEventId || !!squad.nextCallDateTime;
+  
+  // Auto-sync recurrence day of week when date changes
+  useEffect(() => {
+    if (date && (recurrence === 'weekly' || recurrence === 'biweekly')) {
+      const dayOfWeek = getDayOfWeekFromDate(date);
+      setRecurrenceDayOfWeek(dayOfWeek);
+    }
+  }, [date, recurrence]);
+  
+  // Build recurrence summary text
+  const getRecurrenceSummary = (): string => {
+    if (recurrence === 'none') return '';
+    
+    const timeStr = formatTime12Hour(time);
+    const dayName = DAY_NAMES_PLURAL[recurrenceDayOfWeek];
+    
+    switch (recurrence) {
+      case 'daily':
+        return `Repeats daily at ${timeStr}`;
+      case 'weekly':
+        return `Repeats ${dayName} at ${timeStr}`;
+      case 'biweekly':
+        return `Repeats every 2 weeks on ${dayName} at ${timeStr}`;
+      case 'monthly':
+        return `Repeats monthly at ${timeStr}`;
+      default:
+        return '';
+    }
+  };
   
   // Initialize form with existing call data
   useEffect(() => {
@@ -163,6 +208,7 @@ export function SquadCallEditForm({
         // Load recurrence settings
         if (event.isRecurring && event.recurrence) {
           setRecurrence(event.recurrence.frequency);
+          setIsRecurringEvent(true);
           if (event.recurrence.dayOfWeek !== undefined) {
             setRecurrenceDayOfWeek(event.recurrence.dayOfWeek);
           }
@@ -171,6 +217,7 @@ export function SquadCallEditForm({
           }
         } else {
           setRecurrence('none');
+          setIsRecurringEvent(false);
         }
       }
     } catch (err) {
@@ -197,6 +244,7 @@ export function SquadCallEditForm({
     
     setTitle(squad.nextCallTitle || '');
     setRecurrence('none');
+    setIsRecurringEvent(false);
     setVisibility('squad_only');
   };
   
@@ -212,6 +260,8 @@ export function SquadCallEditForm({
     setTitle('');
     setRecurrence('none');
     setRecurrenceEndDate('');
+    setShowRecurrenceDetails(false);
+    setIsRecurringEvent(false);
     setVisibility('squad_only');
   };
   
@@ -370,16 +420,29 @@ export function SquadCallEditForm({
     }
   };
   
-  const handleDelete = async () => {
+  // Handler to initiate delete - shows confirmation for recurring events
+  const handleDeleteClick = () => {
+    if (isRecurringEvent || recurrence !== 'none') {
+      setShowCancelDialog(true);
+    } else {
+      handleDelete(false);
+    }
+  };
+  
+  const handleDelete = async (cancelAllFuture: boolean) => {
     if (isDeleting) return;
     
     try {
       setIsDeleting(true);
       setError(null);
+      setShowCancelDialog(false);
       
       if (existingEventId) {
-        // Delete unified event
-        const response = await fetch(`/api/events/${existingEventId}`, {
+        // Delete unified event with optional cancelFuture param
+        const url = cancelAllFuture 
+          ? `/api/events/${existingEventId}?cancelFuture=true`
+          : `/api/events/${existingEventId}`;
+        const response = await fetch(url, {
           method: 'DELETE',
         });
         
@@ -414,15 +477,13 @@ export function SquadCallEditForm({
   // Get minimum date (today)
   const minDate = new Date().toISOString().split('T')[0];
   
-  // Show recurrence day selector for weekly/biweekly
-  const showDaySelector = recurrence === 'weekly' || recurrence === 'biweekly';
-  
   // Show program visibility toggle only if squad has a program
   const showVisibilityToggle = !!squad.programId;
   
   return (
+    <>
     <AlertDialog open={isOpen} onOpenChange={onClose}>
-      <AlertDialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <AlertDialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <AlertDialogHeader>
           <div className="flex items-center justify-between">
             <AlertDialogTitle className="font-albert text-[20px] tracking-[-0.5px] flex items-center gap-2">
@@ -504,7 +565,14 @@ export function SquadCallEditForm({
             </label>
             <select
               value={recurrence}
-              onChange={(e) => setRecurrence(e.target.value as RecurrenceFrequency | 'none')}
+              onChange={(e) => {
+                const newValue = e.target.value as RecurrenceFrequency | 'none';
+                setRecurrence(newValue);
+                // Auto-sync day of week when switching to weekly/biweekly
+                if ((newValue === 'weekly' || newValue === 'biweekly') && date) {
+                  setRecurrenceDayOfWeek(getDayOfWeekFromDate(date));
+                }
+              }}
               className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all appearance-none cursor-pointer"
             >
               {RECURRENCE_OPTIONS.map((option) => (
@@ -513,41 +581,49 @@ export function SquadCallEditForm({
                 </option>
               ))}
             </select>
+            
+            {/* Recurrence Summary - clickable to expand/edit */}
+            {recurrence !== 'none' && (
+              <button
+                type="button"
+                onClick={() => setShowRecurrenceDetails(!showRecurrenceDetails)}
+                className="mt-2 w-full flex items-center justify-between px-3 py-2 bg-[#f9f7f5] dark:bg-[#1c2028] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-left group hover:border-[#a07855] transition-colors"
+              >
+                <span className="font-albert text-[13px] text-[#a07855] dark:text-[#b8896a]">
+                  {getRecurrenceSummary()}
+                </span>
+                {showRecurrenceDetails ? (
+                  <ChevronUp className="w-4 h-4 text-text-secondary group-hover:text-[#a07855] transition-colors" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-text-secondary group-hover:text-[#a07855] transition-colors" />
+                )}
+              </button>
+            )}
           </div>
           
-          {/* Day of Week (for weekly/biweekly) */}
-          {showDaySelector && (
-            <div>
-              <label className="block font-albert font-medium text-[14px] text-text-primary dark:text-[#f5f5f8] mb-2">
-                On
-              </label>
-              <select
-                value={recurrenceDayOfWeek}
-                onChange={(e) => setRecurrenceDayOfWeek(Number(e.target.value))}
-                className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all appearance-none cursor-pointer"
-              >
-                {DAY_OPTIONS.map((day) => (
-                  <option key={day.value} value={day.value}>
-                    {day.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          
-          {/* End Date (for recurring) */}
-          {recurrence !== 'none' && (
-            <div>
-              <label className="block font-albert font-medium text-[14px] text-text-primary dark:text-[#f5f5f8] mb-2">
-                End date <span className="text-text-secondary font-normal">(optional)</span>
-              </label>
-              <input
-                type="date"
-                value={recurrenceEndDate}
-                onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                min={date}
-                className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all"
-              />
+          {/* Recurrence Details (expanded) */}
+          {recurrence !== 'none' && showRecurrenceDetails && (
+            <div className="space-y-4 p-4 bg-[#f9f7f5] dark:bg-[#1c2028] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
+              {/* Day selector note */}
+              {(recurrence === 'weekly' || recurrence === 'biweekly') && (
+                <p className="font-albert text-[12px] text-text-secondary dark:text-[#7d8190]">
+                  The repeat day is automatically set based on the date you selected ({DAY_NAMES_PLURAL[recurrenceDayOfWeek]}).
+                </p>
+              )}
+              
+              {/* End Date */}
+              <div>
+                <label className="block font-albert font-medium text-[13px] text-text-primary dark:text-[#f5f5f8] mb-2">
+                  End date <span className="text-text-secondary font-normal">(optional)</span>
+                </label>
+                <input
+                  type="date"
+                  value={recurrenceEndDate}
+                  onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                  min={date}
+                  className="w-full px-3 py-2 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg font-albert text-[13px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all"
+                />
+              </div>
             </div>
           )}
           
@@ -651,7 +727,7 @@ export function SquadCallEditForm({
           {/* Delete button - only show if editing */}
           {isEditing && (
             <button
-              onClick={handleDelete}
+              onClick={handleDeleteClick}
               disabled={isDeleting || isSubmitting}
               className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full font-albert text-sm transition-colors disabled:opacity-50"
             >
@@ -678,5 +754,53 @@ export function SquadCallEditForm({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+    
+    {/* Cancel Confirmation Dialog for Recurring Events */}
+    <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+      <AlertDialogContent className="max-w-md">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="font-albert text-[18px] tracking-[-0.3px]">
+            Cancel recurring call?
+          </AlertDialogTitle>
+          <AlertDialogDescription className="font-albert text-[14px] text-text-secondary dark:text-[#7d8190]">
+            This is a recurring event. Would you like to cancel just the next occurrence or all future calls?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        
+        <div className="flex flex-col gap-2 py-2">
+          <button
+            onClick={() => handleDelete(false)}
+            disabled={isDeleting}
+            className="w-full px-4 py-3 bg-[#f3f1ef] dark:bg-[#262b35] hover:bg-[#e9e5e0] dark:hover:bg-[#2e333d] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] text-left transition-colors disabled:opacity-50"
+          >
+            <span className="font-medium">Cancel this call only</span>
+            <p className="text-[12px] text-text-secondary dark:text-[#7d8190] mt-0.5">
+              Future calls in this series will continue as scheduled
+            </p>
+          </button>
+          
+          <button
+            onClick={() => handleDelete(true)}
+            disabled={isDeleting}
+            className="w-full px-4 py-3 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl font-albert text-[14px] text-red-700 dark:text-red-400 text-left transition-colors disabled:opacity-50"
+          >
+            <span className="font-medium">Cancel all future calls</span>
+            <p className="text-[12px] text-red-600/70 dark:text-red-400/70 mt-0.5">
+              This will cancel the entire recurring series
+            </p>
+          </button>
+        </div>
+        
+        <AlertDialogFooter>
+          <AlertDialogCancel 
+            disabled={isDeleting}
+            className="font-albert rounded-full border-[#e1ddd8] dark:border-[#262b35]"
+          >
+            Keep call
+          </AlertDialogCancel>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

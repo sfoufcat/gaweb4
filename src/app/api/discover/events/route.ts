@@ -26,14 +26,40 @@ export async function GET() {
     
     const eventsSnapshot = await query.get();
 
-    const events = eventsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
+    const events = eventsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      
       // Convert Firestore Timestamps to ISO strings
-      date: doc.data().date?.toDate?.()?.toISOString?.() || doc.data().date,
-      createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
-      updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
-    }));
+      let eventDate = data.date?.toDate?.()?.toISOString?.() || data.date;
+      let startTime = data.startTime;
+      let endTime = data.endTime;
+      
+      // Normalize unified events (with startDateTime) to legacy format (date, startTime, endTime)
+      // This ensures squad calls created via the unified API display correctly
+      if (data.startDateTime && !eventDate) {
+        const startDt = new Date(data.startDateTime);
+        eventDate = startDt.toISOString();
+        startTime = startDt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        
+        if (data.endDateTime) {
+          const endDt = new Date(data.endDateTime);
+          endTime = endDt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        } else if (data.durationMinutes) {
+          const endDt = new Date(startDt.getTime() + data.durationMinutes * 60 * 1000);
+          endTime = endDt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        }
+      }
+      
+      return {
+        id: doc.id,
+        ...data,
+        date: eventDate,
+        startTime,
+        endTime,
+        createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
+      };
+    });
 
     // Sort in memory by date ascending
     events.sort((a, b) => new Date(a.date as string).getTime() - new Date(b.date as string).getTime());
