@@ -1,6 +1,7 @@
 'use client';
 
 import type { Config } from '@measured/puck';
+import type { ReactNode } from 'react';
 import {
   HeroConfig,
   VideoConfig,
@@ -18,6 +19,12 @@ import {
   RichTextConfig,
 } from './sections';
 
+// Root props type
+interface RootProps {
+  children: ReactNode;
+  backgroundColor?: string;
+}
+
 // Define the component configuration for Puck
 export const landingPageConfig: Config = {
   // Root configuration for global page settings
@@ -31,14 +38,17 @@ export const landingPageConfig: Config = {
     defaultProps: {
       backgroundColor: '',
     },
-    render: ({ children, backgroundColor }) => (
-      <div 
-        className="min-h-screen"
-        style={{ backgroundColor: backgroundColor || undefined }}
-      >
-        {children}
-      </div>
-    ),
+    render: (props: RootProps) => {
+      const { children, backgroundColor } = props;
+      return (
+        <div 
+          className="min-h-screen"
+          style={{ backgroundColor: backgroundColor || undefined }}
+        >
+          {children}
+        </div>
+      );
+    },
   },
   
   // Component configurations

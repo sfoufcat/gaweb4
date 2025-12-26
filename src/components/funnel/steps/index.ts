@@ -13,6 +13,7 @@ export { IdentityStep } from './IdentityStep';
 export { AnalyzingStep } from './AnalyzingStep';
 export { PlanRevealStep } from './PlanRevealStep';
 export { ExplainerStep } from './ExplainerStep';
+export { LandingPageStep } from './LandingPageStep';
 export { InfoStep } from './InfoStep'; // Legacy - use ExplainerStep
 export { SuccessStep } from './SuccessStep';
 

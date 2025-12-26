@@ -49,6 +49,8 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
         return <PlanRevealConfigEditor config={config} onChange={setConfig} />;
       case 'explainer':
         return <ExplainerConfigEditor config={config} onChange={setConfig} />;
+      case 'landing_page':
+        return <LandingPageConfigEditor config={config} onChange={setConfig} onClose={onClose} />;
       case 'info':
         // Legacy support - use ExplainerConfigEditor for info steps too
         return <ExplainerConfigEditor config={config} onChange={setConfig} />;
@@ -1363,6 +1365,181 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// ============================================================================
+// LANDING PAGE CONFIG EDITOR
+// ============================================================================
+
+interface LandingPageConfigEditorProps {
+  config: Record<string, unknown>;
+  onChange: (config: Record<string, unknown>) => void;
+  onClose: () => void;
+}
+
+function LandingPageConfigEditor({ config, onChange, onClose }: LandingPageConfigEditorProps) {
+  const [showEditor, setShowEditor] = useState(false);
+  
+  // Dynamic import of the LandingPageEditor
+  const handleOpenEditor = () => {
+    setShowEditor(true);
+  };
+
+  const handleSaveFromEditor = async (puckData: unknown) => {
+    onChange({
+      ...config,
+      puckData,
+    });
+    setShowEditor(false);
+  };
+
+  if (showEditor) {
+    // Dynamically import the editor component
+    const LandingPageEditorLazy = React.lazy(() => 
+      import('@/components/landing-builder/LandingPageEditor').then(mod => ({
+        default: mod.LandingPageEditor
+      }))
+    );
+
+    return (
+      <React.Suspense fallback={
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#a07855]"></div>
+        </div>
+      }>
+        <LandingPageEditorLazy
+          initialData={config.puckData as import('@measured/puck').Data | undefined}
+          onSave={handleSaveFromEditor}
+          onCancel={() => setShowEditor(false)}
+        />
+      </React.Suspense>
+    );
+  }
+
+  const hasPuckData = config.puckData && 
+    (config.puckData as { content?: unknown[] }).content && 
+    ((config.puckData as { content: unknown[] }).content.length > 0);
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border border-violet-200 dark:border-violet-800 rounded-xl p-6">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-xl bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center flex-shrink-0">
+            <svg className="w-6 h-6 text-violet-600 dark:text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <h4 className="font-semibold text-text-primary dark:text-[#f5f5f8] mb-1">
+              Visual Landing Page Builder
+            </h4>
+            <p className="text-sm text-text-secondary dark:text-[#b2b6c2] mb-4">
+              Create beautiful landing pages with our drag-and-drop editor. Choose from templates or build from scratch.
+            </p>
+            <button
+              type="button"
+              onClick={handleOpenEditor}
+              className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium transition-colors inline-flex items-center gap-2"
+            >
+              {hasPuckData ? (
+                <>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Edit Landing Page
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Create Landing Page
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+        
+        {hasPuckData ? (
+          <div className="mt-4 pt-4 border-t border-violet-200 dark:border-violet-800">
+            <p className="text-xs text-violet-600 dark:text-violet-400 font-medium flex items-center gap-1">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Landing page configured with {((config.puckData as { content: unknown[] }).content.length)} section(s)
+            </p>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Page Settings */}
+      <div>
+        <h4 className="font-medium text-text-primary dark:text-[#f5f5f8] mb-3">Page Settings</h4>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+              Background Color
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="color"
+                value={(config.settings as { backgroundColor?: string })?.backgroundColor || '#ffffff'}
+                onChange={(e) => onChange({
+                  ...config,
+                  settings: {
+                    ...(config.settings as Record<string, unknown> || {}),
+                    backgroundColor: e.target.value,
+                  },
+                })}
+                className="w-10 h-10 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] cursor-pointer"
+              />
+              <input
+                type="text"
+                value={(config.settings as { backgroundColor?: string })?.backgroundColor || ''}
+                onChange={(e) => onChange({
+                  ...config,
+                  settings: {
+                    ...(config.settings as Record<string, unknown> || {}),
+                    backgroundColor: e.target.value,
+                  },
+                })}
+                placeholder="#ffffff"
+                className="flex-1 px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8]"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+              Max Content Width
+            </label>
+            <Select
+              value={(config.settings as { maxWidth?: string })?.maxWidth || 'full'}
+              onValueChange={(value) => onChange({
+                ...config,
+                settings: {
+                  ...(config.settings as Record<string, unknown> || {}),
+                  maxWidth: value,
+                },
+              })}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select max width" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sm">Small (640px)</SelectItem>
+                <SelectItem value="md">Medium (768px)</SelectItem>
+                <SelectItem value="lg">Large (1024px)</SelectItem>
+                <SelectItem value="xl">Extra Large (1280px)</SelectItem>
+                <SelectItem value="full">Full Width</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

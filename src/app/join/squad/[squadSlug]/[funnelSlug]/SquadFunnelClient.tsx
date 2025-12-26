@@ -18,6 +18,7 @@ import type {
   FunnelStepConfigPlanReveal,
   FunnelStepConfigInfo,
   FunnelStepConfigExplainer,
+  FunnelStepConfigLandingPage,
   FunnelStepConfigSuccess,
 } from '@/types';
 
@@ -30,6 +31,7 @@ import { IdentityStep } from '@/components/funnel/steps/IdentityStep';
 import { AnalyzingStep } from '@/components/funnel/steps/AnalyzingStep';
 import { PlanRevealStep } from '@/components/funnel/steps/PlanRevealStep';
 import { ExplainerStep } from '@/components/funnel/steps/ExplainerStep';
+import { LandingPageStep } from '@/components/funnel/steps/LandingPageStep';
 import { InfoStep } from '@/components/funnel/steps/InfoStep';
 import { SuccessStep } from '@/components/funnel/steps/SuccessStep';
 
@@ -404,6 +406,8 @@ export default function SquadFunnelClient({
         );
       case 'explainer':
         return <ExplainerStep {...commonProps} config={stepConfig.config as FunnelStepConfigExplainer} />;
+      case 'landing_page':
+        return <LandingPageStep {...commonProps} config={stepConfig.config as FunnelStepConfigLandingPage} />;
       case 'info':
         // Legacy support: treat 'info' as 'explainer' with defaults
         return <ExplainerStep {...commonProps} config={{

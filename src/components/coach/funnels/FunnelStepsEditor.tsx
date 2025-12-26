@@ -18,7 +18,8 @@ import {
   Info,
   CheckCircle,
   Lock,
-  PlayCircle
+  PlayCircle,
+  LayoutTemplate
 } from 'lucide-react';
 // Note: Lock is still used in the Add Step modal for tier-gated steps
 import type { FunnelStep, FunnelStepType, CoachTier, Funnel, Program, Squad } from '@/types';
@@ -91,6 +92,12 @@ const STEP_TYPE_INFO: Record<FunnelStepType, {
     description: 'Rich media with image, video, YouTube, or embed',
     color: 'bg-indigo-100 text-indigo-600'
   },
+  landing_page: { 
+    icon: LayoutTemplate, 
+    label: 'Landing Page', 
+    description: 'Full drag-and-drop landing page builder',
+    color: 'bg-violet-100 text-violet-600'
+  },
   info: { 
     icon: Info, 
     label: 'Info Card', 
@@ -109,7 +116,7 @@ const STEP_TYPE_INFO: Record<FunnelStepType, {
 const FIXED_STEP_TYPES: FunnelStepType[] = ['signup', 'payment', 'success'];
 
 // Step types available for adding (exclude fixed types)
-const ADDABLE_STEP_TYPES: FunnelStepType[] = ['question', 'explainer', 'goal_setting', 'identity', 'analyzing', 'plan_reveal', 'transformation'];
+const ADDABLE_STEP_TYPES: FunnelStepType[] = ['question', 'explainer', 'landing_page', 'goal_setting', 'identity', 'analyzing', 'plan_reveal', 'transformation'];
 
 export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) {
   const [steps, setSteps] = useState<FunnelStep[]>([]);

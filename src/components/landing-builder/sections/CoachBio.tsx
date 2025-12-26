@@ -2,24 +2,34 @@
 
 import { ComponentConfig } from '@measured/puck';
 
+export interface CredentialItem {
+  text: string;
+}
+
 export interface CoachBioProps {
   name: string;
   title: string;
   bio: string;
   imageUrl: string;
-  credentials: string[];
+  credentials: CredentialItem[];
   layout: 'side_by_side' | 'centered' | 'card';
   showCredentials: boolean;
   ctaText: string;
   ctaUrl: string;
 }
 
+const defaultCredentials: CredentialItem[] = [
+  { text: 'Certified Life Coach' },
+  { text: '10+ Years Experience' },
+  { text: '500+ Clients Helped' },
+];
+
 export const CoachBio = ({
   name = 'Coach Name',
   title = 'Certified Life Coach',
   bio = 'With over 10 years of experience helping clients achieve their goals, I\'ve developed a proven system that delivers real results. My approach combines practical strategies with compassionate support.',
   imageUrl = '',
-  credentials = ['Certified Life Coach', '10+ Years Experience', '500+ Clients Helped'],
+  credentials = defaultCredentials,
   layout = 'side_by_side',
   showCredentials = true,
   ctaText = 'Book a Call',
@@ -44,7 +54,7 @@ export const CoachBio = ({
           key={index}
           className="px-3 py-1 bg-[#a07855]/10 text-[#a07855] rounded-full text-sm font-medium"
         >
-          {credential}
+          {credential.text}
         </span>
       ))}
     </div>
@@ -104,7 +114,7 @@ export const CoachBio = ({
                   key={index}
                   className="px-3 py-1 bg-[#a07855]/10 text-[#a07855] rounded-full text-sm font-medium"
                 >
-                  {credential}
+                  {credential.text}
                 </span>
               ))}
             </div>
@@ -145,7 +155,7 @@ export const CoachBio = ({
                   key={index}
                   className="px-2 py-0.5 bg-[#a07855]/10 text-[#a07855] rounded-full text-xs font-medium"
                 >
-                  {credential}
+                  {credential.text}
                 </span>
               ))}
             </div>
@@ -188,9 +198,12 @@ export const CoachBioConfig: ComponentConfig<CoachBioProps> = {
       type: 'array',
       label: 'Credentials',
       arrayFields: {
-        value: { type: 'text' },
+        text: { type: 'text', label: 'Credential' },
       },
-      defaultItemProps: 'Credential',
+      defaultItemProps: {
+        text: 'Credential',
+      },
+      getItemSummary: (item) => (item as { text: string }).text || 'Credential',
     },
     layout: {
       type: 'select',
@@ -223,7 +236,7 @@ export const CoachBioConfig: ComponentConfig<CoachBioProps> = {
     title: 'Certified Life Coach',
     bio: 'With over 10 years of experience helping clients achieve their goals, I\'ve developed a proven system that delivers real results. My approach combines practical strategies with compassionate support.',
     imageUrl: '',
-    credentials: ['Certified Life Coach', '10+ Years Experience', '500+ Clients Helped'],
+    credentials: defaultCredentials,
     layout: 'side_by_side',
     showCredentials: true,
     ctaText: 'Book a Call',
