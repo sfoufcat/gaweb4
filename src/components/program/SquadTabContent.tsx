@@ -9,6 +9,8 @@ import { useSquad } from '@/hooks/useSquad';
 import { SquadHeader } from '@/components/squad/SquadHeader';
 import { SquadMemberList } from '@/components/squad/SquadMemberList';
 import { SquadInviteCards } from '@/components/squad/SquadInviteCards';
+import { NextSquadCallCard, type CoachInfo } from '@/components/squad/NextSquadCallCard';
+import { StandardSquadCallCard } from '@/components/squad/StandardSquadCallCard';
 import { useMenuTitles } from '@/contexts/BrandingContext';
 import { Button } from '@/components/ui/button';
 
@@ -67,6 +69,18 @@ export function SquadTabContent({ programId, squadId, onBack }: SquadTabContentP
   
   // Check if current user is the coach of this squad
   const isCoach = squad?.coachId === user?.id;
+  
+  // Get coach info for display
+  const coachInfo: CoachInfo | undefined = useMemo(() => {
+    if (!squad?.coachId || !members.length) return undefined;
+    const coach = members.find(m => m.roleInSquad === 'coach');
+    if (!coach) return undefined;
+    return {
+      firstName: coach.firstName,
+      lastName: coach.lastName,
+      imageUrl: coach.imageUrl,
+    };
+  }, [squad?.coachId, members]);
   
   // State for leaving community
   const [isLeaving, setIsLeaving] = useState(false);
@@ -168,6 +182,21 @@ export function SquadTabContent({ programId, squadId, onBack }: SquadTabContentP
     <div className="space-y-5 px-4">
       {/* Squad Header */}
       <SquadHeader squad={squad} onSquadUpdated={onRefetch} isCoach={isCoach} />
+
+      {/* Squad Call Card */}
+      {!!squad.coachId ? (
+        <NextSquadCallCard 
+          squad={squad} 
+          isCoach={isCoach}
+          onCallUpdated={onRefetch}
+          coachInfo={coachInfo}
+        />
+      ) : (
+        <StandardSquadCallCard 
+          squad={squad}
+          onCallUpdated={onRefetch}
+        />
+      )}
 
       {/* Mood Bars Section */}
       {membersWithMood.length > 0 && (
