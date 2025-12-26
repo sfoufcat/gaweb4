@@ -931,6 +931,7 @@ export type SquadType = 'premium' | 'standard';
 export interface Squad {
   id: string;
   name: string;
+  slug?: string; // URL-friendly identifier for funnel join links
   avatarUrl: string;
   description?: string; // Optional squad description
   visibility?: SquadVisibility; // "public" or "private" - defaults to "public" if not set

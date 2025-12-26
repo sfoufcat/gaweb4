@@ -92,6 +92,7 @@ export async function GET() {
       squads.push({
         id: doc.id,
         name: data.name || '',
+        slug: data.slug || '',
         avatarUrl: data.avatarUrl || '',
         description: data.description,
         visibility: (data.visibility as SquadVisibility) || 'public',
