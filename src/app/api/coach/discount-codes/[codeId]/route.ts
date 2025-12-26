@@ -133,7 +133,7 @@ export async function PATCH(
 
     // Applicability updates
     if (body.applicableTo !== undefined) {
-      if (!['all', 'programs', 'squads'].includes(body.applicableTo)) {
+      if (!['all', 'programs', 'squads', 'custom'].includes(body.applicableTo)) {
         return NextResponse.json({ error: 'Invalid applicableTo value' }, { status: 400 });
       }
       updateData.applicableTo = body.applicableTo;

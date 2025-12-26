@@ -220,8 +220,23 @@ async function validateDiscountCode(
   if (code.applicableTo === 'squads' && !squadId) {
     return 'This discount code is only valid for squads';
   }
+  
+  // For custom selection, check if the item is in the allowed list
+  if (code.applicableTo === 'custom') {
+    const hasProgramRestrictions = code.programIds && code.programIds.length > 0;
+    const hasSquadRestrictions = code.squadIds && code.squadIds.length > 0;
+    
+    // Check if the current item matches any of the allowed programs or squads
+    const programMatches = programId && hasProgramRestrictions && code.programIds!.includes(programId);
+    const squadMatches = squadId && hasSquadRestrictions && code.squadIds!.includes(squadId);
+    
+    // If we have restrictions but neither matches, the code is invalid for this item
+    if ((hasProgramRestrictions || hasSquadRestrictions) && !programMatches && !squadMatches) {
+      return 'This discount code is not valid for this item';
+    }
+  }
 
-  // Check specific program/squad restrictions
+  // Check specific program/squad restrictions (for backwards compatibility with codes that have programIds/squadIds set with other applicableTo values)
   if (programId && code.programIds?.length && !code.programIds.includes(programId)) {
     return 'This discount code is not valid for this program';
   }

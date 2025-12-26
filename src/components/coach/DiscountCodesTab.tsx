@@ -1,20 +1,31 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Plus, Trash2, Edit2, Copy, Tag, Percent, DollarSign, Calendar, Users, Check } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Plus, Trash2, Edit2, Copy, Tag, Percent, DollarSign, Calendar, Users, Check, X, ChevronDown, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import type { DiscountCode, DiscountType, DiscountApplicableTo } from '@/types';
+import type { DiscountCode, DiscountType, DiscountApplicableTo, Program, Squad } from '@/types';
 
 interface DiscountCodesTabProps {
   apiBasePath?: string;
+}
+
+interface SelectableItem {
+  id: string;
+  name: string;
+  type: 'program' | 'squad';
 }
 
 export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: DiscountCodesTabProps) {
   const [discountCodes, setDiscountCodes] = useState<DiscountCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Available programs and squads for custom selection
+  const [availablePrograms, setAvailablePrograms] = useState<Program[]>([]);
+  const [availableSquads, setAvailableSquads] = useState<Squad[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
   
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -24,6 +35,11 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
   const [deleting, setDeleting] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
+  // Multi-select dropdown state
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  
   // Form state
   const [formData, setFormData] = useState<{
     code: string;
@@ -31,6 +47,8 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
     type: DiscountType;
     value: number;
     applicableTo: DiscountApplicableTo;
+    programIds: string[];
+    squadIds: string[];
     maxUses: number | '';
     expiresAt: string;
     isActive: boolean;
@@ -40,11 +58,38 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
     type: 'percentage',
     value: 10,
     applicableTo: 'all',
+    programIds: [],
+    squadIds: [],
     maxUses: '',
     expiresAt: '',
     isActive: true,
   });
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Fetch programs and squads for custom selection
+  const fetchProgramsAndSquads = useCallback(async () => {
+    try {
+      setLoadingItems(true);
+      const [programsRes, squadsRes] = await Promise.all([
+        fetch('/api/coach/org-programs'),
+        fetch('/api/coach/squads'),
+      ]);
+
+      if (programsRes.ok) {
+        const programsData = await programsRes.json();
+        setAvailablePrograms(programsData.programs || []);
+      }
+
+      if (squadsRes.ok) {
+        const squadsData = await squadsRes.json();
+        setAvailableSquads(squadsData.squads || []);
+      }
+    } catch (err) {
+      console.error('Error fetching programs/squads:', err);
+    } finally {
+      setLoadingItems(false);
+    }
+  }, []);
 
   const fetchDiscountCodes = useCallback(async () => {
     try {
@@ -68,7 +113,20 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
 
   useEffect(() => {
     fetchDiscountCodes();
-  }, [fetchDiscountCodes]);
+    fetchProgramsAndSquads();
+  }, [fetchDiscountCodes, fetchProgramsAndSquads]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleOpenModal = (code?: DiscountCode) => {
     if (code) {
@@ -79,6 +137,8 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
         type: code.type,
         value: code.value,
         applicableTo: code.applicableTo,
+        programIds: code.programIds || [],
+        squadIds: code.squadIds || [],
         maxUses: code.maxUses || '',
         expiresAt: code.expiresAt ? code.expiresAt.split('T')[0] : '',
         isActive: code.isActive,
@@ -93,12 +153,16 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
         type: 'percentage',
         value: 10,
         applicableTo: 'all',
+        programIds: [],
+        squadIds: [],
         maxUses: '',
         expiresAt: '',
         isActive: true,
       });
     }
     setFormError(null);
+    setSearchTerm('');
+    setIsDropdownOpen(false);
     setIsModalOpen(true);
   };
 
@@ -106,6 +170,13 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
     try {
       setSaving(true);
       setFormError(null);
+
+      // Validate custom selection has at least one item
+      if (formData.applicableTo === 'custom' && formData.programIds.length === 0 && formData.squadIds.length === 0) {
+        setFormError('Please select at least one program or squad for custom targeting');
+        setSaving(false);
+        return;
+      }
 
       const url = editingCode 
         ? `${apiBasePath}/${editingCode.id}`
@@ -118,6 +189,9 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
           ...formData,
           maxUses: formData.maxUses || null,
           expiresAt: formData.expiresAt || null,
+          // Only send programIds/squadIds if custom selection
+          programIds: formData.applicableTo === 'custom' ? formData.programIds : null,
+          squadIds: formData.applicableTo === 'custom' ? formData.squadIds : null,
         }),
       });
 
@@ -173,6 +247,93 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
       return `${code.value}%`;
     }
     return `$${(code.value / 100).toFixed(2)}`;
+  };
+
+  // Get all selectable items (programs + squads) for the multi-select
+  const getSelectableItems = (): SelectableItem[] => {
+    const items: SelectableItem[] = [];
+    availablePrograms.forEach(p => items.push({ id: p.id, name: p.name, type: 'program' }));
+    availableSquads.forEach(s => items.push({ id: s.id, name: s.name, type: 'squad' }));
+    return items;
+  };
+
+  // Filter items based on search term
+  const filteredItems = getSelectableItems().filter(item =>
+    item.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Check if an item is selected
+  const isItemSelected = (item: SelectableItem) => {
+    return item.type === 'program' 
+      ? formData.programIds.includes(item.id)
+      : formData.squadIds.includes(item.id);
+  };
+
+  // Toggle item selection
+  const toggleItem = (item: SelectableItem) => {
+    if (item.type === 'program') {
+      setFormData(prev => ({
+        ...prev,
+        programIds: prev.programIds.includes(item.id)
+          ? prev.programIds.filter(id => id !== item.id)
+          : [...prev.programIds, item.id],
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        squadIds: prev.squadIds.includes(item.id)
+          ? prev.squadIds.filter(id => id !== item.id)
+          : [...prev.squadIds, item.id],
+      }));
+    }
+  };
+
+  // Get selected items for display
+  const getSelectedItems = (): SelectableItem[] => {
+    const items: SelectableItem[] = [];
+    formData.programIds.forEach(id => {
+      const program = availablePrograms.find(p => p.id === id);
+      if (program) items.push({ id: program.id, name: program.name, type: 'program' });
+    });
+    formData.squadIds.forEach(id => {
+      const squad = availableSquads.find(s => s.id === id);
+      if (squad) items.push({ id: squad.id, name: squad.name, type: 'squad' });
+    });
+    return items;
+  };
+
+  // Get display label for applicability
+  const getApplicabilityLabel = (code: DiscountCode) => {
+    if (code.applicableTo === 'all') return 'All Products';
+    if (code.applicableTo === 'programs') return 'Programs Only';
+    if (code.applicableTo === 'squads') return 'Squads Only';
+    if (code.applicableTo === 'custom') {
+      const programCount = code.programIds?.length || 0;
+      const squadCount = code.squadIds?.length || 0;
+      const parts: string[] = [];
+      if (programCount > 0) parts.push(`${programCount} program${programCount > 1 ? 's' : ''}`);
+      if (squadCount > 0) parts.push(`${squadCount} squad${squadCount > 1 ? 's' : ''}`);
+      return parts.length > 0 ? parts.join(', ') : 'Custom Selection';
+    }
+    return 'Unknown';
+  };
+
+  // Get targeted items for display in list
+  const getTargetedItemNames = (code: DiscountCode): string[] => {
+    const names: string[] = [];
+    if (code.programIds) {
+      code.programIds.forEach(id => {
+        const program = availablePrograms.find(p => p.id === id);
+        if (program) names.push(program.name);
+      });
+    }
+    if (code.squadIds) {
+      code.squadIds.forEach(id => {
+        const squad = availableSquads.find(s => s.id === id);
+        if (squad) names.push(squad.name);
+      });
+    }
+    return names;
   };
 
   if (loading) {
@@ -337,17 +498,37 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
               </div>
 
               {/* Applicability info */}
-              <div className="mt-2 flex items-center gap-2">
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
                 <span className={`px-2 py-0.5 rounded text-xs ${
                   code.applicableTo === 'all'
                     ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                     : code.applicableTo === 'programs'
                     ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                    : code.applicableTo === 'squads'
+                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                 }`}>
-                  {code.applicableTo === 'all' ? 'All Products' : 
-                   code.applicableTo === 'programs' ? 'Programs Only' : 'Squads Only'}
+                  {getApplicabilityLabel(code)}
                 </span>
+                
+                {/* Show targeted item names for custom selection */}
+                {code.applicableTo === 'custom' && (
+                  <>
+                    {getTargetedItemNames(code).slice(0, 3).map((name, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                      >
+                        {name}
+                      </span>
+                    ))}
+                    {getTargetedItemNames(code).length > 3 && (
+                      <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                        +{getTargetedItemNames(code).length - 3} more
+                      </span>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           ))}
@@ -464,14 +645,153 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                       </label>
                       <select
                         value={formData.applicableTo}
-                        onChange={(e) => setFormData({ ...formData, applicableTo: e.target.value as DiscountApplicableTo })}
+                        onChange={(e) => {
+                          const newValue = e.target.value as DiscountApplicableTo;
+                          setFormData({ 
+                            ...formData, 
+                            applicableTo: newValue,
+                            // Clear selections when switching away from custom
+                            programIds: newValue === 'custom' ? formData.programIds : [],
+                            squadIds: newValue === 'custom' ? formData.squadIds : [],
+                          });
+                        }}
                         className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                       >
                         <option value="all">All Programs & Squads</option>
                         <option value="programs">Programs Only</option>
                         <option value="squads">Squads Only</option>
+                        <option value="custom">Custom Selection</option>
                       </select>
                     </div>
+
+                    {/* Custom Selection Multi-Select */}
+                    {formData.applicableTo === 'custom' && (
+                      <div ref={dropdownRef}>
+                        <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+                          Select Programs & Squads
+                        </label>
+                        
+                        {/* Selected items as pills */}
+                        {getSelectedItems().length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-2">
+                            {getSelectedItems().map(item => (
+                              <span
+                                key={`${item.type}-${item.id}`}
+                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                                  item.type === 'program'
+                                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                                }`}
+                              >
+                                {item.name}
+                                <button
+                                  type="button"
+                                  onClick={() => toggleItem(item)}
+                                  className="hover:opacity-70"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Dropdown trigger */}
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                            className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-left flex items-center justify-between"
+                          >
+                            <span className="text-[#5f5a55] dark:text-[#b2b6c2]">
+                              {getSelectedItems().length === 0 
+                                ? 'Click to select programs or squads...'
+                                : `${getSelectedItems().length} selected`
+                              }
+                            </span>
+                            <ChevronDown className={`w-4 h-4 text-[#5f5a55] transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                          </button>
+
+                          {/* Dropdown menu */}
+                          {isDropdownOpen && (
+                            <div className="absolute z-10 mt-1 w-full bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg shadow-lg max-h-64 overflow-hidden">
+                              {/* Search input */}
+                              <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                                <div className="relative">
+                                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55]" />
+                                  <input
+                                    type="text"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    placeholder="Search..."
+                                    className="w-full pl-8 pr-3 py-1.5 text-sm border border-[#e1ddd8] dark:border-[#262b35] rounded bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8]"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Items list */}
+                              <div className="overflow-y-auto max-h-48">
+                                {loadingItems ? (
+                                  <div className="p-4 text-center text-sm text-[#5f5a55]">
+                                    Loading...
+                                  </div>
+                                ) : filteredItems.length === 0 ? (
+                                  <div className="p-4 text-center text-sm text-[#5f5a55]">
+                                    {searchTerm ? 'No matching items' : 'No programs or squads available'}
+                                  </div>
+                                ) : (
+                                  <>
+                                    {/* Programs section */}
+                                    {filteredItems.filter(i => i.type === 'program').length > 0 && (
+                                      <div>
+                                        <div className="px-3 py-1.5 text-xs font-semibold text-[#5f5a55] dark:text-[#b2b6c2] bg-[#f5f3f0] dark:bg-[#11141b]">
+                                          Programs
+                                        </div>
+                                        {filteredItems.filter(i => i.type === 'program').map(item => (
+                                          <button
+                                            key={`program-${item.id}`}
+                                            type="button"
+                                            onClick={() => toggleItem(item)}
+                                            className="w-full px-3 py-2 text-left text-sm hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] flex items-center justify-between"
+                                          >
+                                            <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">{item.name}</span>
+                                            {isItemSelected(item) && (
+                                              <Check className="w-4 h-4 text-[#a07855]" />
+                                            )}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    {/* Squads section */}
+                                    {filteredItems.filter(i => i.type === 'squad').length > 0 && (
+                                      <div>
+                                        <div className="px-3 py-1.5 text-xs font-semibold text-[#5f5a55] dark:text-[#b2b6c2] bg-[#f5f3f0] dark:bg-[#11141b]">
+                                          Squads
+                                        </div>
+                                        {filteredItems.filter(i => i.type === 'squad').map(item => (
+                                          <button
+                                            key={`squad-${item.id}`}
+                                            type="button"
+                                            onClick={() => toggleItem(item)}
+                                            className="w-full px-3 py-2 text-left text-sm hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] flex items-center justify-between"
+                                          >
+                                            <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">{item.name}</span>
+                                            {isItemSelected(item) && (
+                                              <Check className="w-4 h-4 text-[#a07855]" />
+                                            )}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Max Uses and Expiration */}
                     <div className="grid grid-cols-2 gap-3">
@@ -620,4 +940,3 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
     </div>
   );
 }
-

@@ -2737,7 +2737,7 @@ export interface SquadAnalyticsSummary {
 // =============================================================================
 
 export type DiscountType = 'percentage' | 'fixed';
-export type DiscountApplicableTo = 'all' | 'programs' | 'squads';
+export type DiscountApplicableTo = 'all' | 'programs' | 'squads' | 'custom';
 
 /**
  * Discount Code - Reusable discount codes for programs and squads
@@ -2754,7 +2754,7 @@ export interface DiscountCode {
   value: number;                 // 20 for 20% or 2000 for $20.00
   
   // Applicability
-  applicableTo: DiscountApplicableTo;  // 'all', 'programs', or 'squads'
+  applicableTo: DiscountApplicableTo;  // 'all', 'programs', 'squads', or 'custom'
   programIds?: string[];         // Specific programs (if empty, applies to all)
   squadIds?: string[];           // Specific squads (if empty, applies to all)
   

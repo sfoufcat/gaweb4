@@ -164,6 +164,16 @@ export function ShareToChatModal({ postId, postUrl, onClose, onSuccess }: ShareT
           
           // Check if channel has a name
           const explicitName = channelData?.name as string | undefined;
+          
+          // Filter out channels that have names matching special channels but aren't the real ones
+          // These are duplicates that shouldn't appear
+          const specialChannelNames = ['Announcements', 'Social Corner', 'Share your wins', 'Share Wins'];
+          if (explicitName && specialChannelNames.some(
+            special => explicitName.toLowerCase() === special.toLowerCase()
+          )) {
+            return false;
+          }
+          
           if (explicitName) return true;
           
           // Check if it's a DM with a named user
