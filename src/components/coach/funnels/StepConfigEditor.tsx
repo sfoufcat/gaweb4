@@ -862,10 +862,10 @@ function ExplainerConfigEditor({ config, onChange }: { config: Record<string, un
             <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
               Paste the full YouTube video URL
             </p>
-            {config.youtubeUrl && (
+            {typeof config.youtubeUrl === 'string' && config.youtubeUrl && (
               <div className="mt-3 aspect-video rounded-lg overflow-hidden bg-black/5">
                 <iframe
-                  src={`https://www.youtube-nocookie.com/embed/${getYouTubeId(config.youtubeUrl as string)}`}
+                  src={`https://www.youtube-nocookie.com/embed/${getYouTubeId(config.youtubeUrl)}`}
                   className="w-full h-full"
                   allowFullScreen
                 />
