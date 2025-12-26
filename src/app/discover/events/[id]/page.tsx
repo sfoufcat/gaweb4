@@ -189,16 +189,18 @@ export default function EventDetailPage({ params }: EventPageProps) {
           )}
 
           {/* Additional Info */}
-          <div className="flex flex-col gap-3">
-            <h2 className="font-albert font-medium text-2xl text-text-primary tracking-[-1.5px] leading-[1.3]">
-              Additional Info
-            </h2>
-            <div className="font-sans text-base text-text-secondary tracking-[-0.3px] leading-[1.2] space-y-2">
-              <p>Event Type: {event.additionalInfo.type}</p>
-              <p>Language: {event.additionalInfo.language}</p>
-              <p>Difficulty: {event.additionalInfo.difficulty}</p>
+          {event.additionalInfo && (
+            <div className="flex flex-col gap-3">
+              <h2 className="font-albert font-medium text-2xl text-text-primary tracking-[-1.5px] leading-[1.3]">
+                Additional Info
+              </h2>
+              <div className="font-sans text-base text-text-secondary tracking-[-0.3px] leading-[1.2] space-y-2">
+                {event.additionalInfo.type && <p>Event Type: {event.additionalInfo.type}</p>}
+                {event.additionalInfo.language && <p>Language: {event.additionalInfo.language}</p>}
+                {event.additionalInfo.difficulty && <p>Difficulty: {event.additionalInfo.difficulty}</p>}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Updates */}
           {updates.length > 0 && (
