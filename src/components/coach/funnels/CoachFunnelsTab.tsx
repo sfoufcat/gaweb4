@@ -174,13 +174,11 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   const handleEditDetails = (funnel: Funnel) => {
     setFunnelToEdit(funnel);
     setShowEditDialog(true);
-    setOpenMenuId(null);
   };
 
   const handleEditSteps = (funnel: Funnel) => {
     setEditingFunnelId(funnel.id);
     setViewMode('editing');
-    setOpenMenuId(null);
   };
 
   const handleBackToList = () => {
@@ -211,7 +209,6 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
       setCopiedFunnelId(funnel.id);
       setTimeout(() => setCopiedFunnelId(null), 2000);
     }
-    setOpenMenuId(null);
   };
 
   const getProgramName = (programId: string | null | undefined) => {
