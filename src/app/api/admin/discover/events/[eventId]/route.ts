@@ -176,12 +176,16 @@ export async function PATCH(
 
     // Handle recurrence instance regeneration if needed
     if (body.isRecurring && updateData.recurrence) {
-      const { generateRecurringInstances } = await import('@/lib/event-recurrence');
+      const { generateRecurringInstances, cancelFutureInstances } = await import('@/lib/event-recurrence');
       // Cancel old instances first
-      const { cancelFutureInstances } = await import('@/lib/event-recurrence');
       await cancelFutureInstances(eventId);
-      // Generate new instances
-      await generateRecurringInstances(eventId, { ...eventDoc.data(), ...updateData });
+      // Generate new instances with the full event data
+      const updatedEventData = {
+        id: eventId,
+        ...eventDoc.data(),
+        ...updateData,
+      } as import('@/types').UnifiedEvent;
+      await generateRecurringInstances(updatedEventData);
     }
 
     return NextResponse.json({ 
