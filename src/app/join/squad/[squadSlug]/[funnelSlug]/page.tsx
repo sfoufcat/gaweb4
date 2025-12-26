@@ -27,12 +27,12 @@ interface Squad {
 
 interface SquadFunnelPageProps {
   params: Promise<{ squadSlug: string; funnelSlug: string }>;
-  searchParams: Promise<{ invite?: string }>;
+  searchParams: Promise<{ invite?: string; ref?: string }>;
 }
 
 export default async function SquadFunnelPage({ params, searchParams }: SquadFunnelPageProps) {
   const { squadSlug, funnelSlug } = await params;
-  const { invite: inviteCode } = await searchParams;
+  const { invite: inviteCode, ref: referrerId } = await searchParams;
 
   // Get hostname for tenant resolution and branding
   const headersList = await headers();
@@ -167,6 +167,7 @@ export default async function SquadFunnelPage({ params, searchParams }: SquadFun
       inviteCode={inviteCode}
       validatedInvite={validatedInvite}
       hostname={hostname}
+      referrerId={referrerId}
     />
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { LogOut, Copy, Check } from 'lucide-react';
+import { LogOut, Copy, Check, Gift } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +16,7 @@ import {
 import { SquadInviteDialog } from './SquadInviteDialog';
 import { MAX_SQUAD_MEMBERS } from '@/lib/squad-constants';
 import { useMenuTitles } from '@/contexts/BrandingContext';
+import type { ReferralConfig } from '@/types';
 
 type InviteSquadType = 'private' | 'public' | 'premium';
 
@@ -30,6 +31,10 @@ interface SquadInviteCardsProps {
   onLeaveSquad?: () => void;
   // Squad ID for leave functionality
   squadId?: string;
+  // Program ID if squad is part of a program
+  programId?: string;
+  // Referral config (from program or squad)
+  referralConfig?: ReferralConfig;
 }
 
 /**
@@ -51,6 +56,8 @@ export function SquadInviteCards({
   memberCount = 0,
   onLeaveSquad,
   squadId,
+  programId,
+  referralConfig,
 }: SquadInviteCardsProps) {
   const { squad: squadTitle, squadLower } = useMenuTitles();
   
@@ -154,8 +161,8 @@ export function SquadInviteCards({
 
       {/* Footer: Invite Code (left) & Leave Squad (right) */}
       <div className="flex justify-between items-center pt-2">
-        {/* Invite Code - only show for private squads */}
-        {inviteCode ? (
+        {/* Invite Code - only show for non-coached squads (hide for coached squads) */}
+        {inviteCode && !squadHasCoach ? (
           <button
             onClick={handleCopyInviteCode}
             className="flex items-center gap-1.5 text-text-secondary/70 dark:text-[#7d8190] hover:text-text-primary dark:hover:text-[#f5f5f8] transition-colors font-albert text-[13px]"
@@ -219,6 +226,9 @@ export function SquadInviteCards({
         squadName={squadName}
         squadType={getSquadType()}
         inviteCode={inviteCode}
+        squadId={squadId}
+        programId={programId}
+        referralConfig={referralConfig}
       />
     </div>
   );

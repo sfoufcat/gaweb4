@@ -75,6 +75,7 @@ interface SquadFunnelClientProps {
     targetSquadId?: string;
   } | null;
   hostname: string;
+  referrerId?: string;
 }
 
 interface FlowSessionData {
@@ -90,6 +91,7 @@ export default function SquadFunnelClient({
   inviteCode,
   validatedInvite,
   hostname,
+  referrerId,
 }: SquadFunnelClientProps) {
   const router = useRouter();
   const { isSignedIn, userId, isLoaded } = useAuth();
@@ -133,6 +135,7 @@ export default function SquadFunnelClient({
           body: JSON.stringify({
             funnelId: funnel.id,
             inviteCode,
+            referrerId,
           }),
         });
 

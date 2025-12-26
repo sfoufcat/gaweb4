@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Copy, Check, Share2, Crown, Lock, Globe, Loader2 } from 'lucide-react';
+import { X, Copy, Check, Share2, Crown, Lock, Globe, Loader2, Gift } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -15,6 +15,7 @@ import {
   DrawerTitle,
 } from '@/components/ui/drawer';
 import { useMenuTitles } from '@/contexts/BrandingContext';
+import type { ReferralConfig } from '@/types';
 
 type SquadType = 'private' | 'public' | 'premium';
 
@@ -24,6 +25,9 @@ interface SquadInviteDialogProps {
   squadName: string;
   squadType: SquadType;
   inviteCode?: string; // Only for private squads
+  squadId?: string;
+  programId?: string;
+  referralConfig?: ReferralConfig;
 }
 
 /**
@@ -42,6 +46,9 @@ export function SquadInviteDialog({
   squadName,
   squadType,
   inviteCode,
+  squadId,
+  programId,
+  referralConfig,
 }: SquadInviteDialogProps) {
   const [inviteUrl, setInviteUrl] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -49,7 +56,11 @@ export function SquadInviteDialog({
   const [codeCopied, setCodeCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [rewardDescription, setRewardDescription] = useState<string | null>(null);
   const { squad: squadTitleBranded, squadLower } = useMenuTitles();
+  
+  // Check if referrals are enabled
+  const hasReferrals = referralConfig?.enabled && referralConfig?.funnelId;
 
   // Detect mobile
   useEffect(() => {
@@ -72,16 +83,38 @@ export function SquadInviteDialog({
     setError(null);
     
     try {
-      const response = await fetch('/api/squad/invite', {
-        method: 'POST',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to generate invite link');
+      // If referrals are enabled, use the referral link generator
+      if (hasReferrals && (programId || squadId)) {
+        const targetType = programId ? 'program' : 'squad';
+        const targetId = programId || squadId;
+        
+        const response = await fetch('/api/referral/generate-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ targetType, targetId }),
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to generate referral link');
+        }
+        
+        const data = await response.json();
+        setInviteUrl(data.referralUrl);
+        setRewardDescription(data.rewardDescription || null);
+      } else {
+        // Fall back to regular squad invite
+        const response = await fetch('/api/squad/invite', {
+          method: 'POST',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to generate invite link');
+        }
+        
+        const data = await response.json();
+        setInviteUrl(data.inviteUrl);
+        setRewardDescription(null);
       }
-      
-      const data = await response.json();
-      setInviteUrl(data.inviteUrl);
     } catch (err) {
       console.error('Error generating invite link:', err);
       setError('Failed to generate invite link');
@@ -230,6 +263,21 @@ export function SquadInviteDialog({
       <p className="font-sans text-[14px] text-text-secondary dark:text-[#b2b6c2] leading-relaxed">
         {getDescription()}
       </p>
+
+      {/* Reward Info - Show if referral reward is configured */}
+      {hasReferrals && rewardDescription && (
+        <div className="flex items-start gap-3 p-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800/50 rounded-[12px]">
+          <Gift className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-albert text-[13px] font-semibold text-amber-800 dark:text-amber-200">
+              Earn a reward!
+            </p>
+            <p className="font-sans text-[12px] text-amber-700 dark:text-amber-300">
+              When your friend joins, you&apos;ll get: {rewardDescription}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Private Squad: Show Join Code */}
       {squadType === 'private' && inviteCode && (

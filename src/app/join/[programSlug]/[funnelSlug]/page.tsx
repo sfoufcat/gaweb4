@@ -17,12 +17,12 @@ import type { Program, Funnel, FunnelStep } from '@/types';
 
 interface FunnelPageProps {
   params: Promise<{ programSlug: string; funnelSlug: string }>;
-  searchParams: Promise<{ invite?: string }>;
+  searchParams: Promise<{ invite?: string; ref?: string }>;
 }
 
 export default async function FunnelPage({ params, searchParams }: FunnelPageProps) {
   const { programSlug, funnelSlug } = await params;
-  const { invite: inviteCode } = await searchParams;
+  const { invite: inviteCode, ref: referrerId } = await searchParams;
 
   // Get hostname for tenant resolution and branding
   const headersList = await headers();
@@ -150,6 +150,7 @@ export default async function FunnelPage({ params, searchParams }: FunnelPagePro
       validatedInvite={validatedInvite}
       hostname={hostname}
       tenantSubdomain={tenantSubdomain}
+      referrerId={referrerId}
     />
   );
 }

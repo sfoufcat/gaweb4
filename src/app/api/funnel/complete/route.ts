@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { FlowSession, ProgramInvite, Program, ProgramEnrollment, NewProgramEnrollmentStatus, ProgramHabitTemplate, FrequencyType } from '@/types';
+import type { FlowSession, ProgramInvite, Program, ProgramEnrollment, NewProgramEnrollmentStatus, ProgramHabitTemplate, FrequencyType, Referral } from '@/types';
 import { addUserToOrganization } from '@/lib/clerk-organizations';
 import { assignUserToSquad, updateUserSquadReference } from '@/lib/squad-assignment';
 import { archiveOldSquadMemberships } from '@/lib/program-engine';
+import { grantReferralReward, linkReferredUser, completeReferral } from '@/lib/referral-rewards';
 
 /**
  * POST /api/funnel/complete
@@ -346,6 +347,48 @@ export async function POST(req: Request) {
       }
     }
 
+    // Process referral if this enrollment came from a referral
+    let referralReward = null;
+    if (session.referralId) {
+      try {
+        // Get the referral record
+        const referralDoc = await adminDb.collection('referrals').doc(session.referralId).get();
+        
+        if (referralDoc.exists) {
+          const referral = referralDoc.data() as Referral;
+          
+          // Link the referred user to the referral
+          await linkReferredUser(session.referralId, userId);
+          
+          // Mark the referral as completed
+          await completeReferral(session.referralId);
+          
+          // Get the referral config from the program to grant reward
+          if (program.referralConfig?.reward && referral.referrerId) {
+            const rewardResult = await grantReferralReward(
+              session.referralId,
+              program.referralConfig,
+              referral.referrerId,
+              session.organizationId
+            );
+            
+            referralReward = rewardResult;
+            
+            if (rewardResult.success) {
+              console.log(`[FUNNEL_COMPLETE] Granted referral reward (${rewardResult.rewardType}) to referrer ${referral.referrerId}`);
+            } else {
+              console.error(`[FUNNEL_COMPLETE] Failed to grant referral reward:`, rewardResult.error);
+            }
+          } else {
+            console.log(`[FUNNEL_COMPLETE] Referral ${session.referralId} completed (no reward configured)`);
+          }
+        }
+      } catch (referralErr) {
+        // Non-fatal - user is still enrolled, but referral processing failed
+        console.error(`[FUNNEL_COMPLETE] Failed to process referral (non-fatal):`, referralErr);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       enrollment: {
@@ -354,6 +397,7 @@ export async function POST(req: Request) {
       },
       assignedSquadId,
       assignedCohortId,
+      referralReward,
     });
   } catch (error) {
     console.error('[FUNNEL_COMPLETE]', error);

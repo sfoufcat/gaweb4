@@ -32,6 +32,7 @@ import type { UserRole } from '@/types';
 import type { OrgChannel } from '@/lib/org-channels';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useMenuTitles, useCoachingPromo } from '@/contexts/BrandingContext';
+import { CoachingPromoNotEnabledModal } from '@/components/coach/CoachingPromoNotEnabledModal';
 
 // Import Stream Chat default CSS
 import 'stream-chat-react/dist/css/v2/index.css';
@@ -265,19 +266,27 @@ function SpecialChannelItem({
   );
 }
 
-// Get your personal coach item (links to /get-coach page)
-// Now accepts props for org-customized promo settings
-// Fetches resolved coach image if imageUrl is empty
+// Get your personal coach item
+// Links to the program landing page or funnel when enabled
+// Shows disabled state for coaches when no program is linked
 interface CoachPromoItemProps {
   title?: string;
   subtitle?: string;
   imageUrl?: string;
+  isEnabled?: boolean;
+  destinationUrl?: string | null;
+  isCoach?: boolean;
+  onDisabledClick?: () => void;
 }
 
 function CoachPromoItem({ 
   title = 'Work with me 1:1',
   subtitle = 'Let me help you unleash your potential',
   imageUrl,
+  isEnabled = false,
+  destinationUrl,
+  isCoach = false,
+  onDisabledClick,
 }: CoachPromoItemProps) {
   // If no imageUrl is provided, fetch the resolved promo data which includes coach's profile picture
   const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(imageUrl || null);
@@ -300,9 +309,55 @@ function CoachPromoItem({
     }
   }, [imageUrl]);
   
+  // If not enabled and not a coach, don't render
+  if (!isEnabled && !isCoach) {
+    return null;
+  }
+  
+  // For disabled state (coach only), show as clickable button that opens the explanation modal
+  if (!isEnabled && isCoach) {
+    return (
+      <button
+        onClick={onDisabledClick}
+        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[#ffffff]/60 dark:hover:bg-[#171b22]/60 transition-colors relative text-left"
+      >
+        {/* Disabled overlay effect */}
+        <div className="absolute inset-0 rounded-xl bg-[#faf8f6]/50 dark:bg-[#05070b]/50 pointer-events-none" />
+        
+        {resolvedImageUrl ? (
+          <Image 
+            src={resolvedImageUrl}
+            alt="Personal Coach"
+            width={48}
+            height={48}
+            className="w-12 h-12 rounded-full object-cover flex-shrink-0 opacity-60"
+          />
+        ) : (
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#a07855]/60 to-[#7d5c3e]/60 flex items-center justify-center flex-shrink-0">
+            <svg className="w-6 h-6 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+            </svg>
+          </div>
+        )}
+        <div className="flex-1 min-w-0 relative z-10">
+          <div className="flex items-center gap-2">
+            <p className="font-albert text-[15px] font-medium text-text-primary/60 dark:text-[#f5f5f8]/60">{title}</p>
+            <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-albert text-[10px] font-semibold">
+              Not enabled
+            </span>
+          </div>
+          <p className="font-albert text-[13px] text-text-secondary/60">{subtitle}</p>
+        </div>
+      </button>
+    );
+  }
+  
+  // Enabled state - link to destination
+  const href = destinationUrl || '/discover';
+  
   return (
     <Link
-      href="/get-coach"
+      href={href}
       className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[#ffffff]/60 dark:hover:bg-[#171b22]/60 transition-colors"
     >
       {resolvedImageUrl ? (
@@ -726,6 +781,11 @@ function ChatContent({
   // Get coaching promo from SSR context (prevents flash)
   const coachingPromo = useCoachingPromo();
   
+  // Coaching promo enabled status and destination (fetched separately for dynamic data)
+  const [promoIsEnabled, setPromoIsEnabled] = useState(false);
+  const [promoDestinationUrl, setPromoDestinationUrl] = useState<string | null>(null);
+  const [showPromoNotEnabledModal, setShowPromoNotEnabledModal] = useState(false);
+  
   // Fetch org channels for users in organizations
   useEffect(() => {
     const fetchOrgChannels = async () => {
@@ -755,6 +815,24 @@ function ChatContent({
     };
 
     fetchOrgChannels();
+  }, []);
+
+  // Fetch coaching promo enabled status and destination URL
+  useEffect(() => {
+    const fetchPromoData = async () => {
+      try {
+        const response = await fetch('/api/user/org-coaching-promo');
+        if (response.ok) {
+          const data = await response.json();
+          setPromoIsEnabled(data.isEnabled || false);
+          setPromoDestinationUrl(data.destinationUrl || null);
+        }
+      } catch (error) {
+        console.warn('Failed to fetch coaching promo data:', error);
+      }
+    };
+
+    fetchPromoData();
   }, []);
 
   // Calculate unread counts and last message times from active channels
@@ -1458,7 +1536,9 @@ function ChatContent({
               );
             })}
 
-            {/* Get Your Personal Coach - Promo Item (only show if user doesn't have coaching and promo is visible) */}
+            {/* Get Your Personal Coach - Promo Item */}
+            {/* Show to coaches even if not enabled (with disabled state) */}
+            {/* Show to users only if enabled and visible */}
             {/* Don't show on platform domain */}
             {!isPlatformMode && !hasCoaching && coachingPromo.isVisible && (
               <div className="p-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
@@ -1466,9 +1546,19 @@ function ChatContent({
                   title={coachingPromo.title}
                   subtitle={coachingPromo.subtitle}
                   imageUrl={coachingPromo.imageUrl}
+                  isEnabled={promoIsEnabled}
+                  destinationUrl={promoDestinationUrl}
+                  isCoach={userRole === 'coach'}
+                  onDisabledClick={() => setShowPromoNotEnabledModal(true)}
                 />
               </div>
             )}
+            
+            {/* Coaching Promo Not Enabled Modal (for coaches) */}
+            <CoachingPromoNotEnabledModal
+              isOpen={showPromoNotEnabledModal}
+              onClose={() => setShowPromoNotEnabledModal(false)}
+            />
 
             {/* Edit Channels Link - Only show for coaches with org channels */}
             {userRole === 'coach' && hasOrgChannels && (

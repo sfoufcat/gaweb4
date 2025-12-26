@@ -17,9 +17,13 @@ import {
   AlertCircle,
   Loader2,
   Users,
+  ChevronDown,
+  Link as LinkIcon,
+  ExternalLink,
 } from 'lucide-react';
 import Image from 'next/image';
-import type { OrgChannel, OrgChannelType, OrgCoachingPromo } from '@/lib/org-channels';
+import type { OrgChannel, OrgChannelType, OrgCoachingPromo, CoachingPromoDestinationType } from '@/lib/org-channels';
+import type { Program, Funnel } from '@/types';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 
 // Icon map for channel types
@@ -346,6 +350,70 @@ function EditCoachingPromoModal({ promo, defaultCoachImageUrl, isOpen, onClose, 
   const [imageUrl, setImageUrl] = useState('');
   const [isVisible, setIsVisible] = useState(true);
   const [saving, setSaving] = useState(false);
+  
+  // Program linking state
+  const [programId, setProgramId] = useState<string | null>(null);
+  const [destinationType, setDestinationType] = useState<CoachingPromoDestinationType>('landing_page');
+  const [funnelId, setFunnelId] = useState<string | null>(null);
+  
+  // Data fetching state
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [funnels, setFunnels] = useState<Funnel[]>([]);
+  const [loadingPrograms, setLoadingPrograms] = useState(false);
+  const [loadingFunnels, setLoadingFunnels] = useState(false);
+
+  // Fetch programs when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const fetchPrograms = async () => {
+        setLoadingPrograms(true);
+        try {
+          const response = await fetch('/api/coach/org-programs');
+          if (response.ok) {
+            const data = await response.json();
+            // Filter to only individual (1:1) programs
+            const individualPrograms = (data.programs || []).filter(
+              (p: Program) => p.type === 'individual'
+            );
+            setPrograms(individualPrograms);
+          }
+        } catch (err) {
+          console.error('Error fetching programs:', err);
+        } finally {
+          setLoadingPrograms(false);
+        }
+      };
+      fetchPrograms();
+    }
+  }, [isOpen]);
+  
+  // Fetch funnels when program is selected
+  useEffect(() => {
+    if (programId) {
+      const fetchFunnels = async () => {
+        setLoadingFunnels(true);
+        try {
+          const response = await fetch('/api/coach/org-funnels');
+          if (response.ok) {
+            const data = await response.json();
+            // Filter to funnels for the selected program
+            const programFunnels = (data.funnels || []).filter(
+              (f: Funnel) => f.programId === programId
+            );
+            setFunnels(programFunnels);
+          }
+        } catch (err) {
+          console.error('Error fetching funnels:', err);
+        } finally {
+          setLoadingFunnels(false);
+        }
+      };
+      fetchFunnels();
+    } else {
+      setFunnels([]);
+      setFunnelId(null);
+    }
+  }, [programId]);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -354,11 +422,18 @@ function EditCoachingPromoModal({ promo, defaultCoachImageUrl, isOpen, onClose, 
       setSubtitle(promo.subtitle);
       setImageUrl(promo.imageUrl);
       setIsVisible(promo.isVisible);
+      setProgramId(promo.programId || null);
+      setDestinationType(promo.destinationType || 'landing_page');
+      setFunnelId(promo.funnelId || null);
     }
   }, [isOpen, promo]);
 
   // Get the effective image URL for preview (use coach default if no custom image)
   const effectiveImageUrl = imageUrl || defaultCoachImageUrl;
+  
+  // Find selected program and funnel for display
+  const selectedProgram = programs.find(p => p.id === programId);
+  const selectedFunnel = funnels.find(f => f.id === funnelId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -371,10 +446,24 @@ function EditCoachingPromoModal({ promo, defaultCoachImageUrl, isOpen, onClose, 
         subtitle: subtitle.trim(),
         imageUrl: imageUrl.trim(),
         isVisible,
+        programId,
+        destinationType,
+        funnelId: destinationType === 'funnel' ? funnelId : null,
       });
       onClose();
     } finally {
       setSaving(false);
+    }
+  };
+  
+  // Handle program change
+  const handleProgramChange = (newProgramId: string | null) => {
+    setProgramId(newProgramId);
+    // Reset funnel when program changes
+    setFunnelId(null);
+    // Reset to landing page if no program
+    if (!newProgramId) {
+      setDestinationType('landing_page');
     }
   };
 
@@ -386,9 +475,9 @@ function EditCoachingPromoModal({ promo, defaultCoachImageUrl, isOpen, onClose, 
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       
       {/* Modal */}
-      <div className="relative bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl shadow-2xl shadow-black/10 dark:shadow-black/30 max-w-lg w-full mx-4 overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+      <div className="relative bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl shadow-2xl shadow-black/10 dark:shadow-black/30 max-w-lg w-full mx-4 max-h-[90vh] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35] flex-shrink-0">
           <h2 className="font-albert text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
             Edit Coaching Promo
           </h2>
@@ -400,8 +489,8 @@ function EditCoachingPromoModal({ promo, defaultCoachImageUrl, isOpen, onClose, 
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        {/* Form - Scrollable */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
           {/* Title */}
           <div>
             <label className="block font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
@@ -458,6 +547,147 @@ function EditCoachingPromoModal({ promo, defaultCoachImageUrl, isOpen, onClose, 
                     />
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Program Selection Section */}
+          <div className="space-y-4 pt-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
+            <div className="flex items-center gap-2">
+              <LinkIcon className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+              <label className="font-albert text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                Link to 1:1 Program
+              </label>
+            </div>
+            
+            {/* Program Dropdown */}
+            <div>
+              <label className="block font-albert text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-2">
+                Select Program
+              </label>
+              <div className="relative">
+                <select
+                  value={programId || ''}
+                  onChange={(e) => handleProgramChange(e.target.value || null)}
+                  disabled={loadingPrograms}
+                  className="w-full px-4 py-2.5 pr-10 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/50 appearance-none cursor-pointer disabled:opacity-50"
+                >
+                  <option value="">None (promo disabled for users)</option>
+                  {programs.map(program => (
+                    <option key={program.id} value={program.id}>
+                      {program.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] pointer-events-none" />
+              </div>
+              {loadingPrograms && (
+                <p className="mt-1.5 font-albert text-xs text-[#5f5a55] dark:text-[#b2b6c2] flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Loading programs...
+                </p>
+              )}
+              {!loadingPrograms && programs.length === 0 && (
+                <p className="mt-1.5 font-albert text-xs text-amber-600 dark:text-amber-400">
+                  No 1:1 programs found. Create one to enable this promo for users.
+                </p>
+              )}
+            </div>
+            
+            {/* Destination Type - Only show when program is selected */}
+            {programId && (
+              <>
+                <div>
+                  <label className="block font-albert text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-2">
+                    Where should users go?
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDestinationType('landing_page');
+                        setFunnelId(null);
+                      }}
+                      className={`flex-1 px-4 py-2.5 rounded-xl font-albert font-medium transition-colors flex items-center justify-center gap-2 ${
+                        destinationType === 'landing_page'
+                          ? 'bg-[#a07855] text-white'
+                          : 'border border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-[#a07855]/50'
+                      }`}
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Landing Page
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDestinationType('funnel')}
+                      className={`flex-1 px-4 py-2.5 rounded-xl font-albert font-medium transition-colors flex items-center justify-center gap-2 ${
+                        destinationType === 'funnel'
+                          ? 'bg-[#a07855] text-white'
+                          : 'border border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-[#a07855]/50'
+                      }`}
+                    >
+                      <Users className="w-4 h-4" />
+                      Funnel
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Funnel Selection - Only show when destination is funnel */}
+                {destinationType === 'funnel' && (
+                  <div>
+                    <label className="block font-albert text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-2">
+                      Select Funnel
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={funnelId || ''}
+                        onChange={(e) => setFunnelId(e.target.value || null)}
+                        disabled={loadingFunnels}
+                        className="w-full px-4 py-2.5 pr-10 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/50 appearance-none cursor-pointer disabled:opacity-50"
+                      >
+                        <option value="">Select a funnel...</option>
+                        {funnels.map(funnel => (
+                          <option key={funnel.id} value={funnel.id}>
+                            {funnel.name}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] pointer-events-none" />
+                    </div>
+                    {loadingFunnels && (
+                      <p className="mt-1.5 font-albert text-xs text-[#5f5a55] dark:text-[#b2b6c2] flex items-center gap-1">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Loading funnels...
+                      </p>
+                    )}
+                    {!loadingFunnels && funnels.length === 0 && (
+                      <p className="mt-1.5 font-albert text-xs text-amber-600 dark:text-amber-400">
+                        No funnels found for this program. Create one or use the landing page.
+                      </p>
+                    )}
+                  </div>
+                )}
+                
+                {/* Preview of destination */}
+                <div className="p-3 rounded-xl bg-[#f3f1ef] dark:bg-[#0a0c10] border border-[#e1ddd8] dark:border-[#262b35]">
+                  <p className="font-albert text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                    Users will go to:{' '}
+                    <span className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                      {destinationType === 'funnel' && selectedFunnel
+                        ? `"${selectedFunnel.name}" funnel for "${selectedProgram?.name}"`
+                        : `"${selectedProgram?.name}" landing page`}
+                    </span>
+                  </p>
+                </div>
+              </>
+            )}
+            
+            {/* Not linked warning */}
+            {!programId && (
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50">
+                <p className="font-albert text-xs text-amber-700 dark:text-amber-300">
+                  <strong>Note:</strong> Without a linked program, this promo will only be visible to you (not users).
+                </p>
               </div>
             )}
           </div>

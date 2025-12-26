@@ -101,6 +101,9 @@ export async function GET() {
  * - subtitle?: string
  * - imageUrl?: string
  * - isVisible?: boolean
+ * - programId?: string | null - linked 1:1 program ID
+ * - destinationType?: 'landing_page' | 'funnel'
+ * - funnelId?: string | null - funnel ID if destinationType is 'funnel'
  */
 export async function PUT(req: Request) {
   try {
@@ -112,6 +115,9 @@ export async function PUT(req: Request) {
       subtitle,
       imageUrl,
       isVisible,
+      programId,
+      destinationType,
+      funnelId,
     } = body as UpdateOrgCoachingPromoInput;
 
     // Build updates object, only including provided fields
@@ -143,6 +149,78 @@ export async function PUT(req: Request) {
         return NextResponse.json({ error: 'isVisible must be a boolean' }, { status: 400 });
       }
       updates.isVisible = isVisible;
+    }
+
+    // Handle programId - validate it's a 1:1 (individual) program
+    if (programId !== undefined) {
+      if (programId === null) {
+        // Unlinking program - clear all program-related fields
+        updates.programId = null;
+        updates.destinationType = 'landing_page';
+        updates.funnelId = null;
+      } else {
+        // Validate program exists and is type 'individual'
+        const programDoc = await adminDb.collection('programs').doc(programId).get();
+        if (!programDoc.exists) {
+          return NextResponse.json({ error: 'Program not found' }, { status: 404 });
+        }
+        const programData = programDoc.data();
+        if (programData?.organizationId !== organizationId) {
+          return NextResponse.json({ error: 'Program does not belong to your organization' }, { status: 403 });
+        }
+        if (programData?.type !== 'individual') {
+          return NextResponse.json({ error: 'Coaching promo can only be linked to 1:1 (individual) programs' }, { status: 400 });
+        }
+        updates.programId = programId;
+      }
+    }
+
+    // Handle destinationType
+    if (destinationType !== undefined) {
+      if (!['landing_page', 'funnel'].includes(destinationType)) {
+        return NextResponse.json({ error: 'destinationType must be "landing_page" or "funnel"' }, { status: 400 });
+      }
+      updates.destinationType = destinationType;
+      
+      // If switching to landing_page, clear funnelId
+      if (destinationType === 'landing_page') {
+        updates.funnelId = null;
+      }
+    }
+
+    // Handle funnelId - validate it belongs to the linked program
+    if (funnelId !== undefined) {
+      if (funnelId === null) {
+        updates.funnelId = null;
+      } else {
+        // Get the current or pending programId
+        const targetProgramId = updates.programId !== undefined 
+          ? updates.programId 
+          : (await getOrgCoachingPromo(organizationId)).programId;
+        
+        if (!targetProgramId) {
+          return NextResponse.json({ error: 'Cannot set a funnel without linking a program first' }, { status: 400 });
+        }
+        
+        // Validate funnel exists and belongs to the program
+        const funnelDoc = await adminDb.collection('funnels').doc(funnelId).get();
+        if (!funnelDoc.exists) {
+          return NextResponse.json({ error: 'Funnel not found' }, { status: 404 });
+        }
+        const funnelData = funnelDoc.data();
+        if (funnelData?.programId !== targetProgramId) {
+          return NextResponse.json({ error: 'Funnel does not belong to the selected program' }, { status: 400 });
+        }
+        if (funnelData?.organizationId !== organizationId) {
+          return NextResponse.json({ error: 'Funnel does not belong to your organization' }, { status: 403 });
+        }
+        
+        updates.funnelId = funnelId;
+        // Ensure destinationType is 'funnel' when setting a funnelId
+        if (updates.destinationType === undefined) {
+          updates.destinationType = 'funnel';
+        }
+      }
     }
 
     // Check if any updates were provided

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { adminDb } from '@/lib/firebase-admin';
 import { nanoid } from 'nanoid';
-import type { FlowSession, Funnel, ProgramInvite } from '@/types';
+import type { FlowSession, Funnel, ProgramInvite, Program, Squad, Referral } from '@/types';
 
 /**
  * POST /api/funnel/session
@@ -11,11 +11,12 @@ import type { FlowSession, Funnel, ProgramInvite } from '@/types';
  * Body:
  * - funnelId: string (required)
  * - inviteCode?: string (optional invite code)
+ * - referrerId?: string (optional referrer user ID from ref query param)
  */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { funnelId, inviteCode } = body;
+    const { funnelId, inviteCode, referrerId } = body;
 
     if (!funnelId) {
       return NextResponse.json(
@@ -103,6 +104,57 @@ export async function POST(req: Request) {
 
     const now = new Date().toISOString();
 
+    // Handle referral tracking
+    let referralId: string | null = null;
+    let validReferrerId: string | null = null;
+
+    if (referrerId) {
+      // Verify the referral is valid:
+      // 1. The referrer exists
+      // 2. The program/squad has referrals enabled
+      // 3. The funnel matches the referral config
+      
+      const targetType = funnel.programId ? 'program' : 'squad';
+      const targetId = funnel.programId || funnel.squadId;
+      
+      if (targetId) {
+        const collection = targetType === 'program' ? 'programs' : 'squads';
+        const targetDoc = await adminDb.collection(collection).doc(targetId).get();
+        
+        if (targetDoc.exists) {
+          const targetData = targetDoc.data() as Program | Squad;
+          const referralConfig = targetData.referralConfig;
+          
+          // Check if referrals are enabled and this is the configured funnel
+          if (referralConfig?.enabled && referralConfig.funnelId === funnelId) {
+            validReferrerId = referrerId;
+            
+            // Create a referral record
+            const referralDocId = `ref_${nanoid(16)}`;
+            const referralRecord: Omit<Referral, 'referredUserId'> & { referredUserId: string } = {
+              id: referralDocId,
+              organizationId: funnel.organizationId,
+              referrerId: referrerId,
+              referredUserId: '', // Will be updated when user signs up
+              programId: funnel.programId || undefined,
+              squadId: funnel.squadId || undefined,
+              funnelId,
+              flowSessionId: sessionId,
+              status: 'pending',
+              rewardType: referralConfig.reward?.type,
+              createdAt: now,
+              updatedAt: now,
+            };
+            
+            await adminDb.collection('referrals').doc(referralDocId).set(referralRecord);
+            referralId = referralDocId;
+            
+            console.log(`[FUNNEL_SESSION] Created referral record ${referralId} from referrer ${referrerId}`);
+          }
+        }
+      }
+    }
+
     const flowSession: FlowSession = {
       id: sessionId,
       funnelId,
@@ -111,6 +163,8 @@ export async function POST(req: Request) {
       userId: null,
       linkedAt: null,
       inviteId,
+      referrerId: validReferrerId || undefined,
+      referralId: referralId || undefined,
       currentStepIndex: 0,
       completedStepIndexes: [],
       data: {},
@@ -123,7 +177,7 @@ export async function POST(req: Request) {
     // Save to Firestore
     await adminDb.collection('flow_sessions').doc(sessionId).set(flowSession);
 
-    console.log(`[FUNNEL_SESSION] Created flow session ${sessionId} for funnel ${funnelId}`);
+    console.log(`[FUNNEL_SESSION] Created flow session ${sessionId} for funnel ${funnelId}${validReferrerId ? ` with referrer ${validReferrerId}` : ''}`);
 
     return NextResponse.json({
       success: true,

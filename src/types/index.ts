@@ -723,6 +723,9 @@ export interface Program {
   showEnrollmentCount?: boolean; // Show "X students enrolled" badge
   showCurriculum?: boolean; // Show program day titles as curriculum preview
   
+  // Referral program settings
+  referralConfig?: ReferralConfig;
+  
   // Metadata
   createdAt: string;
   updatedAt: string;
@@ -975,6 +978,8 @@ export interface Squad {
   gracePeriodStartDate?: string; // Date when grace period started (YYYY-MM-DD)
   isClosed?: boolean; // True if squad is archived/closed
   closedAt?: string; // ISO timestamp when squad was closed
+  // Referral program settings (for standalone squads)
+  referralConfig?: ReferralConfig;
 }
 
 export interface SquadMember {
@@ -2470,6 +2475,10 @@ export interface FlowSession {
   // Invite tracking
   inviteId: string | null;       // If user came via invite code
   
+  // Referral tracking
+  referrerId?: string;           // User ID of the person who referred this user
+  referralId?: string;           // Referral record ID (in 'referrals' collection)
+  
   // Progress
   currentStepIndex: number;
   completedStepIndexes: number[]; // Steps that have been completed
@@ -2781,6 +2790,85 @@ export interface DiscountCodeUsage {
   finalAmountCents: number;
   
   createdAt: string;
+}
+
+// =============================================================================
+// REFERRAL SYSTEM TYPES
+// =============================================================================
+
+/**
+ * Referral reward types
+ */
+export type ReferralRewardType = 'free_time' | 'free_program' | 'discount_code';
+
+/**
+ * Referral status
+ */
+export type ReferralStatus = 'pending' | 'completed' | 'rewarded';
+
+/**
+ * Referral reward configuration
+ */
+export interface ReferralReward {
+  type: ReferralRewardType;
+  // For 'free_time': days to add to subscription/access
+  freeDays?: number;
+  // For 'free_program': program ID to grant free access to
+  freeProgramId?: string;
+  // For 'discount_code': discount settings
+  discountType?: 'percentage' | 'fixed';
+  discountValue?: number; // 20 for 20% or 2000 for $20.00
+}
+
+/**
+ * Referral configuration (stored on Program or Squad)
+ * Enables coaches to set up referral programs for their products
+ */
+export interface ReferralConfig {
+  enabled: boolean;
+  funnelId: string; // Required funnel that referrals go through
+  reward?: ReferralReward; // Optional reward for successful referrals
+}
+
+/**
+ * Referral record - Tracks individual referral relationships
+ * Stored in Firestore 'referrals' collection
+ */
+export interface Referral {
+  id: string;
+  organizationId: string;
+  referrerId: string; // User who made the referral
+  referredUserId: string; // User who was referred
+  programId?: string; // If this is a program referral
+  squadId?: string; // If this is a squad referral
+  funnelId: string;
+  flowSessionId: string;
+  
+  // Status tracking
+  status: ReferralStatus;
+  completedAt?: string; // When referred user completed enrollment
+  
+  // Reward tracking
+  rewardType?: ReferralRewardType;
+  rewardGrantedAt?: string;
+  rewardDetails?: Record<string, unknown>; // Additional reward info (e.g., discount code created)
+  
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Referral with extended info for display
+ */
+export interface ReferralWithDetails extends Referral {
+  referrerName?: string;
+  referrerEmail?: string;
+  referrerImageUrl?: string;
+  referredUserName?: string;
+  referredUserEmail?: string;
+  referredUserImageUrl?: string;
+  programName?: string;
+  squadName?: string;
 }
 
 // =============================================================================

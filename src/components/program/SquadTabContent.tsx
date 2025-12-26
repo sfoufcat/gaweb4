@@ -1,9 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { LogOut, Loader2 } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import { useSquad } from '@/hooks/useSquad';
 import { SquadHeader } from '@/components/squad/SquadHeader';
@@ -12,7 +11,7 @@ import { SquadInviteCards } from '@/components/squad/SquadInviteCards';
 import { NextSquadCallCard, type CoachInfo } from '@/components/squad/NextSquadCallCard';
 import { StandardSquadCallCard } from '@/components/squad/StandardSquadCallCard';
 import { useMenuTitles } from '@/contexts/BrandingContext';
-import { Button } from '@/components/ui/button';
+import type { ReferralConfig } from '@/types';
 
 /**
  * SquadTabContent Component
@@ -31,7 +30,6 @@ import { Button } from '@/components/ui/button';
  * Props:
  * - programId: optional program ID to scope the squad
  * - squadId: optional specific squad ID to display
- * - onBack: optional callback for back navigation
  * 
  * NOTE: Squad stats are on a separate screen accessed via button.
  */
@@ -39,10 +37,9 @@ import { Button } from '@/components/ui/button';
 interface SquadTabContentProps {
   programId?: string;
   squadId?: string;
-  onBack?: () => void;
 }
 
-export function SquadTabContent({ programId, squadId, onBack }: SquadTabContentProps) {
+export function SquadTabContent({ programId, squadId }: SquadTabContentProps) {
   const router = useRouter();
   const { user } = useUser();
   const { squad: squadTitle, squadLower } = useMenuTitles();
@@ -82,50 +79,32 @@ export function SquadTabContent({ programId, squadId, onBack }: SquadTabContentP
     };
   }, [squad?.coachId, members]);
   
-  // State for leaving community
-  const [isLeaving, setIsLeaving] = useState(false);
-  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  // Fetch program referral config if squad is part of a program
+  const [referralConfig, setReferralConfig] = useState<ReferralConfig | undefined>(undefined);
   
-  // Check if this is an individual program community squad
-  // (has programId but no cohortId)
-  const isClientCommunity = squad?.programId && !squad?.cohortId;
-  
-  // Handle leaving the community
-  const handleLeaveCommunity = async () => {
-    if (!squad) return;
+  useEffect(() => {
+    const fetchReferralConfig = async () => {
+      // Get the effective program ID from prop or squad
+      const effectiveProgramId = programId || squad?.programId;
+      if (!effectiveProgramId) {
+        setReferralConfig(undefined);
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/programs/${effectiveProgramId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setReferralConfig(data.program?.referralConfig);
+        }
+      } catch (err) {
+        console.error('Failed to fetch program referral config:', err);
+      }
+    };
     
-    try {
-      setIsLeaving(true);
-      
-      const response = await fetch('/api/squad/leave', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ squadId: squad.id }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to leave community');
-      }
-
-      // Refresh data and navigate back
-      await onRefetch();
-      setShowLeaveConfirm(false);
-      
-      // Navigate back to program view
-      if (onBack) {
-        onBack();
-      } else {
-        router.push('/program');
-      }
-    } catch (err) {
-      console.error('Error leaving community:', err);
-      alert(err instanceof Error ? err.message : 'Failed to leave community');
-    } finally {
-      setIsLeaving(false);
-    }
-  };
-
+    fetchReferralConfig();
+  }, [programId, squad?.programId]);
+  
   // Loading state
   if (isLoading) {
     return (
@@ -289,53 +268,10 @@ export function SquadTabContent({ programId, squadId, onBack }: SquadTabContentP
         visibility={squad.visibility}
         memberCount={members.length}
         onLeaveSquad={onRefetch}
+        squadId={squad.id}
+        programId={programId || squad.programId || undefined}
+        referralConfig={referralConfig}
       />
-      
-      {/* Leave Community Button - Only for individual program communities */}
-      {isClientCommunity && (
-        <div className="mt-6 pt-6 border-t border-[#e1ddd8] dark:border-[#262b35]">
-          {showLeaveConfirm ? (
-            <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 space-y-4">
-              <p className="text-sm text-red-700 dark:text-red-300 font-albert">
-                Are you sure you want to leave the community? You can rejoin later through your program settings.
-              </p>
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowLeaveConfirm(false)}
-                  disabled={isLeaving}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="default"
-                  onClick={handleLeaveCommunity}
-                  disabled={isLeaving}
-                  className="flex-1 bg-red-500 hover:bg-red-600 text-white"
-                >
-                  {isLeaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Leaving...
-                    </>
-                  ) : (
-                    'Leave Community'
-                  )}
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowLeaveConfirm(true)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-colors font-albert text-sm"
-            >
-              <LogOut className="w-4 h-4" />
-              Leave Community
-            </button>
-          )}
-        </div>
-      )}
     </div>
   );
 }

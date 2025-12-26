@@ -62,8 +62,16 @@ export interface UpdateOrgChannelInput {
 // ============================================================================
 
 /**
+ * Destination type for coaching promo - where users go when clicking the promo
+ */
+export type CoachingPromoDestinationType = 'landing_page' | 'funnel';
+
+/**
  * Organization coaching promo settings
  * Displayed in the chat sidebar to promote coaching services
+ * 
+ * The promo must be linked to a 1:1 (individual) program to be shown to users.
+ * Coaches can configure whether clicking leads to the program's landing page or a funnel.
  */
 export interface OrgCoachingPromo {
   id: string;                    // Same as organizationId
@@ -72,6 +80,12 @@ export interface OrgCoachingPromo {
   subtitle: string;              // Display subtitle (default: "Work with a performance psychologist 1:1")
   imageUrl: string;              // Promo image URL
   isVisible: boolean;            // Show/hide toggle
+  
+  // Program linking (required for promo to be shown to users)
+  programId?: string | null;     // Linked 1:1 program ID
+  destinationType?: CoachingPromoDestinationType; // Where to redirect: 'landing_page' or 'funnel'
+  funnelId?: string | null;      // Specific funnel ID (required if destinationType is 'funnel')
+  
   createdAt: string;             // ISO timestamp
   updatedAt: string;             // ISO timestamp
 }
@@ -81,6 +95,9 @@ export interface UpdateOrgCoachingPromoInput {
   subtitle?: string;
   imageUrl?: string;
   isVisible?: boolean;
+  programId?: string | null;
+  destinationType?: CoachingPromoDestinationType;
+  funnelId?: string | null;
 }
 
 // ============================================================================
@@ -101,6 +118,9 @@ export const DEFAULT_COACHING_PROMO: Omit<OrgCoachingPromo, 'id' | 'organization
   subtitle: 'Let me help you unleash your potential',
   imageUrl: '', // Empty string signals "use coach's profile picture"
   isVisible: true,
+  programId: null,               // No program linked by default
+  destinationType: 'landing_page', // Default to landing page
+  funnelId: null,                // No funnel selected by default
 };
 
 // Default channel configurations

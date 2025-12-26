@@ -88,6 +88,7 @@ interface FunnelClientProps {
   } | null;
   hostname: string;
   tenantSubdomain?: string | null;
+  referrerId?: string;
 }
 
 interface FlowSessionData {
@@ -104,6 +105,7 @@ export default function FunnelClient({
   validatedInvite,
   hostname,
   tenantSubdomain,
+  referrerId,
 }: FunnelClientProps) {
   const router = useRouter();
   const { isSignedIn, userId, isLoaded } = useAuth();
@@ -150,6 +152,7 @@ export default function FunnelClient({
           body: JSON.stringify({
             funnelId: funnel.id,
             inviteCode,
+            referrerId,
           }),
         });
 

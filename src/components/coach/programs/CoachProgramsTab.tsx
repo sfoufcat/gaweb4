@@ -2,12 +2,13 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
-import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment, ProgramFeature, ProgramTestimonial, ProgramFAQ } from '@/types';
+import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig } from '@/types';
 import { ProgramLandingPageEditor } from './ProgramLandingPageEditor';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Edit2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Edit2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, Gift } from 'lucide-react';
+import { ReferralConfigForm } from '@/components/coach/referrals';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { NewProgramModal } from './NewProgramModal';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
@@ -56,8 +57,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     subdomain: string | null;
   } | null>(null);
   
-  // View mode: 'list' | 'days' | 'cohorts' | 'enrollments' | 'landing'
-  const [viewMode, setViewMode] = useState<'list' | 'days' | 'cohorts' | 'enrollments' | 'landing'>('list');
+  // View mode: 'list' | 'days' | 'cohorts' | 'enrollments' | 'landing' | 'referrals'
+  const [viewMode, setViewMode] = useState<'list' | 'days' | 'cohorts' | 'enrollments' | 'landing' | 'referrals'>('list');
   
   // Enrollments state
   const [programEnrollments, setProgramEnrollments] = useState<EnrollmentWithUser[]>([]);
@@ -885,6 +886,17 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   <FileText className="w-3.5 h-3.5" />
                   Landing Page
                 </button>
+                <button
+                  onClick={() => setViewMode('referrals')}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
+                    viewMode === 'referrals'
+                      ? 'bg-[#a07855]/10 text-[#a07855]'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
+                  }`}
+                >
+                  <Gift className="w-3.5 h-3.5" />
+                  Referrals
+                </button>
               </div>
             </>
           )}
@@ -1575,6 +1587,44 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               <ProgramLandingPageEditor
                 formData={landingPageFormData}
                 onChange={setLandingPageFormData}
+              />
+            )}
+          </div>
+        ) : viewMode === 'referrals' ? (
+          // Referrals Settings
+          <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-6">
+            {selectedProgram && (
+              <ReferralConfigForm
+                targetType="program"
+                targetId={selectedProgram.id}
+                targetName={selectedProgram.name}
+                initialConfig={selectedProgram.referralConfig}
+                onSave={async (config: ReferralConfig | null) => {
+                  const response = await fetch('/api/coach/referral-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      targetType: 'program',
+                      targetId: selectedProgram.id,
+                      referralConfig: config,
+                    }),
+                  });
+                  
+                  if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to save referral config');
+                  }
+                  
+                  // Refresh programs to get updated config
+                  await fetchPrograms();
+                  // Update selected program with new config
+                  if (selectedProgram) {
+                    setSelectedProgram({
+                      ...selectedProgram,
+                      referralConfig: config || undefined,
+                    });
+                  }
+                }}
               />
             )}
           </div>
