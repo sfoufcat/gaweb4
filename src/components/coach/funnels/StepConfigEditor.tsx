@@ -938,7 +938,7 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
                     </option>
                   ))}
                 </select>
-                {config.celebrationSound && (
+                {!!config.celebrationSound && (
                   <button
                     type="button"
                     onClick={handlePreviewToggle}
