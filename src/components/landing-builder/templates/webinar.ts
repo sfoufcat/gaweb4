@@ -11,6 +11,7 @@ export const webinarTemplate: LandingPageTemplate = {
       {
         type: 'Hero',
         props: {
+          id: 'webinar-hero-1',
           headline: 'FREE Live Training: The 3-Step System to [Result]',
           subheadline: 'Join me for a 60-minute masterclass where I reveal the exact framework I use with my private clients.',
           ctaText: 'Reserve My Spot',
@@ -25,6 +26,7 @@ export const webinarTemplate: LandingPageTemplate = {
       {
         type: 'Countdown',
         props: {
+          id: 'webinar-countdown-1',
           targetDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           heading: 'Webinar Starts In',
           expiredText: 'Registration is closed',
@@ -37,6 +39,7 @@ export const webinarTemplate: LandingPageTemplate = {
       {
         type: 'Features',
         props: {
+          id: 'webinar-features-1',
           heading: 'What You\'ll Learn',
           subheading: 'In this 60-minute session, I\'ll reveal:',
           items: [
@@ -70,11 +73,12 @@ export const webinarTemplate: LandingPageTemplate = {
       {
         type: 'CoachBio',
         props: {
+          id: 'webinar-coach-1',
           name: 'Your Name',
           title: 'Coach & Founder',
           bio: 'With over 10 years of experience, I\'ve helped hundreds of clients achieve breakthrough results. My unique approach combines proven strategies with personalized support to help you reach your goals faster than you ever thought possible.',
           imageUrl: '',
-          credentials: ['Certified Coach', '500+ Clients', '10+ Years Experience'],
+          credentials: [{ text: 'Certified Coach' }, { text: '500+ Clients' }, { text: '10+ Years Experience' }],
           layout: 'side_by_side',
           showCredentials: true,
           ctaText: '',
@@ -84,6 +88,7 @@ export const webinarTemplate: LandingPageTemplate = {
       {
         type: 'Testimonials',
         props: {
+          id: 'webinar-testimonials-1',
           heading: 'What Past Attendees Say',
           subheading: '',
           items: [
@@ -111,6 +116,7 @@ export const webinarTemplate: LandingPageTemplate = {
       {
         type: 'CTABanner',
         props: {
+          id: 'webinar-cta-1',
           headline: 'Don\'t Miss This Free Training',
           subheadline: 'Limited spots available. Reserve yours now.',
           ctaText: 'Yes, Save My Spot!',
@@ -128,4 +134,3 @@ export const webinarTemplate: LandingPageTemplate = {
     },
   },
 };
-

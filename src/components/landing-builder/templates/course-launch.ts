@@ -11,6 +11,7 @@ export const courseLaunchTemplate: LandingPageTemplate = {
       {
         type: 'Hero',
         props: {
+          id: 'course-hero-1',
           headline: 'Master [Skill] in Just 8 Weeks',
           subheadline: 'The comprehensive online course that takes you from beginner to confident practitioner.',
           ctaText: 'Enroll Now',
@@ -25,6 +26,7 @@ export const courseLaunchTemplate: LandingPageTemplate = {
       {
         type: 'Video',
         props: {
+          id: 'course-video-1',
           mediaType: 'youtube',
           url: '',
           caption: 'Watch the course introduction',
@@ -36,6 +38,7 @@ export const courseLaunchTemplate: LandingPageTemplate = {
       {
         type: 'Stats',
         props: {
+          id: 'course-stats-1',
           heading: '',
           items: [
             { value: '8', label: 'Weeks of Content', prefix: '', suffix: '' },
@@ -51,6 +54,7 @@ export const courseLaunchTemplate: LandingPageTemplate = {
       {
         type: 'Features',
         props: {
+          id: 'course-features-1',
           heading: 'Course Curriculum',
           subheading: 'A comprehensive 8-week journey',
           items: [
@@ -84,6 +88,7 @@ export const courseLaunchTemplate: LandingPageTemplate = {
       {
         type: 'RichText',
         props: {
+          id: 'course-richtext-1',
           content: '<h3 style="text-align: center; margin-bottom: 1rem;">What\'s Included</h3><ul><li><strong>50+ HD Video Lessons</strong> - Learn at your own pace</li><li><strong>Downloadable Resources</strong> - Templates, checklists, and guides</li><li><strong>Private Community</strong> - Connect with fellow students</li><li><strong>Weekly Office Hours</strong> - Get your questions answered live</li><li><strong>Certificate of Completion</strong> - Show off your achievement</li><li><strong>Lifetime Access</strong> - Including all future updates</li></ul>',
           alignment: 'center',
           maxWidth: 'md',
@@ -92,11 +97,12 @@ export const courseLaunchTemplate: LandingPageTemplate = {
       {
         type: 'CoachBio',
         props: {
+          id: 'course-coach-1',
           name: 'Your Instructor',
           title: 'Expert & Educator',
           bio: 'I\'ve spent over a decade mastering this craft and have taught thousands of students worldwide. My teaching style is practical, engaging, and results-focused. I can\'t wait to guide you on your journey.',
           imageUrl: '',
-          credentials: ['Industry Expert', '10+ Years Experience', '5000+ Students'],
+          credentials: [{ text: 'Industry Expert' }, { text: '10+ Years Experience' }, { text: '5000+ Students' }],
           layout: 'centered',
           showCredentials: true,
           ctaText: '',
@@ -106,6 +112,7 @@ export const courseLaunchTemplate: LandingPageTemplate = {
       {
         type: 'Testimonials',
         props: {
+          id: 'course-testimonials-1',
           heading: 'Student Success Stories',
           subheading: '',
           items: [
@@ -140,6 +147,7 @@ export const courseLaunchTemplate: LandingPageTemplate = {
       {
         type: 'Pricing',
         props: {
+          id: 'course-pricing-1',
           heading: 'Choose Your Plan',
           subheading: 'All plans include lifetime access',
           plans: [
@@ -173,6 +181,7 @@ export const courseLaunchTemplate: LandingPageTemplate = {
       {
         type: 'Guarantee',
         props: {
+          id: 'course-guarantee-1',
           title: '30-Day Money-Back Guarantee',
           description: 'Try the course risk-free. If you\'re not completely satisfied within the first 30 days, we\'ll give you a full refund. No questions asked.',
           badgeStyle: 'shield',
@@ -183,6 +192,7 @@ export const courseLaunchTemplate: LandingPageTemplate = {
       {
         type: 'FAQ',
         props: {
+          id: 'course-faq-1',
           heading: 'Common Questions',
           subheading: '',
           items: [
@@ -210,6 +220,7 @@ export const courseLaunchTemplate: LandingPageTemplate = {
       {
         type: 'CTABanner',
         props: {
+          id: 'course-cta-1',
           headline: 'Start Your Journey Today',
           subheadline: 'Join 1000+ students who have transformed their skills',
           ctaText: 'Enroll Now',
@@ -227,4 +238,3 @@ export const courseLaunchTemplate: LandingPageTemplate = {
     },
   },
 };
-

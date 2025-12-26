@@ -11,6 +11,7 @@ export const basicTemplate: LandingPageTemplate = {
       {
         type: 'Hero',
         props: {
+          id: 'basic-hero-1',
           headline: 'Transform Your Life in 90 Days',
           subheadline: 'Join our proven program and achieve the results you\'ve always wanted.',
           ctaText: 'Get Started Today',
@@ -25,6 +26,7 @@ export const basicTemplate: LandingPageTemplate = {
       {
         type: 'Features',
         props: {
+          id: 'basic-features-1',
           heading: 'What You\'ll Get',
           subheading: 'Everything you need to succeed',
           items: [
@@ -53,6 +55,7 @@ export const basicTemplate: LandingPageTemplate = {
       {
         type: 'Testimonials',
         props: {
+          id: 'basic-testimonials-1',
           heading: 'What Our Members Say',
           subheading: '',
           items: [
@@ -80,6 +83,7 @@ export const basicTemplate: LandingPageTemplate = {
       {
         type: 'CTABanner',
         props: {
+          id: 'basic-cta-1',
           headline: 'Ready to Get Started?',
           subheadline: 'Join thousands who have already transformed their lives.',
           ctaText: 'Start Your Journey',

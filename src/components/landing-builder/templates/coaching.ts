@@ -11,6 +11,7 @@ export const coachingTemplate: LandingPageTemplate = {
       {
         type: 'Hero',
         props: {
+          id: 'coaching-hero-1',
           headline: 'Achieve Your Biggest Goals with Expert Guidance',
           subheadline: 'A personalized coaching program designed to help you break through barriers and create lasting transformation.',
           ctaText: 'Apply Now',
@@ -25,6 +26,7 @@ export const coachingTemplate: LandingPageTemplate = {
       {
         type: 'RichText',
         props: {
+          id: 'coaching-richtext-1',
           content: '<p style="text-align: center; font-size: 1.25rem; max-width: 800px; margin: 0 auto;"><strong>You know you\'re capable of more.</strong></p><p style="text-align: center; max-width: 800px; margin: 1rem auto;">You\'ve tried the courses, read the books, and implemented the strategies. But something is still missing. What you need isn\'t more information—it\'s personalized guidance and accountability from someone who\'s been where you want to go.</p>',
           alignment: 'center',
           maxWidth: 'md',
@@ -33,11 +35,12 @@ export const coachingTemplate: LandingPageTemplate = {
       {
         type: 'CoachBio',
         props: {
+          id: 'coaching-coach-1',
           name: 'Meet Your Coach',
           title: 'Certified Transformation Coach',
           bio: 'After experiencing my own transformation journey, I became passionate about helping others achieve the same breakthroughs. Over the past 10 years, I\'ve guided hundreds of clients through major life and career transitions. My approach is compassionate yet results-driven, meeting you exactly where you are while challenging you to reach your full potential.',
           imageUrl: '',
-          credentials: ['ICF Certified Coach', '500+ Clients', 'Forbes Featured', 'Bestselling Author'],
+          credentials: [{ text: 'ICF Certified Coach' }, { text: '500+ Clients' }, { text: 'Forbes Featured' }, { text: 'Bestselling Author' }],
           layout: 'side_by_side',
           showCredentials: true,
           ctaText: 'Book a Discovery Call',
@@ -47,8 +50,9 @@ export const coachingTemplate: LandingPageTemplate = {
       {
         type: 'Features',
         props: {
+          id: 'coaching-features-1',
           heading: 'The Transformation Framework',
-          subheadline: 'A proven system for lasting change',
+          subheading: 'A proven system for lasting change',
           items: [
             {
               title: 'Clarity',
@@ -80,6 +84,7 @@ export const coachingTemplate: LandingPageTemplate = {
       {
         type: 'RichText',
         props: {
+          id: 'coaching-richtext-2',
           content: '<h3 style="text-align: center; margin-bottom: 1rem;">What\'s Included in the Program</h3><ul><li><strong>90-Day Intensive Coaching</strong> - Deep-dive sessions focused on your specific goals</li><li><strong>Weekly 1-on-1 Calls</strong> - 60-minute sessions with me personally</li><li><strong>Unlimited Voice Support</strong> - Reach me anytime between sessions</li><li><strong>Custom Action Plans</strong> - Tailored strategies for your unique situation</li><li><strong>Resource Library</strong> - Frameworks, templates, and exercises</li><li><strong>VIP Community Access</strong> - Connect with other high-achievers</li></ul>',
           alignment: 'center',
           maxWidth: 'md',
@@ -88,6 +93,7 @@ export const coachingTemplate: LandingPageTemplate = {
       {
         type: 'Testimonials',
         props: {
+          id: 'coaching-testimonials-1',
           heading: 'Client Transformations',
           subheading: 'Real stories from real people',
           items: [
@@ -122,8 +128,9 @@ export const coachingTemplate: LandingPageTemplate = {
       {
         type: 'Pricing',
         props: {
+          id: 'coaching-pricing-1',
           heading: 'Investment',
-          subheadline: 'Choose the level of support that\'s right for you',
+          subheading: 'Choose the level of support that\'s right for you',
           plans: [
             {
               name: 'Essential',
@@ -155,6 +162,7 @@ export const coachingTemplate: LandingPageTemplate = {
       {
         type: 'FAQ',
         props: {
+          id: 'coaching-faq-1',
           heading: 'Common Questions',
           subheading: '',
           items: [
@@ -182,6 +190,7 @@ export const coachingTemplate: LandingPageTemplate = {
       {
         type: 'CTABanner',
         props: {
+          id: 'coaching-cta-1',
           headline: 'Ready to Transform Your Life?',
           subheadline: 'Limited spots available each month',
           ctaText: 'Book Your Discovery Call',
@@ -199,4 +208,3 @@ export const coachingTemplate: LandingPageTemplate = {
     },
   },
 };
-

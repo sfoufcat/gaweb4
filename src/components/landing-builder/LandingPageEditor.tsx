@@ -1,5 +1,6 @@
 'use client';
 
+import React, { Component, type ReactNode } from 'react';
 import { Puck, type Data } from '@measured/puck';
 import '@measured/puck/puck.css';
 import { createPortal } from 'react-dom';
@@ -17,13 +18,70 @@ import {
   Mic, 
   Sparkles,
   Save,
-  Undo2,
-  Redo2,
-  Monitor,
-  Tablet,
-  Smartphone,
-  LayoutTemplate
+  LayoutTemplate,
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
+
+// Error Boundary to catch Puck errors (e.g., during delete operations)
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  onReset?: () => void;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+class PuckErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Puck Editor Error:', error, errorInfo);
+  }
+
+  handleReset = () => {
+    this.setState({ hasError: false, error: undefined });
+    this.props.onReset?.();
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex-1 flex items-center justify-center bg-[#faf8f6] dark:bg-[#05070b]">
+          <div className="text-center p-8 max-w-md">
+            <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/20 mx-auto flex items-center justify-center mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+            </div>
+            <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+              Something went wrong
+            </h2>
+            <p className="text-[#5f5a55] dark:text-[#b2b6c2] mb-6">
+              The editor encountered an error. This can sometimes happen during editing operations.
+            </p>
+            <Button
+              onClick={this.handleReset}
+              className="bg-[#a07855] hover:bg-[#8c6245] text-white"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Try Again
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 export interface LandingPageEditorProps {
   initialData?: Data;
@@ -89,6 +147,7 @@ export function LandingPageEditor({
   const [mounted, setMounted] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [editorKey, setEditorKey] = useState(0); // Key for error boundary reset
 
   useEffect(() => {
     setMounted(true);
@@ -130,13 +189,6 @@ export function LandingPageEditor({
 
   // Template Selection Screen (Portal to body)
   if (showTemplates) {
-    // Group templates by category
-    const templatesByCategory = templates.reduce((acc, template) => {
-      if (!acc[template.category]) acc[template.category] = [];
-      acc[template.category].push(template);
-      return acc;
-    }, {} as Record<string, LandingPageTemplate[]>);
-
     return createPortal(
       <div className="fixed inset-0 z-[9999] bg-app-bg dark:bg-[#05070b] flex flex-col font-albert animate-page-fade-in">
         {/* Header */}
@@ -164,84 +216,64 @@ export function LandingPageEditor({
           </Button>
         </div>
 
-        {/* Template Grid */}
+        {/* Template Grid - All templates in one horizontal grid */}
         <div className="flex-1 overflow-auto p-8">
-          <div className="max-w-7xl mx-auto">
-            {/* Start Fresh Section */}
-            <div className="mb-10">
-              <h2 className="text-lg font-semibold mb-5 text-text-primary dark:text-[#f5f5f8]">Start Fresh</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                <button
-                  onClick={handleStartBlank}
-                  className="h-48 border-2 border-dashed border-border dark:border-[#262b35] rounded-2xl hover:border-[#a07855] hover:bg-[#a07855]/5 dark:hover:bg-[#a07855]/10 transition-all duration-200 flex flex-col items-center justify-center gap-4 group"
-                >
-                  <div className="w-14 h-14 rounded-2xl bg-surface-elevated dark:bg-[#1d222b] flex items-center justify-center group-hover:bg-[#a07855]/10 transition-colors border border-border dark:border-[#262b35]">
-                    <Layout className="w-7 h-7 text-text-muted dark:text-[#7d8190] group-hover:text-[#a07855] transition-colors" />
-                  </div>
-                  <div className="text-center">
-                    <span className="font-semibold text-lg text-text-primary dark:text-[#f5f5f8] block">Blank Page</span>
-                    <span className="text-sm text-text-secondary dark:text-[#b2b6c2]">Build from scratch</span>
-                  </div>
-                </button>
-              </div>
-            </div>
+          <div className="w-full">
+            <h2 className="text-lg font-semibold mb-6 text-text-primary dark:text-[#f5f5f8]">Choose a Template</h2>
+            
+            {/* Single unified grid with all templates */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
+              {/* Blank Page Option */}
+              <button
+                onClick={handleStartBlank}
+                className="h-64 border-2 border-dashed border-border dark:border-[#262b35] rounded-2xl hover:border-[#a07855] hover:bg-[#a07855]/5 dark:hover:bg-[#a07855]/10 transition-all duration-200 flex flex-col items-center justify-center gap-4 group"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-surface-elevated dark:bg-[#1d222b] flex items-center justify-center group-hover:bg-[#a07855]/10 transition-colors border border-border dark:border-[#262b35]">
+                  <Layout className="w-7 h-7 text-text-muted dark:text-[#7d8190] group-hover:text-[#a07855] transition-colors" />
+                </div>
+                <div className="text-center">
+                  <span className="font-semibold text-lg text-text-primary dark:text-[#f5f5f8] block">Blank Page</span>
+                  <span className="text-sm text-text-secondary dark:text-[#b2b6c2]">Build from scratch</span>
+                </div>
+              </button>
 
-            {/* Template Categories */}
-            {Object.entries(templatesByCategory).map(([category, categoryTemplates]) => {
-              const CategoryIcon = categoryIcons[category] || Layout;
-              
-              return (
-                <div key={category} className="mb-10">
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className="w-9 h-9 rounded-xl bg-[#a07855]/10 dark:bg-[#a07855]/20 flex items-center justify-center">
-                      <CategoryIcon className="w-5 h-5 text-[#a07855]" />
+              {/* All Templates */}
+              {templates.map((template) => {
+                const CategoryIcon = categoryIcons[template.category] || Layout;
+                return (
+                  <button
+                    key={template.id}
+                    onClick={() => handleSelectTemplate(template)}
+                    className="text-left bg-card dark:bg-[#171b22] border border-border dark:border-[#262b35] rounded-2xl overflow-hidden hover:border-[#a07855] hover:shadow-lg dark:hover:shadow-[#a07855]/10 transition-all duration-200 group"
+                  >
+                    {/* Thumbnail/Preview */}
+                    <div className="aspect-[4/3] relative overflow-hidden border-b border-border dark:border-[#262b35]">
+                      <TemplatePreview template={template} />
+                      <div className="absolute inset-0 bg-[#a07855]/0 group-hover:bg-[#a07855]/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <span className="px-4 py-2 bg-[#a07855] text-white rounded-lg font-medium text-sm shadow-lg flex items-center gap-2">
+                          <Sparkles className="w-4 h-4" />
+                          Use Template
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-lg font-semibold text-text-primary dark:text-[#f5f5f8] capitalize">{category}</h2>
-                      <p className="text-xs text-text-secondary dark:text-[#b2b6c2]">
-                        {category === 'minimal' && 'Clean, simple designs'}
-                        {category === 'sales' && 'High-converting sales pages'}
-                        {category === 'webinar' && 'Webinar & event registration'}
-                        {category === 'course' && 'Online course launches'}
-                        {category === 'coaching' && 'Coaching & consulting programs'}
+                    
+                    {/* Info */}
+                    <div className="p-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <CategoryIcon className="w-4 h-4 text-[#a07855]" />
+                        <span className="text-xs text-[#a07855] capitalize font-medium">{template.category}</span>
+                      </div>
+                      <h3 className="font-semibold text-text-primary dark:text-[#f5f5f8] group-hover:text-[#a07855] transition-colors">
+                        {template.name}
+                      </h3>
+                      <p className="text-sm text-text-secondary dark:text-[#b2b6c2] mt-1 line-clamp-2">
+                        {template.description}
                       </p>
                     </div>
-                  </div>
-                  
-                  {/* Horizontal grid of templates */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                    {categoryTemplates.map((template) => (
-                      <button
-                        key={template.id}
-                        onClick={() => handleSelectTemplate(template)}
-                        className="text-left bg-card dark:bg-[#171b22] border border-border dark:border-[#262b35] rounded-2xl overflow-hidden hover:border-[#a07855] hover:shadow-lg dark:hover:shadow-[#a07855]/10 transition-all duration-200 group"
-                      >
-                        {/* Thumbnail/Preview */}
-                        <div className="aspect-[4/3] relative overflow-hidden border-b border-border dark:border-[#262b35]">
-                          <TemplatePreview template={template} />
-                          <div className="absolute inset-0 bg-[#a07855]/0 group-hover:bg-[#a07855]/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                            <span className="px-4 py-2 bg-[#a07855] text-white rounded-lg font-medium text-sm shadow-lg flex items-center gap-2">
-                              <Sparkles className="w-4 h-4" />
-                              Use Template
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {/* Info */}
-                        <div className="p-4">
-                          <h3 className="font-semibold text-text-primary dark:text-[#f5f5f8] group-hover:text-[#a07855] transition-colors">
-                            {template.name}
-                          </h3>
-                          <p className="text-sm text-text-secondary dark:text-[#b2b6c2] mt-1 line-clamp-2">
-                            {template.description}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>,
@@ -322,21 +354,26 @@ export function LandingPageEditor({
 
       {/* Puck Editor - Fills remaining space */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <Puck
-          config={landingPageConfig}
-          data={editorData}
-          onChange={handleDataChange}
-          onPublish={(data) => handleSave(data)}
-          viewports={[
-            { width: 1280, height: 800, label: 'Desktop', icon: 'Monitor' },
-            { width: 768, height: 1024, label: 'Tablet', icon: 'Tablet' },
-            { width: 375, height: 667, label: 'Mobile', icon: 'Smartphone' },
-          ]}
-          overrides={{
-            // Hide the default header since we have our own
-            header: () => <></>,
-          }}
-        />
+        <PuckErrorBoundary
+          key={editorKey}
+          onReset={() => setEditorKey((k) => k + 1)}
+        >
+          <Puck
+            config={landingPageConfig}
+            data={editorData}
+            onChange={handleDataChange}
+            onPublish={(data) => handleSave(data)}
+            viewports={[
+              { width: 1280, height: 800, label: 'Desktop', icon: 'Monitor' },
+              { width: 768, height: 1024, label: 'Tablet', icon: 'Tablet' },
+              { width: 375, height: 667, label: 'Mobile', icon: 'Smartphone' },
+            ]}
+            overrides={{
+              // Hide the default header since we have our own
+              header: () => <></>,
+            }}
+          />
+        </PuckErrorBoundary>
       </div>
     </div>,
     document.body

@@ -11,6 +11,7 @@ export const salesPageTemplate: LandingPageTemplate = {
       {
         type: 'Hero',
         props: {
+          id: 'sales-hero-1',
           headline: 'Finally Achieve Your Biggest Goals (Without the Overwhelm)',
           subheadline: 'The proven 90-day system that\'s helped 500+ people transform their lives—and it can work for you too.',
           ctaText: 'Yes, I Want This!',
@@ -25,6 +26,7 @@ export const salesPageTemplate: LandingPageTemplate = {
       {
         type: 'LogoCloud',
         props: {
+          id: 'sales-logos-1',
           title: 'As Featured In',
           logos: [
             { name: 'Forbes', imageUrl: '' },
@@ -39,6 +41,7 @@ export const salesPageTemplate: LandingPageTemplate = {
       {
         type: 'Video',
         props: {
+          id: 'sales-video-1',
           mediaType: 'youtube',
           url: '',
           caption: 'Watch: How This System Works',
@@ -50,6 +53,7 @@ export const salesPageTemplate: LandingPageTemplate = {
       {
         type: 'Stats',
         props: {
+          id: 'sales-stats-1',
           heading: 'The Results Speak for Themselves',
           items: [
             { value: '500', label: 'Lives Changed', prefix: '', suffix: '+' },
@@ -64,6 +68,7 @@ export const salesPageTemplate: LandingPageTemplate = {
       {
         type: 'Features',
         props: {
+          id: 'sales-features-1',
           heading: 'Here\'s What You\'ll Get',
           subheading: 'Everything you need for your transformation',
           items: [
@@ -97,6 +102,7 @@ export const salesPageTemplate: LandingPageTemplate = {
       {
         type: 'Testimonials',
         props: {
+          id: 'sales-testimonials-1',
           heading: 'Success Stories',
           subheading: 'Real people, real results',
           items: [
@@ -131,6 +137,7 @@ export const salesPageTemplate: LandingPageTemplate = {
       {
         type: 'Countdown',
         props: {
+          id: 'sales-countdown-1',
           targetDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           heading: 'Special Launch Pricing Ends In',
           expiredText: 'This offer has expired',
@@ -143,6 +150,7 @@ export const salesPageTemplate: LandingPageTemplate = {
       {
         type: 'Pricing',
         props: {
+          id: 'sales-pricing-1',
           heading: 'Choose Your Path',
           subheading: 'Investment in yourself that pays dividends forever',
           plans: [
@@ -187,6 +195,7 @@ export const salesPageTemplate: LandingPageTemplate = {
       {
         type: 'Guarantee',
         props: {
+          id: 'sales-guarantee-1',
           title: '30-Day Money-Back Guarantee',
           description: 'We\'re so confident in our program that we offer a full 30-day money-back guarantee. If you\'re not completely satisfied, simply reach out and we\'ll refund every penny. No questions asked.',
           badgeStyle: 'shield',
@@ -197,6 +206,7 @@ export const salesPageTemplate: LandingPageTemplate = {
       {
         type: 'FAQ',
         props: {
+          id: 'sales-faq-1',
           heading: 'Frequently Asked Questions',
           subheading: '',
           items: [
@@ -224,6 +234,7 @@ export const salesPageTemplate: LandingPageTemplate = {
       {
         type: 'CTABanner',
         props: {
+          id: 'sales-cta-1',
           headline: 'Your Transformation Starts Today',
           subheadline: 'Join 500+ members who are already living their best lives',
           ctaText: 'Start My Transformation',
@@ -241,4 +252,3 @@ export const salesPageTemplate: LandingPageTemplate = {
     },
   },
 };
-
