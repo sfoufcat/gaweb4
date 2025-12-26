@@ -56,7 +56,7 @@ export const CTABanner = ({
   const alignmentClass = alignment === 'center' ? 'text-center items-center' : 'text-left items-start';
 
   return (
-    <section className="py-8 px-6">
+    <section className="font-albert py-8 px-6">
       <div className="max-w-4xl mx-auto">
         <div className={`${classes.container} rounded-2xl p-8 md:p-12 flex flex-col gap-4 ${alignmentClass}`}>
           <h2 className={`text-2xl md:text-3xl font-bold ${classes.headline}`}>
@@ -72,7 +72,7 @@ export const CTABanner = ({
           <div className={`flex flex-col sm:flex-row gap-4 mt-2 ${alignment === 'center' ? 'items-center' : 'items-start'}`}>
             <a
               href={ctaUrl}
-              className={`${classes.button} px-8 py-4 rounded-lg font-semibold text-lg transition-colors`}
+              className={`${classes.button} px-8 py-4 rounded-xl font-semibold text-lg transition-colors shadow-sm`}
             >
               {ctaText}
             </a>

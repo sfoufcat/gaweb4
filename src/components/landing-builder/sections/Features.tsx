@@ -87,8 +87,8 @@ export const Features = ({
     <div key={index} className="flex flex-col gap-4">
       {showIcons && renderIcon(item.icon)}
       <div>
-        <h3 className="text-lg font-semibold text-foreground mb-2">{item.title}</h3>
-        <p className="text-muted-foreground">{item.description}</p>
+        <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">{item.title}</h3>
+        <p className="text-[#5f5a55]">{item.description}</p>
       </div>
     </div>
   );
@@ -97,8 +97,8 @@ export const Features = ({
     <div key={index} className="flex gap-4 items-start">
       {showIcons && renderIcon(item.icon)}
       <div>
-        <h3 className="text-lg font-semibold text-foreground mb-1">{item.title}</h3>
-        <p className="text-muted-foreground">{item.description}</p>
+        <h3 className="text-lg font-semibold text-[#1a1a1a] mb-1">{item.title}</h3>
+        <p className="text-[#5f5a55]">{item.description}</p>
       </div>
     </div>
   );
@@ -121,22 +121,22 @@ export const Features = ({
         </div>
       )}
       <div className={index % 2 === 1 ? 'md:text-right' : ''}>
-        <h3 className="text-xl font-semibold text-foreground mb-2">{item.title}</h3>
-        <p className="text-muted-foreground">{item.description}</p>
+        <h3 className="text-xl font-semibold text-[#1a1a1a] mb-2">{item.title}</h3>
+        <p className="text-[#5f5a55]">{item.description}</p>
       </div>
     </div>
   );
 
   return (
-    <section className="py-16 px-6">
+    <section className="font-albert py-16 px-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-[#1a1a1a] mb-4">
             {heading}
           </h2>
           {subheading && (
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-lg text-[#5f5a55] max-w-2xl mx-auto">
               {subheading}
             </p>
           )}

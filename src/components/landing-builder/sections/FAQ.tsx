@@ -49,19 +49,19 @@ export const FAQ = ({
     const isOpen = openIndex === index;
 
     return (
-      <div className="border-b border-border">
+      <div className="border-b border-[#e1ddd8]">
         <button
           onClick={() => setOpenIndex(isOpen ? null : index)}
           className="w-full py-5 flex items-center justify-between text-left gap-4"
         >
-          <span className="font-medium text-foreground flex items-center gap-3">
+          <span className="font-medium text-[#1a1a1a] flex items-center gap-3">
             {showNumbers && (
-              <span className="text-sm text-muted-foreground w-6">{String(index + 1).padStart(2, '0')}</span>
+              <span className="text-sm text-[#5f5a55] w-6">{String(index + 1).padStart(2, '0')}</span>
             )}
             {item.question}
           </span>
           <ChevronDown
-            className={`w-5 h-5 text-muted-foreground transition-transform flex-shrink-0 ${
+            className={`w-5 h-5 text-[#5f5a55] transition-transform flex-shrink-0 ${
               isOpen ? 'rotate-180' : ''
             }`}
           />
@@ -71,7 +71,7 @@ export const FAQ = ({
             isOpen ? 'max-h-96 pb-5' : 'max-h-0'
           }`}
         >
-          <p className="text-muted-foreground leading-relaxed pl-0">
+          <p className="text-[#5f5a55] leading-relaxed pl-0">
             {showNumbers && <span className="w-6 inline-block" />}
             {item.answer}
           </p>
@@ -81,43 +81,43 @@ export const FAQ = ({
   };
 
   const GridItem = ({ item, index }: { item: FAQItem; index: number }) => (
-    <div className="bg-card border border-border rounded-xl p-6">
-      <h3 className="font-medium text-foreground mb-3 flex items-start gap-3">
+    <div className="bg-white border border-[#e1ddd8] rounded-2xl p-6 shadow-sm">
+      <h3 className="font-medium text-[#1a1a1a] mb-3 flex items-start gap-3">
         {showNumbers && (
           <span className="text-sm text-[#a07855] font-bold">{String(index + 1).padStart(2, '0')}</span>
         )}
         {item.question}
       </h3>
-      <p className="text-muted-foreground text-sm leading-relaxed">
+      <p className="text-[#5f5a55] text-sm leading-relaxed">
         {item.answer}
       </p>
     </div>
   );
 
   const SimpleItem = ({ item, index }: { item: FAQItem; index: number }) => (
-    <div className="py-6 border-b border-border last:border-0">
-      <h3 className="font-medium text-foreground mb-2 flex items-start gap-3">
+    <div className="py-6 border-b border-[#e1ddd8] last:border-0">
+      <h3 className="font-medium text-[#1a1a1a] mb-2 flex items-start gap-3">
         {showNumbers && (
           <span className="text-[#a07855] font-bold">{index + 1}.</span>
         )}
         {item.question}
       </h3>
-      <p className="text-muted-foreground leading-relaxed">
+      <p className="text-[#5f5a55] leading-relaxed">
         {item.answer}
       </p>
     </div>
   );
 
   return (
-    <section className="py-16 px-6">
+    <section className="font-albert py-16 px-6">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-[#1a1a1a] mb-4">
             {heading}
           </h2>
           {subheading && (
-            <p className="text-lg text-muted-foreground">
+            <p className="text-lg text-[#5f5a55]">
               {subheading}
             </p>
           )}

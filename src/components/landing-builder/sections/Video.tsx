@@ -73,10 +73,10 @@ export const Video = ({
 
   if (!url) {
     return (
-      <section className="py-12 px-6">
+      <section className="font-albert py-12 px-6">
         <div className={`${layoutClasses[layout]}`}>
-          <div className={`${aspectClasses[aspectRatio]} bg-muted rounded-lg flex items-center justify-center`}>
-            <p className="text-muted-foreground">Add a video URL to display</p>
+          <div className={`${aspectClasses[aspectRatio]} bg-[#f5f3f0] rounded-2xl flex items-center justify-center`}>
+            <p className="text-[#5f5a55]">Add a video URL to display</p>
           </div>
         </div>
       </section>
@@ -84,9 +84,9 @@ export const Video = ({
   }
 
   return (
-    <section className="py-12 px-6">
+    <section className="font-albert py-12 px-6">
       <div className={`${layoutClasses[layout]}`}>
-        <div className={`${aspectClasses[aspectRatio]} rounded-lg overflow-hidden bg-black`}>
+        <div className={`${aspectClasses[aspectRatio]} rounded-2xl overflow-hidden bg-black shadow-lg`}>
           <iframe
             src={embedUrl}
             className="w-full h-full"
@@ -96,7 +96,7 @@ export const Video = ({
         </div>
         
         {caption && (
-          <p className="text-center text-sm text-muted-foreground mt-4">
+          <p className="text-center text-sm text-[#5f5a55] mt-4">
             {caption}
           </p>
         )}

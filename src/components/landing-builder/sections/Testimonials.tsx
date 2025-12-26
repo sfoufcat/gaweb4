@@ -75,42 +75,42 @@ export const Testimonials = ({
   const renderTestimonialCard = (item: TestimonialItem, index: number) => (
     <div
       key={index}
-      className="bg-card border border-border rounded-xl p-6 flex flex-col gap-4"
+      className="bg-white border border-[#e1ddd8] rounded-2xl p-6 flex flex-col gap-4 shadow-sm"
     >
       {showRatings && renderStars(item.rating)}
       
-      <p className="text-foreground leading-relaxed">&ldquo;{item.content}&rdquo;</p>
+      <p className="text-[#1a1a1a] leading-relaxed">&ldquo;{item.content}&rdquo;</p>
       
       <div className="flex items-center gap-3 mt-auto pt-4">
         {showImages && (
-          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+          <div className="w-10 h-10 rounded-full bg-[#f5f3f0] flex items-center justify-center overflow-hidden">
             {item.imageUrl ? (
               <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-sm font-medium text-muted-foreground">
+              <span className="text-sm font-medium text-[#5f5a55]">
                 {item.name.charAt(0)}
               </span>
             )}
           </div>
         )}
         <div>
-          <p className="font-medium text-foreground">{item.name}</p>
-          <p className="text-sm text-muted-foreground">{item.role}</p>
+          <p className="font-medium text-[#1a1a1a]">{item.name}</p>
+          <p className="text-sm text-[#5f5a55]">{item.role}</p>
         </div>
       </div>
     </div>
   );
 
   return (
-    <section className="py-16 px-6">
+    <section className="font-albert py-16 px-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-[#1a1a1a] mb-4">
             {heading}
           </h2>
           {subheading && (
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-lg text-[#5f5a55] max-w-2xl mx-auto">
               {subheading}
             </p>
           )}
@@ -126,30 +126,30 @@ export const Testimonials = ({
         {/* Single Featured */}
         {layout === 'single' && items[0] && (
           <div className="max-w-2xl mx-auto">
-            <div className="bg-card border border-border rounded-2xl p-8 text-center">
+            <div className="bg-white border border-[#e1ddd8] rounded-2xl p-8 text-center shadow-sm">
               {showRatings && (
                 <div className="flex justify-center mb-4">
                   {renderStars(items[0].rating)}
                 </div>
               )}
-              <p className="text-xl text-foreground leading-relaxed mb-6">
+              <p className="text-xl text-[#1a1a1a] leading-relaxed mb-6">
                 &ldquo;{items[0].content}&rdquo;
               </p>
               <div className="flex items-center justify-center gap-3">
                 {showImages && (
-                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                  <div className="w-12 h-12 rounded-full bg-[#f5f3f0] flex items-center justify-center overflow-hidden">
                     {items[0].imageUrl ? (
                       <img src={items[0].imageUrl} alt={items[0].name} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-lg font-medium text-muted-foreground">
+                      <span className="text-lg font-medium text-[#5f5a55]">
                         {items[0].name.charAt(0)}
                       </span>
                     )}
                   </div>
                 )}
                 <div className="text-left">
-                  <p className="font-medium text-foreground">{items[0].name}</p>
-                  <p className="text-sm text-muted-foreground">{items[0].role}</p>
+                  <p className="font-medium text-[#1a1a1a]">{items[0].name}</p>
+                  <p className="text-sm text-[#5f5a55]">{items[0].role}</p>
                 </div>
               </div>
             </div>

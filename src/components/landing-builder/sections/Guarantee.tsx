@@ -33,7 +33,7 @@ export const Guarantee = ({
       inner: 'text-center',
     },
     card: {
-      container: 'bg-card border border-border rounded-2xl p-8',
+      container: 'bg-white border border-[#e1ddd8] rounded-2xl p-8 shadow-sm',
       inner: 'text-center',
     },
     bordered: {
@@ -45,7 +45,7 @@ export const Guarantee = ({
   const classes = styleClasses[style];
 
   return (
-    <section className="py-16 px-6">
+    <section className="font-albert py-16 px-6">
       <div className="max-w-2xl mx-auto">
         <div className={classes.container}>
           <div className={classes.inner}>
@@ -61,19 +61,19 @@ export const Guarantee = ({
             {/* Days Badge */}
             {daysGuarantee > 0 && (
               <div className="flex justify-center mb-4">
-                <span className="px-4 py-1 bg-[#a07855] text-white rounded-full text-sm font-medium">
+                <span className="px-4 py-1 bg-[#a07855] text-white rounded-xl text-sm font-medium">
                   {daysGuarantee} Days
                 </span>
               </div>
             )}
 
             {/* Title */}
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold text-[#1a1a1a] mb-4">
               {title}
             </h2>
 
             {/* Description */}
-            <p className="text-muted-foreground leading-relaxed">
+            <p className="text-[#5f5a55] leading-relaxed">
               {description}
             </p>
           </div>

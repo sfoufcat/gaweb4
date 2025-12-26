@@ -36,11 +36,11 @@ export const CoachBio = ({
   ctaUrl = '#',
 }: CoachBioProps) => {
   const renderImage = (size: 'small' | 'large' = 'large') => (
-    <div className={`${size === 'large' ? 'w-64 h-64 md:w-80 md:h-80' : 'w-32 h-32'} rounded-2xl bg-muted overflow-hidden flex-shrink-0`}>
+    <div className={`${size === 'large' ? 'w-64 h-64 md:w-80 md:h-80' : 'w-32 h-32'} rounded-2xl bg-[#f5f3f0] overflow-hidden flex-shrink-0`}>
       {imageUrl ? (
         <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
       ) : (
-        <div className="w-full h-full flex items-center justify-center text-4xl text-muted-foreground">
+        <div className="w-full h-full flex items-center justify-center text-4xl text-[#5f5a55]">
           {name.charAt(0)}
         </div>
       )}
@@ -52,7 +52,7 @@ export const CoachBio = ({
       {credentials.map((credential, index) => (
         <span
           key={index}
-          className="px-3 py-1 bg-[#a07855]/10 text-[#a07855] rounded-full text-sm font-medium"
+          className="px-3 py-1 bg-[#a07855]/10 text-[#a07855] rounded-xl text-sm font-medium"
         >
           {credential.text}
         </span>
@@ -63,24 +63,24 @@ export const CoachBio = ({
   // Side by Side Layout
   if (layout === 'side_by_side') {
     return (
-      <section className="py-16 px-6">
+      <section className="font-albert py-16 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="flex flex-col md:flex-row gap-8 md:gap-12 items-center">
             {renderImage('large')}
             
             <div className="flex-1">
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
+              <h2 className="text-3xl md:text-4xl font-bold text-[#1a1a1a] mb-2">
                 {name}
               </h2>
               <p className="text-lg text-[#a07855] font-medium mb-4">{title}</p>
-              <p className="text-muted-foreground leading-relaxed mb-6">{bio}</p>
+              <p className="text-[#5f5a55] leading-relaxed mb-6">{bio}</p>
               
               {showCredentials && credentials.length > 0 && renderCredentials()}
               
               {ctaText && (
                 <a
                   href={ctaUrl}
-                  className="inline-flex items-center justify-center px-6 py-3 mt-6 text-white bg-[#a07855] hover:bg-[#8c6245] rounded-lg font-medium transition-colors"
+                  className="inline-flex items-center justify-center px-6 py-3 mt-6 text-white bg-[#a07855] hover:bg-[#8c6245] rounded-xl font-medium transition-colors shadow-sm"
                 >
                   {ctaText}
                 </a>
@@ -95,24 +95,24 @@ export const CoachBio = ({
   // Centered Layout
   if (layout === 'centered') {
     return (
-      <section className="py-16 px-6">
+      <section className="font-albert py-16 px-6">
         <div className="max-w-2xl mx-auto text-center">
           <div className="flex justify-center mb-6">
             {renderImage('large')}
           </div>
           
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
+          <h2 className="text-3xl md:text-4xl font-bold text-[#1a1a1a] mb-2">
             {name}
           </h2>
           <p className="text-lg text-[#a07855] font-medium mb-4">{title}</p>
-          <p className="text-muted-foreground leading-relaxed mb-6">{bio}</p>
+          <p className="text-[#5f5a55] leading-relaxed mb-6">{bio}</p>
           
           {showCredentials && credentials.length > 0 && (
             <div className="flex flex-wrap justify-center gap-2 mt-4">
               {credentials.map((credential, index) => (
                 <span
                   key={index}
-                  className="px-3 py-1 bg-[#a07855]/10 text-[#a07855] rounded-full text-sm font-medium"
+                  className="px-3 py-1 bg-[#a07855]/10 text-[#a07855] rounded-xl text-sm font-medium"
                 >
                   {credential.text}
                 </span>
@@ -123,7 +123,7 @@ export const CoachBio = ({
           {ctaText && (
             <a
               href={ctaUrl}
-              className="inline-flex items-center justify-center px-6 py-3 mt-6 text-white bg-[#a07855] hover:bg-[#8c6245] rounded-lg font-medium transition-colors"
+              className="inline-flex items-center justify-center px-6 py-3 mt-6 text-white bg-[#a07855] hover:bg-[#8c6245] rounded-xl font-medium transition-colors shadow-sm"
             >
               {ctaText}
             </a>
@@ -135,25 +135,25 @@ export const CoachBio = ({
 
   // Card Layout
   return (
-    <section className="py-16 px-6">
+    <section className="font-albert py-16 px-6">
       <div className="max-w-lg mx-auto">
-        <div className="bg-card border border-border rounded-2xl p-8 text-center">
+        <div className="bg-white border border-[#e1ddd8] rounded-2xl p-8 text-center shadow-sm">
           <div className="flex justify-center mb-6">
             {renderImage('small')}
           </div>
           
-          <h2 className="text-2xl font-bold text-foreground mb-1">
+          <h2 className="text-2xl font-bold text-[#1a1a1a] mb-1">
             {name}
           </h2>
           <p className="text-[#a07855] font-medium mb-4">{title}</p>
-          <p className="text-muted-foreground text-sm leading-relaxed mb-4">{bio}</p>
+          <p className="text-[#5f5a55] text-sm leading-relaxed mb-4">{bio}</p>
           
           {showCredentials && credentials.length > 0 && (
             <div className="flex flex-wrap justify-center gap-2 mt-4">
               {credentials.map((credential, index) => (
                 <span
                   key={index}
-                  className="px-2 py-0.5 bg-[#a07855]/10 text-[#a07855] rounded-full text-xs font-medium"
+                  className="px-2 py-0.5 bg-[#a07855]/10 text-[#a07855] rounded-xl text-xs font-medium"
                 >
                   {credential.text}
                 </span>
@@ -164,7 +164,7 @@ export const CoachBio = ({
           {ctaText && (
             <a
               href={ctaUrl}
-              className="inline-flex items-center justify-center px-6 py-3 mt-6 text-white bg-[#a07855] hover:bg-[#8c6245] rounded-lg font-medium transition-colors w-full"
+              className="inline-flex items-center justify-center px-6 py-3 mt-6 text-white bg-[#a07855] hover:bg-[#8c6245] rounded-xl font-medium transition-colors w-full shadow-sm"
             >
               {ctaText}
             </a>

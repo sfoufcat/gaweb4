@@ -27,17 +27,17 @@ export const RichText = ({
   };
 
   return (
-    <section className="py-8 px-6">
+    <section className="font-albert py-8 px-6">
       <div className={`${maxWidthClasses[maxWidth]} ${alignmentClasses[alignment]}`}>
         <div
           className="prose prose-gray dark:prose-invert max-w-none
-            prose-headings:text-foreground
-            prose-p:text-muted-foreground
-            prose-strong:text-foreground
+            prose-headings:text-[#1a1a1a] prose-headings:font-bold
+            prose-p:text-[#5f5a55]
+            prose-strong:text-[#1a1a1a]
             prose-a:text-[#a07855] prose-a:no-underline hover:prose-a:underline
-            prose-ul:text-muted-foreground
-            prose-ol:text-muted-foreground
-            prose-li:text-muted-foreground"
+            prose-ul:text-[#5f5a55]
+            prose-ol:text-[#5f5a55]
+            prose-li:text-[#5f5a55]"
           dangerouslySetInnerHTML={{ __html: content }}
         />
       </div>

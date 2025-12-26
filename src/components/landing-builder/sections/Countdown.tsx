@@ -60,9 +60,9 @@ export const Countdown = ({
 
   if (!mounted) {
     return (
-      <section className="py-12 px-6">
+      <section className="font-albert py-12 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-[#5f5a55]">Loading...</p>
         </div>
       </section>
     );
@@ -70,9 +70,9 @@ export const Countdown = ({
 
   if (!timeLeft) {
     return (
-      <section className="py-12 px-6">
+      <section className="font-albert py-12 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <p className="text-lg text-muted-foreground">{expiredText}</p>
+          <p className="text-lg text-[#5f5a55]">{expiredText}</p>
         </div>
       </section>
     );
@@ -82,18 +82,18 @@ export const Countdown = ({
     minimal: {
       container: 'bg-transparent',
       box: 'text-center',
-      number: 'text-4xl md:text-5xl font-bold text-foreground',
-      label: 'text-sm text-muted-foreground uppercase tracking-wide',
+      number: 'text-4xl md:text-5xl font-bold text-[#1a1a1a]',
+      label: 'text-sm text-[#5f5a55] uppercase tracking-wide',
     },
     boxed: {
-      container: 'bg-card border border-border rounded-2xl p-8',
-      box: 'bg-background rounded-xl p-4 text-center min-w-[80px]',
-      number: 'text-3xl md:text-4xl font-bold text-foreground',
-      label: 'text-xs text-muted-foreground uppercase tracking-wide mt-1',
+      container: 'bg-white border border-[#e1ddd8] rounded-2xl p-8 shadow-sm',
+      box: 'bg-[#faf8f6] rounded-2xl p-4 text-center min-w-[80px]',
+      number: 'text-3xl md:text-4xl font-bold text-[#1a1a1a]',
+      label: 'text-xs text-[#5f5a55] uppercase tracking-wide mt-1',
     },
     urgent: {
       container: 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-2xl p-8',
-      box: 'bg-white dark:bg-red-950 rounded-xl p-4 text-center min-w-[80px] shadow-sm',
+      box: 'bg-white dark:bg-red-950 rounded-2xl p-4 text-center min-w-[80px] shadow-sm',
       number: 'text-3xl md:text-4xl font-bold text-red-600 dark:text-red-400',
       label: 'text-xs text-red-500 uppercase tracking-wide mt-1',
     },
@@ -102,11 +102,11 @@ export const Countdown = ({
   const classes = styleClasses[style];
 
   return (
-    <section className="py-12 px-6">
+    <section className="font-albert py-12 px-6">
       <div className={`max-w-4xl mx-auto ${classes.container}`}>
         {heading && (
           <h2 className={`text-2xl md:text-3xl font-bold text-center mb-8 ${
-            style === 'urgent' ? 'text-red-600 dark:text-red-400' : 'text-foreground'
+            style === 'urgent' ? 'text-red-600 dark:text-red-400' : 'text-[#1a1a1a]'
           }`}>
             {heading}
           </h2>
@@ -134,7 +134,7 @@ export const Countdown = ({
           <div className="text-center mt-8">
             <a
               href={ctaUrl}
-              className={`inline-flex items-center justify-center px-8 py-4 text-lg font-semibold rounded-lg transition-colors ${
+              className={`inline-flex items-center justify-center px-8 py-4 text-lg font-semibold rounded-xl transition-colors shadow-sm ${
                 style === 'urgent'
                   ? 'bg-red-600 hover:bg-red-700 text-white'
                   : 'bg-[#a07855] hover:bg-[#8c6245] text-white'

@@ -39,10 +39,10 @@ export const LogoCloud = ({
     : 'grid grid-cols-3 md:grid-cols-5 gap-8 items-center justify-items-center';
 
   return (
-    <section className="py-12 px-6">
+    <section className="font-albert py-12 px-6">
       <div className="max-w-5xl mx-auto">
         {title && (
-          <p className="text-center text-sm text-muted-foreground uppercase tracking-wide mb-8">
+          <p className="text-center text-sm text-[#5f5a55] uppercase tracking-wide mb-8">
             {title}
           </p>
         )}
@@ -60,8 +60,8 @@ export const LogoCloud = ({
                   className="h-full w-auto object-contain"
                 />
               ) : (
-                <div className="h-full px-4 bg-muted rounded flex items-center justify-center">
-                  <span className="text-xs text-muted-foreground">{logo.name}</span>
+                <div className="h-full px-4 bg-[#f5f3f0] rounded-xl flex items-center justify-center">
+                  <span className="text-xs text-[#5f5a55]">{logo.name}</span>
                 </div>
               )}
             </div>

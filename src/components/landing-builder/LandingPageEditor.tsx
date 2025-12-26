@@ -353,7 +353,7 @@ export function LandingPageEditor({
       </header>
 
       {/* Puck Editor - Fills remaining space */}
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden" style={{ height: 'calc(100vh - 56px)' }}>
         <PuckErrorBoundary
           key={editorKey}
           onReset={() => setEditorKey((k) => k + 1)}

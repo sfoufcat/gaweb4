@@ -1323,11 +1323,35 @@ div[class*="LoadingIndicator"],
 .Puck [class*="frame"],
 .Puck [class*="Frame"] {
   background: #f3f1ef;
+  overflow: auto !important;
+  flex: 1;
+  min-height: 0;
 }
 
 .dark .Puck [class*="frame"],
 .dark .Puck [class*="Frame"] {
   background: #11141b;
+}
+
+/* Ensure iframe is scrollable */
+.Puck iframe {
+  overflow: auto !important;
+}
+
+/* Puck preview wrapper - ensure it can scroll */
+.Puck [class*="Preview"],
+.Puck [class*="preview"] {
+  overflow: auto !important;
+  height: 100%;
+}
+
+/* Main Puck body area */
+.Puck [class*="Puck-body"],
+.Puck [class*="puck-body"] {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Component drag items */

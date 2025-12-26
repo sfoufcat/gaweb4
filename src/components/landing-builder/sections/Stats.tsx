@@ -86,20 +86,20 @@ export const Stats = ({
     minimal: {
       container: '',
       item: 'text-center',
-      value: 'text-4xl md:text-5xl font-bold text-foreground',
-      label: 'text-muted-foreground mt-2',
+      value: 'text-4xl md:text-5xl font-bold text-[#1a1a1a]',
+      label: 'text-[#5f5a55] mt-2',
     },
     boxed: {
       container: '',
-      item: 'bg-card border border-border rounded-xl p-6 text-center',
+      item: 'bg-white border border-[#e1ddd8] rounded-2xl p-6 text-center shadow-sm',
       value: 'text-3xl md:text-4xl font-bold text-[#a07855]',
-      label: 'text-muted-foreground mt-2 text-sm',
+      label: 'text-[#5f5a55] mt-2 text-sm',
     },
     divided: {
-      container: 'divide-x divide-border',
+      container: 'divide-x divide-[#e1ddd8]',
       item: 'text-center px-8',
-      value: 'text-4xl md:text-5xl font-bold text-foreground',
-      label: 'text-muted-foreground mt-2',
+      value: 'text-4xl md:text-5xl font-bold text-[#1a1a1a]',
+      label: 'text-[#5f5a55] mt-2',
     },
   };
 
@@ -107,10 +107,10 @@ export const Stats = ({
   const layoutClasses = layout === 'row' ? 'flex flex-wrap justify-center gap-8 md:gap-12' : 'grid grid-cols-2 md:grid-cols-4 gap-6';
 
   return (
-    <section className="py-16 px-6">
+    <section className="font-albert py-16 px-6">
       <div className="max-w-5xl mx-auto">
         {heading && (
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold text-[#1a1a1a] text-center mb-12">
             {heading}
           </h2>
         )}

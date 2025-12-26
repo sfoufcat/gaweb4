@@ -40,7 +40,7 @@ export const Hero = ({
 
   return (
     <section
-      className={`relative flex flex-col justify-center px-6 py-16 ${heightClasses[minHeight]} ${alignmentClasses[alignment]}`}
+      className={`font-albert relative flex flex-col justify-center px-6 py-16 ${heightClasses[minHeight]} ${alignmentClasses[alignment]}`}
       style={{
         backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
         backgroundSize: 'cover',
@@ -50,19 +50,19 @@ export const Hero = ({
       {/* Overlay */}
       {backgroundImage && (
         <div
-          className="absolute inset-0 bg-black"
+          className="absolute inset-0 bg-black rounded-2xl"
           style={{ opacity: overlayOpacity }}
         />
       )}
 
       {/* Content */}
       <div className={`relative z-10 max-w-4xl mx-auto flex flex-col gap-6 ${alignmentClasses[alignment]}`}>
-        <h1 className={`text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight ${backgroundImage ? 'text-white' : 'text-foreground'}`}>
+        <h1 className={`text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight ${backgroundImage ? 'text-white' : 'text-[#1a1a1a]'}`}>
           {headline}
         </h1>
         
         {subheadline && (
-          <p className={`text-lg md:text-xl max-w-2xl ${backgroundImage ? 'text-white/90' : 'text-muted-foreground'}`}>
+          <p className={`text-lg md:text-xl max-w-2xl ${backgroundImage ? 'text-white/90' : 'text-[#5f5a55]'}`}>
             {subheadline}
           </p>
         )}
@@ -70,7 +70,7 @@ export const Hero = ({
         {ctaText && (
           <a
             href={ctaUrl}
-            className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white bg-[#a07855] hover:bg-[#8c6245] rounded-lg transition-colors mt-4"
+            className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white bg-[#a07855] hover:bg-[#8c6245] rounded-xl transition-colors mt-4 shadow-sm"
           >
             {ctaText}
           </a>
