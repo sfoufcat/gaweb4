@@ -160,7 +160,7 @@ export default function FeedPage() {
       pinnedToSidebar: updatedPost.pinnedToSidebar,
       hideMetadata: updatedPost.hideMetadata,
       disableInteractions: updatedPost.disableInteractions,
-      pinnedAt: updatedPost.pinnedAt,
+      pinnedAt: updatedPost.pinnedAt ?? undefined,
     });
     // Also refresh to ensure server state is synced
     refresh();

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock, Mail, Send, Bell, Settings, Moon, GripVertical } from 'lucide-react';
+import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock, Mail, Send, Bell, Settings, Moon, GripVertical, Menu, Sparkles } from 'lucide-react';
 import { useBranding } from '@/contexts/BrandingContext';
 import { FeedSettingsToggle } from './FeedSettingsToggle';
 import { CommunitySettingsToggle } from './CommunitySettingsToggle';
@@ -143,8 +143,22 @@ function getDnsRecordNames(domain: string): { routing: string; clerk: string } {
  * - Accent colors for light and dark modes
  * - Preview mode to see changes before saving
  */
+// Subtab type definition
+type CustomizeSubtab = 'branding' | 'navigation' | 'features' | 'domains' | 'communications';
+
+const SUBTABS: { id: CustomizeSubtab; label: string; icon: React.ReactNode }[] = [
+  { id: 'branding', label: 'Branding', icon: <Palette className="w-4 h-4" /> },
+  { id: 'navigation', label: 'Navigation', icon: <Menu className="w-4 h-4" /> },
+  { id: 'features', label: 'Features', icon: <Sparkles className="w-4 h-4" /> },
+  { id: 'domains', label: 'Domains', icon: <Globe className="w-4 h-4" /> },
+  { id: 'communications', label: 'Communications', icon: <Mail className="w-4 h-4" /> },
+];
+
 export function CustomizeBrandingTab() {
   const { setPreviewMode, isPreviewMode, refetch } = useBranding();
+  
+  // Subtab state
+  const [activeSubtab, setActiveSubtab] = useState<CustomizeSubtab>('branding');
   
   // Form state
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -1273,7 +1287,34 @@ export function CustomizeBrandingTab() {
         </div>
       )}
 
-      {/* Logo Section */}
+      {/* Subtab Navigation */}
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-2">
+        <div className="flex flex-wrap gap-1">
+          {SUBTABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveSubtab(tab.id)}
+              className={`
+                flex items-center gap-2 px-4 py-2.5 rounded-xl font-albert text-sm transition-all
+                ${activeSubtab === tab.id
+                  ? 'bg-gradient-to-r from-[#a07855]/15 to-[#8c6245]/10 text-[#1a1a1a] dark:from-[#b8896a]/15 dark:to-[#a07855]/10 dark:text-[#f5f5f8] shadow-sm'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef]/50 dark:hover:bg-[#262b35]/50'
+                }
+              `}
+            >
+              <span className={activeSubtab === tab.id ? 'text-[#a07855] dark:text-[#b8896a]' : ''}>
+                {tab.icon}
+              </span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ===== BRANDING SUBTAB ===== */}
+      {activeSubtab === 'branding' && (
+        <>
+          {/* Logo Section */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-4">
           <ImageIcon className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
@@ -1535,45 +1576,6 @@ export function CustomizeBrandingTab() {
         </p>
       </div>
 
-      {/* Menu Order & Customization Section */}
-      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
-        <div className="flex items-center gap-2 mb-2">
-          <Type className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Menu Order & Customization</h3>
-        </div>
-        <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mb-4">
-          Drag to reorder, customize labels and icons for your navigation menu.
-        </p>
-
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleMenuDragEnd}
-        >
-          <SortableContext
-            items={menuOrder}
-            strategy={verticalListSortingStrategy}
-          >
-            <div className="space-y-2">
-              {menuOrder.map((key) => (
-                <SortableMenuItem
-                  key={key}
-                  id={key}
-                  title={menuTitles[key]}
-                  icon={menuIcons[key]}
-                  onTitleChange={(value) => setMenuTitles(prev => ({ ...prev, [key]: value }))}
-                  onIconChange={(value) => setMenuIcons(prev => ({ ...prev, [key]: value }))}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
-        
-        <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-4 font-albert">
-          Changes apply to navigation menu items. &ldquo;Squad&rdquo; also updates throughout the app (e.g., &ldquo;My Squad&rdquo;, upgrade pages).
-        </p>
-      </div>
-
       {/* Accent Color Section */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-2">
@@ -1632,8 +1634,57 @@ export function CustomizeBrandingTab() {
           </div>
         </div>
       </div>
+        </>
+      )}
 
-      {/* Organization Settings Section */}
+      {/* ===== NAVIGATION SUBTAB ===== */}
+      {activeSubtab === 'navigation' && (
+        <>
+          {/* Menu Order & Customization Section */}
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
+        <div className="flex items-center gap-2 mb-2">
+          <Type className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Menu Order & Customization</h3>
+        </div>
+        <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mb-4">
+          Drag to reorder, customize labels and icons for your navigation menu.
+        </p>
+
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleMenuDragEnd}
+        >
+          <SortableContext
+            items={menuOrder}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-2">
+              {menuOrder.map((key) => (
+                <SortableMenuItem
+                  key={key}
+                  id={key}
+                  title={menuTitles[key]}
+                  icon={menuIcons[key]}
+                  onTitleChange={(value) => setMenuTitles(prev => ({ ...prev, [key]: value }))}
+                  onIconChange={(value) => setMenuIcons(prev => ({ ...prev, [key]: value }))}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+        
+        <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-4 font-albert">
+          Changes apply to navigation menu items. &ldquo;Squad&rdquo; also updates throughout the app (e.g., &ldquo;My Squad&rdquo;, upgrade pages).
+        </p>
+      </div>
+        </>
+      )}
+
+      {/* ===== FEATURES SUBTAB ===== */}
+      {activeSubtab === 'features' && (
+        <>
+          {/* Organization Settings Section */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-4">
           <Settings className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
@@ -1672,8 +1723,13 @@ export function CustomizeBrandingTab() {
           <AlignmentActivitiesSettings />
         </div>
       </div>
+        </>
+      )}
 
-      {/* Domain Settings Section */}
+      {/* ===== DOMAINS SUBTAB ===== */}
+      {activeSubtab === 'domains' && (
+        <>
+          {/* Domain Settings Section */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-4">
           <Globe className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
@@ -2014,8 +2070,13 @@ export function CustomizeBrandingTab() {
           </div>
         )}
       </div>
+        </>
+      )}
 
-      {/* Email Domain Section */}
+      {/* ===== COMMUNICATIONS SUBTAB ===== */}
+      {activeSubtab === 'communications' && (
+        <>
+          {/* Email Domain Section */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-4">
           <Mail className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
@@ -2579,6 +2640,8 @@ export function CustomizeBrandingTab() {
           </div>
         )}
       </div>
+        </>
+      )}
 
       {/* Action Buttons */}
       <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-4">

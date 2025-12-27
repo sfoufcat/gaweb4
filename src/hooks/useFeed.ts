@@ -238,7 +238,7 @@ export function useFeed() {
     pinnedToSidebar?: boolean;
     hideMetadata?: boolean;
     disableInteractions?: boolean;
-    pinnedAt?: string | null;
+    pinnedAt?: string;
   }) => {
     mutate((currentData) => {
       if (!currentData) return currentData;

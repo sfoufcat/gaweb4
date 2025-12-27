@@ -93,6 +93,11 @@ export async function GET(
     const squadIds = squadsSnapshot.docs.map(doc => doc.id);
     
     // Fetch events for each squad (in batches if needed)
+    // Note: Firestore doesn't allow two 'in' operators in the same query
+    // So we can't do squadId IN [...] AND status IN [...] together
+    // Instead, we fetch all events for the squadIds and filter by status in memory
+    const allowedStatuses = ['confirmed', 'live', 'completed'];
+    
     if (squadIds.length > 0) {
       // Firestore 'in' query supports max 30 values
       const batchSize = 30;
@@ -101,24 +106,28 @@ export async function GET(
         
         let query3: FirebaseFirestore.Query = adminDb
           .collection('events')
-          .where('squadId', 'in', batch)
-          .where('status', 'in', ['confirmed', 'live', 'completed']);
+          .where('squadId', 'in', batch);
         
         if (upcoming) {
           query3 = query3.where('startDateTime', '>=', now);
         }
         
-        query3 = query3.orderBy('startDateTime', 'asc').limit(limit);
+        query3 = query3.orderBy('startDateTime', 'asc').limit(limit * 2); // Fetch extra to account for filtering
         
         const snapshot3 = await query3.get();
         snapshot3.docs.forEach(doc => {
+          const data = doc.data();
+          // Filter by status in memory (since we can't use two 'in' operators)
+          if (!allowedStatuses.includes(data.status)) {
+            return;
+          }
           // Avoid duplicates
           if (!events.find(e => e.id === doc.id)) {
             events.push({
               id: doc.id,
-              ...doc.data(),
-              createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
-              updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
+              ...data,
+              createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
+              updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
             } as UnifiedEvent);
           }
         });

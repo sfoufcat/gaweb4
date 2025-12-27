@@ -4,13 +4,12 @@ import { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, X, Trash2 } from 'lucide-react';
 import type { Squad, UnifiedEvent } from '@/types';
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 /**
  * CallSuggestionModal Component
@@ -290,14 +289,14 @@ export function CallSuggestionModal({
   };
 
   return (
-    <AlertDialog open={isOpen} onOpenChange={handleOpenChange}>
-      <AlertDialogContent className="max-w-md">
-        <AlertDialogHeader>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-md" hideCloseButton>
+        <DialogHeader>
           <div className="flex items-center justify-between">
-            <AlertDialogTitle className="font-albert text-[20px] tracking-[-0.5px] flex items-center gap-2">
+            <DialogTitle className="font-albert text-[20px] tracking-[-0.5px] flex items-center gap-2">
               <Calendar className="w-5 h-5 text-[#a07855]" />
               {isEditMode ? 'Propose call update' : 'Suggest a squad call'}
-            </AlertDialogTitle>
+            </DialogTitle>
             <button
               onClick={onClose}
               className="p-1.5 rounded-full hover:bg-[#f3f1ef] transition-colors"
@@ -313,7 +312,7 @@ export function CallSuggestionModal({
               : 'Suggest a call time. Squad members will vote to confirm.'
             }
           </p>
-        </AlertDialogHeader>
+        </DialogHeader>
 
         <div className="space-y-5 py-3">
           {error && (
@@ -444,7 +443,7 @@ export function CallSuggestionModal({
           </div>
         </div>
 
-        <AlertDialogFooter className="gap-2 sm:gap-2 flex-col-reverse sm:flex-row">
+        <DialogFooter className="gap-2 sm:gap-2 flex-col-reverse sm:flex-row">
           {/* Delete button - only show if editing existing confirmed event */}
           {isEditMode && existingEvent && (
             <button
@@ -458,12 +457,14 @@ export function CallSuggestionModal({
           )}
           
           <div className="flex gap-2 w-full sm:w-auto sm:ml-auto">
-            <AlertDialogCancel 
+            <button 
+              type="button"
+              onClick={onClose}
               disabled={isSubmitting || isDeleting}
-              className="font-albert rounded-full border-[#e1ddd8] flex-1 sm:flex-none"
+              className="mt-2 sm:mt-0 inline-flex h-10 items-center justify-center rounded-full border border-[#e1ddd8] dark:border-[#262b35] bg-background dark:bg-[#1e222a] px-4 py-2 text-sm font-semibold ring-offset-background transition-colors hover:bg-accent dark:hover:bg-[#262b35] hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 font-albert flex-1 sm:flex-none"
             >
               Cancel
-            </AlertDialogCancel>
+            </button>
             <button
               type="button"
               onClick={handleSubmit}
@@ -478,9 +479,9 @@ export function CallSuggestionModal({
               }
             </button>
           </div>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

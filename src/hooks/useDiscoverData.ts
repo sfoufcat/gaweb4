@@ -2,6 +2,7 @@
 
 import useSWR from 'swr';
 import { useCallback, useMemo, useState } from 'react';
+import { useUser } from '@clerk/nextjs';
 import type {
   DiscoverEvent,
   DiscoverArticle,
@@ -43,6 +44,8 @@ export function useDiscoverEvents() {
 
 // Hook: useEvent - Fetches single event from API with SWR caching
 export function useEvent(eventId: string) {
+  const { user } = useUser();
+  
   const { data, error, isLoading, mutate } = useSWR<{
     event: DiscoverEvent;
     updates: EventUpdate[];
@@ -62,11 +65,23 @@ export function useEvent(eventId: string) {
   const joinEvent = useCallback(async () => {
     if (!data) return;
     
-    // Optimistic update
+    // Build current user attendee for optimistic update
+    const currentUserAttendee: EventAttendee | null = user ? {
+      odooId: user.id, // Use Clerk ID as fallback
+      odooName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'You',
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      avatarUrl: user.imageUrl || null,
+    } : null;
+    
+    // Optimistic update - include user in attendees array
     const optimisticData = {
       ...data,
       isJoined: true,
       totalAttendees: data.totalAttendees + 1,
+      attendees: currentUserAttendee 
+        ? [currentUserAttendee, ...data.attendees.filter(a => a.odooId !== user?.id)]
+        : data.attendees,
     };
     
     setIsJoining(true);
@@ -80,12 +95,8 @@ export function useEvent(eventId: string) {
       });
       
       if (response.ok) {
-        const result = await response.json();
-        await mutate({
-          ...data,
-          isJoined: true,
-          totalAttendees: result.totalAttendees ?? data.totalAttendees + 1,
-        }, { revalidate: false });
+        // Revalidate to get the accurate server data (including proper attendees list)
+        await mutate();
       } else {
         // Revert on failure
         await mutate(data, { revalidate: false });
@@ -96,16 +107,19 @@ export function useEvent(eventId: string) {
     } finally {
       setIsJoining(false);
     }
-  }, [eventId, data, mutate]);
+  }, [eventId, data, mutate, user]);
 
   const leaveEvent = useCallback(async () => {
     if (!data) return;
     
-    // Optimistic update
+    // Optimistic update - remove user from attendees array
     const optimisticData = {
       ...data,
       isJoined: false,
       totalAttendees: Math.max(0, data.totalAttendees - 1),
+      attendees: user 
+        ? data.attendees.filter(a => a.odooId !== user.id)
+        : data.attendees,
     };
     
     setIsJoining(true);
@@ -119,12 +133,8 @@ export function useEvent(eventId: string) {
       });
       
       if (response.ok) {
-        const result = await response.json();
-        await mutate({
-          ...data,
-          isJoined: false,
-          totalAttendees: result.totalAttendees ?? Math.max(0, data.totalAttendees - 1),
-        }, { revalidate: false });
+        // Revalidate to get the accurate server data
+        await mutate();
       } else {
         // Revert on failure
         await mutate(data, { revalidate: false });
@@ -135,7 +145,7 @@ export function useEvent(eventId: string) {
     } finally {
       setIsJoining(false);
     }
-  }, [eventId, data, mutate]);
+  }, [eventId, data, mutate, user]);
 
   return {
     event: data?.event ?? null,

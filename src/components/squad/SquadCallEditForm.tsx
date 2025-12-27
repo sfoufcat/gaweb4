@@ -5,8 +5,14 @@ import { Calendar, Clock, MapPin, X, Trash2, Repeat, Users, ChevronDown, Chevron
 import type { Squad, RecurrenceFrequency, EventVisibility } from '@/types';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -516,14 +522,14 @@ export function SquadCallEditForm({
   
   return (
     <>
-    <AlertDialog open={isOpen} onOpenChange={onClose}>
-      <AlertDialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <AlertDialogHeader>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" hideCloseButton>
+        <DialogHeader>
           <div className="flex items-center justify-between">
-            <AlertDialogTitle className="font-albert text-[20px] tracking-[-0.5px] flex items-center gap-2">
+            <DialogTitle className="font-albert text-[20px] tracking-[-0.5px] flex items-center gap-2">
               <Calendar className="w-5 h-5 text-[#a07855]" />
               {isEditing ? 'Edit squad call' : 'Schedule squad call'}
-            </AlertDialogTitle>
+            </DialogTitle>
             <button
               onClick={onClose}
               className="p-1.5 rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
@@ -531,7 +537,7 @@ export function SquadCallEditForm({
               <X className="w-5 h-5 text-text-secondary" />
             </button>
           </div>
-        </AlertDialogHeader>
+        </DialogHeader>
 
         <div className="space-y-5 py-3">
           {error && (
@@ -887,7 +893,7 @@ export function SquadCallEditForm({
           </div>
         </div>
 
-        <AlertDialogFooter className="gap-2 sm:gap-2 flex-col-reverse sm:flex-row">
+        <DialogFooter className="gap-2 sm:gap-2 flex-col-reverse sm:flex-row">
           {/* Delete button - only show if editing */}
           {isEditing && (
             <button
@@ -901,23 +907,26 @@ export function SquadCallEditForm({
           )}
           
           <div className="flex gap-2 w-full sm:w-auto sm:ml-auto">
-            <AlertDialogCancel 
+            <button 
+              type="button"
+              onClick={onClose}
               disabled={isSubmitting || isDeleting}
-              className="font-albert rounded-full border-[#e1ddd8] dark:border-[#262b35] flex-1 sm:flex-none"
+              className="mt-2 sm:mt-0 inline-flex h-10 items-center justify-center rounded-full border border-[#e1ddd8] dark:border-[#262b35] bg-background dark:bg-[#1e222a] px-4 py-2 text-sm font-semibold ring-offset-background transition-colors hover:bg-accent dark:hover:bg-[#262b35] hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 font-albert flex-1 sm:flex-none"
             >
               Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
+            </button>
+            <button
+              type="button"
               onClick={handleSubmit}
               disabled={isSubmitting || isDeleting}
-              className="font-albert rounded-full bg-[#a07855] hover:bg-[#8c6245] text-white flex-1 sm:flex-none"
+              className="inline-flex h-10 items-center justify-center px-4 py-2 font-albert rounded-full bg-[#a07855] hover:bg-[#8c6245] text-white text-sm font-semibold flex-1 sm:flex-none disabled:opacity-50 disabled:pointer-events-none transition-colors"
             >
               {isSubmitting ? 'Saving...' : isEditing ? 'Update call' : 'Schedule call'}
-            </AlertDialogAction>
+            </button>
           </div>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     
     {/* Cancel Confirmation Dialog for Recurring Events */}
     <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
