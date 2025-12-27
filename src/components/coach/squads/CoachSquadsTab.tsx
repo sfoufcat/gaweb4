@@ -679,6 +679,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
           <ReferralConfigForm
             targetType="squad"
             targetId={selectedSquad.id}
+            targetName={selectedSquad.name}
             initialConfig={selectedSquad.referralConfig}
             onSave={() => fetchSquads()}
           />
