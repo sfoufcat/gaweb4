@@ -16,6 +16,7 @@ import { PlatformEmptyState } from '@/components/program/PlatformEmptyState';
 import { ProgramListView } from '@/components/program/ProgramListView';
 import { ProgramDetailView } from '@/components/program/ProgramDetailView';
 import { SquadTabContent } from '@/components/program/SquadTabContent';
+import { ProgramSkeleton } from '@/components/program/ProgramSkeleton';
 
 /**
  * Program Hub Page
@@ -139,11 +140,15 @@ export default function ProgramHubPage() {
     return enrollments.find(e => e.program.id === selectedProgramId) || null;
   }, [selectedProgramId, enrollments]);
   
-  // Loading state - return null, let ProgramDetailView handle skeleton
+  // Loading state - show skeleton while loading
   const isLoading = !userLoaded || !mounted || programsLoading;
   
   if (isLoading) {
-    return null;
+    return (
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
+        <ProgramSkeleton />
+      </div>
+    );
   }
   
   if (!user) {

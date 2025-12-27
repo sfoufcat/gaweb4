@@ -18,8 +18,11 @@ import {
   Trash2,
   ExternalLink,
   Copy,
-  X
+  X,
+  Sparkles
 } from 'lucide-react';
+import { AIHelperModal } from '@/components/ai';
+import type { LandingPageDraft, ProgramContentDraft, AIGenerationContext } from '@/lib/ai/types';
 import { ReferralConfigForm } from '@/components/coach/referrals';
 import { SquadFormDialog } from '@/components/admin/SquadFormDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -83,6 +86,9 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
   const [editingSquad, setEditingSquad] = useState<Squad | null>(null);
   const [deleteConfirmSquad, setDeleteConfirmSquad] = useState<Squad | null>(null);
   const [deleting, setDeleting] = useState(false);
+  
+  // AI Helper modal
+  const [isAILandingPageModalOpen, setIsAILandingPageModalOpen] = useState(false);
   
   // Landing page form
   const [landingPageFormData, setLandingPageFormData] = useState<LandingPageFormData>({
@@ -359,6 +365,87 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
       alert('Link copied to clipboard!');
     } catch {
       alert('Failed to copy link');
+    }
+  };
+  
+  // Apply AI-generated landing page content for squad
+  const handleApplyAILandingPage = async (draft: ProgramContentDraft | LandingPageDraft) => {
+    if (!selectedSquad) return;
+    
+    const lpDraft = draft as LandingPageDraft;
+    
+    try {
+      setSaving(true);
+      setSaveError(null);
+      
+      // Map AI-generated landing page to squad fields
+      const response = await fetch(`${apiBasePath}/${selectedSquad.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          coachBio: lpDraft.aboutCoach.bio,
+          keyOutcomes: lpDraft.whatYoullLearn.items.map(item => `${item.title}: ${item.description}`),
+          features: lpDraft.whatsIncluded.items.map((item, i) => ({
+            id: `feature-${i}`,
+            title: item.title,
+            description: item.description,
+            icon: '',
+          })),
+          testimonials: lpDraft.testimonials.map((t, i) => ({
+            id: `testimonial-${i}`,
+            name: t.name,
+            title: t.role || '',
+            quote: t.quote,
+          })),
+          faqs: lpDraft.faq.map((f, i) => ({
+            id: `faq-${i}`,
+            question: f.question,
+            answer: f.answer,
+          })),
+        }),
+      });
+      
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to save landing page');
+      }
+      
+      // Refresh and update form data
+      const updatedSquads = await fetch(apiBasePath).then(r => r.json());
+      const updated = (updatedSquads.squads || []).find((s: Squad) => s.id === selectedSquad.id);
+      if (updated) {
+        setSelectedSquad(updated);
+        setLandingPageFormData({
+          landingPageCoverImageUrl: updated.landingPageCoverImageUrl || '',
+          coachBio: updated.coachBio || '',
+          keyOutcomes: updated.keyOutcomes || [],
+          features: (updated.features || []).map((f: { title: string; description: string; icon?: string }) => ({
+            title: f.title,
+            description: f.description,
+            icon: f.icon,
+          })),
+          testimonials: (updated.testimonials || []).map((t: { quote: string; name: string; title?: string }) => ({
+            text: t.quote,
+            author: t.name,
+            role: t.title,
+            rating: 5,
+          })),
+          faqs: (updated.faqs || []).map((f: { question: string; answer: string }) => ({
+            question: f.question,
+            answer: f.answer,
+          })),
+          showEnrollmentCount: updated.showMemberCount || false,
+          showCurriculum: false,
+        });
+      }
+      
+      setIsAILandingPageModalOpen(false);
+    } catch (err) {
+      console.error('[CoachSquadsTab] Error applying AI landing page:', err);
+      setSaveError(err instanceof Error ? err.message : 'Failed to apply AI content');
+      throw err;
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -898,13 +985,23 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                 Preview landing page
               </a>
             </div>
-            <Button
-              onClick={handleSaveLandingPage}
-              disabled={saving}
-              className="bg-[#a07855] hover:bg-[#8c6245] text-white font-albert"
-            >
-              {saving ? 'Saving...' : 'Save Changes'}
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setIsAILandingPageModalOpen(true)}
+                className="border-[#a07855] text-[#a07855] hover:bg-[#a07855]/10 flex items-center gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                Generate with AI
+              </Button>
+              <Button
+                onClick={handleSaveLandingPage}
+                disabled={saving}
+                className="bg-[#a07855] hover:bg-[#8c6245] text-white font-albert"
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
           </div>
           
           {saveError && (
@@ -1041,6 +1138,22 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
         apiBasePath={apiBasePath}
         coachesApiEndpoint="/api/coach/org-coaches"
         uploadEndpoint="/api/coach/org-upload-media"
+      />
+      
+      {/* AI Landing Page Modal */}
+      <AIHelperModal
+        isOpen={isAILandingPageModalOpen}
+        onClose={() => setIsAILandingPageModalOpen(false)}
+        title="Generate Landing Page"
+        description="Create compelling landing page copy for your community"
+        useCase="LANDING_PAGE_SQUAD"
+        context={{
+          squadName: selectedSquad?.name,
+          niche: selectedSquad?.description?.slice(0, 100),
+        } as AIGenerationContext}
+        onApply={handleApplyAILandingPage}
+        hasExistingContent={!!(landingPageFormData.coachBio || landingPageFormData.keyOutcomes.length > 0)}
+        overwriteWarning="This will replace your existing landing page content."
       />
     </div>
   );

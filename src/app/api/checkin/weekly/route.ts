@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { summarizeWeeklyFocus } from '@/lib/anthropic';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { updateLastActivity } from '@/lib/analytics/lastActivity';
 import type { WeeklyReflectionCheckIn } from '@/types';
 
 // Get the week identifier (Monday of the current week)
@@ -198,6 +199,13 @@ export async function PATCH(request: NextRequest) {
     // If marking as completed, set completedAt
     if (updates.completedAt === true) {
       updatedData.completedAt = new Date().toISOString();
+      
+      // Update lastActivityAt for analytics (non-blocking)
+      if (organizationId) {
+        updateLastActivity(userId, organizationId, 'weekly').catch(err => {
+          console.error('[WEEKLY_CHECKIN] Failed to update lastActivityAt:', err);
+        });
+      }
       
       // Save to reflections collection for goal page (org-scoped) - only if we have org context
       if (organizationId) {

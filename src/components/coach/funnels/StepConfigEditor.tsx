@@ -5,17 +5,18 @@ import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { X, Plus, Trash2, GripVertical, ImageIcon, Video, Youtube, PlayCircle, Monitor, Code } from 'lucide-react';
 import Image from 'next/image';
-import type { FunnelStep, FunnelStepType, FunnelQuestionOption } from '@/types';
+import type { FunnelStep, FunnelStepType, FunnelQuestionOption, InfluencePromptConfig } from '@/types';
 import { nanoid } from 'nanoid';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LandingPageEditor, type LandingPageFormData } from '@/components/shared/LandingPageEditor';
+import { InfluencePromptEditor } from './InfluencePromptEditor';
 
 interface StepConfigEditorProps {
   step: FunnelStep;
   onClose: () => void;
-  onSave: (config: unknown, name?: string) => void;
+  onSave: (config: unknown, name?: string, influencePrompt?: InfluencePromptConfig) => void;
 }
 
 export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProps) {
@@ -23,11 +24,14 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
     ((step.config as unknown) as { config: Record<string, unknown> })?.config || {}
   );
   const [stepName, setStepName] = useState(step.name || '');
+  const [influencePrompt, setInfluencePrompt] = useState<InfluencePromptConfig | undefined>(
+    step.influencePrompt
+  );
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
     setIsSaving(true);
-    await onSave(config, stepName.trim() || undefined);
+    await onSave(config, stepName.trim() || undefined, influencePrompt);
     setIsSaving(false);
   };
 
@@ -116,6 +120,14 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
 
           {/* Step-specific config */}
           {renderConfigEditor()}
+
+          {/* Influence Prompt Editor - available for all step types except success */}
+          {step.type !== 'success' && (
+            <InfluencePromptEditor
+              value={influencePrompt}
+              onChange={setInfluencePrompt}
+            />
+          )}
         </div>
 
         {/* Footer */}
@@ -1624,7 +1636,7 @@ function UpsellDownsellConfigForm({
     const fetchProducts = async () => {
       setIsLoadingProducts(true);
       try {
-        const endpoint = productType === 'program' ? '/api/coach/programs' : '/api/coach/org-squads';
+        const endpoint = productType === 'program' ? '/api/coach/org-programs' : '/api/coach/org-squads';
         const response = await fetch(endpoint);
         if (response.ok) {
           const data = await response.json();
@@ -1661,7 +1673,7 @@ function UpsellDownsellConfigForm({
       const fetchInitialProducts = async () => {
         setIsLoadingProducts(true);
         try {
-          const endpoint = '/api/coach/programs'; // Default to programs
+          const endpoint = '/api/coach/org-programs'; // Default to programs
           const response = await fetch(endpoint);
           if (response.ok) {
             const data = await response.json();

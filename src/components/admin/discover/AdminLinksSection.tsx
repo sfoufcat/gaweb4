@@ -41,12 +41,14 @@ function LinkFormDialog({
   onClose,
   onSave,
   apiEndpoint,
+  programsApiEndpoint,
 }: {
   link: ProgramLink | null;
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
   apiEndpoint: string;
+  programsApiEndpoint: string;
 }) {
   const isEditing = !!link;
   const [saving, setSaving] = useState(false);
@@ -168,6 +170,7 @@ function LinkFormDialog({
                 value={formData.programIds}
                 onChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
                 placeholder="Select programs for this link..."
+                programsApiEndpoint={programsApiEndpoint}
               />
             </div>
 
@@ -223,6 +226,12 @@ export function AdminLinksSection({ apiEndpoint = '/api/admin/discover/links' }:
   const [linkToDelete, setLinkToDelete] = useState<ProgramLink | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Derive programs endpoint from API endpoint - use coach endpoint for coach routes
+  const isCoachContext = apiEndpoint.includes('/coach/');
+  const programsApiEndpoint = isCoachContext 
+    ? '/api/coach/org-programs' 
+    : '/api/admin/programs';
 
   const fetchLinks = async () => {
     try {
@@ -426,6 +435,7 @@ export function AdminLinksSection({ apiEndpoint = '/api/admin/discover/links' }:
         onClose={() => { setIsFormOpen(false); setLinkToEdit(null); }}
         onSave={fetchLinks}
         apiEndpoint={apiEndpoint}
+        programsApiEndpoint={programsApiEndpoint}
       />
 
       {/* Delete Confirmation */}

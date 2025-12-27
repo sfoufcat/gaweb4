@@ -34,6 +34,7 @@ import { ExplainerStep } from '@/components/funnel/steps/ExplainerStep';
 import { LandingPageStep } from '@/components/funnel/steps/LandingPageStep';
 import { InfoStep } from '@/components/funnel/steps/InfoStep';
 import { SuccessStep } from '@/components/funnel/steps/SuccessStep';
+import { InfluencePromptCard } from '@/components/funnel/InfluencePromptCard';
 
 /**
  * Darken or lighten a hex color
@@ -424,6 +425,13 @@ export default function SquadFunnelClient({
 
   // Progress percentage
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
+  
+  // Get current step and influence prompt
+  const currentStep = steps[currentStepIndex];
+  const influencePrompt = currentStep?.influencePrompt;
+  const showInfluencePrompt = influencePrompt?.enabled && 
+    currentStep?.type !== 'success' && 
+    currentStep?.type !== 'landing_page';
 
   return (
     <div 
@@ -475,6 +483,15 @@ export default function SquadFunnelClient({
               transition={{ duration: 0.3 }}
             >
               {renderStep()}
+              
+              {/* Influence Prompt Card - shown at bottom of applicable steps */}
+              {showInfluencePrompt && influencePrompt && (
+                <InfluencePromptCard 
+                  config={influencePrompt} 
+                  stepIndex={currentStepIndex}
+                  totalSteps={steps.length}
+                />
+              )}
             </motion.div>
           </AnimatePresence>
         </div>

@@ -78,11 +78,22 @@ export async function POST(request: NextRequest) {
       description: body.description || '',
       fileUrl: body.fileUrl,
       fileType: body.fileType || '',
+      fileSize: body.fileSize || null,
+      thumbnailUrl: body.thumbnailUrl || null,
       programIds: Array.isArray(body.programIds) ? body.programIds : [],
       // Also store as programId for backwards compatibility with content API
       programId: Array.isArray(body.programIds) && body.programIds.length > 0 ? body.programIds[0] : null,
       order: body.order || 0,
       organizationId, // Scope to coach's organization
+      // Pricing & Gating fields
+      priceInCents: body.priceInCents || 0,
+      currency: body.currency || 'usd',
+      purchaseType: body.purchaseType || 'popup', // 'popup' or 'landing_page'
+      isPublic: body.isPublic !== false, // Default true
+      keyOutcomes: body.keyOutcomes || [],
+      features: body.features || [],
+      testimonials: body.testimonials || [],
+      faqs: body.faqs || [],
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };

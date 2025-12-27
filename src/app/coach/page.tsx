@@ -18,9 +18,10 @@ import { CoachFunnelsTab } from '@/components/coach/funnels';
 import { CoachProgramsTab } from '@/components/coach/programs';
 import { CoachSquadsTab } from '@/components/coach/squads';
 import { CoachReferralsTab } from '@/components/coach/referrals';
+import { CoachCheckInsTab } from '@/components/coach/checkins';
 import { CoachPlanTab } from '@/components/coach/CoachPlanTab';
 import { DiscountCodesTab } from '@/components/coach/DiscountCodesTab';
-import { AnalyticsTab } from '@/components/coach/AnalyticsTab';
+import { AnalyticsDashboard } from '@/components/coach/analytics';
 
 /**
  * Coach Dashboard Page
@@ -35,8 +36,8 @@ import { AnalyticsTab } from '@/components/coach/AnalyticsTab';
  */
 
 // Valid tab values
-type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'channels' | 'customize' | 'plan';
-const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'referrals', 'analytics', 'discounts', 'discover', 'upgrade-forms', 'coaching-forms', 'funnels', 'channels', 'customize', 'plan'];
+type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'checkins' | 'channels' | 'customize' | 'plan';
+const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'referrals', 'analytics', 'discounts', 'discover', 'upgrade-forms', 'coaching-forms', 'funnels', 'checkins', 'channels', 'customize', 'plan'];
 
 // Columns for Coach Dashboard (excludes 'tier' - tiers are not used in coach context)
 // Uses 'programs' column instead of 'coaching' to show enrolled programs with (1:1)/(Group) prefixes
@@ -296,6 +297,12 @@ export default function CoachPage() {
                   Funnels
                 </TabsTrigger>
                 <TabsTrigger 
+                  value="checkins"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Check-ins
+                </TabsTrigger>
+                <TabsTrigger 
                   value="channels"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
                 >
@@ -407,6 +414,13 @@ export default function CoachPage() {
             </div>
           </TabsContent>
 
+          {/* Check-ins Tab */}
+          <TabsContent value="checkins">
+            <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
+              <CoachCheckInsTab />
+            </div>
+          </TabsContent>
+
           {/* Referrals Tab */}
           <TabsContent value="referrals">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
@@ -424,7 +438,7 @@ export default function CoachPage() {
           {/* Analytics Tab */}
           <TabsContent value="analytics">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
-              <AnalyticsTab />
+              <AnalyticsDashboard />
             </div>
           </TabsContent>
 

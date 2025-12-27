@@ -728,6 +728,14 @@ async function createEnrollment(
 
   console.log(`[PROGRAM_ENROLL] Created enrollment ${enrollmentRef.id} for user ${userId} in program ${program.id}`);
 
+  // Auto-grant priced content included in this program
+  try {
+    await autoGrantProgramContent(userId, program.id, program.name, program.organizationId);
+  } catch (contentError) {
+    // Don't fail enrollment if content granting fails
+    console.error(`[PROGRAM_ENROLL] Failed to auto-grant program content:`, contentError);
+  }
+
   return NextResponse.json({
     success: true,
     enrollmentId: enrollmentRef.id,
@@ -738,6 +746,77 @@ async function createEnrollment(
       ? `Enrolled! Program starts on ${cohort?.startDate}`
       : 'Enrolled! Your program starts now',
   }, { status: 201 });
+}
+
+/**
+ * Auto-grant all priced content that belongs to this program
+ * Creates user_content_purchases records for content with priceInCents > 0
+ */
+async function autoGrantProgramContent(
+  userId: string,
+  programId: string,
+  programName: string,
+  organizationId: string
+): Promise<void> {
+  const now = new Date().toISOString();
+  const contentTypes = ['articles', 'courses', 'events', 'program_downloads', 'program_links'] as const;
+  const typeMap: Record<string, 'event' | 'article' | 'course' | 'download' | 'link'> = {
+    articles: 'article',
+    courses: 'course',
+    events: 'event',
+    program_downloads: 'download',
+    program_links: 'link',
+  };
+  
+  let grantedCount = 0;
+
+  for (const collection of contentTypes) {
+    // Find content with this program ID and a price
+    const contentSnapshot = await adminDb
+      .collection(collection)
+      .where('programIds', 'array-contains', programId)
+      .where('priceInCents', '>', 0)
+      .get();
+
+    for (const doc of contentSnapshot.docs) {
+      const contentId = doc.id;
+      const contentType = typeMap[collection];
+
+      // Check if user already has this content
+      const existingPurchase = await adminDb
+        .collection('user_content_purchases')
+        .where('userId', '==', userId)
+        .where('contentType', '==', contentType)
+        .where('contentId', '==', contentId)
+        .limit(1)
+        .get();
+
+      if (!existingPurchase.empty) {
+        console.log(`[PROGRAM_ENROLL] User ${userId} already has ${contentType}/${contentId}, skipping`);
+        continue;
+      }
+
+      // Create purchase record for included content
+      await adminDb.collection('user_content_purchases').add({
+        userId,
+        contentType,
+        contentId,
+        organizationId,
+        amountPaid: 0, // Included in program
+        currency: 'usd',
+        includedInProgramId: programId,
+        includedInProgramName: programName,
+        purchasedAt: now,
+        createdAt: now,
+      });
+
+      grantedCount++;
+    }
+  }
+
+  if (grantedCount > 0) {
+    console.log(`[PROGRAM_ENROLL] Auto-granted ${grantedCount} content items to user ${userId} from program ${programId}`);
+  }
 }
 
 /**

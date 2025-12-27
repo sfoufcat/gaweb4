@@ -35,6 +35,14 @@
     {
       "path": "/api/stories/cleanup",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/analytics/cron/squad-analytics",
+      "schedule": "10 2 * * *"
+    },
+    {
+      "path": "/api/analytics/cron/client-analytics",
+      "schedule": "15 2 * * *"
     }
   ],
   "redirects": [

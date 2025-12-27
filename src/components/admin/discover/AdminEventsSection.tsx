@@ -408,7 +408,7 @@ function EventFormDialog({
                     type="image"
                     uploadEndpoint={uploadEndpoint}
                     hideLabel
-                    aspectRatio="16:9"
+                    previewSize="thumbnail"
                   />
                   {showImagePreview && formData.coverImageUrl && (
                     <button

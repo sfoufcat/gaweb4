@@ -9,6 +9,12 @@ export { CoachPlanTab } from './CoachPlanTab';
 export { LockedFeature, LockedFeatureBadge, LockedIndicator } from './LockedFeature';
 export { LimitReachedModal, useLimitCheck } from './LimitReachedModal';
 
+// Check-in flow management
+export { CoachCheckInsTab } from './checkins';
+export { CheckInFlowStepsEditor } from './checkins';
+export { CheckInFlowEditorDialog } from './checkins';
+export { CheckInStepConfigEditor } from './checkins';
+
 
 
 

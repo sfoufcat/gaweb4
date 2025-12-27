@@ -64,6 +64,7 @@ import { UpsellStep } from '@/components/funnel/steps/UpsellStep';
 import { DownsellStep } from '@/components/funnel/steps/DownsellStep';
 import { InfoStep } from '@/components/funnel/steps/InfoStep';
 import { SuccessStep } from '@/components/funnel/steps/SuccessStep';
+import { InfluencePromptCard } from '@/components/funnel/InfluencePromptCard';
 
 interface FunnelClientProps {
   funnel: Funnel;
@@ -630,7 +631,14 @@ export default function FunnelClient({
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
 
   // Check if current step is a landing page (needs full-page rendering)
-  const isLandingPage = steps[currentStepIndex]?.type === 'landing_page';
+  const currentStep = steps[currentStepIndex];
+  const isLandingPage = currentStep?.type === 'landing_page';
+  
+  // Get influence prompt for current step (if configured)
+  const influencePrompt = currentStep?.influencePrompt;
+  const showInfluencePrompt = influencePrompt?.enabled && 
+    currentStep?.type !== 'success' && 
+    currentStep?.type !== 'landing_page';
 
   // CSS variable style for dynamic theming
   const themeStyle = {
@@ -679,6 +687,17 @@ export default function FunnelClient({
           className={isLandingPage ? '' : 'px-4 pb-8'}
         >
           {stepContent}
+          
+          {/* Influence Prompt Card - shown at bottom of applicable steps */}
+          {showInfluencePrompt && influencePrompt && (
+            <div className="max-w-xl mx-auto">
+              <InfluencePromptCard 
+                config={influencePrompt} 
+                stepIndex={currentStepIndex}
+                totalSteps={steps.length}
+              />
+            </div>
+          )}
         </motion.div>
       </AnimatePresence>
     </div>

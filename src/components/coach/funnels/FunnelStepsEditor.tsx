@@ -25,7 +25,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 // Note: Lock is still used in the Add Step modal for tier-gated steps
-import type { FunnelStep, FunnelStepType, CoachTier, Funnel, Program, Squad } from '@/types';
+import type { FunnelStep, FunnelStepType, CoachTier, Funnel, Program, Squad, InfluencePromptConfig } from '@/types';
 import { StepConfigEditor } from './StepConfigEditor';
 import { canUseFunnelStep, TIER_PRICING } from '@/lib/coach-permissions';
 import { DeleteConfirmationModal } from '@/components/feed/ConfirmationModal';
@@ -453,13 +453,13 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
     }
   };
 
-  const handleSaveStepConfig = async (stepId: string, config: unknown, name?: string) => {
+  const handleSaveStepConfig = async (stepId: string, config: unknown, name?: string, influencePrompt?: InfluencePromptConfig) => {
     try {
       setIsSaving(true);
       const response = await fetch(`/api/coach/org-funnels/${funnelId}/steps/${stepId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config, name }),
+        body: JSON.stringify({ config, name, influencePrompt }),
       });
 
       if (!response.ok) throw new Error('Failed to save step');
@@ -764,7 +764,7 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
         <StepConfigEditor
           step={editingStep}
           onClose={() => setEditingStep(null)}
-          onSave={(config, name) => handleSaveStepConfig(editingStep.id, config, name)}
+          onSave={(config, name, influencePrompt) => handleSaveStepConfig(editingStep.id, config, name, influencePrompt)}
         />
       )}
 

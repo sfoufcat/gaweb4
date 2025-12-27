@@ -52,42 +52,99 @@ export async function GET(
       return NextResponse.json({ error: 'Program not found' }, { status: 404 });
     }
 
-    // Fetch courses associated with this program
-    const coursesSnapshot = await adminDb
-      .collection('courses')
-      .where('programIds', 'array-contains', programId)
-      .get();
+    // Helper to deduplicate results by id
+    const dedupeById = <T extends { id: string }>(items: T[]): T[] => {
+      const seen = new Set<string>();
+      return items.filter(item => {
+        if (seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      });
+    };
 
-    const courses: DiscoverCourse[] = coursesSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as DiscoverCourse[];
+    // Fetch courses associated with this program
+    // Query both programIds array (new schema) and programId field (legacy schema)
+    const [coursesArraySnapshot, coursesLegacySnapshot] = await Promise.all([
+      adminDb
+        .collection('courses')
+        .where('programIds', 'array-contains', programId)
+        .get(),
+      adminDb
+        .collection('courses')
+        .where('programId', '==', programId)
+        .get(),
+    ]);
+
+    const courses: DiscoverCourse[] = dedupeById([
+      ...coursesArraySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })),
+      ...coursesLegacySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })),
+    ]) as DiscoverCourse[];
 
     // Fetch articles associated with this program
-    const articlesSnapshot = await adminDb
-      .collection('articles')
-      .where('programIds', 'array-contains', programId)
-      .get();
+    // Query both programIds array (new schema) and programId field (legacy schema)
+    const [articlesArraySnapshot, articlesLegacySnapshot] = await Promise.all([
+      adminDb
+        .collection('articles')
+        .where('programIds', 'array-contains', programId)
+        .get(),
+      adminDb
+        .collection('articles')
+        .where('programId', '==', programId)
+        .get(),
+    ]);
 
-    const articles: DiscoverArticle[] = articlesSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as DiscoverArticle[];
+    const articles: DiscoverArticle[] = dedupeById([
+      ...articlesArraySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })),
+      ...articlesLegacySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })),
+    ]) as DiscoverArticle[];
 
     // Fetch events associated with this program (upcoming only)
+    // Query both programIds array (new schema) and programId field (legacy schema)
     const now = new Date().toISOString().split('T')[0];
-    const eventsSnapshot = await adminDb
-      .collection('events')
-      .where('programIds', 'array-contains', programId)
-      .where('date', '>=', now)
-      .orderBy('date', 'asc')
-      .limit(10)
-      .get();
+    const [eventsArraySnapshot, eventsLegacySnapshot] = await Promise.all([
+      adminDb
+        .collection('events')
+        .where('programIds', 'array-contains', programId)
+        .where('date', '>=', now)
+        .orderBy('date', 'asc')
+        .limit(10)
+        .get(),
+      adminDb
+        .collection('events')
+        .where('programId', '==', programId)
+        .where('date', '>=', now)
+        .orderBy('date', 'asc')
+        .limit(10)
+        .get(),
+    ]);
 
-    const events: DiscoverEvent[] = eventsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as DiscoverEvent[];
+    // Merge and dedupe events, then sort by date and limit to 10
+    const mergedEvents = dedupeById([
+      ...eventsArraySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })),
+      ...eventsLegacySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })),
+    ]) as DiscoverEvent[];
+
+    const events: DiscoverEvent[] = mergedEvents
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(0, 10);
 
     // Fetch program-specific links
     const linksSnapshot = await adminDb

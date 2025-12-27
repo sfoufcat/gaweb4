@@ -134,12 +134,17 @@ export async function POST(req: Request) {
         // For Connect events, event.account contains the connected account ID
         const connectedAccountId = (event as { account?: string }).account;
         
-        // Only handle funnel payments (one-time program enrollment payments via Stripe Connect)
-        if (paymentIntent.metadata?.type === 'funnel_payment') {
+        // Handle content purchases (one-time content payments via Stripe Connect)
+        if (paymentIntent.metadata?.type === 'content_purchase') {
+          console.log(`[STRIPE_WEBHOOK] payment_intent.succeeded (content) - paymentIntentId: ${paymentIntent.id}, contentType: ${paymentIntent.metadata?.contentType}, contentId: ${paymentIntent.metadata?.contentId}, connectedAccount: ${connectedAccountId || 'platform'}`);
+          await handleContentPurchaseSucceeded(paymentIntent);
+        }
+        // Handle funnel payments (one-time program enrollment payments via Stripe Connect)
+        else if (paymentIntent.metadata?.type === 'funnel_payment') {
           console.log(`[STRIPE_WEBHOOK] payment_intent.succeeded (funnel) - paymentIntentId: ${paymentIntent.id}, flowSessionId: ${paymentIntent.metadata?.flowSessionId}, connectedAccount: ${connectedAccountId || 'platform'}`);
           await handleFunnelPaymentSucceeded(paymentIntent);
         } else {
-          console.log(`[STRIPE_WEBHOOK] payment_intent.succeeded - paymentIntentId: ${paymentIntent.id} (not a funnel payment, skipping)`);
+          console.log(`[STRIPE_WEBHOOK] payment_intent.succeeded - paymentIntentId: ${paymentIntent.id} (not a funnel or content payment, skipping)`);
         }
         break;
       }
@@ -967,6 +972,56 @@ async function updateUserCoachingStatus(userId: string, subscription: Stripe.Sub
       coachingPlan,
     });
   }
+}
+
+/**
+ * Handle successful content purchase (one-time payment via Stripe Connect)
+ * Creates a user_content_purchases record
+ */
+async function handleContentPurchaseSucceeded(paymentIntent: Stripe.PaymentIntent) {
+  const userId = paymentIntent.metadata?.userId;
+  const contentType = paymentIntent.metadata?.contentType as 'event' | 'article' | 'course' | 'download' | 'link';
+  const contentId = paymentIntent.metadata?.contentId;
+  const organizationId = paymentIntent.metadata?.organizationId;
+
+  if (!userId || !contentType || !contentId) {
+    console.error(`[STRIPE_WEBHOOK] Content purchase ${paymentIntent.id} missing required metadata:`, {
+      userId,
+      contentType,
+      contentId,
+    });
+    return;
+  }
+
+  // Check if purchase already exists (idempotency)
+  const existingPurchase = await adminDb
+    .collection('user_content_purchases')
+    .where('stripePaymentIntentId', '==', paymentIntent.id)
+    .limit(1)
+    .get();
+
+  if (!existingPurchase.empty) {
+    console.log(`[STRIPE_WEBHOOK] Content purchase already exists for payment ${paymentIntent.id}, skipping`);
+    return;
+  }
+
+  // Create the purchase record
+  const now = new Date().toISOString();
+  const purchaseData = {
+    userId,
+    contentType,
+    contentId,
+    organizationId: organizationId || '',
+    amountPaid: paymentIntent.amount || 0,
+    currency: paymentIntent.currency || 'usd',
+    stripePaymentIntentId: paymentIntent.id,
+    purchasedAt: now,
+    createdAt: now,
+  };
+
+  const purchaseRef = await adminDb.collection('user_content_purchases').add(purchaseData);
+
+  console.log(`[STRIPE_WEBHOOK] Content purchase created: User ${userId} purchased ${contentType}/${contentId}, purchaseId: ${purchaseRef.id}`);
 }
 
 /**

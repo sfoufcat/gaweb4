@@ -81,7 +81,7 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { type, config, showIf, name } = body;
+    const { type, config, showIf, name, influencePrompt } = body;
 
     const now = new Date().toISOString();
     const updates: Partial<FunnelStep> = {
@@ -100,6 +100,10 @@ export async function PUT(
     // Handle name - can be set or cleared
     if (name !== undefined) {
       updates.name = name || undefined; // Clear if empty string
+    }
+    // Handle influence prompt - can be set, updated, or cleared
+    if (influencePrompt !== undefined) {
+      updates.influencePrompt = influencePrompt || undefined; // Clear if null/empty
     }
 
     await stepRef.update(updates);

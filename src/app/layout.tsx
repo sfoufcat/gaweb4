@@ -16,6 +16,7 @@ import { BrandingProvider } from "@/contexts/BrandingContext";
 import { IncomingCallHandler } from "@/components/chat/IncomingCallHandler";
 import { ClerkThemeProvider } from "@/components/auth/ClerkThemeProvider";
 import { TimezoneSync } from "@/components/TimezoneSync";
+import { GATracker } from "@/components/analytics/GATracker";
 import { getServerBranding } from "@/lib/branding-server";
 import { SWRProvider } from "@/lib/swr-provider";
 import { DEFAULT_LOGO_URL, DEFAULT_THEME } from "@/types";
@@ -166,6 +167,11 @@ export default async function RootLayout({
                 
                 {/* Sync user's timezone from browser (handles traveling users) */}
                 <TimezoneSync />
+                
+                {/* Google Analytics tracking (org-specific) */}
+                <Suspense fallback={null}>
+                  <GATracker />
+                </Suspense>
               </StreamVideoProvider>
             </StreamChatProvider>
           </OrganizationProvider>

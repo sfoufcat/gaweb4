@@ -454,12 +454,14 @@ function CourseFormDialog({
   onClose,
   onSave,
   uploadEndpoint,
+  programsApiEndpoint,
 }: {
   course: DiscoverCourse | null;
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
   uploadEndpoint: string;
+  programsApiEndpoint: string;
 }) {
   const isEditing = !!course;
   const [saving, setSaving] = useState(false);
@@ -631,7 +633,7 @@ function CourseFormDialog({
                     required
                     uploadEndpoint={uploadEndpoint}
                     hideLabel
-                    aspectRatio="16:9"
+                    previewSize="thumbnail"
                   />
                 </div>
                 
@@ -683,6 +685,7 @@ function CourseFormDialog({
                     value={formData.programIds}
                     onChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
                     placeholder="Select programs for this course..."
+                    programsApiEndpoint={programsApiEndpoint}
                   />
                 </div>
                 
@@ -781,10 +784,14 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Derive upload endpoint from API endpoint - use coach upload for coach routes
-  const uploadEndpoint = apiEndpoint.includes('/coach/') 
+  // Derive endpoints from API endpoint - use coach endpoints for coach routes
+  const isCoachContext = apiEndpoint.includes('/coach/');
+  const uploadEndpoint = isCoachContext 
     ? '/api/coach/org-upload-media' 
     : '/api/admin/upload-media';
+  const programsApiEndpoint = isCoachContext 
+    ? '/api/coach/org-programs' 
+    : '/api/admin/programs';
 
   const fetchCourses = async () => {
     try {
@@ -1094,6 +1101,7 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
         onClose={() => { setIsFormOpen(false); setCourseToEdit(null); }}
         onSave={fetchCourses}
         uploadEndpoint={uploadEndpoint}
+        programsApiEndpoint={programsApiEndpoint}
       />
 
       {/* Delete Confirmation */}

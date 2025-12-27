@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { updateLastActivity } from '@/lib/analytics/lastActivity';
 
 // POST /api/habits/[id]/progress - Mark habit as complete for today
 export async function POST(
@@ -59,8 +60,16 @@ export async function POST(
 
     await habitRef.update({
       progress: updatedProgress,
+      lastCompletionAt: new Date().toISOString(), // Denormalized for fast queries
       updatedAt: new Date().toISOString(),
     });
+
+    // Update lastActivityAt for analytics (non-blocking)
+    if (organizationId) {
+      updateLastActivity(userId, organizationId, 'habit').catch(err => {
+        console.error('[HABITS] Failed to update lastActivityAt:', err);
+      });
+    }
 
     return NextResponse.json({ 
       success: true,

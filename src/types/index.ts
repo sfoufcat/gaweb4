@@ -831,6 +831,43 @@ export interface ProgramWithStats extends Program {
   cohortCount?: number; // For group programs
 }
 
+// =============================================================================
+// CONTENT PURCHASES
+// =============================================================================
+
+/** Content type for purchases */
+export type ContentPurchaseType = 'event' | 'article' | 'course' | 'download' | 'link';
+
+/**
+ * User content purchase record
+ * Stored in Firestore 'user_content_purchases' collection
+ * 
+ * Tracks individual content purchases (courses, articles, events, downloads, links).
+ * This is separate from program_enrollments which tracks program purchases.
+ */
+export interface ContentPurchase {
+  id: string;
+  userId: string;
+  contentType: ContentPurchaseType;
+  contentId: string;
+  organizationId: string;
+  
+  // Payment
+  amountPaid: number; // Amount in cents (0 if free or included in program)
+  currency: string; // 'usd', 'eur', etc.
+  stripePaymentIntentId?: string;
+  stripeCheckoutSessionId?: string;
+  
+  // For content included in programs (no separate payment)
+  includedInProgramId?: string;
+  includedInProgramName?: string;
+  
+  // Timestamps
+  purchasedAt: string; // ISO timestamp
+  createdAt: string;
+  updatedAt?: string;
+}
+
 /**
  * Cohort with squad info for admin views
  */
@@ -2654,6 +2691,103 @@ export interface FunnelStepConfigDownsell {
   declineText: string;
 }
 
+// ============================================================================
+// INFLUENCE PROMPT TYPES
+// ============================================================================
+
+/**
+ * Influence prompt types for persuasion psychology
+ */
+export type InfluencePromptType = 
+  | 'social_proof'   // Testimonials, user counts, success stories
+  | 'authority'      // Expert endorsements, credentials, "As seen in"
+  | 'urgency'        // Time-limited offers, countdown timers
+  | 'scarcity'       // Limited spots, limited availability
+  | 'reciprocity'    // Free bonuses, gifts included
+  | 'commitment';    // Progress indicators, "You're X% there"
+
+/**
+ * Social proof testimonial configuration
+ */
+export interface InfluenceTestimonial {
+  quote: string;
+  name: string;
+  role?: string;              // e.g., "Entrepreneur" or "Lost 30 lbs"
+  avatarUrl?: string;
+  result?: string;            // e.g., "Achieved goal in 60 days"
+}
+
+/**
+ * Authority endorsement configuration
+ */
+export interface InfluenceAuthority {
+  name?: string;              // Expert/brand name
+  title?: string;             // e.g., "PhD, Harvard"
+  credentialText?: string;    // e.g., "Featured in Forbes, Inc., Entrepreneur"
+  logoUrl?: string;           // Brand/publication logo
+  endorsement?: string;       // Quote or endorsement text
+}
+
+/**
+ * Urgency timer configuration
+ */
+export interface InfluenceUrgency {
+  deadlineText?: string;      // e.g., "Special pricing ends in"
+  countdownMinutes?: number;  // Minutes from session start (stored per-user)
+  showPulse?: boolean;        // Pulsing animation effect
+}
+
+/**
+ * Scarcity indicator configuration
+ */
+export interface InfluenceScarcity {
+  totalSpots?: number;        // e.g., 50
+  remainingSpots?: number;    // e.g., 7
+  showProgressBar?: boolean;  // Show visual fill indicator
+  customText?: string;        // e.g., "Only {remaining} spots left!"
+}
+
+/**
+ * Reciprocity bonus configuration
+ */
+export interface InfluenceReciprocity {
+  bonusName?: string;         // e.g., "Free Goal-Setting Workbook"
+  bonusValue?: string;        // e.g., "$197 value"
+  bonusDescription?: string;  // Short description
+  bonusImageUrl?: string;     // Bonus product image
+}
+
+/**
+ * Commitment progress configuration
+ */
+export interface InfluenceCommitment {
+  progressPercent?: number;   // 0-100, or calculated automatically
+  milestoneText?: string;     // e.g., "Just 2 more steps to your personalized plan!"
+  showCheckmarks?: boolean;   // Show completed step checkmarks
+}
+
+/**
+ * Influence prompt configuration - one per funnel step
+ */
+export interface InfluencePromptConfig {
+  type: InfluencePromptType;
+  enabled: boolean;
+  
+  // Shared fields (optional overrides)
+  headline?: string;          // Custom headline text
+  subtext?: string;           // Additional context text
+  icon?: string;              // Lucide icon name (e.g., "star", "shield", "clock")
+  accentColor?: string;       // Override org primary color
+  
+  // Type-specific configurations
+  testimonial?: InfluenceTestimonial;
+  authority?: InfluenceAuthority;
+  urgency?: InfluenceUrgency;
+  scarcity?: InfluenceScarcity;
+  reciprocity?: InfluenceReciprocity;
+  commitment?: InfluenceCommitment;
+}
+
 export type FunnelStepConfig = 
   | { type: 'question'; config: FunnelStepConfigQuestion }
   | { type: 'signup'; config: FunnelStepConfigSignup }
@@ -2681,6 +2815,9 @@ export interface FunnelStep {
   type: FunnelStepType;
   name?: string;                 // Custom name for coach differentiation
   config: FunnelStepConfig;
+  
+  // Influence prompt (persuasion card shown at bottom of step)
+  influencePrompt?: InfluencePromptConfig;
   
   // Conditional display
   showIf?: {
@@ -2795,6 +2932,290 @@ export function getFlowSessionStatus(session: FlowSession): FlowSessionStatus {
   const hoursSinceUpdate = (Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60);
   if (hoursSinceUpdate > 24) return 'abandoned';
   return 'active';
+}
+
+// =============================================================================
+// CHECK-IN FLOW SYSTEM TYPES
+// Unified check-in flows (morning, evening, weekly) with step-based builder
+// =============================================================================
+
+/**
+ * Check-in flow type - the category of check-in
+ */
+export type CheckInFlowType = 'morning' | 'evening' | 'weekly' | 'custom';
+
+/**
+ * Check-in step types - specific to check-in flows
+ * Extends funnel step types where applicable
+ */
+export type CheckInStepType =
+  | 'explainer'           // Text + optional media (reused from funnels)
+  | 'mood_scale'          // Emotional state/mood selector (confidence, on-track, etc.)
+  | 'single_select'       // Single choice question
+  | 'multi_select'        // Multiple choice question
+  | 'open_text'           // Free-form text input (journal/reflection)
+  | 'task_planner'        // Plan your day - tasks management
+  | 'task_review'         // Review task completion (evening)
+  | 'breathing'           // Guided breathing exercise
+  | 'ai_reframe_input'    // User thought input for AI reframe
+  | 'ai_reframe_output'   // AI response display
+  | 'visualization'       // Manifestation: goal + identity + optional music
+  | 'progress_scale'      // Weekly progress slider (0-100%)
+  | 'completion'          // End screen with celebration
+  | 'goal_achieved';      // Conditional end screen when goal is 100%
+
+/**
+ * Check-in step configuration types
+ */
+export interface CheckInStepConfigMoodScale {
+  question: string;                     // e.g., "How are you feeling today?"
+  scaleType: 'emotional_state' | 'on_track' | 'custom';
+  options: {
+    value: string;
+    label: string;
+    color?: string;                     // Background gradient color
+  }[];
+  skipCondition?: {                     // Skip next steps based on value
+    values: string[];
+    skipToStepId?: string;
+  };
+}
+
+export interface CheckInStepConfigSingleSelect {
+  question: string;
+  description?: string;
+  options: {
+    id: string;
+    label: string;
+    value: string;
+    icon?: string;
+  }[];
+  fieldName: string;                    // Key to store response
+}
+
+export interface CheckInStepConfigMultiSelect {
+  question: string;
+  description?: string;
+  options: {
+    id: string;
+    label: string;
+    value: string;
+    icon?: string;
+  }[];
+  fieldName: string;
+  minSelections?: number;
+  maxSelections?: number;
+}
+
+export interface CheckInStepConfigOpenText {
+  question: string;
+  description?: string;
+  placeholder?: string;
+  minLength?: number;
+  maxLength?: number;
+  fieldName: string;
+  isRequired?: boolean;
+}
+
+export interface CheckInStepConfigTaskPlanner {
+  heading?: string;
+  description?: string;
+  showProgramTasks?: boolean;           // Show tasks from enrolled program
+  allowAddTasks?: boolean;
+  showBacklog?: boolean;
+}
+
+export interface CheckInStepConfigTaskReview {
+  heading?: string;
+  completedMessage?: string;
+  partialMessage?: string;
+  noTasksMessage?: string;
+}
+
+export interface CheckInStepConfigBreathing {
+  heading?: string;
+  description?: string;
+  pattern: {
+    inhale: number;                     // seconds
+    hold?: number;
+    exhale: number;
+  };
+  cycles: number;
+  backgroundGradient?: string;
+}
+
+export interface CheckInStepConfigAiReframeInput {
+  heading?: string;
+  placeholder?: string;
+  promptTemplate?: string;              // System prompt for AI
+}
+
+export interface CheckInStepConfigAiReframeOutput {
+  heading?: string;
+  loadingMessage?: string;
+}
+
+export interface CheckInStepConfigVisualization {
+  heading?: string;
+  showGoal?: boolean;
+  showIdentity?: boolean;
+  backgroundMusicUrl?: string;
+  durationSeconds?: number;
+}
+
+export interface CheckInStepConfigProgressScale {
+  question: string;
+  description?: string;
+  showGoal?: boolean;                   // Display user's current goal
+  goalAchievedThreshold?: number;       // Trigger goal achieved flow (default: 100)
+}
+
+export interface CheckInStepConfigCompletion {
+  heading: string;
+  subheading?: string;
+  emoji?: string;
+  showConfetti?: boolean;
+  buttonText?: string;
+  variant?: 'day_closed' | 'week_closed' | 'great_job' | 'custom';
+}
+
+export interface CheckInStepConfigGoalAchieved {
+  heading: string;
+  description?: string;
+  showCreateNewGoal?: boolean;
+  showSkipOption?: boolean;
+}
+
+export interface CheckInStepConfigExplainer {
+  heading?: string;
+  body?: string;
+  imageUrl?: string;
+  videoUrl?: string;
+  ctaText?: string;
+}
+
+/**
+ * Union type for all check-in step configurations
+ */
+export type CheckInStepConfig =
+  | { type: 'mood_scale'; config: CheckInStepConfigMoodScale }
+  | { type: 'single_select'; config: CheckInStepConfigSingleSelect }
+  | { type: 'multi_select'; config: CheckInStepConfigMultiSelect }
+  | { type: 'open_text'; config: CheckInStepConfigOpenText }
+  | { type: 'task_planner'; config: CheckInStepConfigTaskPlanner }
+  | { type: 'task_review'; config: CheckInStepConfigTaskReview }
+  | { type: 'breathing'; config: CheckInStepConfigBreathing }
+  | { type: 'ai_reframe_input'; config: CheckInStepConfigAiReframeInput }
+  | { type: 'ai_reframe_output'; config: CheckInStepConfigAiReframeOutput }
+  | { type: 'visualization'; config: CheckInStepConfigVisualization }
+  | { type: 'progress_scale'; config: CheckInStepConfigProgressScale }
+  | { type: 'completion'; config: CheckInStepConfigCompletion }
+  | { type: 'goal_achieved'; config: CheckInStepConfigGoalAchieved }
+  | { type: 'explainer'; config: CheckInStepConfigExplainer };
+
+/**
+ * Check-in step condition - for conditional display of steps
+ */
+export interface CheckInStepCondition {
+  field: string;                        // Field to evaluate (e.g., 'taskCompletionRate', 'weeklyProgress')
+  operator: 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'in';
+  value: unknown;
+}
+
+/**
+ * Check-in step - A single step in a check-in flow
+ */
+export interface CheckInStep {
+  id: string;
+  flowId: string;
+  order: number;
+  type: CheckInStepType;
+  name?: string;                        // Custom name for coach differentiation
+  config: CheckInStepConfig;
+  
+  // Conditional display (for evening/weekly conditional screens)
+  conditions?: CheckInStepCondition[];
+  conditionLogic?: 'and' | 'or';        // How to combine multiple conditions (default: 'and')
+  
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * CheckInFlowTemplate - Global, immutable template for default check-in flows
+ * Stored in Firestore 'checkInFlowTemplates' collection
+ */
+export interface CheckInFlowTemplate {
+  id: string;
+  key: CheckInFlowType;                 // 'morning' | 'evening' | 'weekly'
+  name: string;
+  description?: string;
+  defaultSteps: Omit<CheckInStep, 'id' | 'flowId' | 'createdAt' | 'updatedAt'>[];
+  version: number;                      // For versioning template updates
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * OrgCheckInFlow - Organization-specific check-in flow instance
+ * Stored in Firestore 'orgCheckInFlows' collection
+ */
+export interface OrgCheckInFlow {
+  id: string;
+  organizationId: string;               // Clerk Organization ID (multi-tenant)
+  
+  name: string;
+  type: CheckInFlowType;
+  description?: string;
+  
+  enabled: boolean;                     // Whether this flow is active for end-users
+  
+  // Steps stored in subcollection 'orgCheckInFlows/{flowId}/steps'
+  stepCount: number;                    // Denormalized count for list views
+  
+  // Template reference
+  createdFromTemplateId?: string;       // Reference to CheckInFlowTemplate
+  templateVersion?: number;             // Version of template when created
+  
+  // System vs custom
+  isSystemDefault: boolean;             // True for morning/evening/weekly instances
+  
+  // Audit
+  createdByUserId: string;
+  lastEditedByUserId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Check-in session - State for a user going through a check-in
+ * Stored in Firestore 'checkInSessions' collection
+ */
+export interface CheckInSession {
+  id: string;
+  flowId: string;
+  organizationId: string;
+  userId: string;
+  
+  // Date tracking (for daily/weekly uniqueness)
+  date: string;                         // YYYY-MM-DD for morning/evening
+  week?: string;                        // YYYY-WNN for weekly
+  
+  // Progress
+  currentStepIndex: number;
+  completedStepIds: string[];
+  
+  // Collected data
+  data: Record<string, unknown>;
+  
+  // Computed values for conditions
+  taskCompletionRate?: number;          // 0-100, for evening flow
+  weeklyProgress?: number;              // 0-100, for weekly flow
+  
+  // Status
+  status: 'in_progress' | 'completed' | 'abandoned';
+  startedAt: string;
+  completedAt?: string;
 }
 
 // =============================================================================

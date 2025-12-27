@@ -1,6 +1,57 @@
 // Discover Types
 import type { UserTrack } from './index';
 
+// =============================================================================
+// CONTENT PRICING & GATING
+// =============================================================================
+
+/** Purchase UI type - how the purchase flow is presented to users */
+export type ContentPurchaseType = 'popup' | 'landing_page';
+
+/** Content type for purchases */
+export type PurchasableContentType = 'event' | 'article' | 'course' | 'download' | 'link';
+
+/** Feature item for landing page content */
+export type ContentFeature = {
+  title: string;
+  description?: string;
+  icon?: string; // lucide icon name
+};
+
+/** Testimonial for landing page content */
+export type ContentTestimonial = {
+  name: string;
+  title?: string;
+  quote: string;
+  imageUrl?: string;
+  rating?: number; // 1-5
+};
+
+/** FAQ item for landing page content */
+export type ContentFaq = {
+  question: string;
+  answer: string;
+};
+
+/** Common pricing fields for all content types */
+export type ContentPricingFields = {
+  // Pricing
+  priceInCents?: number;           // 0 or undefined = free
+  currency?: string;               // 'usd' default
+  purchaseType?: ContentPurchaseType;  // 'popup' or 'landing_page'
+  isPublic?: boolean;              // Visible in public Discover (default true)
+  
+  // Landing Page fields (when purchaseType = 'landing_page')
+  keyOutcomes?: string[];          // "What you'll get" bullets
+  features?: ContentFeature[];     // Feature cards with icons
+  testimonials?: ContentTestimonial[];
+  faqs?: ContentFaq[];
+};
+
+// =============================================================================
+// EVENT TYPE
+// =============================================================================
+
 export type DiscoverEvent = {
   id: string;
   title: string;
@@ -41,6 +92,16 @@ export type DiscoverEvent = {
   maxAttendees?: number;
   createdAt: string;
   updatedAt: string;
+  
+  // Pricing & Gating
+  priceInCents?: number;
+  currency?: string;
+  purchaseType?: ContentPurchaseType;
+  isPublic?: boolean;
+  keyOutcomes?: string[];
+  features?: ContentFeature[];
+  testimonials?: ContentTestimonial[];
+  faqs?: ContentFaq[];
 };
 
 export type EventUpdate = {
@@ -85,6 +146,16 @@ export type DiscoverArticle = {
   trending?: boolean;    // for Trending section
   createdAt?: string;
   updatedAt?: string;
+  
+  // Pricing & Gating
+  priceInCents?: number;
+  currency?: string;
+  purchaseType?: ContentPurchaseType;
+  isPublic?: boolean;
+  keyOutcomes?: string[];
+  features?: ContentFeature[];
+  testimonials?: ContentTestimonial[];
+  faqs?: ContentFaq[];
 };
 
 export type CourseLesson = {
@@ -127,6 +198,16 @@ export type DiscoverCourse = {
   modules: CourseModule[];
   createdAt: string;
   updatedAt: string;
+  
+  // Pricing & Gating
+  priceInCents?: number;
+  currency?: string;
+  purchaseType?: ContentPurchaseType;
+  isPublic?: boolean;
+  keyOutcomes?: string[];
+  features?: ContentFeature[];
+  testimonials?: ContentTestimonial[];
+  faqs?: ContentFaq[];
 };
 
 export type DiscoverCategory = {
@@ -213,5 +294,92 @@ export type DiscoverSquad = {
   subscriptionEnabled?: boolean;
   billingInterval?: string;
   visibility?: string;
+};
+
+// =============================================================================
+// DOWNLOAD & LINK TYPES
+// =============================================================================
+
+/** Download file type */
+export type DownloadFileType = 'pdf' | 'doc' | 'spreadsheet' | 'zip' | 'image' | 'video' | 'audio' | 'other';
+
+export type DiscoverDownload = {
+  id: string;
+  title: string;
+  description?: string;
+  fileUrl: string;
+  fileType?: DownloadFileType;
+  fileSize?: number; // in bytes
+  thumbnailUrl?: string;
+  /** Program IDs this content belongs to. Used for program-scoped content delivery. */
+  programIds?: string[];
+  organizationId?: string;
+  order?: number;
+  createdAt: string;
+  updatedAt: string;
+  
+  // Pricing & Gating
+  priceInCents?: number;
+  currency?: string;
+  purchaseType?: ContentPurchaseType;
+  isPublic?: boolean;
+  keyOutcomes?: string[];
+  features?: ContentFeature[];
+  testimonials?: ContentTestimonial[];
+  faqs?: ContentFaq[];
+  
+  // Coach/Author info for display
+  coachName?: string;
+  coachImageUrl?: string;
+};
+
+export type DiscoverLink = {
+  id: string;
+  title: string;
+  description?: string;
+  url: string;
+  thumbnailUrl?: string;
+  /** Program IDs this content belongs to. Used for program-scoped content delivery. */
+  programIds?: string[];
+  organizationId?: string;
+  order?: number;
+  createdAt: string;
+  updatedAt: string;
+  
+  // Pricing & Gating
+  priceInCents?: number;
+  currency?: string;
+  purchaseType?: ContentPurchaseType;
+  isPublic?: boolean;
+  keyOutcomes?: string[];
+  features?: ContentFeature[];
+  testimonials?: ContentTestimonial[];
+  faqs?: ContentFaq[];
+  
+  // Coach/Author info for display
+  coachName?: string;
+  coachImageUrl?: string;
+};
+
+// =============================================================================
+// MY CONTENT (UNIFIED PURCHASED CONTENT)
+// =============================================================================
+
+/** Unified item for "My Content" display - represents any purchased/enrolled content */
+export type MyContentItem = {
+  id: string;
+  contentType: PurchasableContentType | 'program' | 'squad';
+  contentId: string;
+  title: string;
+  description?: string;
+  coverImageUrl?: string;
+  thumbnailUrl?: string;
+  organizationId?: string;
+  coachName?: string;
+  coachImageUrl?: string;
+  purchasedAt: string;
+  /** If content was included via program enrollment */
+  includedInProgramId?: string;
+  includedInProgramName?: string;
 };
 

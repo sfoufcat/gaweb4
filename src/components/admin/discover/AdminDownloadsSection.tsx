@@ -45,6 +45,7 @@ function DownloadFormDialog({
   onSave,
   uploadEndpoint,
   apiEndpoint,
+  programsApiEndpoint,
 }: {
   download: ProgramDownload | null;
   isOpen: boolean;
@@ -52,6 +53,7 @@ function DownloadFormDialog({
   onSave: () => void;
   uploadEndpoint: string;
   apiEndpoint: string;
+  programsApiEndpoint: string;
 }) {
   const isEditing = !!download;
   const [saving, setSaving] = useState(false);
@@ -217,6 +219,7 @@ function DownloadFormDialog({
                 value={formData.programIds}
                 onChange={(programIds) => setFormData(prev => ({ ...prev, programIds }))}
                 placeholder="Select programs for this download..."
+                programsApiEndpoint={programsApiEndpoint}
               />
             </div>
 
@@ -273,10 +276,14 @@ export function AdminDownloadsSection({ apiEndpoint = '/api/admin/discover/downl
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Derive upload endpoint from API endpoint
-  const uploadEndpoint = apiEndpoint.includes('/coach/') 
+  // Derive endpoints from API endpoint - use coach endpoints for coach routes
+  const isCoachContext = apiEndpoint.includes('/coach/');
+  const uploadEndpoint = isCoachContext 
     ? '/api/coach/org-upload-media' 
     : '/api/admin/upload-media';
+  const programsApiEndpoint = isCoachContext 
+    ? '/api/coach/org-programs' 
+    : '/api/admin/programs';
 
   const fetchDownloads = async () => {
     try {
@@ -482,6 +489,7 @@ export function AdminDownloadsSection({ apiEndpoint = '/api/admin/discover/downl
         onSave={fetchDownloads}
         uploadEndpoint={uploadEndpoint}
         apiEndpoint={apiEndpoint}
+        programsApiEndpoint={programsApiEndpoint}
       />
 
       {/* Delete Confirmation */}

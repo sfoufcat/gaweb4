@@ -437,3 +437,80 @@ export function useDiscoverData() {
     loading,
   };
 }
+
+// Hook: useMyContent - Fetches user's purchased/enrolled content
+export function useMyContent() {
+  const { data, error, isLoading, mutate } = useSWR<{
+    items: import('@/types/discover').MyContentItem[];
+    totalCount: number;
+    counts: {
+      programs: number;
+      squads: number;
+      courses: number;
+      articles: number;
+      events: number;
+      downloads: number;
+      links: number;
+    };
+  }>(
+    '/api/my-content',
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 2 * 60 * 1000, // 2 minutes
+    }
+  );
+
+  return {
+    myContent: data?.items ?? [],
+    totalCount: data?.totalCount ?? 0,
+    counts: data?.counts ?? {
+      programs: 0,
+      squads: 0,
+      courses: 0,
+      articles: 0,
+      events: 0,
+      downloads: 0,
+      links: 0,
+    },
+    loading: isLoading && !data,
+    error: error?.message ?? null,
+    refresh: mutate,
+  };
+}
+
+// Hook: useDiscoverDownloads - Fetches public downloads
+export function useDiscoverDownloads() {
+  const { data, error, isLoading } = useSWR<{ downloads: import('@/types/discover').DiscoverDownload[] }>(
+    '/api/discover/downloads',
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 5 * 60 * 1000, // 5 minutes
+    }
+  );
+
+  return {
+    downloads: data?.downloads ?? [],
+    loading: isLoading && !data,
+    error: error?.message ?? null,
+  };
+}
+
+// Hook: useDiscoverLinks - Fetches public links
+export function useDiscoverLinks() {
+  const { data, error, isLoading } = useSWR<{ links: import('@/types/discover').DiscoverLink[] }>(
+    '/api/discover/links',
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 5 * 60 * 1000, // 5 minutes
+    }
+  );
+
+  return {
+    links: data?.links ?? [],
+    loading: isLoading && !data,
+    error: error?.message ?? null,
+  };
+}

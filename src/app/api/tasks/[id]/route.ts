@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { updateAlignmentForToday } from '@/lib/alignment';
 import { sendTasksCompletedNotification } from '@/lib/notifications';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { updateLastActivity } from '@/lib/analytics/lastActivity';
 import type { Task, UpdateTaskRequest, ClerkPublicMetadata } from '@/types';
 
 /**
@@ -59,6 +60,13 @@ export async function PATCH(
       updates.status = body.status;
       if (body.status === 'completed') {
         updates.completedAt = new Date().toISOString();
+        
+        // Update lastActivityAt for analytics (non-blocking)
+        if (organizationId) {
+          updateLastActivity(userId, organizationId, 'task').catch(err => {
+            console.error('[TASKS] Failed to update lastActivityAt:', err);
+          });
+        }
       }
     }
 

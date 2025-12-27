@@ -1,0 +1,300 @@
+'use client';
+
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { X, Sun, Moon, Calendar, Layers } from 'lucide-react';
+import type { OrgCheckInFlow, CheckInFlowTemplate, CheckInFlowType } from '@/types';
+
+interface CheckInFlowEditorDialogProps {
+  mode: 'create' | 'edit';
+  flow?: OrgCheckInFlow;
+  templates: CheckInFlowTemplate[];
+  existingFlows: OrgCheckInFlow[];
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+const FLOW_TYPE_ICONS: Record<CheckInFlowType, React.ElementType> = {
+  morning: Sun,
+  evening: Moon,
+  weekly: Calendar,
+  custom: Layers,
+};
+
+const FLOW_TYPE_LABELS: Record<CheckInFlowType, string> = {
+  morning: 'Morning Check-in',
+  evening: 'Evening Check-in',
+  weekly: 'Weekly Reflection',
+  custom: 'Custom Flow',
+};
+
+export function CheckInFlowEditorDialog({
+  mode,
+  flow,
+  templates,
+  existingFlows,
+  onClose,
+  onSaved,
+}: CheckInFlowEditorDialogProps) {
+  const [name, setName] = useState(flow?.name || '');
+  const [description, setDescription] = useState(flow?.description || '');
+  const [selectedSource, setSelectedSource] = useState<'scratch' | 'template' | 'duplicate'>('scratch');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [selectedFlowId, setSelectedFlowId] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!name.trim()) {
+      setError('Name is required');
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      if (mode === 'create') {
+        const body: Record<string, unknown> = {
+          name: name.trim(),
+          type: 'custom',
+          description: description.trim() || undefined,
+        };
+
+        if (selectedSource === 'template' && selectedTemplateId) {
+          body.fromTemplateId = selectedTemplateId;
+        } else if (selectedSource === 'duplicate' && selectedFlowId) {
+          body.fromFlowId = selectedFlowId;
+        }
+
+        const response = await fetch('/api/coach/org-checkin-flows', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to create flow');
+        }
+      } else {
+        // Edit mode
+        const response = await fetch(`/api/coach/org-checkin-flows/${flow!.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: name.trim(),
+            description: description.trim() || undefined,
+          }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to update flow');
+        }
+      }
+
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white dark:bg-[#171b22] rounded-2xl w-full max-w-lg shadow-xl border border-[#e1ddd8] dark:border-[#262b35]"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-[#e1ddd8] dark:border-[#262b35]">
+          <h2 className="text-xl font-semibold text-text-primary dark:text-[#f5f5f8]">
+            {mode === 'create' ? 'Create Check-in Flow' : 'Edit Flow Details'}
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Error message */}
+          {error && (
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+
+          {/* Name */}
+          <div>
+            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+              Flow Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., Morning Mindfulness"
+              className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted dark:placeholder:text-[#666d7c] focus:outline-none focus:border-[#a07855] dark:focus:border-[#b8896a]"
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+              Description (optional)
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What is this flow for?"
+              rows={2}
+              className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted dark:placeholder:text-[#666d7c] focus:outline-none focus:border-[#a07855] dark:focus:border-[#b8896a] resize-none"
+            />
+          </div>
+
+          {/* Source selection (create mode only) */}
+          {mode === 'create' && (
+            <div>
+              <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-3">
+                Start from
+              </label>
+              <div className="space-y-2">
+                {/* From scratch */}
+                <label className="flex items-center gap-3 p-3 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl cursor-pointer hover:bg-[#faf8f6] dark:hover:bg-[#0d1015] transition-colors">
+                  <input
+                    type="radio"
+                    name="source"
+                    value="scratch"
+                    checked={selectedSource === 'scratch'}
+                    onChange={() => setSelectedSource('scratch')}
+                    className="w-4 h-4 text-[#a07855]"
+                  />
+                  <div>
+                    <p className="font-medium text-text-primary dark:text-[#f5f5f8]">Blank flow</p>
+                    <p className="text-sm text-text-secondary dark:text-[#b2b6c2]">Start with an empty flow</p>
+                  </div>
+                </label>
+
+                {/* From template */}
+                <label className="flex items-center gap-3 p-3 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl cursor-pointer hover:bg-[#faf8f6] dark:hover:bg-[#0d1015] transition-colors">
+                  <input
+                    type="radio"
+                    name="source"
+                    value="template"
+                    checked={selectedSource === 'template'}
+                    onChange={() => setSelectedSource('template')}
+                    className="w-4 h-4 text-[#a07855]"
+                  />
+                  <div className="flex-1">
+                    <p className="font-medium text-text-primary dark:text-[#f5f5f8]">From template</p>
+                    <p className="text-sm text-text-secondary dark:text-[#b2b6c2]">Start with a pre-built template</p>
+                  </div>
+                </label>
+
+                {selectedSource === 'template' && templates.length > 0 && (
+                  <div className="ml-7 mt-2 space-y-2">
+                    {templates.map(template => {
+                      const Icon = FLOW_TYPE_ICONS[template.key];
+                      return (
+                        <label
+                          key={template.id}
+                          className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                            selectedTemplateId === template.id
+                              ? 'border-[#a07855] bg-[#a07855]/5 dark:border-[#b8896a] dark:bg-[#b8896a]/10'
+                              : 'border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-[#0d1015]'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="template"
+                            value={template.id}
+                            checked={selectedTemplateId === template.id}
+                            onChange={() => setSelectedTemplateId(template.id)}
+                            className="sr-only"
+                          />
+                          <Icon className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
+                          <span className="text-sm text-text-primary dark:text-[#f5f5f8]">
+                            {FLOW_TYPE_LABELS[template.key]}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Duplicate existing */}
+                {existingFlows.length > 0 && (
+                  <>
+                    <label className="flex items-center gap-3 p-3 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl cursor-pointer hover:bg-[#faf8f6] dark:hover:bg-[#0d1015] transition-colors">
+                      <input
+                        type="radio"
+                        name="source"
+                        value="duplicate"
+                        checked={selectedSource === 'duplicate'}
+                        onChange={() => setSelectedSource('duplicate')}
+                        className="w-4 h-4 text-[#a07855]"
+                      />
+                      <div className="flex-1">
+                        <p className="font-medium text-text-primary dark:text-[#f5f5f8]">Duplicate existing</p>
+                        <p className="text-sm text-text-secondary dark:text-[#b2b6c2]">Copy from an existing flow</p>
+                      </div>
+                    </label>
+
+                    {selectedSource === 'duplicate' && (
+                      <div className="ml-7 mt-2">
+                        <select
+                          value={selectedFlowId}
+                          onChange={(e) => setSelectedFlowId(e.target.value)}
+                          className="w-full px-3 py-2 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                        >
+                          <option value="">Select a flow...</option>
+                          {existingFlows.map(f => (
+                            <option key={f.id} value={f.id}>
+                              {f.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-3 border border-[#e1ddd8] dark:border-[#262b35] text-text-primary dark:text-[#f5f5f8] rounded-xl hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="flex-1 py-3 bg-[#a07855] text-white rounded-xl hover:bg-[#8c6245] transition-colors disabled:opacity-50"
+            >
+              {isSaving ? 'Saving...' : mode === 'create' ? 'Create' : 'Save'}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+

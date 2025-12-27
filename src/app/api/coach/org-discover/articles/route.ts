@@ -105,6 +105,15 @@ export async function POST(request: NextRequest) {
       featured: body.featured || false,
       trending: body.trending || false,
       organizationId, // Scope to coach's organization
+      // Pricing & Gating fields
+      priceInCents: body.priceInCents || 0,
+      currency: body.currency || 'usd',
+      purchaseType: body.purchaseType || 'popup', // 'popup' or 'landing_page'
+      isPublic: body.isPublic !== false, // Default true
+      keyOutcomes: body.keyOutcomes || [],
+      features: body.features || [],
+      testimonials: body.testimonials || [],
+      faqs: body.faqs || [],
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };

@@ -140,21 +140,19 @@ export function ProgramLandingPageEditor({
         </p>
         
         {formData.landingPageCoverImageUrl ? (
-          <div className="relative rounded-xl overflow-hidden bg-[#faf8f6] dark:bg-[#11141b]">
-            <div className="aspect-[16/9] relative">
-              <Image
-                src={formData.landingPageCoverImageUrl}
-                alt="Landing page cover"
-                fill
-                className="object-cover"
-              />
-            </div>
+          <div className="relative w-24 h-24 rounded-lg overflow-hidden bg-[#faf8f6] dark:bg-[#11141b]">
+            <Image
+              src={formData.landingPageCoverImageUrl}
+              alt="Landing page cover"
+              fill
+              className="object-cover"
+            />
             <button
               type="button"
               onClick={() => onChange({ ...formData, landingPageCoverImageUrl: '' })}
-              className="absolute top-3 right-3 p-2 bg-black/50 hover:bg-black/70 rounded-lg transition-colors"
+              className="absolute top-1 right-1 p-1 bg-black/50 hover:bg-black/70 rounded transition-colors"
             >
-              <X className="w-4 h-4 text-white" />
+              <X className="w-3 h-3 text-white" />
             </button>
           </div>
         ) : (

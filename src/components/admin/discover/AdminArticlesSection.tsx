@@ -194,7 +194,7 @@ function ArticleFormDialog({
                 required
                 uploadEndpoint={uploadEndpoint}
                 hideLabel
-                aspectRatio="2:1"
+                previewSize="thumbnail"
               />
             </div>
 
@@ -234,7 +234,7 @@ function ArticleFormDialog({
                   type="image"
                   uploadEndpoint={uploadEndpoint}
                   hideLabel
-                  aspectRatio="16:9"
+                  previewSize="thumbnail"
                 />
               </div>
             )}

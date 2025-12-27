@@ -4,22 +4,27 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useDiscover } from '@/hooks/useDiscover';
+import { useMyContent } from '@/hooks/useDiscoverData';
 import { 
   EventCard, 
   CourseCard, 
   ProgramCard,
   CategoryPills, 
   ProgramTypePills,
+  BrowseMyContentPills,
   TrendingItem, 
   RecommendedCard,
   SectionHeader,
   ArticleCard,
   SquadCard,
 } from '@/components/discover';
-import type { ProgramType } from '@/components/discover';
+import type { ProgramType, DiscoverViewMode } from '@/components/discover';
+import { FileText, BookOpen, Calendar, Download, Link as LinkIcon, Users, Layers } from 'lucide-react';
 
 export default function DiscoverPage() {
   const { upcomingEvents, pastEvents, courses, articles, categories, trending, recommended, groupPrograms, individualPrograms, enrollmentConstraints, publicSquads, loading } = useDiscover();
+  const { myContent, totalCount: myContentCount, loading: myContentLoading } = useMyContent();
+  const [viewMode, setViewMode] = useState<DiscoverViewMode>('browse');
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedProgramType, setSelectedProgramType] = useState<ProgramType>('group');
@@ -150,16 +155,151 @@ export default function DiscoverPage() {
     );
   }
 
+  // Get content type icon
+  const getContentIcon = (type: string) => {
+    switch (type) {
+      case 'article': return FileText;
+      case 'course': return BookOpen;
+      case 'event': return Calendar;
+      case 'download': return Download;
+      case 'link': return LinkIcon;
+      case 'program': return Layers;
+      case 'squad': return Users;
+      default: return FileText;
+    }
+  };
+
+  // Get content type link
+  const getContentLink = (type: string, id: string) => {
+    switch (type) {
+      case 'article': return `/discover/articles/${id}`;
+      case 'course': return `/discover/courses/${id}`;
+      case 'event': return `/discover/events/${id}`;
+      case 'download': return `/discover/downloads/${id}`;
+      case 'link': return `/discover/links/${id}`;
+      case 'program': return `/program`;
+      case 'squad': return `/squad`;
+      default: return `/discover`;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-app-bg pb-24 lg:pb-8">
       {/* Header */}
-      <section className="px-4 pt-5 pb-4">
+      <section className="px-4 pt-5 pb-2">
         <h1 className="font-albert font-normal text-4xl text-text-primary tracking-[-2px] leading-[1.2]">
-          {selectedCategoryName || 'Discover'}
+          {viewMode === 'my-content' ? 'My Content' : (selectedCategoryName || 'Discover')}
         </h1>
       </section>
 
-      {/* 1. Programs Section with Pill Tabs - Only show when no category is selected */}
+      {/* Browse / My Content Toggle */}
+      <section className="px-4 py-3">
+        <BrowseMyContentPills
+          selectedMode={viewMode}
+          onSelect={setViewMode}
+          myContentCount={myContentCount}
+        />
+      </section>
+
+      {/* MY CONTENT VIEW */}
+      {viewMode === 'my-content' && (
+        <section className="px-4 py-4">
+          {myContentLoading ? (
+            <div className="flex flex-col gap-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white/70 dark:bg-[#171b22] rounded-[20px] p-4 animate-pulse">
+                  <div className="flex gap-4">
+                    <div className="w-16 h-16 rounded-xl bg-[#e1ddd8]/50 dark:bg-[#262b35]" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-5 w-3/4 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded-lg" />
+                      <div className="h-4 w-1/2 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded-lg" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : myContent.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#e1ddd8]/30 dark:bg-[#262b35] flex items-center justify-center">
+                <Layers className="w-8 h-8 text-text-muted" />
+              </div>
+              <h3 className="font-albert font-medium text-lg text-text-primary mb-2">
+                No content yet
+              </h3>
+              <p className="font-sans text-sm text-text-muted max-w-xs mx-auto">
+                Purchased content, programs, and squad memberships will appear here.
+              </p>
+              <button
+                onClick={() => setViewMode('browse')}
+                className="mt-4 px-4 py-2 bg-earth-500 text-white rounded-full font-sans text-sm hover:bg-earth-600 transition-colors"
+              >
+                Browse Content
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {myContent.map((item) => {
+                const Icon = getContentIcon(item.contentType);
+                return (
+                  <Link
+                    key={`${item.contentType}-${item.contentId}`}
+                    href={getContentLink(item.contentType, item.contentId)}
+                    className="block"
+                  >
+                    <div className="bg-white/70 dark:bg-[#171b22] border border-[#e1ddd8]/50 dark:border-[#262b35] rounded-[20px] p-4 hover:shadow-md transition-shadow">
+                      <div className="flex gap-4">
+                        {/* Cover Image or Icon */}
+                        {item.coverImageUrl || item.thumbnailUrl ? (
+                          <div className="w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden bg-earth-100 dark:bg-[#262b35]">
+                            <Image
+                              src={item.thumbnailUrl || item.coverImageUrl || ''}
+                              alt={item.title}
+                              width={64}
+                              height={64}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-16 h-16 flex-shrink-0 rounded-xl bg-earth-100 dark:bg-[#262b35] flex items-center justify-center">
+                            <Icon className="w-6 h-6 text-earth-500 dark:text-[#b8896a]" />
+                          </div>
+                        )}
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-earth-100 dark:bg-[#262b35] text-earth-600 dark:text-[#b8896a] capitalize">
+                              {item.contentType}
+                            </span>
+                            {item.includedInProgramName && (
+                              <span className="text-xs text-text-muted">
+                                via {item.includedInProgramName}
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="font-albert font-semibold text-base text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px] leading-[1.3] line-clamp-1">
+                            {item.title}
+                          </h3>
+                          {item.description && (
+                            <p className="font-sans text-sm text-text-muted line-clamp-1 mt-0.5">
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* BROWSE VIEW */}
+      {viewMode === 'browse' && (
+        <>
+          {/* 1. Programs Section with Pill Tabs - Only show when no category is selected */}
       {!selectedCategory && (availableGroupPrograms.length > 0 || availableIndividualPrograms.length > 0) && (
         <section className="px-4 py-5 overflow-hidden">
           <div className="flex flex-col gap-4">
@@ -418,6 +558,8 @@ export default function DiscoverPage() {
             )}
           </div>
         </section>
+      )}
+        </>
       )}
     </div>
   );

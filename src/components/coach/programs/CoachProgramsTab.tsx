@@ -7,7 +7,9 @@ import { ProgramLandingPageEditor } from './ProgramLandingPageEditor';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Edit2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, Gift } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Edit2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, Gift, Sparkles } from 'lucide-react';
+import { AIHelperModal } from '@/components/ai';
+import type { ProgramContentDraft, LandingPageDraft, AIGenerationContext } from '@/lib/ai/types';
 import { ReferralConfigForm } from '@/components/coach/referrals';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { NewProgramModal } from './NewProgramModal';
@@ -73,6 +75,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [isCohortModalOpen, setIsCohortModalOpen] = useState(false);
   const [editingProgram, setEditingProgram] = useState<Program | null>(null);
   const [editingCohort, setEditingCohort] = useState<ProgramCohort | null>(null);
+  
+  // AI Helper modals
+  const [isAIProgramContentModalOpen, setIsAIProgramContentModalOpen] = useState(false);
+  const [isAILandingPageModalOpen, setIsAILandingPageModalOpen] = useState(false);
   
   // Program form
   const [programFormData, setProgramFormData] = useState<{
@@ -638,6 +644,150 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     }
   };
 
+  // Apply AI-generated program content (all days at once)
+  const handleApplyAIProgramContent = async (draft: ProgramContentDraft | LandingPageDraft) => {
+    if (!selectedProgram) return;
+    
+    const programDraft = draft as ProgramContentDraft;
+    
+    try {
+      setSaving(true);
+      setSaveError(null);
+      
+      // Save each day/week from the draft
+      for (const dayOrWeek of programDraft.daysOrWeeks) {
+        // Map AI-generated tasks to program task format
+        const tasks: ProgramTaskTemplate[] = dayOrWeek.tasks.map(task => ({
+          label: task.title,
+          type: task.type === 'reflection' ? 'reflection' : 'task',
+          isPrimary: true,
+          estimatedMinutes: task.estimatedMinutes,
+          notes: task.description,
+        }));
+        
+        // Map AI-generated habits to program habit format
+        const habits: ProgramHabitTemplate[] = dayOrWeek.defaultHabits.map(habit => ({
+          title: habit.title,
+          description: habit.notes || '',
+          frequency: habit.frequency === '3x_week' ? 'custom' : habit.frequency === 'weekly' ? 'custom' : 'daily',
+        }));
+        
+        const response = await fetch(`${apiBasePath}/${selectedProgram.id}/days`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dayIndex: dayOrWeek.index,
+            title: dayOrWeek.title,
+            summary: dayOrWeek.focus,
+            dailyPrompt: '',
+            tasks,
+            habits,
+          }),
+        });
+        
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || `Failed to save day ${dayOrWeek.index}`);
+        }
+      }
+      
+      // If there are global default habits, update the program
+      if (programDraft.globalDefaultHabits.length > 0) {
+        const globalHabits: ProgramHabitTemplate[] = programDraft.globalDefaultHabits.map(habit => ({
+          title: habit.title,
+          description: habit.notes || '',
+          frequency: habit.frequency === '3x_week' ? 'custom' : habit.frequency === 'weekly' ? 'custom' : 'daily',
+        }));
+        
+        await fetch(`${apiBasePath}/${selectedProgram.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            defaultHabits: globalHabits,
+          }),
+        });
+      }
+      
+      // Refresh program details
+      await fetchProgramDetails(selectedProgram.id);
+      setIsAIProgramContentModalOpen(false);
+    } catch (err) {
+      console.error('Error applying AI program content:', err);
+      setSaveError(err instanceof Error ? err.message : 'Failed to apply AI content');
+      throw err; // Re-throw to let modal handle the error
+    } finally {
+      setSaving(false);
+    }
+  };
+  
+  // Apply AI-generated landing page content
+  const handleApplyAILandingPage = async (draft: ProgramContentDraft | LandingPageDraft) => {
+    if (!selectedProgram) return;
+    
+    const lpDraft = draft as LandingPageDraft;
+    
+    try {
+      setSaving(true);
+      setSaveError(null);
+      
+      // Map AI-generated landing page to existing fields
+      const updates = {
+        coachBio: lpDraft.aboutCoach.bio,
+        keyOutcomes: lpDraft.whatYoullLearn.items.map(item => `${item.title}: ${item.description}`),
+        features: lpDraft.whatsIncluded.items.map(item => ({
+          title: item.title,
+          description: item.description,
+          icon: '',
+        })),
+        testimonials: lpDraft.testimonials.map(t => ({
+          text: t.quote,
+          author: t.name,
+          role: t.role || '',
+          rating: 5,
+        })),
+        faqs: lpDraft.faq.map(f => ({
+          question: f.question,
+          answer: f.answer,
+        })),
+      };
+      
+      const response = await fetch(`${apiBasePath}/${selectedProgram.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to save landing page');
+      }
+      
+      // Refresh and update landing page form data
+      const data = await response.json();
+      if (data.program) {
+        setSelectedProgram(data.program);
+        setLandingPageFormData({
+          landingPageCoverImageUrl: data.program.landingPageCoverImageUrl || '',
+          coachBio: data.program.coachBio || '',
+          keyOutcomes: data.program.keyOutcomes || [],
+          features: data.program.features || [],
+          testimonials: data.program.testimonials || [],
+          faqs: data.program.faqs || [],
+          showEnrollmentCount: data.program.showEnrollmentCount || false,
+          showCurriculum: data.program.showCurriculum || false,
+        });
+      }
+      
+      setIsAILandingPageModalOpen(false);
+    } catch (err) {
+      console.error('Error applying AI landing page:', err);
+      setSaveError(err instanceof Error ? err.message : 'Failed to apply AI content');
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleDeleteProgram = async () => {
     if (!deleteConfirmProgram) return;
     
@@ -1072,9 +1222,21 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           <div className="flex gap-6">
             {/* Day Selector */}
             <div className="w-48 flex-shrink-0">
-              <h3 className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
-                Program Days
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                  Program Days
+                </h3>
+              </div>
+              
+              {/* Fill with AI Button */}
+              <button
+                onClick={() => setIsAIProgramContentModalOpen(true)}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 mb-3 bg-gradient-to-r from-[#a07855] to-[#8c6245] text-white text-sm font-medium rounded-lg hover:from-[#8c6245] hover:to-[#7a5639] transition-all shadow-sm"
+              >
+                <Sparkles className="w-4 h-4" />
+                Fill with AI
+              </button>
+              
               <div className="space-y-1 max-h-[500px] overflow-y-auto">
                 {Array.from({ length: selectedProgram?.lengthDays || 30 }, (_, i) => i + 1).map((day) => {
                   const hasContent = programDays.some(d => d.dayIndex === day && (d.tasks?.length > 0 || d.title));
@@ -1580,13 +1742,23 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   Customize your program landing page with compelling content
                 </p>
               </div>
-              <Button 
-                onClick={handleSaveLandingPage}
-                disabled={saving}
-                className="bg-[#a07855] hover:bg-[#8c6245] text-white flex items-center gap-2"
-              >
-                {saving ? 'Saving...' : 'Save Changes'}
-              </Button>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsAILandingPageModalOpen(true)}
+                  className="border-[#a07855] text-[#a07855] hover:bg-[#a07855]/10 flex items-center gap-2"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Generate with AI
+                </Button>
+                <Button 
+                  onClick={handleSaveLandingPage}
+                  disabled={saving}
+                  className="bg-[#a07855] hover:bg-[#8c6245] text-white flex items-center gap-2"
+                >
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
             </div>
 
             {saveError && (
@@ -2463,6 +2635,45 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           };
           selectProgram();
         }}
+      />
+      
+      {/* AI Program Content Modal */}
+      <AIHelperModal
+        isOpen={isAIProgramContentModalOpen}
+        onClose={() => setIsAIProgramContentModalOpen(false)}
+        title="Fill Program with AI"
+        description="Generate tasks and habits for all program days"
+        useCase="PROGRAM_CONTENT"
+        context={{
+          programName: selectedProgram?.name,
+          duration: selectedProgram?.lengthDays,
+          structure: 'days',
+          programType: selectedProgram?.type,
+          niche: selectedProgram?.description?.slice(0, 100),
+        } as AIGenerationContext}
+        onApply={handleApplyAIProgramContent}
+        hasExistingContent={programDays.length > 0}
+        overwriteWarning="This will replace all existing program days, tasks, and habits."
+      />
+      
+      {/* AI Landing Page Modal */}
+      <AIHelperModal
+        isOpen={isAILandingPageModalOpen}
+        onClose={() => setIsAILandingPageModalOpen(false)}
+        title="Generate Landing Page"
+        description="Create compelling landing page copy"
+        useCase="LANDING_PAGE_PROGRAM"
+        context={{
+          programName: selectedProgram?.name,
+          duration: selectedProgram?.lengthDays,
+          programType: selectedProgram?.type,
+          niche: selectedProgram?.description?.slice(0, 100),
+          price: selectedProgram?.priceInCents,
+          currency: selectedProgram?.currency,
+        } as AIGenerationContext}
+        onApply={handleApplyAILandingPage}
+        hasExistingContent={!!(landingPageFormData.coachBio || landingPageFormData.keyOutcomes.length > 0)}
+        overwriteWarning="This will replace your existing landing page content."
       />
     </>
   );

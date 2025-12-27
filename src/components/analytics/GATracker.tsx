@@ -1,0 +1,125 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Script from 'next/script';
+import { usePathname, useSearchParams } from 'next/navigation';
+
+/**
+ * Google Analytics Tracker Component
+ * 
+ * Fetches the org's GA measurement ID and injects the GA4 script.
+ * Automatically tracks page views on route changes.
+ */
+export function GATracker() {
+  const [measurementId, setMeasurementId] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Fetch GA config on mount
+  useEffect(() => {
+    const fetchGAConfig = async () => {
+      try {
+        const response = await fetch('/api/org/ga-config');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.configured && data.measurementId) {
+            setMeasurementId(data.measurementId);
+          }
+        }
+      } catch (error) {
+        console.error('[GA_TRACKER] Failed to fetch GA config:', error);
+      }
+    };
+
+    fetchGAConfig();
+  }, []);
+
+  // Track page views on route changes
+  useEffect(() => {
+    if (!measurementId || !isLoaded) return;
+
+    const url = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '');
+    
+    // Send page view to GA
+    if (typeof window !== 'undefined' && (window as any).gtag) {
+      (window as any).gtag('config', measurementId, {
+        page_path: url,
+      });
+    }
+  }, [pathname, searchParams, measurementId, isLoaded]);
+
+  // Don't render anything if no GA configured
+  if (!measurementId) {
+    return null;
+  }
+
+  return (
+    <>
+      {/* GA4 Script */}
+      <Script
+        src={`https://www.googletagmanager.com/gtag/js?id=${measurementId}`}
+        strategy="afterInteractive"
+        onLoad={() => setIsLoaded(true)}
+      />
+      <Script
+        id="ga-config"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{
+          __html: `
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${measurementId}', {
+              page_path: window.location.pathname,
+            });
+          `,
+        }}
+      />
+    </>
+  );
+}
+
+/**
+ * Track a custom event to GA
+ */
+export function trackEvent(
+  eventName: string,
+  parameters?: Record<string, string | number | boolean>
+) {
+  if (typeof window !== 'undefined' && (window as any).gtag) {
+    (window as any).gtag('event', eventName, parameters);
+  }
+}
+
+/**
+ * Track funnel events specifically
+ */
+export function trackFunnelEvent(
+  funnelId: string,
+  eventType: 'view' | 'step_view' | 'step_complete' | 'purchase',
+  additionalParams?: {
+    stepId?: string;
+    stepIndex?: number;
+    amount?: number;
+  }
+) {
+  const eventName = `funnel_${eventType}`;
+  const params: Record<string, string | number> = {
+    funnel_id: funnelId,
+  };
+
+  if (additionalParams?.stepId) {
+    params.step_id = additionalParams.stepId;
+  }
+  if (additionalParams?.stepIndex !== undefined) {
+    params.step_index = additionalParams.stepIndex;
+  }
+  if (additionalParams?.amount !== undefined) {
+    params.value = additionalParams.amount;
+    params.currency = 'USD';
+  }
+
+  trackEvent(eventName, params);
+}
+

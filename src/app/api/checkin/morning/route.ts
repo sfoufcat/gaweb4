@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { updateAlignmentForToday } from '@/lib/alignment';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { updateLastActivity } from '@/lib/analytics/lastActivity';
 import type { MorningCheckIn } from '@/types';
 
 /**
@@ -179,6 +180,11 @@ export async function PATCH(request: NextRequest) {
         await updateAlignmentForToday(userId, organizationId, {
           didMorningCheckin: true,
           didSetTasks: didSetTasks || undefined, // Only set if true
+        });
+        
+        // Update lastActivityAt for analytics (non-blocking)
+        updateLastActivity(userId, organizationId, 'checkin').catch(err => {
+          console.error('[MORNING_CHECKIN] Failed to update lastActivityAt:', err);
         });
       } catch (alignmentError) {
         // Don't fail the check-in if alignment update fails

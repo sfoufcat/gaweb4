@@ -1,0 +1,253 @@
+/**
+ * My Content API
+ * 
+ * GET /api/my-content - Get all content the user has purchased or has access to
+ * 
+ * Returns:
+ * - Directly purchased content (user_content_purchases)
+ * - Content included in enrolled programs
+ * - Program enrollments
+ * - Squad memberships
+ */
+
+import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { adminDb } from '@/lib/firebase-admin';
+import type { 
+  ContentPurchase,
+  ProgramEnrollment,
+  ContentPurchaseType,
+} from '@/types';
+import type { MyContentItem } from '@/types/discover';
+
+// Collection mapping for content types
+const CONTENT_COLLECTIONS: Record<ContentPurchaseType, string> = {
+  event: 'events',
+  article: 'articles',
+  course: 'courses',
+  download: 'program_downloads',
+  link: 'program_links',
+};
+
+interface ContentDetails {
+  id: string;
+  title: string;
+  description?: string;
+  coverImageUrl?: string;
+  thumbnailUrl?: string;
+  organizationId?: string;
+}
+
+/**
+ * Fetch content details from Firestore
+ */
+async function getContentDetails(
+  contentType: ContentPurchaseType,
+  contentId: string
+): Promise<ContentDetails | null> {
+  const collection = CONTENT_COLLECTIONS[contentType];
+  if (!collection) return null;
+
+  const doc = await adminDb.collection(collection).doc(contentId).get();
+  if (!doc.exists) return null;
+
+  const data = doc.data();
+  return {
+    id: doc.id,
+    title: data?.title || data?.name || 'Untitled',
+    description: data?.description || data?.shortDescription || data?.longDescription,
+    coverImageUrl: data?.coverImageUrl,
+    thumbnailUrl: data?.thumbnailUrl,
+    organizationId: data?.organizationId,
+  };
+}
+
+/**
+ * GET /api/my-content
+ * 
+ * Query params:
+ * - type?: 'all' | 'programs' | 'squads' | 'content' - Filter by type (default: 'all')
+ */
+export async function GET(request: Request) {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const typeFilter = searchParams.get('type') || 'all';
+
+    const myContent: MyContentItem[] = [];
+    const seenContentIds = new Set<string>();
+
+    // 1. Get direct content purchases
+    if (typeFilter === 'all' || typeFilter === 'content') {
+      const purchasesSnapshot = await adminDb
+        .collection('user_content_purchases')
+        .where('userId', '==', userId)
+        .orderBy('purchasedAt', 'desc')
+        .get();
+
+      for (const doc of purchasesSnapshot.docs) {
+        const purchase = doc.data() as ContentPurchase;
+        const contentKey = `${purchase.contentType}:${purchase.contentId}`;
+        
+        if (seenContentIds.has(contentKey)) continue;
+        seenContentIds.add(contentKey);
+
+        // Fetch content details
+        const details = await getContentDetails(
+          purchase.contentType,
+          purchase.contentId
+        );
+
+        if (details) {
+          myContent.push({
+            id: doc.id,
+            contentType: purchase.contentType,
+            contentId: purchase.contentId,
+            title: details.title,
+            description: details.description,
+            coverImageUrl: details.coverImageUrl,
+            thumbnailUrl: details.thumbnailUrl,
+            organizationId: purchase.organizationId,
+            purchasedAt: purchase.purchasedAt,
+            includedInProgramId: purchase.includedInProgramId,
+            includedInProgramName: purchase.includedInProgramName,
+          });
+        }
+      }
+    }
+
+    // 2. Get program enrollments
+    if (typeFilter === 'all' || typeFilter === 'programs') {
+      const enrollmentsSnapshot = await adminDb
+        .collection('program_enrollments')
+        .where('userId', '==', userId)
+        .where('status', 'in', ['active', 'upcoming', 'completed'])
+        .orderBy('createdAt', 'desc')
+        .get();
+
+      for (const doc of enrollmentsSnapshot.docs) {
+        const enrollment = doc.data() as ProgramEnrollment;
+        const contentKey = `program:${enrollment.programId}`;
+        
+        if (seenContentIds.has(contentKey)) continue;
+        seenContentIds.add(contentKey);
+
+        // Fetch program details
+        const programDoc = await adminDb
+          .collection('programs')
+          .doc(enrollment.programId)
+          .get();
+
+        if (programDoc.exists) {
+          const program = programDoc.data();
+          
+          // Get coach info
+          let coachName: string | undefined;
+          let coachImageUrl: string | undefined;
+          
+          if (program?.organizationId) {
+            const orgSettingsDoc = await adminDb
+              .collection('org_settings')
+              .doc(program.organizationId)
+              .get();
+            
+            if (orgSettingsDoc.exists) {
+              const orgSettings = orgSettingsDoc.data();
+              coachName = orgSettings?.coachDisplayName;
+              coachImageUrl = orgSettings?.coachAvatarUrl;
+            }
+          }
+
+          myContent.push({
+            id: doc.id,
+            contentType: 'program',
+            contentId: enrollment.programId,
+            title: program?.name || 'Unknown Program',
+            description: program?.description,
+            coverImageUrl: program?.coverImageUrl,
+            organizationId: enrollment.organizationId,
+            coachName,
+            coachImageUrl,
+            purchasedAt: enrollment.createdAt,
+          });
+        }
+      }
+    }
+
+    // 3. Get squad memberships
+    if (typeFilter === 'all' || typeFilter === 'squads') {
+      // Get user's squad IDs from user document
+      const userDoc = await adminDb.collection('users').doc(userId).get();
+      const userData = userDoc.exists ? userDoc.data() : null;
+      const squadIds = userData?.squadIds || [];
+
+      // Also check squadMembers collection for memberships
+      const membershipSnapshot = await adminDb
+        .collection('squadMembers')
+        .where('userId', '==', userId)
+        .get();
+
+      const memberSquadIds = membershipSnapshot.docs.map(d => d.data().squadId);
+      const allSquadIds = [...new Set([...squadIds, ...memberSquadIds])];
+
+      for (const squadId of allSquadIds) {
+        const contentKey = `squad:${squadId}`;
+        
+        if (seenContentIds.has(contentKey)) continue;
+        seenContentIds.add(contentKey);
+
+        // Fetch squad details
+        const squadDoc = await adminDb.collection('squads').doc(squadId).get();
+
+        if (squadDoc.exists) {
+          const squad = squadDoc.data();
+          
+          // Get membership date from squadMembers
+          const memberDoc = membershipSnapshot.docs.find(d => d.data().squadId === squadId);
+          const memberData = memberDoc?.data();
+
+          myContent.push({
+            id: squadId,
+            contentType: 'squad',
+            contentId: squadId,
+            title: squad?.name || 'Unknown Squad',
+            description: squad?.description,
+            coverImageUrl: squad?.avatarUrl,
+            organizationId: squad?.organizationId,
+            purchasedAt: memberData?.createdAt || squad?.createdAt || new Date().toISOString(),
+          });
+        }
+      }
+    }
+
+    // Sort by purchase date (most recent first)
+    myContent.sort((a, b) => 
+      new Date(b.purchasedAt).getTime() - new Date(a.purchasedAt).getTime()
+    );
+
+    return NextResponse.json({
+      items: myContent,
+      totalCount: myContent.length,
+      counts: {
+        programs: myContent.filter(i => i.contentType === 'program').length,
+        squads: myContent.filter(i => i.contentType === 'squad').length,
+        courses: myContent.filter(i => i.contentType === 'course').length,
+        articles: myContent.filter(i => i.contentType === 'article').length,
+        events: myContent.filter(i => i.contentType === 'event').length,
+        downloads: myContent.filter(i => i.contentType === 'download').length,
+        links: myContent.filter(i => i.contentType === 'link').length,
+      },
+    });
+
+  } catch (error) {
+    console.error('[MY_CONTENT] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
