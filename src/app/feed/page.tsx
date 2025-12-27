@@ -69,6 +69,7 @@ export default function FeedPage() {
     decrementCommentCount,
     addPost,
     removePost,
+    updatePostSettings,
   } = useFeed();
 
   const [showCreatePostModal, setShowCreatePostModal] = useState(false);
@@ -153,10 +154,18 @@ export default function FeedPage() {
 
   // Handle settings updated
   const handleSettingsUpdated = useCallback((updatedPost: FeedPost) => {
-    // Refresh the feed to show updated settings
+    // Optimistically update the post in the feed cache immediately
+    updatePostSettings(updatedPost.id, {
+      pinnedToFeed: updatedPost.pinnedToFeed,
+      pinnedToSidebar: updatedPost.pinnedToSidebar,
+      hideMetadata: updatedPost.hideMetadata,
+      disableInteractions: updatedPost.disableInteractions,
+      pinnedAt: updatedPost.pinnedAt,
+    });
+    // Also refresh to ensure server state is synced
     refresh();
     setSettingsPost(null);
-  }, [refresh]);
+  }, [updatePostSettings, refresh]);
 
   // Handle delete
   const handleDelete = useCallback((postId: string) => {

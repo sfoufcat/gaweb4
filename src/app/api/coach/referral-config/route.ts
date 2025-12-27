@@ -225,8 +225,10 @@ export async function POST(request: NextRequest) {
     console.log(`[COACH_REFERRAL_CONFIG] Updating referral config for ${targetType} ${targetId} by user ${userId}`);
 
     // Update the document
+    // Store the config as-is (including { enabled: false } for disabled referrals)
+    // This allows us to distinguish "explicitly disabled" from "never configured"
     await docRef.update({
-      referralConfig: referralConfig || FieldValue.delete(),
+      referralConfig: referralConfig ?? FieldValue.delete(),
       updatedAt: FieldValue.serverTimestamp(),
     });
 

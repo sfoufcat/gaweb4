@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { mutate } from 'swr';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 import { SIDEBAR_BOOKMARKS_KEY, SIDEBAR_TRENDING_KEY } from './FeedSidebar';
@@ -42,6 +42,14 @@ export function PostSettingsModal({
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Sync state with post prop when it changes (e.g., after save or when opening different post)
+  useEffect(() => {
+    setPinnedToFeed(post.pinnedToFeed || false);
+    setPinnedToSidebar(post.pinnedToSidebar || false);
+    setHideMetadata(post.hideMetadata || false);
+    setDisableInteractions(post.disableInteractions || false);
+  }, [post.id, post.pinnedToFeed, post.pinnedToSidebar, post.hideMetadata, post.disableInteractions]);
 
   // Check if any settings changed
   const hasChanges = 

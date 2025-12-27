@@ -9,6 +9,11 @@ export interface LandingPageRendererProps {
   template: LandingPageTemplate;
   headline?: string;
   subheadline?: string;
+  programName?: string;
+  programDescription?: string;
+  programImageUrl?: string;
+  coachName?: string;
+  coachImageUrl?: string;
   coachBio?: string;
   keyOutcomes?: string[];
   features?: ProgramFeature[];
@@ -35,5 +40,3 @@ export function LandingPageRenderer({
       return <ClassicTemplate {...props} />;
   }
 }
-
-

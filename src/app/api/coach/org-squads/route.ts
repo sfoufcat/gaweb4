@@ -84,15 +84,37 @@ export async function GET() {
       }
     }
 
-    // Build squads array
-    squadsSnapshot.forEach((doc) => {
+    // Build squads array and auto-generate slugs for squads missing them
+    const slugUpdates: Promise<void>[] = [];
+    
+    for (const doc of squadsSnapshot.docs) {
       const data = doc.data();
       const coachInfo = data.coachId ? coachDetails.get(data.coachId) : null;
+      
+      // Auto-generate slug if missing
+      let slug = data.slug || '';
+      if (!slug && data.name) {
+        slug = generateSlug(data.name);
+        
+        // Save the generated slug to the database (fire and forget, don't block response)
+        if (slug) {
+          slugUpdates.push(
+            adminDb.collection('squads').doc(doc.id).update({
+              slug,
+              updatedAt: new Date().toISOString(),
+            }).then(() => {
+              console.log(`[COACH_ORG_SQUADS] Auto-generated slug "${slug}" for squad ${doc.id}`);
+            }).catch((err) => {
+              console.error(`[COACH_ORG_SQUADS] Failed to save slug for squad ${doc.id}:`, err);
+            })
+          );
+        }
+      }
       
       squads.push({
         id: doc.id,
         name: data.name || '',
-        slug: data.slug || '',
+        slug,
         avatarUrl: data.avatarUrl || '',
         description: data.description,
         visibility: (data.visibility as SquadVisibility) || 'public',
@@ -115,7 +137,14 @@ export async function GET() {
         coachImageUrl: coachInfo?.imageUrl,
         memberCount: memberCounts.get(doc.id) || 0,
       } as SquadWithDetails);
-    });
+    }
+    
+    // Wait for slug updates to complete (don't block the response too long)
+    if (slugUpdates.length > 0) {
+      Promise.all(slugUpdates).catch(() => {
+        // Errors already logged individually
+      });
+    }
 
     // Sort by creation date (newest first)
     squads.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());

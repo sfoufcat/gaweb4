@@ -232,6 +232,28 @@ export function useFeed() {
     }, false);
   }, [mutate]);
 
+  // Optimistic update for post settings (coach-only)
+  const updatePostSettings = useCallback((postId: string, settings: {
+    pinnedToFeed?: boolean;
+    pinnedToSidebar?: boolean;
+    hideMetadata?: boolean;
+    disableInteractions?: boolean;
+    pinnedAt?: string | null;
+  }) => {
+    mutate((currentData) => {
+      if (!currentData) return currentData;
+      
+      return currentData.map((page) => ({
+        ...page,
+        posts: (page.posts || []).map((post) =>
+          post.id === postId
+            ? { ...post, ...settings }
+            : post
+        ),
+      }));
+    }, false);
+  }, [mutate]);
+
   return {
     posts,
     isLoading,
@@ -247,6 +269,7 @@ export function useFeed() {
     decrementCommentCount,
     addPost,
     removePost,
+    updatePostSettings,
   };
 }
 

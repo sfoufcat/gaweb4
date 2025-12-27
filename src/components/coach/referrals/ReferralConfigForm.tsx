@@ -82,13 +82,18 @@ export function ReferralConfigForm({
 
     setSaving(true);
     try {
-      const config: ReferralConfig | null = enabled
+      // Always save a config object - use { enabled: false } when disabled
+      // This allows us to distinguish "explicitly disabled" from "never configured"
+      const config: ReferralConfig = enabled
         ? {
             enabled: true,
             funnelId,
             reward,
           }
-        : null;
+        : {
+            enabled: false,
+            funnelId: '', // Empty but required by type
+          };
 
       await onSave(config);
     } catch (err) {

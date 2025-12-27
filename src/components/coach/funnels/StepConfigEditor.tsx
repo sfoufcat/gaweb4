@@ -78,7 +78,7 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        className="bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl shadow-black/10 dark:shadow-black/30 max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl w-full max-w-4xl shadow-2xl shadow-black/10 dark:shadow-black/30 max-h-[90vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
         <div className="p-6 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">

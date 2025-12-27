@@ -28,6 +28,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 type ViewMode = 'list' | 'editing';
 
@@ -66,6 +76,10 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   // Copy link feedback state
   const [copiedFunnelId, setCopiedFunnelId] = useState<string | null>(null);
   const [copyError, setCopyError] = useState<string | null>(null);
+  
+  // Delete confirmation state
+  const [funnelToDelete, setFunnelToDelete] = useState<Funnel | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchFunnels = useCallback(async () => {
     try {
@@ -157,18 +171,25 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
     }
   };
 
-  const handleDelete = async (funnel: Funnel) => {
-    if (!confirm(`Are you sure you want to delete "${funnel.name}"? This cannot be undone.`)) {
-      return;
-    }
+  const handleDelete = (funnel: Funnel) => {
+    setFunnelToDelete(funnel);
+  };
+
+  const confirmDelete = async () => {
+    if (!funnelToDelete) return;
+    
+    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/coach/org-funnels/${funnel.id}`, {
+      const response = await fetch(`/api/coach/org-funnels/${funnelToDelete.id}`, {
         method: 'DELETE',
       });
       if (!response.ok) throw new Error('Failed to delete funnel');
+      setFunnelToDelete(null);
       await fetchFunnels();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete funnel');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -582,6 +603,35 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
           }}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!funnelToDelete} onOpenChange={(open) => !open && setFunnelToDelete(null)}>
+        <AlertDialogContent className="max-w-sm rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-albert text-[20px] tracking-[-0.5px]">
+              Delete funnel?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="font-albert text-[15px] text-text-secondary">
+              Are you sure you want to delete &ldquo;{funnelToDelete?.name}&rdquo;? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-2">
+            <AlertDialogCancel 
+              disabled={isDeleting}
+              className="font-albert rounded-full border-[#e1ddd8]"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="font-albert rounded-full bg-red-500 hover:bg-red-600 text-white"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
