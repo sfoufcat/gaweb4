@@ -6,7 +6,7 @@ import { useAuth } from '@clerk/nextjs';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { ClientDetailView, CustomizeBrandingTab, ChannelManagementTab } from '@/components/coach';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Users } from 'lucide-react';
 import type { ClerkPublicMetadata, OrgRole, ProgramCohort } from '@/types';
 
 // Admin components for expanded coach dashboard
