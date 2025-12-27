@@ -986,6 +986,36 @@ export interface Squad {
   closedAt?: string; // ISO timestamp when squad was closed
   // Referral program settings (for standalone squads)
   referralConfig?: ReferralConfig;
+  
+  // Landing page fields (for public squad discovery)
+  coachBio?: string; // Coach's bio/introduction for landing page
+  keyOutcomes?: string[]; // Key outcomes/benefits for joining
+  features?: SquadFeature[]; // Features list for landing page
+  testimonials?: SquadTestimonial[]; // Member testimonials
+  faqs?: SquadFaq[]; // Frequently asked questions
+  showMemberCount?: boolean; // Whether to show member count on landing page
+}
+
+// Landing page sub-types for Squad
+export interface SquadFeature {
+  id: string;
+  icon?: string; // Emoji or icon name
+  title: string;
+  description: string;
+}
+
+export interface SquadTestimonial {
+  id: string;
+  name: string;
+  title?: string; // e.g. "Squad Member" or role
+  quote: string;
+  imageUrl?: string;
+}
+
+export interface SquadFaq {
+  id: string;
+  question: string;
+  answer: string;
 }
 
 export interface SquadMember {
@@ -2556,6 +2586,16 @@ export interface FunnelStepConfigLandingPage {
   ctaSubtext?: string;
   showTestimonials?: boolean;
   showFAQ?: boolean;
+  // Program display props
+  programName?: string;
+  programDescription?: string;
+  programImageUrl?: string;
+  priceInCents?: number;
+  durationDays?: number;
+  enrolledCount?: number;
+  programType?: 'individual' | 'group';
+  coachName?: string;
+  coachImageUrl?: string;
 }
 
 // ============================================================================

@@ -21,13 +21,15 @@ import {
   PlayCircle,
   LayoutTemplate,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  AlertTriangle
 } from 'lucide-react';
 // Note: Lock is still used in the Add Step modal for tier-gated steps
 import type { FunnelStep, FunnelStepType, CoachTier, Funnel, Program, Squad } from '@/types';
 import { StepConfigEditor } from './StepConfigEditor';
 import { canUseFunnelStep, TIER_PRICING } from '@/lib/coach-permissions';
 import { DeleteConfirmationModal } from '@/components/feed/ConfirmationModal';
+import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
 
 interface FunnelStepsEditorProps {
   funnelId: string;
@@ -160,6 +162,9 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
   
   // Delete confirmation modal
   const [stepToDelete, setStepToDelete] = useState<{id: string; type: FunnelStepType} | null>(null);
+  
+  // Stripe Connect status for payment step guard
+  const { isConnected: stripeConnected, isLoading: stripeLoading } = useStripeConnectStatus();
 
   useEffect(() => {
     setMounted(true);
@@ -634,6 +639,23 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
                 </div>
                 
                 <div className="p-4 grid grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto">
+                  {/* Stripe Connect Warning for Payment Steps */}
+                  {!stripeLoading && !stripeConnected && (
+                    <div className="col-span-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 mb-2">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
+                            Stripe account required for payments
+                          </p>
+                          <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                            Connect your Stripe account in Settings to add payment, upsell, or downsell steps.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   {ADDABLE_STEP_TYPES.map((type) => {
                     const info = STEP_TYPE_INFO[type];
                     const Icon = info.icon;
@@ -648,7 +670,12 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
                     const isMaxDownsells = type === 'downsell' && existingDownsells >= MAX_DOWNSELLS;
                     const needsUpsellFirst = type === 'downsell' && existingUpsells === 0;
                     const needsPaymentStep = (type === 'upsell' || type === 'downsell') && !hasPaymentStep;
-                    const isLimitReached = isMaxUpsells || isMaxDownsells || needsUpsellFirst || needsPaymentStep;
+                    
+                    // Payment-related steps require Stripe to be connected
+                    const isPaymentRelated = type === 'upsell' || type === 'downsell';
+                    const needsStripe = isPaymentRelated && !stripeConnected && !stripeLoading;
+                    
+                    const isLimitReached = isMaxUpsells || isMaxDownsells || needsUpsellFirst || needsPaymentStep || needsStripe;
                     
                     return (
                       <button
@@ -667,22 +694,28 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
                             {TIER_PRICING[requiredTier as CoachTier]?.name}
                           </div>
                         )}
-                        {isMaxUpsells && (
+                        {needsStripe && (
+                          <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-amber-100 rounded text-[10px] font-medium text-amber-600">
+                            <AlertTriangle className="w-3 h-3" />
+                            Stripe
+                          </div>
+                        )}
+                        {isMaxUpsells && !needsStripe && (
                           <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-orange-100 rounded text-[10px] font-medium text-orange-600">
                             Max {MAX_UPSELLS}
                           </div>
                         )}
-                        {isMaxDownsells && (
+                        {isMaxDownsells && !needsStripe && (
                           <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-rose-100 rounded text-[10px] font-medium text-rose-600">
                             Max {MAX_DOWNSELLS}
                           </div>
                         )}
-                        {needsUpsellFirst && (
+                        {needsUpsellFirst && !needsStripe && (
                           <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-amber-100 rounded text-[10px] font-medium text-amber-600">
                             Add upsell first
                           </div>
                         )}
-                        {needsPaymentStep && (
+                        {needsPaymentStep && !needsStripe && (
                           <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-blue-100 rounded text-[10px] font-medium text-blue-600">
                             Payment required
                           </div>

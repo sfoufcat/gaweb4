@@ -41,7 +41,14 @@ export async function PATCH(
 
     const existingData = squadDoc.data();
     const body = await req.json();
-    const { name, description, avatarUrl, visibility, timezone, coachId, programId, capacity, priceInCents, currency } = body;
+    const { 
+      name, description, avatarUrl, visibility, timezone, coachId, programId, 
+      capacity, priceInCents, currency,
+      // Subscription fields
+      subscriptionEnabled, billingInterval,
+      // Landing page fields
+      coachBio, keyOutcomes, features, testimonials, faqs, showMemberCount,
+    } = body;
 
     // Build update data
     const updateData: Record<string, unknown> = {
@@ -74,6 +81,18 @@ export async function PATCH(
     if (capacity !== undefined) updateData.capacity = capacity || null;
     if (priceInCents !== undefined) updateData.priceInCents = priceInCents;
     if (currency !== undefined) updateData.currency = currency || 'usd';
+    
+    // Subscription fields
+    if (subscriptionEnabled !== undefined) updateData.subscriptionEnabled = subscriptionEnabled;
+    if (billingInterval !== undefined) updateData.billingInterval = billingInterval;
+    
+    // Landing page fields
+    if (coachBio !== undefined) updateData.coachBio = coachBio;
+    if (keyOutcomes !== undefined) updateData.keyOutcomes = keyOutcomes;
+    if (features !== undefined) updateData.features = features;
+    if (testimonials !== undefined) updateData.testimonials = testimonials;
+    if (faqs !== undefined) updateData.faqs = faqs;
+    if (showMemberCount !== undefined) updateData.showMemberCount = showMemberCount;
 
     // Update squad
     await squadRef.update(updateData);

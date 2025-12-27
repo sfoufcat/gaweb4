@@ -79,6 +79,8 @@ interface FunnelClientProps {
     priceInCents: number;
     currency: string;
     stripePriceId?: string;
+    coachName?: string;
+    coachImageUrl?: string;
   };
   branding: {
     logoUrl: string;
@@ -437,8 +439,26 @@ export default function FunnelClient({
       case 'explainer':
         return <ExplainerStep {...commonProps} config={stepConfig.config as FunnelStepConfigExplainer} />;
       
-      case 'landing_page':
-        return <LandingPageStep {...commonProps} config={stepConfig.config as FunnelStepConfigLandingPage} />;
+      case 'landing_page': {
+        const lpConfig = stepConfig.config as FunnelStepConfigLandingPage;
+        return (
+          <LandingPageStep 
+            {...commonProps} 
+            config={{
+              ...lpConfig,
+              // Auto-populate from program if not set in step config
+              programName: lpConfig.programName || program.name,
+              programDescription: lpConfig.programDescription || program.description,
+              programImageUrl: lpConfig.programImageUrl || program.coverImageUrl,
+              priceInCents: lpConfig.priceInCents ?? program.priceInCents,
+              durationDays: lpConfig.durationDays ?? program.lengthDays,
+              programType: lpConfig.programType || (program.type as 'individual' | 'group'),
+              coachName: lpConfig.coachName || program.coachName,
+              coachImageUrl: lpConfig.coachImageUrl || program.coachImageUrl,
+            }}
+          />
+        );
+      }
       
       case 'upsell':
         return (
@@ -609,6 +629,9 @@ export default function FunnelClient({
   // Progress calculation
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
 
+  // Check if current step is a landing page (needs full-page rendering)
+  const isLandingPage = currentStep?.type === 'landing_page';
+
   // CSS variable style for dynamic theming
   const themeStyle = {
     '--funnel-primary': branding.primaryColor,
@@ -617,31 +640,35 @@ export default function FunnelClient({
 
   return (
     <div className="min-h-screen bg-app-bg" style={themeStyle}>
-      {/* Progress bar */}
-      <div className="fixed top-0 left-0 right-0 h-1 bg-[#e1ddd8] z-50">
-        <motion.div
-          className="h-full"
-          style={{ backgroundColor: 'var(--funnel-primary)' }}
-          initial={{ width: 0 }}
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.3 }}
-        />
-      </div>
-
-      {/* Logo */}
-      <div className="pt-6 pb-4 px-6 flex justify-center">
-        {branding.logoUrl && (
-          <Image
-            src={branding.logoUrl}
-            alt={branding.appTitle}
-            width={48}
-            height={48}
-            className="rounded-lg"
+      {/* Progress bar - hide for landing pages */}
+      {!isLandingPage && (
+        <div className="fixed top-0 left-0 right-0 h-1 bg-[#e1ddd8] z-50">
+          <motion.div
+            className="h-full"
+            style={{ backgroundColor: 'var(--funnel-primary)' }}
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.3 }}
           />
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Step content */}
+      {/* Logo - hide for landing pages */}
+      {!isLandingPage && (
+        <div className="pt-6 pb-4 px-6 flex justify-center">
+          {branding.logoUrl && (
+            <Image
+              src={branding.logoUrl}
+              alt={branding.appTitle}
+              width={48}
+              height={48}
+              className="rounded-lg"
+            />
+          )}
+        </div>
+      )}
+
+      {/* Step content - no padding for landing pages */}
       <AnimatePresence mode="wait">
         <motion.div
           key={currentStepIndex}
@@ -649,7 +676,7 @@ export default function FunnelClient({
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.3 }}
-          className="px-4 pb-8"
+          className={isLandingPage ? '' : 'px-4 pb-8'}
         >
           {stepContent}
         </motion.div>

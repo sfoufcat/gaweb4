@@ -24,6 +24,16 @@ export interface LandingPageFormData {
   ctaSubtext?: string;
   showTestimonials?: boolean;
   showFAQ?: boolean;
+  // Program display props (typically auto-populated from program context)
+  programName?: string;
+  programDescription?: string;
+  programImageUrl?: string;
+  priceInCents?: number;
+  durationDays?: number;
+  enrolledCount?: number;
+  programType?: 'individual' | 'group';
+  coachName?: string;
+  coachImageUrl?: string;
 }
 
 interface LandingPageEditorProps {

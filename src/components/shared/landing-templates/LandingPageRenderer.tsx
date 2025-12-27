@@ -24,6 +24,11 @@ export interface LandingPageRendererProps {
   showTestimonials?: boolean;
   showFAQ?: boolean;
   onCTA?: () => void;
+  // Program display props
+  priceInCents?: number;
+  durationDays?: number;
+  enrolledCount?: number;
+  programType?: 'individual' | 'group';
 }
 
 export function LandingPageRenderer({

@@ -19,9 +19,18 @@ interface LandingPageFormData {
 interface ProgramLandingPageEditorProps {
   formData: LandingPageFormData;
   onChange: (data: LandingPageFormData) => void;
+  /** If true, hide the "Show curriculum preview" option (for squads which don't have curriculum) */
+  hideCurriculumOption?: boolean;
+  /** Custom label for enrollment count (defaults to "enrollment count") */
+  countLabel?: string;
 }
 
-export function ProgramLandingPageEditor({ formData, onChange }: ProgramLandingPageEditorProps) {
+export function ProgramLandingPageEditor({ 
+  formData, 
+  onChange, 
+  hideCurriculumOption = false,
+  countLabel = 'enrollment count',
+}: ProgramLandingPageEditorProps) {
   // Key Outcomes management
   const addOutcome = () => {
     onChange({
@@ -415,27 +424,29 @@ export function ProgramLandingPageEditor({ formData, onChange }: ProgramLandingP
             />
             <div className="cursor-pointer" onClick={() => onChange({ ...formData, showEnrollmentCount: !formData.showEnrollmentCount })}>
               <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                Show enrollment count
+                Show {countLabel}
               </span>
               <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                Display &quot;X students enrolled&quot; badge on landing page
+                Display count badge on landing page
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <BrandedCheckbox
-              checked={formData.showCurriculum}
-              onChange={(checked) => onChange({ ...formData, showCurriculum: checked })}
-            />
-            <div className="cursor-pointer" onClick={() => onChange({ ...formData, showCurriculum: !formData.showCurriculum })}>
-              <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                Show curriculum preview
-              </span>
-              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-                Display program day titles as a curriculum outline
-              </p>
+          {!hideCurriculumOption && (
+            <div className="flex items-center gap-3">
+              <BrandedCheckbox
+                checked={formData.showCurriculum}
+                onChange={(checked) => onChange({ ...formData, showCurriculum: checked })}
+              />
+              <div className="cursor-pointer" onClick={() => onChange({ ...formData, showCurriculum: !formData.showCurriculum })}>
+                <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                  Show curriculum preview
+                </span>
+                <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                  Display program day titles as a curriculum outline
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

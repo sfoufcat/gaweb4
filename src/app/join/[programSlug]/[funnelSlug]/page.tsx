@@ -121,6 +121,46 @@ export default async function FunnelPage({ params, searchParams }: FunnelPagePro
     }
   }
 
+  // Get coach info from organization
+  let coachName = 'Coach';
+  let coachImageUrl: string | undefined;
+  
+  try {
+    const { clerkClient } = await import('@clerk/nextjs/server');
+    const clerk = await clerkClient();
+    
+    // Get organization memberships to find the coach
+    const memberships = await clerk.organizations.getOrganizationMembershipList({
+      organizationId: program.organizationId,
+      limit: 100,
+    });
+    
+    // Find the super_coach (primary coach)
+    const coachMember = memberships.data.find(m => {
+      const metadata = m.publicMetadata as Record<string, unknown>;
+      return metadata?.orgRole === 'super_coach';
+    });
+    
+    if (coachMember?.publicUserData?.userId) {
+      const coachUser = await clerk.users.getUser(coachMember.publicUserData.userId);
+      coachName = `${coachUser.firstName || ''} ${coachUser.lastName || ''}`.trim() || 'Coach';
+      coachImageUrl = coachUser.imageUrl || undefined;
+    } else {
+      // Fallback to first admin member
+      const adminMember = memberships.data.find(m => 
+        m.role === 'org:admin' && m.publicUserData?.userId
+      );
+      if (adminMember?.publicUserData?.userId) {
+        const adminUser = await clerk.users.getUser(adminMember.publicUserData.userId);
+        coachName = `${adminUser.firstName || ''} ${adminUser.lastName || ''}`.trim() || 'Coach';
+        coachImageUrl = adminUser.imageUrl || undefined;
+      }
+    }
+  } catch (err) {
+    console.error('[FUNNEL_PAGE] Error fetching coach info:', err);
+    // Fallback to generic coach name
+  }
+
   return (
     <FunnelClient
       funnel={funnel}
@@ -136,6 +176,8 @@ export default async function FunnelPage({ params, searchParams }: FunnelPagePro
         priceInCents: program.priceInCents,
         currency: program.currency,
         stripePriceId: program.stripePriceId,
+        coachName,
+        coachImageUrl,
       }}
       branding={{
         logoUrl,

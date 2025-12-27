@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { Globe, Lock, Copy, RefreshCw } from 'lucide-react';
+import { Globe, Lock, Copy, RefreshCw, AlertTriangle } from 'lucide-react';
 import type { Squad, FirebaseUser, SquadMember, SquadVisibility } from '@/types';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { Button } from '@/components/ui/button';
+import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -93,6 +94,9 @@ export function SquadFormDialog({
   // Grace period conversion state
   const [converting, setConverting] = useState(false);
   const [convertSuccess, setConvertSuccess] = useState(false);
+  
+  // Stripe Connect status for payment guards
+  const { isConnected: stripeConnected, isLoading: stripeLoading } = useStripeConnectStatus();
 
   // Check if squad is in grace period
   const isInGracePeriod = squad?.programId && squad?.gracePeriodStartDate && !squad?.isClosed;
@@ -703,6 +707,24 @@ export function SquadFormDialog({
             <label htmlFor="priceInCents" className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
               Price to Join (USD)
             </label>
+            
+            {/* Stripe Connect Warning */}
+            {!stripeLoading && !stripeConnected && (
+              <div className="mb-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-medium text-amber-800 dark:text-amber-200 font-albert">
+                      Stripe account required
+                    </p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300 font-albert mt-0.5">
+                      Connect your Stripe account in Settings to accept payments.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5f5a55] dark:text-[#b2b6c2] font-albert">$</span>
               <input
@@ -716,7 +738,10 @@ export function SquadFormDialog({
                   setPriceInCents(isNaN(dollars) ? '' : Math.round(dollars * 100));
                 }}
                 placeholder="0.00"
-                className="w-full pl-7 pr-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert"
+                disabled={!stripeConnected && !stripeLoading}
+                className={`w-full pl-7 pr-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert ${
+                  !stripeConnected && !stripeLoading ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-900' : ''
+                }`}
               />
             </div>
             <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
@@ -724,8 +749,8 @@ export function SquadFormDialog({
             </p>
           </div>
 
-          {/* Subscription Settings - Only for standalone squads with price */}
-          {!squad?.programId && priceInCents && priceInCents > 0 && (
+          {/* Subscription Settings - Only for standalone squads with price and connected Stripe */}
+          {!squad?.programId && priceInCents && priceInCents > 0 && stripeConnected && (
             <div className="p-4 rounded-xl bg-[#faf8f6] dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35]">
               <div className="flex items-center justify-between mb-3">
                 <div>

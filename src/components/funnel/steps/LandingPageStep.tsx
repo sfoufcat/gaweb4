@@ -31,6 +31,11 @@ export function LandingPageStep({
       template={config.template || 'classic'}
       headline={config.headline}
       subheadline={config.subheadline}
+      programName={config.programName}
+      programDescription={config.programDescription}
+      programImageUrl={config.programImageUrl}
+      coachName={config.coachName}
+      coachImageUrl={config.coachImageUrl}
       coachBio={config.coachBio}
       keyOutcomes={config.keyOutcomes}
       features={config.features}
@@ -41,6 +46,11 @@ export function LandingPageStep({
       showTestimonials={config.showTestimonials}
       showFAQ={config.showFAQ}
       onCTA={handleCTA}
+      // Program display props
+      priceInCents={config.priceInCents}
+      durationDays={config.durationDays}
+      enrolledCount={config.enrolledCount}
+      programType={config.programType}
     />
   );
 }
