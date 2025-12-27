@@ -1420,6 +1420,82 @@ interface UpsellDownsellConfigEditorProps {
   onChange: (config: Record<string, unknown>) => void;
 }
 
+// Helper component to avoid TypeScript inference issues with conditionally rendered discount input
+function DiscountValueInput({
+  showDiscountUI,
+  isPercentDiscount,
+  isFixedDiscount,
+  discountValue,
+  originalPriceInCents,
+  onChange,
+  config,
+}: {
+  showDiscountUI: boolean;
+  isPercentDiscount: boolean;
+  isFixedDiscount: boolean;
+  discountValue: number;
+  originalPriceInCents: number;
+  onChange: (config: Record<string, unknown>) => void;
+  config: Record<string, unknown>;
+}): React.ReactElement | null {
+  if (!showDiscountUI) return null;
+  
+  return (
+    <div>
+      <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+        {isPercentDiscount ? 'Discount Percentage' : 'Discount Amount'}
+      </label>
+      <div className="flex items-center gap-2">
+        {isFixedDiscount ? <span className="text-text-secondary">$</span> : null}
+        <input
+          type="number"
+          value={isFixedDiscount ? discountValue / 100 : discountValue}
+          onChange={(e) => {
+            const val = parseFloat(e.target.value) || 0;
+            onChange({ 
+              ...config, 
+              discountValue: isFixedDiscount ? Math.round(val * 100) : val,
+            });
+          }}
+          className="w-32 px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8]"
+          min={0}
+          max={isPercentDiscount ? 100 : originalPriceInCents / 100}
+        />
+        {isPercentDiscount ? <span className="text-text-secondary">%</span> : null}
+      </div>
+    </div>
+  );
+}
+
+// Helper component for final price preview
+function FinalPricePreview({
+  showDiscountUI,
+  originalPriceInCents,
+  finalPriceInCents,
+}: {
+  showDiscountUI: boolean;
+  originalPriceInCents: number;
+  finalPriceInCents: number;
+}): React.ReactElement {
+  return (
+    <div className="pt-3 border-t border-[#e1ddd8] dark:border-[#262b35]">
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-text-secondary dark:text-[#b2b6c2]">Final Price:</span>
+        <div className="flex items-center gap-2">
+          {showDiscountUI ? (
+            <span className="text-text-muted line-through">
+              ${(originalPriceInCents / 100).toFixed(2)}
+            </span>
+          ) : null}
+          <span className="text-xl font-bold text-[#a07855]">
+            ${(finalPriceInCents / 100).toFixed(2)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function UpsellConfigEditor({ config, onChange }: UpsellDownsellConfigEditorProps) {
   return <UpsellDownsellConfigForm config={config} onChange={onChange} type="upsell" />;
 }
@@ -1432,18 +1508,60 @@ function UpsellDownsellConfigForm({
   config, 
   onChange,
   type,
-}: UpsellDownsellConfigEditorProps & { type: 'upsell' | 'downsell' }): React.ReactElement {
+}: UpsellDownsellConfigEditorProps & { type: 'upsell' | 'downsell' }): React.JSX.Element {
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [products, setProducts] = useState<Array<{ id: string; name: string; imageUrl?: string; priceInCents: number }>>([]);
   const [isCreatingPrice, setIsCreatingPrice] = useState(false);
   
-  const productType: 'program' | 'squad' = (config.productType as 'program' | 'squad') || 'program';
-  const discountType: 'none' | 'percent' | 'fixed' = (config.discountType as 'none' | 'percent' | 'fixed') || 'none';
-  const originalPriceInCents: number = (config.originalPriceInCents as number) || 0;
-  const discountValue: number = (config.discountValue as number) || 0;
+  // Create strongly typed local config to prevent 'unknown' type inference issues
+  interface UpsellConfig {
+    productType: 'program' | 'squad';
+    productId?: string;
+    productName?: string;
+    productImageUrl?: string;
+    originalPriceInCents: number;
+    finalPriceInCents: number;
+    discountType: 'none' | 'percent' | 'fixed';
+    discountValue: number;
+    headline?: string;
+    description?: string;
+    ctaText?: string;
+    declineText?: string;
+    isRecurring?: boolean;
+    recurringInterval?: string;
+    stripePriceId?: string;
+    stripeCouponId?: string;
+    currency?: string;
+    linkedDownsellStepId?: string;
+  }
   
-  // Helper for conditional rendering
-  const hasDiscount: boolean = discountType !== 'none';
+  const typedConfig: UpsellConfig = {
+    productType: (config.productType as 'program' | 'squad') || 'program',
+    productId: config.productId as string | undefined,
+    productName: config.productName as string | undefined,
+    productImageUrl: config.productImageUrl as string | undefined,
+    originalPriceInCents: (config.originalPriceInCents as number) || 0,
+    finalPriceInCents: (config.finalPriceInCents as number) || 0,
+    discountType: (config.discountType as 'none' | 'percent' | 'fixed') || 'none',
+    discountValue: (config.discountValue as number) || 0,
+    headline: config.headline as string | undefined,
+    description: config.description as string | undefined,
+    ctaText: config.ctaText as string | undefined,
+    declineText: config.declineText as string | undefined,
+    isRecurring: config.isRecurring as boolean | undefined,
+    recurringInterval: config.recurringInterval as string | undefined,
+    stripePriceId: config.stripePriceId as string | undefined,
+    stripeCouponId: config.stripeCouponId as string | undefined,
+    currency: config.currency as string | undefined,
+    linkedDownsellStepId: config.linkedDownsellStepId as string | undefined,
+  };
+  
+  const { productType, discountType, originalPriceInCents, discountValue } = typedConfig;
+  
+  // Helpers for determining discount display
+  const showDiscountUI: boolean = discountType !== 'none';
+  const isPercentDiscount: boolean = discountType === 'percent';
+  const isFixedDiscount: boolean = discountType === 'fixed';
   
   // Calculate final price
   const calculateFinalPrice = () => {
@@ -1507,7 +1625,7 @@ function UpsellDownsellConfigForm({
   
   // Create Stripe price when saving
   const createStripePrice = async () => {
-    if (!config.productId) return;
+    if (!typedConfig.productId) return;
     
     setIsCreatingPrice(true);
     try {
@@ -1516,13 +1634,13 @@ function UpsellDownsellConfigForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productType,
-          productId: config.productId,
+          productId: typedConfig.productId,
           priceInCents: finalPriceInCents,
           originalPriceInCents,
           discountType,
           discountValue,
-          isRecurring: config.isRecurring || false,
-          recurringInterval: config.recurringInterval || 'month',
+          isRecurring: typedConfig.isRecurring || false,
+          recurringInterval: typedConfig.recurringInterval || 'month',
         }),
       });
       
@@ -1550,6 +1668,7 @@ function UpsellDownsellConfigForm({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finalPriceInCents]);
+  
   
   return (
     <div className="space-y-6">
@@ -1581,7 +1700,7 @@ function UpsellDownsellConfigForm({
           <div className="text-text-secondary text-sm">Loading...</div>
         ) : (
           <Select
-            value={(config.productId as string) || ''}
+            value={typedConfig.productId || ''}
             onValueChange={handleProductChange}
           >
             <SelectTrigger className="w-full">
@@ -1605,7 +1724,7 @@ function UpsellDownsellConfigForm({
         </label>
         <input
           type="text"
-          value={(config.headline as string) || ''}
+          value={typedConfig.headline || ''}
           onChange={(e) => onChange({ ...config, headline: e.target.value })}
           className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8]"
           placeholder={type === 'upsell' ? "Wait! Special One-Time Offer" : "Before You Go..."}
@@ -1618,7 +1737,7 @@ function UpsellDownsellConfigForm({
           Description / Benefits
         </label>
         <textarea
-          value={(config.description as string) || ''}
+          value={typedConfig.description || ''}
           onChange={(e) => onChange({ ...config, description: e.target.value })}
           className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] resize-none"
           rows={4}
@@ -1668,54 +1787,28 @@ function UpsellDownsellConfigForm({
         </div>
         
         {/* Discount Value - show only when discount is applied */}
-        {discountType === 'percent' || discountType === 'fixed' ? (
-          <div>
-            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
-              {discountType === 'percent' ? 'Discount Percentage' : 'Discount Amount'}
-            </label>
-            <div className="flex items-center gap-2">
-              {discountType === 'fixed' ? <span className="text-text-secondary">$</span> : null}
-              <input
-                type="number"
-                value={discountType === 'fixed' ? discountValue / 100 : discountValue}
-                onChange={(e) => {
-                  const val = parseFloat(e.target.value) || 0;
-                  onChange({ 
-                    ...config, 
-                    discountValue: discountType === 'fixed' ? Math.round(val * 100) : val,
-                  });
-                }}
-                className="w-32 px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8]"
-                min={0}
-                max={discountType === 'percent' ? 100 : originalPriceInCents / 100}
-              />
-              {discountType === 'percent' ? <span className="text-text-secondary">%</span> : null}
-            </div>
-          </div>
-        ) : null}
+        <DiscountValueInput 
+          showDiscountUI={showDiscountUI}
+          isPercentDiscount={isPercentDiscount}
+          isFixedDiscount={isFixedDiscount}
+          discountValue={discountValue}
+          originalPriceInCents={originalPriceInCents}
+          onChange={onChange}
+          config={config}
+        />
         
         {/* Final Price Preview */}
-        <div className="pt-3 border-t border-[#e1ddd8] dark:border-[#262b35]">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-text-secondary dark:text-[#b2b6c2]">Final Price:</span>
-            <div className="flex items-center gap-2">
-              {discountType === 'percent' || discountType === 'fixed' ? (
-                <span className="text-text-muted line-through">
-                  ${(originalPriceInCents / 100).toFixed(2)}
-                </span>
-              ) : null}
-              <span className="text-xl font-bold text-[#a07855]">
-                ${(finalPriceInCents / 100).toFixed(2)}
-              </span>
-            </div>
-          </div>
-        </div>
+        <FinalPricePreview 
+          showDiscountUI={showDiscountUI}
+          originalPriceInCents={originalPriceInCents}
+          finalPriceInCents={finalPriceInCents}
+        />
         
         {/* Recurring Toggle */}
         <div className="flex items-center gap-3">
           <BrandedCheckbox
             id="isRecurring"
-            checked={config.isRecurring as boolean || false}
+            checked={typedConfig.isRecurring || false}
             onChange={(checked) => onChange({ ...config, isRecurring: checked })}
           />
           <label htmlFor="isRecurring" className="text-sm text-text-primary dark:text-[#f5f5f8]">
@@ -1723,9 +1816,9 @@ function UpsellDownsellConfigForm({
           </label>
         </div>
         
-        {config.isRecurring && (
+        {typedConfig.isRecurring ? (
           <Select
-            value={(config.recurringInterval as string) || 'month'}
+            value={typedConfig.recurringInterval || 'month'}
             onValueChange={(value) => onChange({ ...config, recurringInterval: value })}
           >
             <SelectTrigger className="w-48">
@@ -1736,24 +1829,24 @@ function UpsellDownsellConfigForm({
               <SelectItem value="year">Yearly</SelectItem>
             </SelectContent>
           </Select>
-        )}
+        ) : null}
         
         {/* Create Stripe Price Button */}
-        {config.productId && (
+        {typedConfig.productId ? (
           <button
             onClick={createStripePrice}
             disabled={isCreatingPrice}
             className="w-full py-2 px-4 bg-[#a07855] text-white rounded-lg hover:bg-[#8c6245] disabled:opacity-50 transition-colors text-sm"
           >
-            {isCreatingPrice ? 'Creating...' : config.stripePriceId ? 'Update Stripe Price' : 'Create Stripe Price'}
+            {isCreatingPrice ? 'Creating...' : typedConfig.stripePriceId ? 'Update Stripe Price' : 'Create Stripe Price'}
           </button>
-        )}
+        ) : null}
         
-        {config.stripePriceId && (
+        {typedConfig.stripePriceId ? (
           <p className="text-xs text-green-600 dark:text-green-400">
             ✓ Stripe price configured
           </p>
-        )}
+        ) : null}
       </div>
       
       {/* CTA Text */}
@@ -1763,7 +1856,7 @@ function UpsellDownsellConfigForm({
         </label>
         <input
           type="text"
-          value={(config.ctaText as string) || ''}
+          value={typedConfig.ctaText || ''}
           onChange={(e) => onChange({ ...config, ctaText: e.target.value })}
           className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8]"
           placeholder={type === 'upsell' ? "Add to Order" : "Yes, I Want This Deal!"}
@@ -1777,7 +1870,7 @@ function UpsellDownsellConfigForm({
         </label>
         <input
           type="text"
-          value={(config.declineText as string) || ''}
+          value={typedConfig.declineText || ''}
           onChange={(e) => onChange({ ...config, declineText: e.target.value })}
           className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8]"
           placeholder={type === 'upsell' ? "No thanks, skip this offer" : "No thanks, I'll pass"}
