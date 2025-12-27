@@ -54,7 +54,7 @@ export async function GET(
 
     // Fetch courses associated with this program
     const coursesSnapshot = await adminDb
-      .collection('discover_courses')
+      .collection('courses')
       .where('programIds', 'array-contains', programId)
       .get();
 
@@ -65,7 +65,7 @@ export async function GET(
 
     // Fetch articles associated with this program
     const articlesSnapshot = await adminDb
-      .collection('discover_articles')
+      .collection('articles')
       .where('programIds', 'array-contains', programId)
       .get();
 
@@ -77,7 +77,7 @@ export async function GET(
     // Fetch events associated with this program (upcoming only)
     const now = new Date().toISOString().split('T')[0];
     const eventsSnapshot = await adminDb
-      .collection('discover_events')
+      .collection('events')
       .where('programIds', 'array-contains', programId)
       .where('date', '>=', now)
       .orderBy('date', 'asc')
