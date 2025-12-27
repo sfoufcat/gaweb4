@@ -29,6 +29,9 @@ export interface LandingTemplateProps {
   durationDays?: number;
   enrolledCount?: number;
   programType?: 'individual' | 'group';
+  // Brand accent colors
+  accentLight?: string;
+  accentDark?: string;
 }
 
 // Helper to convert hex to rgba
@@ -146,14 +149,14 @@ export function ClassicTemplate({
   durationDays = 30,
   enrolledCount = 0,
   programType = 'individual',
+  accentLight = '#a07855',
+  accentDark = '#b8896a',
 }: LandingTemplateProps) {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
   // Use headline/subheadline or fall back to program name/description
   const displayHeadline = headline || programName || 'Transform Your Life';
   const displaySubheadline = subheadline || programDescription;
-  const accentLight = '#a07855';
-  const accentDark = '#b8896a';
 
   const formatPrice = (cents: number) => {
     if (cents === 0) return 'Free';

@@ -17,14 +17,19 @@ export function ModernTemplate({
   showTestimonials = true,
   showFAQ = true,
   onCTA,
+  accentLight = '#a07855',
+  accentDark = '#b8896a',
 }: LandingTemplateProps) {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+
+  // Derived darker accent for gradients
+  const accentDarker = accentDark;
 
   return (
     <div className="font-albert min-h-screen bg-white dark:bg-[#0a0c10]">
       {/* Bold Hero */}
       {(headline || subheadline) && (
-        <section className="py-20 px-6 bg-[#a07855] text-white">
+        <section className="py-20 px-6 text-white" style={{ backgroundColor: accentLight }}>
           <div className="max-w-5xl mx-auto">
             <div className="max-w-3xl">
               {headline && (
@@ -41,7 +46,8 @@ export function ModernTemplate({
                 <div className="flex flex-col sm:flex-row items-start gap-4">
                   <button
                     onClick={onCTA}
-                    className="px-8 py-4 bg-white text-[#a07855] font-semibold text-lg rounded-xl transition-all hover:shadow-xl hover:scale-105 flex items-center gap-2"
+                    className="px-8 py-4 bg-white font-semibold text-lg rounded-xl transition-all hover:shadow-xl hover:scale-105 flex items-center gap-2"
+                    style={{ color: accentLight }}
                   >
                     {ctaText}
                     <ArrowRight className="w-5 h-5" />
@@ -61,7 +67,7 @@ export function ModernTemplate({
         <section className="py-20 px-6 bg-[#faf8f6] dark:bg-[#11141b]">
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-12">
-              <span className="text-[#a07855] font-semibold text-sm uppercase tracking-wide">
+              <span className="font-semibold text-sm uppercase tracking-wide" style={{ color: accentLight }}>
                 The Transformation
               </span>
               <h2 className="text-3xl md:text-4xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mt-2">
@@ -74,7 +80,7 @@ export function ModernTemplate({
                   key={index}
                   className="flex items-center gap-4 p-5 bg-white dark:bg-[#171b22] rounded-2xl shadow-sm hover:shadow-md transition-shadow"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-[#a07855] flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: accentLight }}>
                     <Check className="w-5 h-5 text-white" />
                   </div>
                   <span className="text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">{outcome}</span>
@@ -90,7 +96,7 @@ export function ModernTemplate({
         <section className="py-20 px-6">
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-12">
-              <span className="text-[#a07855] font-semibold text-sm uppercase tracking-wide">
+              <span className="font-semibold text-sm uppercase tracking-wide" style={{ color: accentLight }}>
                 Everything You Need
               </span>
               <h2 className="text-3xl md:text-4xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mt-2">
@@ -101,7 +107,10 @@ export function ModernTemplate({
               {features.map((feature, index) => (
                 <div 
                   key={index}
-                  className="p-8 bg-[#faf8f6] dark:bg-[#171b22] rounded-3xl border border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] transition-colors"
+                  className="p-8 bg-[#faf8f6] dark:bg-[#171b22] rounded-3xl border border-[#e1ddd8] dark:border-[#262b35] transition-colors"
+                  style={{ ['--hover-border' as string]: accentLight }}
+                  onMouseEnter={(e) => e.currentTarget.style.borderColor = accentLight}
+                  onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
                 >
                   {feature.icon && (
                     <div className="text-4xl mb-4">
@@ -137,11 +146,11 @@ export function ModernTemplate({
         <section className="py-20 px-6 bg-[#faf8f6] dark:bg-[#11141b]">
           <div className="max-w-5xl mx-auto">
             <div className="flex flex-col md:flex-row items-center gap-10">
-              <div className="w-32 h-32 md:w-48 md:h-48 rounded-3xl bg-[#a07855]/10 flex items-center justify-center flex-shrink-0">
-                <span className="text-5xl md:text-7xl text-[#a07855]">👤</span>
+              <div className="w-32 h-32 md:w-48 md:h-48 rounded-3xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${accentLight}1a` }}>
+                <span className="text-5xl md:text-7xl" style={{ color: accentLight }}>👤</span>
               </div>
               <div>
-                <span className="text-[#a07855] font-semibold text-sm uppercase tracking-wide">
+                <span className="font-semibold text-sm uppercase tracking-wide" style={{ color: accentLight }}>
                   Meet Your Guide
                 </span>
                 <h2 className="text-2xl md:text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mt-2 mb-4">
@@ -161,7 +170,7 @@ export function ModernTemplate({
         <section className="py-20 px-6">
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-12">
-              <span className="text-[#a07855] font-semibold text-sm uppercase tracking-wide">
+              <span className="font-semibold text-sm uppercase tracking-wide" style={{ color: accentLight }}>
                 Social Proof
               </span>
               <h2 className="text-3xl md:text-4xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mt-2">
@@ -192,7 +201,7 @@ export function ModernTemplate({
                     &ldquo;{testimonial.text}&rdquo;
                   </p>
                   <div className="flex items-center gap-4 pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: `linear-gradient(to bottom right, ${accentLight}, ${accentDarker})` }}>
                       <span className="text-white font-bold text-lg">
                         {testimonial.author.charAt(0)}
                       </span>
@@ -220,7 +229,7 @@ export function ModernTemplate({
         <section className="py-20 px-6 bg-[#faf8f6] dark:bg-[#11141b]">
           <div className="max-w-3xl mx-auto">
             <div className="text-center mb-12">
-              <span className="text-[#a07855] font-semibold text-sm uppercase tracking-wide">
+              <span className="font-semibold text-sm uppercase tracking-wide" style={{ color: accentLight }}>
                 Got Questions?
               </span>
               <h2 className="text-3xl md:text-4xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mt-2">
@@ -243,9 +252,10 @@ export function ModernTemplate({
                       {faq.question}
                     </span>
                     <ChevronDown 
-                      className={`w-6 h-6 text-[#a07855] transition-transform flex-shrink-0 ${
+                      className={`w-6 h-6 transition-transform flex-shrink-0 ${
                         openFaqIndex === index ? 'rotate-180' : ''
                       }`}
+                      style={{ color: accentLight }}
                     />
                   </button>
                   {openFaqIndex === index && (
@@ -264,7 +274,7 @@ export function ModernTemplate({
 
       {/* Bottom CTA - Bold Banner */}
       {ctaText && (
-        <section className="py-20 px-6 bg-[#a07855]">
+        <section className="py-20 px-6" style={{ backgroundColor: accentLight }}>
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
               Ready to Transform Your Life?
@@ -274,7 +284,8 @@ export function ModernTemplate({
             </p>
             <button
               onClick={onCTA}
-              className="px-10 py-5 bg-white text-[#a07855] font-bold text-lg rounded-xl transition-all hover:shadow-xl hover:scale-105 flex items-center gap-2 mx-auto"
+              className="px-10 py-5 bg-white font-bold text-lg rounded-xl transition-all hover:shadow-xl hover:scale-105 flex items-center gap-2 mx-auto"
+              style={{ color: accentLight }}
             >
               {ctaText}
               <ArrowRight className="w-5 h-5" />

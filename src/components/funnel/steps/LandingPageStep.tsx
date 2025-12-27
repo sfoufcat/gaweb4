@@ -2,6 +2,7 @@
 
 import type { FunnelStepConfigLandingPage } from '@/types';
 import { LandingPageRenderer } from '@/components/shared/landing-templates';
+import { useBranding } from '@/contexts/BrandingContext';
 
 export interface LandingPageStepProps {
   config: FunnelStepConfigLandingPage;
@@ -20,6 +21,8 @@ export function LandingPageStep({
   onComplete,
   isNavigating = false,
 }: LandingPageStepProps) {
+  const { branding } = useBranding();
+  
   const handleCTA = () => {
     if (!isNavigating) {
       onComplete({});
@@ -51,6 +54,9 @@ export function LandingPageStep({
       durationDays={config.durationDays}
       enrolledCount={config.enrolledCount}
       programType={config.programType}
+      // Brand accent colors from coach's organization
+      accentLight={branding.colors.accentLight}
+      accentDark={branding.colors.accentDark}
     />
   );
 }

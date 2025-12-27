@@ -29,6 +29,9 @@ export interface LandingPageRendererProps {
   durationDays?: number;
   enrolledCount?: number;
   programType?: 'individual' | 'group';
+  // Brand accent colors
+  accentLight?: string;
+  accentDark?: string;
 }
 
 export function LandingPageRenderer({

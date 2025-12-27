@@ -17,6 +17,7 @@ export function MinimalTemplate({
   showTestimonials = true,
   showFAQ = true,
   onCTA,
+  accentLight = '#a07855',
 }: LandingTemplateProps) {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
@@ -69,7 +70,7 @@ export function MinimalTemplate({
                   key={index}
                   className="flex items-center gap-4 py-3 border-b border-[#f0ede9] dark:border-[#1d222b] last:border-0"
                 >
-                  <Check className="w-4 h-4 text-[#a07855] flex-shrink-0" />
+                  <Check className="w-4 h-4 flex-shrink-0" style={{ color: accentLight }} />
                   <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">{outcome}</span>
                 </div>
               ))}
@@ -137,9 +138,10 @@ export function MinimalTemplate({
                           key={star}
                           className={`w-4 h-4 ${
                             star <= testimonial.rating!
-                              ? 'text-[#a07855] fill-[#a07855]'
+                              ? ''
                               : 'text-[#e1ddd8] dark:text-[#262b35]'
                           }`}
+                          style={star <= testimonial.rating! ? { color: accentLight, fill: accentLight } : undefined}
                         />
                       ))}
                     </div>
