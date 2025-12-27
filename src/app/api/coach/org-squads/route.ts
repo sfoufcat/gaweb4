@@ -9,6 +9,8 @@ interface SquadWithDetails extends Squad {
   coachName?: string;
   coachImageUrl?: string;
   memberCount: number;
+  programName?: string;
+  programType?: 'group' | 'individual';
 }
 
 /**
@@ -84,6 +86,34 @@ export async function GET() {
       }
     }
 
+    // Collect all program IDs to fetch their names and types
+    const programIds = new Set<string>();
+    squadsSnapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.programId) {
+        programIds.add(data.programId);
+      }
+    });
+
+    // Fetch program details
+    const programDetails = new Map<string, { name: string; type: 'group' | 'individual' }>();
+    if (programIds.size > 0) {
+      for (const programId of programIds) {
+        try {
+          const programDoc = await adminDb.collection('programs').doc(programId).get();
+          if (programDoc.exists) {
+            const programData = programDoc.data();
+            programDetails.set(programId, {
+              name: programData?.name || 'Unknown Program',
+              type: programData?.type || 'group',
+            });
+          }
+        } catch (err) {
+          console.error(`[COACH_ORG_SQUADS] Failed to fetch program ${programId}:`, err);
+        }
+      }
+    }
+
     // Build squads array and auto-generate slugs for squads missing them
     const slugUpdates: Promise<void>[] = [];
     
@@ -111,6 +141,8 @@ export async function GET() {
         }
       }
       
+      const programInfo = data.programId ? programDetails.get(data.programId) : null;
+      
       squads.push({
         id: doc.id,
         name: data.name || '',
@@ -136,6 +168,8 @@ export async function GET() {
         coachName: coachInfo?.name,
         coachImageUrl: coachInfo?.imageUrl,
         memberCount: memberCounts.get(doc.id) || 0,
+        programName: programInfo?.name,
+        programType: programInfo?.type,
       } as SquadWithDetails);
     }
     

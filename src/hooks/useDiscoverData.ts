@@ -9,6 +9,7 @@ import type {
   DiscoverCourse,
   DiscoverCategory,
   DiscoverProgram,
+  DiscoverSquad,
   TrendingItem,
   RecommendedItem,
   EventUpdate,
@@ -274,6 +275,42 @@ export function useDiscoverPrograms() {
   };
 }
 
+// Hook: useDiscoverSquads - Fetches public squads from API with SWR caching
+export function useDiscoverSquads() {
+  const { data, error, isLoading } = useSWR<{
+    trackSquads?: DiscoverSquad[];
+    generalSquads?: DiscoverSquad[];
+    otherTrackSquads?: DiscoverSquad[];
+    premiumSquads?: DiscoverSquad[];
+    standardSquads?: DiscoverSquad[];
+  }>(
+    '/api/squad/discover',
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 5 * 60 * 1000, // 5 minutes
+    }
+  );
+
+  // Combine all squads from the API response
+  const publicSquads = useMemo(() => {
+    if (!data) return [];
+    return [
+      ...(data.trackSquads || []),
+      ...(data.generalSquads || []),
+      ...(data.otherTrackSquads || []),
+      ...(data.premiumSquads || []),
+      ...(data.standardSquads || []),
+    ];
+  }, [data]);
+
+  return {
+    publicSquads,
+    loading: isLoading && !data,
+    error: error?.message ?? null,
+  };
+}
+
 // Combined hook for the main discover page
 // Optimized: derives trending/recommended from articles/courses instead of separate fetches
 export function useDiscoverData() {
@@ -287,8 +324,9 @@ export function useDiscoverData() {
     enrollmentConstraints,
     loading: programsLoading,
   } = useDiscoverPrograms();
+  const { publicSquads, loading: squadsLoading } = useDiscoverSquads();
 
-  const loading = eventsLoading || articlesLoading || coursesLoading || programsLoading;
+  const loading = eventsLoading || articlesLoading || coursesLoading || programsLoading || squadsLoading;
 
   // Split events into upcoming and past
   const { upcomingEvents, pastEvents } = useMemo(() => {
@@ -395,6 +433,7 @@ export function useDiscoverData() {
     groupPrograms,
     individualPrograms,
     enrollmentConstraints,
+    publicSquads,
     loading,
   };
 }

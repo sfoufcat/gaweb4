@@ -199,3 +199,19 @@ export type DiscoverProgram = {
   updatedAt?: string;
 };
 
+// Discover Squad type for public display
+export type DiscoverSquad = {
+  id: string;
+  name: string;
+  description?: string;
+  avatarUrl?: string;
+  coachId?: string;
+  coachName?: string;
+  coachImageUrl?: string;
+  memberCount?: number;
+  priceInCents?: number;
+  subscriptionEnabled?: boolean;
+  billingInterval?: string;
+  visibility?: string;
+};
+

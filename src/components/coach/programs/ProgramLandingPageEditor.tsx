@@ -1,12 +1,15 @@
 'use client';
 
 import React from 'react';
-import { Plus, Trash2, Star, GripVertical } from 'lucide-react';
+import Image from 'next/image';
+import { Plus, Trash2, Star, GripVertical, ImageIcon, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
+import { MediaUpload } from '@/components/admin/MediaUpload';
 import type { ProgramFeature, ProgramTestimonial, ProgramFAQ } from '@/types';
 
 interface LandingPageFormData {
+  landingPageCoverImageUrl?: string;
   coachBio: string;
   keyOutcomes: string[];
   features: ProgramFeature[];
@@ -23,6 +26,10 @@ interface ProgramLandingPageEditorProps {
   hideCurriculumOption?: boolean;
   /** Custom label for enrollment count (defaults to "enrollment count") */
   countLabel?: string;
+  /** Upload endpoint for the cover image */
+  uploadEndpoint?: string;
+  /** Folder for uploads */
+  uploadFolder?: 'programs' | 'squads';
 }
 
 export function ProgramLandingPageEditor({ 
@@ -30,6 +37,8 @@ export function ProgramLandingPageEditor({
   onChange, 
   hideCurriculumOption = false,
   countLabel = 'enrollment count',
+  uploadEndpoint = '/api/coach/org-upload-media',
+  uploadFolder = 'programs',
 }: ProgramLandingPageEditorProps) {
   // Key Outcomes management
   const addOutcome = () => {
@@ -121,6 +130,48 @@ export function ProgramLandingPageEditor({
 
   return (
     <div className="space-y-8">
+      {/* Landing Page Cover Image */}
+      <div className="bg-white dark:bg-[#171b22] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] p-5">
+        <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
+          Cover Image
+        </h3>
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
+          The hero image displayed at the top of your landing page. Recommended size: 1920 x 1080px (16:9 ratio).
+        </p>
+        
+        {formData.landingPageCoverImageUrl ? (
+          <div className="relative rounded-xl overflow-hidden bg-[#faf8f6] dark:bg-[#11141b]">
+            <div className="aspect-[16/9] relative">
+              <Image
+                src={formData.landingPageCoverImageUrl}
+                alt="Landing page cover"
+                fill
+                className="object-cover"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => onChange({ ...formData, landingPageCoverImageUrl: '' })}
+              className="absolute top-3 right-3 p-2 bg-black/50 hover:bg-black/70 rounded-lg transition-colors"
+            >
+              <X className="w-4 h-4 text-white" />
+            </button>
+          </div>
+        ) : (
+          <div className="w-full">
+            <MediaUpload
+              value={formData.landingPageCoverImageUrl || ''}
+              onChange={(url) => onChange({ ...formData, landingPageCoverImageUrl: url })}
+              folder={uploadFolder}
+              type="image"
+              uploadEndpoint={uploadEndpoint}
+              hideLabel
+              aspectRatio="16:9"
+            />
+          </div>
+        )}
+      </div>
+
       {/* Coach Bio */}
       <div className="bg-white dark:bg-[#171b22] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] p-5">
         <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">

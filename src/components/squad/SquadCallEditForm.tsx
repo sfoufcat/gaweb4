@@ -384,6 +384,8 @@ export function SquadCallEditForm({
         
         organizationId: squad.organizationId || undefined,
         programId: squad.programId || undefined,
+        // Include programIds array for program content API compatibility
+        programIds: squad.programId ? [squad.programId] : [],
         squadId: squad.id,
         cohortId: squad.cohortId || undefined,
         

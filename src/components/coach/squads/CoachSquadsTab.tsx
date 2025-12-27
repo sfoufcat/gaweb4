@@ -22,11 +22,17 @@ import {
 } from 'lucide-react';
 import { ReferralConfigForm } from '@/components/coach/referrals';
 import { SquadFormDialog } from '@/components/admin/SquadFormDialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-// Squad with computed stats
+// Squad with computed stats and program info
 interface SquadWithStats extends Squad {
   memberCount?: number;
+  programName?: string;
+  programType?: 'group' | 'individual';
 }
+
+// Squad filter types
+type SquadFilterType = 'all' | 'standalone' | 'program-all' | 'program-group' | 'program-individual';
 
 // Member with user info
 interface MemberWithUser extends SquadMember {
@@ -40,6 +46,7 @@ interface CoachSquadsTabProps {
 
 // Landing page form data type matching ProgramLandingPageEditor
 interface LandingPageFormData {
+  landingPageCoverImageUrl?: string;
   coachBio: string;
   keyOutcomes: string[];
   features: ProgramFeature[];
@@ -55,6 +62,9 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // Squad filter
+  const [squadFilter, setSquadFilter] = useState<SquadFilterType>('all');
+  
   // View mode: 'list' | 'members' | 'landing' | 'referrals'
   const [viewMode, setViewMode] = useState<'list' | 'members' | 'landing' | 'referrals'>('list');
   
@@ -64,6 +74,10 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
   const [removeConfirmMember, setRemoveConfirmMember] = useState<MemberWithUser | null>(null);
   const [removingMember, setRemovingMember] = useState(false);
   
+  // Coach assignment state
+  const [coaches, setCoaches] = useState<{id: string; name: string; firstName: string; lastName: string; email: string; imageUrl: string}[]>([]);
+  const [updatingCoach, setUpdatingCoach] = useState(false);
+  
   // Modal states
   const [isSquadModalOpen, setIsSquadModalOpen] = useState(false);
   const [editingSquad, setEditingSquad] = useState<Squad | null>(null);
@@ -72,6 +86,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
   
   // Landing page form
   const [landingPageFormData, setLandingPageFormData] = useState<LandingPageFormData>({
+    landingPageCoverImageUrl: '',
     coachBio: '',
     keyOutcomes: [],
     features: [],
@@ -136,10 +151,61 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
     }
   }, [viewMode, selectedSquad, fetchSquadMembers]);
 
+  // Fetch coaches for assignment dropdown
+  useEffect(() => {
+    const fetchCoaches = async () => {
+      try {
+        const response = await fetch('/api/coach/org-coaches');
+        if (response.ok) {
+          const data = await response.json();
+          setCoaches(data.coaches || []);
+        }
+      } catch (err) {
+        console.error('[CoachSquadsTab] Error fetching coaches:', err);
+      }
+    };
+    fetchCoaches();
+  }, []);
+
+  // Handler to update coach assignment
+  const handleUpdateCoach = async (newCoachId: string | null) => {
+    if (!selectedSquad) return;
+    
+    try {
+      setUpdatingCoach(true);
+      
+      const response = await fetch(`${apiBasePath}/${selectedSquad.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coachId: newCoachId }),
+      });
+      
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to update coach');
+      }
+      
+      // Refresh squads and update selected squad
+      await fetchSquads();
+      const updatedSquads = await fetch(apiBasePath).then(r => r.json());
+      const updated = (updatedSquads.squads || []).find((s: Squad) => s.id === selectedSquad.id);
+      if (updated) setSelectedSquad(updated);
+      
+      // Also refresh members to show updated coach badge
+      fetchSquadMembers(selectedSquad.id);
+    } catch (err) {
+      console.error('[CoachSquadsTab] Error updating coach:', err);
+      alert(err instanceof Error ? err.message : 'Failed to update coach');
+    } finally {
+      setUpdatingCoach(false);
+    }
+  };
+
   // Load landing page data when switching to that view
   useEffect(() => {
     if (viewMode === 'landing' && selectedSquad) {
       setLandingPageFormData({
+        landingPageCoverImageUrl: selectedSquad.landingPageCoverImageUrl || '',
         coachBio: selectedSquad.coachBio || '',
         keyOutcomes: selectedSquad.keyOutcomes || [],
         features: (selectedSquad.features || []).map(f => ({
@@ -243,6 +309,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          landingPageCoverImageUrl: landingPageFormData.landingPageCoverImageUrl || null,
           coachBio: landingPageFormData.coachBio,
           keyOutcomes: landingPageFormData.keyOutcomes,
           features: landingPageFormData.features.map((f, i) => ({
@@ -314,6 +381,29 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
     );
   }
 
+  // Filter squads based on selected filter
+  const filteredSquads = squads.filter((squad) => {
+    switch (squadFilter) {
+      case 'standalone':
+        return !squad.programId;
+      case 'program-all':
+        return !!squad.programId;
+      case 'program-group':
+        return !!squad.programId && squad.programType === 'group';
+      case 'program-individual':
+        return !!squad.programId && squad.programType === 'individual';
+      case 'all':
+      default:
+        return true;
+    }
+  });
+
+  // Count squads for filter badges
+  const standaloneCount = squads.filter(s => !s.programId).length;
+  const programCount = squads.filter(s => !!s.programId).length;
+  const programGroupCount = squads.filter(s => !!s.programId && s.programType === 'group').length;
+  const programIndividualCount = squads.filter(s => !!s.programId && s.programType === 'individual').length;
+
   // List view
   if (viewMode === 'list' || !selectedSquad) {
     return (
@@ -340,27 +430,101 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
           </Button>
         </div>
 
+        {/* Filter Tabs */}
+        {squads.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mb-6">
+            {/* Main Filters */}
+            <button
+              onClick={() => setSquadFilter('all')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-albert transition-colors ${
+                squadFilter === 'all'
+                  ? 'bg-[#a07855] text-white'
+                  : 'bg-[#faf8f6] dark:bg-[#11141b] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#171b22]'
+              }`}
+            >
+              All ({squads.length})
+            </button>
+            <button
+              onClick={() => setSquadFilter('standalone')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-albert transition-colors ${
+                squadFilter === 'standalone'
+                  ? 'bg-[#a07855] text-white'
+                  : 'bg-[#faf8f6] dark:bg-[#11141b] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#171b22]'
+              }`}
+            >
+              Standalone ({standaloneCount})
+            </button>
+            
+            {/* Program Squads with sub-filters */}
+            {programCount > 0 && (
+              <>
+                <div className="w-px h-6 bg-[#e1ddd8] dark:bg-[#262b35] mx-1" />
+                <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Program Squads:</span>
+                <button
+                  onClick={() => setSquadFilter('program-all')}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-albert transition-colors ${
+                    squadFilter === 'program-all'
+                      ? 'bg-[#a07855] text-white'
+                      : 'bg-[#faf8f6] dark:bg-[#11141b] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#171b22]'
+                  }`}
+                >
+                  All ({programCount})
+                </button>
+                {programGroupCount > 0 && (
+                  <button
+                    onClick={() => setSquadFilter('program-group')}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-albert transition-colors ${
+                      squadFilter === 'program-group'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30'
+                    }`}
+                  >
+                    Group ({programGroupCount})
+                  </button>
+                )}
+                {programIndividualCount > 0 && (
+                  <button
+                    onClick={() => setSquadFilter('program-individual')}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-albert transition-colors ${
+                      squadFilter === 'program-individual'
+                        ? 'bg-purple-500 text-white'
+                        : 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30'
+                    }`}
+                  >
+                    Individual ({programIndividualCount})
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
         {/* Squads Grid */}
-        {squads.length === 0 ? (
+        {filteredSquads.length === 0 ? (
           <div className="text-center py-12 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
             <Users className="w-12 h-12 text-[#d1ccc5] dark:text-[#7d8190] mx-auto mb-3" />
             <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-              No squads yet
+              {squads.length === 0 ? 'No squads yet' : 'No squads match this filter'}
             </h3>
             <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1 mb-4">
-              Create your first standalone squad or community
+              {squads.length === 0 
+                ? 'Create your first standalone squad or community'
+                : 'Try selecting a different filter or create a new squad'
+              }
             </p>
-            <Button
-              onClick={() => setIsSquadModalOpen(true)}
-              className="bg-[#a07855] hover:bg-[#8c6245] text-white font-albert"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create Squad
-            </Button>
+            {squads.length === 0 && (
+              <Button
+                onClick={() => setIsSquadModalOpen(true)}
+                className="bg-[#a07855] hover:bg-[#8c6245] text-white font-albert"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Squad
+              </Button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {squads.map((squad) => (
+            {filteredSquads.map((squad) => (
               <div
                 key={squad.id}
                 className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 hover:border-[#a07855]/50 transition-colors cursor-pointer group"
@@ -396,7 +560,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                         {squad.description}
                       </p>
                     )}
-                    <div className="flex items-center gap-3 mt-2 text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                    <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
                       <span className="flex items-center gap-1">
                         <Users className="w-3.5 h-3.5" />
                         {squad.memberCount || 0} members
@@ -408,6 +572,18 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                         </span>
                       )}
                     </div>
+                    {/* Program Badge */}
+                    {squad.programId && squad.programName && (
+                      <div className="mt-2">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${
+                          squad.programType === 'individual'
+                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                            : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                        }`}>
+                          {squad.programType === 'individual' ? '1:1' : 'Group'}: {squad.programName}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <ChevronRight className="w-5 h-5 text-[#d1ccc5] dark:text-[#7d8190] group-hover:text-[#a07855] transition-colors flex-shrink-0" />
                 </div>
@@ -446,6 +622,17 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                   >
                     <ExternalLink className="w-3.5 h-3.5 mr-1" />
                     Preview
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteConfirmSquad(squad);
+                    }}
+                    className="text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </div>
               </div>
@@ -581,6 +768,66 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
             </p>
           </div>
 
+          {/* Coach Assignment Section */}
+          <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 mb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
+                  Squad Coach
+                </h4>
+                <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                  Assign or change the coach for this squad
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {selectedSquad.coachId && (
+                  <div className="flex items-center gap-2 text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    {(() => {
+                      const currentCoach = coaches.find(c => c.id === selectedSquad.coachId);
+                      return currentCoach ? (
+                        <>
+                          {currentCoach.imageUrl ? (
+                            <Image
+                              src={currentCoach.imageUrl}
+                              alt=""
+                              width={28}
+                              height={28}
+                              className="w-7 h-7 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-[#a07855]/10 flex items-center justify-center text-[#a07855] text-xs font-bold">
+                              {currentCoach.firstName?.charAt(0) || '?'}
+                            </div>
+                          )}
+                          <span className="font-medium font-albert">{currentCoach.name}</span>
+                        </>
+                      ) : (
+                        <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Coach not in list</span>
+                      );
+                    })()}
+                  </div>
+                )}
+                <Select
+                  value={selectedSquad.coachId || 'none'}
+                  onValueChange={(val) => handleUpdateCoach(val === 'none' ? null : val)}
+                  disabled={updatingCoach}
+                >
+                  <SelectTrigger className="w-[200px] font-albert">
+                    <SelectValue placeholder={updatingCoach ? 'Updating...' : 'Change coach'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none" className="font-albert">No coach</SelectItem>
+                    {coaches.map((coach) => (
+                      <SelectItem key={coach.id} value={coach.id} className="font-albert">
+                        {coach.name} ({coach.email.split('@')[0]})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
           {loadingMembers ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#a07855]" />
@@ -671,6 +918,8 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
             onChange={setLandingPageFormData}
             hideCurriculumOption={true}
             countLabel="member count"
+            uploadEndpoint="/api/coach/org-upload-media"
+            uploadFolder="squads"
           />
         </div>
       ) : viewMode === 'referrals' ? (
@@ -688,8 +937,14 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
 
       {/* Remove Member Confirmation */}
       {removeConfirmMember && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-[#171b22] rounded-xl p-6 max-w-sm w-full">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          {/* Full screen backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm" 
+            onClick={() => setRemoveConfirmMember(null)} 
+          />
+          {/* Modal */}
+          <div className="relative bg-white dark:bg-[#171b22] rounded-xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                 Remove Member
@@ -725,8 +980,14 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
 
       {/* Delete Squad Confirmation */}
       {deleteConfirmSquad && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-[#171b22] rounded-xl p-6 max-w-sm w-full">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          {/* Full screen backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm" 
+            onClick={() => setDeleteConfirmSquad(null)} 
+          />
+          {/* Modal */}
+          <div className="relative bg-white dark:bg-[#171b22] rounded-xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                 Delete Squad

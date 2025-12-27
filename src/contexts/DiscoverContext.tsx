@@ -8,6 +8,7 @@ import type {
   DiscoverCourse,
   DiscoverCategory,
   DiscoverProgram,
+  DiscoverSquad,
   TrendingItem,
   RecommendedItem,
 } from '@/types/discover';
@@ -27,6 +28,7 @@ interface DiscoverContextType {
     canEnrollInGroup: boolean;
     canEnrollInIndividual: boolean;
   };
+  publicSquads: DiscoverSquad[];
   loading: boolean;
 }
 

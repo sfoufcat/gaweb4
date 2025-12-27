@@ -198,6 +198,10 @@ export function CallSuggestionModal({
         participantModel: 'squad_members' as const,
         approvalType: 'voting' as const,
         status: 'pending_approval' as const,
+        organizationId: squad.organizationId || undefined,
+        programId: squad.programId || undefined,
+        // Include programIds array for program content API compatibility
+        programIds: squad.programId ? [squad.programId] : [],
         squadId: squad.id,
         isCoachLed: false,
         sendChatReminders: true,

@@ -58,7 +58,7 @@ export async function PATCH(
       // Subscription fields
       subscriptionEnabled, billingInterval,
       // Landing page fields
-      coachBio, keyOutcomes, features, testimonials, faqs, showMemberCount,
+      landingPageCoverImageUrl, coachBio, keyOutcomes, features, testimonials, faqs, showMemberCount,
     } = body;
 
     // Build update data
@@ -124,6 +124,7 @@ export async function PATCH(
     if (billingInterval !== undefined) updateData.billingInterval = billingInterval;
     
     // Landing page fields
+    if (landingPageCoverImageUrl !== undefined) updateData.landingPageCoverImageUrl = landingPageCoverImageUrl;
     if (coachBio !== undefined) updateData.coachBio = coachBio;
     if (keyOutcomes !== undefined) updateData.keyOutcomes = keyOutcomes;
     if (features !== undefined) updateData.features = features;

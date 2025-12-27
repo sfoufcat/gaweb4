@@ -166,6 +166,13 @@ export async function POST(request: NextRequest) {
 
     const now = new Date().toISOString();
 
+    // Auto-populate programIds from programId if not explicitly provided
+    // This ensures the program content API's array-contains query finds the events
+    let programIds: string[] = body.programIds || [];
+    if (body.programId && (!programIds.length || !programIds.includes(body.programId))) {
+      programIds = [body.programId, ...programIds];
+    }
+
     // Build event data
     const eventData: Omit<UnifiedEvent, 'id'> = {
       title: body.title,
@@ -189,7 +196,7 @@ export async function POST(request: NextRequest) {
       
       organizationId: organizationId || body.organizationId || undefined,
       programId: body.programId || undefined,
-      programIds: body.programIds || [],
+      programIds,
       squadId: body.squadId || undefined,
       cohortId: body.cohortId || undefined,
       

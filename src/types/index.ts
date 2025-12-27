@@ -994,6 +994,7 @@ export interface Squad {
   testimonials?: SquadTestimonial[]; // Member testimonials
   faqs?: SquadFaq[]; // Frequently asked questions
   showMemberCount?: boolean; // Whether to show member count on landing page
+  landingPageCoverImageUrl?: string; // Hero cover image for landing page
 }
 
 // Landing page sub-types for Squad

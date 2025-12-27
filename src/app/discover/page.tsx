@@ -9,16 +9,20 @@ import {
   CourseCard, 
   ProgramCard,
   CategoryPills, 
+  ProgramTypePills,
   TrendingItem, 
   RecommendedCard,
   SectionHeader,
   ArticleCard,
+  SquadCard,
 } from '@/components/discover';
+import type { ProgramType } from '@/components/discover';
 
 export default function DiscoverPage() {
-  const { upcomingEvents, pastEvents, courses, articles, categories, trending, recommended, groupPrograms, individualPrograms, enrollmentConstraints, loading } = useDiscover();
+  const { upcomingEvents, pastEvents, courses, articles, categories, trending, recommended, groupPrograms, individualPrograms, enrollmentConstraints, publicSquads, loading } = useDiscover();
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedProgramType, setSelectedProgramType] = useState<ProgramType>('group');
 
   // Filter out programs where user is already enrolled
   const availableGroupPrograms = useMemo(() => {
@@ -155,56 +159,81 @@ export default function DiscoverPage() {
         </h1>
       </section>
 
-      {/* 1. Group Programs - TOP PRIORITY - Only show when no category is selected */}
-      {!selectedCategory && availableGroupPrograms.length > 0 && (
+      {/* 1. Programs Section with Pill Tabs - Only show when no category is selected */}
+      {!selectedCategory && (availableGroupPrograms.length > 0 || availableIndividualPrograms.length > 0) && (
         <section className="px-4 py-5 overflow-hidden">
           <div className="flex flex-col gap-4">
+            {/* Section Header */}
             <div className="flex items-center justify-between">
-              <SectionHeader title="Group Programs" />
-              {!enrollmentConstraints.canEnrollInGroup && (
+              <SectionHeader title="Programs" />
+              {selectedProgramType === 'group' && !enrollmentConstraints.canEnrollInGroup && (
                 <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-full">
                   Active program in progress
                 </span>
               )}
-            </div>
-            
-            {/* Horizontal scrollable list */}
-            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-              {availableGroupPrograms.map((program) => (
-                <ProgramCard key={program.id} program={program} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* 2. 1:1 Programs - Only show when no category is selected */}
-      {!selectedCategory && availableIndividualPrograms.length > 0 && (
-        <section className="px-4 py-5 overflow-hidden">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <SectionHeader title="1:1 Coaching Programs" />
-              {!enrollmentConstraints.canEnrollInIndividual && (
+              {selectedProgramType === 'individual' && !enrollmentConstraints.canEnrollInIndividual && (
                 <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-full">
                   Active coaching in progress
                 </span>
               )}
             </div>
+
+            {/* Pill Tabs */}
+            <ProgramTypePills
+              selectedType={selectedProgramType}
+              onSelect={setSelectedProgramType}
+              groupCount={availableGroupPrograms.length}
+              individualCount={availableIndividualPrograms.length}
+            />
+            
+            {/* Horizontal scrollable list based on selected type */}
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+              {selectedProgramType === 'group' ? (
+                availableGroupPrograms.length > 0 ? (
+                  availableGroupPrograms.map((program) => (
+                    <ProgramCard key={program.id} program={program} />
+                  ))
+                ) : (
+                  <p className="text-text-muted text-sm font-sans py-4">
+                    No group programs available at this time.
+                  </p>
+                )
+              ) : (
+                availableIndividualPrograms.length > 0 ? (
+                  availableIndividualPrograms.map((program) => (
+                    <ProgramCard key={program.id} program={program} />
+                  ))
+                ) : (
+                  <p className="text-text-muted text-sm font-sans py-4">
+                    No 1:1 coaching programs available at this time.
+                  </p>
+                )
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 2. Public Squads Section - Only show when no category is selected */}
+      {!selectedCategory && publicSquads.length > 0 && (
+        <section className="px-4 py-5 overflow-hidden">
+          <div className="flex flex-col gap-4">
+            <SectionHeader title="Public Squads" />
             
             {/* Horizontal scrollable list */}
             <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-              {availableIndividualPrograms.map((program) => (
-                <ProgramCard key={program.id} program={program} />
+              {publicSquads.map((squad) => (
+                <SquadCard key={squad.id} squad={squad} />
               ))}
             </div>
           </div>
         </section>
       )}
 
-      {/* 3. Browse by Category */}
+      {/* 3. Content (Browse by Category) */}
       <section className="px-4 py-5">
         <div className="flex flex-col gap-4">
-          <SectionHeader title="Browse by category" />
+          <SectionHeader title="Content" />
           <CategoryPills 
             categories={categories} 
             selectedCategory={selectedCategory}
