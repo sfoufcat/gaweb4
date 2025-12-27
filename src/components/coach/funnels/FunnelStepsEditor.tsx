@@ -299,6 +299,19 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
     .sort((a, b) => a.order - b.order);
 
   const handleReorder = async (reorderedSteps: FunnelStep[]) => {
+    // Validate upsell/downsell positioning - they must stay after payment step
+    const paymentIndex = reorderedSteps.findIndex(s => s.type === 'payment');
+    if (paymentIndex !== -1) {
+      for (let i = 0; i < reorderedSteps.length; i++) {
+        const step = reorderedSteps[i];
+        if ((step.type === 'upsell' || step.type === 'downsell') && i <= paymentIndex) {
+          // Upsell/downsell was moved before payment - reject the reorder
+          // Reset to current order
+          return;
+        }
+      }
+    }
+    
     // Save the full reordered list directly - all steps can be rearranged freely
     const stepsWithOrder = reorderedSteps.map((step, index) => ({
       id: step.id,
@@ -627,13 +640,15 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
                     const isAllowed = canUseFunnelStep(coachTier, type);
                     const requiredTier = !isAllowed ? 'pro' : null;
                     
-                    // Check upsell/downsell limits
+                    // Check upsell/downsell limits and requirements
                     const existingUpsells = steps.filter(s => s.type === 'upsell').length;
                     const existingDownsells = steps.filter(s => s.type === 'downsell').length;
+                    const hasPaymentStep = steps.some(s => s.type === 'payment');
                     const isMaxUpsells = type === 'upsell' && existingUpsells >= MAX_UPSELLS;
                     const isMaxDownsells = type === 'downsell' && existingDownsells >= MAX_DOWNSELLS;
                     const needsUpsellFirst = type === 'downsell' && existingUpsells === 0;
-                    const isLimitReached = isMaxUpsells || isMaxDownsells || needsUpsellFirst;
+                    const needsPaymentStep = (type === 'upsell' || type === 'downsell') && !hasPaymentStep;
+                    const isLimitReached = isMaxUpsells || isMaxDownsells || needsUpsellFirst || needsPaymentStep;
                     
                     return (
                       <button
@@ -665,6 +680,11 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
                         {needsUpsellFirst && (
                           <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-amber-100 rounded text-[10px] font-medium text-amber-600">
                             Add upsell first
+                          </div>
+                        )}
+                        {needsPaymentStep && (
+                          <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-blue-100 rounded text-[10px] font-medium text-blue-600">
+                            Payment required
                           </div>
                         )}
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${info.color} ${!isAllowed || isLimitReached ? 'opacity-50' : ''}`}>

@@ -1140,6 +1140,7 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
   const [isLoadingTracks, setIsLoadingTracks] = React.useState(false);
   const [previewAudio, setPreviewAudio] = React.useState<HTMLAudioElement | null>(null);
   const [playingTrackId, setPlayingTrackId] = React.useState<string | null>(null);
+  const [isMusicDrawerOpen, setIsMusicDrawerOpen] = React.useState(false);
   
   // Fetch music tracks on mount
   React.useEffect(() => {
@@ -1210,7 +1211,16 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
       setPlayingTrackId(null);
     }
     onChange({ ...config, celebrationSound: trackId || undefined });
+    // Close drawer after selection
+    setIsMusicDrawerOpen(false);
   };
+  
+  // Get selected track name for display
+  const selectedTrackName = React.useMemo(() => {
+    if (!config.celebrationSound) return 'None';
+    const track = tracks.find(t => t.id === config.celebrationSound);
+    return track?.name || 'None';
+  }, [config.celebrationSound, tracks]);
   
   return (
     <div className="space-y-6">
@@ -1271,57 +1281,91 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
               {isLoadingTracks ? (
                 <p className="text-sm text-text-muted dark:text-[#b2b6c2]">Loading tracks...</p>
               ) : (
-                <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-lg divide-y divide-[#e1ddd8] dark:divide-[#262b35] max-h-[240px] overflow-y-auto">
-                  {/* None option */}
-                  <label className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-[#faf8f6] dark:hover:bg-[#1a1f28] transition-colors">
-                    <input
-                      type="radio"
-                      name="celebrationSound"
-                      value=""
-                      checked={!config.celebrationSound}
-                      onChange={() => handleTrackChange('')}
-                      className="w-4 h-4 accent-[#a07855]"
-                    />
-                    <span className="text-sm text-text-primary dark:text-[#f5f5f8] flex-1">None</span>
-                  </label>
-                  {/* Track options */}
-                  {tracks.map(track => (
-                    <label 
-                      key={track.id} 
-                      className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-[#faf8f6] dark:hover:bg-[#1a1f28] transition-colors"
+                <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-lg overflow-hidden">
+                  {/* Drawer Header - shows selected track */}
+                  <button
+                    type="button"
+                    onClick={() => setIsMusicDrawerOpen(!isMusicDrawerOpen)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 bg-white dark:bg-[#11141b] hover:bg-[#faf8f6] dark:hover:bg-[#1a1f28] transition-colors"
+                  >
+                    <svg className="w-4 h-4 text-[#a07855] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                    </svg>
+                    <span className="text-sm text-text-primary dark:text-[#f5f5f8] flex-1 text-left">{selectedTrackName}</span>
+                    <svg 
+                      className={`w-4 h-4 text-text-muted dark:text-[#b2b6c2] transition-transform duration-200 ${isMusicDrawerOpen ? 'rotate-180' : ''}`} 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor" 
+                      strokeWidth={2}
                     >
-                      <input
-                        type="radio"
-                        name="celebrationSound"
-                        value={track.id}
-                        checked={config.celebrationSound === track.id}
-                        onChange={() => handleTrackChange(track.id)}
-                        className="w-4 h-4 accent-[#a07855]"
-                      />
-                      <span className="text-sm text-text-primary dark:text-[#f5f5f8] flex-1">{track.name}</span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handlePreviewToggle(track.id);
-                        }}
-                        className="p-1.5 rounded-full hover:bg-[#a07855]/10 transition-colors"
-                        title={playingTrackId === track.id ? 'Stop' : 'Preview'}
-                      >
-                        {playingTrackId === track.id ? (
-                          <svg className="w-4 h-4 text-[#a07855]" fill="currentColor" viewBox="0 0 24 24">
-                            <rect x="6" y="4" width="4" height="16" />
-                            <rect x="14" y="4" width="4" height="16" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4 text-text-muted dark:text-[#b2b6c2]" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M8 5v14l11-7z" />
-                          </svg>
-                        )}
-                      </button>
-                    </label>
-                  ))}
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  
+                  {/* Drawer Content - track options */}
+                  <motion.div
+                    initial={false}
+                    animate={{ 
+                      height: isMusicDrawerOpen ? 'auto' : 0,
+                      opacity: isMusicDrawerOpen ? 1 : 0
+                    }}
+                    transition={{ duration: 0.2, ease: 'easeInOut' }}
+                    className="overflow-hidden"
+                  >
+                    <div className="border-t border-[#e1ddd8] dark:border-[#262b35] divide-y divide-[#e1ddd8] dark:divide-[#262b35] max-h-[200px] overflow-y-auto">
+                      {/* None option */}
+                      <label className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-[#faf8f6] dark:hover:bg-[#1a1f28] transition-colors ${!config.celebrationSound ? 'bg-[#a07855]/5' : ''}`}>
+                        <input
+                          type="radio"
+                          name="celebrationSound"
+                          value=""
+                          checked={!config.celebrationSound}
+                          onChange={() => handleTrackChange('')}
+                          className="w-4 h-4 accent-[#a07855]"
+                        />
+                        <span className="text-sm text-text-primary dark:text-[#f5f5f8] flex-1">None</span>
+                      </label>
+                      {/* Track options */}
+                      {tracks.map(track => (
+                        <label 
+                          key={track.id} 
+                          className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-[#faf8f6] dark:hover:bg-[#1a1f28] transition-colors ${config.celebrationSound === track.id ? 'bg-[#a07855]/5' : ''}`}
+                        >
+                          <input
+                            type="radio"
+                            name="celebrationSound"
+                            value={track.id}
+                            checked={config.celebrationSound === track.id}
+                            onChange={() => handleTrackChange(track.id)}
+                            className="w-4 h-4 accent-[#a07855]"
+                          />
+                          <span className="text-sm text-text-primary dark:text-[#f5f5f8] flex-1">{track.name}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handlePreviewToggle(track.id);
+                            }}
+                            className="p-1.5 rounded-full hover:bg-[#a07855]/10 transition-colors"
+                            title={playingTrackId === track.id ? 'Stop' : 'Preview'}
+                          >
+                            {playingTrackId === track.id ? (
+                              <svg className="w-4 h-4 text-[#a07855]" fill="currentColor" viewBox="0 0 24 24">
+                                <rect x="6" y="4" width="4" height="16" />
+                                <rect x="14" y="4" width="4" height="16" />
+                              </svg>
+                            ) : (
+                              <svg className="w-4 h-4 text-text-muted dark:text-[#b2b6c2]" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z" />
+                              </svg>
+                            )}
+                          </button>
+                        </label>
+                      ))}
+                    </div>
+                  </motion.div>
                 </div>
               )}
               <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1.5">
@@ -1511,6 +1555,7 @@ function UpsellDownsellConfigForm({
 }: UpsellDownsellConfigEditorProps & { type: 'upsell' | 'downsell' }): React.JSX.Element {
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [products, setProducts] = useState<Array<{ id: string; name: string; imageUrl?: string; priceInCents: number }>>([]);
+  const [initialFetchDone, setInitialFetchDone] = useState(false);
   const [isCreatingPrice, setIsCreatingPrice] = useState(false);
   
   // Create strongly typed local config to prevent 'unknown' type inference issues
@@ -1573,7 +1618,7 @@ function UpsellDownsellConfigForm({
   
   const finalPriceInCents = calculateFinalPrice();
   
-  // Fetch products when type changes
+  // Fetch products when type changes or on initial mount
   React.useEffect(() => {
     const fetchProducts = async () => {
       setIsLoadingProducts(true);
@@ -1601,10 +1646,42 @@ function UpsellDownsellConfigForm({
         console.error('Failed to fetch products:', err);
       } finally {
         setIsLoadingProducts(false);
+        setInitialFetchDone(true);
       }
     };
+    
+    // Always fetch on mount or when productType changes
     fetchProducts();
   }, [productType]);
+  
+  // Ensure we fetch on mount even if productType hasn't changed
+  React.useEffect(() => {
+    if (!initialFetchDone && products.length === 0) {
+      const fetchInitialProducts = async () => {
+        setIsLoadingProducts(true);
+        try {
+          const endpoint = '/api/coach/programs'; // Default to programs
+          const response = await fetch(endpoint);
+          if (response.ok) {
+            const data = await response.json();
+            const items = data.programs?.map((p: { id: string; name: string; coverImageUrl?: string; priceInCents?: number }) => ({
+              id: p.id,
+              name: p.name,
+              imageUrl: p.coverImageUrl,
+              priceInCents: p.priceInCents || 0,
+            }));
+            setProducts(items || []);
+          }
+        } catch (err) {
+          console.error('Failed to fetch initial products:', err);
+        } finally {
+          setIsLoadingProducts(false);
+          setInitialFetchDone(true);
+        }
+      };
+      fetchInitialProducts();
+    }
+  }, [initialFetchDone, products.length]);
   
   // Auto-populate product details when product is selected
   const handleProductChange = (productId: string) => {

@@ -28,6 +28,12 @@ service firebase.storage {
       allow write: if false; // Only manual uploads via console
     }
     
+    // Music files for celebration sounds - public read only
+    match /music/{allPaths=**} {
+      allow read: if true;
+      allow write: if false; // Only manual uploads via console
+    }
+    
     // Default: deny all other access
     match /{allPaths=**} {
       allow read, write: if false;
