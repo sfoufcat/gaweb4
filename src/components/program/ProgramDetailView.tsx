@@ -113,11 +113,35 @@ export function ProgramDetailView({
     });
   };
 
-  // Calculate which days to show (today, tomorrow, day after)
+  // Check if program hasn't started yet (pre-start state)
+  const isPreStart = progress.currentDay < 1;
+  
+  // Calculate which days to show (today, tomorrow, day after OR preview of Day 1-3 if pre-start)
   const threeDayFocus = useMemo(() => {
     const today = new Date();
     const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ...
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    // If program hasn't started, show Day 1, 2, 3 as a preview
+    if (isPreStart) {
+      return [
+        {
+          dayIndex: 1,
+          label: 'Day 1',
+          tasks: days.find(d => d.dayIndex === 1)?.tasks || [],
+        },
+        {
+          dayIndex: 2,
+          label: 'Day 2',
+          tasks: days.find(d => d.dayIndex === 2)?.tasks || [],
+        },
+        {
+          dayIndex: 3,
+          label: 'Day 3',
+          tasks: days.find(d => d.dayIndex === 3)?.tasks || [],
+        },
+      ];
+    }
     
     const currentDayIndex = progress.currentDay;
     
@@ -138,7 +162,7 @@ export function ProgramDetailView({
         tasks: days.find(d => d.dayIndex === currentDayIndex + 2)?.tasks || [],
       },
     ];
-  }, [progress.currentDay, days]);
+  }, [progress.currentDay, days, isPreStart]);
 
   // Check if any days have tasks
   const hasAnyTasks = threeDayFocus.some(day => day.tasks.length > 0);
@@ -474,7 +498,7 @@ export function ProgramDetailView({
       {hasAnyTasks && (
         <div className="space-y-3">
           <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
-            3 day focus
+            {isPreStart ? 'Program preview' : '3 day focus'}
           </h2>
 
           {/* Single connected accordion container */}

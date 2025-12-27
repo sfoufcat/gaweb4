@@ -70,8 +70,12 @@ export function SquadInviteCards({
   // Check if squad is at capacity
   const isAtCapacity = memberCount >= MAX_SQUAD_MEMBERS;
   
-  // Check if referrals are explicitly disabled for this program
-  const referralsExplicitlyDisabled = referralConfig && referralConfig.enabled === false;
+  // Determine if invite card should be shown
+  // - For program squads: Opt-in - show ONLY if referrals are explicitly enabled
+  // - For standalone squads: Opt-out - show UNLESS referrals are explicitly disabled
+  const shouldShowInviteCard = isProgramSquad
+    ? referralConfig?.enabled === true  // Program squads: must be explicitly enabled
+    : referralConfig?.enabled !== false; // Standalone squads: show unless explicitly disabled
   const [isLeaving, setIsLeaving] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
@@ -145,8 +149,8 @@ export function SquadInviteCards({
 
   return (
     <div className="space-y-4 mt-6">
-      {/* Card 1: Invite Friends - hide when squad is at capacity or referrals are disabled */}
-      {!isAtCapacity && !referralsExplicitlyDisabled && (
+      {/* Card 1: Invite Friends - hide when squad is at capacity or invites not allowed */}
+      {!isAtCapacity && shouldShowInviteCard && (
         <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4">
           <div className="p-4 space-y-3">
             <h3 className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] leading-[1.3] tracking-[-1px]">
