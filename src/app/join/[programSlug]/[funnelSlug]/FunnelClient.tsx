@@ -630,7 +630,7 @@ export default function FunnelClient({
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
 
   // Check if current step is a landing page (needs full-page rendering)
-  const isLandingPage = currentStep?.type === 'landing_page';
+  const isLandingPage = steps[currentStepIndex]?.type === 'landing_page';
 
   // CSS variable style for dynamic theming
   const themeStyle = {
