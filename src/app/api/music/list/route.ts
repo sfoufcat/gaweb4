@@ -92,13 +92,12 @@ export async function GET() {
         const filename = file.name.replace(/^music\//, '');
         const displayName = parseDisplayName(filename);
         
-        // URL-encode the path for special characters (spaces, parentheses, etc.)
-        const encodedPath = file.name.split('/').map(part => encodeURIComponent(part)).join('/');
-        
+        // Firebase Storage public URL format requires full path URL-encoded as single segment
+        // Format: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{encoded-path}?alt=media
         return {
           id: filename,
           name: displayName,
-          url: `https://storage.googleapis.com/${bucketName}/${encodedPath}`,
+          url: `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(file.name)}?alt=media`,
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));

@@ -261,6 +261,31 @@ export async function DELETE(
     // Delete the membership
     await memberDoc.ref.delete();
 
+    // Update user document to remove squad references
+    // This ensures /api/squad/me doesn't return stale squad data
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    if (userDoc.exists) {
+      const userData = userDoc.data();
+      const updateData: Record<string, unknown> = {
+        squadIds: FieldValue.arrayRemove(squadId),
+        updatedAt: new Date().toISOString(),
+      };
+      
+      // Clear legacy fields if they match the removed squadId
+      if (userData?.squadId === squadId) {
+        updateData.squadId = null;
+      }
+      if (userData?.standardSquadId === squadId) {
+        updateData.standardSquadId = null;
+      }
+      if (userData?.premiumSquadId === squadId) {
+        updateData.premiumSquadId = null;
+      }
+      
+      await adminDb.collection('users').doc(userId).update(updateData);
+      console.log(`[ADMIN_SQUAD_MEMBERS] Updated user ${userId} document to remove squad ${squadId} references`);
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('[ADMIN_SQUAD_MEMBERS_DELETE_ERROR]', error);

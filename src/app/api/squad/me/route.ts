@@ -54,12 +54,14 @@ interface SquadData {
  * Helper function to fetch squad data and members
  * 
  * @param squadId - The squad ID to fetch
+ * @param currentUserId - The current user's ID to verify membership
  * @param userOrgId - User's current organization ID for multi-tenancy filtering
  * @param includeStats - Whether to include alignment stats
  * @param clerk - Clerk client instance
  */
 async function fetchSquadData(
   squadId: string | null | undefined,
+  currentUserId: string,
   userOrgId: string | null,
   includeStats: boolean,
   clerk: Awaited<ReturnType<typeof clerkClient>>
@@ -76,6 +78,20 @@ async function fetchSquadData(
   }
 
   const squadData = squadDoc.data();
+  
+  // MEMBERSHIP VERIFICATION (defense in depth):
+  // Verify user is actually a member of this squad via squadMembers collection.
+  // This prevents stale data if user document wasn't properly updated when removed.
+  const membershipCheck = await adminDb.collection('squadMembers')
+    .where('squadId', '==', squadId)
+    .where('userId', '==', currentUserId)
+    .limit(1)
+    .get();
+  
+  if (membershipCheck.empty) {
+    console.log(`[SQUAD_ME] User ${currentUserId} not in squadMembers for squad ${squadId} - filtering out stale reference`);
+    return { squad: null, members: [], stats: null };
+  }
   
   // MULTI-TENANCY CHECK: Only return squad if it belongs to user's current organization
   const squadOrgId = squadData?.organizationId || null;
@@ -313,9 +329,9 @@ export async function GET(request: Request) {
     // Initialize Clerk client once for all squad fetches
     const clerk = await clerkClient();
 
-    // Fetch all squads in parallel (with org filtering)
+    // Fetch all squads in parallel (with org filtering and membership verification)
     const squadDataPromises = squadIds.map(squadId => 
-      fetchSquadData(squadId, userOrgId, includeStats, clerk)
+      fetchSquadData(squadId, userId, userOrgId, includeStats, clerk)
     );
     const allSquadData = await Promise.all(squadDataPromises);
     

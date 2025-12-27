@@ -203,6 +203,7 @@ export function useFeed() {
   }, [mutate]);
 
   // Add new post to feed (optimistic)
+  // Inserts new post AFTER any pinned posts but before regular posts
   const addPost = useCallback((post: FeedPost) => {
     mutate((currentData) => {
       if (!currentData || currentData.length === 0) return currentData;
@@ -210,10 +211,25 @@ export function useFeed() {
       const [firstPage, ...restPages] = currentData;
       if (!firstPage) return currentData;
       
+      const existingPosts = firstPage.posts || [];
+      
+      // Find the index of the first non-pinned post
+      const firstNonPinnedIndex = existingPosts.findIndex(p => !p.pinnedToFeed);
+      
+      // If all posts are pinned or no posts exist, append at the end of pinned section
+      // Otherwise insert right after the pinned posts
+      const insertIndex = firstNonPinnedIndex === -1 ? existingPosts.length : firstNonPinnedIndex;
+      
+      const newPosts = [
+        ...existingPosts.slice(0, insertIndex),
+        post,
+        ...existingPosts.slice(insertIndex),
+      ];
+      
       return [
         {
           ...firstPage,
-          posts: [post, ...(firstPage.posts || [])],
+          posts: newPosts,
         },
         ...restPages,
       ];
@@ -233,6 +249,7 @@ export function useFeed() {
   }, [mutate]);
 
   // Optimistic update for post settings (coach-only)
+  // When pinnedToFeed changes, re-sort posts so pinned appear at top
   const updatePostSettings = useCallback((postId: string, settings: {
     pinnedToFeed?: boolean;
     pinnedToSidebar?: boolean;
@@ -243,7 +260,8 @@ export function useFeed() {
     mutate((currentData) => {
       if (!currentData) return currentData;
       
-      return currentData.map((page) => ({
+      // First, update the post settings
+      const updatedData = currentData.map((page) => ({
         ...page,
         posts: (page.posts || []).map((post) =>
           post.id === postId
@@ -251,6 +269,31 @@ export function useFeed() {
             : post
         ),
       }));
+      
+      // If pinnedToFeed setting changed, re-sort the first page
+      // so pinned posts appear at the top
+      if (settings.pinnedToFeed !== undefined && updatedData.length > 0) {
+        const [firstPage, ...restPages] = updatedData;
+        if (firstPage?.posts) {
+          const sortedPosts = [...firstPage.posts].sort((a, b) => {
+            // Pinned posts come first
+            if (a.pinnedToFeed && !b.pinnedToFeed) return -1;
+            if (!a.pinnedToFeed && b.pinnedToFeed) return 1;
+            // Among pinned posts, sort by pinnedAt descending
+            if (a.pinnedToFeed && b.pinnedToFeed) {
+              const aTime = a.pinnedAt ? new Date(a.pinnedAt).getTime() : 0;
+              const bTime = b.pinnedAt ? new Date(b.pinnedAt).getTime() : 0;
+              return bTime - aTime;
+            }
+            // Among regular posts, maintain original order (by createdAt desc)
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          });
+          
+          return [{ ...firstPage, posts: sortedPosts }, ...restPages];
+        }
+      }
+      
+      return updatedData;
     }, false);
   }, [mutate]);
 

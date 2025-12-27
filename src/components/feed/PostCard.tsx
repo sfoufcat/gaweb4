@@ -259,12 +259,93 @@ export function PostCard({
   
   return (
     <article className={isEmbedded ? '' : 'bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden hover-lift'}>
-      {/* Pinned indicator */}
-      {post.pinnedToFeed && (
+      {/* Pinned indicator + Menu (combined row when hideMetadata is true) */}
+      {post.pinnedToFeed && post.hideMetadata && (
+        <div className={`flex items-center justify-between ${isEmbedded ? 'pb-2' : 'px-4 pt-3 pb-0'}`}>
+          <div className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color: accentColor }}>
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M16 3a1 1 0 011 1v3.586l1.707 1.707a1 1 0 010 1.414l-4 4a1 1 0 01-.708.293H11v5a1 1 0 11-2 0v-5H6.001a1 1 0 01-.708-.293l-4-4a1 1 0 010-1.414L3 7.586V4a1 1 0 112 0v2.586l.293-.293a1 1 0 011.414 0L8 7.586V4a1 1 0 011-1h7z" />
+            </svg>
+            Pinned
+          </div>
+          <div className="relative overflow-visible">
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-2 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+            >
+              <svg className="w-5 h-5 text-[#8a857f]" fill="currentColor" viewBox="0 0 24 24">
+                <circle cx="12" cy="6" r="1.5" />
+                <circle cx="12" cy="12" r="1.5" />
+                <circle cx="12" cy="18" r="1.5" />
+              </svg>
+            </button>
+
+            {/* Dropdown menu */}
+            {showMenu && (
+              <>
+                <div
+                  className="fixed inset-0 z-50"
+                  onClick={() => setShowMenu(false)}
+                />
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-[#1a1f2a] rounded-xl shadow-lg border border-[#e8e4df] dark:border-[#262b35] z-[100] overflow-hidden">
+                  {isCoach && (
+                    <button
+                      onClick={handleSettingsClick}
+                      className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Post Settings
+                    </button>
+                  )}
+                  {isOwnPost ? (
+                    <>
+                      {!post.isRepost && (
+                        <button
+                          onClick={handleEditClick}
+                          className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          Edit post
+                        </button>
+                      )}
+                      <button
+                        onClick={handleDeleteClick}
+                        className="w-full px-4 py-3 text-left text-[14px] text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Delete post
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={handleReport}
+                      className="w-full px-4 py-3 text-left text-[14px] text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                      </svg>
+                      Report post
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Pinned indicator only (when metadata is visible) */}
+      {post.pinnedToFeed && !post.hideMetadata && (
         <div className={`flex items-center gap-1.5 text-[12px] font-medium ${isEmbedded ? 'pb-2' : 'px-4 pt-3 pb-0'}`} style={{ color: accentColor }}>
           <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" />
-            <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+            <path d="M16 3a1 1 0 011 1v3.586l1.707 1.707a1 1 0 010 1.414l-4 4a1 1 0 01-.708.293H11v5a1 1 0 11-2 0v-5H6.001a1 1 0 01-.708-.293l-4-4a1 1 0 010-1.414L3 7.586V4a1 1 0 112 0v2.586l.293-.293a1 1 0 011.414 0L8 7.586V4a1 1 0 011-1h7z" />
           </svg>
           Pinned
         </div>
@@ -387,8 +468,8 @@ export function PostCard({
         </div>
       )}
 
-      {/* Menu button when metadata is hidden (still allow menu access) */}
-      {post.hideMetadata && (
+      {/* Menu button when metadata is hidden but NOT pinned (pinned+hidden case handled above) */}
+      {post.hideMetadata && !post.pinnedToFeed && (
         <div className={`flex justify-end ${isEmbedded ? 'pb-2' : 'px-4 pt-3 pb-0'}`}>
           <div className="relative overflow-visible">
             <button
