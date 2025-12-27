@@ -65,6 +65,12 @@ export async function GET() {
         return {
           id: doc.id,
           ...data,
+          // Explicitly include properties needed for filtering
+          scope: data.scope,
+          squadId: data.squadId,
+          programId: data.programId,
+          programIds: data.programIds,
+          // Override timestamp fields
           date: eventDate,
           startTime,
           endTime,
