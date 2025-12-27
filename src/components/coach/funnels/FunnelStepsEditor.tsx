@@ -304,6 +304,13 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
     .sort((a, b) => a.order - b.order);
 
   const handleReorder = async (reorderedSteps: FunnelStep[]) => {
+    // Validate success must remain last - no steps can be after it
+    const successIndex = reorderedSteps.findIndex(s => s.type === 'success');
+    if (successIndex !== -1 && successIndex !== reorderedSteps.length - 1) {
+      // Success step is not last - reject the reorder
+      return;
+    }
+    
     // Validate upsell/downsell positioning - they must stay after payment step
     const paymentIndex = reorderedSteps.findIndex(s => s.type === 'payment');
     if (paymentIndex !== -1) {
@@ -378,8 +385,13 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
       // Default config based on type
       const defaultConfig = getDefaultConfigForType(type);
       
-      // For upsell/downsell, insert after payment step
-      let insertOrder = sortableSteps.length;
+      // Find success step - new steps must be inserted before it
+      const successIndex = sortableSteps.findIndex(s => s.type === 'success');
+      
+      // Default: insert before success step (or at end if no success step)
+      let insertOrder = successIndex !== -1 ? successIndex : sortableSteps.length;
+      
+      // For upsell/downsell, insert after payment step (but still before success)
       if (type === 'upsell' || type === 'downsell') {
         const paymentIndex = sortableSteps.findIndex(s => s.type === 'payment');
         if (paymentIndex !== -1) {
@@ -388,7 +400,9 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
           const lastUpsellDownsellIndex = afterPaymentSteps.findLastIndex(
             s => s.type === 'upsell' || s.type === 'downsell'
           );
-          insertOrder = paymentIndex + 1 + (lastUpsellDownsellIndex !== -1 ? lastUpsellDownsellIndex + 1 : 0);
+          const calculatedOrder = paymentIndex + 1 + (lastUpsellDownsellIndex !== -1 ? lastUpsellDownsellIndex + 1 : 0);
+          // Ensure it's still before success
+          insertOrder = successIndex !== -1 ? Math.min(calculatedOrder, successIndex) : calculatedOrder;
         }
       }
 

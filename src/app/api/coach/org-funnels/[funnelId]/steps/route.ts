@@ -80,10 +80,28 @@ export async function POST(
       return NextResponse.json({ error: 'Step type is required' }, { status: 400 });
     }
 
-    // Get current step count for order
+    // Get current steps
     const stepsSnapshot = await funnelRef.collection('steps').get();
     const currentCount = stepsSnapshot.size;
-    const order = requestedOrder !== undefined ? requestedOrder : currentCount;
+    
+    // Find success step - no steps can be added after it
+    const successStep = stepsSnapshot.docs.find(doc => (doc.data() as FunnelStep).type === 'success');
+    const successOrder = successStep ? (successStep.data() as FunnelStep).order : null;
+    
+    // Calculate order - default to before success step if it exists
+    let order: number;
+    if (requestedOrder !== undefined) {
+      order = requestedOrder;
+    } else if (successOrder !== null) {
+      order = successOrder; // Insert before success
+    } else {
+      order = currentCount; // Append to end
+    }
+    
+    // Validate: cannot add steps at or after success step position (except if it's success itself being added)
+    if (successOrder !== null && type !== 'success' && order >= successOrder) {
+      return NextResponse.json({ error: 'Cannot add steps after the Success step' }, { status: 400 });
+    }
 
     // If inserting at a specific position, shift existing steps
     if (requestedOrder !== undefined && requestedOrder < currentCount) {
@@ -159,6 +177,26 @@ export async function PUT(
 
     if (!Array.isArray(steps)) {
       return NextResponse.json({ error: 'Steps array is required' }, { status: 400 });
+    }
+
+    // Get current steps to find success step
+    const existingStepsSnapshot = await funnelRef.collection('steps').get();
+    const existingStepsMap = new Map<string, FunnelStep>();
+    existingStepsSnapshot.docs.forEach(doc => {
+      existingStepsMap.set(doc.id, { id: doc.id, ...doc.data() } as FunnelStep);
+    });
+    
+    // Validate: success step must remain last after reordering
+    const successStepEntry = steps.find((s: { id: string; order: number }) => {
+      const existing = existingStepsMap.get(s.id);
+      return existing?.type === 'success';
+    });
+    
+    if (successStepEntry) {
+      const maxOrder = Math.max(...steps.map((s: { id: string; order: number }) => s.order));
+      if (successStepEntry.order !== maxOrder) {
+        return NextResponse.json({ error: 'Success step must remain the last step' }, { status: 400 });
+      }
     }
 
     const now = new Date().toISOString();

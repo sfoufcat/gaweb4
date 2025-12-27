@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { syncAccessStatus } from '@/lib/user-access';
+import { getStreamServerClient } from '@/lib/stream-server';
+import { addUserToOrganization } from '@/lib/clerk-organizations';
+import type { Squad } from '@/types';
 
 /**
  * POST /api/funnel/complete-squad
@@ -40,7 +43,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Squad not found' }, { status: 404 });
     }
 
-    const squad = squadDoc.data();
+    const squad = squadDoc.data() as Squad;
     if (squad?.organizationId !== organizationId) {
       return NextResponse.json(
         { error: 'Squad does not belong to this organization' },
@@ -63,6 +66,10 @@ export async function POST(req: Request) {
     }
 
     const now = new Date().toISOString();
+    
+    // Get user info from Clerk
+    const clerk = await clerkClient();
+    const clerkUser = await clerk.users.getUser(userId);
 
     // Check for existing org membership
     const membershipQuery = await adminDb
@@ -115,6 +122,106 @@ export async function POST(req: Request) {
       });
 
       console.log(`[COMPLETE_SQUAD] Updated membership ${membershipDoc.id} for user ${userId} with squad ${squadId}`);
+    }
+
+    // ============================================
+    // ADD USER TO SQUAD (memberIds, squadMembers, etc.)
+    // ============================================
+    
+    // Get user's existing squad memberships
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    const userData = userDoc.exists ? userDoc.data() : null;
+    
+    // Get current squad IDs (support new squadIds array, legacy fields)
+    const currentSquadIds: string[] = userData?.squadIds || [];
+    
+    // Fallback for legacy fields
+    if (currentSquadIds.length === 0) {
+      if (userData?.standardSquadId) currentSquadIds.push(userData.standardSquadId);
+      if (userData?.premiumSquadId && userData.premiumSquadId !== userData.standardSquadId) {
+        currentSquadIds.push(userData.premiumSquadId);
+      }
+      if (userData?.squadId && !currentSquadIds.includes(userData.squadId)) {
+        currentSquadIds.push(userData.squadId);
+      }
+    }
+
+    // Check if user is already a member of this squad
+    const memberIds = squad.memberIds || [];
+    const alreadyMember = memberIds.includes(userId) || currentSquadIds.includes(squadId);
+
+    if (!alreadyMember) {
+      // Update squad memberIds
+      await adminDb.collection('squads').doc(squadId).update({
+        memberIds: [...memberIds, userId],
+        updatedAt: now,
+      });
+      console.log(`[COMPLETE_SQUAD] Added user ${userId} to squad ${squadId} memberIds`);
+
+      // Create squadMember document
+      await adminDb.collection('squadMembers').add({
+        squadId,
+        userId,
+        roleInSquad: 'member',
+        firstName: clerkUser.firstName || '',
+        lastName: clerkUser.lastName || '',
+        imageUrl: clerkUser.imageUrl || '',
+        createdAt: now,
+        updatedAt: now,
+      });
+      console.log(`[COMPLETE_SQUAD] Created squadMember document for user ${userId} in squad ${squadId}`);
+
+      // Update user's squadIds array
+      const updatedSquadIds = [...currentSquadIds, squadId];
+      await adminDb.collection('users').doc(userId).set({
+        squadIds: updatedSquadIds,
+        // Keep legacy field in sync for backward compatibility
+        squadId,
+        updatedAt: now,
+      }, { merge: true });
+      console.log(`[COMPLETE_SQUAD] Updated user ${userId} squadIds array`);
+
+      // Add user to Stream Chat channel
+      if (squad.chatChannelId) {
+        try {
+          const streamClient = await getStreamServerClient();
+          
+          // Upsert user in Stream
+          await streamClient.upsertUser({
+            id: userId,
+            name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 'User',
+            image: clerkUser.imageUrl,
+          });
+
+          // Add to channel
+          const channel = streamClient.channel('messaging', squad.chatChannelId);
+          await channel.addMembers([userId]);
+
+          // Send join message
+          await channel.sendMessage({
+            text: `${clerkUser.firstName || 'Someone'} has joined the squad!`,
+            user_id: userId,
+            type: 'system',
+          });
+          console.log(`[COMPLETE_SQUAD] Added user ${userId} to Stream Chat channel ${squad.chatChannelId}`);
+        } catch (streamError) {
+          console.error('[COMPLETE_SQUAD] Stream Chat error (non-fatal):', streamError);
+          // Don't fail the request for this
+        }
+      }
+
+      // Add user to Clerk organization
+      if (squad.organizationId) {
+        try {
+          await addUserToOrganization(userId, squad.organizationId, 'org:member');
+          console.log(`[COMPLETE_SQUAD] Added user ${userId} to Clerk organization ${squad.organizationId}`);
+        } catch (orgError) {
+          console.error('[COMPLETE_SQUAD] Clerk organization error (non-fatal):', orgError);
+          // Don't fail the request for this
+        }
+      }
+    } else {
+      console.log(`[COMPLETE_SQUAD] User ${userId} is already a member of squad ${squadId}, skipping squad membership creation`);
     }
 
     // Mark flow session as completed

@@ -95,18 +95,52 @@ export default async function SquadFunnelPage({ params, searchParams }: SquadFun
   const funnelDoc = funnelsSnapshot.docs[0];
   const funnel = { id: funnelDoc.id, ...funnelDoc.data() } as Funnel;
 
-  // Get funnel steps
-  const stepsSnapshot = await adminDb
-    .collection('funnels')
-    .doc(funnel.id)
-    .collection('steps')
-    .orderBy('order', 'asc')
-    .get();
+  // Get funnel steps - try with orderBy first, fallback to getting all steps if query fails
+  let steps: FunnelStep[] = [];
+  
+  try {
+    const stepsSnapshot = await adminDb
+      .collection('funnels')
+      .doc(funnel.id)
+      .collection('steps')
+      .orderBy('order', 'asc')
+      .get();
 
-  const steps: FunnelStep[] = stepsSnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data(),
-  })) as FunnelStep[];
+    steps = stepsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as FunnelStep[];
+  } catch (orderError) {
+    // Fallback: Query without orderBy (handles missing index or missing order field)
+    console.warn(`[SQUAD_FUNNEL] orderBy query failed for funnel ${funnel.id}, fetching all steps:`, orderError);
+    
+    const stepsSnapshot = await adminDb
+      .collection('funnels')
+      .doc(funnel.id)
+      .collection('steps')
+      .get();
+
+    steps = stepsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as FunnelStep[];
+    
+    // Sort client-side by order field if it exists, otherwise by createdAt
+    steps.sort((a, b) => {
+      if (typeof a.order === 'number' && typeof b.order === 'number') {
+        return a.order - b.order;
+      }
+      // Fallback to createdAt if order is missing
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return aTime - bTime;
+    });
+  }
+  
+  // Log warning if steps are empty (helps with debugging)
+  if (steps.length === 0) {
+    console.warn(`[SQUAD_FUNNEL] No steps found for funnel ${funnel.id} (slug: ${funnelSlug})`);
+  }
 
   // Validate invite code if funnel is invite-only
   let validatedInvite: { paymentStatus: string; targetSquadId?: string } | null = null;

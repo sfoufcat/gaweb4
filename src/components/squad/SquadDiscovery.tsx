@@ -1,310 +1,250 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useUser } from '@clerk/nextjs';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Search, Filter, Plus, Key, Users, ChevronDown, Star, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { SquadCard } from './SquadCard';
-import { CreateSquadModal } from './CreateSquadModal';
-import { JoinPrivateSquadModal } from './JoinPrivateSquadModal';
-import type { Squad } from '@/types';
+import { Users, Star, ArrowRight, Sparkles } from 'lucide-react';
+import { SquadDiscoveryCard } from './SquadDiscoveryCard';
+import { useMenuTitles } from '@/contexts/BrandingContext';
 
 /**
  * SquadDiscovery Component
  * 
- * @deprecated Replaced by Program Enrollment flow. Users now get squads automatically
- * when enrolling in a group program. Use `/discover` for program discovery instead.
+ * Displays available squads when user has no squad.
+ * Styled like ProgramDiscovery - shows squads in a grid,
+ * separated by Coached and Community types, with a "Discover more content" link.
  * 
- * Main discovery page for users without a squad.
- * Shows all public squads. Users can create squads or join via invite code.
+ * If no squads are available, shows an empty state with link to programs.
  */
 
-type SortOption = 'most_active' | 'most_members' | 'newest' | 'alphabetical';
-
-interface PublicSquad extends Squad {
-  memberCount: number;
-  memberAvatars: string[];
+interface DiscoverSquad {
+  id: string;
+  name: string;
+  description?: string;
+  avatarUrl?: string;
+  coachId?: string;
+  coachName?: string;
+  coachImageUrl?: string;
+  memberCount?: number;
+  priceInCents?: number;
+  subscriptionEnabled?: boolean;
+  billingInterval?: string;
+  visibility?: string;
 }
 
 export function SquadDiscovery() {
-  const { user } = useUser();
-  const router = useRouter();
+  const { squadLower } = useMenuTitles();
   
-  // State - all squads in a flat list
-  const [squads, setSquads] = useState<PublicSquad[]>([]);
+  const [coachedSquads, setCoachedSquads] = useState<DiscoverSquad[]>([]);
+  const [communitySquads, setCommunitySquads] = useState<DiscoverSquad[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<SortOption>('most_active');
-  const [joiningSquadId, setJoiningSquadId] = useState<string | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showJoinPrivateModal, setShowJoinPrivateModal] = useState(false);
+  const [hasSquads, setHasSquads] = useState(false);
 
-  // Fetch squads
-  const fetchSquads = useCallback(async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (searchQuery) params.set('search', searchQuery);
-      params.set('sort', sortBy);
-      
-      const response = await fetch(`/api/squad/discover?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch squads');
-      
-      const data = await response.json();
-      // Combine all squads into a flat list (API still returns grouped for backward compat)
-      const allSquads = [
-        ...(data.trackSquads || []),
-        ...(data.generalSquads || []),
-        ...(data.otherTrackSquads || []),
-      ];
-      setSquads(allSquads);
-    } catch (err) {
-      console.error('Error fetching squads:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [searchQuery, sortBy]);
-
+  // Fetch available squads
   useEffect(() => {
-    const debounce = setTimeout(fetchSquads, 300);
-    return () => clearTimeout(debounce);
-  }, [fetchSquads]);
-
-  // Join a public squad
-  const handleJoinSquad = async (squadId: string) => {
-    if (!user || joiningSquadId) return;
-    
-    try {
-      setJoiningSquadId(squadId);
-      
-      const response = await fetch('/api/squad/join', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ squadId }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to join squad');
+    const fetchSquads = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/squad/discover');
+        if (!response.ok) throw new Error('Failed to fetch squads');
+        
+        const data = await response.json();
+        
+        // Combine all squads from the API response
+        const allSquads: DiscoverSquad[] = [
+          ...(data.trackSquads || []),
+          ...(data.generalSquads || []),
+          ...(data.otherTrackSquads || []),
+          ...(data.premiumSquads || []),
+          ...(data.standardSquads || []),
+        ];
+        
+        // Separate into coached and community squads
+        const coached = allSquads.filter((s: DiscoverSquad) => !!s.coachId);
+        const community = allSquads.filter((s: DiscoverSquad) => !s.coachId);
+        
+        setCoachedSquads(coached);
+        setCommunitySquads(community);
+        
+        const total = coached.length + community.length;
+        setHasSquads(total > 0);
+      } catch (err) {
+        console.error('Error fetching squads:', err);
+        setHasSquads(false);
+      } finally {
+        setLoading(false);
       }
+    };
 
-      // Refresh squad context and redirect
-      router.refresh();
-      window.location.href = '/squad';
-    } catch (err) {
-      console.error('Error joining squad:', err);
-      alert(err instanceof Error ? err.message : 'Failed to join squad');
-    } finally {
-      setJoiningSquadId(null);
-    }
-  };
+    fetchSquads();
+  }, []);
 
-  // Handle squad creation success
-  const handleSquadCreated = () => {
-    setShowCreateModal(false);
-    router.refresh();
-    window.location.href = '/squad';
-  };
+  // Loading skeleton
+  if (loading) {
+    return (
+      <div className="pt-6 pb-32">
+        {/* Header Skeleton */}
+        <div className="mb-8">
+          <div className="h-10 w-48 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded-lg animate-pulse mb-2" />
+          <div className="h-5 w-72 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded-lg animate-pulse" />
+        </div>
 
-  // Handle private squad join success
-  const handlePrivateJoinSuccess = () => {
-    setShowJoinPrivateModal(false);
-    router.refresh();
-    window.location.href = '/squad';
-  };
+        {/* Squads Grid Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div 
+              key={i}
+              className="bg-white/60 dark:bg-[#171b22] border border-[#e1ddd8]/50 dark:border-[#262b35] rounded-[20px] overflow-hidden animate-pulse"
+            >
+              <div className="h-[140px] bg-[#e1ddd8]/40 dark:bg-[#222631]" />
+              <div className="p-4 space-y-3">
+                <div className="h-5 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded w-3/4" />
+                <div className="h-4 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded w-full" />
+                <div className="h-4 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
-  // Sort label mapping
-  const sortLabels: Record<SortOption, string> = {
-    most_active: 'Most Active',
-    most_members: 'Most Members',
-    newest: 'Newest',
-    alphabetical: 'A–Z',
-  };
+  // No squads available - show empty state with programs CTA
+  if (!hasSquads) {
+    return (
+      <div className="pt-6 pb-32">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="font-albert text-[36px] text-text-primary dark:text-[#f5f5f8] leading-[1.2] tracking-[-2px] mb-2">
+            Join a {squadLower}
+          </h1>
+          <p className="font-albert text-[16px] text-text-secondary dark:text-[#b2b6c2] leading-[1.4]">
+            Connect with a community of growth-minded people working toward their goals together.
+          </p>
+        </div>
+
+        {/* Empty state */}
+        <div className="text-center py-12 px-4">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#a07855]/20 to-[#8c6245]/10 dark:from-[#a07855]/10 dark:to-[#8c6245]/5 flex items-center justify-center">
+            <Users className="w-10 h-10 text-[#a07855]/60" />
+          </div>
+          <h3 className="font-albert text-[20px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px] mb-2">
+            No {squadLower}s available yet
+          </h3>
+          <p className="font-albert text-[14px] text-text-secondary dark:text-[#b2b6c2] mb-6 max-w-[360px] mx-auto">
+            Join a program to get access to a coached {squadLower} with guided accountability.
+          </p>
+        </div>
+
+        {/* Discover Programs CTA */}
+        <div className="mt-4">
+          <Link
+            href="/discover"
+            className="group flex items-center justify-between p-5 bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#1a1512] dark:to-[#181310] border border-[#FFE4CC] dark:border-[#3d3530] rounded-[20px] hover:shadow-lg hover:border-[#a07855]/40 dark:hover:border-[#b8896a]/40 transition-all duration-300"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] dark:from-[#b8896a] dark:to-[#a07855] flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="font-albert font-semibold text-[18px] text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px] mb-1">
+                  Discover programs
+                </h3>
+                <p className="font-albert text-[14px] text-text-secondary dark:text-[#b2b6c2] leading-[1.4]">
+                  Get structured guidance, coaching, and join a {squadLower} automatically.
+                </p>
+              </div>
+            </div>
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#a07855] dark:bg-[#b8896a] flex items-center justify-center group-hover:bg-[#8c6245] dark:group-hover:bg-[#a07855] group-hover:scale-105 transition-all">
+              <ArrowRight className="w-5 h-5 text-white" />
+            </div>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-6 pb-32">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="font-albert text-[36px] text-text-primary leading-[1.2] tracking-[-2px] mb-2">
-          Find your squad
+        <h1 className="font-albert text-[36px] text-text-primary dark:text-[#f5f5f8] leading-[1.2] tracking-[-2px] mb-2">
+          Join a {squadLower}
         </h1>
-        <p className="font-albert text-[16px] text-text-secondary leading-[1.4]">
-          Join a community of growth-minded people working toward their goals together.
+        <p className="font-albert text-[16px] text-text-secondary dark:text-[#b2b6c2] leading-[1.4]">
+          Connect with a community of growth-minded people working toward their goals together.
         </p>
       </div>
 
-      {/* Search & Filters Row */}
-      <div className="flex gap-3 mb-6">
-        {/* Search Input */}
-        <div className="flex-1 relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search squads..."
-            className="w-full pl-12 pr-4 py-3 bg-white border border-[#e1ddd8] rounded-[16px] font-albert text-[16px] text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all"
-          />
-        </div>
-
-        {/* Sort Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button 
-              variant="outline" 
-              className="border-[#e1ddd8] hover:bg-[#faf8f6] rounded-[16px] px-4 gap-2 font-albert"
-            >
-              <Filter className="w-4 h-4" />
-              <span className="hidden sm:inline">{sortLabels[sortBy]}</span>
-              <ChevronDown className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            {(Object.keys(sortLabels) as SortOption[]).map((option) => (
-              <DropdownMenuItem
-                key={option}
-                onClick={() => setSortBy(option)}
-                className={`font-albert cursor-pointer ${sortBy === option ? 'bg-[#a07855]/10 text-[#a07855]' : ''}`}
-              >
-                {sortLabels[option]}
-              </DropdownMenuItem>
+      {/* Coached Squads Section */}
+      {coachedSquads.length > 0 && (
+        <section className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#FF8A65]/10 to-[#FF6B6B]/10 dark:from-[#FF8A65]/20 dark:to-[#FF6B6B]/20 flex items-center justify-center">
+              <Star className="w-4 h-4 text-[#FF6B6B] fill-[#FF6B6B]" />
+            </div>
+            <h2 className="font-albert text-[20px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px]">
+              Coached {squadLower}s
+            </h2>
+            <span className="px-2 py-0.5 bg-gradient-to-r from-[#FF8A65]/10 to-[#FF6B6B]/10 dark:from-[#FF8A65]/20 dark:to-[#FF6B6B]/20 text-[#FF6B6B] rounded-full text-[12px] font-albert font-medium">
+              {coachedSquads.length}
+            </span>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {coachedSquads.map((squad) => (
+              <SquadDiscoveryCard key={squad.id} squad={squad} />
             ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </div>
+        </section>
+      )}
+
+      {/* Community Squads Section */}
+      {communitySquads.length > 0 && (
+        <section className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center">
+              <Users className="w-4 h-4 text-emerald-500" />
+            </div>
+            <h2 className="font-albert text-[20px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px]">
+              Community {squadLower}s
+            </h2>
+            <span className="px-2 py-0.5 bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full text-[12px] font-albert font-medium">
+              {communitySquads.length}
+            </span>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {communitySquads.map((squad) => (
+              <SquadDiscoveryCard key={squad.id} squad={squad} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Discover More Content Link */}
+      <div className="mt-8 pt-8 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+        <Link
+          href="/discover"
+          className="group flex items-center justify-between p-5 bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#1a1512] dark:to-[#181310] border border-[#FFE4CC] dark:border-[#3d3530] rounded-[20px] hover:shadow-lg hover:border-[#a07855]/40 dark:hover:border-[#b8896a]/40 transition-all duration-300"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] dark:from-[#b8896a] dark:to-[#a07855] flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="font-albert font-semibold text-[18px] text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px] mb-1">
+                Discover more content
+              </h3>
+              <p className="font-albert text-[14px] text-text-secondary dark:text-[#b2b6c2] leading-[1.4]">
+                Explore courses, articles, events, and more to fuel your growth.
+              </p>
+            </div>
+          </div>
+          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#a07855] dark:bg-[#b8896a] flex items-center justify-center group-hover:bg-[#8c6245] dark:group-hover:bg-[#a07855] group-hover:scale-105 transition-all">
+            <ArrowRight className="w-5 h-5 text-white" />
+          </div>
+        </Link>
       </div>
-
-      {/* Coached Squad Promo Card */}
-      <Link
-        href="/discover"
-        className="group block mb-4 bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#2a2420] dark:to-[#1f1c1a] border border-[#FFE4CC] dark:border-[#3d322a] rounded-[20px] p-5 hover:shadow-lg hover:border-[#FF8A65]/40 dark:hover:border-[#FF8A65]/30 transition-all duration-300"
-      >
-        <div className="flex items-start gap-4">
-          {/* Coached Icon */}
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#FF8A65] to-[#FF6B6B] flex items-center justify-center flex-shrink-0 shadow-md">
-            <Star className="w-7 h-7 text-white fill-white" />
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            {/* Badge */}
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-albert text-[12px] font-semibold bg-gradient-to-r from-[#FF8A65] to-[#FF6B6B] bg-clip-text text-transparent">
-                Coached
-              </span>
-            </div>
-            
-            <h3 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px] mb-1">
-              Join a coached program
-            </h3>
-            
-            <p className="font-albert text-[14px] text-text-secondary leading-[1.4] mb-3">
-              Get weekly coaching calls, personalized guidance, and achieve your goals 10x faster with expert support.
-            </p>
-
-            {/* CTA */}
-            <div className="flex items-center gap-2 text-[#FF6B6B] font-albert font-semibold text-[14px] group-hover:gap-3 transition-all">
-              <span>Explore programs</span>
-              <ArrowRight className="w-4 h-4" />
-            </div>
-          </div>
-        </div>
-      </Link>
-
-      {/* Squad Cards */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div 
-              key={i}
-              className="bg-white/60 border border-[#e1ddd8]/50 rounded-[20px] p-5 h-[200px] animate-pulse"
-            >
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-full bg-[#e1ddd8]/50" />
-                <div className="flex-1">
-                  <div className="h-5 bg-[#e1ddd8]/50 rounded w-3/4 mb-2" />
-                  <div className="h-4 bg-[#e1ddd8]/50 rounded w-1/2" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : squads.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {squads.map((squad) => (
-            <SquadCard
-              key={squad.id}
-              squad={squad}
-              onJoin={() => handleJoinSquad(squad.id)}
-              isJoining={joiningSquadId === squad.id}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-16 px-4">
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#F5E6A8] via-[#EDD96C] to-[#E8C547] flex items-center justify-center">
-            <Users className="w-10 h-10 text-[#4A5D54]" />
-          </div>
-          <h3 className="font-albert text-[24px] text-text-primary tracking-[-1px] mb-2">
-            No squads found
-          </h3>
-          <p className="font-albert text-[16px] text-text-secondary mb-6 max-w-[320px] mx-auto">
-            {searchQuery 
-              ? `No squads match "${searchQuery}". Try a different search or create your own!`
-              : 'Be the first to create a squad and start building your community.'
-            }
-          </p>
-        </div>
-      )}
-
-      {/* Secondary Actions */}
-      <div className="mt-8 pt-8 border-t border-[#e1ddd8]/50">
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
-          {/* Create Squad */}
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-3 px-6 py-4 bg-[#a07855] hover:bg-[#8c6245] text-white rounded-[20px] font-albert font-semibold text-[16px] transition-all hover:scale-[1.02] shadow-md w-full sm:w-auto justify-center"
-          >
-            <Plus className="w-5 h-5" />
-            Create a squad
-          </button>
-
-          {/* Join Private Squad */}
-          <button
-            onClick={() => setShowJoinPrivateModal(true)}
-            className="flex items-center gap-3 px-6 py-4 rounded-[20px] font-albert font-semibold text-[16px] transition-all hover:scale-[1.02] w-full sm:w-auto justify-center bg-white border border-[#e1ddd8] hover:bg-[#faf8f6] text-text-primary"
-          >
-            <Key className="w-5 h-5" />
-            Join private squad
-          </button>
-        </div>
-      </div>
-
-      {/* Create Squad Modal */}
-      {showCreateModal && (
-        <CreateSquadModal
-          open={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
-          onSuccess={handleSquadCreated}
-        />
-      )}
-
-      {/* Join Private Squad Modal */}
-      {showJoinPrivateModal && (
-        <JoinPrivateSquadModal
-          open={showJoinPrivateModal}
-          onClose={() => setShowJoinPrivateModal(false)}
-          onSuccess={handlePrivateJoinSuccess}
-        />
-      )}
     </div>
   );
 }
-
