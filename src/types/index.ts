@@ -2586,6 +2586,7 @@ export interface FunnelStepConfigLandingPage {
   ctaSubtext?: string;
   showTestimonials?: boolean;
   showFAQ?: boolean;
+  showPrice?: boolean; // Default true - only used in funnel LPs to optionally hide price
   // Program display props
   programName?: string;
   programDescription?: string;

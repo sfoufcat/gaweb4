@@ -1451,6 +1451,7 @@ function LandingPageConfigEditor({ config, onChange }: LandingPageConfigEditorPr
       formData={formData} 
       onChange={handleFormChange}
       showHeadline={true}
+      isFunnel={true}
     />
   );
 }

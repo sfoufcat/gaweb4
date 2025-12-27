@@ -48,6 +48,7 @@ export function LandingPageStep({
       ctaSubtext={config.ctaSubtext}
       showTestimonials={config.showTestimonials}
       showFAQ={config.showFAQ}
+      showPrice={config.showPrice !== false} // Default true if not explicitly set to false
       onCTA={handleCTA}
       // Program display props
       priceInCents={config.priceInCents}

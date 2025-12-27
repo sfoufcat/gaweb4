@@ -4,20 +4,19 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
-import { SquadView } from '@/components/squad/SquadView';
 import { ClientDetailView, CustomizeBrandingTab, ChannelManagementTab } from '@/components/coach';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, AlertCircle, Users } from 'lucide-react';
+import { ArrowLeft, AlertCircle } from 'lucide-react';
 import type { ClerkPublicMetadata, OrgRole, ProgramCohort } from '@/types';
 
 // Admin components for expanded coach dashboard
 import { AdminUsersTab, type ColumnKey } from '@/components/admin/AdminUsersTab';
-import { AdminSquadsTab } from '@/components/admin/AdminSquadsTab';
 import { AdminDiscoverTab } from '@/components/admin/discover';
 import { AdminPremiumUpgradeFormsTab } from '@/components/admin/AdminPremiumUpgradeFormsTab';
 import { AdminCoachingIntakeFormsTab } from '@/components/admin/AdminCoachingIntakeFormsTab';
 import { CoachFunnelsTab } from '@/components/coach/funnels';
 import { CoachProgramsTab } from '@/components/coach/programs';
+import { CoachSquadsTab } from '@/components/coach/squads';
 import { CoachReferralsTab } from '@/components/coach/referrals';
 import { CoachPlanTab } from '@/components/coach/CoachPlanTab';
 import { DiscountCodesTab } from '@/components/coach/DiscountCodesTab';
@@ -51,9 +50,6 @@ export default function CoachPage() {
   
   // Clients tab state - selected client ID for viewing details
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-  
-  // Squads tab state - selected squad ID for viewing squad management
-  const [selectedSquadIdForView, setSelectedSquadIdForView] = useState<string | null>(null);
   
   // Ending cohorts banner state
   interface EndingCohortData {
@@ -376,41 +372,11 @@ export default function CoachPage() {
             )}
           </TabsContent>
 
-          {/* Squads Tab - Consolidated My Squads + All Squads */}
+          {/* Squads Tab */}
           <TabsContent value="squads">
-            {selectedSquadIdForView ? (
-              <>
-                {/* Back Button */}
-                <button
-                  onClick={() => setSelectedSquadIdForView(null)}
-                  className="inline-flex items-center gap-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] font-albert transition-colors mb-6"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                  Back to squads
-                </button>
-                <SquadView 
-                  key={selectedSquadIdForView} 
-                  squadId={selectedSquadIdForView}
-                  showCoachBadge={true}
-                />
-              </>
-            ) : (
-              <AdminSquadsTab 
-                currentUserRole={role || 'user'} 
-                apiEndpoint={
-                  // Limited org coaches (orgRole=coach without full access) see only coached squads
-                  isLimitedOrgCoach
-                    ? '/api/coach/my-squads'
-                    // Full access coaches (global coach role OR super_coach) see all org squads
-                    : (role === 'coach' || orgRole === 'super_coach')
-                      ? '/api/coach/org-squads'
-                      // Admin/super_admin sees all squads
-                      : '/api/admin/squads'
-                }
-                onSelectSquad={(squadId) => setSelectedSquadIdForView(squadId)}
-                coachesApiEndpoint={(role === 'coach' || orgRole === 'super_coach' || orgRole === 'coach') ? '/api/coach/org-coaches' : '/api/admin/coaches'}
-              />
-            )}
+            <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
+              <CoachSquadsTab apiBasePath="/api/coach/org-squads" />
+            </div>
           </TabsContent>
 
           {/* Discover Content Tab - Uses org-scoped API for coaches */}

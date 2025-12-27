@@ -24,6 +24,7 @@ export interface LandingPageFormData {
   ctaSubtext?: string;
   showTestimonials?: boolean;
   showFAQ?: boolean;
+  showPrice?: boolean; // Only used in funnel LPs - default true
   // Program display props (typically auto-populated from program context)
   programName?: string;
   programDescription?: string;
@@ -40,6 +41,7 @@ interface LandingPageEditorProps {
   formData: LandingPageFormData;
   onChange: (data: LandingPageFormData) => void;
   showHeadline?: boolean; // For funnels, we might want headline/subheadline
+  isFunnel?: boolean; // When true, shows funnel-specific options like showPrice toggle
 }
 
 const TEMPLATES: { 
@@ -72,6 +74,7 @@ export function LandingPageEditor({
   formData, 
   onChange,
   showHeadline = false,
+  isFunnel = false,
 }: LandingPageEditorProps) {
   // Initialize arrays if undefined
   const keyOutcomes = formData.keyOutcomes || [];
@@ -278,6 +281,26 @@ export function LandingPageEditor({
           </div>
         </div>
       </div>
+
+      {/* Show Price Toggle - Only for funnel LPs */}
+      {isFunnel && (
+        <div className="bg-white dark:bg-[#171b22] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] p-5">
+          <div className="flex items-center gap-3">
+            <BrandedCheckbox
+              checked={formData.showPrice !== false}
+              onChange={(checked) => onChange({ ...formData, showPrice: checked })}
+            />
+            <div>
+              <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                Show Price
+              </h3>
+              <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+                Display the program price in the sidebar. Uncheck to hide pricing and reveal it later in the funnel.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Coach Bio */}
       <div className="bg-white dark:bg-[#171b22] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] p-5">

@@ -23,6 +23,7 @@ export interface LandingPageRendererProps {
   ctaSubtext?: string;
   showTestimonials?: boolean;
   showFAQ?: boolean;
+  showPrice?: boolean; // Default true - only used in funnel LPs to optionally hide price
   onCTA?: () => void;
   // Program display props
   priceInCents?: number;

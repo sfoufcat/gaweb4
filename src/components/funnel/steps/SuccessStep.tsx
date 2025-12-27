@@ -67,6 +67,10 @@ export function SuccessStep({
     };
   }, []);
 
+  // Calculate timings: visual redirect at 3s, actual navigation at 8s (3s + 5s extra)
+  const visualDelay = config.redirectDelay || 3000;
+  const totalDuration = visualDelay + 5000; // 5 extra seconds for music/confetti after spinner
+
   // Handle celebration music
   useEffect(() => {
     if (!config.celebrationSound || config.showConfetti === false) return;
@@ -106,9 +110,8 @@ export function SuccessStep({
           }
         }, fadeInterval);
 
-        // Schedule fade out before confetti ends
-        const confettiDuration = 3000;
-        const fadeOutTime = confettiDuration - FADE_DURATION;
+        // Schedule fade out before navigation
+        const fadeOutTime = totalDuration - FADE_DURATION;
         
         setTimeout(() => {
           if (isMounted) {
@@ -126,13 +129,12 @@ export function SuccessStep({
     return () => {
       isMounted = false;
     };
-  }, [config.celebrationSound, config.showConfetti, fadeOutAudio]);
+  }, [config.celebrationSound, config.showConfetti, fadeOutAudio, totalDuration]);
 
   useEffect(() => {
-    // Trigger confetti if enabled
+    // Trigger confetti if enabled - runs for totalDuration
     if (config.showConfetti !== false) {
-      const duration = 3000;
-      const end = Date.now() + duration;
+      const end = Date.now() + totalDuration;
 
       // Festive confetti colors including the brand accent
       const colors = [
@@ -166,15 +168,21 @@ export function SuccessStep({
       })();
     }
 
-    // Auto-redirect after delay
-    const redirectDelay = config.redirectDelay || 3000;
-    const timer = setTimeout(() => {
+    // Show spinner at visualDelay (3s default)
+    const spinnerTimer = setTimeout(() => {
       setIsRedirecting(true);
-      onComplete({});
-    }, redirectDelay);
+    }, visualDelay);
 
-    return () => clearTimeout(timer);
-  }, [config.showConfetti, config.redirectDelay, onComplete, branding?.primaryColor]);
+    // Actually navigate at totalDuration (8s default)
+    const navigationTimer = setTimeout(() => {
+      onComplete({});
+    }, totalDuration);
+
+    return () => {
+      clearTimeout(spinnerTimer);
+      clearTimeout(navigationTimer);
+    };
+  }, [config.showConfetti, visualDelay, totalDuration, onComplete, branding?.primaryColor]);
 
   const heading = config.heading || `Welcome to ${program.name}! 🎉`;
   const body = config.body || "You're all set! Taking you to your dashboard...";

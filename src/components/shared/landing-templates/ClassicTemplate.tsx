@@ -23,6 +23,7 @@ export interface LandingTemplateProps {
   ctaSubtext?: string;
   showTestimonials?: boolean;
   showFAQ?: boolean;
+  showPrice?: boolean; // Default true - only used in funnel LPs to optionally hide price
   onCTA?: () => void;
   // Program display props
   priceInCents?: number;
@@ -144,6 +145,7 @@ export function ClassicTemplate({
   ctaSubtext,
   showTestimonials = true,
   showFAQ = true,
+  showPrice = true,
   onCTA,
   priceInCents = 0,
   durationDays = 30,
@@ -407,19 +409,21 @@ export function ClassicTemplate({
                   </div>
                 </div>
 
-                {/* Price */}
-                <div className="text-center mb-2">
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="font-albert text-[42px] font-bold text-text-primary dark:text-[#f5f5f8] tracking-[-2px]">
-                      {formatPrice(priceInCents)}
-                    </span>
+                {/* Price - only shown when showPrice is true */}
+                {showPrice && (
+                  <div className="text-center mb-2">
+                    <div className="flex items-baseline justify-center gap-1">
+                      <span className="font-albert text-[42px] font-bold text-text-primary dark:text-[#f5f5f8] tracking-[-2px]">
+                        {formatPrice(priceInCents)}
+                      </span>
+                    </div>
+                    {priceInCents > 0 && (
+                      <p className="font-albert text-[13px] text-text-secondary dark:text-[#b2b6c2] mt-1">
+                        one-time payment
+                      </p>
+                    )}
                   </div>
-                  {priceInCents > 0 && (
-                    <p className="font-albert text-[13px] text-text-secondary dark:text-[#b2b6c2] mt-1">
-                      one-time payment
-                    </p>
-                  )}
-                </div>
+                )}
 
                 {/* Duration callout */}
                 <div 
@@ -451,7 +455,7 @@ export function ClassicTemplate({
                     boxShadow: `0 8px 20px -4px ${hexToRgba(accentLight, 0.35)}`
                   }}
                 >
-                  {ctaText || (priceInCents === 0 ? 'Get Started Free' : `Enroll for ${formatPrice(priceInCents)}`)}
+                  {ctaText || (showPrice ? (priceInCents === 0 ? 'Get Started Free' : `Enroll for ${formatPrice(priceInCents)}`) : 'Continue')}
                 </button>
 
                 {ctaSubtext && (
@@ -625,7 +629,7 @@ export function ClassicTemplate({
               boxShadow: `0 8px 25px -4px ${hexToRgba(accentLight, 0.4)}`
             }}
           >
-            {ctaText || (priceInCents === 0 ? 'Get Started Free' : `Enroll for ${formatPrice(priceInCents)}`)}
+            {ctaText || (showPrice ? (priceInCents === 0 ? 'Get Started Free' : `Enroll for ${formatPrice(priceInCents)}`) : 'Continue')}
           </button>
         </div>
       </div>
