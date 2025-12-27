@@ -1115,17 +1115,7 @@ export interface MorningCheckIn {
   updatedAt: string;
 }
 
-export interface CheckInProgress {
-  currentStep: CheckInStep;
-  emotionalState?: EmotionalState;
-  userThought?: string;
-  aiReframe?: string;
-  breathingCompleted?: boolean;
-  manifestIdentityCompleted?: boolean;
-  manifestGoalCompleted?: boolean;
-}
-
-export type CheckInStep = 
+export type MorningCheckInFlowStep = 
   | 'start'
   | 'accept'
   | 'breath'
@@ -1135,6 +1125,16 @@ export type CheckInStep =
   | 'manifest-goal'
   | 'plan-day'
   | 'completed';
+
+export interface CheckInProgress {
+  currentStep: MorningCheckInFlowStep;
+  emotionalState?: EmotionalState;
+  userThought?: string;
+  aiReframe?: string;
+  breathingCompleted?: boolean;
+  manifestIdentityCompleted?: boolean;
+  manifestGoalCompleted?: boolean;
+}
 
 // Reflection Types
 export type ReflectionType = 'daily' | 'weekly';
@@ -2604,15 +2604,33 @@ export interface FunnelStepConfigSuccess {
 // ============================================================================
 
 /**
- * Landing page template type
+ * Landing page template name type
  */
-export type LandingPageTemplate = 'classic' | 'modern' | 'minimal';
+export type LandingPageTemplateName = 'classic' | 'modern' | 'minimal';
+
+/**
+ * Landing page template definition with Puck data
+ */
+export interface LandingPageTemplate {
+  id: string;
+  name: string;
+  description: string;
+  thumbnail: string;
+  category: string;
+  puckData: {
+    content: Array<{
+      type: string;
+      props: Record<string, unknown>;
+    }>;
+    root: Record<string, unknown>;
+  };
+}
 
 /**
  * Landing page step configuration - unified for both Programs and Funnels
  */
 export interface FunnelStepConfigLandingPage {
-  template: LandingPageTemplate;
+  template: LandingPageTemplateName;
   headline?: string;
   subheadline?: string;
   coachBio?: string;

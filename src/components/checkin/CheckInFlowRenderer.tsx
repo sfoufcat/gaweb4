@@ -329,29 +329,34 @@ function evaluateCondition(condition: CheckInStepCondition, data: Record<string,
 // =============================================================================
 
 function ExplainerStep({ config, onComplete }: { config: Record<string, unknown>; onComplete: () => void }) {
+  const heading = String(config.heading || '');
+  const body = config.body ? String(config.body) : '';
+  const ctaText = config.ctaText ? String(config.ctaText) : 'Continue';
+  const imageUrl = config.imageUrl ? String(config.imageUrl) : '';
+  
   return (
     <div className="flex flex-col items-center justify-center h-full px-6 py-8">
       <div className="max-w-md text-center">
-        {config.imageUrl && (
+        {imageUrl && (
           <img 
-            src={config.imageUrl as string} 
+            src={imageUrl} 
             alt="" 
             className="w-full max-w-xs mx-auto mb-8 rounded-2xl"
           />
         )}
         <h1 className="font-albert text-[28px] md:text-[36px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-2px] leading-[1.2] mb-6">
-          {config.heading as string}
+          {heading}
         </h1>
-        {config.body && (
+        {body && (
           <p className="font-albert text-[18px] md:text-[20px] text-[#5f5a55] dark:text-[#b2b6c2] tracking-[-0.5px] leading-[1.5] mb-8">
-            {config.body as string}
+            {body}
           </p>
         )}
         <button
           onClick={() => onComplete()}
           className="w-full max-w-[400px] bg-[#2c2520] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] py-4 rounded-full font-sans text-[16px] font-bold tracking-[-0.5px] shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
         >
-          {(config.ctaText as string) || 'Continue'}
+          {ctaText}
         </button>
       </div>
     </div>
@@ -678,6 +683,11 @@ function BreathingStep({ config, onComplete }: { config: Record<string, unknown>
 function CompletionStep({ config, onComplete, isLastStep }: { config: Record<string, unknown>; onComplete: () => void; isLastStep: boolean }) {
   const [showConfetti, setShowConfetti] = useState(false);
 
+  const emoji = config.emoji ? String(config.emoji) : '🎉';
+  const heading = config.heading ? String(config.heading) : '';
+  const subheading = config.subheading ? String(config.subheading) : '';
+  const buttonText = config.buttonText ? String(config.buttonText) : 'Continue';
+
   useEffect(() => {
     if (config.showConfetti) {
       setShowConfetti(true);
@@ -695,16 +705,16 @@ function CompletionStep({ config, onComplete, isLastStep }: { config: Record<str
           transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
           className="text-[60px] mb-6"
         >
-          {config.emoji || '🎉'}
+          {emoji}
         </motion.div>
 
         <h1 className="font-albert text-[28px] md:text-[36px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-2px] leading-[1.2] mb-4">
-          {config.heading as string}
+          {heading}
         </h1>
 
-        {config.subheading && (
+        {subheading && (
           <p className="font-albert text-[18px] md:text-[20px] text-[#5f5a55] dark:text-[#b2b6c2] tracking-[-0.5px] leading-[1.5] mb-8">
-            {config.subheading as string}
+            {subheading}
           </p>
         )}
 
@@ -712,7 +722,7 @@ function CompletionStep({ config, onComplete, isLastStep }: { config: Record<str
           onClick={onComplete}
           className="w-full max-w-[400px] bg-[#2c2520] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] py-4 rounded-full font-sans text-[16px] font-bold tracking-[-0.5px] shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
         >
-          {(config.buttonText as string) || 'Continue'}
+          {buttonText}
         </button>
       </div>
     </div>
@@ -858,24 +868,27 @@ function VisualizationStep({ config, onComplete }: { config: Record<string, unkn
 }
 
 function GoalAchievedStep({ config, onComplete }: { config: Record<string, unknown>; onComplete: () => void }) {
+  const heading = config.heading ? String(config.heading) : '';
+  const description = config.description ? String(config.description) : '';
+  
   return (
     <div className="flex flex-col h-full px-6 py-8">
       <div className="flex-1 flex flex-col items-center justify-center max-w-md mx-auto w-full">
         <div className="text-[60px] mb-6">💫</div>
 
         <h1 className="font-albert text-[28px] md:text-[36px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-2px] leading-[1.2] text-center mb-6">
-          {config.heading as string}
+          {heading}
         </h1>
 
-        {config.description && (
+        {description && (
           <p className="font-albert text-[18px] text-[#5f5a55] dark:text-[#b2b6c2] tracking-[-0.5px] leading-[1.5] text-center whitespace-pre-line">
-            {config.description as string}
+            {description}
           </p>
         )}
       </div>
 
       <div className="pb-8 space-y-3">
-        {config.showCreateNewGoal && (
+        {Boolean(config.showCreateNewGoal) && (
           <button
             onClick={onComplete}
             className="w-full max-w-[400px] mx-auto block bg-[#2c2520] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] py-4 rounded-full font-sans text-[16px] font-bold"
@@ -883,7 +896,7 @@ function GoalAchievedStep({ config, onComplete }: { config: Record<string, unkno
             Create new goal
           </button>
         )}
-        {config.showSkipOption && (
+        {Boolean(config.showSkipOption) && (
           <button
             onClick={onComplete}
             className="w-full max-w-[400px] mx-auto block bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] py-4 rounded-full font-sans text-[16px] font-bold"

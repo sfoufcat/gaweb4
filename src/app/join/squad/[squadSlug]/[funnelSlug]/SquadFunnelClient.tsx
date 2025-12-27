@@ -426,8 +426,7 @@ export default function SquadFunnelClient({
   // Progress percentage
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
   
-  // Get current step and influence prompt
-  const currentStep = steps[currentStepIndex];
+  // Get influence prompt from current step
   const influencePrompt = currentStep?.influencePrompt;
   const showInfluencePrompt = influencePrompt?.enabled && 
     currentStep?.type !== 'success' && 

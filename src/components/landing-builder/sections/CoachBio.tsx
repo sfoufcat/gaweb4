@@ -203,7 +203,7 @@ export const CoachBioConfig: ComponentConfig<CoachBioProps> = {
       defaultItemProps: {
         text: 'Credential',
       },
-      getItemSummary: (item) => (item as { text: string }).text || 'Credential',
+      getItemSummary: (item: unknown) => (item as { text: string }).text || 'Credential',
     },
     layout: {
       type: 'select',

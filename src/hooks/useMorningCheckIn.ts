@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { MorningCheckIn, EmotionalState, CheckInProgress, CheckInStep } from '@/types';
+import type { MorningCheckIn, EmotionalState, CheckInProgress, MorningCheckInFlowStep } from '@/types';
 
 interface UseMorningCheckInReturn {
   // Today's check-in status
@@ -23,7 +23,7 @@ interface UseMorningCheckInReturn {
   reframeThought: (thought: string) => Promise<string | null>;
   
   // Helpers
-  getNextStep: (currentState: EmotionalState) => CheckInStep;
+  getNextStep: (currentState: EmotionalState) => MorningCheckInFlowStep;
   shouldSkipReframe: (state: EmotionalState) => boolean;
 }
 
@@ -195,7 +195,7 @@ export function useMorningCheckIn(): UseMorningCheckInReturn {
   }, []);
 
   // Get next step based on emotional state
-  const getNextStep = useCallback((currentState: EmotionalState): CheckInStep => {
+  const getNextStep = useCallback((currentState: EmotionalState): MorningCheckInFlowStep => {
     if (shouldSkipReframe(currentState)) {
       return 'manifest-identity';
     }

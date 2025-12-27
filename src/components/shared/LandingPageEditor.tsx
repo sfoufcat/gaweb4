@@ -8,11 +8,11 @@ import type {
   ProgramFeature, 
   ProgramTestimonial, 
   ProgramFAQ, 
-  LandingPageTemplate 
+  LandingPageTemplateName 
 } from '@/types';
 
 export interface LandingPageFormData {
-  template: LandingPageTemplate;
+  template: LandingPageTemplateName;
   headline?: string;
   subheadline?: string;
   coachBio?: string;
@@ -45,7 +45,7 @@ interface LandingPageEditorProps {
 }
 
 const TEMPLATES: { 
-  id: LandingPageTemplate; 
+  id: LandingPageTemplateName; 
   name: string; 
   description: string; 
   icon: React.ElementType;

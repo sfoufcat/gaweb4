@@ -1,12 +1,12 @@
 'use client';
 
-import type { LandingPageTemplate, ProgramFeature, ProgramTestimonial, ProgramFAQ } from '@/types';
+import type { LandingPageTemplateName, ProgramFeature, ProgramTestimonial, ProgramFAQ } from '@/types';
 import { ClassicTemplate } from './ClassicTemplate';
 import { ModernTemplate } from './ModernTemplate';
 import { MinimalTemplate } from './MinimalTemplate';
 
 export interface LandingPageRendererProps {
-  template: LandingPageTemplate;
+  template: LandingPageTemplateName;
   headline?: string;
   subheadline?: string;
   programName?: string;

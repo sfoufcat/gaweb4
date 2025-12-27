@@ -160,8 +160,8 @@ export function validateProgramContentDraft(draft: unknown): {
   
   return {
     success: false,
-    errors: result.error.errors.map(err => ({
-      path: err.path.join('.'),
+    errors: result.error.issues.map((err) => ({
+      path: String(err.path.join('.')),
       message: err.message,
     })),
   };
@@ -183,8 +183,8 @@ export function validateLandingPageDraft(draft: unknown): {
   
   return {
     success: false,
-    errors: result.error.errors.map(err => ({
-      path: err.path.join('.'),
+    errors: result.error.issues.map((err) => ({
+      path: String(err.path.join('.')),
       message: err.message,
     })),
   };

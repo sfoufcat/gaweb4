@@ -657,9 +657,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       // Save each day/week from the draft
       for (const dayOrWeek of programDraft.daysOrWeeks) {
         // Map AI-generated tasks to program task format
+        // Note: AI generates 'action' | 'reflection', we map to 'task' | 'learning'
         const tasks: ProgramTaskTemplate[] = dayOrWeek.tasks.map(task => ({
           label: task.title,
-          type: task.type === 'reflection' ? 'reflection' : 'task',
+          type: task.type === 'reflection' ? 'learning' : 'task',
           isPrimary: true,
           estimatedMinutes: task.estimatedMinutes,
           notes: task.description,
@@ -767,7 +768,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       if (data.program) {
         setSelectedProgram(data.program);
         setLandingPageFormData({
-          landingPageCoverImageUrl: data.program.landingPageCoverImageUrl || '',
           coachBio: data.program.coachBio || '',
           keyOutcomes: data.program.keyOutcomes || [],
           features: data.program.features || [],

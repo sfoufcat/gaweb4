@@ -31,7 +31,7 @@ export function LandingPageStep({
 
   return (
     <LandingPageRenderer
-      template={config.template || 'classic'}
+      template={(config.template || 'classic') as 'classic' | 'modern' | 'minimal'}
       headline={config.headline}
       subheadline={config.subheadline}
       programName={config.programName}
