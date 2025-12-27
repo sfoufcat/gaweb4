@@ -16,18 +16,28 @@ export async function GET() {
 
     console.log(`[COACH_ORG_EVENTS] Fetching events for organization: ${organizationId}`);
 
+    // Query without orderBy to support events with either 'date' or 'startDateTime' fields
     const eventsSnapshot = await adminDb
       .collection('events')
       .where('organizationId', '==', organizationId)
-      .orderBy('date', 'asc')
       .get();
 
-    const events = eventsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate?.()?.toISOString?.() || doc.data().createdAt,
-      updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
-    }));
+    const events = eventsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
+      };
+    });
+
+    // Sort in memory using either 'date' or 'startDateTime' field
+    events.sort((a, b) => {
+      const dateA = a.date || (a.startDateTime ? a.startDateTime.split('T')[0] : '');
+      const dateB = b.date || (b.startDateTime ? b.startDateTime.split('T')[0] : '');
+      return dateA.localeCompare(dateB);
+    });
 
     return NextResponse.json({ 
       events,

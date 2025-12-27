@@ -173,6 +173,26 @@ export async function POST(request: NextRequest) {
       programIds = [body.programId, ...programIds];
     }
 
+    // Auto-derive legacy date fields from startDateTime for backward compatibility
+    // This ensures events show up in APIs that query by the legacy 'date' field
+    let legacyDate = body.date;
+    let legacyStartTime = body.startTime;
+    let legacyEndTime = body.endTime;
+
+    if (!legacyDate && body.startDateTime) {
+      const startDt = new Date(body.startDateTime);
+      legacyDate = startDt.toISOString().split('T')[0]; // YYYY-MM-DD
+      legacyStartTime = legacyStartTime || startDt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      
+      if (body.endDateTime) {
+        const endDt = new Date(body.endDateTime);
+        legacyEndTime = legacyEndTime || endDt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      } else if (body.durationMinutes) {
+        const endDt = new Date(startDt.getTime() + (body.durationMinutes || 60) * 60 * 1000);
+        legacyEndTime = legacyEndTime || endDt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      }
+    }
+
     // Build event data
     const eventData: Omit<UnifiedEvent, 'id'> = {
       title: body.title,
@@ -231,10 +251,10 @@ export async function POST(request: NextRequest) {
       chatChannelId: body.chatChannelId || undefined,
       sendChatReminders: body.sendChatReminders ?? true,
       
-      // Legacy compatibility
-      date: body.date || undefined,
-      startTime: body.startTime || undefined,
-      endTime: body.endTime || undefined,
+      // Legacy compatibility - auto-derived from startDateTime if not provided
+      date: legacyDate,
+      startTime: legacyStartTime,
+      endTime: legacyEndTime,
       shortDescription: body.shortDescription || undefined,
       longDescription: body.longDescription || undefined,
       category: body.category || undefined,
