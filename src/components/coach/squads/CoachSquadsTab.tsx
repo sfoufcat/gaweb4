@@ -680,7 +680,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
             targetType="squad"
             targetId={selectedSquad.id}
             initialConfig={selectedSquad.referralConfig}
-            onSaved={() => fetchSquads()}
+            onSave={() => fetchSquads()}
           />
         </div>
       ) : null}
