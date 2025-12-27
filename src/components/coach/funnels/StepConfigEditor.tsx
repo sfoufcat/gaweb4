@@ -52,6 +52,10 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
         return <ExplainerConfigEditor config={config} onChange={setConfig} />;
       case 'landing_page':
         return <LandingPageConfigEditor config={config} onChange={setConfig} onClose={onClose} />;
+      case 'upsell':
+        return <UpsellConfigEditor config={config} onChange={setConfig} />;
+      case 'downsell':
+        return <DownsellConfigEditor config={config} onChange={setConfig} />;
       case 'info':
         // Legacy support - use ExplainerConfigEditor for info steps too
         return <ExplainerConfigEditor config={config} onChange={setConfig} />;
@@ -1404,6 +1408,382 @@ function LandingPageConfigEditor({ config, onChange }: LandingPageConfigEditorPr
       onChange={handleFormChange}
       showHeadline={true}
     />
+  );
+}
+
+// ============================================================================
+// UPSELL CONFIG EDITOR
+// ============================================================================
+
+interface UpsellDownsellConfigEditorProps {
+  config: Record<string, unknown>;
+  onChange: (config: Record<string, unknown>) => void;
+}
+
+function UpsellConfigEditor({ config, onChange }: UpsellDownsellConfigEditorProps) {
+  return <UpsellDownsellConfigForm config={config} onChange={onChange} type="upsell" />;
+}
+
+function DownsellConfigEditor({ config, onChange }: UpsellDownsellConfigEditorProps) {
+  return <UpsellDownsellConfigForm config={config} onChange={onChange} type="downsell" />;
+}
+
+function UpsellDownsellConfigForm({ 
+  config, 
+  onChange,
+  type,
+}: UpsellDownsellConfigEditorProps & { type: 'upsell' | 'downsell' }): React.ReactElement {
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [products, setProducts] = useState<Array<{ id: string; name: string; imageUrl?: string; priceInCents: number }>>([]);
+  const [isCreatingPrice, setIsCreatingPrice] = useState(false);
+  
+  const productType: 'program' | 'squad' = (config.productType as 'program' | 'squad') || 'program';
+  const discountType: 'none' | 'percent' | 'fixed' = (config.discountType as 'none' | 'percent' | 'fixed') || 'none';
+  const originalPriceInCents: number = (config.originalPriceInCents as number) || 0;
+  const discountValue: number = (config.discountValue as number) || 0;
+  
+  // Helper for conditional rendering
+  const hasDiscount: boolean = discountType !== 'none';
+  
+  // Calculate final price
+  const calculateFinalPrice = () => {
+    if (discountType === 'none') return originalPriceInCents;
+    if (discountType === 'percent') return Math.round(originalPriceInCents * (1 - discountValue / 100));
+    if (discountType === 'fixed') return Math.max(0, originalPriceInCents - discountValue);
+    return originalPriceInCents;
+  };
+  
+  const finalPriceInCents = calculateFinalPrice();
+  
+  // Fetch products when type changes
+  React.useEffect(() => {
+    const fetchProducts = async () => {
+      setIsLoadingProducts(true);
+      try {
+        const endpoint = productType === 'program' ? '/api/coach/programs' : '/api/coach/org-squads';
+        const response = await fetch(endpoint);
+        if (response.ok) {
+          const data = await response.json();
+          const items = productType === 'program' 
+            ? data.programs?.map((p: { id: string; name: string; coverImageUrl?: string; priceInCents?: number }) => ({
+                id: p.id,
+                name: p.name,
+                imageUrl: p.coverImageUrl,
+                priceInCents: p.priceInCents || 0,
+              }))
+            : data.squads?.map((s: { id: string; name: string; coverImageUrl?: string; priceInCents?: number }) => ({
+                id: s.id,
+                name: s.name,
+                imageUrl: s.coverImageUrl,
+                priceInCents: s.priceInCents || 0,
+              }));
+          setProducts(items || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch products:', err);
+      } finally {
+        setIsLoadingProducts(false);
+      }
+    };
+    fetchProducts();
+  }, [productType]);
+  
+  // Auto-populate product details when product is selected
+  const handleProductChange = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    if (product) {
+      onChange({
+        ...config,
+        productId,
+        productName: product.name,
+        productImageUrl: product.imageUrl,
+        originalPriceInCents: product.priceInCents,
+        finalPriceInCents: product.priceInCents, // Reset to original when changing product
+        discountType: 'none',
+        discountValue: undefined,
+      });
+    }
+  };
+  
+  // Create Stripe price when saving
+  const createStripePrice = async () => {
+    if (!config.productId) return;
+    
+    setIsCreatingPrice(true);
+    try {
+      const response = await fetch('/api/funnel/create-upsell-price', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productType,
+          productId: config.productId,
+          priceInCents: finalPriceInCents,
+          originalPriceInCents,
+          discountType,
+          discountValue,
+          isRecurring: config.isRecurring || false,
+          recurringInterval: config.recurringInterval || 'month',
+        }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        onChange({
+          ...config,
+          stripePriceId: data.stripePriceId,
+          stripeCouponId: data.stripeCouponId,
+          finalPriceInCents,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to create Stripe price:', err);
+    } finally {
+      setIsCreatingPrice(false);
+    }
+  };
+  
+  // Auto-update final price when discount changes
+  React.useEffect(() => {
+    onChange({
+      ...config,
+      finalPriceInCents,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finalPriceInCents]);
+  
+  return (
+    <div className="space-y-6">
+      {/* Product Type Selector */}
+      <div>
+        <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+          Product Type
+        </label>
+        <Select
+          value={productType}
+          onValueChange={(value) => onChange({ ...config, productType: value, productId: undefined })}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select product type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="program">Program</SelectItem>
+            <SelectItem value="squad">Squad</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      {/* Product Selector */}
+      <div>
+        <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+          Select {productType === 'program' ? 'Program' : 'Squad'}
+        </label>
+        {isLoadingProducts ? (
+          <div className="text-text-secondary text-sm">Loading...</div>
+        ) : (
+          <Select
+            value={(config.productId as string) || ''}
+            onValueChange={handleProductChange}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={`Select a ${productType}`} />
+            </SelectTrigger>
+            <SelectContent>
+              {products.map((product) => (
+                <SelectItem key={product.id} value={product.id}>
+                  {product.name} (${(product.priceInCents / 100).toFixed(2)})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+      
+      {/* Headline */}
+      <div>
+        <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+          Headline
+        </label>
+        <input
+          type="text"
+          value={(config.headline as string) || ''}
+          onChange={(e) => onChange({ ...config, headline: e.target.value })}
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8]"
+          placeholder={type === 'upsell' ? "Wait! Special One-Time Offer" : "Before You Go..."}
+        />
+      </div>
+      
+      {/* Description */}
+      <div>
+        <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+          Description / Benefits
+        </label>
+        <textarea
+          value={(config.description as string) || ''}
+          onChange={(e) => onChange({ ...config, description: e.target.value })}
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] resize-none"
+          rows={4}
+          placeholder="List benefits, one per line:&#10;• Exclusive content&#10;• Community access&#10;• Weekly coaching calls"
+        />
+        <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
+          Use bullet points (•) or new lines to separate benefits
+        </p>
+      </div>
+      
+      {/* Pricing Section */}
+      <div className="p-4 bg-[#f9f8f6] dark:bg-[#11141b] rounded-xl space-y-4">
+        <h4 className="font-medium text-text-primary dark:text-[#f5f5f8]">Pricing</h4>
+        
+        {/* Original Price (read-only from product) */}
+        <div>
+          <label className="block text-sm text-text-secondary dark:text-[#b2b6c2] mb-1">
+            Original Price (from {productType})
+          </label>
+          <div className="text-lg font-semibold text-text-primary dark:text-[#f5f5f8]">
+            ${(originalPriceInCents / 100).toFixed(2)}
+          </div>
+        </div>
+        
+        {/* Discount Type */}
+        <div>
+          <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+            Discount
+          </label>
+          <Select
+            value={discountType}
+            onValueChange={(value) => onChange({ 
+              ...config, 
+              discountType: value,
+              discountValue: value === 'none' ? undefined : discountValue,
+            })}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No Discount (Full Price)</SelectItem>
+              <SelectItem value="percent">Percentage Off</SelectItem>
+              <SelectItem value="fixed">Fixed Amount Off</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        {/* Discount Value - show only when discount is applied */}
+        {discountType === 'percent' || discountType === 'fixed' ? (
+          <div>
+            <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+              {discountType === 'percent' ? 'Discount Percentage' : 'Discount Amount'}
+            </label>
+            <div className="flex items-center gap-2">
+              {discountType === 'fixed' ? <span className="text-text-secondary">$</span> : null}
+              <input
+                type="number"
+                value={discountType === 'fixed' ? discountValue / 100 : discountValue}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value) || 0;
+                  onChange({ 
+                    ...config, 
+                    discountValue: discountType === 'fixed' ? Math.round(val * 100) : val,
+                  });
+                }}
+                className="w-32 px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8]"
+                min={0}
+                max={discountType === 'percent' ? 100 : originalPriceInCents / 100}
+              />
+              {discountType === 'percent' ? <span className="text-text-secondary">%</span> : null}
+            </div>
+          </div>
+        ) : null}
+        
+        {/* Final Price Preview */}
+        <div className="pt-3 border-t border-[#e1ddd8] dark:border-[#262b35]">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-text-secondary dark:text-[#b2b6c2]">Final Price:</span>
+            <div className="flex items-center gap-2">
+              {discountType === 'percent' || discountType === 'fixed' ? (
+                <span className="text-text-muted line-through">
+                  ${(originalPriceInCents / 100).toFixed(2)}
+                </span>
+              ) : null}
+              <span className="text-xl font-bold text-[#a07855]">
+                ${(finalPriceInCents / 100).toFixed(2)}
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        {/* Recurring Toggle */}
+        <div className="flex items-center gap-3">
+          <BrandedCheckbox
+            id="isRecurring"
+            checked={config.isRecurring as boolean || false}
+            onChange={(checked) => onChange({ ...config, isRecurring: checked })}
+          />
+          <label htmlFor="isRecurring" className="text-sm text-text-primary dark:text-[#f5f5f8]">
+            Recurring subscription
+          </label>
+        </div>
+        
+        {config.isRecurring && (
+          <Select
+            value={(config.recurringInterval as string) || 'month'}
+            onValueChange={(value) => onChange({ ...config, recurringInterval: value })}
+          >
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="month">Monthly</SelectItem>
+              <SelectItem value="year">Yearly</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+        
+        {/* Create Stripe Price Button */}
+        {config.productId && (
+          <button
+            onClick={createStripePrice}
+            disabled={isCreatingPrice}
+            className="w-full py-2 px-4 bg-[#a07855] text-white rounded-lg hover:bg-[#8c6245] disabled:opacity-50 transition-colors text-sm"
+          >
+            {isCreatingPrice ? 'Creating...' : config.stripePriceId ? 'Update Stripe Price' : 'Create Stripe Price'}
+          </button>
+        )}
+        
+        {config.stripePriceId && (
+          <p className="text-xs text-green-600 dark:text-green-400">
+            ✓ Stripe price configured
+          </p>
+        )}
+      </div>
+      
+      {/* CTA Text */}
+      <div>
+        <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+          CTA Button Text
+        </label>
+        <input
+          type="text"
+          value={(config.ctaText as string) || ''}
+          onChange={(e) => onChange({ ...config, ctaText: e.target.value })}
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8]"
+          placeholder={type === 'upsell' ? "Add to Order" : "Yes, I Want This Deal!"}
+        />
+      </div>
+      
+      {/* Decline Text */}
+      <div>
+        <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+          Decline Link Text
+        </label>
+        <input
+          type="text"
+          value={(config.declineText as string) || ''}
+          onChange={(e) => onChange({ ...config, declineText: e.target.value })}
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8]"
+          placeholder={type === 'upsell' ? "No thanks, skip this offer" : "No thanks, I'll pass"}
+        />
+      </div>
+    </div>
   );
 }
 

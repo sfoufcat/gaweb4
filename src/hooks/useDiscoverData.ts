@@ -67,11 +67,10 @@ export function useEvent(eventId: string) {
     
     // Build current user attendee for optimistic update
     const currentUserAttendee: EventAttendee | null = user ? {
-      odooId: user.id, // Use Clerk ID as fallback
-      odooName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'You',
+      userId: user.id,
       firstName: user.firstName || '',
       lastName: user.lastName || '',
-      avatarUrl: user.imageUrl || null,
+      avatarUrl: user.imageUrl || undefined,
     } : null;
     
     // Optimistic update - include user in attendees array
@@ -80,7 +79,7 @@ export function useEvent(eventId: string) {
       isJoined: true,
       totalAttendees: data.totalAttendees + 1,
       attendees: currentUserAttendee 
-        ? [currentUserAttendee, ...data.attendees.filter(a => a.odooId !== user?.id)]
+        ? [currentUserAttendee, ...data.attendees.filter(a => a.userId !== user?.id)]
         : data.attendees,
     };
     
@@ -118,7 +117,7 @@ export function useEvent(eventId: string) {
       isJoined: false,
       totalAttendees: Math.max(0, data.totalAttendees - 1),
       attendees: user 
-        ? data.attendees.filter(a => a.odooId !== user.id)
+        ? data.attendees.filter(a => a.userId !== user.id)
         : data.attendees,
     };
     

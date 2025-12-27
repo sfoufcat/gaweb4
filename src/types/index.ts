@@ -2323,6 +2323,8 @@ export type FunnelStepType =
   | 'transformation' // Transformation graph visualization
   | 'explainer'      // Rich media explainer (image, video, embed)
   | 'landing_page'   // Full drag-and-drop landing page builder
+  | 'upsell'         // One-click upsell offer after payment
+  | 'downsell'       // Shown if user declines preceding upsell
   | 'info'           // [DEPRECATED] Use 'explainer' - kept for backward compatibility
   | 'success';       // Completion step
 
@@ -2556,6 +2558,60 @@ export interface FunnelStepConfigLandingPage {
   showFAQ?: boolean;
 }
 
+// ============================================================================
+// UPSELL/DOWNSELL TYPES
+// ============================================================================
+
+/**
+ * Product types available for upsell/downsell (extensible for future products)
+ */
+export type UpsellProductType = 'program' | 'squad' | 'course' | 'content';
+
+/**
+ * Upsell step configuration - one-click offer shown after payment
+ */
+export interface FunnelStepConfigUpsell {
+  productType: UpsellProductType;
+  productId: string;                    // ID of program/squad/etc
+  productName: string;                  // Cached for display
+  productImageUrl?: string;
+  headline: string;                     // "Wait! Special One-Time Offer"
+  description: string;                  // Benefits/pitch text
+  originalPriceInCents: number;         // Show original price (for strikethrough)
+  discountType: 'none' | 'percent' | 'fixed';
+  discountValue?: number;               // Percent (0-100) or cents
+  finalPriceInCents: number;            // Calculated final price after discount
+  isRecurring: boolean;                 // One-time vs subscription
+  recurringInterval?: 'month' | 'year'; // If recurring
+  stripePriceId?: string;               // Stripe price ID (existing or created)
+  stripeCouponId?: string;              // Stripe coupon ID if discounted
+  ctaText: string;                      // "Add to Order"
+  declineText: string;                  // "No thanks, skip this"
+  linkedDownsellStepId?: string;        // Which downsell shows if declined
+}
+
+/**
+ * Downsell step configuration - shown if user declines preceding upsell
+ */
+export interface FunnelStepConfigDownsell {
+  productType: UpsellProductType;
+  productId: string;
+  productName: string;
+  productImageUrl?: string;
+  headline: string;
+  description: string;
+  originalPriceInCents: number;
+  discountType: 'none' | 'percent' | 'fixed';
+  discountValue?: number;
+  finalPriceInCents: number;
+  isRecurring: boolean;
+  recurringInterval?: 'month' | 'year';
+  stripePriceId?: string;
+  stripeCouponId?: string;
+  ctaText: string;
+  declineText: string;
+}
+
 export type FunnelStepConfig = 
   | { type: 'question'; config: FunnelStepConfigQuestion }
   | { type: 'signup'; config: FunnelStepConfigSignup }
@@ -2567,6 +2623,8 @@ export type FunnelStepConfig =
   | { type: 'transformation'; config: FunnelStepConfigPlanReveal }
   | { type: 'explainer'; config: FunnelStepConfigExplainer }
   | { type: 'landing_page'; config: FunnelStepConfigLandingPage }
+  | { type: 'upsell'; config: FunnelStepConfigUpsell }
+  | { type: 'downsell'; config: FunnelStepConfigDownsell }
   | { type: 'info'; config: FunnelStepConfigInfo }  // [DEPRECATED] Use 'explainer'
   | { type: 'success'; config: FunnelStepConfigSuccess };
 

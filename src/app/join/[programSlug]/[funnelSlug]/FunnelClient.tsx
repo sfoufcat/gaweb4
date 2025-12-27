@@ -20,6 +20,8 @@ import type {
   FunnelStepConfigExplainer,
   FunnelStepConfigLandingPage,
   FunnelStepConfigSuccess,
+  FunnelStepConfigUpsell,
+  FunnelStepConfigDownsell,
 } from '@/types';
 
 // Step components (to be created)
@@ -58,6 +60,8 @@ import { AnalyzingStep } from '@/components/funnel/steps/AnalyzingStep';
 import { PlanRevealStep } from '@/components/funnel/steps/PlanRevealStep';
 import { ExplainerStep } from '@/components/funnel/steps/ExplainerStep';
 import { LandingPageStep } from '@/components/funnel/steps/LandingPageStep';
+import { UpsellStep } from '@/components/funnel/steps/UpsellStep';
+import { DownsellStep } from '@/components/funnel/steps/DownsellStep';
 import { InfoStep } from '@/components/funnel/steps/InfoStep';
 import { SuccessStep } from '@/components/funnel/steps/SuccessStep';
 
@@ -121,6 +125,9 @@ export default function FunnelClient({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
+  
+  // Upsell/Downsell tracking - which upsells were declined (to show their linked downsells)
+  const [declinedUpsellStepIds, setDeclinedUpsellStepIds] = useState<string[]>([]);
 
   // Skip payment if invite is pre-paid
   const skipPayment = validatedInvite?.paymentStatus === 'pre_paid' || validatedInvite?.paymentStatus === 'free';
@@ -251,6 +258,23 @@ export default function FunnelClient({
       if (nextStep.type === 'payment' && skipPayment) {
         nextIndex++;
         continue;
+      }
+      
+      // Skip downsell steps that aren't linked to a declined upsell
+      // (downsells are only shown via direct navigation from upsell decline)
+      if (nextStep.type === 'downsell') {
+        // Check if any upsell points to this downsell and was declined
+        const linkedUpsell = steps.find(s => {
+          if (s.type !== 'upsell') return false;
+          const upsellConfig = (s.config as FunnelStepConfig & { type: 'upsell' }).config as FunnelStepConfigUpsell;
+          return upsellConfig.linkedDownsellStepId === nextStep.id;
+        });
+        
+        // Skip if no upsell links to this or the upsell wasn't declined
+        if (!linkedUpsell || !declinedUpsellStepIds.includes(linkedUpsell.id)) {
+          nextIndex++;
+          continue;
+        }
       }
       
       // Skip success step if skipSuccessPage is enabled
@@ -415,6 +439,64 @@ export default function FunnelClient({
       
       case 'landing_page':
         return <LandingPageStep {...commonProps} config={stepConfig.config as FunnelStepConfigLandingPage} />;
+      
+      case 'upsell':
+        return (
+          <UpsellStep
+            config={stepConfig.config as FunnelStepConfigUpsell}
+            flowSessionId={sessionId || ''}
+            stepId={currentStep.id}
+            onAccept={(result) => {
+              // User accepted the upsell - continue to next step
+              handleStepComplete({
+                [`upsell_${currentStep.id}_accepted`]: true,
+                [`upsell_${currentStep.id}_enrollmentId`]: result.enrollmentId,
+              });
+            }}
+            onDecline={() => {
+              // User declined - track it and potentially show linked downsell
+              const upsellConfig = stepConfig.config as FunnelStepConfigUpsell;
+              setDeclinedUpsellStepIds(prev => [...prev, currentStep.id]);
+              
+              // Check if there's a linked downsell
+              if (upsellConfig.linkedDownsellStepId) {
+                // Find the downsell step and navigate to it
+                const downsellStepIndex = steps.findIndex(s => s.id === upsellConfig.linkedDownsellStepId);
+                if (downsellStepIndex !== -1) {
+                  setCurrentStepIndex(downsellStepIndex);
+                  return;
+                }
+              }
+              
+              // No linked downsell, continue to next step
+              handleStepComplete({
+                [`upsell_${currentStep.id}_accepted`]: false,
+              });
+            }}
+          />
+        );
+      
+      case 'downsell':
+        // Only show downsell if its linked upsell was declined
+        // (this is handled by the flow logic, but we double-check here)
+        return (
+          <DownsellStep
+            config={stepConfig.config as FunnelStepConfigDownsell}
+            flowSessionId={sessionId || ''}
+            stepId={currentStep.id}
+            onAccept={(result) => {
+              handleStepComplete({
+                [`downsell_${currentStep.id}_accepted`]: true,
+                [`downsell_${currentStep.id}_enrollmentId`]: result.enrollmentId,
+              });
+            }}
+            onDecline={() => {
+              handleStepComplete({
+                [`downsell_${currentStep.id}_accepted`]: false,
+              });
+            }}
+          />
+        );
       
       case 'info':
         // Legacy support: treat 'info' as 'explainer' with defaults

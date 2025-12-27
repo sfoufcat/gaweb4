@@ -19,7 +19,9 @@ import {
   CheckCircle,
   Lock,
   PlayCircle,
-  LayoutTemplate
+  LayoutTemplate,
+  TrendingUp,
+  TrendingDown
 } from 'lucide-react';
 // Note: Lock is still used in the Add Step modal for tier-gated steps
 import type { FunnelStep, FunnelStepType, CoachTier, Funnel, Program, Squad } from '@/types';
@@ -98,6 +100,18 @@ const STEP_TYPE_INFO: Record<FunnelStepType, {
     description: 'Full drag-and-drop landing page builder',
     color: 'bg-violet-100 text-violet-600'
   },
+  upsell: { 
+    icon: TrendingUp, 
+    label: 'Upsell', 
+    description: 'One-click offer after payment',
+    color: 'bg-orange-100 text-orange-600'
+  },
+  downsell: { 
+    icon: TrendingDown, 
+    label: 'Downsell', 
+    description: 'Alternative offer if upsell declined',
+    color: 'bg-rose-100 text-rose-600'
+  },
   info: { 
     icon: Info, 
     label: 'Info Card', 
@@ -116,7 +130,11 @@ const STEP_TYPE_INFO: Record<FunnelStepType, {
 const FIXED_STEP_TYPES: FunnelStepType[] = ['signup', 'payment', 'success'];
 
 // Step types available for adding (exclude fixed types)
-const ADDABLE_STEP_TYPES: FunnelStepType[] = ['question', 'explainer', 'landing_page', 'goal_setting', 'identity', 'analyzing', 'plan_reveal', 'transformation'];
+const ADDABLE_STEP_TYPES: FunnelStepType[] = ['question', 'explainer', 'landing_page', 'goal_setting', 'identity', 'analyzing', 'plan_reveal', 'transformation', 'upsell', 'downsell'];
+
+// Maximum allowed upsells and downsells per funnel
+const MAX_UPSELLS = 2;
+const MAX_DOWNSELLS = 2;
 
 export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) {
   const [steps, setSteps] = useState<FunnelStep[]>([]);
@@ -313,11 +331,48 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
     try {
       setIsSaving(true);
       
+      // Validate upsell/downsell limits
+      if (type === 'upsell') {
+        const existingUpsells = steps.filter(s => s.type === 'upsell').length;
+        if (existingUpsells >= MAX_UPSELLS) {
+          alert(`Maximum of ${MAX_UPSELLS} upsells allowed per funnel.`);
+          setIsSaving(false);
+          return;
+        }
+      }
+      
+      if (type === 'downsell') {
+        const existingDownsells = steps.filter(s => s.type === 'downsell').length;
+        if (existingDownsells >= MAX_DOWNSELLS) {
+          alert(`Maximum of ${MAX_DOWNSELLS} downsells allowed per funnel.`);
+          setIsSaving(false);
+          return;
+        }
+        // Downsell requires at least one upsell
+        const hasUpsell = steps.some(s => s.type === 'upsell');
+        if (!hasUpsell) {
+          alert('Add an upsell step first. Downsells are shown when a user declines an upsell.');
+          setIsSaving(false);
+          return;
+        }
+      }
+      
       // Default config based on type
       const defaultConfig = getDefaultConfigForType(type);
       
-      // Insert at the end of the current steps
-      const insertOrder = sortableSteps.length;
+      // For upsell/downsell, insert after payment step
+      let insertOrder = sortableSteps.length;
+      if (type === 'upsell' || type === 'downsell') {
+        const paymentIndex = sortableSteps.findIndex(s => s.type === 'payment');
+        if (paymentIndex !== -1) {
+          // Find the last upsell/downsell step after payment
+          const afterPaymentSteps = sortableSteps.slice(paymentIndex + 1);
+          const lastUpsellDownsellIndex = afterPaymentSteps.findLastIndex(
+            s => s.type === 'upsell' || s.type === 'downsell'
+          );
+          insertOrder = paymentIndex + 1 + (lastUpsellDownsellIndex !== -1 ? lastUpsellDownsellIndex + 1 : 0);
+        }
+      }
 
       const response = await fetch(`/api/coach/org-funnels/${funnelId}/steps`, {
         method: 'POST',
@@ -572,13 +627,21 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
                     const isAllowed = canUseFunnelStep(coachTier, type);
                     const requiredTier = !isAllowed ? 'pro' : null;
                     
+                    // Check upsell/downsell limits
+                    const existingUpsells = steps.filter(s => s.type === 'upsell').length;
+                    const existingDownsells = steps.filter(s => s.type === 'downsell').length;
+                    const isMaxUpsells = type === 'upsell' && existingUpsells >= MAX_UPSELLS;
+                    const isMaxDownsells = type === 'downsell' && existingDownsells >= MAX_DOWNSELLS;
+                    const needsUpsellFirst = type === 'downsell' && existingUpsells === 0;
+                    const isLimitReached = isMaxUpsells || isMaxDownsells || needsUpsellFirst;
+                    
                     return (
                       <button
                         key={type}
-                        onClick={() => isAllowed && handleAddStep(type)}
-                        disabled={isSaving || !isAllowed}
+                        onClick={() => isAllowed && !isLimitReached && handleAddStep(type)}
+                        disabled={isSaving || !isAllowed || isLimitReached}
                         className={`p-4 border rounded-xl transition-colors text-left relative ${
-                          isAllowed 
+                          isAllowed && !isLimitReached
                             ? 'border-[#e1ddd8] hover:border-[#a07855] hover:bg-[#faf8f6] disabled:opacity-50'
                             : 'border-[#e1ddd8] bg-[#fafafa] cursor-not-allowed opacity-70'
                         }`}
@@ -589,10 +652,25 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
                             {TIER_PRICING[requiredTier as CoachTier]?.name}
                           </div>
                         )}
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${info.color} ${!isAllowed ? 'opacity-50' : ''}`}>
+                        {isMaxUpsells && (
+                          <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-orange-100 rounded text-[10px] font-medium text-orange-600">
+                            Max {MAX_UPSELLS}
+                          </div>
+                        )}
+                        {isMaxDownsells && (
+                          <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-rose-100 rounded text-[10px] font-medium text-rose-600">
+                            Max {MAX_DOWNSELLS}
+                          </div>
+                        )}
+                        {needsUpsellFirst && (
+                          <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-amber-100 rounded text-[10px] font-medium text-amber-600">
+                            Add upsell first
+                          </div>
+                        )}
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${info.color} ${!isAllowed || isLimitReached ? 'opacity-50' : ''}`}>
                           <Icon className="w-5 h-5" />
                         </div>
-                        <p className={`font-medium text-sm ${isAllowed ? 'text-text-primary' : 'text-text-secondary'}`}>{info.label}</p>
+                        <p className={`font-medium text-sm ${isAllowed && !isLimitReached ? 'text-text-primary' : 'text-text-secondary'}`}>{info.label}</p>
                         <p className="text-xs text-text-muted">{info.description}</p>
                       </button>
                     );
@@ -683,6 +761,25 @@ function getDefaultConfigForType(type: FunnelStepType): unknown {
       return {
         showConfetti: true,
         redirectDelay: 3000,
+      };
+    case 'upsell':
+      return {
+        headline: 'Wait! Special One-Time Offer',
+        description: 'Get exclusive access to additional content and resources.',
+        ctaText: 'Add to Order',
+        declineText: 'No thanks, skip this offer',
+        discountType: 'none',
+        isRecurring: false,
+      };
+    case 'downsell':
+      return {
+        headline: 'Before You Go...',
+        description: 'Here\'s a special offer just for you.',
+        ctaText: 'Yes, I Want This Deal!',
+        declineText: 'No thanks, I\'ll pass',
+        discountType: 'percent',
+        discountValue: 20,
+        isRecurring: false,
       };
     default:
       return {};
