@@ -38,15 +38,23 @@ export async function GET(request: NextRequest) {
     const cursor = searchParams.get('cursor') || undefined;
 
     // On first page, fetch pinned posts
+    // Note: We don't use orderBy('pinnedAt') in Firestore to avoid index requirements
+    // and to handle documents where pinnedAt might be missing. Sort in memory instead.
     let pinnedDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
     if (!cursor) {
       const pinnedSnapshot = await adminDb
         .collection('feed_posts')
         .where('organizationId', '==', organizationId)
         .where('pinnedToFeed', '==', true)
-        .orderBy('pinnedAt', 'desc')
         .get();
-      pinnedDocs = pinnedSnapshot.docs;
+      // Sort pinned posts by pinnedAt descending (fallback to createdAt if pinnedAt missing)
+      pinnedDocs = pinnedSnapshot.docs.sort((a, b) => {
+        const aData = a.data();
+        const bData = b.data();
+        const aTime = aData.pinnedAt || aData.createdAt || '';
+        const bTime = bData.pinnedAt || bData.createdAt || '';
+        return new Date(bTime).getTime() - new Date(aTime).getTime();
+      });
     }
 
     // Get IDs of pinned posts to exclude from regular feed

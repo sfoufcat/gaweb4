@@ -466,7 +466,7 @@ export function ModernTemplate({
                       className={`bg-[#faf8f6] dark:bg-[#171b22] rounded-2xl overflow-hidden transition-all ${
                         openFaqIndex === index ? 'shadow-lg ring-2' : ''
                       }`}
-                      style={openFaqIndex === index ? { ringColor: hexToRgba(accentLight, 0.3) } : undefined}
+                      style={openFaqIndex === index ? { ['--tw-ring-color' as string]: hexToRgba(accentLight, 0.3) } : undefined}
                     >
                       <button
                         onClick={() => setOpenFaqIndex(openFaqIndex === index ? null : index)}

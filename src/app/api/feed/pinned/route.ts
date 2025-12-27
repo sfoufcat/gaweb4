@@ -33,21 +33,32 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '5', 10);
 
-    // Fetch posts pinned to sidebar, ordered by pinnedAt descending
+    // Fetch posts pinned to sidebar
+    // Note: We don't use orderBy('pinnedAt') in Firestore to avoid index requirements
+    // and to handle documents where pinnedAt might be missing. Sort in memory instead.
     const snapshot = await adminDb
       .collection('feed_posts')
       .where('organizationId', '==', organizationId)
       .where('pinnedToSidebar', '==', true)
-      .orderBy('pinnedAt', 'desc')
-      .limit(limit)
       .get();
 
     if (snapshot.empty) {
       return NextResponse.json({ posts: [] });
     }
 
+    // Sort by pinnedAt descending (fallback to createdAt if pinnedAt missing) and apply limit
+    const sortedDocs = snapshot.docs
+      .sort((a, b) => {
+        const aData = a.data();
+        const bData = b.data();
+        const aTime = aData.pinnedAt || aData.createdAt || '';
+        const bTime = bData.pinnedAt || bData.createdAt || '';
+        return new Date(bTime).getTime() - new Date(aTime).getTime();
+      })
+      .slice(0, limit);
+
     // Get unique author IDs
-    const authorIds = [...new Set(snapshot.docs.map(doc => doc.data().authorId))];
+    const authorIds = [...new Set(sortedDocs.map(doc => doc.data().authorId))];
     
     // Batch fetch author data
     const authorDocs = await Promise.all(
@@ -58,12 +69,12 @@ export async function GET(request: NextRequest) {
     );
 
     // Get user's reactions for these posts
-    const postIds = snapshot.docs.map(doc => doc.id);
-    const userReactionsSnapshot = await adminDb
+    const postIds = sortedDocs.map(doc => doc.id);
+    const userReactionsSnapshot = postIds.length > 0 ? await adminDb
       .collection('feed_reactions')
       .where('userId', '==', userId)
       .where('postId', 'in', postIds)
-      .get();
+      .get() : { docs: [] };
     
     const userReactions = new Map<string, Set<string>>();
     userReactionsSnapshot.docs.forEach(doc => {
@@ -75,7 +86,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Transform to frontend format
-    const posts = snapshot.docs.map(doc => {
+    const posts = sortedDocs.map(doc => {
       const data = doc.data();
       const author = authorMap.get(data.authorId);
       const reactions = userReactions.get(doc.id) || new Set();

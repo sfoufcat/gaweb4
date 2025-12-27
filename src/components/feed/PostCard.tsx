@@ -264,7 +264,7 @@ export function PostCard({
         <div className={`flex items-center justify-between ${isEmbedded ? 'pb-2' : 'px-4 pt-3 pb-0'}`}>
           <div className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color: accentColor }}>
             <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M16 3a1 1 0 011 1v3.586l1.707 1.707a1 1 0 010 1.414l-4 4a1 1 0 01-.708.293H11v5a1 1 0 11-2 0v-5H6.001a1 1 0 01-.708-.293l-4-4a1 1 0 010-1.414L3 7.586V4a1 1 0 112 0v2.586l.293-.293a1 1 0 011.414 0L8 7.586V4a1 1 0 011-1h7z" />
+              <path d="M16 12V4h1V2H7v2h1v8l-3 5v2h6v5l1 1 1-1v-5h6v-2l-3-5z" />
             </svg>
             Pinned
           </div>
@@ -345,7 +345,7 @@ export function PostCard({
       {post.pinnedToFeed && !post.hideMetadata && (
         <div className={`flex items-center gap-1.5 text-[12px] font-medium ${isEmbedded ? 'pb-2' : 'px-4 pt-3 pb-0'}`} style={{ color: accentColor }}>
           <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M16 3a1 1 0 011 1v3.586l1.707 1.707a1 1 0 010 1.414l-4 4a1 1 0 01-.708.293H11v5a1 1 0 11-2 0v-5H6.001a1 1 0 01-.708-.293l-4-4a1 1 0 010-1.414L3 7.586V4a1 1 0 112 0v2.586l.293-.293a1 1 0 011.414 0L8 7.586V4a1 1 0 011-1h7z" />
+            <path d="M16 12V4h1V2H7v2h1v8l-3 5v2h6v5l1 1 1-1v-5h6v-2l-3-5z" />
           </svg>
           Pinned
         </div>
