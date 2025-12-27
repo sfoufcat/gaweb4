@@ -258,7 +258,7 @@ export function PostCard({
   const isEmbedded = variant === 'embedded';
   
   return (
-    <article className={isEmbedded ? '' : 'bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden hover-lift'}>
+    <article className={isEmbedded ? '' : 'bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] hover-lift'}>
       {/* Pinned indicator + Menu (combined row when hideMetadata is true) */}
       {post.pinnedToFeed && post.hideMetadata && (
         <div className={`flex items-center justify-between ${isEmbedded ? 'pb-2' : 'px-4 pt-3 pb-0'}`}>

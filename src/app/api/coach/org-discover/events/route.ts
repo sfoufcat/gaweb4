@@ -27,6 +27,9 @@ export async function GET() {
       return {
         id: doc.id,
         ...data,
+        // Explicitly include properties needed for sorting
+        date: data.date as string | undefined,
+        startDateTime: data.startDateTime as string | undefined,
         createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
         updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt,
       };

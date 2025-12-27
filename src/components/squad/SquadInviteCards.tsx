@@ -59,10 +59,13 @@ export function SquadInviteCards({
   programId,
   referralConfig,
 }: SquadInviteCardsProps) {
-  const { squad: squadTitle, squadLower } = useMenuTitles();
+  const { squad: squadTitle, squadLower, programLower } = useMenuTitles();
   
   // Use the hasCoach prop passed from parent (already derived from coachId)
   const squadHasCoach = hasCoach ?? false;
+  
+  // Check if this is a program squad
+  const isProgramSquad = !!programId;
   
   // Check if squad is at capacity
   const isAtCapacity = memberCount >= MAX_SQUAD_MEMBERS;
@@ -147,10 +150,16 @@ export function SquadInviteCards({
         <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4">
           <div className="p-4 space-y-3">
             <h3 className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] leading-[1.3] tracking-[-1px]">
-              Invite friends to your {squadLower}
+              {isProgramSquad 
+                ? `Invite friends to your ${programLower}`
+                : `Invite friends to your ${squadLower}`
+              }
             </h3>
             <p className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2] leading-[1.2] tracking-[-0.3px]">
-              Grow together with the people you trust — stay motivated, support each other, and keep a strong {squadLower} streak side by side. Add friends to your current {squadLower} or start a new one together.
+              {isProgramSquad
+                ? `Grow together with the people you trust — stay motivated, support each other, and keep a strong ${squadLower} streak side by side.`
+                : `Grow together with the people you trust — stay motivated, support each other, and keep a strong ${squadLower} streak side by side. Add friends to your current ${squadLower} or start a new one together.`
+              }
             </p>
             <button
               onClick={handleInviteFriends}

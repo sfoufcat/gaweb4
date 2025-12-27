@@ -16,6 +16,7 @@ import { StandardSquadCallCard } from '@/components/squad/StandardSquadCallCard'
 import { NextSquadCallCard, type CoachInfo } from '@/components/squad/NextSquadCallCard';
 import { SquadDiscovery } from '@/components/squad/SquadDiscovery';
 import { useMenuTitles } from '@/contexts/BrandingContext';
+import type { ReferralConfig } from '@/types';
 
 /**
  * Standalone Squad Page
@@ -114,6 +115,30 @@ export default function StandaloneSquadPage() {
   const handleSquadSwitch = (squadId: string) => {
     setActiveStandaloneSquadId(squadId);
   };
+
+  // Fetch program's referralConfig if squad belongs to a program
+  const [referralConfig, setReferralConfig] = useState<ReferralConfig | undefined>(undefined);
+  
+  useEffect(() => {
+    const fetchReferralConfig = async () => {
+      if (!squad?.programId) {
+        setReferralConfig(undefined);
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/programs/${squad.programId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setReferralConfig(data.program?.referralConfig);
+        }
+      } catch (err) {
+        console.error('Failed to fetch program referral config:', err);
+      }
+    };
+    
+    fetchReferralConfig();
+  }, [squad?.programId]);
 
   // Loading state
   if (!mounted || !userLoaded || isLoading) {
@@ -285,6 +310,9 @@ export default function StandaloneSquadPage() {
             visibility={squad.visibility}
             memberCount={members.length}
             onLeaveSquad={refetch}
+            squadId={squad.id}
+            programId={squad.programId || undefined}
+            referralConfig={referralConfig}
           />
         </div>
       ) : (
