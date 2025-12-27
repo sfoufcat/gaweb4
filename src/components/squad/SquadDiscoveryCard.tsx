@@ -2,8 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Users, User, Clock, DollarSign, Star, Repeat } from 'lucide-react';
-import type { Squad } from '@/types';
+import { Users, User, Star, Repeat } from 'lucide-react';
 
 /**
  * SquadDiscoveryCard Component
@@ -12,14 +11,23 @@ import type { Squad } from '@/types';
  * Styled similarly to ProgramCard for visual consistency.
  */
 
-interface SquadWithMeta extends Squad {
-  memberCount?: number;
+interface DiscoverSquadData {
+  id: string;
+  name: string;
+  description?: string;
+  avatarUrl?: string;
+  coachId?: string;
   coachName?: string;
   coachImageUrl?: string;
+  memberCount?: number;
+  priceInCents?: number;
+  subscriptionEnabled?: boolean;
+  billingInterval?: string;
+  visibility?: string;
 }
 
 interface SquadDiscoveryCardProps {
-  squad: SquadWithMeta;
+  squad: DiscoverSquadData;
 }
 
 export function SquadDiscoveryCard({ squad }: SquadDiscoveryCardProps) {
