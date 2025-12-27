@@ -249,6 +249,7 @@ async function migrateSquads(): Promise<void> {
     for (const doc of batch) {
       const squadId = doc.id;
       const data = doc.data();
+      if (!data) continue;
       const squadName = data.name || 'Unnamed Squad';
       
       const updates: Record<string, unknown> = {};
