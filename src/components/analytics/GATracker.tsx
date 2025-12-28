@@ -4,31 +4,51 @@ import { useEffect, useState } from 'react';
 import Script from 'next/script';
 import { usePathname, useSearchParams } from 'next/navigation';
 
+// Enable debug mode in development
+const DEBUG = process.env.NODE_ENV === 'development';
+
+function logGA(message: string, ...args: any[]) {
+  if (DEBUG) {
+    console.log(`[GA4] ${message}`, ...args);
+  }
+}
+
 /**
  * Google Analytics Tracker Component
  * 
  * Fetches the org's GA measurement ID and injects the GA4 script.
  * Automatically tracks page views on route changes.
+ * 
+ * This component is included in the root layout and applies to the entire app.
  */
 export function GATracker() {
   const [measurementId, setMeasurementId] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   // Fetch GA config on mount
   useEffect(() => {
     const fetchGAConfig = async () => {
+      logGA('Fetching GA config...');
       try {
         const response = await fetch('/api/org/ga-config');
         if (response.ok) {
           const data = await response.json();
+          logGA('GA config response:', data);
           if (data.configured && data.measurementId) {
             setMeasurementId(data.measurementId);
+            logGA(`GA configured with ID: ${data.measurementId}`);
+          } else {
+            logGA('GA not configured for this organization');
           }
+        } else {
+          logGA('GA config fetch failed:', response.status);
         }
       } catch (error) {
         console.error('[GA_TRACKER] Failed to fetch GA config:', error);
+        setLoadError('Failed to fetch config');
       }
     };
 
@@ -43,9 +63,12 @@ export function GATracker() {
     
     // Send page view to GA
     if (typeof window !== 'undefined' && (window as any).gtag) {
+      logGA(`Tracking page view: ${url}`);
       (window as any).gtag('config', measurementId, {
         page_path: url,
       });
+    } else {
+      logGA('gtag not available yet');
     }
   }, [pathname, searchParams, measurementId, isLoaded]);
 
@@ -60,7 +83,14 @@ export function GATracker() {
       <Script
         src={`https://www.googletagmanager.com/gtag/js?id=${measurementId}`}
         strategy="afterInteractive"
-        onLoad={() => setIsLoaded(true)}
+        onLoad={() => {
+          logGA(`GA script loaded successfully for ${measurementId}`);
+          setIsLoaded(true);
+        }}
+        onError={(e) => {
+          console.error('[GA_TRACKER] Script failed to load:', e);
+          setLoadError('Script failed to load');
+        }}
       />
       <Script
         id="ga-config"
@@ -73,6 +103,7 @@ export function GATracker() {
             gtag('config', '${measurementId}', {
               page_path: window.location.pathname,
             });
+            ${DEBUG ? `console.log('[GA4] Initial config sent for ${measurementId}');` : ''}
           `,
         }}
       />

@@ -112,17 +112,15 @@ export async function GET(
 
     // Fetch events associated with this program (upcoming only)
     // Query both programIds array (new schema) and programId field (legacy schema)
+    // Both use simple queries without composite index requirements - filter/sort in memory
     const now = new Date().toISOString().split('T')[0];
     const [eventsArraySnapshot, eventsLegacySnapshot] = await Promise.all([
-      // New schema: programIds array - can use date filter (array-contains allows additional filters)
+      // New schema: programIds array - simple query to avoid composite index requirement
       adminDb
         .collection('events')
         .where('programIds', 'array-contains', programId)
-        .where('date', '>=', now)
-        .orderBy('date', 'asc')
-        .limit(20)
         .get(),
-      // Legacy schema: programId field - fetch all, filter in memory to avoid index requirement
+      // Legacy schema: programId field - simple query
       adminDb
         .collection('events')
         .where('programId', '==', programId)
@@ -143,8 +141,8 @@ export async function GET(
 
     // Filter to upcoming events, sort by date, and limit
     const events: DiscoverEvent[] = mergedEvents
-      .filter(e => e.date >= now)
-      .sort((a, b) => a.date.localeCompare(b.date))
+      .filter(e => e.date && e.date >= now)
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
       .slice(0, 10);
 
     // Fetch program-specific links

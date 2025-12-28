@@ -431,9 +431,9 @@ export default function ProgramDetailPage() {
                 </span>
               </div>
 
-              {/* Title */}
+              {/* Title (Hero Headline) */}
               <h1 className="font-albert text-[28px] sm:text-[36px] lg:text-[42px] font-semibold text-text-primary leading-[1.1] tracking-[-2px] mb-4">
-                {program.name}
+                {program.heroHeadline || program.name}
               </h1>
 
               {/* Meta Row */}
@@ -451,10 +451,10 @@ export default function ProgramDetailPage() {
                 )}
               </div>
 
-              {/* Description */}
-              {program.description && (
+              {/* Description (Hero Subheadline) */}
+              {(program.heroSubheadline || program.description) && (
                 <p className="font-albert text-[16px] text-text-secondary leading-[1.6] mb-6">
-                  {program.description}
+                  {program.heroSubheadline || program.description}
                 </p>
               )}
 
@@ -492,11 +492,24 @@ export default function ProgramDetailPage() {
               {program.coachBio && (
                 <div className="mt-6">
                   <h3 className="font-albert text-[16px] font-semibold text-text-primary mb-2">
-                    About Your Coach
+                    {program.coachHeadline || 'About Your Coach'}
                   </h3>
                   <p className="font-albert text-[14px] text-text-secondary leading-[1.6] whitespace-pre-line">
                     {program.coachBio}
                   </p>
+                  {/* Coach Bullets/Credentials */}
+                  {program.coachBullets && program.coachBullets.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      {program.coachBullets.map((bullet, index) => (
+                        <div key={index} className="flex items-start gap-2">
+                          <Check className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: accentLight }} />
+                          <span className="font-albert text-[14px] text-text-secondary">
+                            {bullet}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -799,6 +812,8 @@ export default function ProgramDetailPage() {
                       </>
                     ) : !isSignedIn ? (
                       'Sign in to enroll'
+                    ) : program.heroCtaText ? (
+                      program.heroCtaText
                     ) : program.priceInCents === 0 ? (
                       'Enroll for free'
                     ) : (
@@ -1018,7 +1033,7 @@ export default function ProgramDetailPage() {
             <Button
               onClick={handleEnroll}
               disabled={!canEnroll || enrolling || (program.type === 'group' && !selectedCohortId)}
-              className="inline-block py-4 px-8 rounded-3xl font-albert text-[16px] font-semibold transition-all duration-200 text-white"
+              className="inline-flex items-center justify-center py-4 px-8 rounded-3xl font-albert text-[16px] font-semibold transition-all duration-200 text-white"
               style={{ 
                 background: `linear-gradient(135deg, ${accentLight}, ${accentDark})`,
                 boxShadow: `0 8px 25px -4px ${hexToRgba(accentLight, 0.4)}`
@@ -1029,6 +1044,8 @@ export default function ProgramDetailPage() {
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                   Processing...
                 </>
+              ) : program.heroCtaText ? (
+                program.heroCtaText
               ) : program.priceInCents === 0 ? (
                 'Enroll Now — It\'s Free'
               ) : (

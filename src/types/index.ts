@@ -720,7 +720,15 @@ export interface Program {
   isPublished: boolean; // Whether visible in Discover
   
   // Landing Page Content (all optional - coaches can toggle these on/off)
+  // Hero section
+  heroHeadline?: string; // Custom hero title (overrides program name on landing page)
+  heroSubheadline?: string; // Custom hero subtitle (overrides description on landing page)
+  heroCtaText?: string; // Custom CTA button text
+  // Coach section
   coachBio?: string; // About the coach section
+  coachHeadline?: string; // Custom headline for coach section (defaults to "About Your Coach")
+  coachBullets?: string[]; // Key points/credentials about the coach
+  // Other landing page content
   keyOutcomes?: string[]; // "What you'll learn" bullet points
   features?: ProgramFeature[]; // "What's included" feature cards
   testimonials?: ProgramTestimonial[]; // Social proof
@@ -1025,7 +1033,15 @@ export interface Squad {
   referralConfig?: ReferralConfig;
   
   // Landing page fields (for public squad discovery)
+  // Hero section
+  heroHeadline?: string; // Custom hero title (overrides squad name on landing page)
+  heroSubheadline?: string; // Custom hero subtitle (overrides description on landing page)
+  heroCtaText?: string; // Custom CTA button text
+  // Coach section
   coachBio?: string; // Coach's bio/introduction for landing page
+  coachHeadline?: string; // Custom headline for coach section
+  coachBullets?: string[]; // Key points/credentials about the coach
+  // Other landing page content
   keyOutcomes?: string[]; // Key outcomes/benefits for joining
   features?: SquadFeature[]; // Features list for landing page
   testimonials?: SquadTestimonial[]; // Member testimonials

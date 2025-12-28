@@ -50,7 +50,15 @@ interface CoachSquadsTabProps {
 // Landing page form data type matching ProgramLandingPageEditor
 interface LandingPageFormData {
   landingPageCoverImageUrl?: string;
+  // Hero section
+  heroHeadline?: string;
+  heroSubheadline?: string;
+  heroCtaText?: string;
+  // Coach section
   coachBio: string;
+  coachHeadline?: string;
+  coachBullets: string[];
+  // Other content
   keyOutcomes: string[];
   features: ProgramFeature[];
   testimonials: ProgramTestimonial[];
@@ -93,7 +101,12 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
   // Landing page form
   const [landingPageFormData, setLandingPageFormData] = useState<LandingPageFormData>({
     landingPageCoverImageUrl: '',
+    heroHeadline: '',
+    heroSubheadline: '',
+    heroCtaText: '',
     coachBio: '',
+    coachHeadline: '',
+    coachBullets: [],
     keyOutcomes: [],
     features: [],
     testimonials: [],
@@ -212,7 +225,15 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
     if (viewMode === 'landing' && selectedSquad) {
       setLandingPageFormData({
         landingPageCoverImageUrl: selectedSquad.landingPageCoverImageUrl || '',
+        // Hero section
+        heroHeadline: selectedSquad.heroHeadline || '',
+        heroSubheadline: selectedSquad.heroSubheadline || '',
+        heroCtaText: selectedSquad.heroCtaText || '',
+        // Coach section
         coachBio: selectedSquad.coachBio || '',
+        coachHeadline: selectedSquad.coachHeadline || '',
+        coachBullets: selectedSquad.coachBullets || [],
+        // Other content
         keyOutcomes: selectedSquad.keyOutcomes || [],
         features: (selectedSquad.features || []).map(f => ({
           title: f.title,
@@ -316,7 +337,15 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           landingPageCoverImageUrl: landingPageFormData.landingPageCoverImageUrl || null,
+          // Hero section
+          heroHeadline: landingPageFormData.heroHeadline || null,
+          heroSubheadline: landingPageFormData.heroSubheadline || null,
+          heroCtaText: landingPageFormData.heroCtaText || null,
+          // Coach section
           coachBio: landingPageFormData.coachBio,
+          coachHeadline: landingPageFormData.coachHeadline || null,
+          coachBullets: landingPageFormData.coachBullets || [],
+          // Other content
           keyOutcomes: landingPageFormData.keyOutcomes,
           features: landingPageFormData.features.map((f, i) => ({
             id: `feature-${i}`,
@@ -383,7 +412,15 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          // Hero section
+          heroHeadline: lpDraft.hero.title,
+          heroSubheadline: lpDraft.hero.subtitle,
+          heroCtaText: lpDraft.hero.primaryCta,
+          // Coach section
           coachBio: lpDraft.aboutCoach.bio,
+          coachHeadline: lpDraft.aboutCoach.headline,
+          coachBullets: lpDraft.aboutCoach.bullets || [],
+          // Other content
           keyOutcomes: lpDraft.whatYoullLearn.items.map(item => `${item.title}: ${item.description}`),
           features: lpDraft.whatsIncluded.items.map((item, i) => ({
             id: `feature-${i}`,
@@ -417,7 +454,15 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
         setSelectedSquad(updated);
         setLandingPageFormData({
           landingPageCoverImageUrl: updated.landingPageCoverImageUrl || '',
+          // Hero section
+          heroHeadline: updated.heroHeadline || '',
+          heroSubheadline: updated.heroSubheadline || '',
+          heroCtaText: updated.heroCtaText || '',
+          // Coach section
           coachBio: updated.coachBio || '',
+          coachHeadline: updated.coachHeadline || '',
+          coachBullets: updated.coachBullets || [],
+          // Other content
           keyOutcomes: updated.keyOutcomes || [],
           features: (updated.features || []).map((f: { title: string; description: string; icon?: string }) => ({
             title: f.title,

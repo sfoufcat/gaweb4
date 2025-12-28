@@ -28,10 +28,77 @@ export async function GET(req: Request) {
 
     const snapshot = await query.orderBy('createdAt', 'desc').get();
 
-    const flows = snapshot.docs.map(doc => ({
+    let flows = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
     })) as OrgCheckInFlow[];
+
+    // If no system default flows exist, auto-create them from templates
+    const hasSystemDefaults = flows.some(f => f.isSystemDefault);
+    if (!hasSystemDefaults && !type) {
+      const templatesSnapshot = await adminDb
+        .collection('checkInFlowTemplates')
+        .get();
+      
+      if (!templatesSnapshot.empty) {
+        const { userId } = await requireCoachWithOrg();
+        const now = new Date().toISOString();
+        const batch = adminDb.batch();
+        const newFlows: OrgCheckInFlow[] = [];
+        
+        for (const templateDoc of templatesSnapshot.docs) {
+          const template = templateDoc.data() as CheckInFlowTemplate;
+          
+          // Create new flow ref
+          const flowRef = adminDb.collection('orgCheckInFlows').doc();
+          
+          const flowData: Omit<OrgCheckInFlow, 'id'> = {
+            organizationId,
+            name: template.name,
+            type: template.key,
+            description: template.description,
+            enabled: true,
+            stepCount: template.defaultSteps.length,
+            isSystemDefault: true,
+            createdFromTemplateId: template.id,
+            templateVersion: template.version,
+            createdByUserId: userId,
+            createdAt: now,
+            updatedAt: now,
+          };
+          
+          batch.set(flowRef, flowData);
+          newFlows.push({ id: flowRef.id, ...flowData });
+          
+          // Create steps
+          template.defaultSteps.forEach((step, index) => {
+            const stepRef = adminDb
+              .collection('orgCheckInFlows')
+              .doc(flowRef.id)
+              .collection('steps')
+              .doc();
+            
+            batch.set(stepRef, {
+              flowId: flowRef.id,
+              order: step.order ?? index,
+              type: step.type,
+              name: step.name,
+              config: step.config,
+              conditions: step.conditions || [],
+              conditionLogic: step.conditionLogic || 'and',
+              createdAt: now,
+              updatedAt: now,
+            });
+          });
+        }
+        
+        await batch.commit();
+        console.log(`[COACH_ORG_CHECKIN_FLOWS] Auto-created ${newFlows.length} default flows for org ${organizationId}`);
+        
+        // Add new flows to response
+        flows = [...flows, ...newFlows];
+      }
+    }
 
     return NextResponse.json({ flows });
   } catch (error) {

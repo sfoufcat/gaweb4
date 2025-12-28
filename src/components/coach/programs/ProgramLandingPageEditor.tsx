@@ -10,7 +10,15 @@ import type { ProgramFeature, ProgramTestimonial, ProgramFAQ } from '@/types';
 
 interface LandingPageFormData {
   landingPageCoverImageUrl?: string;
+  // Hero section
+  heroHeadline?: string;
+  heroSubheadline?: string;
+  heroCtaText?: string;
+  // Coach section
   coachBio: string;
+  coachHeadline?: string;
+  coachBullets: string[];
+  // Other content
   keyOutcomes: string[];
   features: ProgramFeature[];
   testimonials: ProgramTestimonial[];
@@ -40,6 +48,28 @@ export function ProgramLandingPageEditor({
   uploadEndpoint = '/api/coach/org-upload-media',
   uploadFolder = 'programs',
 }: ProgramLandingPageEditorProps) {
+  // Coach Bullets management
+  const addCoachBullet = () => {
+    onChange({
+      ...formData,
+      coachBullets: [...(formData.coachBullets || []), ''],
+    });
+  };
+
+  const updateCoachBullet = (index: number, value: string) => {
+    onChange({
+      ...formData,
+      coachBullets: (formData.coachBullets || []).map((b, i) => i === index ? value : b),
+    });
+  };
+
+  const removeCoachBullet = (index: number) => {
+    onChange({
+      ...formData,
+      coachBullets: (formData.coachBullets || []).filter((_, i) => i !== index),
+    });
+  };
+
   // Key Outcomes management
   const addOutcome = () => {
     onChange({
@@ -130,6 +160,54 @@ export function ProgramLandingPageEditor({
 
   return (
     <div className="space-y-8">
+      {/* Hero Section */}
+      <div className="bg-white dark:bg-[#171b22] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] p-5">
+        <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
+          Hero Section
+        </h3>
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-4">
+          Customize the headline and subtitle shown at the top of your landing page. Leave empty to use your program name and description.
+        </p>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1.5">
+              Headline
+            </label>
+            <input
+              type="text"
+              value={formData.heroHeadline || ''}
+              onChange={(e) => onChange({ ...formData, heroHeadline: e.target.value })}
+              placeholder="e.g., Transform Your Life in 30 Days"
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1.5">
+              Subtitle
+            </label>
+            <textarea
+              value={formData.heroSubheadline || ''}
+              onChange={(e) => onChange({ ...formData, heroSubheadline: e.target.value })}
+              placeholder="e.g., A proven framework to build lasting habits and achieve your biggest goals..."
+              rows={2}
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1.5">
+              CTA Button Text
+            </label>
+            <input
+              type="text"
+              value={formData.heroCtaText || ''}
+              onChange={(e) => onChange({ ...formData, heroCtaText: e.target.value })}
+              placeholder="e.g., Start Your Journey (defaults to 'Enroll for $X')"
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Landing Page Cover Image */}
       <div className="bg-white dark:bg-[#171b22] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] p-5">
         <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
@@ -176,16 +254,80 @@ export function ProgramLandingPageEditor({
         <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
           About the Coach
         </h3>
-        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-3">
+        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-4">
           A short bio that appears on your program landing page. Leave empty to hide this section.
         </p>
-        <textarea
-          value={formData.coachBio}
-          onChange={(e) => onChange({ ...formData, coachBio: e.target.value })}
-          placeholder="Share a bit about yourself, your experience, and what makes you uniquely qualified to guide this program..."
-          rows={4}
-          className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
-        />
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1.5">
+              Section Headline
+            </label>
+            <input
+              type="text"
+              value={formData.coachHeadline || ''}
+              onChange={(e) => onChange({ ...formData, coachHeadline: e.target.value })}
+              placeholder="e.g., Meet Your Guide (defaults to 'About Your Coach')"
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1.5">
+              Bio
+            </label>
+            <textarea
+              value={formData.coachBio}
+              onChange={(e) => onChange({ ...formData, coachBio: e.target.value })}
+              placeholder="Share a bit about yourself, your experience, and what makes you uniquely qualified to guide this program..."
+              rows={4}
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                Key Credentials
+              </label>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={addCoachBullet}
+                className="flex items-center gap-1 border-[#a07855] text-[#a07855] hover:bg-[#a07855]/10"
+              >
+                <Plus className="w-4 h-4" />
+                Add
+              </Button>
+            </div>
+            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+              Highlight your experience, certifications, or achievements
+            </p>
+            <div className="space-y-2">
+              {(!formData.coachBullets || formData.coachBullets.length === 0) ? (
+                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] italic py-2 text-center">
+                  No credentials added yet. Click &quot;Add&quot; to create your first one.
+                </p>
+              ) : (
+                formData.coachBullets.map((bullet, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <GripVertical className="w-4 h-4 text-[#d1ccc5] dark:text-[#7d8190] flex-shrink-0 cursor-grab" />
+                    <input
+                      type="text"
+                      value={bullet}
+                      onChange={(e) => updateCoachBullet(index, e.target.value)}
+                      placeholder="e.g., 10+ years coaching experience"
+                      className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
+                    />
+                    <button
+                      onClick={() => removeCoachBullet(index)}
+                      className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Key Outcomes */}

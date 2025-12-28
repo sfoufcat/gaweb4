@@ -159,7 +159,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   
   // Landing page form
   const [landingPageFormData, setLandingPageFormData] = useState<{
+    heroHeadline?: string;
+    heroSubheadline?: string;
+    heroCtaText?: string;
     coachBio: string;
+    coachHeadline?: string;
+    coachBullets: string[];
     keyOutcomes: string[];
     features: ProgramFeature[];
     testimonials: ProgramTestimonial[];
@@ -167,7 +172,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     showEnrollmentCount: boolean;
     showCurriculum: boolean;
   }>({
+    heroHeadline: '',
+    heroSubheadline: '',
+    heroCtaText: '',
     coachBio: '',
+    coachHeadline: '',
+    coachBullets: [],
     keyOutcomes: [],
     features: [],
     testimonials: [],
@@ -265,7 +275,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       const program = data.program as Program;
       if (program) {
         setLandingPageFormData({
+          // Hero section
+          heroHeadline: program.heroHeadline || '',
+          heroSubheadline: program.heroSubheadline || '',
+          heroCtaText: program.heroCtaText || '',
+          // Coach section
           coachBio: program.coachBio || '',
+          coachHeadline: program.coachHeadline || '',
+          coachBullets: program.coachBullets || [],
+          // Other content
           keyOutcomes: program.keyOutcomes || [],
           features: program.features || [],
           testimonials: program.testimonials || [],
@@ -735,7 +753,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       
       // Map AI-generated landing page to existing fields
       const updates = {
+        // Hero section
+        heroHeadline: lpDraft.hero.title,
+        heroSubheadline: lpDraft.hero.subtitle,
+        heroCtaText: lpDraft.hero.primaryCta,
+        // Coach section
         coachBio: lpDraft.aboutCoach.bio,
+        coachHeadline: lpDraft.aboutCoach.headline,
+        coachBullets: lpDraft.aboutCoach.bullets || [],
+        // Other content
         keyOutcomes: lpDraft.whatYoullLearn.items.map(item => `${item.title}: ${item.description}`),
         features: lpDraft.whatsIncluded.items.map(item => ({
           title: item.title,
@@ -770,7 +796,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       if (data.program) {
         setSelectedProgram(data.program);
         setLandingPageFormData({
+          // Hero section
+          heroHeadline: data.program.heroHeadline || '',
+          heroSubheadline: data.program.heroSubheadline || '',
+          heroCtaText: data.program.heroCtaText || '',
+          // Coach section
           coachBio: data.program.coachBio || '',
+          coachHeadline: data.program.coachHeadline || '',
+          coachBullets: data.program.coachBullets || [],
+          // Other content
           keyOutcomes: data.program.keyOutcomes || [],
           features: data.program.features || [],
           testimonials: data.program.testimonials || [],

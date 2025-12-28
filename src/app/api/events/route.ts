@@ -51,55 +51,22 @@ export async function GET(request: NextRequest) {
     // Get organization context
     const organizationId = await getEffectiveOrgId();
 
-    // Build query
+    // Build query - use simple queries to avoid composite index requirements
+    // Filter primarily by squadId or programId if provided (most common use case)
     let query: FirebaseFirestore.Query = adminDb.collection('events');
 
-    // Filter by organization
-    if (organizationId) {
+    // For squad-specific queries (like NextSquadCallCard), use squadId as primary filter
+    // This avoids needing complex composite indexes
+    if (squadId) {
+      query = query.where('squadId', '==', squadId);
+    } else if (programId) {
+      query = query.where('programId', '==', programId);
+    } else if (organizationId) {
+      // Only filter by org if no squad/program specified
       query = query.where('organizationId', '==', organizationId);
     }
 
-    // Apply filters
-    if (scope) {
-      query = query.where('scope', '==', scope);
-    }
-
-    if (eventType) {
-      query = query.where('eventType', '==', eventType);
-    }
-
-    if (squadId) {
-      query = query.where('squadId', '==', squadId);
-    }
-
-    if (programId) {
-      query = query.where('programId', '==', programId);
-    }
-
-    if (status) {
-      query = query.where('status', '==', status);
-    } else {
-      // Default: exclude canceled and draft events
-      query = query.where('status', 'in', ['confirmed', 'live', 'completed']);
-    }
-
-    // Filter for upcoming events
-    if (upcoming) {
-      const now = new Date().toISOString();
-      query = query.where('startDateTime', '>=', now);
-    }
-
-    // Exclude recurring parent events if we want instances
-    if (includeInstances) {
-      // We'll filter these in memory to avoid complex composite indexes
-    }
-
-    // Order by start time
-    query = query.orderBy('startDateTime', 'asc');
-
-    // Apply limit
-    query = query.limit(limit);
-
+    // Execute query (keep it simple - filter the rest in memory)
     const eventsSnapshot = await query.get();
 
     let events = eventsSnapshot.docs.map(doc => ({
@@ -109,10 +76,47 @@ export async function GET(request: NextRequest) {
       updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString?.() || doc.data().updatedAt,
     })) as UnifiedEvent[];
 
+    // Apply remaining filters in memory to avoid composite index requirements
+    
+    // Filter by organization (if squadId/programId was used as primary filter)
+    if (organizationId && (squadId || programId)) {
+      events = events.filter(e => e.organizationId === organizationId);
+    }
+    
+    // Filter by scope
+    if (scope) {
+      events = events.filter(e => e.scope === scope);
+    }
+
+    // Filter by eventType
+    if (eventType) {
+      events = events.filter(e => e.eventType === eventType);
+    }
+
+    // Filter by status
+    if (status) {
+      events = events.filter(e => e.status === status);
+    } else {
+      // Default: exclude canceled and draft events
+      events = events.filter(e => ['confirmed', 'live', 'completed'].includes(e.status || ''));
+    }
+
+    // Filter for upcoming events
+    if (upcoming) {
+      const now = new Date().toISOString();
+      events = events.filter(e => e.startDateTime && e.startDateTime >= now);
+    }
+
     // Filter out recurring parents if we want to show instances instead
     if (includeInstances) {
       events = events.filter(e => !e.isRecurring);
     }
+
+    // Sort by start time
+    events.sort((a, b) => (a.startDateTime || '').localeCompare(b.startDateTime || ''));
+
+    // Apply limit
+    events = events.slice(0, limit);
 
     return NextResponse.json({ events });
   } catch (error) {

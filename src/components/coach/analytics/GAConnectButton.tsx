@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { BarChart2, X, Check, Loader2 } from 'lucide-react';
 
 interface GAConnectButtonProps {
@@ -83,9 +84,9 @@ export function GAConnectButton({ apiBasePath = '/api/coach/analytics' }: GAConn
         {loading ? 'Loading...' : isConfigured ? 'GA Connected' : 'Connect Google Analytics'}
       </button>
 
-      {/* Modal */}
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      {/* Modal - rendered via portal to escape overflow-hidden containers */}
+      {isOpen && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white dark:bg-[#171b22] rounded-xl shadow-xl w-full max-w-md border border-[#e1ddd8] dark:border-[#262b35]">
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
@@ -173,7 +174,8 @@ export function GAConnectButton({ apiBasePath = '/api/coach/analytics' }: GAConn
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

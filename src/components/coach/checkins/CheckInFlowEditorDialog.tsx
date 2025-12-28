@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { X, Sun, Moon, Calendar, Layers } from 'lucide-react';
 import type { OrgCheckInFlow, CheckInFlowTemplate, CheckInFlowType } from '@/types';
@@ -43,6 +44,11 @@ export function CheckInFlowEditorDialog({
   const [selectedFlowId, setSelectedFlowId] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,7 +110,9 @@ export function CheckInFlowEditorDialog({
     }
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
@@ -113,7 +121,7 @@ export function CheckInFlowEditorDialog({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white dark:bg-[#171b22] rounded-2xl w-full max-w-lg shadow-xl border border-[#e1ddd8] dark:border-[#262b35]"
+        className="bg-white dark:bg-[#171b22] rounded-2xl w-full max-w-xl shadow-xl border border-[#e1ddd8] dark:border-[#262b35]"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-[#e1ddd8] dark:border-[#262b35]">
@@ -294,7 +302,8 @@ export function CheckInFlowEditorDialog({
           </div>
         </form>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
