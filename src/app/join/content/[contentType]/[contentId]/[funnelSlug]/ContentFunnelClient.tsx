@@ -392,11 +392,7 @@ export default function ContentFunnelClient({
           <PaymentStep
             config={config as FunnelStepConfigPayment}
             program={contentAsProgram}
-            funnel={funnel}
-            sessionId={sessionId || ''}
-            inviteCode={inviteCode}
             skipPayment={skipPayment}
-            referrerId={referrerId}
             {...commonProps}
           />
         );
