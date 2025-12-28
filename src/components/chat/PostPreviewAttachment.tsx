@@ -35,7 +35,7 @@ export function PostPreviewAttachment({
       className={`block rounded-xl overflow-hidden border transition-all hover:opacity-90 ${
         isMine
           ? 'bg-white/10 border-white/20 hover:bg-white/15'
-          : 'bg-[#f9f7f5] dark:bg-[#1a1e26] border-[#e8e4df] dark:border-[#262b35] hover:border-[#a07855]/30'
+          : 'bg-[#f9f7f5] dark:bg-[#1a1e26] border-[#e8e4df] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a]/30'
       }`}
     >
       {/* Post Image (if available) */}
@@ -66,7 +66,7 @@ export function PostPreviewAttachment({
               <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold ${
                 isMine 
                   ? 'bg-white/20 text-white' 
-                  : 'bg-[#a07855] text-white'
+                  : 'bg-[#a07855] dark:bg-[#b8896a] text-white'
               }`}>
                 {(authorName || '?').charAt(0).toUpperCase()}
               </div>
@@ -99,7 +99,7 @@ export function PostPreviewAttachment({
         
         {/* Link indicator */}
         <div className={`flex items-center gap-1.5 mt-2 ${
-          isMine ? 'text-white/60' : 'text-[#a07855]'
+          isMine ? 'text-white/60' : 'text-[#a07855] dark:text-[#b8896a]'
         }`}>
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />

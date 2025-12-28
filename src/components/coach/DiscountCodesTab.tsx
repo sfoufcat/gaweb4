@@ -366,7 +366,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
         </div>
         <Button
           onClick={() => handleOpenModal()}
-          className="bg-[#a07855] hover:bg-[#8c6245] text-white flex items-center gap-2"
+          className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           New Code
@@ -391,7 +391,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
           </p>
           <Button
             onClick={() => handleOpenModal()}
-            className="bg-[#a07855] hover:bg-[#8c6245] text-white"
+            className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
           >
             Create Your First Code
           </Button>
@@ -413,14 +413,14 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                   <div className="flex items-center gap-2">
                     <div className={`px-3 py-1.5 rounded-lg font-mono font-bold text-sm ${
                       code.isActive
-                        ? 'bg-[#a07855]/10 text-[#a07855] dark:bg-[#b8896a]/10 dark:text-[#b8896a]'
+                        ? 'bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a] dark:bg-[#b8896a]/10 dark:text-[#b8896a]'
                         : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
                     }`}>
                       {code.code}
                     </div>
                     <button
                       onClick={() => handleCopyCode(code.code, code.id)}
-                      className="p-1.5 text-[#5f5a55] hover:text-[#a07855] rounded transition-colors"
+                      className="p-1.5 text-[#5f5a55] hover:text-[#a07855] dark:text-[#b8896a] rounded transition-colors"
                       title="Copy code"
                     >
                       {copiedId === code.id ? (
@@ -434,9 +434,9 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                   {/* Discount value */}
                   <div className="flex items-center gap-1.5 text-[#1a1a1a] dark:text-[#f5f5f8]">
                     {code.type === 'percentage' ? (
-                      <Percent className="w-4 h-4 text-[#a07855]" />
+                      <Percent className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
                     ) : (
-                      <DollarSign className="w-4 h-4 text-[#a07855]" />
+                      <DollarSign className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
                     )}
                     <span className="font-semibold font-albert">
                       {formatDiscountValue(code)}
@@ -481,7 +481,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => handleOpenModal(code)}
-                      className="p-1.5 text-[#5f5a55] hover:text-[#a07855] rounded transition-colors"
+                      className="p-1.5 text-[#5f5a55] hover:text-[#a07855] dark:text-[#b8896a] rounded transition-colors"
                       title="Edit"
                     >
                       <Edit2 className="w-4 h-4" />
@@ -756,7 +756,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                                           >
                                             <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">{item.name}</span>
                                             {isItemSelected(item) && (
-                                              <Check className="w-4 h-4 text-[#a07855]" />
+                                              <Check className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
                                             )}
                                           </button>
                                         ))}
@@ -778,7 +778,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                                           >
                                             <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">{item.name}</span>
                                             {isItemSelected(item) && (
-                                              <Check className="w-4 h-4 text-[#a07855]" />
+                                              <Check className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
                                             )}
                                           </button>
                                         ))}
@@ -831,7 +831,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                         type="button"
                         onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
                         className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${
-                          formData.isActive ? 'bg-[#a07855]' : 'bg-[#d1ccc6] dark:bg-[#3a3f4a]'
+                          formData.isActive ? 'bg-[#a07855] dark:bg-[#b8896a]' : 'bg-[#d1ccc6] dark:bg-[#3a3f4a]'
                         }`}
                       >
                         <span
@@ -861,7 +861,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
                       <Button
                         onClick={handleSave}
                         disabled={saving || !formData.code.trim()}
-                        className="flex-1 bg-[#a07855] hover:bg-[#8c6245] text-white"
+                        className="flex-1 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
                       >
                         {saving ? 'Saving...' : editingCode ? 'Update' : 'Create'}
                       </Button>

@@ -313,7 +313,7 @@ export function CustomMessage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <span className="text-[11px] font-semibold text-[#a07855] uppercase tracking-wide font-['Albert_Sans']">
+            <span className="text-[11px] font-semibold text-[#a07855] dark:text-[#b8896a] uppercase tracking-wide font-['Albert_Sans']">
               Check-in Update
             </span>
           </div>
@@ -351,7 +351,7 @@ export function CustomMessage() {
         <div className="flex items-center gap-2 px-4 py-2 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-full">
           {/* Call icon - always brown */}
           <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 bg-[#a07855]/10 dark:bg-[#b8896a]/20">
-            <svg className="w-3.5 h-3.5 text-[#a07855]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-3.5 h-3.5 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
             </svg>
           </div>
@@ -502,7 +502,7 @@ export function CustomMessage() {
               type="button"
               onClick={() => handleProfileClick(sender?.id)}
               className={`block text-[12px] font-semibold mb-1 font-['Albert_Sans'] tracking-[-0.5px] hover:opacity-70 transition-opacity cursor-pointer ${
-                isMine ? 'text-[#d4cbc3]' : 'text-[#a07855]'
+                isMine ? 'text-[#d4cbc3]' : 'text-[#a07855] dark:text-[#b8896a]'
               }`}
             >
               {senderName}
@@ -649,7 +649,7 @@ export function CustomMessage() {
               className={`flex items-center gap-2 mt-2 pt-2 w-full ${
                 isMine 
                   ? 'border-t border-white/10 text-[#f1ece6]/80 hover:text-[#f1ece6]' 
-                  : 'border-t border-[#e1ddd8] text-[#a07855] hover:text-[#7d5c3e]'
+                  : 'border-t border-[#e1ddd8] text-[#a07855] dark:text-[#b8896a] hover:text-[#7d5c3e]'
               } transition-colors`}
             >
               {/* Thread participant avatars */}

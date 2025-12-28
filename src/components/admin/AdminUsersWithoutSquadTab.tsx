@@ -172,7 +172,7 @@ export function AdminUsersWithoutSquadTab({ currentUserRole: _currentUserRole }:
     return (
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl p-8">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#a07855] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-12 h-12 border-4 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Loading users without squad...</p>
         </div>
       </div>
@@ -187,7 +187,7 @@ export function AdminUsersWithoutSquadTab({ currentUserRole: _currentUserRole }:
           <p className="font-albert text-sm">{error}</p>
           <Button
             onClick={fetchData}
-            className="mt-4 bg-[#a07855] hover:bg-[#8c6245] text-white"
+            className="mt-4 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
           >
             Retry
           </Button>
@@ -218,7 +218,7 @@ export function AdminUsersWithoutSquadTab({ currentUserRole: _currentUserRole }:
                 placeholder="Search by name or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-64 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-sm"
+                className="w-64 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert text-sm"
               />
               <svg
                 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]"
@@ -415,7 +415,7 @@ export function AdminUsersWithoutSquadTab({ currentUserRole: _currentUserRole }:
         <div className="p-12 text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#a07855]/10 flex items-center justify-center">
             <svg
-              className="w-8 h-8 text-[#a07855]"
+              className="w-8 h-8 text-[#a07855] dark:text-[#b8896a]"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"

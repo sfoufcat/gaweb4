@@ -126,7 +126,7 @@ export function IconPicker({ value, onChange, label, className = '', compact = f
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert hover:border-[#a07855] dark:hover:border-[#b8896a] transition-colors ${
+        className={`flex items-center gap-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert hover:border-[#a07855] dark:border-[#b8896a] dark:hover:border-[#b8896a] transition-colors ${
           compact ? 'px-3 py-3' : 'px-4 py-3 w-full'
         }`}
       >
@@ -224,7 +224,7 @@ export function IconPicker({ value, onChange, label, className = '', compact = f
                       value={customEmoji}
                       onChange={(e) => setCustomEmoji(e.target.value)}
                       placeholder="Paste emoji..."
-                      className="flex-1 px-3 py-2 bg-[#f5f5f8] dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] text-sm font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                      className="flex-1 px-3 py-2 bg-[#f5f5f8] dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] text-sm font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a]"
                     />
                     <button
                       type="button"

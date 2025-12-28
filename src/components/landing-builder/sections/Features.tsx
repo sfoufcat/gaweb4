@@ -70,8 +70,8 @@ export const Features = ({
 
   const iconStyleClasses = {
     filled: 'bg-[#a07855] text-white p-3 rounded-xl',
-    outlined: 'border-2 border-[#a07855] text-[#a07855] p-3 rounded-xl',
-    minimal: 'text-[#a07855]',
+    outlined: 'border-2 border-[#a07855] dark:border-[#b8896a] text-[#a07855] dark:text-[#b8896a] p-3 rounded-xl',
+    minimal: 'text-[#a07855] dark:text-[#b8896a]',
   };
 
   const renderIcon = (iconName: string) => {

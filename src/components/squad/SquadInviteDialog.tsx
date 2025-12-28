@@ -202,9 +202,9 @@ export function SquadInviteDialog({
       case 'premium':
         return <Crown className="w-5 h-5 text-[#f7c948]" />;
       case 'private':
-        return <Lock className="w-5 h-5 text-[#a07855]" />;
+        return <Lock className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />;
       default:
-        return <Globe className="w-5 h-5 text-[#a07855]" />;
+        return <Globe className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />;
     }
   };
 

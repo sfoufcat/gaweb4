@@ -198,7 +198,7 @@ export function TemplateCustomizeForm({
       <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-6">
         <div className="max-w-xl mx-auto space-y-6">
           {/* What You're Getting */}
-          <div className="p-4 rounded-xl bg-gradient-to-r from-[#a07855]/10 to-transparent dark:from-[#b8896a]/10 border border-[#a07855]/20 dark:border-[#b8896a]/20">
+          <div className="p-4 rounded-xl bg-gradient-to-r from-[#a07855]/10 to-transparent dark:from-[#b8896a]/10 border border-[#a07855] dark:border-[#b8896a]/20 dark:border-[#b8896a]/20">
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
               <span className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
@@ -232,7 +232,7 @@ export function TemplateCustomizeForm({
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
               placeholder="Enter program name"
-              className="w-full px-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a] transition-all"
+              className="w-full px-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] transition-all"
               required
             />
           </div>
@@ -252,7 +252,7 @@ export function TemplateCustomizeForm({
                 value={formData.slug}
                 onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
                 placeholder="program-slug"
-                className="flex-1 px-4 py-3 rounded-r-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a] transition-all"
+                className="flex-1 px-4 py-3 rounded-r-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] transition-all"
                 required
               />
             </div>
@@ -275,7 +275,7 @@ export function TemplateCustomizeForm({
                 placeholder="0.00"
                 min="0"
                 step="1"
-                className="w-full pl-8 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a] transition-all"
+                className="w-full pl-8 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] transition-all"
               />
             </div>
             <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1.5 font-albert">
@@ -294,7 +294,7 @@ export function TemplateCustomizeForm({
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Describe your program..."
               rows={3}
-              className="w-full px-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a] transition-all resize-none"
+              className="w-full px-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] transition-all resize-none"
             />
           </div>
 
@@ -347,7 +347,7 @@ export function TemplateCustomizeForm({
           <button
             onClick={handleSubmit}
             disabled={loading || !formData.name.trim() || !formData.slug.trim()}
-            className="px-6 py-3 rounded-xl bg-[#a07855] hover:bg-[#8c6245] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white font-semibold font-albert transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-6 py-3 rounded-xl bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white font-semibold font-albert transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {loading ? (
               <>
@@ -384,7 +384,7 @@ function ToggleOption({ icon: Icon, label, description, checked, onChange }: Tog
       className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all ${
         checked 
           ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 dark:bg-[#b8896a]/5' 
-          : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] hover:border-[#a07855]/30 dark:hover:border-[#b8896a]/30'
+          : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] hover:border-[#a07855] dark:border-[#b8896a]/30 dark:hover:border-[#b8896a]/30'
       }`}
     >
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${

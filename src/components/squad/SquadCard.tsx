@@ -44,7 +44,7 @@ function formatTimezone(tz: string): string {
 
 export function SquadCard({ squad, onJoin, isJoining, trackLabel }: SquadCardProps) {
   return (
-    <div className="group bg-white border border-[#e1ddd8]/50 rounded-[20px] p-5 hover:shadow-lg hover:border-[#a07855]/30 transition-all duration-300">
+    <div className="group bg-white border border-[#e1ddd8]/50 rounded-[20px] p-5 hover:shadow-lg hover:border-[#a07855] dark:border-[#b8896a]/30 transition-all duration-300">
       {/* Header Row */}
       <div className="flex items-start gap-4 mb-4">
         {/* Squad Avatar */}
@@ -81,7 +81,7 @@ export function SquadCard({ squad, onJoin, isJoining, trackLabel }: SquadCardPro
             )}
             {/* Track Badge */}
             {trackLabel && (
-              <span className="px-2 py-0.5 bg-[#a07855]/10 text-[#a07855] rounded-full text-[11px] font-albert font-medium flex-shrink-0">
+              <span className="px-2 py-0.5 bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a] rounded-full text-[11px] font-albert font-medium flex-shrink-0">
                 {trackLabel}
               </span>
             )}
@@ -139,7 +139,7 @@ export function SquadCard({ squad, onJoin, isJoining, trackLabel }: SquadCardPro
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-[#a07855]/20 flex items-center justify-center text-[#a07855] text-[10px] font-bold">
+                  <div className="w-full h-full bg-[#a07855]/20 flex items-center justify-center text-[#a07855] dark:text-[#b8896a] text-[10px] font-bold">
                     ?
                   </div>
                 )}
@@ -177,7 +177,7 @@ export function SquadCard({ squad, onJoin, isJoining, trackLabel }: SquadCardPro
         <button
           onClick={onJoin}
           disabled={isJoining}
-          className="px-4 py-2 bg-[#a07855] hover:bg-[#8c6245] disabled:bg-[#a07855]/50 text-white rounded-[12px] font-albert font-semibold text-[14px] transition-all hover:scale-[1.02] disabled:scale-100"
+          className="px-4 py-2 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:bg-[#a07855]/50 text-white rounded-[12px] font-albert font-semibold text-[14px] transition-all hover:scale-[1.02] disabled:scale-100"
         >
           {isJoining ? (
             <span className="flex items-center gap-2">

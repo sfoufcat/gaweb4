@@ -64,7 +64,7 @@ export function HabitForm({
             onChange={(e) => setFormData(prev => ({ ...prev, text: e.target.value }))}
             disabled={isSubmitting}
             placeholder="e.g., Read for 20 minutes"
-            className="w-full px-4 py-3 bg-[#f9f8f7] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-sans text-[16px] text-text-primary dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] focus:border-transparent resize-none"
+            className="w-full px-4 py-3 bg-[#f9f8f7] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-sans text-[16px] text-text-primary dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] focus:border-transparent resize-none"
             autoFocus
             spellCheck={false}
             rows={2}
@@ -87,7 +87,7 @@ export function HabitForm({
             onChange={(e) => setFormData(prev => ({ ...prev, linkedRoutine: e.target.value }))}
             disabled={isSubmitting}
             placeholder="e.g., after breakfast"
-            className="w-full px-4 py-3 bg-[#f9f8f7] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-sans text-[16px] text-text-primary dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] focus:border-transparent"
+            className="w-full px-4 py-3 bg-[#f9f8f7] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-sans text-[16px] text-text-primary dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] focus:border-transparent"
             spellCheck={false}
             maxLength={100}
             aria-label="Linked routine"
@@ -142,7 +142,7 @@ export function HabitForm({
             }))}
             placeholder="No limit"
             disabled={isSubmitting}
-            className="w-full px-4 py-3 bg-[#f9f8f7] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-sans text-[16px] text-text-primary dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] focus:border-transparent"
+            className="w-full px-4 py-3 bg-[#f9f8f7] dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-sans text-[16px] text-text-primary dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] focus:border-transparent"
           />
           <p className="mt-1 font-sans text-[12px] text-text-muted dark:text-[#7d8190]">
             Set a goal for how many times you want to complete this habit

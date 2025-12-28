@@ -253,7 +253,7 @@ export function SubmitAsTemplateModal({
                   ) : (
                     <>
                       {/* Info Banner */}
-                      <div className="p-4 rounded-xl bg-gradient-to-r from-[#a07855]/10 to-transparent dark:from-[#b8896a]/10 border border-[#a07855]/20 dark:border-[#b8896a]/20">
+                      <div className="p-4 rounded-xl bg-gradient-to-r from-[#a07855]/10 to-transparent dark:from-[#b8896a]/10 border border-[#a07855] dark:border-[#b8896a]/20 dark:border-[#b8896a]/20">
                         <div className="flex items-start gap-3">
                           <Sparkles className="w-5 h-5 text-[#a07855] dark:text-[#b8896a] flex-shrink-0 mt-0.5" />
                           <div>
@@ -286,7 +286,7 @@ export function SubmitAsTemplateModal({
                               className={`p-3 rounded-xl border text-left transition-all ${
                                 formData.category === cat.value
                                   ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 dark:bg-[#b8896a]/5'
-                                  : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855]/30 dark:hover:border-[#b8896a]/30'
+                                  : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a]/30 dark:hover:border-[#b8896a]/30'
                               }`}
                             >
                               <span className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm">
@@ -335,7 +335,7 @@ export function SubmitAsTemplateModal({
                               onChange={(e) => setFormData(prev => ({ ...prev, customTag: e.target.value }))}
                               placeholder="Add custom tag..."
                               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCustomTag())}
-                              className="flex-1 px-3 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] text-sm font-albert placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30"
+                              className="flex-1 px-3 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] text-sm font-albert placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30"
                             />
                             <button
                               type="button"
@@ -361,7 +361,7 @@ export function SubmitAsTemplateModal({
                           placeholder="A compelling 1-2 sentence description that will appear in the template gallery..."
                           rows={3}
                           maxLength={200}
-                          className="w-full px-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 resize-none"
+                          className="w-full px-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 resize-none"
                         />
                         <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1 text-right">
                           {formData.previewDescription.length}/200
@@ -387,7 +387,7 @@ export function SubmitAsTemplateModal({
                             }))}
                             min="0"
                             step="1"
-                            className="w-full pl-8 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/30"
+                            className="w-full pl-8 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30"
                           />
                         </div>
                         <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1">
@@ -416,7 +416,7 @@ export function SubmitAsTemplateModal({
                       <button
                         onClick={handleSubmit}
                         disabled={loading || !formData.category || !formData.previewDescription.trim()}
-                        className="px-5 py-2.5 rounded-xl bg-[#a07855] hover:bg-[#8c6245] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white font-semibold font-albert transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        className="px-5 py-2.5 rounded-xl bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white font-semibold font-albert transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                       >
                         {loading ? (
                           <>

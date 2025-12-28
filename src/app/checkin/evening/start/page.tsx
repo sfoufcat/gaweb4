@@ -106,7 +106,7 @@ export default function EveningStartPage() {
                   <div 
                     className={`w-5 h-5 md:w-7 md:h-7 rounded-[5px] md:rounded-[6px] flex items-center justify-center border-2 flex-shrink-0 ${
                       isCompleted 
-                        ? 'bg-[#a07855] border-[#a07855]' 
+                        ? 'bg-[#a07855] border-[#a07855] dark:border-[#b8896a]' 
                         : 'border-[#d4d0cc] bg-transparent'
                     }`}
                   >

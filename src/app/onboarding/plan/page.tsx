@@ -325,7 +325,7 @@ export default function PlanPage() {
                   onClick={() => setSelectedPlan(plan.id)}
                   className={`relative p-5 lg:p-6 rounded-[20px] border-2 text-left transition-all duration-300 ${
                     selectedPlan === plan.id 
-                      ? 'border-[#a07855] bg-[#faf8f6] shadow-lg' 
+                      ? 'border-[#a07855] dark:border-[#b8896a] bg-[#faf8f6] shadow-lg' 
                       : 'border-[#e1ddd8] bg-white hover:border-[#d4d0cb] hover:shadow-md'
                   }`}
                 >
@@ -341,7 +341,7 @@ export default function PlanPage() {
                   {/* Radio indicator */}
                   <div className={`absolute top-5 right-5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                     selectedPlan === plan.id 
-                      ? 'border-[#a07855] bg-[#a07855]' 
+                      ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855] dark:bg-[#b8896a]' 
                       : 'border-[#d4d0cb]'
                   }`}>
                     {selectedPlan === plan.id && (
@@ -407,18 +407,18 @@ export default function PlanPage() {
                   onClick={() => setAgreedToTerms(!agreedToTerms)}
                   className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all mt-0.5 ${
                     agreedToTerms 
-                      ? 'border-[#a07855] bg-[#a07855]' 
-                      : 'border-[#d4d0cb] group-hover:border-[#a07855]/50'
+                      ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855] dark:bg-[#b8896a]' 
+                      : 'border-[#d4d0cb] group-hover:border-[#a07855] dark:border-[#b8896a]/50'
                   }`}
                 >
                   {agreedToTerms && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
                 </div>
                 <span className="font-sans text-[13px] text-text-secondary leading-relaxed">
                   I agree to the{' '}
-                  <a href="/terms" target="_blank" className="text-[#a07855] underline underline-offset-2 hover:text-[#8c6245]">Terms and Conditions</a>,{' '}
-                  <a href="/privacy" target="_blank" className="text-[#a07855] underline underline-offset-2 hover:text-[#8c6245]">Privacy policy</a>,{' '}
-                  <a href="/subscription-policy" target="_blank" className="text-[#a07855] underline underline-offset-2 hover:text-[#8c6245]">Subscription policy</a> and the{' '}
-                  <a href="/refund-policy" target="_blank" className="text-[#a07855] underline underline-offset-2 hover:text-[#8c6245]">Refund and Cancellation policy</a>
+                  <a href="/terms" target="_blank" className="text-[#a07855] dark:text-[#b8896a] underline underline-offset-2 hover:text-[#8c6245]">Terms and Conditions</a>,{' '}
+                  <a href="/privacy" target="_blank" className="text-[#a07855] dark:text-[#b8896a] underline underline-offset-2 hover:text-[#8c6245]">Privacy policy</a>,{' '}
+                  <a href="/subscription-policy" target="_blank" className="text-[#a07855] dark:text-[#b8896a] underline underline-offset-2 hover:text-[#8c6245]">Subscription policy</a> and the{' '}
+                  <a href="/refund-policy" target="_blank" className="text-[#a07855] dark:text-[#b8896a] underline underline-offset-2 hover:text-[#8c6245]">Refund and Cancellation policy</a>
                 </span>
               </label>
             </motion.div>
@@ -518,7 +518,7 @@ export default function PlanPage() {
                   >
                     <div className="flex items-start gap-3">
                       <div className="flex-shrink-0 w-10 h-10 bg-[#faf8f6] rounded-xl flex items-center justify-center">
-                        <feature.icon className="w-5 h-5 text-[#a07855]" />
+                        <feature.icon className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
                       </div>
                       <div>
                         <h4 className="font-sans text-[14px] font-semibold text-text-primary mb-0.5">
@@ -553,7 +553,7 @@ export default function PlanPage() {
                   className="bg-white rounded-2xl p-6 border border-[#e1ddd8] text-center"
                 >
                   <div className="w-14 h-14 bg-[#faf8f6] rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <UserPlus className="w-7 h-7 text-[#a07855]" />
+                    <UserPlus className="w-7 h-7 text-[#a07855] dark:text-[#b8896a]" />
                   </div>
                   <div className="inline-flex items-center justify-center w-6 h-6 bg-[#a07855] text-white font-sans text-[12px] font-bold rounded-full mb-3">
                     1
@@ -574,7 +574,7 @@ export default function PlanPage() {
                   className="bg-white rounded-2xl p-6 border border-[#e1ddd8] text-center"
                 >
                   <div className="w-14 h-14 bg-[#faf8f6] rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <ListChecks className="w-7 h-7 text-[#a07855]" />
+                    <ListChecks className="w-7 h-7 text-[#a07855] dark:text-[#b8896a]" />
                   </div>
                   <div className="inline-flex items-center justify-center w-6 h-6 bg-[#a07855] text-white font-sans text-[12px] font-bold rounded-full mb-3">
                     2
@@ -595,7 +595,7 @@ export default function PlanPage() {
                   className="bg-white rounded-2xl p-6 border border-[#e1ddd8] text-center"
                 >
                   <div className="w-14 h-14 bg-[#faf8f6] rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <Eye className="w-7 h-7 text-[#a07855]" />
+                    <Eye className="w-7 h-7 text-[#a07855] dark:text-[#b8896a]" />
                   </div>
                   <div className="inline-flex items-center justify-center w-6 h-6 bg-[#a07855] text-white font-sans text-[12px] font-bold rounded-full mb-3">
                     3

@@ -289,7 +289,7 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
                   <div className="mt-4 pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
                     {detailLoading ? (
                       <div className="flex items-center justify-center py-8">
-                        <div className="w-6 h-6 border-2 border-[#a07855] border-t-transparent rounded-full animate-spin" />
+                        <div className="w-6 h-6 border-2 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin" />
                       </div>
                     ) : squadDetail ? (
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

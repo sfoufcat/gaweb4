@@ -100,9 +100,9 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     {enrollment.program.type === 'group' ? (
-                      <Users className="w-12 h-12 text-[#a07855]/40" />
+                      <Users className="w-12 h-12 text-[#a07855] dark:text-[#b8896a]/40" />
                     ) : (
-                      <User className="w-12 h-12 text-[#a07855]/40" />
+                      <User className="w-12 h-12 text-[#a07855] dark:text-[#b8896a]/40" />
                     )}
                   </div>
                 )}

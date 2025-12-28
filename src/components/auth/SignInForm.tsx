@@ -301,7 +301,7 @@ export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', h
         <div className="bg-white/80 backdrop-blur-sm border border-[#e1ddd8]/60 rounded-3xl p-8 shadow-lg">
           <div className="text-center mb-6">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#a07855]/10 flex items-center justify-center">
-              <svg className="w-8 h-8 text-[#a07855]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-8 h-8 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </div>
@@ -349,7 +349,7 @@ export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', h
               type="button"
               onClick={handleResendCode}
               disabled={verifyLoading}
-              className="font-sans text-sm text-[#a07855] hover:text-[#8a6649] font-medium transition-colors disabled:opacity-50"
+              className="font-sans text-sm text-[#a07855] dark:text-[#b8896a] hover:text-[#8a6649] font-medium transition-colors disabled:opacity-50"
             >
               Didn&apos;t receive the code? Resend
             </button>
@@ -517,7 +517,7 @@ export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', h
               <button
                 type="button"
                 onClick={() => setShowForgotPassword(true)}
-                className="font-sans text-sm text-[#a07855] hover:text-[#8a6649] font-medium transition-colors"
+                className="font-sans text-sm text-[#a07855] dark:text-[#b8896a] hover:text-[#8a6649] font-medium transition-colors"
               >
                 Forgot password?
               </button>

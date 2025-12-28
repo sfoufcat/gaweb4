@@ -70,7 +70,7 @@ export const Hero = ({
         {ctaText && (
           <a
             href={ctaUrl}
-            className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white bg-[#a07855] hover:bg-[#8c6245] rounded-xl transition-colors mt-4 shadow-sm"
+            className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] rounded-xl transition-colors mt-4 shadow-sm"
           >
             {ctaText}
           </a>

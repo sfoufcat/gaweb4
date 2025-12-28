@@ -114,7 +114,7 @@ export function AdminPremiumUpgradeFormsTab({ apiEndpoint = '/api/admin/premium-
           <p className="font-albert text-sm">{error}</p>
           <Button 
             onClick={fetchForms} 
-            className="mt-4 bg-[#a07855] hover:bg-[#8c6245] text-white"
+            className="mt-4 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
           >
             Retry
           </Button>
@@ -144,7 +144,7 @@ export function AdminPremiumUpgradeFormsTab({ apiEndpoint = '/api/admin/premium-
                 placeholder="Search by name, email, or phone..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-72 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-sm"
+                className="w-72 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert text-sm"
               />
               <svg
                 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]"
@@ -356,7 +356,7 @@ export function AdminPremiumUpgradeFormsTab({ apiEndpoint = '/api/admin/premium-
             <>
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#a07855]/10 flex items-center justify-center">
                 <svg
-                  className="w-8 h-8 text-[#a07855]"
+                  className="w-8 h-8 text-[#a07855] dark:text-[#b8896a]"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"

@@ -107,7 +107,7 @@ export function GoalInput({
             onChange={(e) => onDateChange(e.target.value)}
             min={new Date().toISOString().split('T')[0]}
             placeholder="By when?"
-            className="w-full pl-12 pr-4 py-3 rounded-xl border border-[#e1ddd8] hover:border-[#a07855] focus:border-[#a07855] focus:outline-none focus:ring-0 transition-all font-sans text-[18px] tracking-[-0.5px] leading-[1.2] text-text-primary cursor-pointer"
+            className="w-full pl-12 pr-4 py-3 rounded-xl border border-[#e1ddd8] hover:border-[#a07855] dark:border-[#b8896a] focus:border-[#a07855] dark:border-[#b8896a] focus:outline-none focus:ring-0 transition-all font-sans text-[18px] tracking-[-0.5px] leading-[1.2] text-text-primary cursor-pointer"
             style={{
               colorScheme: 'light',
             }}

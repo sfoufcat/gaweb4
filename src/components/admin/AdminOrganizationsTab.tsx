@@ -119,7 +119,7 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
                 />
               ) : (
                 <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-[#a07855]/20 to-[#8c6245]/10 flex items-center justify-center">
-                  <Building2 className="w-8 h-8 text-[#a07855]" />
+                  <Building2 className="w-8 h-8 text-[#a07855] dark:text-[#b8896a]" />
                 </div>
               )}
               <div className="flex-1">
@@ -181,7 +181,7 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
           <p className="font-albert text-sm">{error}</p>
           <Button 
             onClick={fetchOrganizations} 
-            className="mt-4 bg-[#a07855] hover:bg-[#8c6245] text-white"
+            className="mt-4 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
           >
             Try Again
           </Button>
@@ -219,7 +219,7 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
         {organizations.length === 0 ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#a07855]/10 flex items-center justify-center">
-              <Building2 className="w-8 h-8 text-[#a07855]" />
+              <Building2 className="w-8 h-8 text-[#a07855] dark:text-[#b8896a]" />
             </div>
             <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-lg mb-2">No organizations found</p>
             <p className="text-[#5f5a55] dark:text-[#b2b6c2]/70 font-albert text-sm">
@@ -245,11 +245,11 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
                     />
                   ) : (
                     <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#a07855]/20 to-[#8c6245]/10 flex items-center justify-center flex-shrink-0">
-                      <Building2 className="w-6 h-6 text-[#a07855]" />
+                      <Building2 className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate group-hover:text-[#a07855] dark:group-hover:text-[#b8896a] transition-colors">
+                    <h4 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate group-hover:text-[#a07855] dark:text-[#b8896a] dark:group-hover:text-[#b8896a] transition-colors">
                       {org.name}
                     </h4>
                     <div className="flex items-center gap-2 mt-1">

@@ -117,7 +117,7 @@ export default function RefundPolicyPage() {
                 To request a refund under our 30-day guarantee:
               </p>
               <ol className="list-decimal pl-6 space-y-2 font-sans text-[15px] text-text-secondary">
-                <li>Email us at <a href="mailto:hello@growthaddicts.com" className="text-[#a07855] hover:underline">hello@growthaddicts.com</a> with the subject line &quot;30-Day Guarantee Refund Request&quot;</li>
+                <li>Email us at <a href="mailto:hello@growthaddicts.com" className="text-[#a07855] dark:text-[#b8896a] hover:underline">hello@growthaddicts.com</a> with the subject line &quot;30-Day Guarantee Refund Request&quot;</li>
                 <li>Include your account email address and the date of your subscription</li>
                 <li>Briefly explain why you feel you haven&apos;t made progress despite completing the program</li>
                 <li>Our team will review your account activity and respond within 3-5 business days</li>
@@ -190,7 +190,7 @@ export default function RefundPolicyPage() {
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed">
                 For any questions about refunds or cancellations, please contact us at{' '}
-                <a href="mailto:hello@growthaddicts.com" className="text-[#a07855] hover:underline">
+                <a href="mailto:hello@growthaddicts.com" className="text-[#a07855] dark:text-[#b8896a] hover:underline">
                   hello@growthaddicts.com
                 </a>
               </p>

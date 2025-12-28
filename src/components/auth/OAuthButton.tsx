@@ -48,7 +48,7 @@ export function OAuthButton({ provider, onClick, disabled, loading }: OAuthButto
         bg-white border border-[#e1ddd8] rounded-2xl py-4 px-6
         font-sans font-medium text-base text-text-primary
         hover:bg-[#faf8f6] hover:border-[#d4d0cb]
-        focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 focus:border-[#a07855]
+        focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20 focus:border-[#a07855] dark:border-[#b8896a]
         transition-all duration-200
         disabled:opacity-50 disabled:cursor-not-allowed
         ${loading ? 'cursor-wait' : ''}

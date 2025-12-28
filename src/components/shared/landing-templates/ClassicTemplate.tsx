@@ -102,7 +102,7 @@ function FAQItem({
           className="flex-shrink-0"
         >
           <ChevronDown 
-            className={`w-5 h-5 text-text-secondary dark:text-[#7d8190] ${isOpen ? 'text-[#a07855]' : ''}`}
+            className={`w-5 h-5 text-text-secondary dark:text-[#7d8190] ${isOpen ? 'text-[#a07855] dark:text-[#b8896a]' : ''}`}
           />
         </motion.div>
       </button>

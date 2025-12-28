@@ -180,7 +180,7 @@ function ArticleFormDialog({
                 required
                 value={formData.title}
                 onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
               />
             </div>
 
@@ -219,7 +219,7 @@ function ArticleFormDialog({
               <button
                 type="button"
                 onClick={() => setShowThumbnail(true)}
-                className="flex items-center gap-2 text-sm text-[#a07855] hover:text-[#8c6245] font-albert font-medium transition-colors"
+                className="flex items-center gap-2 text-sm text-[#a07855] dark:text-[#b8896a] hover:text-[#8c6245] font-albert font-medium transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -275,7 +275,7 @@ function ArticleFormDialog({
                 type="text"
                 value={formData.authorTitle}
                 onChange={e => setFormData(prev => ({ ...prev, authorTitle: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
                 placeholder="e.g., Life Coach, CEO (optional)"
               />
             </div>
@@ -287,7 +287,7 @@ function ArticleFormDialog({
                 type="date"
                 value={formData.publishedAt}
                 onChange={e => setFormData(prev => ({ ...prev, publishedAt: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
               />
             </div>
 
@@ -353,7 +353,7 @@ function ArticleFormDialog({
             <Button
               type="submit"
               disabled={saving}
-              className="bg-[#a07855] hover:bg-[#8c6245] text-white font-albert"
+              className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-albert"
             >
               {saving ? 'Saving...' : isEditing ? 'Update Article' : 'Create Article'}
             </Button>
@@ -497,7 +497,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
         <div className="text-center text-red-600 dark:text-red-400">
           <p className="font-albert font-semibold mb-2">Error</p>
           <p className="font-albert text-sm">{error}</p>
-          <Button onClick={fetchArticles} className="mt-4 bg-[#a07855] hover:bg-[#8c6245] text-white">
+          <Button onClick={fetchArticles} className="mt-4 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white">
             Retry
           </Button>
         </div>
@@ -526,7 +526,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
                   placeholder="Search articles..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-48 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190]"
+                  className="w-48 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190]"
                 />
                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#7d8190]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -538,7 +538,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
                 <select
                   value={categoryFilter}
                   onChange={e => setCategoryFilter(e.target.value)}
-                  className="px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]"
+                  className="px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]"
                 >
                   <option value="">All Categories</option>
                   {categories.map(cat => (
@@ -549,7 +549,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
               
               <Button
                 onClick={() => { setArticleToEdit(null); setIsFormOpen(true); }}
-                className="bg-[#a07855] hover:bg-[#8c6245] text-white font-albert"
+                className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-albert"
               >
                 + Create Article
               </Button>
@@ -610,7 +610,7 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
                         variant="ghost"
                         size="sm"
                         onClick={() => { setArticleToEdit(article); setIsFormOpen(true); }}
-                        className="text-[#a07855] hover:text-[#8c6245] hover:bg-[#a07855]/10 font-albert"
+                        className="text-[#a07855] dark:text-[#b8896a] hover:text-[#8c6245] hover:bg-[#a07855]/10 font-albert"
                       >
                         Edit
                       </Button>

@@ -179,7 +179,7 @@ export function ProgramDiscovery() {
       <div className="mt-8 pt-8 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
         <Link
           href="/discover"
-          className="group flex items-center justify-between p-5 bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#1a1512] dark:to-[#181310] border border-[#FFE4CC] dark:border-[#3d3530] rounded-[20px] hover:shadow-lg hover:border-[#a07855]/40 dark:hover:border-[#b8896a]/40 transition-all duration-300"
+          className="group flex items-center justify-between p-5 bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#1a1512] dark:to-[#181310] border border-[#FFE4CC] dark:border-[#3d3530] rounded-[20px] hover:shadow-lg hover:border-[#a07855] dark:border-[#b8896a]/40 dark:hover:border-[#b8896a]/40 transition-all duration-300"
         >
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] dark:from-[#b8896a] dark:to-[#a07855] flex items-center justify-center flex-shrink-0">

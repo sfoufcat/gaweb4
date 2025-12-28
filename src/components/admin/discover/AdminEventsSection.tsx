@@ -392,7 +392,7 @@ function EventFormDialog({
         <form onSubmit={handleSubmit}>
           <div className="p-6 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
             <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-[#a07855]" />
+              <Calendar className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
               {isEditing ? 'Edit Event' : 'Create Event'}
             </h2>
           </div>
@@ -406,7 +406,7 @@ function EventFormDialog({
                 required
                 value={formData.title}
                 onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
                 placeholder="Event title..."
               />
             </div>
@@ -420,7 +420,7 @@ function EventFormDialog({
                 <button
                   type="button"
                   onClick={() => setShowImagePreview(true)}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-[#a07855] hover:text-[#8c6245] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:bg-[#faf8f6] dark:hover:bg-[#1c2028] transition-colors"
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-[#a07855] dark:text-[#b8896a] hover:text-[#8c6245] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:bg-[#faf8f6] dark:hover:bg-[#1c2028] transition-colors"
                 >
                   <ImageIcon className="w-4 h-4" />
                   <span>Image uploaded - Click to change</span>
@@ -440,7 +440,7 @@ function EventFormDialog({
                     <button
                       type="button"
                       onClick={() => setShowImagePreview(false)}
-                      className="mt-2 text-xs text-text-secondary hover:text-[#a07855]"
+                      className="mt-2 text-xs text-text-secondary hover:text-[#a07855] dark:text-[#b8896a]"
                     >
                       Collapse preview
                     </button>
@@ -459,7 +459,7 @@ function EventFormDialog({
                   value={formData.date}
                   onChange={e => setFormData(prev => ({ ...prev, date: e.target.value }))}
                   min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
                 />
               </div>
               <div>
@@ -472,7 +472,7 @@ function EventFormDialog({
                   required
                   value={formData.time}
                   onChange={e => setFormData(prev => ({ ...prev, time: e.target.value }))}
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
                 />
               </div>
               <div>
@@ -481,7 +481,7 @@ function EventFormDialog({
                   value={formData.durationMinutes.toString()}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, durationMinutes: parseInt(value) }))}
                 >
-                  <SelectTrigger className="w-full px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  <SelectTrigger className="w-full px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
                     <SelectValue placeholder="Select duration" />
                   </SelectTrigger>
                   <SelectContent>
@@ -504,7 +504,7 @@ function EventFormDialog({
                   value={formData.timezone}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, timezone: value }))}
                 >
-                  <SelectTrigger className="w-full px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  <SelectTrigger className="w-full px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
                     <SelectValue placeholder="Select timezone" />
                   </SelectTrigger>
                   <SelectContent>
@@ -534,7 +534,7 @@ function EventFormDialog({
                     }));
                   }}
                 >
-                  <SelectTrigger className="w-full px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  <SelectTrigger className="w-full px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
                     <SelectValue placeholder="Select repeat" />
                   </SelectTrigger>
                   <SelectContent>
@@ -548,7 +548,7 @@ function EventFormDialog({
                 <button
                   type="button"
                   onClick={() => setShowRecurrenceDetails(!showRecurrenceDetails)}
-                  className="mt-2 w-full flex items-center justify-between px-3 py-2 bg-[#f9f7f5] dark:bg-[#1c2028] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-left group hover:border-[#a07855] transition-colors"
+                  className="mt-2 w-full flex items-center justify-between px-3 py-2 bg-[#f9f7f5] dark:bg-[#1c2028] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-left group hover:border-[#a07855] dark:border-[#b8896a] transition-colors"
                 >
                   <span className="font-albert text-[13px] text-[#a07855] dark:text-[#b8896a]">
                     {getRecurrenceSummary()}
@@ -576,7 +576,7 @@ function EventFormDialog({
                     value={formData.recurrenceEndDate}
                     onChange={e => setFormData(prev => ({ ...prev, recurrenceEndDate: e.target.value }))}
                     min={formData.date}
-                    className="w-full px-2 py-1.5 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                    className="w-full px-2 py-1.5 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
                   />
                 </div>
               )}
@@ -610,7 +610,7 @@ function EventFormDialog({
                   value={formData.location}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, location: value }))}
                 >
-                  <SelectTrigger className="px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  <SelectTrigger className="px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
                     <SelectValue placeholder="Select location" />
                   </SelectTrigger>
                   <SelectContent>
@@ -625,7 +625,7 @@ function EventFormDialog({
                     value={formData.meetingLink}
                     onChange={e => setFormData(prev => ({ ...prev, meetingLink: e.target.value }))}
                     placeholder="Meeting URL..."
-                    className="px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                    className="px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
                   />
                 )}
               </div>
@@ -639,7 +639,7 @@ function EventFormDialog({
                 onValueChange={(value) => setFormData(prev => ({ ...prev, hostUserId: value }))}
                 disabled={loadingCoaches}
               >
-                <SelectTrigger className="w-full px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
+                <SelectTrigger className="w-full px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
                   <SelectValue placeholder={loadingCoaches ? 'Loading coaches...' : 'Select a host...'} />
                 </SelectTrigger>
                 <SelectContent>
@@ -687,7 +687,7 @@ function EventFormDialog({
                       type="text"
                       value={bp}
                       onChange={e => updateBulletPoint(index, e.target.value)}
-                      className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                      className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
                       placeholder="What attendees will learn..."
                     />
                     <button
@@ -702,7 +702,7 @@ function EventFormDialog({
                 <button
                   type="button"
                   onClick={addBulletPoint}
-                  className="text-sm text-[#a07855] hover:text-[#8c6245] font-albert"
+                  className="text-sm text-[#a07855] dark:text-[#b8896a] hover:text-[#8c6245] font-albert"
                 >
                   + Add bullet point
                 </button>
@@ -711,7 +711,7 @@ function EventFormDialog({
 
             {/* Additional Info - Collapsed section */}
             <details className="group">
-              <summary className="cursor-pointer text-sm font-medium text-[#a07855] hover:text-[#8c6245] font-albert list-none flex items-center gap-1">
+              <summary className="cursor-pointer text-sm font-medium text-[#a07855] dark:text-[#b8896a] hover:text-[#8c6245] font-albert list-none flex items-center gap-1">
                 <ChevronDown className="w-4 h-4 group-open:rotate-180 transition-transform" />
                 Additional details (type, language, difficulty)
               </summary>
@@ -722,7 +722,7 @@ function EventFormDialog({
                     type="text"
                     value={formData.additionalInfo.type}
                     onChange={e => setFormData(prev => ({ ...prev, additionalInfo: { ...prev.additionalInfo, type: e.target.value } }))}
-                    className="w-full px-2 py-1.5 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                    className="w-full px-2 py-1.5 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
                     placeholder="Live workshop"
                   />
                 </div>
@@ -732,7 +732,7 @@ function EventFormDialog({
                     type="text"
                     value={formData.additionalInfo.language}
                     onChange={e => setFormData(prev => ({ ...prev, additionalInfo: { ...prev.additionalInfo, language: e.target.value } }))}
-                    className="w-full px-2 py-1.5 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                    className="w-full px-2 py-1.5 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
                   />
                 </div>
                 <div>
@@ -741,7 +741,7 @@ function EventFormDialog({
                     type="text"
                     value={formData.additionalInfo.difficulty}
                     onChange={e => setFormData(prev => ({ ...prev, additionalInfo: { ...prev.additionalInfo, difficulty: e.target.value } }))}
-                    className="w-full px-2 py-1.5 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                    className="w-full px-2 py-1.5 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
                   />
                 </div>
               </div>
@@ -761,7 +761,7 @@ function EventFormDialog({
                   type="number"
                   value={formData.maxAttendees}
                   onChange={e => setFormData(prev => ({ ...prev, maxAttendees: e.target.value }))}
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
                   placeholder="Leave empty for unlimited"
                 />
               </div>
@@ -795,7 +795,7 @@ function EventFormDialog({
             <Button
               type="submit"
               disabled={saving}
-              className="bg-[#a07855] hover:bg-[#8c6245] text-white font-albert"
+              className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-albert"
             >
               {saving ? 'Saving...' : isEditing ? 'Update Event' : 'Create Event'}
             </Button>
@@ -816,7 +816,7 @@ function EventFormDialog({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction className="font-albert bg-[#a07855] hover:bg-[#8c6245]">OK</AlertDialogAction>
+            <AlertDialogAction className="font-albert bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855]">OK</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -960,7 +960,7 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
         <div className="text-center text-red-600 dark:text-red-400">
           <p className="font-albert font-semibold mb-2">Error</p>
           <p className="font-albert text-sm">{error}</p>
-          <Button onClick={fetchEvents} className="mt-4 bg-[#a07855] hover:bg-[#8c6245] text-white">
+          <Button onClick={fetchEvents} className="mt-4 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white">
             Retry
           </Button>
         </div>
@@ -989,7 +989,7 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
                   placeholder="Search events..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-64 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]"
+                  className="w-64 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]"
                 />
                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#7d8190]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -998,7 +998,7 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
               
               <Button
                 onClick={() => { setEventToEdit(null); setIsFormOpen(true); }}
-                className="bg-[#a07855] hover:bg-[#8c6245] text-white font-albert"
+                className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-albert"
               >
                 + Create Event
               </Button>
@@ -1059,7 +1059,7 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
                         variant="ghost"
                         size="sm"
                         onClick={() => { setEventToEdit(event); setIsFormOpen(true); }}
-                        className="text-[#a07855] hover:text-[#8c6245] hover:bg-[#a07855]/10 font-albert"
+                        className="text-[#a07855] dark:text-[#b8896a] hover:text-[#8c6245] hover:bg-[#a07855]/10 font-albert"
                       >
                         Edit
                       </Button>

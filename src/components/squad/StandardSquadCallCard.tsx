@@ -231,7 +231,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
             
             <button
               onClick={() => setShowSuggestModal(true)}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#a07855] hover:bg-[#8c6245] rounded-full font-albert text-[14px] font-medium text-white transition-colors shrink-0"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] rounded-full font-albert text-[14px] font-medium text-white transition-colors shrink-0"
             >
               <Calendar className="w-4 h-4" />
               Suggest a call
@@ -303,7 +303,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
                         href={event.locationLabel}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[#a07855] hover:underline"
+                        className="text-[#a07855] dark:text-[#b8896a] hover:underline"
                       >
                         {event.locationLabel}
                       </a>
@@ -320,7 +320,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
                 <p className="font-albert text-[14px] text-text-secondary">
                   <span className="font-medium text-text-primary">{yesCount} of {totalMembers}</span> members confirmed
                   {votesNeeded > 0 && (
-                    <span className="text-[#a07855]"> · {votesNeeded} more needed</span>
+                    <span className="text-[#a07855] dark:text-[#b8896a]"> · {votesNeeded} more needed</span>
                   )}
                 </p>
               </div>
@@ -420,7 +420,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
                     href={event.locationLabel}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[#a07855] hover:underline"
+                    className="text-[#a07855] dark:text-[#b8896a] hover:underline"
                   >
                     {event.locationLabel}
                   </a>
@@ -450,7 +450,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
               {squad.chatChannelId && (
                 <button
                   onClick={handleGoToChat}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#a07855] hover:bg-[#8c6245] rounded-full font-albert text-[14px] font-medium text-white transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] rounded-full font-albert text-[14px] font-medium text-white transition-colors"
                 >
                   <MessageCircle className="w-4 h-4" />
                   Go to chat

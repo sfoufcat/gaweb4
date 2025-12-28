@@ -69,7 +69,7 @@ class PuckErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState
             </p>
             <Button
               onClick={this.handleReset}
-              className="bg-[#a07855] hover:bg-[#8c6245] text-white"
+              className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Try Again
@@ -113,7 +113,7 @@ function TemplatePreview({ template }: { template: LandingPageTemplate }) {
       {/* Hero section representation */}
       <div className="flex-1 flex flex-col items-center justify-center mb-3">
         <div className="w-12 h-12 rounded-xl bg-[#a07855]/20 flex items-center justify-center mb-2">
-          <Icon className="w-6 h-6 text-[#a07855]" />
+          <Icon className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" />
         </div>
         <div className="w-3/4 h-2 bg-[#a07855]/30 rounded mb-1.5" />
         <div className="w-1/2 h-1.5 bg-[#a07855]/15 rounded" />
@@ -125,12 +125,12 @@ function TemplatePreview({ template }: { template: LandingPageTemplate }) {
           <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#a07855]/40" />
         ))}
         {template.puckData.content.length > 5 && (
-          <span className="text-[9px] text-[#a07855]/60 ml-0.5">+{template.puckData.content.length - 5}</span>
+          <span className="text-[9px] text-[#a07855] dark:text-[#b8896a]/60 ml-0.5">+{template.puckData.content.length - 5}</span>
         )}
       </div>
       
       {/* Section count badge */}
-      <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-[#a07855]/20 text-[#a07855] text-[10px] font-medium">
+      <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-[#a07855]/20 text-[#a07855] dark:text-[#b8896a] text-[10px] font-medium">
         {template.puckData.content.length} sections
       </div>
     </div>
@@ -226,10 +226,10 @@ export function LandingPageEditor({
               {/* Blank Page Option */}
               <button
                 onClick={handleStartBlank}
-                className="h-64 border-2 border-dashed border-border dark:border-[#262b35] rounded-2xl hover:border-[#a07855] hover:bg-[#a07855]/5 dark:hover:bg-[#a07855]/10 transition-all duration-200 flex flex-col items-center justify-center gap-4 group"
+                className="h-64 border-2 border-dashed border-border dark:border-[#262b35] rounded-2xl hover:border-[#a07855] dark:border-[#b8896a] hover:bg-[#a07855]/5 dark:hover:bg-[#a07855]/10 transition-all duration-200 flex flex-col items-center justify-center gap-4 group"
               >
                 <div className="w-14 h-14 rounded-2xl bg-surface-elevated dark:bg-[#1d222b] flex items-center justify-center group-hover:bg-[#a07855]/10 transition-colors border border-border dark:border-[#262b35]">
-                  <Layout className="w-7 h-7 text-text-muted dark:text-[#7d8190] group-hover:text-[#a07855] transition-colors" />
+                  <Layout className="w-7 h-7 text-text-muted dark:text-[#7d8190] group-hover:text-[#a07855] dark:text-[#b8896a] transition-colors" />
                 </div>
                 <div className="text-center">
                   <span className="font-semibold text-lg text-text-primary dark:text-[#f5f5f8] block">Blank Page</span>
@@ -244,7 +244,7 @@ export function LandingPageEditor({
                   <button
                     key={template.id}
                     onClick={() => handleSelectTemplate(template)}
-                    className="text-left bg-card dark:bg-[#171b22] border border-border dark:border-[#262b35] rounded-2xl overflow-hidden hover:border-[#a07855] hover:shadow-lg dark:hover:shadow-[#a07855]/10 transition-all duration-200 group"
+                    className="text-left bg-card dark:bg-[#171b22] border border-border dark:border-[#262b35] rounded-2xl overflow-hidden hover:border-[#a07855] dark:border-[#b8896a] hover:shadow-lg dark:hover:shadow-[#a07855]/10 transition-all duration-200 group"
                   >
                     {/* Thumbnail/Preview */}
                     <div className="aspect-[4/3] relative overflow-hidden border-b border-border dark:border-[#262b35]">
@@ -260,10 +260,10 @@ export function LandingPageEditor({
                     {/* Info */}
                     <div className="p-4">
                       <div className="flex items-center gap-2 mb-1">
-                        <CategoryIcon className="w-4 h-4 text-[#a07855]" />
-                        <span className="text-xs text-[#a07855] capitalize font-medium">{template.category}</span>
+                        <CategoryIcon className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+                        <span className="text-xs text-[#a07855] dark:text-[#b8896a] capitalize font-medium">{template.category}</span>
                       </div>
-                      <h3 className="font-semibold text-text-primary dark:text-[#f5f5f8] group-hover:text-[#a07855] transition-colors">
+                      <h3 className="font-semibold text-text-primary dark:text-[#f5f5f8] group-hover:text-[#a07855] dark:text-[#b8896a] transition-colors">
                         {template.name}
                       </h3>
                       <p className="text-sm text-text-secondary dark:text-[#b2b6c2] mt-1 line-clamp-2">
@@ -314,7 +314,7 @@ export function LandingPageEditor({
             variant="outline"
             size="sm"
             onClick={() => setShowTemplates(true)}
-            className="border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:border-[#a07855] dark:hover:border-[#b8896a]"
+            className="border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:border-[#a07855] dark:border-[#b8896a] dark:hover:border-[#b8896a]"
           >
             <LayoutTemplate className="w-4 h-4 mr-2" />
             Templates
@@ -335,7 +335,7 @@ export function LandingPageEditor({
             size="sm"
             onClick={() => handleSave(editorData)}
             disabled={isSaving}
-            className="bg-[#a07855] hover:bg-[#8c6245] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white font-semibold px-4 shadow-sm"
+            className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white font-semibold px-4 shadow-sm"
           >
             {isSaving ? (
               <>

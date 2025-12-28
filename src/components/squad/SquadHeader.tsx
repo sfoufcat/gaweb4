@@ -447,7 +447,7 @@ export function SquadHeader({
                 onChange={(e) => setEditName(e.target.value)}
                 placeholder="Enter squad name"
                 maxLength={50}
-                className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-[12px] font-albert text-[16px] text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all"
+                className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-[12px] font-albert text-[16px] text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] transition-all"
               />
             </div>
           </div>
@@ -462,7 +462,7 @@ export function SquadHeader({
             <AlertDialogAction
               onClick={handleSaveChanges}
               disabled={isSaving || !editName.trim() || isUploading}
-              className="font-albert rounded-full bg-[#a07855] hover:bg-[#8c6245] text-white"
+              className="font-albert rounded-full bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
             >
               {isSaving ? 'Saving...' : 'Save changes'}
             </AlertDialogAction>

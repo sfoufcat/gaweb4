@@ -182,7 +182,7 @@ function DownloadFormDialog({
                 required
                 value={formData.title}
                 onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
                 placeholder="e.g., Habit Tracker Template"
               />
             </div>
@@ -194,7 +194,7 @@ function DownloadFormDialog({
                 value={formData.description}
                 onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
                 rows={3}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
                 placeholder="Brief description of the download..."
               />
             </div>
@@ -223,7 +223,7 @@ function DownloadFormDialog({
                 type="text"
                 value={formData.fileType}
                 onChange={e => setFormData(prev => ({ ...prev, fileType: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
                 placeholder="e.g., PDF, Excel, ZIP"
               />
               <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
@@ -257,7 +257,7 @@ function DownloadFormDialog({
                 type="number"
                 value={formData.order}
                 onChange={e => setFormData(prev => ({ ...prev, order: parseInt(e.target.value) || 0 }))}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
               />
               <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                 Lower numbers appear first.
@@ -278,7 +278,7 @@ function DownloadFormDialog({
             <Button
               type="submit"
               disabled={saving}
-              className="bg-[#a07855] hover:bg-[#8c6245] text-white font-albert"
+              className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-albert"
             >
               {saving ? 'Saving...' : isEditing ? 'Update Download' : 'Create Download'}
             </Button>
@@ -396,7 +396,7 @@ export function AdminDownloadsSection({ apiEndpoint = '/api/admin/discover/downl
         <div className="text-center text-red-600">
           <p className="font-albert font-semibold mb-2">Error</p>
           <p className="font-albert text-sm">{error}</p>
-          <Button onClick={fetchDownloads} className="mt-4 bg-[#a07855] hover:bg-[#8c6245] text-white">
+          <Button onClick={fetchDownloads} className="mt-4 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white">
             Retry
           </Button>
         </div>
@@ -425,7 +425,7 @@ export function AdminDownloadsSection({ apiEndpoint = '/api/admin/discover/downl
                   placeholder="Search downloads..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-48 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]"
+                  className="w-48 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8]"
                 />
                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#7d8190]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -434,7 +434,7 @@ export function AdminDownloadsSection({ apiEndpoint = '/api/admin/discover/downl
               
               <Button
                 onClick={() => { setDownloadToEdit(null); setIsFormOpen(true); }}
-                className="bg-[#a07855] hover:bg-[#8c6245] text-white font-albert"
+                className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-albert"
               >
                 + Create Download
               </Button>
@@ -481,7 +481,7 @@ export function AdminDownloadsSection({ apiEndpoint = '/api/admin/discover/downl
                         variant="ghost"
                         size="sm"
                         onClick={() => { setDownloadToEdit(download); setIsFormOpen(true); }}
-                        className="text-[#a07855] hover:text-[#8c6245] hover:bg-[#a07855]/10 font-albert"
+                        className="text-[#a07855] dark:text-[#b8896a] hover:text-[#8c6245] hover:bg-[#a07855]/10 font-albert"
                       >
                         Edit
                       </Button>

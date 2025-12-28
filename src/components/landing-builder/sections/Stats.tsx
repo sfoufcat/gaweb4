@@ -92,7 +92,7 @@ export const Stats = ({
     boxed: {
       container: '',
       item: 'bg-white border border-[#e1ddd8] rounded-2xl p-6 text-center shadow-sm',
-      value: 'text-3xl md:text-4xl font-bold text-[#a07855]',
+      value: 'text-3xl md:text-4xl font-bold text-[#a07855] dark:text-[#b8896a]',
       label: 'text-[#5f5a55] mt-2 text-sm',
     },
     divided: {

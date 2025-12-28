@@ -110,7 +110,7 @@ export function ReferralConfigForm({
       {/* Header */}
       <div className="flex items-center gap-3 pb-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
         <div className="w-10 h-10 rounded-full bg-[#a07855]/10 flex items-center justify-center">
-          <Users className="w-5 h-5 text-[#a07855]" />
+          <Users className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
         </div>
         <div>
           <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
@@ -167,7 +167,7 @@ export function ReferralConfigForm({
                     </p>
                     <a
                       href="/coach?tab=funnels"
-                      className="inline-flex items-center gap-1 text-xs text-[#a07855] hover:underline mt-2"
+                      className="inline-flex items-center gap-1 text-xs text-[#a07855] dark:text-[#b8896a] hover:underline mt-2"
                     >
                       Go to Funnels
                       <ExternalLink className="w-3 h-3" />
@@ -227,7 +227,7 @@ export function ReferralConfigForm({
           type="button"
           onClick={handleSave}
           disabled={saving || (enabled && funnels.length === 0)}
-          className="flex-1 bg-[#a07855] hover:bg-[#8c6245] text-white"
+          className="flex-1 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
         >
           {saving ? (
             <>

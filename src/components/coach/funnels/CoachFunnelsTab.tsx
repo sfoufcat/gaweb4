@@ -371,7 +371,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
         <select
           value={selectedProgramId}
           onChange={(e) => setSelectedProgramId(e.target.value)}
-          className="px-4 py-2 bg-white border border-[#e1ddd8] rounded-lg text-text-primary focus:outline-none focus:border-[#a07855]"
+          className="px-4 py-2 bg-white border border-[#e1ddd8] rounded-lg text-text-primary focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         >
           <option value="">All Programs</option>
           {programs.map(program => (
@@ -477,7 +477,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium text-text-primary">{funnel.name}</h3>
                       {funnel.isDefault && (
-                        <span className="px-2 py-0.5 text-xs bg-[#a07855]/10 text-[#a07855] rounded-full">
+                        <span className="px-2 py-0.5 text-xs bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a] rounded-full">
                           Default
                         </span>
                       )}
@@ -497,7 +497,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
                   {/* Quick actions */}
                   <button
                     onClick={() => handleEditSteps(funnel)}
-                    className="px-3 py-1.5 text-sm text-[#a07855] hover:bg-[#a07855]/5 rounded-lg transition-colors"
+                    className="px-3 py-1.5 text-sm text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/5 rounded-lg transition-colors"
                   >
                     Edit Steps
                   </button>

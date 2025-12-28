@@ -111,11 +111,11 @@ export function IncomingCallHandler() {
           ) : (
             <div className="w-20 h-20 rounded-full bg-[#a07855]/10 flex items-center justify-center">
               {isSquadCall ? (
-                <Users className="w-10 h-10 text-[#a07855]" />
+                <Users className="w-10 h-10 text-[#a07855] dark:text-[#b8896a]" />
               ) : incomingCallData.isVideo ? (
-                <Video className="w-10 h-10 text-[#a07855]" />
+                <Video className="w-10 h-10 text-[#a07855] dark:text-[#b8896a]" />
               ) : (
-                <Phone className="w-10 h-10 text-[#a07855]" />
+                <Phone className="w-10 h-10 text-[#a07855] dark:text-[#b8896a]" />
               )}
             </div>
           )}

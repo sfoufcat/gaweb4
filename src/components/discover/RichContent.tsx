@@ -108,7 +108,7 @@ const parserOptions: HTMLReactParserOptions = {
             href={attribs.href} 
             target="_blank" 
             rel="noopener noreferrer"
-            className="text-earth-600 dark:text-[#b8896a] hover:text-earth-700 dark:hover:text-[#a07855] underline"
+            className="text-earth-600 dark:text-[#b8896a] hover:text-earth-700 dark:hover:text-[#a07855] dark:text-[#b8896a] underline"
           >
             {domToReact(children as DOMNode[], parserOptions)}
           </a>

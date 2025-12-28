@@ -114,7 +114,7 @@ export function AISuggestionModal({
                         <p className="font-sans text-xs font-medium text-text-secondary mb-2">
                           Try this instead:
                         </p>
-                        <p className="font-sans text-base font-medium text-[#a07855] leading-[1.4]">
+                        <p className="font-sans text-base font-medium text-[#a07855] dark:text-[#b8896a] leading-[1.4]">
                           &quot;I am {aiSuggestion}&quot;
                         </p>
                       </div>
@@ -141,7 +141,7 @@ export function AISuggestionModal({
                   {aiSuggestion && (
                     <button
                       onClick={onUseSuggestion}
-                      className="w-full py-3 text-[#a07855] hover:text-[#8a6649] font-sans font-medium text-sm transition-colors duration-200"
+                      className="w-full py-3 text-[#a07855] dark:text-[#b8896a] hover:text-[#8a6649] font-sans font-medium text-sm transition-colors duration-200"
                     >
                       Use AI suggestion instead
                     </button>

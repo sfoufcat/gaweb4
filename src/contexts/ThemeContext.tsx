@@ -54,6 +54,25 @@ export function ThemeProvider({ children, initialOrgDefaultTheme = 'light' }: Th
     }
   }, [orgDefaultTheme]);
 
+  // Listen for system theme changes when org default is 'system' and no user preference
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored || orgDefaultTheme !== 'system') {
+      return; // User has explicit preference or org doesn't use system
+    }
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    const handleChange = (e: MediaQueryListEvent) => {
+      const newTheme: Theme = e.matches ? 'dark' : 'light';
+      setThemeState(newTheme);
+      document.documentElement.classList.toggle('dark', e.matches);
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [orgDefaultTheme]);
+
   // Update org default theme when it changes (e.g., from branding context)
   const setOrgDefaultTheme = useCallback((newOrgDefault: OrgDefaultTheme) => {
     setOrgDefaultThemeState(newOrgDefault);

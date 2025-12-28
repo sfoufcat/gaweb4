@@ -234,7 +234,7 @@ export function FunnelEditorDialog({
                   <select
                     value={formData.programId}
                     onChange={(e) => setFormData(prev => ({ ...prev, programId: e.target.value }))}
-                    className="w-full px-4 py-2 bg-white border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+                    className="w-full px-4 py-2 bg-white border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
                     required={formData.targetType === 'program'}
                   >
                     <option value="">Select a program</option>
@@ -256,7 +256,7 @@ export function FunnelEditorDialog({
                   <select
                     value={formData.squadId}
                     onChange={(e) => setFormData(prev => ({ ...prev, squadId: e.target.value }))}
-                    className="w-full px-4 py-2 bg-white border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+                    className="w-full px-4 py-2 bg-white border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
                     required={formData.targetType === 'squad'}
                   >
                     <option value="">Select a squad</option>
@@ -286,7 +286,7 @@ export function FunnelEditorDialog({
               value={formData.name}
               onChange={(e) => handleNameChange(e.target.value)}
               placeholder="e.g., Discovery Quiz"
-              className="w-full px-4 py-2 bg-white border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+              className="w-full px-4 py-2 bg-white border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
               required
             />
           </div>
@@ -308,7 +308,7 @@ export function FunnelEditorDialog({
                   slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') 
                 }))}
                 placeholder="discovery-quiz"
-                className="flex-1 px-4 py-2 bg-white border border-[#e1ddd8] rounded-r-lg focus:outline-none focus:border-[#a07855]"
+                className="flex-1 px-4 py-2 bg-white border border-[#e1ddd8] rounded-r-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
                 required
               />
             </div>
@@ -324,7 +324,7 @@ export function FunnelEditorDialog({
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Brief description for internal use"
               rows={2}
-              className="w-full px-4 py-2 bg-white border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] resize-none"
+              className="w-full px-4 py-2 bg-white border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] resize-none"
             />
           </div>
 
@@ -341,7 +341,7 @@ export function FunnelEditorDialog({
                   value="public"
                   checked={formData.accessType === 'public'}
                   onChange={(e) => setFormData(prev => ({ ...prev, accessType: e.target.value as 'public' | 'invite_only' }))}
-                  className="text-[#a07855] focus:ring-[#a07855]"
+                  className="text-[#a07855] dark:text-[#b8896a] focus:ring-[#a07855] dark:ring-[#b8896a]"
                 />
                 <span className="text-text-primary">Public</span>
               </label>
@@ -352,7 +352,7 @@ export function FunnelEditorDialog({
                   value="invite_only"
                   checked={formData.accessType === 'invite_only'}
                   onChange={(e) => setFormData(prev => ({ ...prev, accessType: e.target.value as 'public' | 'invite_only' }))}
-                  className="text-[#a07855] focus:ring-[#a07855]"
+                  className="text-[#a07855] dark:text-[#b8896a] focus:ring-[#a07855] dark:ring-[#b8896a]"
                 />
                 <span className="text-text-primary">Invite Only</span>
               </label>
@@ -420,7 +420,7 @@ export function FunnelEditorDialog({
                       tracking: { ...prev.tracking, metaPixelId: e.target.value }
                     }))}
                     placeholder="e.g., 1234567890"
-                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
+                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
                   />
                   <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
                     Facebook/Meta Pixel ID for conversion tracking
@@ -440,7 +440,7 @@ export function FunnelEditorDialog({
                       tracking: { ...prev.tracking, googleAnalyticsId: e.target.value }
                     }))}
                     placeholder="e.g., G-XXXXXXXXXX"
-                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
+                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
                   />
                   <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
                     Google Analytics 4 measurement ID
@@ -460,7 +460,7 @@ export function FunnelEditorDialog({
                       tracking: { ...prev.tracking, googleAdsId: e.target.value }
                     }))}
                     placeholder="e.g., AW-XXXXXXXXXX"
-                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
+                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
                   />
                   <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
                     Google Ads conversion tracking ID
@@ -480,7 +480,7 @@ export function FunnelEditorDialog({
                     }))}
                     placeholder="<!-- TikTok Pixel, Snapchat Pixel, etc. -->"
                     rows={3}
-                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] resize-none font-mono text-sm text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
+                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] resize-none font-mono text-sm text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
                   />
                   <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
                     Custom scripts injected in &lt;head&gt; - use for other tracking pixels
@@ -500,7 +500,7 @@ export function FunnelEditorDialog({
                     }))}
                     placeholder="<!-- Scripts that need to run in body -->"
                     rows={3}
-                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] resize-none font-mono text-sm text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
+                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] resize-none font-mono text-sm text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
                   />
                   <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
                     Custom scripts injected in &lt;body&gt;

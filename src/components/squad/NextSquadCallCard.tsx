@@ -225,7 +225,7 @@ export function NextSquadCallCard({ squad, isCoach = false, onCallUpdated, coach
                     href={event.locationLabel}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[#a07855] hover:underline"
+                    className="text-[#a07855] dark:text-[#b8896a] hover:underline"
                   >
                     {event.locationLabel}
                   </a>
@@ -280,7 +280,7 @@ export function NextSquadCallCard({ squad, isCoach = false, onCallUpdated, coach
             {squad.chatChannelId && (
               <button
                 onClick={handleGoToChat}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#a07855] hover:bg-[#8c6245] rounded-full font-albert text-[14px] font-medium text-white transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] rounded-full font-albert text-[14px] font-medium text-white transition-colors"
               >
                 <MessageCircle className="w-4 h-4" />
                 Go to chat
@@ -308,7 +308,7 @@ export function NextSquadCallCard({ squad, isCoach = false, onCallUpdated, coach
             {squad.chatChannelId && (
               <button
                 onClick={handleGoToChat}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#a07855] hover:bg-[#8c6245] rounded-full font-albert text-[14px] font-medium text-white transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] rounded-full font-albert text-[14px] font-medium text-white transition-colors"
               >
                 <MessageCircle className="w-4 h-4" />
                 Go to chat

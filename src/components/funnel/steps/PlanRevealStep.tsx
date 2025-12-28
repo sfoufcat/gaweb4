@@ -219,7 +219,7 @@ export function PlanRevealStep({
               transition={{ delay: 0.5 + i * 0.1 }}
               className="flex items-start gap-3"
             >
-              <svg className="w-5 h-5 text-[#a07855] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-5 h-5 text-[#a07855] dark:text-[#b8896a] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
               <span className="text-text-secondary">{item}</span>

@@ -126,7 +126,7 @@ export function GoalSuggestionModal({
                         <p className="font-sans text-xs font-medium text-text-secondary mb-2">
                           Try this instead:
                         </p>
-                        <p className="font-sans text-base font-medium text-[#a07855] leading-[1.4]">
+                        <p className="font-sans text-base font-medium text-[#a07855] dark:text-[#b8896a] leading-[1.4]">
                           &quot;I want to {aiSuggestion}&quot;
                         </p>
                       </div>

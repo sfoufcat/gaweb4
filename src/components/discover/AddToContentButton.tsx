@@ -127,7 +127,7 @@ export function AddToContentButton({
 
   return (
     <div 
-      className={`relative ${className}`}
+      className={className}
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
     >
@@ -140,12 +140,18 @@ export function AddToContentButton({
         {getIcon()}
       </button>
 
-      {/* Tooltip */}
+      {/* Tooltip - positioned below for compact mode (cards), above for regular mode */}
       {showTooltip && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#2c2520] dark:bg-[#f5f5f8] text-white dark:text-[#2c2520] text-xs font-medium rounded-md whitespace-nowrap z-50 animate-in fade-in duration-150">
+        <div className={`absolute left-1/2 -translate-x-1/2 px-2 py-1 bg-[#2c2520] dark:bg-[#f5f5f8] text-white dark:text-[#2c2520] text-xs font-medium rounded-md whitespace-nowrap z-50 animate-in fade-in duration-150 pointer-events-none ${
+          compact ? 'top-full mt-2' : 'bottom-full mb-2'
+        }`}>
           {getTooltipText()}
           {/* Tooltip arrow */}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#2c2520] dark:border-t-[#f5f5f8]" />
+          <div className={`absolute left-1/2 -translate-x-1/2 border-4 border-transparent ${
+            compact 
+              ? 'bottom-full border-b-[#2c2520] dark:border-b-[#f5f5f8]' 
+              : 'top-full border-t-[#2c2520] dark:border-t-[#f5f5f8]'
+          }`} />
         </div>
       )}
     </div>

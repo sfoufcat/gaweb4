@@ -98,7 +98,7 @@ function PaymentForm({ onSuccess, programName, priceInCents, currency, features 
           <div className="border-t border-[#e1ddd8] pt-4 space-y-2">
             {features.map((feature, i) => (
               <div key={i} className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-[#a07855]" />
+                <Check className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
                 <span className="text-sm text-text-secondary">{feature}</span>
               </div>
             ))}

@@ -52,7 +52,7 @@ export const CoachBio = ({
       {credentials.map((credential, index) => (
         <span
           key={index}
-          className="px-3 py-1 bg-[#a07855]/10 text-[#a07855] rounded-full text-sm font-medium"
+          className="px-3 py-1 bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a] rounded-full text-sm font-medium"
         >
           {credential.text}
         </span>
@@ -72,7 +72,7 @@ export const CoachBio = ({
               <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
                 {name}
               </h2>
-              <p className="text-lg text-[#a07855] font-medium mb-4">{title}</p>
+              <p className="text-lg text-[#a07855] dark:text-[#b8896a] font-medium mb-4">{title}</p>
               <p className="text-muted-foreground leading-relaxed mb-6">{bio}</p>
               
               {showCredentials && credentials.length > 0 && renderCredentials()}
@@ -80,7 +80,7 @@ export const CoachBio = ({
               {ctaText && (
                 <a
                   href={ctaUrl}
-                  className="inline-flex items-center justify-center px-6 py-3 mt-6 text-white bg-[#a07855] hover:bg-[#8c6245] rounded-lg font-medium transition-colors"
+                  className="inline-flex items-center justify-center px-6 py-3 mt-6 text-white bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] rounded-lg font-medium transition-colors"
                 >
                   {ctaText}
                 </a>
@@ -104,7 +104,7 @@ export const CoachBio = ({
           <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
             {name}
           </h2>
-          <p className="text-lg text-[#a07855] font-medium mb-4">{title}</p>
+          <p className="text-lg text-[#a07855] dark:text-[#b8896a] font-medium mb-4">{title}</p>
           <p className="text-muted-foreground leading-relaxed mb-6">{bio}</p>
           
           {showCredentials && credentials.length > 0 && (
@@ -112,7 +112,7 @@ export const CoachBio = ({
               {credentials.map((credential, index) => (
                 <span
                   key={index}
-                  className="px-3 py-1 bg-[#a07855]/10 text-[#a07855] rounded-full text-sm font-medium"
+                  className="px-3 py-1 bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a] rounded-full text-sm font-medium"
                 >
                   {credential.text}
                 </span>
@@ -123,7 +123,7 @@ export const CoachBio = ({
           {ctaText && (
             <a
               href={ctaUrl}
-              className="inline-flex items-center justify-center px-6 py-3 mt-6 text-white bg-[#a07855] hover:bg-[#8c6245] rounded-lg font-medium transition-colors"
+              className="inline-flex items-center justify-center px-6 py-3 mt-6 text-white bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] rounded-lg font-medium transition-colors"
             >
               {ctaText}
             </a>
@@ -145,7 +145,7 @@ export const CoachBio = ({
           <h2 className="text-2xl font-bold text-foreground mb-1">
             {name}
           </h2>
-          <p className="text-[#a07855] font-medium mb-4">{title}</p>
+          <p className="text-[#a07855] dark:text-[#b8896a] font-medium mb-4">{title}</p>
           <p className="text-muted-foreground text-sm leading-relaxed mb-4">{bio}</p>
           
           {showCredentials && credentials.length > 0 && (
@@ -153,7 +153,7 @@ export const CoachBio = ({
               {credentials.map((credential, index) => (
                 <span
                   key={index}
-                  className="px-2 py-0.5 bg-[#a07855]/10 text-[#a07855] rounded-full text-xs font-medium"
+                  className="px-2 py-0.5 bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a] rounded-full text-xs font-medium"
                 >
                   {credential.text}
                 </span>
@@ -164,7 +164,7 @@ export const CoachBio = ({
           {ctaText && (
             <a
               href={ctaUrl}
-              className="inline-flex items-center justify-center px-6 py-3 mt-6 text-white bg-[#a07855] hover:bg-[#8c6245] rounded-lg font-medium transition-colors w-full"
+              className="inline-flex items-center justify-center px-6 py-3 mt-6 text-white bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] rounded-lg font-medium transition-colors w-full"
             >
               {ctaText}
             </a>

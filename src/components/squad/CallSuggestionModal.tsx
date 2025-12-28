@@ -298,7 +298,7 @@ export function CallSuggestionModal({
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="font-albert text-[20px] tracking-[-0.5px] flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-[#a07855]" />
+              <Calendar className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
               {isEditMode ? 'Propose call update' : 'Suggest a squad call'}
             </DialogTitle>
             <button
@@ -337,7 +337,7 @@ export function CallSuggestionModal({
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 min={minDate}
-                className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-xl font-albert text-[14px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all"
+                className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-xl font-albert text-[14px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] transition-all"
               />
             </div>
             
@@ -352,7 +352,7 @@ export function CallSuggestionModal({
                   type="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-white border border-[#e1ddd8] rounded-xl font-albert text-[14px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all"
+                  className="w-full pl-10 pr-4 py-3 bg-white border border-[#e1ddd8] rounded-xl font-albert text-[14px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] transition-all"
                 />
               </div>
             </div>
@@ -366,7 +366,7 @@ export function CallSuggestionModal({
             <select
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
-              className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-xl font-albert text-[14px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all appearance-none cursor-pointer"
+              className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-xl font-albert text-[14px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] transition-all appearance-none cursor-pointer"
             >
               {COMMON_TIMEZONES.map((tz) => (
                 <option key={tz.value} value={tz.value}>
@@ -393,8 +393,8 @@ export function CallSuggestionModal({
                       onClick={() => setLocation(preset)}
                       className={`px-3 py-1.5 rounded-full font-albert text-[13px] transition-all ${
                         location === preset
-                          ? 'bg-[#a07855] text-white'
-                          : 'bg-[#f3f1ef] text-text-primary hover:bg-[#e9e5e0]'
+                          ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
+                          : 'bg-[#f3f1ef] dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#2e333d]'
                       }`}
                     >
                       {preset}
@@ -404,7 +404,7 @@ export function CallSuggestionModal({
                 <button
                   type="button"
                   onClick={() => setUseCustomLocation(true)}
-                  className="text-[13px] text-[#a07855] hover:underline font-albert"
+                  className="text-[13px] text-[#a07855] dark:text-[#b8896a] hover:underline font-albert"
                 >
                   + Add custom location/link
                 </button>
@@ -416,7 +416,7 @@ export function CallSuggestionModal({
                   value={customLocation}
                   onChange={(e) => setCustomLocation(e.target.value)}
                   placeholder="e.g., https://zoom.us/j/... or meeting room name"
-                  className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-xl font-albert text-[14px] text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all"
+                  className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-xl font-albert text-[14px] text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] transition-all"
                 />
                 <button
                   type="button"
@@ -424,7 +424,7 @@ export function CallSuggestionModal({
                     setUseCustomLocation(false);
                     setCustomLocation('');
                   }}
-                  className="text-[13px] text-[#a07855] hover:underline font-albert"
+                  className="text-[13px] text-[#a07855] dark:text-[#b8896a] hover:underline font-albert"
                 >
                   ← Use preset location
                 </button>
@@ -442,7 +442,7 @@ export function CallSuggestionModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Squad accountability call"
-              className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-xl font-albert text-[14px] text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all"
+              className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-xl font-albert text-[14px] text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] transition-all"
             />
           </div>
         </div>
@@ -473,7 +473,7 @@ export function CallSuggestionModal({
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting || isDeleting}
-              className="inline-flex h-10 items-center justify-center px-4 py-2 font-albert rounded-full bg-[#a07855] hover:bg-[#8c6245] text-white text-sm font-semibold flex-1 sm:flex-none disabled:opacity-50 disabled:pointer-events-none transition-colors"
+              className="inline-flex h-10 items-center justify-center px-4 py-2 font-albert rounded-full bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white text-sm font-semibold flex-1 sm:flex-none disabled:opacity-50 disabled:pointer-events-none transition-colors"
             >
               {isSubmitting 
                 ? 'Suggesting...' 

@@ -1821,7 +1821,7 @@ export default function Dashboard() {
                   setShowProgramCompletionModal(false);
                   router.push('/discover');
                 }}
-                className="w-full py-4 px-6 text-[#a07855] dark:text-[#b8896a] font-sans font-semibold text-[15px] hover:text-[#8c6245] dark:hover:text-[#a07855] transition-colors"
+                className="w-full py-4 px-6 text-[#a07855] dark:text-[#b8896a] font-sans font-semibold text-[15px] hover:text-[#8c6245] dark:hover:text-[#a07855] dark:text-[#b8896a] transition-colors"
               >
                 Explore new programs
               </button>

@@ -74,7 +74,7 @@ function SortableMenuItem({ id, title, icon, onTitleChange, onIconChange }: Sort
       ref={setNodeRef}
       style={style}
       className={`flex items-center gap-3 p-3 bg-white/80 dark:bg-[#1e222a]/80 border border-[#e1ddd8] dark:border-[#313746] rounded-xl ${
-        isDragging ? 'shadow-lg ring-2 ring-[#a07855]/20' : ''
+        isDragging ? 'shadow-lg ring-2 ring-[#a07855] dark:ring-[#b8896a]/20' : ''
       }`}
     >
       {/* Drag Handle */}
@@ -98,7 +98,7 @@ function SortableMenuItem({ id, title, icon, onTitleChange, onIconChange }: Sort
         value={title}
         onChange={(e) => onTitleChange(e.target.value)}
         placeholder={config.placeholder}
-        className="flex-1 px-3 py-2 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+        className="flex-1 px-3 py-2 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a]"
       />
       
       {/* Icon Picker */}
@@ -1301,7 +1301,7 @@ export function CustomizeBrandingTab() {
             className={`
               flex items-center gap-2 px-4 py-2 rounded-full font-albert text-sm transition-all
               ${isPreviewMode 
-                ? 'bg-[#a07855] text-white hover:bg-[#8c6245]' 
+                ? 'bg-[#a07855] dark:bg-[#b8896a] text-white hover:bg-[#8c6245] dark:hover:bg-[#a07855]' 
                 : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#e8e5e1] dark:hover:bg-[#313746]'
               }
             `}
@@ -1567,7 +1567,7 @@ export function CustomizeBrandingTab() {
           value={appTitle}
           onChange={(e) => setAppTitle(e.target.value)}
           placeholder="Enter business name"
-          className="w-full max-w-md px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+          className="w-full max-w-md px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a]"
         />
         <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-2 font-albert">
           This appears in the sidebar next to your logo.
@@ -1595,14 +1595,14 @@ export function CustomizeBrandingTab() {
                 type="color"
                 value={colors.accentLight}
                 onChange={(e) => handleColorChange('accentLight', e.target.value)}
-                className="w-14 h-14 rounded-xl border-2 border-[#e1ddd8] dark:border-[#313746] cursor-pointer hover:border-[#a07855] dark:hover:border-[#b8896a] transition-colors"
+                className="w-14 h-14 rounded-xl border-2 border-[#e1ddd8] dark:border-[#313746] cursor-pointer hover:border-[#a07855] dark:border-[#b8896a] dark:hover:border-[#b8896a] transition-colors"
                 style={{ padding: 0 }}
               />
               <input
                 type="text"
                 value={colors.accentLight}
                 onChange={(e) => handleColorChange('accentLight', e.target.value)}
-                className="w-28 px-3 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-mono focus:outline-none focus:ring-1 focus:ring-[#a07855]/20"
+                className="w-28 px-3 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-mono focus:outline-none focus:ring-1 focus:ring-[#a07855] dark:ring-[#b8896a]/20"
                 placeholder="#a07855"
               />
             </div>
@@ -1618,14 +1618,14 @@ export function CustomizeBrandingTab() {
                 type="color"
                 value={colors.accentDark}
                 onChange={(e) => handleColorChange('accentDark', e.target.value)}
-                className="w-14 h-14 rounded-xl border-2 border-[#e1ddd8] dark:border-[#313746] cursor-pointer hover:border-[#a07855] dark:hover:border-[#b8896a] transition-colors"
+                className="w-14 h-14 rounded-xl border-2 border-[#e1ddd8] dark:border-[#313746] cursor-pointer hover:border-[#a07855] dark:border-[#b8896a] dark:hover:border-[#b8896a] transition-colors"
                 style={{ padding: 0 }}
               />
               <input
                 type="text"
                 value={colors.accentDark}
                 onChange={(e) => handleColorChange('accentDark', e.target.value)}
-                className="w-28 px-3 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-mono focus:outline-none focus:ring-1 focus:ring-[#a07855]/20"
+                className="w-28 px-3 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-mono focus:outline-none focus:ring-1 focus:ring-[#a07855] dark:ring-[#b8896a]/20"
                 placeholder="#b8896a"
               />
             </div>
@@ -1769,7 +1769,7 @@ export function CustomizeBrandingTab() {
                       setSubdomainError(null);
                     }}
                     placeholder="your-subdomain"
-                    className="flex-1 px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                    className="flex-1 px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a]"
                   />
                   <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert whitespace-nowrap">
                     .growthaddicts.com
@@ -1778,7 +1778,7 @@ export function CustomizeBrandingTab() {
                 <button
                   onClick={handleSubdomainUpdate}
                   disabled={subdomainLoading || newSubdomain === currentSubdomain}
-                  className="w-full sm:w-auto px-4 py-2.5 bg-[#a07855] hover:bg-[#8c6245] disabled:bg-[#a07855]/50 text-white rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto px-4 py-2.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:bg-[#a07855]/50 text-white rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
                 >
                   {subdomainLoading ? 'Saving...' : 'Update'}
                 </button>
@@ -1832,7 +1832,7 @@ export function CustomizeBrandingTab() {
                     setCustomDomainError(null);
                   }}
                   placeholder="app.yourdomain.com"
-                  className="flex-1 sm:max-w-md px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                  className="flex-1 sm:max-w-md px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a]"
                 />
                 <button
                   onClick={handleAddCustomDomain}
@@ -2189,7 +2189,7 @@ export function CustomizeBrandingTab() {
                     value={emailFromName}
                     onChange={(e) => setEmailFromName(e.target.value)}
                     placeholder={appTitle}
-                    className="w-full px-3 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20"
+                    className="w-full px-3 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20"
                   />
                 </div>
                 <div>
@@ -2199,7 +2199,7 @@ export function CustomizeBrandingTab() {
                     value={emailReplyTo}
                     onChange={(e) => setEmailReplyTo(e.target.value)}
                     placeholder="support@yourcompany.com"
-                    className="w-full px-3 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20"
+                    className="w-full px-3 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20"
                   />
                 </div>
               </div>
@@ -2298,12 +2298,12 @@ export function CustomizeBrandingTab() {
                     setEmailDomainError(null);
                   }}
                   placeholder="mail.yourcompany.com"
-                  className="flex-1 sm:max-w-md px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                  className="flex-1 sm:max-w-md px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20 dark:focus:ring-[#b8896a]/20 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a]"
                 />
                 <button
                   onClick={handleAddEmailDomain}
                   disabled={emailDomainActionLoading || !newEmailDomain.trim()}
-                  className="w-full sm:w-auto px-4 py-2.5 bg-[#a07855] hover:bg-[#8c6245] disabled:bg-[#a07855]/50 text-white rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto px-4 py-2.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:bg-[#a07855]/50 text-white rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
                 >
                   {emailDomainActionLoading ? 'Adding...' : 'Add Domain'}
                 </button>
@@ -2319,7 +2319,7 @@ export function CustomizeBrandingTab() {
                   value={emailFromName}
                   onChange={(e) => setEmailFromName(e.target.value)}
                   placeholder={appTitle || 'Your Company'}
-                  className="w-full px-3 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20"
+                  className="w-full px-3 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20"
                 />
               </div>
               <div>
@@ -2329,7 +2329,7 @@ export function CustomizeBrandingTab() {
                   value={emailReplyTo}
                   onChange={(e) => setEmailReplyTo(e.target.value)}
                   placeholder="support@yourcompany.com"
-                  className="w-full px-3 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20"
+                  className="w-full px-3 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20"
                 />
               </div>
             </div>
@@ -2665,7 +2665,7 @@ export function CustomizeBrandingTab() {
         <button
           onClick={handleSave}
           disabled={saving || !hasChanges}
-          className="flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-2.5 bg-[#a07855] hover:bg-[#8c6245] disabled:bg-[#a07855]/50 text-white rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
+          className="flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-2.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:bg-[#a07855]/50 text-white rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
         >
           <Save className="w-4 h-4" />
           {saving ? 'Saving...' : 'Save Changes'}

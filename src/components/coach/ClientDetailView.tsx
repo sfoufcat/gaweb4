@@ -833,7 +833,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
             {hasCoaching && coachingData?.chatChannelId && (
               <button
                 onClick={handleGoToChat}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#a07855] hover:bg-[#8c6245] dark:bg-[#b8896a] dark:hover:bg-[#a07855] rounded-full font-albert text-[14px] font-medium text-white transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] dark:bg-[#b8896a] dark:hover:bg-[#a07855] rounded-full font-albert text-[14px] font-medium text-white transition-colors"
               >
                 <MessageCircle className="w-4 h-4" />
                 Message
@@ -935,7 +935,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
               onChange={(e) => setCoachNotes(e.target.value)}
               placeholder="Add notes about this client..."
               rows={3}
-              className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 resize-none"
+              className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 resize-none"
             />
           </div>
         </div>
@@ -1028,7 +1028,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                   onChange={(e) => setNewFocusArea(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddFocusArea()}
                   placeholder="Add focus area..."
-                  className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30"
+                  className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
                 />
                 <button
                   onClick={handleAddFocusArea}
@@ -1077,7 +1077,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                   onChange={(e) => setNewActionItem(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddActionItem()}
                   placeholder="Add action item..."
-                  className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30"
+                  className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
                 />
                 <button
                   onClick={handleAddActionItem}
@@ -1130,26 +1130,26 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                   value={newResourceTitle}
                   onChange={(e) => setNewResourceTitle(e.target.value)}
                   placeholder="Resource title..."
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#171b22] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30"
+                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#171b22] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
                 />
                 <input
                   type="url"
                   value={newResourceUrl}
                   onChange={(e) => setNewResourceUrl(e.target.value)}
                   placeholder="URL..."
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#171b22] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30"
+                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#171b22] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
                 />
                 <input
                   type="text"
                   value={newResourceDescription}
                   onChange={(e) => setNewResourceDescription(e.target.value)}
                   placeholder="Description (optional)..."
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#171b22] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30"
+                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#171b22] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
                 />
                 <button
                   onClick={handleAddResource}
                   disabled={!newResourceTitle.trim() || !newResourceUrl.trim()}
-                  className="w-full px-3 py-2 bg-[#a07855] hover:bg-[#8c6245] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white rounded-lg font-albert text-[14px] font-medium transition-colors disabled:opacity-50"
+                  className="w-full px-3 py-2 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white rounded-lg font-albert text-[14px] font-medium transition-colors disabled:opacity-50"
                 >
                   Add Resource
                 </button>
@@ -1206,7 +1206,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
               <button
                 onClick={handleSaveCoachingChanges}
                 disabled={saving}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#a07855] hover:bg-[#8c6245] dark:bg-[#b8896a] dark:hover:bg-[#a07855] rounded-full font-albert text-[15px] font-medium text-white transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] dark:bg-[#b8896a] dark:hover:bg-[#a07855] rounded-full font-albert text-[15px] font-medium text-white transition-colors disabled:opacity-50"
               >
                 <Save className="w-5 h-5" />
                 {saving ? 'Saving...' : 'Save Changes'}
@@ -1243,7 +1243,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                   value={callDate}
                   onChange={(e) => setCallDate(e.target.value)}
                   min={minDate}
-                  className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30"
+                  className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
                 />
               </div>
               <div>
@@ -1254,7 +1254,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                     type="time"
                     value={callTime}
                     onChange={(e) => setCallTime(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30"
+                    className="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
                   />
                 </div>
               </div>
@@ -1265,7 +1265,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
               <select
                 value={callTimezone}
                 onChange={(e) => setCallTimezone(e.target.value)}
-                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 appearance-none cursor-pointer"
+                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 appearance-none cursor-pointer"
               >
                 {COMMON_TIMEZONES.map((tz) => (
                   <option key={tz.value} value={tz.value}>{tz.label}</option>
@@ -1311,7 +1311,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                     value={customLocation}
                     onChange={(e) => setCustomLocation(e.target.value)}
                     placeholder="e.g., https://zoom.us/j/..."
-                    className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30"
+                    className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
                   />
                   <button
                     type="button"
@@ -1346,7 +1346,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
               <AlertDialogAction
                 onClick={handleScheduleCall}
                 disabled={schedulingCall || !callDate || !callTime}
-                className="font-albert rounded-full bg-[#a07855] hover:bg-[#8c6245] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white flex-1 sm:flex-none"
+                className="font-albert rounded-full bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white flex-1 sm:flex-none"
               >
                 {schedulingCall ? 'Saving...' : 'Save'}
               </AlertDialogAction>
@@ -1371,7 +1371,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                 type="date"
                 value={sessionDate}
                 onChange={(e) => setSessionDate(e.target.value)}
-                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30"
+                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
               />
             </div>
             <div>
@@ -1381,7 +1381,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                 value={sessionTitle}
                 onChange={(e) => setSessionTitle(e.target.value)}
                 placeholder="e.g., Focus & Prioritization"
-                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30"
+                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
               />
             </div>
             <div>
@@ -1391,7 +1391,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                 onChange={(e) => setSessionSummary(e.target.value)}
                 placeholder="Brief summary of what was covered..."
                 rows={3}
-                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 resize-none"
+                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 resize-none"
               />
             </div>
             <div>
@@ -1407,7 +1407,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                       setSessionTakeaways(updated);
                     }}
                     placeholder={`Takeaway ${index + 1}...`}
-                    className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30"
+                    className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
                   />
                   {sessionTakeaways.length > 1 && (
                     <button
@@ -1435,7 +1435,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
             <AlertDialogAction
               onClick={handleAddSession}
               disabled={addingSession || !sessionTitle.trim() || !sessionDate}
-              className="font-albert rounded-full bg-[#a07855] hover:bg-[#8c6245] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white"
+              className="font-albert rounded-full bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white"
             >
               {addingSession ? 'Adding...' : 'Add Session'}
             </AlertDialogAction>
@@ -1462,7 +1462,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                 onChange={(e) => setCurrentNotes(e.target.value)}
                 placeholder="Your private notes about this client..."
                 rows={5}
-                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 resize-none"
+                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 resize-none"
               />
             </div>
             <div>
@@ -1474,7 +1474,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                 onChange={(e) => setPlannedTopics(e.target.value)}
                 placeholder="Topics to cover in the next session..."
                 rows={3}
-                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 resize-none"
+                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 resize-none"
               />
             </div>
           </div>
@@ -1486,7 +1486,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
             <AlertDialogAction
               onClick={handleSavePrivateNotes}
               disabled={savingPrivateNotes}
-              className="font-albert rounded-full bg-[#a07855] hover:bg-[#8c6245] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white"
+              className="font-albert rounded-full bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white"
             >
               {savingPrivateNotes ? 'Saving...' : 'Save Notes'}
             </AlertDialogAction>

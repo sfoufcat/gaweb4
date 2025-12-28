@@ -165,7 +165,7 @@ export function IdentityStep({
         </label>
 
         {/* Input Box */}
-        <div className="relative bg-white border-2 border-[#e1ddd8] rounded-xl p-4 focus-within:border-[#a07855] transition-colors">
+        <div className="relative bg-white border-2 border-[#e1ddd8] rounded-xl p-4 focus-within:border-[#a07855] dark:border-[#b8896a] transition-colors">
           <AnimatePresence mode="wait">
             {!isValidated && !suggestion ? (
               <motion.div
@@ -230,7 +230,7 @@ export function IdentityStep({
               <button
                 key={index}
                 onClick={() => handleExampleClick(example)}
-                className="px-4 py-2 bg-[#faf8f6] border border-[#e1ddd8] rounded-full text-sm text-text-secondary hover:bg-[#f5f2ef] hover:border-[#a07855] hover:text-text-primary active:scale-[0.98] transition-all"
+                className="px-4 py-2 bg-[#faf8f6] border border-[#e1ddd8] rounded-full text-sm text-text-secondary hover:bg-[#f5f2ef] hover:border-[#a07855] dark:border-[#b8896a] hover:text-text-primary active:scale-[0.98] transition-all"
               >
                 {example}
               </button>

@@ -597,7 +597,7 @@ function OpenTextStep({ config, onComplete }: { config: Record<string, unknown>;
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={(config.placeholder as string) || 'Start typing...'}
-          className="flex-1 w-full p-4 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#666d7c] resize-none focus:outline-none focus:border-[#a07855] dark:focus:border-[#b8896a] min-h-[200px]"
+          className="flex-1 w-full p-4 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#666d7c] resize-none focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] min-h-[200px]"
         />
       </div>
 

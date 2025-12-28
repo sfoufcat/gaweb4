@@ -127,7 +127,7 @@ export function InfluencePromptEditor({ value, onChange }: InfluencePromptEditor
           <h4 className="font-albert font-semibold text-text-primary dark:text-[#f5f5f8]">
             Influence Prompt
           </h4>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-[#a07855]/10 text-[#a07855] font-medium">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a] font-medium">
             Optional
           </span>
         </div>
@@ -171,7 +171,7 @@ export function InfluencePromptEditor({ value, onChange }: InfluencePromptEditor
         <button
           type="button"
           onClick={() => setSelectingType(true)}
-          className="w-full py-4 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-secondary dark:text-[#b2b6c2] hover:border-[#a07855] hover:text-[#a07855] transition-colors flex items-center justify-center gap-2 font-albert"
+          className="w-full py-4 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-secondary dark:text-[#b2b6c2] hover:border-[#a07855] dark:border-[#b8896a] hover:text-[#a07855] dark:text-[#b8896a] transition-colors flex items-center justify-center gap-2 font-albert"
         >
           <Plus className="w-5 h-5" />
           Add Influence Prompt
@@ -195,14 +195,14 @@ export function InfluencePromptEditor({ value, onChange }: InfluencePromptEditor
                     key={typeInfo.type}
                     type="button"
                     onClick={() => addPrompt(typeInfo.type)}
-                    className="p-4 rounded-xl border-2 border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] transition-all text-left group"
+                    className="p-4 rounded-xl border-2 border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a] transition-all text-left group"
                   >
                     <div className="flex items-start gap-3">
                       <div className={`p-2 rounded-lg ${typeInfo.color}`}>
                         <Icon className="w-4 h-4" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h5 className="font-albert font-semibold text-text-primary dark:text-[#f5f5f8] group-hover:text-[#a07855] transition-colors">
+                        <h5 className="font-albert font-semibold text-text-primary dark:text-[#f5f5f8] group-hover:text-[#a07855] dark:text-[#b8896a] transition-colors">
                           {typeInfo.label}
                         </h5>
                         <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-0.5">
@@ -260,7 +260,7 @@ export function InfluencePromptEditor({ value, onChange }: InfluencePromptEditor
                       setSelectingType(true);
                       removePrompt();
                     }}
-                    className="text-xs text-[#a07855] hover:text-[#8c6245] font-medium"
+                    className="text-xs text-[#a07855] dark:text-[#b8896a] hover:text-[#8c6245] font-medium"
                   >
                     Change
                   </button>
@@ -286,7 +286,7 @@ export function InfluencePromptEditor({ value, onChange }: InfluencePromptEditor
                     value={value?.headline || ''}
                     onChange={(e) => updateConfig({ headline: e.target.value || undefined })}
                     placeholder={`e.g., ${currentType.label}`}
-                    className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
+                    className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
                   />
                 </div>
 
@@ -350,7 +350,7 @@ export function InfluencePromptEditor({ value, onChange }: InfluencePromptEditor
                       value={value?.accentColor || ''}
                       onChange={(e) => updateConfig({ accentColor: e.target.value || undefined })}
                       placeholder="Use org primary color"
-                      className="flex-1 px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert text-sm"
+                      className="flex-1 px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert text-sm"
                     />
                     {value?.accentColor && (
                       <button
@@ -377,7 +377,7 @@ export function InfluencePromptEditor({ value, onChange }: InfluencePromptEditor
                     value={value?.subtext || ''}
                     onChange={(e) => updateConfig({ subtext: e.target.value || undefined })}
                     placeholder="Extra context shown below the prompt"
-                    className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
+                    className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
                   />
                 </div>
               </div>
@@ -431,7 +431,7 @@ function SocialProofFields({
           onChange={(e) => update({ quote: e.target.value })}
           placeholder="This program completely changed my life..."
           rows={3}
-          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert resize-none"
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert resize-none"
         />
       </div>
 
@@ -445,7 +445,7 @@ function SocialProofFields({
             value={value?.name || ''}
             onChange={(e) => update({ name: e.target.value })}
             placeholder="Sarah M."
-            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
+            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
           />
         </div>
         <div>
@@ -457,7 +457,7 @@ function SocialProofFields({
             value={value?.role || ''}
             onChange={(e) => update({ role: e.target.value || undefined })}
             placeholder="Entrepreneur"
-            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
+            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
           />
         </div>
       </div>
@@ -471,7 +471,7 @@ function SocialProofFields({
           value={value?.result || ''}
           onChange={(e) => update({ result: e.target.value || undefined })}
           placeholder="Lost 30 lbs in 90 days"
-          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
         />
       </div>
 
@@ -518,7 +518,7 @@ function AuthorityFields({
             value={value?.name || ''}
             onChange={(e) => update({ name: e.target.value || undefined })}
             placeholder="Dr. John Smith"
-            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
+            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
           />
         </div>
         <div>
@@ -530,7 +530,7 @@ function AuthorityFields({
             value={value?.title || ''}
             onChange={(e) => update({ title: e.target.value || undefined })}
             placeholder="PhD, Harvard"
-            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
+            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
           />
         </div>
       </div>
@@ -544,7 +544,7 @@ function AuthorityFields({
           value={value?.credentialText || ''}
           onChange={(e) => update({ credentialText: e.target.value || undefined })}
           placeholder="Featured in Forbes, Inc., Entrepreneur"
-          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
         />
       </div>
 
@@ -557,7 +557,7 @@ function AuthorityFields({
           onChange={(e) => update({ endorsement: e.target.value || undefined })}
           placeholder="The most comprehensive program I've seen..."
           rows={2}
-          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert resize-none"
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert resize-none"
         />
       </div>
 
@@ -603,7 +603,7 @@ function UrgencyFields({
           value={value?.deadlineText || ''}
           onChange={(e) => update({ deadlineText: e.target.value || undefined })}
           placeholder="Special pricing ends in"
-          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
         />
       </div>
 
@@ -617,7 +617,7 @@ function UrgencyFields({
           onChange={(e) => update({ countdownMinutes: parseInt(e.target.value) || undefined })}
           placeholder="30"
           min={1}
-          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
         />
         <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
           Timer starts when user first sees this step (persisted per user)
@@ -665,7 +665,7 @@ function ScarcityFields({
             onChange={(e) => update({ totalSpots: parseInt(e.target.value) || undefined })}
             placeholder="50"
             min={1}
-            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
+            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
           />
         </div>
         <div>
@@ -678,7 +678,7 @@ function ScarcityFields({
             onChange={(e) => update({ remainingSpots: parseInt(e.target.value) || undefined })}
             placeholder="7"
             min={0}
-            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
+            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
           />
         </div>
       </div>
@@ -692,7 +692,7 @@ function ScarcityFields({
           value={value?.customText || ''}
           onChange={(e) => update({ customText: e.target.value || undefined })}
           placeholder="Only {remaining} spots left this month!"
-          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
         />
         <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
           Use {'{remaining}'} to insert the spots count
@@ -739,7 +739,7 @@ function ReciprocityFields({
             value={value?.bonusName || ''}
             onChange={(e) => update({ bonusName: e.target.value || undefined })}
             placeholder="Goal-Setting Workbook"
-            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
+            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
           />
         </div>
         <div>
@@ -751,7 +751,7 @@ function ReciprocityFields({
             value={value?.bonusValue || ''}
             onChange={(e) => update({ bonusValue: e.target.value || undefined })}
             placeholder="$197 value"
-            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
+            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
           />
         </div>
       </div>
@@ -765,7 +765,7 @@ function ReciprocityFields({
           value={value?.bonusDescription || ''}
           onChange={(e) => update({ bonusDescription: e.target.value || undefined })}
           placeholder="A 50-page workbook to help you set and achieve your goals"
-          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
         />
       </div>
 
@@ -811,7 +811,7 @@ function CommitmentFields({
           value={value?.milestoneText || ''}
           onChange={(e) => update({ milestoneText: e.target.value || undefined })}
           placeholder="Just 2 more steps to your personalized plan!"
-          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
         />
         <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
           Leave empty to auto-generate based on progress
@@ -829,7 +829,7 @@ function CommitmentFields({
           placeholder="Auto-calculated"
           min={0}
           max={100}
-          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
         />
         <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
           Leave empty to auto-calculate from step position

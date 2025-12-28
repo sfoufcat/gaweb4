@@ -554,7 +554,7 @@ function FlowCard({ flow, onToggleEnabled, onEditSteps, onEditDetails, onDuplica
             <div className="flex items-center gap-2">
               <h3 className="font-medium text-text-primary dark:text-[#f5f5f8]">{flow.name}</h3>
               {flow.isSystemDefault && (
-                <span className="px-2 py-0.5 text-xs bg-[#a07855]/10 text-[#a07855] dark:bg-[#b8896a]/20 dark:text-[#b8896a] rounded-full">
+                <span className="px-2 py-0.5 text-xs bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a] dark:bg-[#b8896a]/20 dark:text-[#b8896a] rounded-full">
                   Default
                 </span>
               )}

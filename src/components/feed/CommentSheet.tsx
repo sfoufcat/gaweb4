@@ -219,7 +219,7 @@ export function CommentSheet({ postId, onClose }: CommentSheetProps) {
               {/* Loading more */}
               {isValidating && (
                 <div className="flex justify-center py-2">
-                  <div className="w-5 h-5 border-2 border-[#a07855] border-t-transparent rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin" />
                 </div>
               )}
             </>

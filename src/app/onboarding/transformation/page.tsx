@@ -211,7 +211,7 @@ export default function TransformationPage() {
               </h1>
               <p className="font-sans text-[15px] lg:text-[16px] text-text-secondary">
                 We predict you&apos;ll reach your goal by{' '}
-                <span className="font-semibold text-[#a07855]">{formattedDate || 'your target date'}</span>
+                <span className="font-semibold text-[#a07855] dark:text-[#b8896a]">{formattedDate || 'your target date'}</span>
               </p>
             </motion.div>
 

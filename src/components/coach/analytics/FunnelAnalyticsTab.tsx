@@ -168,7 +168,7 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
         <select
           value={period}
           onChange={(e) => setPeriod(Number(e.target.value))}
-          className="px-3 py-1.5 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] text-sm focus:outline-none focus:ring-2 focus:ring-[#a07855]/30"
+          className="px-3 py-1.5 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] text-sm focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30"
         >
           <option value={7}>Last 7 days</option>
           <option value={30}>Last 30 days</option>

@@ -143,7 +143,7 @@ export function FeatureVotingBoard() {
             {data.inProgress.map((feature) => (
               <div
                 key={feature.id}
-                className="flex items-center justify-between p-4 bg-gradient-to-r from-[#a07855]/5 to-transparent dark:from-[#b8896a]/10 border border-[#a07855]/20 dark:border-[#b8896a]/20 rounded-xl"
+                className="flex items-center justify-between p-4 bg-gradient-to-r from-[#a07855]/5 to-transparent dark:from-[#b8896a]/10 border border-[#a07855] dark:border-[#b8896a]/20 dark:border-[#b8896a]/20 rounded-xl"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-[#a07855]/10 dark:bg-[#b8896a]/20 flex items-center justify-center">
@@ -194,7 +194,7 @@ export function FeatureVotingBoard() {
               return (
                 <div
                   key={feature.id}
-                  className="flex items-center justify-between p-4 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:border-[#a07855]/30 dark:hover:border-[#b8896a]/30 transition-colors"
+                  className="flex items-center justify-between p-4 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:border-[#a07855] dark:border-[#b8896a]/30 dark:hover:border-[#b8896a]/30 transition-colors"
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className={`flex flex-col items-center justify-center min-w-[48px] px-2 py-1 rounded-lg ${
@@ -230,7 +230,7 @@ export function FeatureVotingBoard() {
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-albert font-medium transition-all ${
                       hasVoted
                         ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
-                        : 'bg-[#faf8f6] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#a07855]/10 dark:hover:bg-[#b8896a]/10 hover:text-[#a07855] dark:hover:text-[#b8896a]'
+                        : 'bg-[#faf8f6] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#a07855]/10 dark:hover:bg-[#b8896a]/10 hover:text-[#a07855] dark:text-[#b8896a] dark:hover:text-[#b8896a]'
                     } disabled:opacity-50`}
                   >
                     {isVoting ? (
@@ -375,7 +375,7 @@ function SuggestFeatureModal({ onClose, onSubmit }: SuggestFeatureModalProps) {
                 required
                 minLength={5}
                 maxLength={100}
-                className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8680] dark:placeholder:text-[#6b7280] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a] transition-all"
+                className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8680] dark:placeholder:text-[#6b7280] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] transition-all"
               />
             </div>
 
@@ -395,7 +395,7 @@ function SuggestFeatureModal({ onClose, onSubmit }: SuggestFeatureModalProps) {
                 minLength={20}
                 maxLength={1000}
                 rows={4}
-                className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8680] dark:placeholder:text-[#6b7280] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a] transition-all resize-none"
+                className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8680] dark:placeholder:text-[#6b7280] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] transition-all resize-none"
               />
               <p className="mt-1 text-xs text-[#8c8680] dark:text-[#6b7280] font-albert">
                 {description.length}/1000 characters (min 20)

@@ -64,7 +64,7 @@ export function OnboardingLayout({
                     <div 
                       key={step} 
                       className={`h-1.5 flex-1 rounded-full relative overflow-hidden ${
-                        isCompleted || isActive ? 'bg-[#a07855]' : 'bg-[#e1ddd8]'
+                        isCompleted || isActive ? 'bg-[#a07855] dark:bg-[#b8896a]' : 'bg-[#e1ddd8] dark:bg-[#262b35]'
                       }`}
                     >
                       {/* Shimmer animation only on the active step */}
@@ -120,7 +120,7 @@ export function QuizOption({
       disabled={disabled}
       className={`w-full p-5 rounded-[20px] border-2 text-left transition-all hover:scale-[1.01] active:scale-[0.99] ${
         selected 
-          ? 'border-[#a07855] bg-[#faf8f6] shadow-sm' 
+          ? 'border-[#a07855] dark:border-[#b8896a] bg-[#faf8f6] shadow-sm' 
           : 'border-[#e1ddd8] bg-white hover:border-[#d4d0cb] hover:shadow-sm'
       } disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
     >

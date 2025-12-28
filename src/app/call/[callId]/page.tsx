@@ -209,7 +209,7 @@ function CallUI({ onLeave }: { onLeave: () => void }) {
     return (
       <div className="h-full flex items-center justify-center bg-[#1a1a1a]">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-[#a07855] animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-[#a07855] dark:text-[#b8896a] animate-spin mx-auto mb-4" />
           <p className="font-albert text-white text-lg">
             {callingState === CallingState.RECONNECTING ? 'Reconnecting...' : 'Joining call...'}
           </p>
@@ -514,7 +514,7 @@ export default function CallPage() {
     return (
       <div className="bg-[#1a1a1a] flex items-center justify-center" style={fullScreenStyle}>
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-[#a07855] animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-[#a07855] dark:text-[#b8896a] animate-spin mx-auto mb-4" />
           <p className="font-albert text-white text-lg">Initializing...</p>
         </div>
       </div>
@@ -546,7 +546,7 @@ export default function CallPage() {
     return (
       <div className="bg-[#1a1a1a] flex items-center justify-center" style={fullScreenStyle}>
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-[#a07855] animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-[#a07855] dark:text-[#b8896a] animate-spin mx-auto mb-4" />
           <p className="font-albert text-white text-lg">Joining call...</p>
         </div>
       </div>
@@ -558,7 +558,7 @@ export default function CallPage() {
     return (
       <div className="bg-[#1a1a1a] flex items-center justify-center" style={fullScreenStyle}>
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-[#a07855] animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-[#a07855] dark:text-[#b8896a] animate-spin mx-auto mb-4" />
           <p className="font-albert text-white text-lg">Leaving call...</p>
         </div>
       </div>

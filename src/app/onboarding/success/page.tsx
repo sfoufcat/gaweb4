@@ -256,7 +256,7 @@ function CheckoutSuccessContent() {
             <>
               {/* Processing Animation */}
               <div className="mb-8 inline-flex items-center justify-center w-24 h-24 bg-[#f3f1ef] rounded-3xl">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#a07855]" />
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#a07855] dark:border-[#b8896a]" />
               </div>
 
               <h1 className="font-albert text-[36px] lg:text-[42px] text-text-primary tracking-[-2px] leading-[1.2] mb-4">
@@ -284,7 +284,7 @@ function CheckoutSuccessContent() {
             <>
               {/* Joining Squad Animation */}
               <div className="mb-8 inline-flex items-center justify-center w-24 h-24 bg-[#f3f1ef] rounded-3xl">
-                <Users className="w-10 h-10 text-[#a07855] animate-pulse" />
+                <Users className="w-10 h-10 text-[#a07855] dark:text-[#b8896a] animate-pulse" />
               </div>
 
               <h1 className="font-albert text-[36px] lg:text-[42px] text-text-primary tracking-[-2px] leading-[1.2] mb-4">

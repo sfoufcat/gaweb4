@@ -1,16 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Drawer, 
   DrawerContent, 
   DrawerHeader, 
   DrawerTitle,
   DrawerDescription,
-  DrawerFooter,
 } from '@/components/ui/drawer';
 import {
   Dialog,
@@ -84,6 +84,26 @@ function getContentTypeIcon(type: PurchasableContentType) {
 }
 
 /**
+ * Get content URL for navigation
+ */
+function getContentUrl(type: PurchasableContentType, id: string): string {
+  switch (type) {
+    case 'article':
+      return `/discover/articles/${id}`;
+    case 'course':
+      return `/discover/courses/${id}`;
+    case 'event':
+      return `/discover/events/${id}`;
+    case 'download':
+      return `/discover/downloads/${id}`;
+    case 'link':
+      return `/discover/links/${id}`;
+    default:
+      return `/discover`;
+  }
+}
+
+/**
  * Format price from cents
  */
 function formatPrice(cents: number, currency = 'usd') {
@@ -103,11 +123,13 @@ function PurchaseContent({
   onPurchase,
   isPurchasing,
   isSignedIn,
+  purchaseSuccess,
 }: {
   content: ContentPurchaseSheetProps['content'];
   onPurchase: () => void;
   isPurchasing: boolean;
   isSignedIn: boolean;
+  purchaseSuccess: boolean;
 }) {
   const { colors } = useBrandingValues();
   const ContentIcon = getContentTypeIcon(content.type);
@@ -196,44 +218,104 @@ function PurchaseContent({
       
       {/* Price & CTA */}
       <div className="border-t border-[#e1ddd8] dark:border-[#262b35] px-4 py-4">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <span className="text-2xl font-bold text-text-primary dark:text-[#f5f5f8]">
-              {formatPrice(content.priceInCents, content.currency)}
-            </span>
-            {content.priceInCents > 0 && (
-              <span className="text-sm text-text-secondary dark:text-[#b2b6c2] ml-2">
-                one-time
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-1 text-text-secondary dark:text-[#b2b6c2]">
-            <Shield className="w-4 h-4" />
-            <span className="text-xs">Secure checkout</span>
-          </div>
-        </div>
-        
-        <Button
-          onClick={onPurchase}
-          disabled={isPurchasing}
-          className="w-full py-3 text-white font-semibold rounded-xl transition-all"
-          style={{ 
-            background: `linear-gradient(135deg, ${colors.accentLight}, ${colors.accentDark})`,
-          }}
-        >
-          {isPurchasing ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Processing...
-            </>
-          ) : !isSignedIn ? (
-            'Sign in to purchase'
-          ) : content.priceInCents === 0 ? (
-            'Get for free'
+        <AnimatePresence mode="wait">
+          {!purchaseSuccess ? (
+            <motion.div
+              key="purchase"
+              initial={{ opacity: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <span className="text-2xl font-bold text-text-primary dark:text-[#f5f5f8]">
+                    {formatPrice(content.priceInCents, content.currency)}
+                  </span>
+                  {content.priceInCents > 0 && (
+                    <span className="text-sm text-text-secondary dark:text-[#b2b6c2] ml-2">
+                      one-time
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 text-text-secondary dark:text-[#b2b6c2]">
+                  <Shield className="w-4 h-4" />
+                  <span className="text-xs">Secure checkout</span>
+                </div>
+              </div>
+              
+              <Button
+                onClick={onPurchase}
+                disabled={isPurchasing}
+                className="w-full py-3 text-white font-semibold rounded-xl transition-all"
+                style={{ 
+                  background: `linear-gradient(135deg, ${colors.accentLight}, ${colors.accentDark})`,
+                }}
+              >
+                {isPurchasing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : !isSignedIn ? (
+                  'Sign in to purchase'
+                ) : content.priceInCents === 0 ? (
+                  'Get for free'
+                ) : (
+                  `Purchase for ${formatPrice(content.priceInCents, content.currency)}`
+                )}
+              </Button>
+            </motion.div>
           ) : (
-            `Purchase for ${formatPrice(content.priceInCents, content.currency)}`
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ 
+                duration: 0.4, 
+                ease: [0.34, 1.56, 0.64, 1] // Spring-like bounce
+              }}
+              className="flex flex-col items-center py-4"
+            >
+              {/* Success checkmark circle */}
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ 
+                  delay: 0.1,
+                  duration: 0.4,
+                  ease: [0.34, 1.56, 0.64, 1]
+                }}
+                className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center mb-4"
+              >
+                <motion.div
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: 1, opacity: 1 }}
+                  transition={{ delay: 0.3, duration: 0.4 }}
+                >
+                  <Check className="w-8 h-8 text-white stroke-[3]" />
+                </motion.div>
+              </motion.div>
+              
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.3 }}
+                className="text-lg font-semibold text-text-primary dark:text-[#f5f5f8]"
+              >
+                Added to My Content
+              </motion.p>
+              
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5, duration: 0.3 }}
+                className="text-sm text-text-secondary dark:text-[#b2b6c2] mt-1"
+              >
+                Redirecting...
+              </motion.p>
+            </motion.div>
           )}
-        </Button>
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -252,7 +334,14 @@ export function ContentPurchaseSheet({
   const router = useRouter();
   const { isSignedIn } = useAuth();
   const [isPurchasing, setIsPurchasing] = useState(false);
-  const { colors } = useBrandingValues();
+  const [purchaseSuccess, setPurchaseSuccess] = useState(false);
+  
+  // Reset success state when sheet closes
+  useEffect(() => {
+    if (!open) {
+      setPurchaseSuccess(false);
+    }
+  }, [open]);
   
   const handlePurchase = async () => {
     if (!isSignedIn) {
@@ -286,9 +375,16 @@ export function ContentPurchaseSheet({
         return;
       }
       
-      // Free content or already included in program
-      onOpenChange(false);
-      onPurchaseComplete?.();
+      // Show success animation
+      setPurchaseSuccess(true);
+      
+      // Navigate to content page after animation
+      setTimeout(() => {
+        onOpenChange(false);
+        onPurchaseComplete?.();
+        const contentUrl = getContentUrl(content.type, content.id);
+        router.push(contentUrl);
+      }, 1500);
       
     } catch (error) {
       console.error('Purchase error:', error);
@@ -297,10 +393,6 @@ export function ContentPurchaseSheet({
       setIsPurchasing(false);
     }
   };
-  
-  // Use Drawer on mobile, Dialog on desktop
-  // For simplicity, we'll use media query approach with both rendered
-  // and CSS to show/hide based on screen size
   
   return (
     <>
@@ -317,6 +409,7 @@ export function ContentPurchaseSheet({
               onPurchase={handlePurchase}
               isPurchasing={isPurchasing}
               isSignedIn={!!isSignedIn}
+              purchaseSuccess={purchaseSuccess}
             />
           </DrawerContent>
         </Drawer>
@@ -345,6 +438,7 @@ export function ContentPurchaseSheet({
                 onPurchase={handlePurchase}
                 isPurchasing={isPurchasing}
                 isSignedIn={!!isSignedIn}
+                purchaseSuccess={purchaseSuccess}
               />
             </div>
           </DialogContent>
@@ -353,4 +447,3 @@ export function ContentPurchaseSheet({
     </>
   );
 }
-

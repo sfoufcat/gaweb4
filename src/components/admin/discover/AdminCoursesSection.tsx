@@ -139,7 +139,7 @@ function LessonEditor({
     <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#171b22]">
       {/* Collapsed Header */}
       <div className="p-3 flex items-center gap-3">
-        <span className="w-6 h-6 flex items-center justify-center bg-[#a07855]/10 rounded text-xs font-medium text-[#a07855] font-albert">
+        <span className="w-6 h-6 flex items-center justify-center bg-[#a07855]/10 rounded text-xs font-medium text-[#a07855] dark:text-[#b8896a] font-albert">
           {index + 1}
         </span>
         <input
@@ -147,14 +147,14 @@ function LessonEditor({
           value={lesson.title}
           onChange={e => onUpdate({ ...lesson, title: e.target.value })}
           placeholder="Lesson title"
-          className="flex-1 px-2 py-1 border border-transparent hover:border-[#e1ddd8] dark:border-[#262b35] rounded focus:outline-none focus:border-[#a07855] font-albert text-sm"
+          className="flex-1 px-2 py-1 border border-transparent hover:border-[#e1ddd8] dark:border-[#262b35] rounded focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] font-albert text-sm"
         />
         <input
           type="number"
           value={lesson.durationMinutes || ''}
           onChange={e => onUpdate({ ...lesson, durationMinutes: e.target.value ? parseInt(e.target.value) : undefined })}
           placeholder="Min"
-          className="w-16 px-2 py-1 border border-[#e1ddd8] dark:border-[#262b35] rounded focus:outline-none focus:ring-1 focus:ring-[#a07855] font-albert text-sm text-center"
+          className="w-16 px-2 py-1 border border-[#e1ddd8] dark:border-[#262b35] rounded focus:outline-none focus:ring-1 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert text-sm text-center"
         />
         <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">min</span>
         
@@ -182,7 +182,7 @@ function LessonEditor({
           <button
             type="button"
             onClick={() => setExpanded(!expanded)}
-            className="px-2 py-1 text-xs text-[#a07855] hover:text-[#8c6245] hover:bg-[#a07855]/10 rounded font-albert font-medium flex items-center gap-1"
+            className="px-2 py-1 text-xs text-[#a07855] dark:text-[#b8896a] hover:text-[#8c6245] hover:bg-[#a07855]/10 rounded font-albert font-medium flex items-center gap-1"
           >
             {expanded ? 'Hide' : 'Details'}
             <svg className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -222,7 +222,7 @@ function LessonEditor({
                   type="button"
                   onClick={handleFetchDuration}
                   disabled={fetchingDuration}
-                  className="px-3 py-1.5 text-xs bg-[#a07855]/10 text-[#a07855] hover:bg-[#a07855]/20 rounded font-albert font-medium disabled:opacity-50 whitespace-nowrap"
+                  className="px-3 py-1.5 text-xs bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/20 rounded font-albert font-medium disabled:opacity-50 whitespace-nowrap"
                   title="Fetch video duration automatically"
                 >
                   {fetchingDuration ? (
@@ -271,7 +271,7 @@ function LessonEditor({
                 type="checkbox"
                 checked={lesson.isLocked || false}
                 onChange={e => onUpdate({ ...lesson, isLocked: e.target.checked })}
-                className="w-4 h-4 text-[#a07855] border-[#e1ddd8] dark:border-[#262b35] rounded focus:ring-[#a07855]"
+                className="w-4 h-4 text-[#a07855] dark:text-[#b8896a] border-[#e1ddd8] dark:border-[#262b35] rounded focus:ring-[#a07855] dark:ring-[#b8896a]"
               />
               <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Locked (Premium)</span>
             </label>
@@ -353,14 +353,14 @@ function ModuleEditor({
               value={module.title}
               onChange={e => onUpdate({ ...module, title: e.target.value })}
               placeholder="Module title"
-              className="w-full px-2 py-1 border border-transparent hover:border-[#e1ddd8] dark:border-[#262b35] rounded focus:outline-none focus:border-[#a07855] font-albert font-semibold"
+              className="w-full px-2 py-1 border border-transparent hover:border-[#e1ddd8] dark:border-[#262b35] rounded focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] font-albert font-semibold"
             />
             <input
               type="text"
               value={module.subtitle || ''}
               onChange={e => onUpdate({ ...module, subtitle: e.target.value })}
               placeholder="Subtitle (optional)"
-              className="w-full px-2 py-1 border border-transparent hover:border-[#e1ddd8] dark:border-[#262b35] rounded focus:outline-none focus:border-[#a07855] font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2]"
+              className="w-full px-2 py-1 border border-transparent hover:border-[#e1ddd8] dark:border-[#262b35] rounded focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2]"
             />
             <RichTextEditor
               value={module.description || ''}
@@ -439,7 +439,7 @@ function ModuleEditor({
           <button
             type="button"
             onClick={addLesson}
-            className="w-full py-2 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-sm text-[#a07855] hover:border-[#a07855] hover:bg-[#a07855]/5 transition-colors font-albert"
+            className="w-full py-2 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-sm text-[#a07855] dark:text-[#b8896a] hover:border-[#a07855] dark:border-[#b8896a] hover:bg-[#a07855]/5 transition-colors font-albert"
           >
             + Add Lesson
           </button>
@@ -626,7 +626,7 @@ function CourseFormDialog({
             {/* Basic Info Section */}
             <div className="space-y-4">
               <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert flex items-center gap-2">
-                <span className="w-6 h-6 flex items-center justify-center bg-[#a07855]/10 rounded text-xs font-bold text-[#a07855]">1</span>
+                <span className="w-6 h-6 flex items-center justify-center bg-[#a07855]/10 rounded text-xs font-bold text-[#a07855] dark:text-[#b8896a]">1</span>
                 Basic Information
               </h3>
               
@@ -638,7 +638,7 @@ function CourseFormDialog({
                     required
                     value={formData.title}
                     onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert"
+                    className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert"
                   />
                 </div>
                 
@@ -686,7 +686,7 @@ function CourseFormDialog({
                   <select
                     value={formData.level}
                     onChange={e => setFormData(prev => ({ ...prev, level: e.target.value }))}
-                    className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert"
+                    className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert"
                   >
                     <option value="">Select level...</option>
                     <option value="Beginner">Beginner</option>
@@ -737,7 +737,7 @@ function CourseFormDialog({
             {/* Modules & Lessons Section */}
             <div className="space-y-4">
               <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert flex items-center gap-2">
-                <span className="w-6 h-6 flex items-center justify-center bg-[#a07855]/10 rounded text-xs font-bold text-[#a07855]">2</span>
+                <span className="w-6 h-6 flex items-center justify-center bg-[#a07855]/10 rounded text-xs font-bold text-[#a07855] dark:text-[#b8896a]">2</span>
                 Modules & Lessons
               </h3>
               
@@ -760,7 +760,7 @@ function CourseFormDialog({
                 <button
                   type="button"
                   onClick={addModule}
-                  className="w-full py-3 border-2 border-dashed border-[#a07855] rounded-xl text-[#a07855] hover:bg-[#a07855]/5 transition-colors font-albert font-medium"
+                  className="w-full py-3 border-2 border-dashed border-[#a07855] dark:border-[#b8896a] rounded-xl text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/5 transition-colors font-albert font-medium"
                 >
                   + Add Module
                 </button>
@@ -781,7 +781,7 @@ function CourseFormDialog({
             <Button
               type="submit"
               disabled={saving}
-              className="bg-[#a07855] hover:bg-[#8c6245] text-white font-albert"
+              className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-albert"
             >
               {saving ? 'Saving...' : isEditing ? 'Update Course' : 'Create Course'}
             </Button>
@@ -939,7 +939,7 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
         <div className="text-center text-red-600">
           <p className="font-albert font-semibold mb-2">Error</p>
           <p className="font-albert text-sm">{error}</p>
-          <Button onClick={fetchCourses} className="mt-4 bg-[#a07855] hover:bg-[#8c6245] text-white">
+          <Button onClick={fetchCourses} className="mt-4 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white">
             Retry
           </Button>
         </div>
@@ -968,7 +968,7 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
                   placeholder="Search courses..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-48 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-sm"
+                  className="w-48 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert text-sm"
                 />
                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -980,7 +980,7 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
                 <select
                   value={categoryFilter}
                   onChange={e => setCategoryFilter(e.target.value)}
-                  className="px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-sm"
+                  className="px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert text-sm"
                 >
                   <option value="">All Categories</option>
                   {categories.map(cat => (
@@ -994,7 +994,7 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
                 <select
                   value={levelFilter}
                   onChange={e => setLevelFilter(e.target.value)}
-                  className="px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-sm"
+                  className="px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert text-sm"
                 >
                   <option value="">All Levels</option>
                   {levels.map(level => (
@@ -1007,7 +1007,7 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
               <select
                 value={trackFilter}
                 onChange={e => setTrackFilter(e.target.value)}
-                className="px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-sm"
+                className="px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert text-sm"
               >
                 <option value="">All Tracks</option>
                 <option value="none">No Track</option>
@@ -1018,7 +1018,7 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
               
               <Button
                 onClick={() => { setCourseToEdit(null); setIsFormOpen(true); }}
-                className="bg-[#a07855] hover:bg-[#8c6245] text-white font-albert"
+                className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-albert"
               >
                 + Create Course
               </Button>
@@ -1093,7 +1093,7 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
                         variant="ghost"
                         size="sm"
                         onClick={() => { setCourseToEdit(course); setIsFormOpen(true); }}
-                        className="text-[#a07855] hover:text-[#8c6245] hover:bg-[#a07855]/10 font-albert"
+                        className="text-[#a07855] dark:text-[#b8896a] hover:text-[#8c6245] hover:bg-[#a07855]/10 font-albert"
                       >
                         Edit
                       </Button>

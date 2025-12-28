@@ -164,7 +164,7 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
               onChange={(e) => setName(e.target.value)}
               placeholder="Enter squad name"
               maxLength={50}
-              className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-[12px] font-albert text-[16px] text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all"
+              className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-[12px] font-albert text-[16px] text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] transition-all"
               required
             />
           </div>
@@ -180,7 +180,7 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
               placeholder="What's your squad about?"
               rows={3}
               maxLength={200}
-              className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-[12px] font-albert text-[16px] text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all resize-none"
+              className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-[12px] font-albert text-[16px] text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] transition-all resize-none"
             />
             <p className="text-[12px] text-text-secondary mt-1 font-albert">
               {description.length}/200 characters
@@ -195,7 +195,7 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
             <button
               type="button"
               onClick={() => setShowTzDropdown(!showTzDropdown)}
-              className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-[12px] font-albert text-[16px] text-text-primary text-left flex items-center justify-between hover:border-[#a07855] transition-all"
+              className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-[12px] font-albert text-[16px] text-text-primary text-left flex items-center justify-between hover:border-[#a07855] dark:border-[#b8896a] transition-all"
             >
               <span className="truncate">{selectedTzLabel}</span>
               <ChevronDown className={`w-5 h-5 text-text-secondary transition-transform ${showTzDropdown ? 'rotate-180' : ''}`} />
@@ -253,7 +253,7 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
                 className={`p-4 border rounded-[16px] text-left transition-all ${
                   visibility === 'public'
                     ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 dark:bg-[#b8896a]/10'
-                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855]/50 dark:hover:border-[#b8896a]/50'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a]/50 dark:hover:border-[#b8896a]/50'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-2">
@@ -274,7 +274,7 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
                 className={`p-4 border rounded-[16px] text-left transition-all ${
                   visibility === 'private'
                     ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 dark:bg-[#b8896a]/10'
-                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855]/50 dark:hover:border-[#b8896a]/50'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a]/50 dark:hover:border-[#b8896a]/50'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-2">

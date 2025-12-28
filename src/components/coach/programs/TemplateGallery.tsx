@@ -121,7 +121,7 @@ export function TemplateGallery({ onSelectTemplate, onBack, onClose }: TemplateG
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search templates..."
-            className="w-full pl-12 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a] transition-all"
+            className="w-full pl-12 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] transition-all"
           />
         </div>
 
@@ -134,7 +134,7 @@ export function TemplateGallery({ onSelectTemplate, onBack, onClose }: TemplateG
               className={`px-4 py-2 rounded-full text-sm font-medium font-albert transition-all duration-200 ${
                 selectedCategory === cat.value
                   ? 'bg-[#a07855] text-white dark:bg-[#b8896a]'
-                  : 'bg-white dark:bg-[#1d222b] text-[#5f5a55] dark:text-[#b2b6c2] border border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:hover:border-[#b8896a]'
+                  : 'bg-white dark:bg-[#1d222b] text-[#5f5a55] dark:text-[#b2b6c2] border border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a] dark:hover:border-[#b8896a]'
               }`}
             >
               {cat.label}
@@ -312,7 +312,7 @@ function EmptyState({ searchQuery, category, onClearFilters }: EmptyStateProps) 
       {(searchQuery || category !== 'all') && (
         <button
           onClick={onClearFilters}
-          className="px-4 py-2 rounded-xl bg-[#a07855] hover:bg-[#8c6245] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white font-albert text-sm transition-colors"
+          className="px-4 py-2 rounded-xl bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white font-albert text-sm transition-colors"
         >
           Clear filters
         </button>

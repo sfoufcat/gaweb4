@@ -516,7 +516,7 @@ export function SquadFormDialog({
               value={name}
               onChange={(e) => handleNameChange(e.target.value)}
               placeholder="Enter squad name"
-              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert"
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert"
               required
             />
           </div>
@@ -534,7 +534,7 @@ export function SquadFormDialog({
                 value={slug}
                 onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                 placeholder="my-squad"
-                className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert font-mono text-sm"
+                className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert font-mono text-sm"
               />
             </div>
             <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
@@ -554,7 +554,7 @@ export function SquadFormDialog({
               placeholder="What's this squad about?"
               rows={2}
               maxLength={200}
-              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert resize-none"
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert resize-none"
             />
             <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
               {description.length}/200 characters
@@ -614,7 +614,7 @@ export function SquadFormDialog({
                 className={`flex-1 flex items-center gap-2 p-3 border rounded-lg transition-all ${
                   visibility === 'public'
                     ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 dark:bg-[#b8896a]/10'
-                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855]/50 dark:hover:border-[#b8896a]/50'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a]/50 dark:hover:border-[#b8896a]/50'
                 }`}
               >
                 <Globe className={`w-4 h-4 ${visibility === 'public' ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
@@ -628,7 +628,7 @@ export function SquadFormDialog({
                 className={`flex-1 flex items-center gap-2 p-3 border rounded-lg transition-all ${
                   visibility === 'private'
                     ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 dark:bg-[#b8896a]/10'
-                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855]/50 dark:hover:border-[#b8896a]/50'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a]/50 dark:hover:border-[#b8896a]/50'
                 }`}
               >
                 <Lock className={`w-4 h-4 ${visibility === 'private' ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
@@ -767,7 +767,7 @@ export function SquadFormDialog({
                 }}
                 placeholder="0.00"
                 disabled={!stripeConnected && !stripeLoading}
-                className={`w-full pl-7 pr-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert ${
+                className={`w-full pl-7 pr-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert ${
                   !stripeConnected && !stripeLoading ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-900' : ''
                 }`}
               />
@@ -862,7 +862,7 @@ export function SquadFormDialog({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search by name or email..."
-                    className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert text-sm"
+                    className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert text-sm"
                     autoFocus
                   />
                   
@@ -894,7 +894,7 @@ export function SquadFormDialog({
                               <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] truncate font-albert">{user.email}</p>
                             </div>
                             {isAdding ? (
-                              <svg className="w-4 h-4 animate-spin text-[#a07855]" fill="none" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4 animate-spin text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                               </svg>
@@ -934,7 +934,7 @@ export function SquadFormDialog({
                         <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate font-albert">
                           {member.firstName} {member.lastName}
                           {squad.coachId === member.userId && (
-                            <span className="ml-2 text-xs text-[#a07855] font-normal">(Coach)</span>
+                            <span className="ml-2 text-xs text-[#a07855] dark:text-[#b8896a] font-normal">(Coach)</span>
                           )}
                         </p>
                         <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] truncate font-albert">

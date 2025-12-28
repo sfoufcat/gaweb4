@@ -300,7 +300,7 @@ export default function MyCoachPage() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#faf8f6] to-[#f5f2ed]">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#a07855] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-12 h-12 border-4 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-[#5f5a55] font-albert">Loading...</p>
         </div>
       </div>
@@ -389,7 +389,7 @@ export default function MyCoachPage() {
                     {coach.email && (
                       <div className="flex items-center gap-2 mt-2 text-[#5f5a55] dark:text-[#b2b6c2]">
                         <Mail className="w-4 h-4" />
-                        <a href={`mailto:${coach.email}`} className="font-albert text-sm hover:text-[#a07855] dark:hover:text-[#b8896a] transition-colors">
+                        <a href={`mailto:${coach.email}`} className="font-albert text-sm hover:text-[#a07855] dark:text-[#b8896a] dark:hover:text-[#b8896a] transition-colors">
                           {coach.email}
                         </a>
                       </div>
@@ -426,7 +426,7 @@ export default function MyCoachPage() {
                   {coachingData?.chatChannelId && (
                     <button
                       onClick={handleGoToChat}
-                      className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-[#a07855] hover:bg-[#8c6245] rounded-full font-albert text-[15px] font-medium text-white transition-colors shrink-0"
+                      className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] rounded-full font-albert text-[15px] font-medium text-white transition-colors shrink-0"
                     >
                       <MessageCircle className="w-5 h-5" />
                       Message Coach
@@ -486,7 +486,7 @@ export default function MyCoachPage() {
                             href={coachingData.nextCall.location}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[#a07855] hover:underline"
+                            className="text-[#a07855] dark:text-[#b8896a] hover:underline"
                           >
                             {coachingData.nextCall.location}
                           </a>
@@ -527,7 +527,7 @@ export default function MyCoachPage() {
                     {coachingData?.chatChannelId && (
                       <button
                         onClick={handleGoToChat}
-                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#a07855] hover:bg-[#8c6245] rounded-full font-albert text-[14px] font-medium text-white transition-colors"
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] rounded-full font-albert text-[14px] font-medium text-white transition-colors"
                       >
                         <MessageCircle className="w-4 h-4" />
                         Go to chat
@@ -684,7 +684,7 @@ export default function MyCoachPage() {
                           <ExternalLink className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-albert text-[15px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] group-hover:text-[#a07855] dark:group-hover:text-[#b8896a] transition-colors">
+                          <p className="font-albert text-[15px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] group-hover:text-[#a07855] dark:text-[#b8896a] dark:group-hover:text-[#b8896a] transition-colors">
                             {resource.title}
                           </p>
                           {resource.description && (

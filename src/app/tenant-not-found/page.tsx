@@ -43,7 +43,7 @@ export default function TenantNotFoundPage() {
         <div className="space-y-3">
           <Link
             href="https://growthaddicts.com"
-            className="block w-full px-6 py-3 bg-[#a07855] hover:bg-[#8c6245] text-white font-medium rounded-xl transition-colors font-albert"
+            className="block w-full px-6 py-3 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-medium rounded-xl transition-colors font-albert"
           >
             Go to GrowthAddicts
           </Link>

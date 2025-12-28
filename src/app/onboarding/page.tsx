@@ -215,7 +215,7 @@ export default function OnboardingPage() {
                           disabled={isValidating || isSaving}
                           rows={3}
                           maxLength={MAX_LENGTH}
-                          className="w-full bg-transparent border-b-2 border-[#e1ddd8] focus:border-[#a07855] outline-none pb-2 placeholder:text-transparent transition-colors resize-none"
+                          className="w-full bg-transparent border-b-2 border-[#e1ddd8] focus:border-[#a07855] dark:border-[#b8896a] outline-none pb-2 placeholder:text-transparent transition-colors resize-none"
                           autoFocus
                         />
                       </motion.div>
@@ -367,7 +367,7 @@ export default function OnboardingPage() {
                   transition={{ duration: 0.3, delay: 0.3 }}
                 >
                   <h3 className="font-albert text-[18px] font-medium text-text-primary tracking-[-0.5px] leading-[1.3] flex items-center gap-2">
-                    <span className="text-[#a07855]">💡</span>
+                    <span className="text-[#a07855] dark:text-[#b8896a]">💡</span>
                     Tip:
                   </h3>
                   <p className="font-sans text-[14px] text-text-secondary leading-[1.4]">

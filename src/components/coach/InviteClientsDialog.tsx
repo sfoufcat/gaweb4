@@ -594,7 +594,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                         <select
                           value={selectedFunnelId || ''}
                           onChange={(e) => setSelectedFunnelId(e.target.value)}
-                          className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:border-[#a07855] dark:focus:border-[#b8896a] appearance-none cursor-pointer"
+                          className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] appearance-none cursor-pointer"
                         >
                           {funnels.map(funnel => (
                             <option key={funnel.id} value={funnel.id}>
@@ -652,7 +652,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                     {/* Empty state */}
                     {!invitesLoading && !invitesError && invites.length === 0 && (
                       <div className="text-center py-8 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
-                        <Mail className="w-10 h-10 text-[#a07855]/50 dark:text-[#b8896a]/50 mx-auto mb-3" />
+                        <Mail className="w-10 h-10 text-[#a07855] dark:text-[#b8896a]/50 dark:text-[#b8896a]/50 mx-auto mb-3" />
                         <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">No invites yet</p>
                         <p className="text-sm text-[#5f5a55]/70 dark:text-[#b2b6c2]/70 font-albert mt-1">
                           Create your first invite to get started
@@ -746,7 +746,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                         type="email"
                         value={createForm.email}
                         onChange={(e) => setCreateForm(prev => ({ ...prev, email: e.target.value }))}
-                        className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:focus:border-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                        className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                         placeholder="user@example.com"
                       />
                       <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
@@ -762,7 +762,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                         type="text"
                         value={createForm.name}
                         onChange={(e) => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
-                        className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:focus:border-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                        className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                         placeholder="John Doe"
                       />
                     </div>
@@ -777,7 +777,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                           ...prev, 
                           paymentStatus: e.target.value as 'required' | 'pre_paid' | 'free' 
                         }))}
-                        className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:focus:border-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                        className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                       >
                         <option value="required">Payment Required</option>
                         <option value="pre_paid">Pre-paid (skip payment)</option>
@@ -794,7 +794,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                           type="text"
                           value={createForm.prePaidNote}
                           onChange={(e) => setCreateForm(prev => ({ ...prev, prePaidNote: e.target.value }))}
-                          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:focus:border-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                           placeholder="e.g., Invoice #123"
                         />
                       </div>
@@ -852,7 +852,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                           <textarea
                             value={bulkCsv}
                             onChange={(e) => setBulkCsv(e.target.value)}
-                            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:focus:border-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8] resize-none font-mono text-sm"
+                            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8] resize-none font-mono text-sm"
                             rows={8}
                             placeholder={`email@example.com, John Doe\nanother@example.com, Jane Doe\n...`}
                           />
@@ -868,7 +868,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                           <select
                             value={bulkPaymentStatus}
                             onChange={(e) => setBulkPaymentStatus(e.target.value as 'required' | 'pre_paid' | 'free')}
-                            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:focus:border-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                           >
                             <option value="required">Payment Required</option>
                             <option value="pre_paid">Pre-paid (skip payment)</option>

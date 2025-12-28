@@ -174,7 +174,7 @@ export function CheckInFlowEditorDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Morning Mindfulness"
-              className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted dark:placeholder:text-[#666d7c] focus:outline-none focus:border-[#a07855] dark:focus:border-[#b8896a]"
+              className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted dark:placeholder:text-[#666d7c] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a]"
             />
           </div>
 
@@ -188,7 +188,7 @@ export function CheckInFlowEditorDialog({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What is this flow for?"
               rows={2}
-              className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted dark:placeholder:text-[#666d7c] focus:outline-none focus:border-[#a07855] dark:focus:border-[#b8896a] resize-none"
+              className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted dark:placeholder:text-[#666d7c] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] resize-none"
             />
           </div>
 
@@ -243,7 +243,7 @@ export function CheckInFlowEditorDialog({
                     value="scratch"
                     checked={selectedSource === 'scratch'}
                     onChange={() => setSelectedSource('scratch')}
-                    className="w-4 h-4 text-[#a07855]"
+                    className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]"
                   />
                   <div>
                     <p className="font-medium text-text-primary dark:text-[#f5f5f8]">Blank flow</p>
@@ -259,7 +259,7 @@ export function CheckInFlowEditorDialog({
                     value="template"
                     checked={selectedSource === 'template'}
                     onChange={() => setSelectedSource('template')}
-                    className="w-4 h-4 text-[#a07855]"
+                    className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]"
                   />
                   <div className="flex-1">
                     <p className="font-medium text-text-primary dark:text-[#f5f5f8]">From template</p>
@@ -276,7 +276,7 @@ export function CheckInFlowEditorDialog({
                           key={template.id}
                           className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
                             selectedTemplateId === template.id
-                              ? 'border-[#a07855] bg-[#a07855]/5 dark:border-[#b8896a] dark:bg-[#b8896a]/10'
+                              ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 dark:border-[#b8896a] dark:bg-[#b8896a]/10'
                               : 'border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-[#0d1015]'
                           }`}
                         >
@@ -308,7 +308,7 @@ export function CheckInFlowEditorDialog({
                         value="duplicate"
                         checked={selectedSource === 'duplicate'}
                         onChange={() => setSelectedSource('duplicate')}
-                        className="w-4 h-4 text-[#a07855]"
+                        className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]"
                       />
                       <div className="flex-1">
                         <p className="font-medium text-text-primary dark:text-[#f5f5f8]">Duplicate existing</p>
@@ -321,7 +321,7 @@ export function CheckInFlowEditorDialog({
                         <select
                           value={selectedFlowId}
                           onChange={(e) => setSelectedFlowId(e.target.value)}
-                          className="w-full px-3 py-2 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                          className="w-full px-3 py-2 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a]"
                         >
                           <option value="">Select a flow...</option>
                           {existingFlows.map(f => (

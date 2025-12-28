@@ -421,8 +421,8 @@ export function CustomMessageInput() {
       )}
       
       <div className={`flex items-center gap-2 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-3xl px-3 py-2 transition-all duration-200 ${
-        isFocused ? 'ring-2 ring-[#a07855]/20 dark:ring-[#b8896a]/20' : ''
-      } ${isEditing ? 'ring-2 ring-[#a07855]/30 dark:ring-[#b8896a]/30' : ''}`}>
+        isFocused ? 'ring-2 ring-[#a07855] dark:ring-[#b8896a]/20 dark:ring-[#b8896a]/20' : ''
+      } ${isEditing ? 'ring-2 ring-[#a07855] dark:ring-[#b8896a]/30 dark:ring-[#b8896a]/30' : ''}`}>
         {/* Plus/Attachment Button - Hidden during edit */}
         {!isEditing && (
           <div className="relative">

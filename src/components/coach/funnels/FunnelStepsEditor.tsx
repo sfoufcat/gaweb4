@@ -615,7 +615,7 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
         <div className="p-4">
           <button
             onClick={() => setShowAddStep(true)}
-            className="w-full py-3 border-2 border-dashed border-[#e1ddd8] rounded-xl text-text-secondary hover:border-[#a07855] hover:text-[#a07855] transition-colors flex items-center justify-center gap-2"
+            className="w-full py-3 border-2 border-dashed border-[#e1ddd8] rounded-xl text-text-secondary hover:border-[#a07855] dark:border-[#b8896a] hover:text-[#a07855] dark:text-[#b8896a] transition-colors flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Add Step
@@ -698,7 +698,7 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
                         disabled={isSaving || !isAllowed || isLimitReached}
                         className={`p-4 border rounded-xl transition-colors text-left relative ${
                           isAllowed && !isLimitReached
-                            ? 'border-[#e1ddd8] hover:border-[#a07855] hover:bg-[#faf8f6] disabled:opacity-50'
+                            ? 'border-[#e1ddd8] hover:border-[#a07855] dark:border-[#b8896a] hover:bg-[#faf8f6] disabled:opacity-50'
                             : 'border-[#e1ddd8] bg-[#fafafa] cursor-not-allowed opacity-70'
                         }`}
                       >

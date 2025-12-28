@@ -649,7 +649,7 @@ export function AdminUsersTab({
           <p className="font-albert text-sm">{error}</p>
           <Button 
             onClick={fetchUsers} 
-            className="mt-4 bg-[#a07855] hover:bg-[#8c6245] text-white"
+            className="mt-4 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
           >
             Retry
           </Button>
@@ -682,7 +682,7 @@ export function AdminUsersTab({
                   placeholder="Search by name or email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full sm:w-64 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190]"
+                  className="w-full sm:w-64 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190]"
                 />
                 <svg
                   className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#7d8190]"
@@ -724,7 +724,7 @@ export function AdminUsersTab({
                 {showInviteButton && (
                   <Button
                     onClick={() => setShowInviteDialog(true)}
-                    className="flex-1 sm:flex-none bg-[#a07855] hover:bg-[#8c6245] active:bg-[#7a5639] dark:bg-[#b8896a] dark:hover:bg-[#a07855] dark:active:bg-[#96714d] text-white font-albert"
+                    className="flex-1 sm:flex-none bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] active:bg-[#7a5639] dark:bg-[#b8896a] dark:hover:bg-[#a07855] dark:active:bg-[#96714d] text-white font-albert"
                   >
                     <UserPlus className="w-4 h-4 mr-2" />
                     Add New Clients
@@ -1101,7 +1101,7 @@ export function AdminUsersTab({
               <>
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#a07855]/10 flex items-center justify-center">
                   <svg
-                    className="w-8 h-8 text-[#a07855]"
+                    className="w-8 h-8 text-[#a07855] dark:text-[#b8896a]"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -1184,7 +1184,7 @@ export function AdminUsersTab({
                           setSubdomainError(null);
                         }}
                         placeholder="acme"
-                        className="flex-1 h-10 px-3 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#313746] bg-white dark:bg-[#1e222a] text-sm text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/20 focus:border-[#a07855] font-albert disabled:opacity-50"
+                        className="flex-1 h-10 px-3 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#313746] bg-white dark:bg-[#1e222a] text-sm text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20 focus:border-[#a07855] dark:border-[#b8896a] font-albert disabled:opacity-50"
                         disabled={subdomainLoading}
                       />
                       <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert whitespace-nowrap">
@@ -1227,7 +1227,7 @@ export function AdminUsersTab({
                 handleSubdomainSubmit();
               }}
               disabled={!subdomain || subdomainLoading}
-              className="bg-[#a07855] hover:bg-[#8c6245] text-white font-albert"
+              className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-albert"
             >
               {subdomainLoading ? 'Creating...' : 'Assign Coach Role'}
             </AlertDialogAction>

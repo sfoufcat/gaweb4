@@ -38,7 +38,7 @@ export function CoachPlanSkeleton() {
               key={index}
               className={`relative p-6 rounded-[24px] border-2 ${
                 index === 1
-                  ? 'border-[#a07855]/30 bg-[#faf8f6] dark:bg-[#171b22]'
+                  ? 'border-[#a07855] dark:border-[#b8896a]/30 bg-[#faf8f6] dark:bg-[#171b22]'
                   : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]'
               }`}
               style={{ animationDelay: `${index * 100}ms` }}

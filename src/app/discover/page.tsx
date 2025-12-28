@@ -38,6 +38,32 @@ export default function DiscoverPage() {
     return individualPrograms.filter(p => !p.userEnrollment);
   }, [individualPrograms]);
 
+  // Build sets of owned article and course IDs for filtering
+  const ownedContentIds = useMemo(() => {
+    const articleIds = new Set<string>();
+    const courseIds = new Set<string>();
+    
+    myContent.forEach((item) => {
+      if (item.contentType === 'article') {
+        articleIds.add(item.contentId);
+      } else if (item.contentType === 'course') {
+        courseIds.add(item.contentId);
+      }
+    });
+    
+    return { articleIds, courseIds };
+  }, [myContent]);
+
+  // Filter out owned articles from browse view
+  const availableArticles = useMemo(() => {
+    return articles.filter(a => !ownedContentIds.articleIds.has(a.id));
+  }, [articles, ownedContentIds.articleIds]);
+
+  // Filter out owned courses from browse view
+  const availableCourses = useMemo(() => {
+    return courses.filter(c => !ownedContentIds.courseIds.has(c.id));
+  }, [courses, ownedContentIds.courseIds]);
+
   // Get selected category name for filtering
   const selectedCategoryName = useMemo(() => {
     if (!selectedCategory) return null;
@@ -49,17 +75,17 @@ export default function DiscoverPage() {
     return showPastEvents ? pastEvents : upcomingEvents;
   }, [upcomingEvents, pastEvents, showPastEvents]);
 
-  // Filter courses based on selected category
+  // Filter courses based on selected category (using available/non-owned courses)
   const filteredCourses = useMemo(() => {
-    if (!selectedCategoryName) return courses;
-    return courses.filter(c => c.category === selectedCategoryName);
-  }, [courses, selectedCategoryName]);
+    if (!selectedCategoryName) return availableCourses;
+    return availableCourses.filter(c => c.category === selectedCategoryName);
+  }, [availableCourses, selectedCategoryName]);
 
-  // Filter articles based on selected category
+  // Filter articles based on selected category (using available/non-owned articles)
   const filteredArticles = useMemo(() => {
-    if (!selectedCategoryName) return articles;
-    return articles.filter(a => a.category === selectedCategoryName);
-  }, [articles, selectedCategoryName]);
+    if (!selectedCategoryName) return availableArticles;
+    return availableArticles.filter(a => a.category === selectedCategoryName);
+  }, [availableArticles, selectedCategoryName]);
 
   // Limit articles display to 10 for the main section
   const articlesDisplay = useMemo(() => {
@@ -498,7 +524,7 @@ export default function DiscoverPage() {
       )}
 
       {/* ARTICLES SECTION - Only when no category selected */}
-      {!selectedCategory && (trending.length > 0 || recommended.length > 0 || articles.length > 0) && (
+      {!selectedCategory && (trending.length > 0 || recommended.length > 0 || availableArticles.length > 0) && (
         <section className="px-4 py-5">
           <div className="flex flex-col gap-6">
             {/* Articles Header with View More */}

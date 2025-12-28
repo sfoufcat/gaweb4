@@ -369,7 +369,7 @@ export default function CoachPlanPage() {
                     : isDowngrade
                     ? 'border-[#e1ddd8] bg-[#f9f8f7] opacity-60 cursor-not-allowed'
                     : isSelected
-                    ? 'border-[#a07855] bg-[#faf8f6] shadow-lg'
+                    ? 'border-[#a07855] dark:border-[#b8896a] bg-[#faf8f6] shadow-lg'
                     : 'border-[#e1ddd8] bg-white hover:border-[#d4d0cb] hover:shadow-md'
                 }`}
               >
@@ -399,7 +399,7 @@ export default function CoachPlanPage() {
                 {!isCurrentPlan && !isDowngrade && (
                   <div className={`absolute top-5 right-5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                     isSelected
-                      ? 'border-[#a07855] bg-[#a07855]'
+                      ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855] dark:bg-[#b8896a]'
                       : 'border-[#d4d0cb]'
                   }`}>
                     {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
@@ -448,7 +448,7 @@ export default function CoachPlanPage() {
                     <li key={index} className="flex items-start gap-2">
                       {feature.included ? (
                         <Check className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
-                          feature.highlight ? 'text-[#a07855]' : 'text-[#22c55e]'
+                          feature.highlight ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-[#22c55e]'
                         }`} strokeWidth={2.5} />
                       ) : (
                         <X className="w-4 h-4 text-[#d4d0cb] flex-shrink-0 mt-0.5" strokeWidth={2} />
@@ -535,7 +535,7 @@ export default function CoachPlanPage() {
                   className="bg-white rounded-2xl p-5 border border-[#e1ddd8] text-center"
                 >
                   <div className="w-12 h-12 bg-[#faf8f6] rounded-xl flex items-center justify-center mx-auto mb-3">
-                    <item.icon className="w-6 h-6 text-[#a07855]" />
+                    <item.icon className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" />
                   </div>
                   <h4 className="font-sans text-[14px] font-semibold text-text-primary mb-1">
                     {item.title}
@@ -583,7 +583,7 @@ export default function CoachPlanPage() {
         >
           <p className="font-sans text-[14px] text-text-secondary">
             Questions? Contact us at{' '}
-            <a href="mailto:hello@growthaddicts.com" className="text-[#a07855] underline underline-offset-2">
+            <a href="mailto:hello@growthaddicts.com" className="text-[#a07855] dark:text-[#b8896a] underline underline-offset-2">
               hello@growthaddicts.com
             </a>
           </p>

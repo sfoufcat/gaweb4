@@ -30,7 +30,7 @@ export function DaysOfWeekSelector({ selected, onChange }: DaysOfWeekSelectorPro
               flex-1 h-12 rounded-xl font-albert font-semibold text-[18px] tracking-[-1px]
               transition-all duration-200
               ${isSelected
-                ? 'bg-[#a07855] text-white'
+                ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
                 : 'bg-[#f3f1ef] text-text-primary hover:bg-[#e8e0d5]'
               }
             `}

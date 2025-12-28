@@ -114,7 +114,7 @@ export function CheckInStepConfigEditor({ step, onClose, onSave }: CheckInStepCo
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Custom name for this step"
-              className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted dark:placeholder:text-[#666d7c] focus:outline-none focus:border-[#a07855] dark:focus:border-[#b8896a]"
+              className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted dark:placeholder:text-[#666d7c] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a]"
             />
           </div>
 
@@ -157,7 +157,7 @@ function MoodScaleConfig({ config, updateConfig }: { config: Record<string, unkn
           type="text"
           value={(config.question as string) || ''}
           onChange={(e) => updateConfig('question', e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
       <div>
@@ -167,7 +167,7 @@ function MoodScaleConfig({ config, updateConfig }: { config: Record<string, unkn
         <select
           value={(config.scaleType as string) || 'emotional_state'}
           onChange={(e) => updateConfig('scaleType', e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         >
           <option value="emotional_state">Emotional State (7 levels)</option>
           <option value="on_track">On Track (3 levels)</option>
@@ -207,7 +207,7 @@ function SelectConfig({ config, updateConfig, isMulti }: { config: Record<string
           type="text"
           value={(config.question as string) || ''}
           onChange={(e) => updateConfig('question', e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
       <div>
@@ -222,7 +222,7 @@ function SelectConfig({ config, updateConfig, isMulti }: { config: Record<string
                 value={option.label}
                 onChange={(e) => updateOption(option.id, 'label', e.target.value)}
                 placeholder={`Option ${index + 1}`}
-                className="flex-1 px-3 py-2 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] text-sm focus:outline-none focus:border-[#a07855]"
+                className="flex-1 px-3 py-2 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] text-sm focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
               />
               <button
                 onClick={() => removeOption(option.id)}
@@ -234,7 +234,7 @@ function SelectConfig({ config, updateConfig, isMulti }: { config: Record<string
           ))}
           <button
             onClick={addOption}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-[#a07855] hover:bg-[#a07855]/10 rounded-lg"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/10 rounded-lg"
           >
             <Plus className="w-4 h-4" />
             Add Option
@@ -250,7 +250,7 @@ function SelectConfig({ config, updateConfig, isMulti }: { config: Record<string
           value={(config.fieldName as string) || ''}
           onChange={(e) => updateConfig('fieldName', e.target.value)}
           placeholder="e.g., answer"
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
     </div>
@@ -269,7 +269,7 @@ function OpenTextConfig({ config, updateConfig }: { config: Record<string, unkno
           type="text"
           value={(config.question as string) || ''}
           onChange={(e) => updateConfig('question', e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
       <div>
@@ -280,7 +280,7 @@ function OpenTextConfig({ config, updateConfig }: { config: Record<string, unkno
           type="text"
           value={(config.placeholder as string) || ''}
           onChange={(e) => updateConfig('placeholder', e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
       <div className="flex items-center gap-3">
@@ -289,7 +289,7 @@ function OpenTextConfig({ config, updateConfig }: { config: Record<string, unkno
           id="isRequired"
           checked={(config.isRequired as boolean) || false}
           onChange={(e) => updateConfig('isRequired', e.target.checked)}
-          className="w-4 h-4 text-[#a07855] rounded"
+          className="w-4 h-4 text-[#a07855] dark:text-[#b8896a] rounded"
         />
         <label htmlFor="isRequired" className="text-sm text-text-primary dark:text-[#f5f5f8]">
           Required field
@@ -311,7 +311,7 @@ function TaskPlannerConfig({ config, updateConfig }: { config: Record<string, un
           type="text"
           value={(config.heading as string) || ''}
           onChange={(e) => updateConfig('heading', e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
       <div className="space-y-3">
@@ -321,7 +321,7 @@ function TaskPlannerConfig({ config, updateConfig }: { config: Record<string, un
             id="showProgramTasks"
             checked={(config.showProgramTasks as boolean) ?? true}
             onChange={(e) => updateConfig('showProgramTasks', e.target.checked)}
-            className="w-4 h-4 text-[#a07855] rounded"
+            className="w-4 h-4 text-[#a07855] dark:text-[#b8896a] rounded"
           />
           <label htmlFor="showProgramTasks" className="text-sm text-text-primary dark:text-[#f5f5f8]">
             Show program tasks
@@ -333,7 +333,7 @@ function TaskPlannerConfig({ config, updateConfig }: { config: Record<string, un
             id="allowAddTasks"
             checked={(config.allowAddTasks as boolean) ?? true}
             onChange={(e) => updateConfig('allowAddTasks', e.target.checked)}
-            className="w-4 h-4 text-[#a07855] rounded"
+            className="w-4 h-4 text-[#a07855] dark:text-[#b8896a] rounded"
           />
           <label htmlFor="allowAddTasks" className="text-sm text-text-primary dark:text-[#f5f5f8]">
             Allow adding custom tasks
@@ -345,7 +345,7 @@ function TaskPlannerConfig({ config, updateConfig }: { config: Record<string, un
             id="showBacklog"
             checked={(config.showBacklog as boolean) ?? true}
             onChange={(e) => updateConfig('showBacklog', e.target.checked)}
-            className="w-4 h-4 text-[#a07855] rounded"
+            className="w-4 h-4 text-[#a07855] dark:text-[#b8896a] rounded"
           />
           <label htmlFor="showBacklog" className="text-sm text-text-primary dark:text-[#f5f5f8]">
             Show backlog
@@ -368,7 +368,7 @@ function TaskReviewConfig({ config, updateConfig }: { config: Record<string, unk
           type="text"
           value={(config.heading as string) || ''}
           onChange={(e) => updateConfig('heading', e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
       <div>
@@ -379,7 +379,7 @@ function TaskReviewConfig({ config, updateConfig }: { config: Record<string, unk
           type="text"
           value={(config.completedMessage as string) || ''}
           onChange={(e) => updateConfig('completedMessage', e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
       <div>
@@ -390,7 +390,7 @@ function TaskReviewConfig({ config, updateConfig }: { config: Record<string, unk
           type="text"
           value={(config.partialMessage as string) || ''}
           onChange={(e) => updateConfig('partialMessage', e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
     </div>
@@ -415,7 +415,7 @@ function BreathingConfig({ config, updateConfig }: { config: Record<string, unkn
           type="text"
           value={(config.heading as string) || ''}
           onChange={(e) => updateConfig('heading', e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
       <div className="grid grid-cols-3 gap-3">
@@ -429,7 +429,7 @@ function BreathingConfig({ config, updateConfig }: { config: Record<string, unkn
             onChange={(e) => updatePattern('inhale', parseInt(e.target.value) || 4)}
             min={1}
             max={10}
-            className="w-full px-3 py-2 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+            className="w-full px-3 py-2 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
           />
         </div>
         <div>
@@ -442,7 +442,7 @@ function BreathingConfig({ config, updateConfig }: { config: Record<string, unkn
             onChange={(e) => updatePattern('hold', parseInt(e.target.value) || 0)}
             min={0}
             max={10}
-            className="w-full px-3 py-2 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+            className="w-full px-3 py-2 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
           />
         </div>
         <div>
@@ -455,7 +455,7 @@ function BreathingConfig({ config, updateConfig }: { config: Record<string, unkn
             onChange={(e) => updatePattern('exhale', parseInt(e.target.value) || 6)}
             min={1}
             max={10}
-            className="w-full px-3 py-2 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+            className="w-full px-3 py-2 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
           />
         </div>
       </div>
@@ -469,7 +469,7 @@ function BreathingConfig({ config, updateConfig }: { config: Record<string, unkn
           onChange={(e) => updateConfig('cycles', parseInt(e.target.value) || 3)}
           min={1}
           max={10}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
     </div>
@@ -488,7 +488,7 @@ function AIReframeConfig({ config, updateConfig, isOutput }: { config: Record<st
           type="text"
           value={(config.heading as string) || ''}
           onChange={(e) => updateConfig('heading', e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
       {isOutput ? (
@@ -500,7 +500,7 @@ function AIReframeConfig({ config, updateConfig, isOutput }: { config: Record<st
             type="text"
             value={(config.loadingMessage as string) || ''}
             onChange={(e) => updateConfig('loadingMessage', e.target.value)}
-            className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+            className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
           />
         </div>
       ) : (
@@ -512,7 +512,7 @@ function AIReframeConfig({ config, updateConfig, isOutput }: { config: Record<st
             type="text"
             value={(config.placeholder as string) || ''}
             onChange={(e) => updateConfig('placeholder', e.target.value)}
-            className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+            className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
           />
         </div>
       )}
@@ -532,7 +532,7 @@ function VisualizationConfig({ config, updateConfig }: { config: Record<string, 
           type="text"
           value={(config.heading as string) || ''}
           onChange={(e) => updateConfig('heading', e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
       <div className="space-y-3">
@@ -542,7 +542,7 @@ function VisualizationConfig({ config, updateConfig }: { config: Record<string, 
             id="showGoal"
             checked={(config.showGoal as boolean) ?? true}
             onChange={(e) => updateConfig('showGoal', e.target.checked)}
-            className="w-4 h-4 text-[#a07855] rounded"
+            className="w-4 h-4 text-[#a07855] dark:text-[#b8896a] rounded"
           />
           <label htmlFor="showGoal" className="text-sm text-text-primary dark:text-[#f5f5f8]">
             Show user&apos;s goal
@@ -554,7 +554,7 @@ function VisualizationConfig({ config, updateConfig }: { config: Record<string, 
             id="showIdentity"
             checked={(config.showIdentity as boolean) ?? true}
             onChange={(e) => updateConfig('showIdentity', e.target.checked)}
-            className="w-4 h-4 text-[#a07855] rounded"
+            className="w-4 h-4 text-[#a07855] dark:text-[#b8896a] rounded"
           />
           <label htmlFor="showIdentity" className="text-sm text-text-primary dark:text-[#f5f5f8]">
             Show user&apos;s identity statement
@@ -571,7 +571,7 @@ function VisualizationConfig({ config, updateConfig }: { config: Record<string, 
           onChange={(e) => updateConfig('durationSeconds', parseInt(e.target.value) || 60)}
           min={10}
           max={300}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
     </div>
@@ -590,7 +590,7 @@ function ProgressScaleConfig({ config, updateConfig }: { config: Record<string, 
           type="text"
           value={(config.question as string) || ''}
           onChange={(e) => updateConfig('question', e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
       <div className="flex items-center gap-3">
@@ -599,7 +599,7 @@ function ProgressScaleConfig({ config, updateConfig }: { config: Record<string, 
           id="showGoalProgress"
           checked={(config.showGoal as boolean) ?? true}
           onChange={(e) => updateConfig('showGoal', e.target.checked)}
-          className="w-4 h-4 text-[#a07855] rounded"
+          className="w-4 h-4 text-[#a07855] dark:text-[#b8896a] rounded"
         />
         <label htmlFor="showGoalProgress" className="text-sm text-text-primary dark:text-[#f5f5f8]">
           Display user&apos;s goal
@@ -615,7 +615,7 @@ function ProgressScaleConfig({ config, updateConfig }: { config: Record<string, 
           onChange={(e) => updateConfig('goalAchievedThreshold', parseInt(e.target.value) || 100)}
           min={1}
           max={100}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
         <p className="mt-1 text-xs text-text-muted dark:text-[#666d7c]">
           When user reaches this %, show goal achieved screen
@@ -637,7 +637,7 @@ function CompletionConfig({ config, updateConfig }: { config: Record<string, unk
           type="text"
           value={(config.heading as string) || ''}
           onChange={(e) => updateConfig('heading', e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
       <div>
@@ -648,7 +648,7 @@ function CompletionConfig({ config, updateConfig }: { config: Record<string, unk
           type="text"
           value={(config.subheading as string) || ''}
           onChange={(e) => updateConfig('subheading', e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
       <div>
@@ -660,7 +660,7 @@ function CompletionConfig({ config, updateConfig }: { config: Record<string, unk
           value={(config.buttonText as string) || ''}
           onChange={(e) => updateConfig('buttonText', e.target.value)}
           placeholder="e.g., Continue, Finish, Close"
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
       <div className="flex items-center gap-3">
@@ -669,7 +669,7 @@ function CompletionConfig({ config, updateConfig }: { config: Record<string, unk
           id="showConfetti"
           checked={(config.showConfetti as boolean) ?? true}
           onChange={(e) => updateConfig('showConfetti', e.target.checked)}
-          className="w-4 h-4 text-[#a07855] rounded"
+          className="w-4 h-4 text-[#a07855] dark:text-[#b8896a] rounded"
         />
         <label htmlFor="showConfetti" className="text-sm text-text-primary dark:text-[#f5f5f8]">
           Show confetti animation
@@ -691,7 +691,7 @@ function GoalAchievedConfig({ config, updateConfig }: { config: Record<string, u
           type="text"
           value={(config.heading as string) || ''}
           onChange={(e) => updateConfig('heading', e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
       <div>
@@ -702,7 +702,7 @@ function GoalAchievedConfig({ config, updateConfig }: { config: Record<string, u
           value={(config.description as string) || ''}
           onChange={(e) => updateConfig('description', e.target.value)}
           rows={3}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] resize-none"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] resize-none"
         />
       </div>
       <div className="space-y-3">
@@ -712,7 +712,7 @@ function GoalAchievedConfig({ config, updateConfig }: { config: Record<string, u
             id="showCreateNewGoal"
             checked={(config.showCreateNewGoal as boolean) ?? true}
             onChange={(e) => updateConfig('showCreateNewGoal', e.target.checked)}
-            className="w-4 h-4 text-[#a07855] rounded"
+            className="w-4 h-4 text-[#a07855] dark:text-[#b8896a] rounded"
           />
           <label htmlFor="showCreateNewGoal" className="text-sm text-text-primary dark:text-[#f5f5f8]">
             Show &quot;Create new goal&quot; button
@@ -724,7 +724,7 @@ function GoalAchievedConfig({ config, updateConfig }: { config: Record<string, u
             id="showSkipOption"
             checked={(config.showSkipOption as boolean) ?? true}
             onChange={(e) => updateConfig('showSkipOption', e.target.checked)}
-            className="w-4 h-4 text-[#a07855] rounded"
+            className="w-4 h-4 text-[#a07855] dark:text-[#b8896a] rounded"
           />
           <label htmlFor="showSkipOption" className="text-sm text-text-primary dark:text-[#f5f5f8]">
             Show &quot;Skip for now&quot; option
@@ -747,7 +747,7 @@ function ExplainerConfig({ config, updateConfig }: { config: Record<string, unkn
           type="text"
           value={(config.heading as string) || ''}
           onChange={(e) => updateConfig('heading', e.target.value)}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
       <div>
@@ -758,7 +758,7 @@ function ExplainerConfig({ config, updateConfig }: { config: Record<string, unkn
           value={(config.body as string) || ''}
           onChange={(e) => updateConfig('body', e.target.value)}
           rows={4}
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] resize-none"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] resize-none"
         />
       </div>
       <div>
@@ -770,7 +770,7 @@ function ExplainerConfig({ config, updateConfig }: { config: Record<string, unkn
           value={(config.imageUrl as string) || ''}
           onChange={(e) => updateConfig('imageUrl', e.target.value)}
           placeholder="https://..."
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
       <div>
@@ -782,7 +782,7 @@ function ExplainerConfig({ config, updateConfig }: { config: Record<string, unkn
           value={(config.ctaText as string) || ''}
           onChange={(e) => updateConfig('ctaText', e.target.value)}
           placeholder="Continue"
-          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
         />
       </div>
     </div>

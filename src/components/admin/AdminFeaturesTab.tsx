@@ -617,7 +617,7 @@ function FeatureModal({ feature, onClose, onSave }: FeatureModalProps) {
               placeholder="Feature title"
               required
               minLength={3}
-              className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/30"
+              className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30"
             />
           </div>
 
@@ -630,7 +630,7 @@ function FeatureModal({ feature, onClose, onSave }: FeatureModalProps) {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Feature description (optional)"
               rows={3}
-              className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 resize-none"
+              className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 resize-none"
             />
           </div>
 
@@ -642,7 +642,7 @@ function FeatureModal({ feature, onClose, onSave }: FeatureModalProps) {
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as FeatureRequestStatus)}
-                className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/30"
+                className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30"
               >
                 {Object.entries(STATUS_CONFIG).map(([value, config]) => (
                   <option key={value} value={value}>{config.label}</option>
@@ -660,7 +660,7 @@ function FeatureModal({ feature, onClose, onSave }: FeatureModalProps) {
                 onChange={(e) => setPriority(e.target.value)}
                 placeholder="1, 2, 3..."
                 min={1}
-                className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/30"
+                className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30"
               />
             </div>
           </div>
@@ -674,7 +674,7 @@ function FeatureModal({ feature, onClose, onSave }: FeatureModalProps) {
               onChange={(e) => setAdminNotes(e.target.value)}
               placeholder="Internal notes not shown to users..."
               rows={2}
-              className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 resize-none"
+              className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 resize-none"
             />
           </div>
 

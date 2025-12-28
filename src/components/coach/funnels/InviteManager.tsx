@@ -375,7 +375,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
                     type="email"
                     value={createForm.email}
                     onChange={(e) => setCreateForm(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+                    className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
                     placeholder="user@example.com"
                   />
                   <p className="text-xs text-text-muted mt-1">
@@ -391,7 +391,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
                     type="text"
                     value={createForm.name}
                     onChange={(e) => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+                    className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
                     placeholder="John Doe"
                   />
                 </div>
@@ -406,7 +406,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
                       ...prev, 
                       paymentStatus: e.target.value as 'required' | 'pre_paid' | 'free' 
                     }))}
-                    className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+                    className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
                   >
                     <option value="required">Payment Required</option>
                     <option value="pre_paid">Pre-paid (skip payment)</option>
@@ -423,7 +423,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
                       type="text"
                       value={createForm.prePaidNote}
                       onChange={(e) => setCreateForm(prev => ({ ...prev, prePaidNote: e.target.value }))}
-                      className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+                      className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
                       placeholder="e.g., Invoice #123"
                     />
                   </div>
@@ -492,7 +492,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
                       <textarea
                         value={bulkCsv}
                         onChange={(e) => setBulkCsv(e.target.value)}
-                        className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] resize-none font-mono text-sm"
+                        className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] resize-none font-mono text-sm"
                         rows={8}
                         placeholder="email@example.com, John Doe&#10;another@example.com, Jane Doe&#10;..."
                       />
@@ -511,7 +511,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
                           ...prev, 
                           paymentStatus: e.target.value as 'required' | 'pre_paid' | 'free' 
                         }))}
-                        className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855]"
+                        className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
                       >
                         <option value="required">Payment Required</option>
                         <option value="pre_paid">Pre-paid (skip payment)</option>

@@ -42,7 +42,7 @@ export function TemplateCard({ template, onSelect, featured }: TemplateCardProps
     <motion.button
       onClick={onSelect}
       className={`group relative w-full text-left rounded-2xl overflow-hidden border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] transition-all duration-300 ${
-        featured ? 'ring-2 ring-[#a07855]/20 dark:ring-[#b8896a]/20' : ''
+        featured ? 'ring-2 ring-[#a07855] dark:ring-[#b8896a]/20 dark:ring-[#b8896a]/20' : ''
       }`}
       whileHover={{ 
         y: -4, 
@@ -105,7 +105,7 @@ export function TemplateCard({ template, onSelect, featured }: TemplateCardProps
       {/* Content */}
       <div className="p-5">
         {/* Title */}
-        <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-[-0.3px] mb-2 line-clamp-1 group-hover:text-[#a07855] dark:group-hover:text-[#b8896a] transition-colors">
+        <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-[-0.3px] mb-2 line-clamp-1 group-hover:text-[#a07855] dark:text-[#b8896a] dark:group-hover:text-[#b8896a] transition-colors">
           {template.name}
         </h3>
 
@@ -159,7 +159,7 @@ export function TemplateCard({ template, onSelect, featured }: TemplateCardProps
       </div>
 
       {/* Hover border effect */}
-      <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-[#a07855]/30 dark:group-hover:border-[#b8896a]/30 transition-colors pointer-events-none" />
+      <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-[#a07855] dark:border-[#b8896a]/30 dark:group-hover:border-[#b8896a]/30 transition-colors pointer-events-none" />
     </motion.button>
   );
 }

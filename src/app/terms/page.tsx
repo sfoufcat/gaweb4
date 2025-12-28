@@ -174,7 +174,7 @@ export default function TermsPage() {
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed mb-4">
                 If you have any questions about these Terms, please contact us at{' '}
-                <a href="mailto:hello@growthaddicts.com" className="text-[#a07855] hover:underline">
+                <a href="mailto:hello@growthaddicts.com" className="text-[#a07855] dark:text-[#b8896a] hover:underline">
                   hello@growthaddicts.com
                 </a>
               </p>

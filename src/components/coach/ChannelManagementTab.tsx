@@ -135,7 +135,7 @@ function EditChannelModal({ channel, isOpen, onClose, onSave, isNew }: EditChann
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Channel name"
-              className="w-full px-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/50"
+              className="w-full px-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/50"
               required
             />
           </div>
@@ -150,7 +150,7 @@ function EditChannelModal({ channel, isOpen, onClose, onSave, isNew }: EditChann
               value={subtitle}
               onChange={(e) => setSubtitle(e.target.value)}
               placeholder="Brief description"
-              className="w-full px-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/50"
+              className="w-full px-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/50"
             />
           </div>
 
@@ -167,8 +167,8 @@ function EditChannelModal({ channel, isOpen, onClose, onSave, isNew }: EditChann
                   onClick={() => setIcon(opt.value)}
                   className={`p-3 rounded-xl border transition-colors ${
                     icon === opt.value
-                      ? 'border-[#a07855] bg-[#a07855]/10 text-[#a07855]'
-                      : 'border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-[#a07855]/50'
+                      ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a]'
+                      : 'border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-[#a07855] dark:border-[#b8896a]/50'
                   }`}
                 >
                   {opt.icon}
@@ -189,7 +189,7 @@ function EditChannelModal({ channel, isOpen, onClose, onSave, isNew }: EditChann
                 type="button"
                 onClick={() => setIsPinned(!isPinned)}
                 className={`relative w-11 h-6 rounded-full transition-colors ${
-                  isPinned ? 'bg-[#a07855]' : 'bg-[#e1ddd8] dark:bg-[#262b35]'
+                  isPinned ? 'bg-[#a07855] dark:bg-[#b8896a]' : 'bg-[#e1ddd8] dark:bg-[#262b35]'
                 }`}
               >
                 <span
@@ -210,7 +210,7 @@ function EditChannelModal({ channel, isOpen, onClose, onSave, isNew }: EditChann
                 type="button"
                 onClick={() => setAllowMemberMessages(!allowMemberMessages)}
                 className={`relative w-11 h-6 rounded-full transition-colors ${
-                  allowMemberMessages ? 'bg-[#a07855]' : 'bg-[#e1ddd8] dark:bg-[#262b35]'
+                  allowMemberMessages ? 'bg-[#a07855] dark:bg-[#b8896a]' : 'bg-[#e1ddd8] dark:bg-[#262b35]'
                 }`}
               >
                 <span
@@ -231,7 +231,7 @@ function EditChannelModal({ channel, isOpen, onClose, onSave, isNew }: EditChann
                 type="button"
                 onClick={() => setAllowCalling(!allowCalling)}
                 className={`relative w-11 h-6 rounded-full transition-colors ${
-                  allowCalling ? 'bg-[#a07855]' : 'bg-[#e1ddd8] dark:bg-[#262b35]'
+                  allowCalling ? 'bg-[#a07855] dark:bg-[#b8896a]' : 'bg-[#e1ddd8] dark:bg-[#262b35]'
                 }`}
               >
                 <span
@@ -501,7 +501,7 @@ function EditCoachingPromoModal({ promo, defaultCoachImageUrl, isOpen, onClose, 
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Get your personal coach"
-              className="w-full px-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/50"
+              className="w-full px-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/50"
               required
             />
           </div>
@@ -516,7 +516,7 @@ function EditCoachingPromoModal({ promo, defaultCoachImageUrl, isOpen, onClose, 
               value={subtitle}
               onChange={(e) => setSubtitle(e.target.value)}
               placeholder="Work with a performance psychologist 1:1"
-              className="w-full px-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/50"
+              className="w-full px-4 py-2.5 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/50"
             />
           </div>
 
@@ -570,7 +570,7 @@ function EditCoachingPromoModal({ promo, defaultCoachImageUrl, isOpen, onClose, 
                   value={programId || ''}
                   onChange={(e) => handleProgramChange(e.target.value || null)}
                   disabled={loadingPrograms}
-                  className="w-full px-4 py-2.5 pr-10 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/50 appearance-none cursor-pointer disabled:opacity-50"
+                  className="w-full px-4 py-2.5 pr-10 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/50 appearance-none cursor-pointer disabled:opacity-50"
                 >
                   <option value="">None (promo disabled for users)</option>
                   {programs.map(program => (
@@ -610,8 +610,8 @@ function EditCoachingPromoModal({ promo, defaultCoachImageUrl, isOpen, onClose, 
                       }}
                       className={`flex-1 px-4 py-2.5 rounded-xl font-albert font-medium transition-colors flex items-center justify-center gap-2 ${
                         destinationType === 'landing_page'
-                          ? 'bg-[#a07855] text-white'
-                          : 'border border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-[#a07855]/50'
+                          ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
+                          : 'border border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-[#a07855] dark:border-[#b8896a]/50'
                       }`}
                     >
                       <ExternalLink className="w-4 h-4" />
@@ -622,8 +622,8 @@ function EditCoachingPromoModal({ promo, defaultCoachImageUrl, isOpen, onClose, 
                       onClick={() => setDestinationType('funnel')}
                       className={`flex-1 px-4 py-2.5 rounded-xl font-albert font-medium transition-colors flex items-center justify-center gap-2 ${
                         destinationType === 'funnel'
-                          ? 'bg-[#a07855] text-white'
-                          : 'border border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-[#a07855]/50'
+                          ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
+                          : 'border border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-[#a07855] dark:border-[#b8896a]/50'
                       }`}
                     >
                       <Users className="w-4 h-4" />
@@ -643,7 +643,7 @@ function EditCoachingPromoModal({ promo, defaultCoachImageUrl, isOpen, onClose, 
                         value={funnelId || ''}
                         onChange={(e) => setFunnelId(e.target.value || null)}
                         disabled={loadingFunnels}
-                        className="w-full px-4 py-2.5 pr-10 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/50 appearance-none cursor-pointer disabled:opacity-50"
+                        className="w-full px-4 py-2.5 pr-10 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#05070b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/50 appearance-none cursor-pointer disabled:opacity-50"
                       >
                         <option value="">Select a funnel...</option>
                         {funnels.map(funnel => (
@@ -703,8 +703,8 @@ function EditCoachingPromoModal({ promo, defaultCoachImageUrl, isOpen, onClose, 
                 onClick={() => setIsVisible(true)}
                 className={`flex-1 px-4 py-2.5 rounded-xl font-albert font-medium transition-colors ${
                   isVisible
-                    ? 'bg-[#a07855] text-white'
-                    : 'border border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-[#a07855]/50'
+                    ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
+                    : 'border border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-[#a07855] dark:border-[#b8896a]/50'
                 }`}
               >
                 Show
@@ -714,8 +714,8 @@ function EditCoachingPromoModal({ promo, defaultCoachImageUrl, isOpen, onClose, 
                 onClick={() => setIsVisible(false)}
                 className={`flex-1 px-4 py-2.5 rounded-xl font-albert font-medium transition-colors ${
                   !isVisible
-                    ? 'bg-[#a07855] text-white'
-                    : 'border border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-[#a07855]/50'
+                    ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
+                    : 'border border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:border-[#a07855] dark:border-[#b8896a]/50'
                 }`}
               >
                 Hide
@@ -1041,8 +1041,8 @@ export function ChannelManagementTab() {
               onDragEnd={handleDragEnd}
               className={`flex items-center gap-3 p-4 rounded-xl border transition-all cursor-move ${
                 draggedIndex === index
-                  ? 'border-[#a07855] bg-[#a07855]/5 shadow-lg'
-                  : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] hover:border-[#a07855]/50'
+                  ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 shadow-lg'
+                  : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] hover:border-[#a07855] dark:border-[#b8896a]/50'
               }`}
             >
               {/* Drag Handle */}
@@ -1060,7 +1060,7 @@ export function ChannelManagementTab() {
                     {channel.title}
                   </span>
                   {channel.isPinned && (
-                    <Pin className="w-3.5 h-3.5 text-[#a07855]" />
+                    <Pin className="w-3.5 h-3.5 text-[#a07855] dark:text-[#b8896a]" />
                   )}
                   {!channel.allowMemberMessages && (
                     <span className="px-2 py-0.5 rounded-full bg-[#f3f1ef] dark:bg-[#171b22] text-[10px] font-albert font-medium text-[#5f5a55] dark:text-[#b2b6c2]">
@@ -1079,7 +1079,7 @@ export function ChannelManagementTab() {
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button
                   onClick={() => setEditingChannel(channel)}
-                  className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#171b22] transition-colors text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#a07855]"
+                  className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#171b22] transition-colors text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#a07855] dark:text-[#b8896a]"
                 >
                   <Pencil className="w-4 h-4" />
                 </button>
@@ -1150,7 +1150,7 @@ export function ChannelManagementTab() {
               {/* Edit Button */}
               <button
                 onClick={() => setEditingPromo(true)}
-                className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#171b22] transition-colors text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#a07855] flex-shrink-0"
+                className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#171b22] transition-colors text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#a07855] dark:text-[#b8896a] flex-shrink-0"
               >
                 <Pencil className="w-4 h-4" />
               </button>

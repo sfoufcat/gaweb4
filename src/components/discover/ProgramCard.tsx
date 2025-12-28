@@ -65,9 +65,9 @@ export function ProgramCard({ program, variant = 'default' }: ProgramCardProps) 
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               {program.type === 'group' ? (
-                <Users className="w-10 h-10 text-[#a07855]/40" />
+                <Users className="w-10 h-10 text-[#a07855] dark:text-[#b8896a]/40" />
               ) : (
-                <User className="w-10 h-10 text-[#a07855]/40" />
+                <User className="w-10 h-10 text-[#a07855] dark:text-[#b8896a]/40" />
               )}
             </div>
           )}
@@ -139,7 +139,7 @@ export function ProgramCard({ program, variant = 'default' }: ProgramCardProps) 
                 />
               ) : (
                 <div className="w-5 h-5 rounded-full bg-[#a07855]/20 flex items-center justify-center">
-                  <User className="w-3 h-3 text-[#a07855]" />
+                  <User className="w-3 h-3 text-[#a07855] dark:text-[#b8896a]" />
                 </div>
               )}
               <span className="font-sans text-xs text-[#5f5a55] dark:text-[#b2b6c2]">

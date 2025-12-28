@@ -93,7 +93,7 @@ export function JoinPrivateSquadModal({ open, onClose, onSuccess }: JoinPrivateS
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {/* Info */}
           <div className="flex items-start gap-3 p-4 bg-[#faf8f6] rounded-[16px]">
-            <Key className="w-5 h-5 text-[#a07855] mt-0.5 flex-shrink-0" />
+            <Key className="w-5 h-5 text-[#a07855] dark:text-[#b8896a] mt-0.5 flex-shrink-0" />
             <p className="font-albert text-[14px] text-text-secondary">
               Enter the invite code you received from your squad leader. Codes look like{' '}
               <span className="font-mono text-text-primary">GA-XY29Q8</span>
@@ -118,7 +118,7 @@ export function JoinPrivateSquadModal({ open, onClose, onSuccess }: JoinPrivateS
               onChange={(e) => handleCodeChange(e.target.value)}
               placeholder="GA-XXXXXX"
               maxLength={12}
-              className="w-full px-4 py-4 bg-white border border-[#e1ddd8] rounded-[12px] font-mono text-[18px] text-text-primary text-center tracking-[2px] placeholder:text-text-secondary/40 focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 focus:border-[#a07855] transition-all uppercase"
+              className="w-full px-4 py-4 bg-white border border-[#e1ddd8] rounded-[12px] font-mono text-[18px] text-text-primary text-center tracking-[2px] placeholder:text-text-secondary/40 focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] transition-all uppercase"
               autoFocus
             />
           </div>
@@ -128,7 +128,7 @@ export function JoinPrivateSquadModal({ open, onClose, onSuccess }: JoinPrivateS
             <Button
               type="submit"
               disabled={loading || !code.trim()}
-              className="w-full bg-[#a07855] hover:bg-[#8c6245] disabled:bg-[#a07855]/50 text-white rounded-[16px] py-3 font-albert font-semibold text-[16px]"
+              className="w-full bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:bg-[#a07855]/50 text-white rounded-[16px] py-3 font-albert font-semibold text-[16px]"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">

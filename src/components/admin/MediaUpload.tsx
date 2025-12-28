@@ -196,7 +196,7 @@ export function MediaUpload({
           <button
             type="button"
             onClick={() => setShowUrlInput(!showUrlInput)}
-            className="text-xs text-[#a07855] hover:text-[#8c6245] font-albert"
+            className="text-xs text-[#a07855] dark:text-[#b8896a] hover:text-[#8c6245] font-albert"
           >
             {showUrlInput ? 'Upload file' : 'Enter URL manually'}
           </button>
@@ -210,7 +210,7 @@ export function MediaUpload({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="https://..."
-          className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert"
+          className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert"
         />
       ) : (
         // File upload
@@ -263,8 +263,8 @@ export function MediaUpload({
                 relative rounded-lg border-2 border-dashed transition-colors
                 ${previewSize === 'thumbnail' ? 'w-20 h-20' : `w-full ${getAspectRatioClass(aspectRatio)}`}
                 ${uploading
-                  ? 'border-[#a07855] bg-[#a07855]/5 cursor-wait' 
-                  : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] hover:bg-[#faf8f6] dark:hover:bg-white/5 cursor-pointer'
+                  ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 cursor-wait' 
+                  : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a] hover:bg-[#faf8f6] dark:hover:bg-white/5 cursor-pointer'
                 }
               `}
             >
@@ -278,7 +278,7 @@ export function MediaUpload({
                         <circle cx="18" cy="18" r="16" fill="none" stroke="#e1ddd8" strokeWidth="3" />
                         <circle cx="18" cy="18" r="16" fill="none" stroke="#a07855" strokeWidth="3" strokeDasharray={`${progress} 100`} strokeLinecap="round" />
                       </svg>
-                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-[#a07855] font-albert">
+                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-[#a07855] dark:text-[#b8896a] font-albert">
                         {progress}%
                       </span>
                     </div>
@@ -305,7 +305,7 @@ export function MediaUpload({
                             strokeLinecap="round"
                           />
                         </svg>
-                        <span className="absolute inset-0 flex items-center justify-center text-sm font-medium text-[#a07855] font-albert">
+                        <span className="absolute inset-0 flex items-center justify-center text-sm font-medium text-[#a07855] dark:text-[#b8896a] font-albert">
                           {progress}%
                         </span>
                       </div>
@@ -318,17 +318,17 @@ export function MediaUpload({
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   {previewSize === 'thumbnail' ? (
                     // Compact icon for thumbnail mode
-                    <svg className="w-6 h-6 text-[#a07855]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
                     </svg>
                   ) : (
                     <>
                       {type === 'video' ? (
-                        <svg className="w-8 h-8 text-[#a07855] mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-8 h-8 text-[#a07855] dark:text-[#b8896a] mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                         </svg>
                       ) : (
-                        <svg className="w-8 h-8 text-[#a07855] mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-8 h-8 text-[#a07855] dark:text-[#b8896a] mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                       )}

@@ -191,13 +191,13 @@ export function LandingPageEditor({
                 onClick={() => onChange({ ...formData, template: template.id })}
                 className={`p-4 rounded-xl border-2 text-left transition-all ${
                   isSelected
-                    ? 'border-[#a07855] bg-[#a07855]/5 dark:bg-[#a07855]/10'
-                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855]/50'
+                    ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 dark:bg-[#a07855]/10'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a]/50'
                 }`}
               >
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${
                   isSelected 
-                    ? 'bg-[#a07855] text-white' 
+                    ? 'bg-[#a07855] dark:bg-[#b8896a] text-white' 
                     : 'bg-[#f5f3f0] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2]'
                 }`}>
                   <Icon className="w-5 h-5" />
@@ -334,7 +334,7 @@ export function LandingPageEditor({
             variant="outline"
             size="sm"
             onClick={addOutcome}
-            className="flex items-center gap-1 border-[#a07855] text-[#a07855] hover:bg-[#a07855]/10"
+            className="flex items-center gap-1 border-[#a07855] dark:border-[#b8896a] text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/10"
           >
             <Plus className="w-4 h-4" />
             Add
@@ -383,7 +383,7 @@ export function LandingPageEditor({
             variant="outline"
             size="sm"
             onClick={addFeature}
-            className="flex items-center gap-1 border-[#a07855] text-[#a07855] hover:bg-[#a07855]/10"
+            className="flex items-center gap-1 border-[#a07855] dark:border-[#b8896a] text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/10"
           >
             <Plus className="w-4 h-4" />
             Add
@@ -468,7 +468,7 @@ export function LandingPageEditor({
             variant="outline"
             size="sm"
             onClick={addTestimonial}
-            className="flex items-center gap-1 border-[#a07855] text-[#a07855] hover:bg-[#a07855]/10"
+            className="flex items-center gap-1 border-[#a07855] dark:border-[#b8896a] text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/10"
           >
             <Plus className="w-4 h-4" />
             Add
@@ -559,7 +559,7 @@ export function LandingPageEditor({
             variant="outline"
             size="sm"
             onClick={addFAQ}
-            className="flex items-center gap-1 border-[#a07855] text-[#a07855] hover:bg-[#a07855]/10"
+            className="flex items-center gap-1 border-[#a07855] dark:border-[#b8896a] text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/10"
           >
             <Plus className="w-4 h-4" />
             Add

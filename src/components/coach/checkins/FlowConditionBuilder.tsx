@@ -139,7 +139,7 @@ export function FlowConditionBuilder({ value, onChange }: FlowConditionBuilderPr
                 }}
                 className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                   condition.days?.includes(day.value)
-                    ? 'bg-[#a07855] text-white'
+                    ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
                     : 'bg-[#f5f3f0] dark:bg-[#0d1015] text-text-secondary dark:text-[#b2b6c2] hover:bg-[#e8e5e1] dark:hover:bg-[#1a1f28]'
                 }`}
               >
@@ -157,7 +157,7 @@ export function FlowConditionBuilder({ value, onChange }: FlowConditionBuilderPr
                 type="checkbox"
                 checked={condition.anyHabit === true}
                 onChange={(e) => updateCondition(index, { ...condition, anyHabit: e.target.checked, habitId: e.target.checked ? undefined : condition.habitId })}
-                className="w-4 h-4 text-[#a07855] rounded"
+                className="w-4 h-4 text-[#a07855] dark:text-[#b8896a] rounded"
               />
               Any habit
             </label>
@@ -246,7 +246,7 @@ export function FlowConditionBuilder({ value, onChange }: FlowConditionBuilderPr
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
-                    <Icon className="w-4 h-4 text-[#a07855]" />
+                    <Icon className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
                     <span className="text-sm font-medium text-text-primary dark:text-[#f5f5f8]">
                       {conditionInfo?.label || condition.type}
                     </span>
@@ -274,7 +274,7 @@ export function FlowConditionBuilder({ value, onChange }: FlowConditionBuilderPr
       <div className="relative group">
         <button
           type="button"
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#a07855] bg-[#a07855]/10 hover:bg-[#a07855]/20 rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#a07855] dark:text-[#b8896a] bg-[#a07855]/10 hover:bg-[#a07855]/20 rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" />
           Add condition
@@ -291,7 +291,7 @@ export function FlowConditionBuilder({ value, onChange }: FlowConditionBuilderPr
                   onClick={() => addCondition(conditionType.type)}
                   className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-[#f5f3f0] dark:hover:bg-[#0d1015] transition-colors text-left"
                 >
-                  <Icon className="w-4 h-4 text-[#a07855] mt-0.5 flex-shrink-0" />
+                  <Icon className="w-4 h-4 text-[#a07855] dark:text-[#b8896a] mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-text-primary dark:text-[#f5f5f8]">
                       {conditionType.label}

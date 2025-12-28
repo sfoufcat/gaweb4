@@ -37,7 +37,7 @@ export const Guarantee = ({
       inner: 'text-center',
     },
     bordered: {
-      container: 'border-2 border-[#a07855] rounded-2xl p-8',
+      container: 'border-2 border-[#a07855] dark:border-[#b8896a] rounded-2xl p-8',
       inner: 'text-center',
     },
   };
@@ -53,7 +53,7 @@ export const Guarantee = ({
             {IconComponent && (
               <div className="flex justify-center mb-6">
                 <div className="w-20 h-20 rounded-full bg-[#a07855]/10 flex items-center justify-center">
-                  <IconComponent className="w-10 h-10 text-[#a07855]" />
+                  <IconComponent className="w-10 h-10 text-[#a07855] dark:text-[#b8896a]" />
                 </div>
               </div>
             )}

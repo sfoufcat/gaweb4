@@ -81,7 +81,7 @@ function ProgramContentPreview({ draft }: { draft: ProgramContentDraft }) {
       {/* Global Habits */}
       {draft.globalDefaultHabits.length > 0 && (
         <div className="bg-[#a07855]/10 dark:bg-[#a07855]/20 rounded-lg p-3">
-          <h4 className="text-sm font-medium text-[#a07855] dark:text-[#c49a6c] mb-2">
+          <h4 className="text-sm font-medium text-[#a07855] dark:text-[#b8896a] dark:text-[#c49a6c] mb-2">
             Global Default Habits
           </h4>
           <div className="space-y-1">
@@ -181,13 +181,13 @@ function LandingPagePreview({ draft }: { draft: LandingPageDraft }) {
     <div className="space-y-4 max-h-[400px] overflow-y-auto">
       {/* Hero */}
       <div className="bg-gradient-to-br from-[#a07855]/20 to-[#a07855]/5 dark:from-[#a07855]/30 dark:to-[#a07855]/10 rounded-lg p-4">
-        <span className="text-xs font-medium text-[#a07855] dark:text-[#c49a6c] uppercase tracking-wide">Hero Section</span>
+        <span className="text-xs font-medium text-[#a07855] dark:text-[#b8896a] dark:text-[#c49a6c] uppercase tracking-wide">Hero Section</span>
         <h3 className="text-lg font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mt-1">{draft.hero.title}</h3>
         <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-1">{draft.hero.subtitle}</p>
         <div className="flex gap-2 mt-3">
           <span className="px-3 py-1 bg-[#a07855] text-white text-sm rounded-lg">{draft.hero.primaryCta}</span>
           {draft.hero.secondaryCta && (
-            <span className="px-3 py-1 border border-[#a07855] text-[#a07855] text-sm rounded-lg">{draft.hero.secondaryCta}</span>
+            <span className="px-3 py-1 border border-[#a07855] dark:border-[#b8896a] text-[#a07855] dark:text-[#b8896a] text-sm rounded-lg">{draft.hero.secondaryCta}</span>
           )}
         </div>
       </div>
@@ -394,7 +394,7 @@ export function AIHelperModal({
           {/* Header */}
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
-              <Sparkles className="w-6 h-6 text-[#a07855]" />
+              <Sparkles className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" />
               <div>
                 <h2 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
                   {title}
@@ -448,7 +448,7 @@ export function AIHelperModal({
                       : "E.g., Create a landing page for busy professionals who want to level up their health. Tone should be friendly but professional. Highlight the community aspect and accountability..."
                     }
                     rows={6}
-                    className="w-full px-4 py-3 border-2 border-[#a07855]/40 dark:border-[#a07855]/30 rounded-xl bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none focus:outline-none focus:border-[#a07855]"
+                    className="w-full px-4 py-3 border-2 border-[#a07855] dark:border-[#b8896a]/40 dark:border-[#a07855] dark:border-[#b8896a]/30 rounded-xl bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
                   />
                   <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
                     Be specific about your audience, outcomes, tone, and any constraints
@@ -475,7 +475,7 @@ export function AIHelperModal({
             
             {step === 'generating' && (
               <div className="flex flex-col items-center justify-center py-12">
-                <div className="w-16 h-16 rounded-full border-4 border-[#a07855]/20 border-t-[#a07855] animate-spin" />
+                <div className="w-16 h-16 rounded-full border-4 border-[#a07855] dark:border-[#b8896a]/20 border-t-[#a07855] animate-spin" />
                 <p className="mt-4 text-[#5f5a55] dark:text-[#b2b6c2]">
                   Generating your content...
                 </p>
@@ -538,7 +538,7 @@ export function AIHelperModal({
                 <Button
                   onClick={handleGenerate}
                   disabled={userPrompt.trim().length < 10}
-                  className="bg-[#a07855] hover:bg-[#8c6245] text-white flex items-center gap-2"
+                  className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white flex items-center gap-2"
                 >
                   <Sparkles className="w-4 h-4" />
                   Generate
@@ -571,7 +571,7 @@ export function AIHelperModal({
                 <Button
                   onClick={handleApply}
                   disabled={isApplying}
-                  className="bg-[#a07855] hover:bg-[#8c6245] text-white flex items-center gap-2"
+                  className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white flex items-center gap-2"
                 >
                   {isApplying ? (
                     <>
@@ -602,7 +602,7 @@ export function AIHelperModal({
                     setStep('input');
                     setError(null);
                   }}
-                  className="bg-[#a07855] hover:bg-[#8c6245] text-white flex items-center gap-2"
+                  className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white flex items-center gap-2"
                 >
                   <RefreshCw className="w-4 h-4" />
                   Try Again

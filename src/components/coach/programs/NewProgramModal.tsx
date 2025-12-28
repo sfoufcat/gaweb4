@@ -212,7 +212,7 @@ function StartingPointSelector({ onSelectTemplate, onSelectScratch }: StartingPo
       {/* From Template Card */}
       <motion.button
         onClick={onSelectTemplate}
-        className="group relative flex flex-col items-center text-center p-8 rounded-2xl border-2 border-[#e1ddd8] dark:border-[#262b35] bg-gradient-to-b from-white to-[#faf8f6] dark:from-[#1d222b] dark:to-[#171b22] hover:border-[#a07855] dark:hover:border-[#b8896a] transition-all duration-300"
+        className="group relative flex flex-col items-center text-center p-8 rounded-2xl border-2 border-[#e1ddd8] dark:border-[#262b35] bg-gradient-to-b from-white to-[#faf8f6] dark:from-[#1d222b] dark:to-[#171b22] hover:border-[#a07855] dark:border-[#b8896a] dark:hover:border-[#b8896a] transition-all duration-300"
         whileHover={{ y: -4, boxShadow: '0 20px 40px -12px rgba(160, 120, 85, 0.2)' }}
         whileTap={{ scale: 0.98 }}
       >

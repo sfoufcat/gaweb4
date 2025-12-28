@@ -291,7 +291,7 @@ export function InlineComments({
         {/* Loading more indicator */}
         {isValidating && expanded && (
           <div className="flex justify-center py-1">
-            <div className="w-4 h-4 border-2 border-[#a07855] border-t-transparent rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin" />
           </div>
         )}
       </div>
