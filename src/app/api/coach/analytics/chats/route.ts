@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
       const squad = { id: doc.id, ...doc.data() } as Squad;
       squadMap.set(doc.id, {
         name: squad.name,
-        chatChannelId: squad.chatChannelId,
+        chatChannelId: squad.chatChannelId ?? undefined,
       });
       
       if (squad.chatChannelId) {

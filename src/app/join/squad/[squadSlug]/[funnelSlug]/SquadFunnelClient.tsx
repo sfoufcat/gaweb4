@@ -35,6 +35,7 @@ import { LandingPageStep } from '@/components/funnel/steps/LandingPageStep';
 import { InfoStep } from '@/components/funnel/steps/InfoStep';
 import { SuccessStep } from '@/components/funnel/steps/SuccessStep';
 import { InfluencePromptCard } from '@/components/funnel/InfluencePromptCard';
+import { FunnelPixelTracker } from '@/components/funnel/FunnelPixelTracker';
 
 /**
  * Darken or lighten a hex color
@@ -441,6 +442,14 @@ export default function SquadFunnelClient({
         '--funnel-primary-dark': adjustColor(branding.primaryColor, -15),
       } as React.CSSProperties}
     >
+      {/* Pixel Tracker - loads funnel pixels and fires step events */}
+      <FunnelPixelTracker
+        tracking={funnel.tracking}
+        stepTracking={currentStep?.tracking}
+        stepIndex={currentStepIndex}
+        funnelId={funnel.id}
+      />
+
       {/* Header with logo and progress */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-[#e1ddd8]/50">
         <div className="max-w-lg mx-auto px-4 py-3">

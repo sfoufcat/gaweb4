@@ -81,7 +81,7 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { type, config, showIf, name, influencePrompt } = body;
+    const { type, config, showIf, name, influencePrompt, tracking } = body;
 
     const now = new Date().toISOString();
     const updates: Partial<FunnelStep> = {
@@ -104,6 +104,17 @@ export async function PUT(
     // Handle influence prompt - can be set, updated, or cleared
     if (influencePrompt !== undefined) {
       updates.influencePrompt = influencePrompt || undefined; // Clear if null/empty
+    }
+    // Handle tracking - can be set, updated, or cleared
+    if (tracking !== undefined) {
+      // Clean tracking config - only include if has values
+      const hasTrackingValues = tracking && (
+        tracking.metaEvent || 
+        tracking.googleEvent || 
+        tracking.googleAdsConversionLabel ||
+        tracking.customHtml
+      );
+      updates.tracking = hasTrackingValues ? tracking : undefined;
     }
 
     await stepRef.update(updates);

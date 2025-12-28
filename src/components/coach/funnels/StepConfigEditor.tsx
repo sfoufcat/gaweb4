@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { X, Plus, Trash2, GripVertical, ImageIcon, Video, Youtube, PlayCircle, Monitor, Code } from 'lucide-react';
 import Image from 'next/image';
-import type { FunnelStep, FunnelStepType, FunnelQuestionOption, InfluencePromptConfig } from '@/types';
+import type { FunnelStep, FunnelStepType, FunnelQuestionOption, InfluencePromptConfig, FunnelStepTrackingConfig, MetaPixelEvent } from '@/types';
 import { nanoid } from 'nanoid';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
@@ -16,8 +16,23 @@ import { InfluencePromptEditor } from './InfluencePromptEditor';
 interface StepConfigEditorProps {
   step: FunnelStep;
   onClose: () => void;
-  onSave: (config: unknown, name?: string, influencePrompt?: InfluencePromptConfig) => void;
+  onSave: (config: unknown, name?: string, influencePrompt?: InfluencePromptConfig, tracking?: FunnelStepTrackingConfig) => void;
 }
+
+// Meta Pixel event options for dropdown
+const META_PIXEL_EVENTS: { value: MetaPixelEvent; label: string; description: string }[] = [
+  { value: 'PageView', label: 'Page View', description: 'User viewed this step' },
+  { value: 'ViewContent', label: 'View Content', description: 'Viewing specific content' },
+  { value: 'Lead', label: 'Lead', description: 'Lead generation' },
+  { value: 'CompleteRegistration', label: 'Complete Registration', description: 'Account creation' },
+  { value: 'InitiateCheckout', label: 'Initiate Checkout', description: 'Started checkout process' },
+  { value: 'AddToCart', label: 'Add to Cart', description: 'Added to cart' },
+  { value: 'Purchase', label: 'Purchase', description: 'Completed purchase' },
+  { value: 'Subscribe', label: 'Subscribe', description: 'Newsletter/subscription signup' },
+  { value: 'Contact', label: 'Contact', description: 'Contact form submission' },
+  { value: 'StartTrial', label: 'Start Trial', description: 'Started free trial' },
+  { value: 'SubmitApplication', label: 'Submit Application', description: 'Application submitted' },
+];
 
 export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProps) {
   const [config, setConfig] = useState<Record<string, unknown>>(
@@ -27,11 +42,29 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
   const [influencePrompt, setInfluencePrompt] = useState<InfluencePromptConfig | undefined>(
     step.influencePrompt
   );
+  const [tracking, setTracking] = useState<FunnelStepTrackingConfig | undefined>(
+    step.tracking
+  );
+  const [showTrackingSettings, setShowTrackingSettings] = useState(
+    !!(step.tracking?.metaEvent || step.tracking?.googleEvent || step.tracking?.customHtml)
+  );
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
     setIsSaving(true);
-    await onSave(config, stepName.trim() || undefined, influencePrompt);
+    // Clean up tracking config - only include non-empty values
+    let cleanedTracking: FunnelStepTrackingConfig | undefined = undefined;
+    if (tracking) {
+      const hasValues = tracking.metaEvent || tracking.googleEvent || tracking.googleAdsConversionLabel || tracking.customHtml;
+      if (hasValues) {
+        cleanedTracking = {};
+        if (tracking.metaEvent) cleanedTracking.metaEvent = tracking.metaEvent;
+        if (tracking.googleEvent) cleanedTracking.googleEvent = tracking.googleEvent;
+        if (tracking.googleAdsConversionLabel) cleanedTracking.googleAdsConversionLabel = tracking.googleAdsConversionLabel;
+        if (tracking.customHtml) cleanedTracking.customHtml = tracking.customHtml;
+      }
+    }
+    await onSave(config, stepName.trim() || undefined, influencePrompt, cleanedTracking);
     setIsSaving(false);
   };
 
@@ -128,6 +161,126 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
               onChange={setInfluencePrompt}
             />
           )}
+
+          {/* Tracking Events Section - Collapsible */}
+          <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-lg overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowTrackingSettings(!showTrackingSettings)}
+              className="w-full flex items-center justify-between p-4 bg-[#faf8f6] dark:bg-[#1a1f27] hover:bg-[#f5f3f0] dark:hover:bg-[#1e232c] transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Code className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
+                <div className="text-left">
+                  <span className="font-medium text-text-primary dark:text-[#f5f5f8] font-albert">Tracking Events</span>
+                  <p className="text-xs text-text-muted dark:text-[#7f8694] mt-0.5 font-albert">
+                    Fire Meta or Google events when this step is reached
+                  </p>
+                </div>
+              </div>
+              <svg
+                className={`w-5 h-5 text-text-secondary dark:text-[#b2b6c2] transition-transform ${showTrackingSettings ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showTrackingSettings && (
+              <div className="p-4 space-y-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                {/* Meta Pixel Event */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2 font-albert">
+                    Meta Pixel Event
+                  </label>
+                  <Select
+                    value={tracking?.metaEvent || ''}
+                    onValueChange={(value) => setTracking(prev => ({
+                      ...prev,
+                      metaEvent: value as MetaPixelEvent || undefined,
+                    }))}
+                  >
+                    <SelectTrigger className="w-full font-albert">
+                      <SelectValue placeholder="Select an event (optional)" />
+                    </SelectTrigger>
+                    <SelectContent className="font-albert">
+                      <SelectItem value="">None</SelectItem>
+                      {META_PIXEL_EVENTS.map((event) => (
+                        <SelectItem key={event.value} value={event.value}>
+                          {event.label} - {event.description}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1 font-albert">
+                    Event fires when user reaches this step
+                  </p>
+                </div>
+
+                {/* Google Analytics Event */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2 font-albert">
+                    Google Analytics Event
+                  </label>
+                  <input
+                    type="text"
+                    value={tracking?.googleEvent || ''}
+                    onChange={(e) => setTracking(prev => ({
+                      ...prev,
+                      googleEvent: e.target.value || undefined,
+                    }))}
+                    className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
+                    placeholder="e.g., funnel_step_signup"
+                  />
+                  <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1 font-albert">
+                    Custom GA4 event name (use snake_case)
+                  </p>
+                </div>
+
+                {/* Google Ads Conversion Label */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2 font-albert">
+                    Google Ads Conversion Label
+                  </label>
+                  <input
+                    type="text"
+                    value={tracking?.googleAdsConversionLabel || ''}
+                    onChange={(e) => setTracking(prev => ({
+                      ...prev,
+                      googleAdsConversionLabel: e.target.value || undefined,
+                    }))}
+                    className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:text-[#f5f5f8] font-albert"
+                    placeholder="e.g., AbC123_xyz"
+                  />
+                  <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1 font-albert">
+                    Conversion label (requires Google Ads ID set at funnel level)
+                  </p>
+                </div>
+
+                {/* Custom HTML/Script */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2 font-albert">
+                    Custom Tracking Code
+                  </label>
+                  <textarea
+                    value={tracking?.customHtml || ''}
+                    onChange={(e) => setTracking(prev => ({
+                      ...prev,
+                      customHtml: e.target.value || undefined,
+                    }))}
+                    className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] resize-none font-mono text-sm dark:text-[#f5f5f8]"
+                    rows={3}
+                    placeholder="<!-- TikTok, Snapchat, or other pixel events -->"
+                  />
+                  <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1 font-albert">
+                    Custom scripts executed when this step is reached
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer */}

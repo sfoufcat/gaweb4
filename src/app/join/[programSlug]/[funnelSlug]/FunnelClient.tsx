@@ -65,6 +65,7 @@ import { DownsellStep } from '@/components/funnel/steps/DownsellStep';
 import { InfoStep } from '@/components/funnel/steps/InfoStep';
 import { SuccessStep } from '@/components/funnel/steps/SuccessStep';
 import { InfluencePromptCard } from '@/components/funnel/InfluencePromptCard';
+import { FunnelPixelTracker } from '@/components/funnel/FunnelPixelTracker';
 
 interface FunnelClientProps {
   funnel: Funnel;
@@ -648,6 +649,14 @@ export default function FunnelClient({
 
   return (
     <div className="min-h-screen bg-app-bg" style={themeStyle}>
+      {/* Pixel Tracker - loads funnel pixels and fires step events */}
+      <FunnelPixelTracker
+        tracking={funnel.tracking}
+        stepTracking={currentStep?.tracking}
+        stepIndex={currentStepIndex}
+        funnelId={funnel.id}
+      />
+
       {/* Progress bar - hide for landing pages */}
       {!isLandingPage && (
         <div className="fixed top-0 left-0 right-0 h-1 bg-[#e1ddd8] z-50">

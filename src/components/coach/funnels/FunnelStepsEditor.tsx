@@ -453,13 +453,13 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
     }
   };
 
-  const handleSaveStepConfig = async (stepId: string, config: unknown, name?: string, influencePrompt?: InfluencePromptConfig) => {
+  const handleSaveStepConfig = async (stepId: string, config: unknown, name?: string, influencePrompt?: InfluencePromptConfig, tracking?: unknown) => {
     try {
       setIsSaving(true);
       const response = await fetch(`/api/coach/org-funnels/${funnelId}/steps/${stepId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config, name, influencePrompt }),
+        body: JSON.stringify({ config, name, influencePrompt, tracking }),
       });
 
       if (!response.ok) throw new Error('Failed to save step');
@@ -764,7 +764,7 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
         <StepConfigEditor
           step={editingStep}
           onClose={() => setEditingStep(null)}
-          onSave={(config, name, influencePrompt) => handleSaveStepConfig(editingStep.id, config, name, influencePrompt)}
+          onSave={(config, name, influencePrompt, tracking) => handleSaveStepConfig(editingStep.id, config, name, influencePrompt, tracking)}
         />
       )}
 

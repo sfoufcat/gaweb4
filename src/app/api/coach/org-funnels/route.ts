@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg, TenantRequiredError } from '@/lib/admin-utils-clerk';
-import type { Funnel, FunnelTargetType } from '@/types';
+import type { Funnel, FunnelTargetType, FunnelTrackingConfig } from '@/types';
 
 /**
  * GET /api/coach/org-funnels
@@ -86,7 +86,8 @@ export async function POST(req: Request) {
       squadId,
       description, 
       accessType = 'public', 
-      isDefault = false 
+      isDefault = false,
+      tracking,
     } = body;
 
     // Validate required fields
@@ -174,6 +175,16 @@ export async function POST(req: Request) {
     }
 
     const now = new Date().toISOString();
+    
+    // Clean tracking config - only include if has values
+    const cleanTracking: FunnelTrackingConfig | undefined = tracking && (
+      tracking.metaPixelId || 
+      tracking.googleAnalyticsId || 
+      tracking.googleAdsId || 
+      tracking.customHeadHtml || 
+      tracking.customBodyHtml
+    ) ? tracking : undefined;
+    
     const funnelData: Omit<Funnel, 'id'> = {
       organizationId,
       targetType,
@@ -187,6 +198,7 @@ export async function POST(req: Request) {
       accessType,
       defaultPaymentStatus: 'required',
       stepCount: 0,
+      tracking: cleanTracking,
       createdAt: now,
       updatedAt: now,
     };

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
-import type { Funnel, FunnelStep } from '@/types';
+import type { Funnel, FunnelStep, FunnelTrackingConfig } from '@/types';
 
 /**
  * GET /api/coach/org-funnels/[funnelId]
@@ -73,7 +73,7 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { name, slug, description, isActive, isDefault, accessType, defaultPaymentStatus, branding } = body;
+    const { name, slug, description, isActive, isDefault, accessType, defaultPaymentStatus, branding, tracking } = body;
 
     const updates: Partial<Funnel> = {
       updatedAt: new Date().toISOString(),
@@ -85,6 +85,19 @@ export async function PUT(
     if (accessType !== undefined) updates.accessType = accessType;
     if (defaultPaymentStatus !== undefined) updates.defaultPaymentStatus = defaultPaymentStatus;
     if (branding !== undefined) updates.branding = branding;
+    
+    // Handle tracking config
+    if (tracking !== undefined) {
+      // Clean tracking config - only include if has values
+      const cleanTracking: FunnelTrackingConfig | undefined = tracking && (
+        tracking.metaPixelId || 
+        tracking.googleAnalyticsId || 
+        tracking.googleAdsId || 
+        tracking.customHeadHtml || 
+        tracking.customBodyHtml
+      ) ? tracking : undefined;
+      updates.tracking = cleanTracking;
+    }
 
     // Handle slug change
     if (slug !== undefined && slug !== existingFunnel.slug) {

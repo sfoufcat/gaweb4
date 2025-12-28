@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Layers, UsersRound } from 'lucide-react';
-import type { Funnel, Program, FunnelTargetType } from '@/types';
+import { X, Layers, UsersRound, ChevronDown, ChevronUp, Code } from 'lucide-react';
+import type { Funnel, Program, FunnelTargetType, FunnelTrackingConfig } from '@/types';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 
 interface Squad {
@@ -47,7 +47,19 @@ export function FunnelEditorDialog({
     description: funnel?.description || '',
     accessType: funnel?.accessType || 'public',
     isDefault: funnel?.isDefault || false,
+    tracking: {
+      metaPixelId: funnel?.tracking?.metaPixelId || '',
+      googleAnalyticsId: funnel?.tracking?.googleAnalyticsId || '',
+      googleAdsId: funnel?.tracking?.googleAdsId || '',
+      customHeadHtml: funnel?.tracking?.customHeadHtml || '',
+      customBodyHtml: funnel?.tracking?.customBodyHtml || '',
+    } as FunnelTrackingConfig,
   });
+  
+  // Toggle for showing tracking settings
+  const [showTrackingSettings, setShowTrackingSettings] = useState(
+    !!(funnel?.tracking?.metaPixelId || funnel?.tracking?.googleAnalyticsId || funnel?.tracking?.googleAdsId || funnel?.tracking?.customHeadHtml || funnel?.tracking?.customBodyHtml)
+  );
 
   // Auto-generate slug from name
   const handleNameChange = (name: string) => {
@@ -82,6 +94,24 @@ export function FunnelEditorDialog({
         throw new Error('Please select a squad');
       }
 
+      // Build tracking config (only include non-empty values)
+      const trackingConfig: FunnelTrackingConfig = {};
+      if (formData.tracking.metaPixelId?.trim()) {
+        trackingConfig.metaPixelId = formData.tracking.metaPixelId.trim();
+      }
+      if (formData.tracking.googleAnalyticsId?.trim()) {
+        trackingConfig.googleAnalyticsId = formData.tracking.googleAnalyticsId.trim();
+      }
+      if (formData.tracking.googleAdsId?.trim()) {
+        trackingConfig.googleAdsId = formData.tracking.googleAdsId.trim();
+      }
+      if (formData.tracking.customHeadHtml?.trim()) {
+        trackingConfig.customHeadHtml = formData.tracking.customHeadHtml.trim();
+      }
+      if (formData.tracking.customBodyHtml?.trim()) {
+        trackingConfig.customBodyHtml = formData.tracking.customBodyHtml.trim();
+      }
+
       let response: Response;
       
       if (mode === 'edit' && funnel) {
@@ -95,6 +125,7 @@ export function FunnelEditorDialog({
             description: formData.description || null,
             accessType: formData.accessType,
             isDefault: formData.isDefault,
+            tracking: Object.keys(trackingConfig).length > 0 ? trackingConfig : null,
           }),
         });
       } else {
@@ -111,6 +142,7 @@ export function FunnelEditorDialog({
             description: formData.description || null,
             accessType: formData.accessType,
             isDefault: formData.isDefault,
+            tracking: Object.keys(trackingConfig).length > 0 ? trackingConfig : null,
           }),
         });
       }
@@ -348,6 +380,134 @@ export function FunnelEditorDialog({
                 ? 'The default funnel is used when users visit /join/squad/[slug] without specifying a funnel'
                 : 'The default funnel is used when users visit /join/[program] without specifying a funnel'}
             </p>
+          </div>
+
+          {/* Tracking Settings (Collapsible) */}
+          <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-lg overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowTrackingSettings(!showTrackingSettings)}
+              className="w-full flex items-center justify-between p-4 bg-[#faf8f6] dark:bg-[#1a1f27] hover:bg-[#f5f3f0] dark:hover:bg-[#1e232c] transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Code className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
+                <div className="text-left">
+                  <span className="font-medium text-text-primary dark:text-[#f5f5f8]">Tracking Pixels</span>
+                  <p className="text-xs text-text-muted dark:text-[#7f8694] mt-0.5">
+                    Meta Pixel, Google Analytics, custom code
+                  </p>
+                </div>
+              </div>
+              {showTrackingSettings ? (
+                <ChevronUp className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
+              )}
+            </button>
+
+            {showTrackingSettings && (
+              <div className="p-4 space-y-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                {/* Meta Pixel ID */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+                    Meta Pixel ID
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.tracking.metaPixelId || ''}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      tracking: { ...prev.tracking, metaPixelId: e.target.value }
+                    }))}
+                    placeholder="e.g., 1234567890"
+                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
+                  />
+                  <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
+                    Facebook/Meta Pixel ID for conversion tracking
+                  </p>
+                </div>
+
+                {/* Google Analytics ID */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+                    Google Analytics ID
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.tracking.googleAnalyticsId || ''}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      tracking: { ...prev.tracking, googleAnalyticsId: e.target.value }
+                    }))}
+                    placeholder="e.g., G-XXXXXXXXXX"
+                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
+                  />
+                  <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
+                    Google Analytics 4 measurement ID
+                  </p>
+                </div>
+
+                {/* Google Ads ID */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+                    Google Ads ID
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.tracking.googleAdsId || ''}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      tracking: { ...prev.tracking, googleAdsId: e.target.value }
+                    }))}
+                    placeholder="e.g., AW-XXXXXXXXXX"
+                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
+                  />
+                  <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
+                    Google Ads conversion tracking ID
+                  </p>
+                </div>
+
+                {/* Custom Head HTML */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+                    Custom Head Code
+                  </label>
+                  <textarea
+                    value={formData.tracking.customHeadHtml || ''}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      tracking: { ...prev.tracking, customHeadHtml: e.target.value }
+                    }))}
+                    placeholder="<!-- TikTok Pixel, Snapchat Pixel, etc. -->"
+                    rows={3}
+                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] resize-none font-mono text-sm text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
+                  />
+                  <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
+                    Custom scripts injected in &lt;head&gt; - use for other tracking pixels
+                  </p>
+                </div>
+
+                {/* Custom Body HTML */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+                    Custom Body Code
+                  </label>
+                  <textarea
+                    value={formData.tracking.customBodyHtml || ''}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      tracking: { ...prev.tracking, customBodyHtml: e.target.value }
+                    }))}
+                    placeholder="<!-- Scripts that need to run in body -->"
+                    rows={3}
+                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] resize-none font-mono text-sm text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
+                  />
+                  <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
+                    Custom scripts injected in &lt;body&gt;
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Error */}

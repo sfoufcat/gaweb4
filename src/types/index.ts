@@ -2476,6 +2476,56 @@ export interface Funnel {
   stepCount: number;             // Denormalized for quick display
   createdAt: string;
   updatedAt: string;
+  
+  // Tracking
+  tracking?: FunnelTrackingConfig;  // Pixel IDs and custom scripts
+}
+
+// ============================================================================
+// FUNNEL TRACKING TYPES
+// ============================================================================
+
+/**
+ * Standard Meta Pixel events that can be fired
+ */
+export type MetaPixelEvent = 
+  | 'PageView'
+  | 'ViewContent'
+  | 'AddToCart'
+  | 'InitiateCheckout'
+  | 'Purchase'
+  | 'Lead'
+  | 'CompleteRegistration'
+  | 'Subscribe'
+  | 'Contact'
+  | 'CustomizeProduct'
+  | 'FindLocation'
+  | 'Schedule'
+  | 'Search'
+  | 'StartTrial'
+  | 'SubmitApplication';
+
+/**
+ * Funnel-level tracking configuration (pixel IDs, loaded once per funnel)
+ */
+export interface FunnelTrackingConfig {
+  metaPixelId?: string;           // Meta/Facebook Pixel ID (e.g., "1234567890")
+  googleAnalyticsId?: string;     // Google Analytics 4 ID (e.g., "G-XXXXXXX")
+  googleAdsId?: string;           // Google Ads ID (e.g., "AW-XXXXXXX")
+  customHeadHtml?: string;        // Custom scripts to inject in <head>
+  customBodyHtml?: string;        // Custom scripts to inject in <body>
+}
+
+/**
+ * Step-level tracking configuration (events to fire when step is reached)
+ */
+export interface FunnelStepTrackingConfig {
+  metaEvent?: MetaPixelEvent;                    // Meta Pixel event to fire
+  metaEventParams?: Record<string, unknown>;     // Additional Meta event parameters
+  googleEvent?: string;                          // Google Analytics event name
+  googleEventParams?: Record<string, unknown>;   // GA event parameters
+  googleAdsConversionLabel?: string;             // Google Ads conversion label (e.g., "AbC123")
+  customHtml?: string;                           // Step-specific script to execute
 }
 
 /**
@@ -2853,6 +2903,9 @@ export interface FunnelStep {
   
   // Influence prompt (persuasion card shown at bottom of step)
   influencePrompt?: InfluencePromptConfig;
+  
+  // Tracking events (fired when this step is reached)
+  tracking?: FunnelStepTrackingConfig;
   
   // Conditional display
   showIf?: {
