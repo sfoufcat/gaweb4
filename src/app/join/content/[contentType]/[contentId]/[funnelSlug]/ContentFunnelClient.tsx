@@ -509,10 +509,10 @@ export default function ContentFunnelClient({
     >
       {/* Pixel Tracker */}
       <FunnelPixelTracker
-        funnelId={funnel.id}
-        stepId={currentStep?.id}
         tracking={funnel.tracking}
         stepTracking={currentStep?.tracking}
+        stepIndex={currentStepIndex}
+        funnelId={funnel.id}
       />
 
       {/* Header */}
