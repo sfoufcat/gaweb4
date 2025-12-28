@@ -41,6 +41,7 @@ export function CheckInFlowRenderer({ flowType, flowId, onComplete, onClose }: C
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [sessionData, setSessionData] = useState<Record<string, unknown>>({});
   const [isNavigating, setIsNavigating] = useState(false);
+  const [isSavingSession, setIsSavingSession] = useState(false);
 
   // Filter steps based on enabled status and conditions
   const visibleSteps = useMemo(() => {
@@ -70,15 +71,45 @@ export function CheckInFlowRenderer({ flowType, flowId, onComplete, onClose }: C
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === visibleSteps.length - 1;
 
-  const handleStepComplete = useCallback((stepData?: Record<string, unknown>) => {
+  // Save session when flow completes
+  const saveSession = useCallback(async (finalSessionData: Record<string, unknown>) => {
+    // Only save sessions for flows we can track (need flow id)
+    const effectiveFlowId = flowId || flow?.id;
+    if (!effectiveFlowId) return;
+
+    try {
+      setIsSavingSession(true);
+      await fetch('/api/checkin/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          flowId: effectiveFlowId,
+          sessionData: finalSessionData,
+        }),
+      });
+    } catch (err) {
+      // Log but don't block flow completion
+      console.error('Failed to save check-in session:', err);
+    } finally {
+      setIsSavingSession(false);
+    }
+  }, [flowId, flow?.id]);
+
+  const handleStepComplete = useCallback(async (stepData?: Record<string, unknown>) => {
     // Merge step data into session
+    const updatedSessionData = stepData 
+      ? { ...sessionData, ...stepData }
+      : sessionData;
+    
     if (stepData) {
-      setSessionData(prev => ({ ...prev, ...stepData }));
+      setSessionData(updatedSessionData);
     }
 
     if (isLastStep) {
-      // Flow complete
+      // Flow complete - save session first
       setIsNavigating(true);
+      await saveSession(updatedSessionData);
+      
       if (onComplete) {
         onComplete();
       } else {
@@ -88,7 +119,7 @@ export function CheckInFlowRenderer({ flowType, flowId, onComplete, onClose }: C
       // Move to next step
       setCurrentStepIndex(prev => prev + 1);
     }
-  }, [isLastStep, onComplete, router]);
+  }, [isLastStep, onComplete, router, sessionData, saveSession]);
 
   const handleBack = useCallback(() => {
     if (currentStepIndex > 0) {

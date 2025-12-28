@@ -96,7 +96,7 @@ export async function PUT(
 
     if (name !== undefined) updates.name = name.trim();
     if (description !== undefined) updates.description = description?.trim() || undefined;
-    if (enabled !== undefined) updates.enabled = enabled;
+    if (enabled !== undefined) updates.enabled = Boolean(enabled);
     
     // Handle displayConfig and showConditions for custom flows
     if (existingFlow.type === 'custom') {
