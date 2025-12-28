@@ -1,10 +1,13 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
+import { use, useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { useArticle } from '@/hooks/useDiscover';
-import { BackButton, ShareButton, RichContent } from '@/components/discover';
-import { User } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@clerk/nextjs';
+import { BackButton, CopyLinkButton, AddToContentButton, RichContent, ContentLandingPage } from '@/components/discover';
+import { Button } from '@/components/ui/button';
+import { User, AlertCircle, CheckCircle } from 'lucide-react';
+import type { DiscoverArticle } from '@/types/discover';
 
 interface ArticlePageProps {
   params: Promise<{ id: string }>;
@@ -20,21 +23,60 @@ interface AuthorProfile {
   profession?: string;
 }
 
+interface ArticleDetailData {
+  article: DiscoverArticle & { coachName?: string; coachImageUrl?: string };
+  isOwned: boolean;
+  includedInProgramName?: string;
+}
+
 export default function ArticleDetailPage({ params }: ArticlePageProps) {
   const { id } = use(params);
-  const { article, loading } = useArticle(id);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { isSignedIn } = useAuth();
+  
+  const [data, setData] = useState<ArticleDetailData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [authorProfile, setAuthorProfile] = useState<AuthorProfile | null>(null);
   const [authorLoading, setAuthorLoading] = useState(false);
+  
+  const justPurchased = searchParams.get('purchased') === 'true';
+
+  // Fetch article data
+  const fetchArticle = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/discover/articles/${id}`);
+      
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Article not found');
+      }
+      
+      const result = await response.json();
+      setData(result);
+    } catch (err) {
+      console.error('Error fetching article:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load article');
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchArticle();
+  }, [fetchArticle]);
 
   // Fetch author profile dynamically if authorId is available
   useEffect(() => {
-    if (article?.authorId) {
+    if (data?.article?.authorId) {
       setAuthorLoading(true);
-      fetch(`/api/user/${article.authorId}`)
+      fetch(`/api/user/${data.article.authorId}`)
         .then(res => res.json())
-        .then(data => {
-          if (data.exists && data.user) {
-            setAuthorProfile(data.user);
+        .then(result => {
+          if (result.exists && result.user) {
+            setAuthorProfile(result.user);
           }
         })
         .catch(err => {
@@ -44,24 +86,194 @@ export default function ArticleDetailPage({ params }: ArticlePageProps) {
           setAuthorLoading(false);
         });
     }
-  }, [article?.authorId]);
+  }, [data?.article?.authorId]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-app-bg">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-[#faf8f6] dark:bg-[#05070b]">
+        <div className="text-center">
+          <div className="w-10 h-10 border-3 border-[#a07855] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-text-secondary font-albert text-[14px]">Loading article...</p>
+        </div>
       </div>
     );
   }
 
-  if (!article) {
+  if (error || !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-app-bg">
-        <div className="text-text-secondary">Article not found</div>
+      <div className="min-h-screen px-4 py-8 bg-[#faf8f6] dark:bg-[#05070b]">
+        <BackButton />
+        <div className="text-center mt-12">
+          <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-4" />
+          <h2 className="text-lg font-semibold text-text-primary font-albert mb-2">
+            {error || 'Article not found'}
+          </h2>
+          <Button
+            onClick={() => router.push('/discover')}
+            className="mt-4 bg-[#a07855] hover:bg-[#8c6245] text-white"
+          >
+            Back to Discover
+          </Button>
+        </div>
       </div>
     );
   }
 
+  const { article, isOwned, includedInProgramName } = data;
+
+  // If user owns this content or it's free, show full article content
+  if (isOwned || justPurchased || !article.priceInCents || article.priceInCents === 0) {
+    return (
+      <ArticleContent 
+        article={article}
+        authorProfile={authorProfile}
+        authorLoading={authorLoading}
+        justPurchased={justPurchased}
+        includedInProgramName={includedInProgramName}
+        id={id}
+      />
+    );
+  }
+
+  // Show landing page for paid content
+  if (article.purchaseType === 'landing_page') {
+    return (
+      <ContentLandingPage
+        content={{
+          id: article.id,
+          type: 'article',
+          title: article.title,
+          description: article.content?.substring(0, 200) + '...',
+          coverImageUrl: article.coverImageUrl,
+          priceInCents: article.priceInCents || 0,
+          currency: article.currency,
+          coachName: article.coachName || article.authorName,
+          coachImageUrl: article.coachImageUrl || article.authorAvatarUrl,
+          coachBio: article.authorBio,
+          keyOutcomes: article.keyOutcomes,
+          features: article.features,
+          testimonials: article.testimonials,
+          faqs: article.faqs,
+        }}
+        isOwned={isOwned}
+        includedInProgramName={includedInProgramName}
+        onAccessContent={() => window.location.reload()}
+      />
+    );
+  }
+
+  // Default: Show simple purchase view (popup style)
+  return (
+    <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b] pb-24 lg:pb-8">
+      {/* Header */}
+      <section className="px-4 py-5">
+        <BackButton />
+      </section>
+
+      {/* Article Preview */}
+      <section className="px-4">
+        <div className="bg-white dark:bg-[#171b22] rounded-3xl p-6 border border-[#e1ddd8] dark:border-[#262b35]">
+          {/* Cover Image */}
+          {article.coverImageUrl && (
+            <div className="relative h-[180px] rounded-2xl overflow-hidden mb-4">
+              <Image
+                src={article.coverImageUrl}
+                alt={article.title}
+                fill
+                className="object-cover"
+                priority
+              />
+            </div>
+          )}
+
+          <h1 className="font-albert text-[24px] font-semibold text-text-primary tracking-[-1px] mb-2">
+            {article.title}
+          </h1>
+          
+          {/* Meta info */}
+          {(article.readingTimeMinutes || article.category) && (
+            <div className="flex items-center gap-3 text-text-muted text-sm mb-4">
+              {article.readingTimeMinutes && (
+                <span>{article.readingTimeMinutes} min read</span>
+              )}
+              {article.readingTimeMinutes && article.category && (
+                <span>•</span>
+              )}
+              {article.category && (
+                <span>{article.category}</span>
+              )}
+            </div>
+          )}
+
+          {/* Preview of content */}
+          <p className="font-albert text-[15px] text-text-secondary leading-[1.6] mb-4 line-clamp-3">
+            {article.content?.replace(/<[^>]*>/g, '').substring(0, 200)}...
+          </p>
+
+          {article.authorName && (
+            <p className="text-sm text-text-muted mb-4">
+              By {article.authorName}
+            </p>
+          )}
+
+          <div className="border-t border-[#e1ddd8] dark:border-[#262b35] pt-4">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-2xl font-bold text-text-primary">
+                ${((article.priceInCents || 0) / 100).toFixed(2)}
+              </span>
+              <span className="text-sm text-text-secondary">one-time</span>
+            </div>
+
+            <Button
+              onClick={async () => {
+                if (!isSignedIn) {
+                  router.push(`/sign-in?redirect=${encodeURIComponent(window.location.pathname)}`);
+                  return;
+                }
+                
+                const response = await fetch('/api/content/purchase', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    contentType: 'article',
+                    contentId: article.id,
+                  }),
+                });
+                
+                const result = await response.json();
+                if (result.checkoutUrl) {
+                  window.location.href = result.checkoutUrl;
+                } else if (result.success) {
+                  window.location.reload();
+                }
+              }}
+              className="w-full py-3 bg-[#a07855] hover:bg-[#8c6245] text-white font-semibold rounded-xl"
+            >
+              {!isSignedIn ? 'Sign in to purchase' : 'Purchase Article'}
+            </Button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// Extracted component for full article content (when user has access)
+function ArticleContent({
+  article,
+  authorProfile,
+  authorLoading,
+  justPurchased,
+  includedInProgramName,
+  id,
+}: {
+  article: DiscoverArticle & { coachName?: string; coachImageUrl?: string };
+  authorProfile: AuthorProfile | null;
+  authorLoading: boolean;
+  justPurchased: boolean;
+  includedInProgramName?: string;
+  id: string;
+}) {
   // Format publication date
   const formatPublishedDate = () => {
     const date = new Date(article.publishedAt);
@@ -79,13 +291,34 @@ export default function ArticleDetailPage({ params }: ArticlePageProps) {
 
   return (
     <div className="min-h-screen bg-app-bg pb-24 lg:pb-8">
+      {/* Success message if just purchased */}
+      {justPurchased && (
+        <section className="px-4 pt-4">
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl p-4">
+            <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
+              <CheckCircle className="w-5 h-5" />
+              <span className="font-semibold font-albert text-[14px]">
+                Purchase successful! Enjoy your article.
+              </span>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Header Section */}
       <section className="px-4 py-5">
         <div className="flex flex-col gap-3">
           {/* Navigation Row */}
           <div className="flex items-center justify-between">
             <BackButton />
-            <ShareButton title={article.title} />
+            <div className="flex items-center gap-2">
+              <AddToContentButton
+                contentType="article"
+                contentId={id}
+                priceInCents={article.priceInCents}
+              />
+              <CopyLinkButton />
+            </div>
           </div>
 
           {/* Cover Image */}
@@ -122,6 +355,12 @@ export default function ArticleDetailPage({ params }: ArticlePageProps) {
                 <span>{article.category}</span>
               )}
             </div>
+          )}
+
+          {includedInProgramName && (
+            <p className="text-sm text-text-muted">
+              Included in {includedInProgramName}
+            </p>
           )}
 
           {/* Article Content */}
@@ -178,4 +417,3 @@ export default function ArticleDetailPage({ params }: ArticlePageProps) {
     </div>
   );
 }
-

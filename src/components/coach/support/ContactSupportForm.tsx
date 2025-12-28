@@ -104,6 +104,9 @@ export function ContactSupportForm({ onSuccess }: ContactSupportFormProps) {
           rows={4}
           className="w-full px-4 py-2.5 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8680] dark:placeholder:text-[#6b7280] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a] transition-all resize-none"
         />
+        <p className="mt-1 text-xs text-[#8c8680] dark:text-[#6b7280] font-albert">
+          {message.length}/2000 characters (min 10)
+        </p>
       </div>
 
       {error && (
@@ -115,7 +118,11 @@ export function ContactSupportForm({ onSuccess }: ContactSupportFormProps) {
       <button
         type="submit"
         disabled={isSubmitting || !subject.trim() || message.trim().length < 10}
-        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#a07855] to-[#8c6245] hover:from-[#8c6245] hover:to-[#7a5539] text-white font-albert font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
+        style={{
+          background: `linear-gradient(to right, var(--brand-accent-light, #a07855), var(--brand-accent-dark, #8c6245))`,
+          color: `var(--brand-accent-foreground, #ffffff)`,
+        }}
+        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 font-albert font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md hover:opacity-90"
       >
         {isSubmitting ? (
           <>

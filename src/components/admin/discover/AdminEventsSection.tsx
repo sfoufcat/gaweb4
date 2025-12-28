@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Calendar, Clock, MapPin, Repeat, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react';
+import { Calendar, Clock, MapPin, Repeat, ChevronDown, ChevronUp, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import type { DiscoverEvent } from '@/types/discover';
 import type { RecurrenceFrequency } from '@/types';
 import {
@@ -24,6 +24,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
@@ -115,6 +122,7 @@ function EventFormDialog({
   const [showRecurrenceDetails, setShowRecurrenceDetails] = useState(false);
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [loadingCoaches, setLoadingCoaches] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   // Derive API context
   const isCoachContext = apiEndpoint.includes('/coach/');
@@ -343,7 +351,7 @@ function EventFormDialog({
       onClose();
     } catch (err) {
       console.error('Error saving event:', err);
-      alert(err instanceof Error ? err.message : 'Failed to save event');
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to save event');
     } finally {
       setSaving(false);
     }
@@ -469,58 +477,72 @@ function EventFormDialog({
               </div>
               <div>
                 <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Duration</label>
-                <select
-                  value={formData.durationMinutes}
-                  onChange={e => setFormData(prev => ({ ...prev, durationMinutes: parseInt(e.target.value) }))}
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                <Select
+                  value={formData.durationMinutes.toString()}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, durationMinutes: parseInt(value) }))}
                 >
-                  <option value={30}>30 min</option>
-                  <option value={45}>45 min</option>
-                  <option value={60}>1 hour</option>
-                  <option value={90}>1.5 hours</option>
-                  <option value={120}>2 hours</option>
-                </select>
+                  <SelectTrigger className="w-full px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="30">30 min</SelectItem>
+                    <SelectItem value="45">45 min</SelectItem>
+                    <SelectItem value="60">1 hour</SelectItem>
+                    <SelectItem value="90">1.5 hours</SelectItem>
+                    <SelectItem value="120">2 hours</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
-            {/* Timezone */}
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Timezone</label>
-              <select
-                value={formData.timezone}
-                onChange={e => setFormData(prev => ({ ...prev, timezone: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-              >
-                {COMMON_TIMEZONES.map(tz => (
-                  <option key={tz.value} value={tz.value}>{tz.label}</option>
-                ))}
-              </select>
-            </div>
+            {/* Timezone & Repeat Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Timezone */}
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Timezone</label>
+                <Select
+                  value={formData.timezone}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, timezone: value }))}
+                >
+                  <SelectTrigger className="w-full px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    <SelectValue placeholder="Select timezone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COMMON_TIMEZONES.map(tz => (
+                      <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Recurrence */}
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-                <Repeat className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />
-                Repeat
-              </label>
-              <select
-                value={formData.recurrence}
-                onChange={e => {
-                  const newValue = e.target.value as RecurrenceFrequency | 'none';
-                  setFormData(prev => ({ 
-                    ...prev, 
-                    recurrence: newValue,
-                    recurrenceDayOfWeek: (newValue === 'weekly' || newValue === 'biweekly') && prev.date 
-                      ? getDayOfWeekFromDate(prev.date) 
-                      : prev.recurrenceDayOfWeek
-                  }));
-                }}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
-              >
-                {RECURRENCE_OPTIONS.map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
+              {/* Recurrence */}
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+                  <Repeat className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />
+                  Repeat
+                </label>
+                <Select
+                  value={formData.recurrence}
+                  onValueChange={(value) => {
+                    const newValue = value as RecurrenceFrequency | 'none';
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      recurrence: newValue,
+                      recurrenceDayOfWeek: (newValue === 'weekly' || newValue === 'biweekly') && prev.date 
+                        ? getDayOfWeekFromDate(prev.date) 
+                        : prev.recurrenceDayOfWeek
+                    }));
+                  }}
+                >
+                  <SelectTrigger className="w-full px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    <SelectValue placeholder="Select repeat" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RECURRENCE_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               
               {formData.recurrence !== 'none' && (
                 <button
@@ -558,6 +580,7 @@ function EventFormDialog({
                   />
                 </div>
               )}
+              </div>
             </div>
 
             {/* Attach to Programs - MOVED ABOVE LOCATION */}
@@ -583,15 +606,19 @@ function EventFormDialog({
                 Location
               </label>
               <div className="grid grid-cols-2 gap-3">
-                <select
+                <Select
                   value={formData.location}
-                  onChange={e => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                  className="px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, location: value }))}
                 >
-                  {LOCATION_OPTIONS.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LOCATION_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 {formData.location !== 'in_person' && (
                   <input
                     type="url"
@@ -606,19 +633,23 @@ function EventFormDialog({
 
             {/* Host - Select from coaches */}
             <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Host</label>
-              <select
-                value={formData.hostUserId}
-                onChange={e => setFormData(prev => ({ ...prev, hostUserId: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Host *</label>
+              <Select
+                value={formData.hostUserId || undefined}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, hostUserId: value }))}
+                disabled={loadingCoaches}
               >
-                <option value="">{loadingCoaches ? 'Loading coaches...' : 'Select a host...'}</option>
-                {coaches.map(coach => (
-                  <option key={coach.id} value={coach.id}>
-                    {coach.firstName} {coach.lastName}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full px-3 py-2 h-auto border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  <SelectValue placeholder={loadingCoaches ? 'Loading coaches...' : 'Select a host...'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {coaches.map(coach => (
+                    <SelectItem key={coach.id} value={coach.id}>
+                      {coach.firstName} {coach.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Category - Use CategorySelector */}
@@ -635,7 +666,8 @@ function EventFormDialog({
             <RichTextEditor
               value={formData.description}
               onChange={(description) => setFormData(prev => ({ ...prev, description }))}
-              label="Description"
+              label="Description *"
+              required
               rows={4}
               placeholder="Event description..."
               showMediaToolbar={true}
@@ -770,6 +802,24 @@ function EventFormDialog({
           </div>
         </form>
       </div>
+
+      {/* Error Alert Dialog */}
+      <AlertDialog open={!!errorMessage} onOpenChange={(open) => !open && setErrorMessage(null)}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-albert flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-500" />
+              Unable to Save
+            </AlertDialogTitle>
+            <AlertDialogDescription className="font-albert">
+              {errorMessage}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction className="font-albert bg-[#a07855] hover:bg-[#8c6245]">OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

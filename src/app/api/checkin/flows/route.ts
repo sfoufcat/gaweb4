@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
 import type { OrgCheckInFlow, CheckInStep, CheckInFlowType } from '@/types';
 
 // Ensure this route is never cached - coaches expect immediate updates
@@ -18,12 +19,15 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(req: Request) {
   try {
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get org ID from tenant context (subdomain) or Clerk session
+    const orgId = await getEffectiveOrgId();
+    
     // Users without an org don't have org-specific check-in flows
     if (!orgId) {
       return NextResponse.json({ flows: [] });

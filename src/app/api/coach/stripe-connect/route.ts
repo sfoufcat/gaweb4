@@ -159,7 +159,12 @@ export async function POST(request: NextRequest) {
     // Use primary domain for Stripe account links (must be registered in Stripe Dashboard)
     // Store the original domain to redirect back after completion
     const primaryDomain = process.env.NEXT_PUBLIC_APP_URL || 'https://growthaddicts.com';
-    const returnDomain = request.headers.get('origin') || primaryDomain;
+    
+    // Get the hostname from middleware's tenant context or fallback to host header
+    // This is more reliable than 'origin' header which may not be sent for same-origin requests
+    const hostname = request.headers.get('x-tenant-hostname') || request.headers.get('host');
+    const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    const returnDomain = hostname ? `${protocol}://${hostname}` : primaryDomain;
     
     let accountId = settings?.stripeConnectAccountId;
     

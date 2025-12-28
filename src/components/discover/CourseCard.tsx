@@ -3,12 +3,15 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import type { DiscoverCourse } from '@/types/discover';
+import { AddToContentButton } from './AddToContentButton';
 
 interface CourseCardProps {
   course: DiscoverCourse;
 }
 
 export function CourseCard({ course }: CourseCardProps) {
+  const isFree = !course.priceInCents || course.priceInCents === 0;
+
   return (
     <Link href={`/discover/courses/${course.id}`}>
       <div className="bg-white/70 dark:bg-[#171b22] rounded-[20px] w-[180px] flex-shrink-0 hover:shadow-md dark:hover:shadow-black/30 transition-shadow cursor-pointer overflow-hidden">
@@ -32,11 +35,22 @@ export function CourseCard({ course }: CourseCardProps) {
           
           {/* Featured badge */}
           {course.featured && (
-            <div className="absolute top-2 right-2 bg-white/90 dark:bg-[#171b22]/90 backdrop-blur-sm rounded-full p-1">
+            <div className="absolute top-2 left-2 bg-white/90 dark:bg-[#171b22]/90 backdrop-blur-sm rounded-full p-1">
               <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
               </svg>
             </div>
+          )}
+
+          {/* Add to Content button - only for free content */}
+          {isFree && (
+            <AddToContentButton
+              contentType="course"
+              contentId={course.id}
+              priceInCents={course.priceInCents}
+              compact
+              className="absolute top-2 right-2"
+            />
           )}
         </div>
         
@@ -56,4 +70,3 @@ export function CourseCard({ course }: CourseCardProps) {
     </Link>
   );
 }
-

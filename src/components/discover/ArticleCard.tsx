@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import type { DiscoverArticle } from '@/types/discover';
+import { AddToContentButton } from './AddToContentButton';
 
 interface ArticleCardProps {
   article: DiscoverArticle;
@@ -35,6 +36,7 @@ export function ArticleCard({ article, variant = 'horizontal' }: ArticleCardProp
   const badgeColor = getArticleTypeBadgeColor(article.articleType);
   // Use thumbnail for cards if available, fallback to cover image
   const cardImageUrl = article.thumbnailUrl || article.coverImageUrl;
+  const isFree = !article.priceInCents || article.priceInCents === 0;
 
   if (variant === 'grid') {
     return (
@@ -65,6 +67,17 @@ export function ArticleCard({ article, variant = 'horizontal' }: ArticleCardProp
                   {badgeLabel}
                 </span>
               </div>
+            )}
+
+            {/* Add to Content button - only for free content */}
+            {isFree && (
+              <AddToContentButton
+                contentType="article"
+                contentId={article.id}
+                priceInCents={article.priceInCents}
+                compact
+                className="absolute top-3 right-3"
+              />
             )}
           </div>
           
@@ -113,6 +126,17 @@ export function ArticleCard({ article, variant = 'horizontal' }: ArticleCardProp
               </span>
             </div>
           )}
+
+          {/* Add to Content button - only for free content */}
+          {isFree && (
+            <AddToContentButton
+              contentType="article"
+              contentId={article.id}
+              priceInCents={article.priceInCents}
+              compact
+              className="absolute top-2 right-2"
+            />
+          )}
         </div>
         
         {/* Content */}
@@ -129,4 +153,3 @@ export function ArticleCard({ article, variant = 'horizontal' }: ArticleCardProp
     </Link>
   );
 }
-

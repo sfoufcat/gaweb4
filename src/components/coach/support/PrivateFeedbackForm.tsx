@@ -72,16 +72,16 @@ export function PrivateFeedbackForm({ isOpen, onClose }: PrivateFeedbackFormProp
 
   const modalContent = (
     <>
-      {/* Backdrop */}
+      {/* Backdrop with fade-in animation */}
       <div 
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100]"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] animate-in fade-in duration-200"
         onClick={onClose}
       />
       
-      {/* Modal */}
+      {/* Modal with scale + fade animation */}
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 pointer-events-none">
         <div 
-          className="relative w-full max-w-md bg-white dark:bg-[#171b22] rounded-2xl shadow-2xl border border-[#e1ddd8] dark:border-[#262b35] overflow-hidden pointer-events-auto"
+          className="relative w-full max-w-md bg-white dark:bg-[#171b22] rounded-2xl shadow-2xl border border-[#e1ddd8] dark:border-[#262b35] overflow-hidden pointer-events-auto animate-in fade-in zoom-in-95 duration-200"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -183,7 +183,11 @@ export function PrivateFeedbackForm({ isOpen, onClose }: PrivateFeedbackFormProp
                 <button
                   type="submit"
                   disabled={isSubmitting || message.trim().length < 10}
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#a07855] to-[#8c6245] hover:from-[#8c6245] hover:to-[#7a5539] text-white font-albert font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    background: `linear-gradient(to right, var(--brand-accent-light, #a07855), var(--brand-accent-dark, #8c6245))`,
+                    color: `var(--brand-accent-foreground, #ffffff)`,
+                  }}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 font-albert font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
                 >
                   {isSubmitting ? (
                     <>

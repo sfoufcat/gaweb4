@@ -9,9 +9,10 @@ import type { ProgramEnrollmentWithDetails } from '@/hooks/useDashboard';
 interface ProgramCarouselProps {
   enrollments: ProgramEnrollmentWithDetails[];
   isLoading?: boolean;
+  hasAvailablePrograms?: boolean;
 }
 
-export function ProgramCarousel({ enrollments, isLoading }: ProgramCarouselProps) {
+export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms = true }: ProgramCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   
@@ -41,7 +42,11 @@ export function ProgramCarousel({ enrollments, isLoading }: ProgramCarouselProps
   }
   
   if (enrollments.length === 0) {
-    // Empty state - show discover CTA with fixed green theme
+    // Empty state - show discover CTA only if there are available programs
+    if (!hasAvailablePrograms) {
+      return null;
+    }
+    
     return (
       <Link 
         href="/discover"
@@ -163,26 +168,28 @@ export function ProgramCarousel({ enrollments, isLoading }: ProgramCarouselProps
           </Link>
         ))}
         
-        {/* Discover More Card - Fixed green theme */}
-        <Link
-          href="/discover"
-          className="flex-shrink-0 w-[260px] sm:w-[280px] snap-start"
-        >
-          <div className="bg-[#ECFFF2] dark:bg-[#1a2e1f] border border-dashed border-[#D3F0D8] dark:border-[#2E5435] rounded-[20px] h-full min-h-[200px] flex items-center justify-center hover:border-[#4CAF51]/60 dark:hover:border-[#4CAF50]/60 transition-all group">
-            <div className="text-center p-4">
-              <div className="w-12 h-12 mx-auto rounded-full bg-[#D3F0D8] dark:bg-[#2E5435] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <BookOpen className="w-6 h-6 text-[#2E7D6B] dark:text-[#4CAF50]" />
+        {/* Discover More Card - Only show if there are available programs */}
+        {hasAvailablePrograms && (
+          <Link
+            href="/discover"
+            className="flex-shrink-0 w-[260px] sm:w-[280px] snap-start"
+          >
+            <div className="bg-[#ECFFF2] dark:bg-[#1a2e1f] border border-dashed border-[#D3F0D8] dark:border-[#2E5435] rounded-[20px] h-full min-h-[200px] flex items-center justify-center hover:border-[#4CAF51]/60 dark:hover:border-[#4CAF50]/60 transition-all group">
+              <div className="text-center p-4">
+                <div className="w-12 h-12 mx-auto rounded-full bg-[#D3F0D8] dark:bg-[#2E5435] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <BookOpen className="w-6 h-6 text-[#2E7D6B] dark:text-[#4CAF50]" />
+                </div>
+                <p className="font-albert font-semibold text-[14px] text-[#2E7D6B] dark:text-[#4CAF50]">
+                  Discover more
+                </p>
               </div>
-              <p className="font-albert font-semibold text-[14px] text-[#2E7D6B] dark:text-[#4CAF50]">
-                Discover more
-              </p>
             </div>
-          </div>
-        </Link>
+          </Link>
+        )}
       </div>
       
       {/* Dot Indicators */}
-      {enrollments.length > 1 && (
+      {(enrollments.length > 1 || (enrollments.length === 1 && hasAvailablePrograms)) && (
         <div className="flex justify-center gap-1.5 mt-3">
           {enrollments.map((_, i) => (
             <button
@@ -200,20 +207,22 @@ export function ProgramCarousel({ enrollments, isLoading }: ProgramCarouselProps
               }`}
             />
           ))}
-          {/* Extra dot for discover card */}
-          <button
-            onClick={() => {
-              scrollRef.current?.scrollTo({
-                left: enrollments.length * 280,
-                behavior: 'smooth',
-              });
-            }}
-            className={`w-2 h-2 rounded-full transition-all ${
-              activeIndex >= enrollments.length
-                ? 'bg-[#a07855] w-4' 
-                : 'bg-[#e1ddd8] dark:bg-[#272d38]'
-            }`}
-          />
+          {/* Extra dot for discover card - only if there are available programs */}
+          {hasAvailablePrograms && (
+            <button
+              onClick={() => {
+                scrollRef.current?.scrollTo({
+                  left: enrollments.length * 280,
+                  behavior: 'smooth',
+                });
+              }}
+              className={`w-2 h-2 rounded-full transition-all ${
+                activeIndex >= enrollments.length
+                  ? 'bg-[#a07855] w-4' 
+                  : 'bg-[#e1ddd8] dark:bg-[#272d38]'
+              }`}
+            />
+          )}
         </div>
       )}
     </div>

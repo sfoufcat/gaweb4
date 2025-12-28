@@ -4,7 +4,7 @@ import { use } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCourse } from '@/hooks/useDiscover';
-import { BackButton, ShareButton, RichContent } from '@/components/discover';
+import { BackButton, CopyLinkButton, AddToContentButton, RichContent } from '@/components/discover';
 
 interface CoursePageProps {
   params: Promise<{ id: string }>;
@@ -53,7 +53,14 @@ export default function CourseDetailPage({ params }: CoursePageProps) {
           {/* Navigation Row */}
           <div className="flex items-center justify-between">
             <BackButton />
-            <ShareButton title={course.title} />
+            <div className="flex items-center gap-2">
+              <AddToContentButton
+                contentType="course"
+                contentId={id}
+                priceInCents={course.priceInCents}
+              />
+              <CopyLinkButton />
+            </div>
           </div>
 
           {/* Cover Image */}

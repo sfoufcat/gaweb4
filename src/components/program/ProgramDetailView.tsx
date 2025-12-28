@@ -175,7 +175,7 @@ export function ProgramDetailView({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-8">
       {/* Header Section */}
       <div className="space-y-4">
         {/* Back Arrow + Title */}
@@ -633,16 +633,54 @@ export function ProgramDetailView({
 
       {/* Articles */}
       {articles.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
             Articles
           </h2>
           
-          <div className="space-y-2">
-            {articles.slice(0, 3).map((article) => (
-              <ArticleCard key={article.id} article={article} variant="grid" />
-            ))}
-          </div>
+          {articles.length === 1 ? (
+            /* Full-width single article with large cover image */
+            <Link href={`/discover/articles/${articles[0].id}`}>
+              <div className="bg-white dark:bg-[#171b22] rounded-[20px] overflow-hidden hover:shadow-md dark:hover:shadow-black/30 transition-shadow cursor-pointer">
+                {/* Cover Image */}
+                <div className="relative h-[200px] w-full bg-earth-100 dark:bg-[#262b35]">
+                  {articles[0].coverImageUrl ? (
+                    <Image
+                      src={articles[0].coverImageUrl}
+                      alt={articles[0].title}
+                      fill
+                      className="object-cover"
+                      sizes="100vw"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <svg className="w-12 h-12 text-earth-300 dark:text-[#7d8190]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Content */}
+                <div className="p-4 flex flex-col gap-1.5">
+                  <h3 className="font-albert font-semibold text-lg text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px] leading-[1.3]">
+                    {articles[0].title}
+                  </h3>
+                  <p className="font-sans text-sm text-text-muted dark:text-[#7d8190]">
+                    {articles[0].authorName}
+                    {articles[0].readingTimeMinutes && ` · ${articles[0].readingTimeMinutes} min`}
+                  </p>
+                </div>
+              </div>
+            </Link>
+          ) : (
+            /* Grid layout for multiple articles */
+            <div className="grid grid-cols-2 gap-3">
+              {articles.slice(0, 4).map((article) => (
+                <ArticleCard key={article.id} article={article} variant="grid" />
+              ))}
+            </div>
+          )}
         </div>
       )}
 

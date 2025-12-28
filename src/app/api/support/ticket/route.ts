@@ -50,9 +50,9 @@ export async function POST(request: NextRequest) {
 
     // Check Freshdesk configuration
     if (!isFreshdeskConfigured()) {
-      console.error('[SUPPORT_TICKET] Freshdesk not configured');
+      console.error('[SUPPORT_TICKET] Freshdesk not configured - missing FRESHDESK_API_KEY or FRESHDESK_DOMAIN');
       return NextResponse.json(
-        { error: 'Support system is not configured' },
+        { error: 'Support form is temporarily unavailable. Please email us directly at hello@growthaddicts.com' },
         { status: 503 }
       );
     }
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[SUPPORT_TICKET] Error:', error);
     return NextResponse.json(
-      { error: 'Failed to submit ticket' },
+      { error: 'Unable to submit your request. Please email us directly at hello@growthaddicts.com' },
       { status: 500 }
     );
   }

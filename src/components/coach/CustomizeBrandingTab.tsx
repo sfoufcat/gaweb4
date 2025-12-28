@@ -1673,7 +1673,7 @@ export function CustomizeBrandingTab() {
         </DndContext>
         
         <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-4 font-albert">
-          Changes apply to navigation menu items. &ldquo;Squad&rdquo; also updates throughout the app (e.g., &ldquo;My Squad&rdquo;, upgrade pages).
+          Changes apply to navigation menu items. &ldquo;Mastermind&rdquo; also updates throughout the app (e.g., &ldquo;My Mastermind&rdquo;, upgrade pages).
         </p>
       </div>
         </>

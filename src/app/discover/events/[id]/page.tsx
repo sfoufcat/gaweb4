@@ -1,22 +1,148 @@
 'use client';
 
-import { use, useMemo } from 'react';
+import { use, useState, useEffect, useMemo, useCallback } from 'react';
 import Image from 'next/image';
-import { MapPin } from 'lucide-react';
-import { useEvent } from '@/hooks/useDiscover';
-import { BackButton, ShareButton, AttendeeAvatars, RichContent, AddToCalendarButton } from '@/components/discover';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth, useUser } from '@clerk/nextjs';
+import { MapPin, AlertCircle, CheckCircle } from 'lucide-react';
+import { BackButton, ShareButton, AttendeeAvatars, RichContent, AddToCalendarButton, ContentLandingPage } from '@/components/discover';
+import { Button } from '@/components/ui/button';
+import type { DiscoverEvent, EventUpdate, EventAttendee } from '@/types/discover';
 
 interface EventPageProps {
   params: Promise<{ id: string }>;
 }
 
+interface EventDetailData {
+  event: DiscoverEvent & { coachName?: string; coachImageUrl?: string };
+  updates: EventUpdate[];
+  attendees: EventAttendee[];
+  totalAttendees: number;
+  isJoined: boolean;
+  isOwned: boolean;
+  includedInProgramName?: string;
+}
+
 export default function EventDetailPage({ params }: EventPageProps) {
   const { id } = use(params);
-  const { event, updates, attendees, totalAttendees, isJoined, joinEvent, leaveEvent, loading } = useEvent(id);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { isSignedIn } = useAuth();
+  const { user } = useUser();
+  
+  const [data, setData] = useState<EventDetailData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isJoining, setIsJoining] = useState(false);
+  
+  const justPurchased = searchParams.get('purchased') === 'true';
+
+  // Fetch event data
+  const fetchEvent = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/discover/events/${id}`);
+      
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Event not found');
+      }
+      
+      const result = await response.json();
+      setData(result);
+    } catch (err) {
+      console.error('Error fetching event:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load event');
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchEvent();
+  }, [fetchEvent]);
+
+  // Join/leave event handlers
+  const joinEvent = useCallback(async () => {
+    if (!data || !isSignedIn) return;
+    
+    setIsJoining(true);
+    
+    // Build current user attendee for optimistic update
+    const currentUserAttendee: EventAttendee | null = user ? {
+      userId: user.id,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      avatarUrl: user.imageUrl || undefined,
+    } : null;
+    
+    // Optimistic update
+    setData(prev => prev ? {
+      ...prev,
+      isJoined: true,
+      totalAttendees: prev.totalAttendees + 1,
+      attendees: currentUserAttendee 
+        ? [currentUserAttendee, ...prev.attendees.filter(a => a.userId !== user?.id)]
+        : prev.attendees,
+    } : null);
+    
+    try {
+      const response = await fetch(`/api/discover/events/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'join' }),
+      });
+      
+      if (!response.ok) {
+        // Revert on failure
+        await fetchEvent();
+      }
+    } catch {
+      // Revert on error
+      await fetchEvent();
+    } finally {
+      setIsJoining(false);
+    }
+  }, [id, data, isSignedIn, user, fetchEvent]);
+
+  const leaveEvent = useCallback(async () => {
+    if (!data) return;
+    
+    setIsJoining(true);
+    
+    // Optimistic update
+    setData(prev => prev ? {
+      ...prev,
+      isJoined: false,
+      totalAttendees: Math.max(0, prev.totalAttendees - 1),
+      attendees: user 
+        ? prev.attendees.filter(a => a.userId !== user.id)
+        : prev.attendees,
+    } : null);
+    
+    try {
+      const response = await fetch(`/api/discover/events/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'leave' }),
+      });
+      
+      if (!response.ok) {
+        // Revert on failure
+        await fetchEvent();
+      }
+    } catch {
+      // Revert on error
+      await fetchEvent();
+    } finally {
+      setIsJoining(false);
+    }
+  }, [id, data, user, fetchEvent]);
 
   // Normalize event data to handle both old and new schema
   const normalizedEvent = useMemo(() => {
-    if (!event) return null;
+    if (!data?.event) return null;
+    const event = data.event;
 
     // Extract date from either startDateTime or date field
     let eventDate = event.date;
@@ -72,7 +198,7 @@ export default function EventDetailPage({ params }: EventPageProps) {
       meetingLink: event.meetingLink || event.zoomLink,
       description: event.longDescription || event.shortDescription || '',
     };
-  }, [event]);
+  }, [data?.event]);
 
   // Get timezone abbreviation
   function getTimezoneAbbr(timezone: string): string {
@@ -99,23 +225,197 @@ export default function EventDetailPage({ params }: EventPageProps) {
     return eventDate < now;
   }, [normalizedEvent]);
 
-  const hasRecording = isPastEvent && normalizedEvent?.recordingUrl;
-
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-app-bg">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-[#faf8f6] dark:bg-[#05070b]">
+        <div className="text-center">
+          <div className="w-10 h-10 border-3 border-[#a07855] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-text-secondary font-albert text-[14px]">Loading event...</p>
+        </div>
       </div>
     );
   }
 
-  if (!normalizedEvent) {
+  if (error || !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-app-bg">
-        <div className="text-text-secondary">Event not found</div>
+      <div className="min-h-screen px-4 py-8 bg-[#faf8f6] dark:bg-[#05070b]">
+        <BackButton />
+        <div className="text-center mt-12">
+          <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-4" />
+          <h2 className="text-lg font-semibold text-text-primary font-albert mb-2">
+            {error || 'Event not found'}
+          </h2>
+          <Button
+            onClick={() => router.push('/discover')}
+            className="mt-4 bg-[#a07855] hover:bg-[#8c6245] text-white"
+          >
+            Back to Discover
+          </Button>
+        </div>
       </div>
     );
   }
+
+  const { event, updates, attendees, totalAttendees, isJoined, isOwned, includedInProgramName } = data;
+
+  // If user owns this content or it's free, show full event content
+  if (isOwned || justPurchased || !event.priceInCents || event.priceInCents === 0) {
+    // Show the full event content
+    return <EventContent 
+      event={event}
+      normalizedEvent={normalizedEvent}
+      updates={updates}
+      attendees={attendees}
+      totalAttendees={totalAttendees}
+      isJoined={isJoined}
+      isPastEvent={isPastEvent}
+      justPurchased={justPurchased}
+      includedInProgramName={includedInProgramName}
+      onJoin={joinEvent}
+      onLeave={leaveEvent}
+      isJoining={isJoining}
+    />;
+  }
+
+  // Show landing page for paid content
+  if (event.purchaseType === 'landing_page') {
+    return (
+      <ContentLandingPage
+        content={{
+          id: event.id,
+          type: 'event',
+          title: event.title,
+          description: event.shortDescription || event.longDescription,
+          coverImageUrl: event.coverImageUrl,
+          priceInCents: event.priceInCents || 0,
+          currency: event.currency,
+          coachName: event.coachName || event.hostName,
+          coachImageUrl: event.coachImageUrl || event.hostAvatarUrl,
+          keyOutcomes: event.keyOutcomes,
+          features: event.features,
+          testimonials: event.testimonials,
+          faqs: event.faqs,
+        }}
+        isOwned={isOwned}
+        includedInProgramName={includedInProgramName}
+        onAccessContent={() => window.location.reload()}
+      />
+    );
+  }
+
+  // Default: Show simple purchase view (popup style)
+  return (
+    <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b] pb-24 lg:pb-8">
+      {/* Header */}
+      <section className="px-4 py-5">
+        <BackButton />
+      </section>
+
+      {/* Event Preview */}
+      <section className="px-4">
+        <div className="bg-white dark:bg-[#171b22] rounded-3xl p-6 border border-[#e1ddd8] dark:border-[#262b35]">
+          {/* Cover Image */}
+          {event.coverImageUrl && (
+            <div className="relative h-[180px] rounded-2xl overflow-hidden mb-4">
+              <Image
+                src={event.coverImageUrl}
+                alt={event.title}
+                fill
+                className="object-cover"
+                priority
+              />
+            </div>
+          )}
+
+          <h1 className="font-albert text-[24px] font-semibold text-text-primary tracking-[-1px] mb-2">
+            {event.title}
+          </h1>
+          
+          {event.shortDescription && (
+            <p className="font-albert text-[15px] text-text-secondary leading-[1.6] mb-4">
+              {event.shortDescription}
+            </p>
+          )}
+
+          {event.hostName && (
+            <p className="text-sm text-text-muted mb-4">
+              Hosted by {event.hostName}
+            </p>
+          )}
+
+          <div className="border-t border-[#e1ddd8] dark:border-[#262b35] pt-4">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-2xl font-bold text-text-primary">
+                ${((event.priceInCents || 0) / 100).toFixed(2)}
+              </span>
+              <span className="text-sm text-text-secondary">one-time</span>
+            </div>
+
+            <Button
+              onClick={async () => {
+                if (!isSignedIn) {
+                  router.push(`/sign-in?redirect=${encodeURIComponent(window.location.pathname)}`);
+                  return;
+                }
+                
+                const response = await fetch('/api/content/purchase', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    contentType: 'event',
+                    contentId: event.id,
+                  }),
+                });
+                
+                const result = await response.json();
+                if (result.checkoutUrl) {
+                  window.location.href = result.checkoutUrl;
+                } else if (result.success) {
+                  window.location.reload();
+                }
+              }}
+              className="w-full py-3 bg-[#a07855] hover:bg-[#8c6245] text-white font-semibold rounded-xl"
+            >
+              {!isSignedIn ? 'Sign in to purchase' : 'Purchase Event Access'}
+            </Button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// Extracted component for full event content (when user has access)
+function EventContent({
+  event,
+  normalizedEvent,
+  updates,
+  attendees,
+  totalAttendees,
+  isJoined,
+  isPastEvent,
+  justPurchased,
+  includedInProgramName,
+  onJoin,
+  onLeave,
+  isJoining,
+}: {
+  event: DiscoverEvent & { coachName?: string; coachImageUrl?: string };
+  normalizedEvent: ReturnType<typeof Object.assign> | null;
+  updates: EventUpdate[];
+  attendees: EventAttendee[];
+  totalAttendees: number;
+  isJoined: boolean;
+  isPastEvent: boolean;
+  justPurchased: boolean;
+  includedInProgramName?: string;
+  onJoin: () => void;
+  onLeave: () => void;
+  isJoining: boolean;
+}) {
+  if (!normalizedEvent) return null;
+
+  const hasRecording = isPastEvent && normalizedEvent?.recordingUrl;
 
   // Format date: "October 20, 2025 — 18:00–20:00 CET"
   const formatEventDateTime = () => {
@@ -156,6 +456,20 @@ export default function EventDetailPage({ params }: EventPageProps) {
 
   return (
     <div className="min-h-screen bg-app-bg pb-24 lg:pb-8">
+      {/* Success message if just purchased */}
+      {justPurchased && (
+        <section className="px-4 pt-4">
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl p-4">
+            <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
+              <CheckCircle className="w-5 h-5" />
+              <span className="font-semibold font-albert text-[14px]">
+                Purchase successful! You now have access to this event.
+              </span>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Header Section */}
       <section className="px-4 py-5">
         <div className="flex flex-col gap-3">
@@ -194,6 +508,11 @@ export default function EventDetailPage({ params }: EventPageProps) {
                 {normalizedEvent.locationLabel}
               </p>
             )}
+            {includedInProgramName && (
+              <p className="text-sm text-text-muted">
+                Included in {includedInProgramName}
+              </p>
+            )}
           </div>
 
           {/* Event Actions - Different for past vs upcoming events */}
@@ -220,10 +539,11 @@ export default function EventDetailPage({ params }: EventPageProps) {
             // Upcoming Event Actions
             <>
               <button
-                onClick={isJoined ? leaveEvent : joinEvent}
+                onClick={isJoined ? onLeave : onJoin}
+                disabled={isJoining}
                 className={`
                   w-full py-4 px-4 rounded-[32px] font-sans font-bold text-base tracking-[-0.5px] leading-[1.4]
-                  transition-all
+                  transition-all disabled:opacity-50
                   ${isJoined 
                     ? 'bg-earth-100 text-earth-700 border border-earth-300' 
                     : 'bg-white border border-[rgba(215,210,204,0.5)] text-button-primary hover:bg-earth-50'
@@ -275,11 +595,11 @@ export default function EventDetailPage({ params }: EventPageProps) {
               <div className="font-sans text-base text-text-secondary tracking-[-0.3px] leading-[1.2] space-y-2">
                 <RichContent content={normalizedEvent.description} />
                 
-                {normalizedEvent.bulletPoints && normalizedEvent.bulletPoints.length > 0 && normalizedEvent.bulletPoints.some(p => p?.trim()) && (
+                {normalizedEvent.bulletPoints && normalizedEvent.bulletPoints.length > 0 && normalizedEvent.bulletPoints.some((p: string) => p?.trim()) && (
                   <>
                     <p className="mt-4">By the end of the session, you&apos;ll:</p>
                     <ul className="list-none space-y-1">
-                      {normalizedEvent.bulletPoints.filter(p => p?.trim()).map((point, index) => (
+                      {normalizedEvent.bulletPoints.filter((p: string) => p?.trim()).map((point: string, index: number) => (
                         <li key={index} className="flex items-start gap-2">
                           <span className="text-earth-500">•</span>
                           <span>{point}</span>

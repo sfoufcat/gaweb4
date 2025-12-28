@@ -31,6 +31,7 @@ import { useHomeTutorial } from '@/hooks/useHomeTutorial';
 import { HomeTutorialOverlay } from '@/components/tutorial';
 import { useMenuTitles } from '@/contexts/BrandingContext';
 import { useDailyFocusLimit } from '@/hooks/useDailyFocusLimit';
+import { useAvailablePrograms } from '@/hooks/useAvailablePrograms';
 import { ProgramCarousel } from '@/components/home/ProgramCarousel';
 import { SquadCarousel } from '@/components/home/SquadCarousel';
 
@@ -82,6 +83,10 @@ export default function Dashboard() {
   
   // Get org's daily focus limit
   const { limit: focusLimit } = useDailyFocusLimit();
+  
+  // Check if there are available programs to discover
+  const { hasAvailablePrograms } = useAvailablePrograms();
+  
   const eveningCheckInLoading = dashboardLoading;
   const tasksLoading = dashboardLoading;
   const enrollmentsLoading = dashboardLoading;
@@ -144,7 +149,7 @@ export default function Dashboard() {
   const { squad, members, isLoading: squadLoading } = useSquadContext();
   
   // Get customizable menu titles
-  const { mySquad: mySquadTitle } = useMenuTitles();
+  const { mySquad: mySquadTitle, squad: squadTerm } = useMenuTitles();
   
   // Program-based prompts have replaced track-based prompts
   
@@ -1674,13 +1679,16 @@ export default function Dashboard() {
           <h2 className="font-albert text-[24px] text-text-primary leading-[1.3] tracking-[-1.5px]">
             My Program
           </h2>
-          <Link href="/discover" className="font-sans text-[12px] text-brand-accent leading-[1.2]">
-            Discover more
-          </Link>
+          {hasAvailablePrograms && (
+            <Link href="/discover" className="font-sans text-[12px] text-brand-accent leading-[1.2]">
+              Discover more
+            </Link>
+          )}
         </div>
         <ProgramCarousel 
           enrollments={[...programEnrollments.active, ...programEnrollments.upcoming]}
           isLoading={enrollmentsLoading}
+          hasAvailablePrograms={hasAvailablePrograms}
         />
       </div>
 
@@ -1694,6 +1702,7 @@ export default function Dashboard() {
           standardSquad={dashboardSquads?.standard || { squad: null, members: [] }}
           isLoading={squadLoading}
           squadTitle={mySquadTitle}
+          squadTerm={squadTerm}
         />
       </div>
 

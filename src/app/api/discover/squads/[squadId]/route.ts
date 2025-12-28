@@ -38,6 +38,11 @@ export async function GET(
     if (squadData.isClosed) {
       return NextResponse.json({ error: 'Squad not found' }, { status: 404 });
     }
+    
+    // Don't show program squads - they belong to programs and use program landing pages
+    if (squadData.programId) {
+      return NextResponse.json({ error: 'Squad not found' }, { status: 404 });
+    }
 
     // Get coach info
     let coachName = 'Coach';

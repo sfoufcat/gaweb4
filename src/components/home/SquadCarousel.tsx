@@ -16,9 +16,12 @@ interface SquadCarouselProps {
   standardSquad: SquadData;
   isLoading?: boolean;
   squadTitle?: string;
+  squadTerm?: string;
 }
 
-export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTitle = 'My Cohort' }: SquadCarouselProps) {
+export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTitle = 'My Cohort', squadTerm = 'Mastermind' }: SquadCarouselProps) {
+  // Lowercase version for use in sentences
+  const squadTermLower = squadTerm.toLowerCase();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   
@@ -65,10 +68,10 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px] mb-1">
-              Find your squad
+              Find your {squadTermLower}
             </h3>
             <p className="font-albert text-[14px] text-text-secondary leading-[1.4]">
-              Join a community of growth-minded people and stay accountable together.
+              Join a {squadTermLower} of growth-minded people and stay accountable together.
             </p>
           </div>
           <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#E07A3A] dark:bg-[#D4692E] flex items-center justify-center group-hover:bg-[#C96830] dark:group-hover:bg-[#C55E26] group-hover:scale-105 transition-all">
@@ -133,7 +136,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
               href="/program?tab=squad"
               className="flex items-center gap-1.5 px-4 py-2.5 bg-[#a07855] hover:bg-[#8c6245] text-white rounded-full font-albert font-semibold text-[14px] transition-all hover:scale-[1.02]"
             >
-              Go to squad
+              Go to {squadTermLower}
               <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
@@ -227,7 +230,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
                 <Users className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
               </div>
               <p className="font-albert font-semibold text-[13px] text-[#a07855] dark:text-[#b8896a]">
-                Find another squad
+                Find another {squadTermLower}
               </p>
             </div>
           </div>

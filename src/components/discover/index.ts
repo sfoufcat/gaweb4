@@ -19,3 +19,5 @@ export { AddToCalendarButton } from './AddToCalendarButton';
 export { SquadCard } from './SquadCard';
 export { ContentPurchaseSheet } from './ContentPurchaseSheet';
 export { ContentLandingPage } from './ContentLandingPage';
+export { AddToContentButton } from './AddToContentButton';
+export { CopyLinkButton } from './CopyLinkButton';
