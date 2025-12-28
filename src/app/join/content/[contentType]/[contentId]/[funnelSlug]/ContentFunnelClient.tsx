@@ -345,8 +345,9 @@ export default function ContentFunnelClient({
     const commonProps = {
       onComplete: handleStepComplete,
       onBack: currentStepIndex > 0 ? handleBack : undefined,
-      sessionData: data,
+      data,
       branding,
+      isFirstStep: currentStepIndex === 0,
     };
 
     // Build program-like object for payment step
