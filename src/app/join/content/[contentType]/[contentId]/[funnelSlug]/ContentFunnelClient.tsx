@@ -493,8 +493,7 @@ export default function ContentFunnelClient({
 
   // Get current step for influence prompt
   const currentStep = steps[currentStepIndex];
-  const currentStepConfig = currentStep?.config as FunnelStepConfig | undefined;
-  const influencePrompt = currentStepConfig?.influencePrompt;
+  const influencePrompt = currentStep?.influencePrompt;
 
   // Progress calculation
   const progress = steps.length > 0 ? ((currentStepIndex + 1) / steps.length) * 100 : 0;
@@ -556,17 +555,15 @@ export default function ContentFunnelClient({
       {/* Main content */}
       <main className="flex-1 flex flex-col">
         {/* Influence Prompt */}
-        <AnimatePresence mode="wait">
-          {influencePrompt?.enabled && influencePrompt?.content && (
-            <div className="max-w-3xl mx-auto w-full px-4 pt-4">
-              <InfluencePromptCard
-                content={influencePrompt.content}
-                style={influencePrompt.style}
-                primaryColor={branding.primaryColor}
-              />
-            </div>
-          )}
-        </AnimatePresence>
+        {influencePrompt?.enabled && (
+          <div className="max-w-3xl mx-auto w-full px-4 pt-4">
+            <InfluencePromptCard
+              config={influencePrompt}
+              stepIndex={currentStepIndex}
+              totalSteps={steps.length}
+            />
+          </div>
+        )}
 
         {/* Step content */}
         <AnimatePresence mode="wait">
