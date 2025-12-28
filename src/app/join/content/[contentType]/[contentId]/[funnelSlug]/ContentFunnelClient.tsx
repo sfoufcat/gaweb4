@@ -341,15 +341,6 @@ export default function ContentFunnelClient({
     const stepConfig = step.config as FunnelStepConfig;
     const config = stepConfig.config;
 
-    // Common step props
-    const commonProps = {
-      onComplete: handleStepComplete,
-      onBack: currentStepIndex > 0 ? handleBack : undefined,
-      data,
-      branding,
-      isFirstStep: currentStepIndex === 0,
-    };
-
     // Build program-like object for payment step
     const contentAsProgram = {
       id: content.id,
@@ -370,7 +361,10 @@ export default function ContentFunnelClient({
         return (
           <QuestionStep
             config={config as FunnelStepConfigQuestion}
-            {...commonProps}
+            onComplete={handleStepComplete}
+            onBack={currentStepIndex > 0 ? handleBack : undefined}
+            data={data}
+            isFirstStep={currentStepIndex === 0}
           />
         );
 
@@ -378,12 +372,16 @@ export default function ContentFunnelClient({
         return (
           <SignupStep
             config={config as FunnelStepConfigSignup}
+            onComplete={handleStepComplete}
+            onBack={currentStepIndex > 0 ? handleBack : undefined}
+            data={data}
+            branding={branding}
             hostname={hostname}
-            tenantSubdomain={tenantSubdomain}
             flowSessionId={sessionId || ''}
+            isFirstStep={currentStepIndex === 0}
             organizationId={organization.id}
             organizationName={organization.name}
-            {...commonProps}
+            tenantSubdomain={tenantSubdomain}
           />
         );
 
@@ -391,9 +389,12 @@ export default function ContentFunnelClient({
         return (
           <PaymentStep
             config={config as FunnelStepConfigPayment}
+            onComplete={handleStepComplete}
+            onBack={currentStepIndex > 0 ? handleBack : undefined}
+            data={data}
             program={contentAsProgram}
             skipPayment={skipPayment}
-            {...commonProps}
+            isFirstStep={currentStepIndex === 0}
           />
         );
 
@@ -401,7 +402,8 @@ export default function ContentFunnelClient({
         return (
           <AnalyzingStep
             config={config as FunnelStepConfigAnalyzing}
-            {...commonProps}
+            onComplete={handleStepComplete}
+            data={data}
           />
         );
 
@@ -409,7 +411,9 @@ export default function ContentFunnelClient({
         return (
           <InfoStep
             config={config as FunnelStepConfigInfo}
-            {...commonProps}
+            onComplete={handleStepComplete}
+            onBack={currentStepIndex > 0 ? handleBack : undefined}
+            isFirstStep={currentStepIndex === 0}
           />
         );
 
@@ -417,7 +421,9 @@ export default function ContentFunnelClient({
         return (
           <ExplainerStep
             config={config as FunnelStepConfigExplainer}
-            {...commonProps}
+            onComplete={handleStepComplete}
+            onBack={currentStepIndex > 0 ? handleBack : undefined}
+            isFirstStep={currentStepIndex === 0}
           />
         );
 
@@ -425,9 +431,8 @@ export default function ContentFunnelClient({
         return (
           <LandingPageStep
             config={config as FunnelStepConfigLandingPage}
-            program={contentAsProgram}
-            organization={organization}
-            {...commonProps}
+            onComplete={handleStepComplete}
+            onBack={currentStepIndex > 0 ? handleBack : undefined}
           />
         );
 
@@ -435,9 +440,9 @@ export default function ContentFunnelClient({
         return (
           <SuccessStep
             config={config as FunnelStepConfigSuccess}
+            onComplete={() => completeFunnel(data)}
             program={contentAsProgram}
             branding={branding}
-            onComplete={() => completeFunnel(data)}
           />
         );
 
