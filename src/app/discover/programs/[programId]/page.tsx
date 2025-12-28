@@ -351,6 +351,9 @@ export default function ProgramDetailPage() {
     ? days.filter(d => d.title).sort((a, b) => a.dayIndex - b.dayIndex)
     : [];
 
+  // Resolve cover image URL for TypeScript narrowing
+  const coverImage = program.landingPageCoverImageUrl || program.coverImageUrl;
+
   return (
     <div className="min-h-[100dvh] bg-[#faf8f6] dark:bg-[#05070b] flex flex-col">
       {/* Hero Section - Full Width */}
@@ -359,9 +362,9 @@ export default function ProgramDetailPage() {
           className="h-[200px] sm:h-[260px] w-full relative"
           style={{ background: `linear-gradient(to bottom right, ${hexToRgba(accentLight, 0.3)}, ${hexToRgba(accentLightHover, 0.1)})` }}
         >
-          {(program.landingPageCoverImageUrl || program.coverImageUrl) ? (
+          {coverImage ? (
             <Image
-              src={program.landingPageCoverImageUrl || program.coverImageUrl}
+              src={coverImage}
               alt={program.heroHeadline || program.name}
               fill
               className="object-cover"
