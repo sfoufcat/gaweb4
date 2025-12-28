@@ -180,15 +180,16 @@ export async function GET(
 
     // Fetch program-specific links
     // Query both programIds array (new schema) and programId field (legacy schema)
-    // Remove orderBy to avoid composite index requirement - sort in memory instead
     const [linksArraySnapshot, linksLegacySnapshot] = await Promise.all([
       adminDb
         .collection('program_links')
         .where('programIds', 'array-contains', programId)
+        .orderBy('order', 'asc')
         .get(),
       adminDb
         .collection('program_links')
         .where('programId', '==', programId)
+        .orderBy('order', 'asc')
         .get(),
     ]);
 
@@ -201,19 +202,20 @@ export async function GET(
         id: doc.id,
         ...doc.data(),
       })),
-    ]).sort((a, b) => ((a as { order?: number }).order || 0) - ((b as { order?: number }).order || 0));
+    ]);
 
     // Fetch program-specific downloads
     // Query both programIds array (new schema) and programId field (legacy schema)
-    // Remove orderBy to avoid composite index requirement - sort in memory instead
     const [downloadsArraySnapshot, downloadsLegacySnapshot] = await Promise.all([
       adminDb
         .collection('program_downloads')
         .where('programIds', 'array-contains', programId)
+        .orderBy('order', 'asc')
         .get(),
       adminDb
         .collection('program_downloads')
         .where('programId', '==', programId)
+        .orderBy('order', 'asc')
         .get(),
     ]);
 
@@ -226,7 +228,7 @@ export async function GET(
         id: doc.id,
         ...doc.data(),
       })),
-    ]).sort((a, b) => ((a as { order?: number }).order || 0) - ((b as { order?: number }).order || 0));
+    ]);
 
     // Fetch program days (for 3-day focus)
     // Get the user's enrollment to determine current day
