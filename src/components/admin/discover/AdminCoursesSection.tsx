@@ -26,6 +26,7 @@ import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
+import { CategorySelector } from '@/components/admin/CategorySelector';
 import { ContentPricingFields, getDefaultPricingData, type ContentPricingData } from '@/components/admin/ContentPricingFields';
 
 // Track options for dropdown
@@ -473,7 +474,7 @@ function CourseFormDialog({
     coverImageUrl: '',
     shortDescription: '',
     category: '',
-    level: 'Beginner',
+    level: '',
     track: '' as UserTrack | '',
     programIds: [] as string[],
     featured: false,
@@ -489,7 +490,7 @@ function CourseFormDialog({
         coverImageUrl: course.coverImageUrl || '',
         shortDescription: course.shortDescription || '',
         category: course.category || '',
-        level: course.level || 'Beginner',
+        level: course.level || '',
         track: course.track || '',
         programIds: course.programIds || [],
         featured: course.featured || false,
@@ -508,7 +509,7 @@ function CourseFormDialog({
         coverImageUrl: '',
         shortDescription: '',
         category: '',
-        level: 'Beginner',
+        level: '',
         track: '',
         programIds: [],
         featured: false,
@@ -530,6 +531,8 @@ function CourseFormDialog({
       
       const payload = {
         ...formData,
+        category: formData.category || null, // Convert empty string to null
+        level: formData.level || null, // Convert empty string to null
         track: formData.track || null, // Convert empty string to null (deprecated)
         programIds: formData.programIds, // New program association
         // Flatten pricing fields
@@ -670,24 +673,22 @@ function CourseFormDialog({
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Category *</label>
-                  <input
-                    type="text"
-                    required
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Category</label>
+                  <CategorySelector
                     value={formData.category}
-                    onChange={e => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                    className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert"
-                    placeholder="e.g., Direction, Productivity"
+                    onChange={(category) => setFormData(prev => ({ ...prev, category }))}
+                    placeholder="Select or create category..."
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Level *</label>
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">Level</label>
                   <select
                     value={formData.level}
                     onChange={e => setFormData(prev => ({ ...prev, level: e.target.value }))}
                     className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert"
                   >
+                    <option value="">Select level...</option>
                     <option value="Beginner">Beginner</option>
                     <option value="Intermediate">Intermediate</option>
                     <option value="Advanced">Advanced</option>

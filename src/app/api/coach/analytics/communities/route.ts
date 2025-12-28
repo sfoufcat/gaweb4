@@ -4,18 +4,24 @@
  * GET /api/coach/analytics/communities - Get health overview for all squads
  * Query params:
  *   - type: 'all' | 'standalone' | 'program' (default: 'all')
+ *   - excludeAdmins: 'true' | 'false' (default: 'false') - exclude coaches/super_coaches from calculations
+ * 
+ * REAL-TIME: This endpoint now computes activity in real-time using the Activity Resolver,
+ * ensuring accurate active member counts instead of relying on stale cached data.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
-import type { Squad, SquadAnalytics, SquadAnalyticsSummary, SquadHealthStatus } from '@/types';
+import { batchResolveActivity } from '@/lib/analytics';
+import type { Squad, SquadAnalytics, SquadAnalyticsSummary, SquadHealthStatus, OrgMembership } from '@/types';
 
 export async function GET(request: NextRequest) {
   try {
     const { organizationId } = await requireCoachWithOrg();
     const { searchParams } = new URL(request.url);
     const typeFilter = searchParams.get('type') || 'all'; // 'all', 'standalone', 'program'
+    const excludeAdmins = searchParams.get('excludeAdmins') === 'true';
 
     // Get all squads for this organization and filter in memory
     // This avoids requiring composite indexes
@@ -54,11 +60,25 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // If excluding admins, fetch all org memberships to identify admin users
+    const adminUserIds = new Set<string>();
+    if (excludeAdmins) {
+      const membershipsSnapshot = await adminDb
+        .collection('org_memberships')
+        .where('organizationId', '==', organizationId)
+        .where('isActive', '==', true)
+        .get();
+      
+      for (const doc of membershipsSnapshot.docs) {
+        const membership = doc.data() as OrgMembership;
+        if (membership.orgRole === 'super_coach' || membership.orgRole === 'coach') {
+          adminUserIds.add(membership.userId);
+        }
+      }
+    }
+
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
 
     // Build community summaries
     const communities: SquadAnalyticsSummary[] = [];
@@ -66,44 +86,53 @@ export async function GET(request: NextRequest) {
 
     for (const squadDoc of openSquadDocs) {
       const squad = { id: squadDoc.id, ...squadDoc.data() } as Squad;
-      const memberCount = squad.memberIds?.length || 0;
-
-      // Try to get today's analytics, fallback to yesterday
-      let analytics: SquadAnalytics | null = null;
       
-      const todayAnalyticsDoc = await adminDb
-        .collection('squad_analytics')
-        .doc(`${squad.id}_${todayStr}`)
-        .get();
-      
-      if (todayAnalyticsDoc.exists) {
-        analytics = todayAnalyticsDoc.data() as SquadAnalytics;
-      } else {
-        const yesterdayAnalyticsDoc = await adminDb
-          .collection('squad_analytics')
-          .doc(`${squad.id}_${yesterdayStr}`)
-          .get();
-        
-        if (yesterdayAnalyticsDoc.exists) {
-          analytics = yesterdayAnalyticsDoc.data() as SquadAnalytics;
+      // Get member IDs, optionally excluding admins
+      let memberIds = squad.memberIds || [];
+      if (excludeAdmins) {
+        memberIds = memberIds.filter(id => !adminUserIds.has(id));
+        // Also exclude the squad's coach
+        if (squad.coachId) {
+          memberIds = memberIds.filter(id => id !== squad.coachId);
         }
       }
+      
+      const memberCount = memberIds.length;
 
-      // Calculate health status if no analytics exist
+      // REAL-TIME ACTIVITY CALCULATION using Activity Resolver
       let healthStatus: SquadHealthStatus = 'inactive';
       let activityRate = 0;
       let activeMembers = 0;
 
-      if (analytics) {
-        healthStatus = analytics.healthStatus;
-        activityRate = analytics.activityRate;
-        activeMembers = analytics.activeMembers;
-      } else if (memberCount > 0) {
-        // Estimate based on recent activity
-        healthStatus = memberCount >= 3 ? 'active' : 'inactive';
+      if (memberCount > 0) {
+        // Compute activity in real-time for all members
+        const activityResults = await batchResolveActivity(
+          organizationId,
+          memberIds,
+          new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7 days ago
+        );
+
+        // Count active members (status is 'thriving' or 'active')
+        for (const result of activityResults.values()) {
+          if (result.status === 'thriving' || result.status === 'active') {
+            activeMembers++;
+          }
+        }
+
+        // Calculate activity rate
+        activityRate = memberCount > 0 ? Math.round((activeMembers / memberCount) * 100) : 0;
+
+        // Determine health status based on activity rate
+        if (activityRate >= 70) {
+          healthStatus = 'thriving';
+        } else if (activityRate >= 40) {
+          healthStatus = 'active';
+        } else {
+          healthStatus = 'inactive';
+        }
       }
 
-      // Get previous period for trend
+      // Get previous period for trend (use cached analytics for historical comparison)
       const previousDate = new Date(today);
       previousDate.setDate(previousDate.getDate() - 8);
       const previousStr = previousDate.toISOString().split('T')[0];
@@ -116,7 +145,7 @@ export async function GET(request: NextRequest) {
       let trendPercent = 0;
       let activityTrend: 'up' | 'down' | 'stable' = 'stable';
 
-      if (previousAnalyticsDoc.exists && analytics) {
+      if (previousAnalyticsDoc.exists) {
         const prevAnalytics = previousAnalyticsDoc.data() as SquadAnalytics;
         trendPercent = activityRate - prevAnalytics.activityRate;
         
@@ -142,7 +171,7 @@ export async function GET(request: NextRequest) {
         healthStatus,
         activityTrend,
         trendPercent: Math.abs(trendPercent),
-        lastActivityDate: analytics?.date,
+        lastActivityDate: todayStr,
       });
     }
 
@@ -158,6 +187,7 @@ export async function GET(request: NextRequest) {
         ...healthCounts,
         total: communities.length,
       },
+      computed: 'live', // Indicate this is real-time computed data
     });
   } catch (error) {
     console.error('[COACH_ANALYTICS_COMMUNITIES] Error:', error);

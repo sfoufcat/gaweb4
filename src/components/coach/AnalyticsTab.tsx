@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { TrendingUp, TrendingDown, Minus, Users, Activity, AlertCircle, Heart, ChevronRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Users, Activity, AlertCircle, Heart, ChevronRight, UserX } from 'lucide-react';
 import type { SquadAnalyticsSummary, SquadHealthStatus } from '@/types';
 
 interface CommunitySummary {
@@ -24,13 +24,19 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
   const [selectedSquadId, setSelectedSquadId] = useState<string | null>(null);
   const [squadDetail, setSquadDetail] = useState<any>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [excludeAdmins, setExcludeAdmins] = useState(false);
 
   const fetchCommunities = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${apiBasePath}/communities`);
+      const params = new URLSearchParams();
+      if (excludeAdmins) {
+        params.set('excludeAdmins', 'true');
+      }
+
+      const response = await fetch(`${apiBasePath}/communities?${params.toString()}`);
       if (!response.ok) {
         throw new Error('Failed to fetch community analytics');
       }
@@ -44,7 +50,7 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
     } finally {
       setLoading(false);
     }
-  }, [apiBasePath]);
+  }, [apiBasePath, excludeAdmins]);
 
   const fetchSquadDetail = useCallback(async (squadId: string) => {
     try {
@@ -130,13 +136,28 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
   return (
     <div>
       {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-          Community Health Dashboard
-        </h2>
-        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-          Monitor engagement and activity across your standalone communities
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+            Community Health Dashboard
+          </h2>
+          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+            Monitor engagement and activity across your standalone communities
+          </p>
+        </div>
+        
+        {/* Exclude Admins Toggle */}
+        <button
+          onClick={() => setExcludeAdmins(!excludeAdmins)}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+            excludeAdmins
+              ? 'bg-[#a07855] text-white'
+              : 'bg-[#e1ddd8]/50 text-[#5f5a55] hover:bg-[#e1ddd8] dark:bg-[#272d38]/50 dark:text-[#b2b6c2] dark:hover:bg-[#272d38]'
+          }`}
+        >
+          <UserX className="w-4 h-4" />
+          {excludeAdmins ? 'Admins Excluded' : 'Include Admins'}
+        </button>
       </div>
 
       {/* Summary Cards */}

@@ -15,6 +15,9 @@
  * 
  * IMPORTANT: This endpoint computes activity status in REAL-TIME using the Activity Resolver.
  * It does NOT rely on cached/stale data.
+ * 
+ * NOTE: Admins (coaches, super_coaches) are ALWAYS excluded from client analytics.
+ * This endpoint only shows regular members (clients).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -51,10 +54,12 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '100', 10), 500);
 
     // Build base query for org_memberships
+    // ALWAYS filter to only 'member' role - exclude coaches and super_coaches
     let query = adminDb
       .collection('org_memberships')
       .where('organizationId', '==', organizationId)
-      .where('isActive', '==', true);
+      .where('isActive', '==', true)
+      .where('orgRole', '==', 'member'); // Only include regular members (clients)
 
     // Apply squad filter
     if (squadIdFilter) {

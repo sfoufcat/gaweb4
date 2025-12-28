@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
+import { Sparkles, CheckCircle2 } from 'lucide-react';
 import { useHabits } from '@/hooks/useHabits';
 import type { Habit, FrequencyType } from '@/types';
 
@@ -230,26 +231,35 @@ export default function GrowingHabitsPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6">
+        <div className="bg-[#f3f1ef] dark:bg-[#11141b] rounded-[40px] p-2 flex gap-2 mb-6">
+          {/* Active Tab */}
           <button
             onClick={() => setActiveTab('active')}
-            className={`flex-1 py-3 px-6 rounded-full font-sans text-[14px] font-medium transition-all ${
+            className={`flex-1 rounded-[32px] px-4 py-2 font-albert text-[18px] font-semibold tracking-[-1px] leading-[1.3] transition-all duration-200 ${
               activeTab === 'active'
-                ? 'bg-earth-900 text-white dark:bg-[#b8896a]'
-                : 'bg-white text-text-secondary hover:bg-[#f3f1ef] dark:bg-[#171b22] dark:text-[#b2b6c2] dark:hover:bg-[#1e222a]'
+                ? 'bg-white dark:bg-[#171b22] text-text-primary dark:text-[#f5f5f8] shadow-[0px_4px_10px_0px_rgba(0,0,0,0.1)] dark:shadow-none'
+                : 'text-text-secondary dark:text-[#7d8190]'
             }`}
           >
-            Active
+            <div className="flex items-center justify-center gap-2">
+              <Sparkles className="w-5 h-5" />
+              <span>Active</span>
+            </div>
           </button>
+
+          {/* Completed Tab */}
           <button
             onClick={() => setActiveTab('completed')}
-            className={`flex-1 py-3 px-6 rounded-full font-sans text-[14px] font-medium transition-all ${
+            className={`flex-1 rounded-[32px] px-4 py-2 font-albert text-[18px] font-semibold tracking-[-1px] leading-[1.3] transition-all duration-200 ${
               activeTab === 'completed'
-                ? 'bg-earth-900 text-white dark:bg-[#b8896a]'
-                : 'bg-white text-text-secondary hover:bg-[#f3f1ef] dark:bg-[#171b22] dark:text-[#b2b6c2] dark:hover:bg-[#1e222a]'
+                ? 'bg-white dark:bg-[#171b22] text-text-primary dark:text-[#f5f5f8] shadow-[0px_4px_10px_0px_rgba(0,0,0,0.1)] dark:shadow-none'
+                : 'text-text-secondary dark:text-[#7d8190]'
             }`}
           >
-            Completed
+            <div className="flex items-center justify-center gap-2">
+              <CheckCircle2 className="w-5 h-5" />
+              <span>Completed</span>
+            </div>
           </button>
         </div>
 

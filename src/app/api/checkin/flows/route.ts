@@ -3,6 +3,9 @@ import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import type { OrgCheckInFlow, CheckInStep, CheckInFlowType } from '@/types';
 
+// Ensure this route is never cached - coaches expect immediate updates
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/checkin/flows
  * Get available check-in flows for the authenticated user's organization
@@ -49,19 +52,10 @@ export async function GET(req: Request) {
       };
     });
 
-    // Debug: Log raw flows before filtering
-    console.log('[CHECKIN_FLOWS] Raw flows:', flows.map(f => ({ 
-      id: f.id, 
-      type: f.type, 
-      enabled: f.enabled, 
-      enabledType: typeof f.enabled 
-    })));
-
     // Filter by enabled status in memory (avoids needing composite index)
     // Use !== false to treat undefined/missing enabled field as true (default)
     if (enabledOnly) {
       flows = flows.filter(flow => flow.enabled !== false);
-      console.log('[CHECKIN_FLOWS] After filter:', flows.map(f => ({ id: f.id, type: f.type, enabled: f.enabled })));
     }
 
     return NextResponse.json({ flows });

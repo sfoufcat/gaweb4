@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
-import { DollarSign, Globe, ShoppingBag } from 'lucide-react';
+import { DollarSign, Globe, ShoppingBag, AlertTriangle } from 'lucide-react';
+import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
 
 export interface ContentPricingData {
   priceInCents: number | null;
@@ -32,6 +33,10 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
   const [isPricingEnabled, setIsPricingEnabled] = useState(
     value.priceInCents !== null && value.priceInCents > 0
   );
+  
+  // Check Stripe connection status - pricing requires connected Stripe account
+  const { isConnected: stripeConnected, isLoading: stripeLoading } = useStripeConnectStatus();
+  const canEnablePricing = stripeConnected || stripeLoading;
 
   // Convert cents to dollars for display
   const priceInDollars = value.priceInCents 
@@ -52,6 +57,9 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
   };
 
   const handlePricingToggle = (enabled: boolean) => {
+    // Prevent enabling pricing if Stripe is not connected
+    if (enabled && !canEnablePricing) return;
+    
     setIsPricingEnabled(enabled);
     if (!enabled) {
       onChange({ ...value, priceInCents: null });
@@ -76,15 +84,35 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
         </div>
       </div>
 
+      {/* Stripe Connect Warning */}
+      {!stripeLoading && !stripeConnected && (
+        <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-medium text-amber-800 dark:text-amber-200 font-albert">
+                Stripe account required
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-300 font-albert mt-0.5">
+                Connect your Stripe account in Settings to accept payments.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Enable Pricing Toggle */}
-      <div className="flex items-center gap-3 p-3 bg-[#faf8f6] dark:bg-[#11141b] rounded-lg">
+      <div className={`flex items-center gap-3 p-3 bg-[#faf8f6] dark:bg-[#11141b] rounded-lg ${
+        !canEnablePricing ? 'opacity-50 cursor-not-allowed' : ''
+      }`}>
         <BrandedCheckbox
           checked={isPricingEnabled}
           onChange={handlePricingToggle}
+          disabled={!canEnablePricing}
         />
         <div 
-          className="flex-1 cursor-pointer" 
-          onClick={() => handlePricingToggle(!isPricingEnabled)}
+          className={`flex-1 ${canEnablePricing ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+          onClick={() => canEnablePricing && handlePricingToggle(!isPricingEnabled)}
         >
           <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
             Enable Pricing

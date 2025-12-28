@@ -475,42 +475,62 @@ export function ProgramDetailView({
         </div>
       )}
 
-      {/* 3 Day Focus Section - Connected Accordion */}
+      {/* 3 Day Focus Section - Detached Cards */}
       {hasAnyTasks && (
-        <div className="space-y-3 mb-4">
+        <div className="mt-8 mb-10 space-y-4">
           <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
             {isPreStart ? 'Program preview' : '3 day focus'}
           </h2>
 
-          {/* Single connected accordion container */}
-          <div className="bg-white dark:bg-[#171b22] rounded-[20px] overflow-hidden divide-y divide-[#f3f1ef] dark:divide-[#262b35]">
+          {/* Detached accordion cards */}
+          <div className="space-y-3">
             {threeDayFocus.map((dayFocus, idx) => {
               const isExpanded = expandedDays.has(dayFocus.dayIndex);
               const hasTasks = dayFocus.tasks.length > 0;
-              const isFirst = idx === 0;
-              const isLast = idx === threeDayFocus.length - 1;
+              const isToday = dayFocus.label === 'Today';
 
               return (
-                <div key={dayFocus.dayIndex}>
+                <div 
+                  key={dayFocus.dayIndex}
+                  className={`
+                    bg-white dark:bg-[#171b22] rounded-[16px] overflow-hidden
+                    border border-transparent
+                    transition-all duration-200 ease-out
+                    ${hasTasks ? 'hover:shadow-[0_4px_20px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:border-[#e8e4df] dark:hover:border-[#2a303c]' : 'opacity-60'}
+                    ${isExpanded ? 'shadow-[0_4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] border-[#e8e4df] dark:border-[#2a303c]' : ''}
+                  `}
+                >
                   <button
                     onClick={() => hasTasks && toggleDay(dayFocus.dayIndex)}
-                    className={`w-full p-4 flex items-center justify-between ${
-                      !hasTasks ? 'opacity-50 cursor-default' : 'cursor-pointer hover:bg-[#f9f8f6] dark:hover:bg-[#1a1f28]'
+                    className={`w-full px-5 py-4 flex items-center justify-between ${
+                      !hasTasks ? 'cursor-default' : 'cursor-pointer'
                     }`}
                     disabled={!hasTasks}
                   >
-                    <span className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3]">
-                      {dayFocus.label}
-                    </span>
-                    {hasTasks && (
-                      <ChevronDown 
-                        className={`w-5 h-5 text-text-secondary dark:text-[#7d8190] transition-transform ${
-                          isExpanded ? 'rotate-180' : ''
-                        }`} 
-                      />
-                    )}
-                    {!hasTasks && (
-                      <span className="text-xs text-text-muted dark:text-[#7d8190]">No tasks</span>
+                    <div className="flex items-center gap-3">
+                      <span className="font-albert text-[17px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px] leading-[1.3]">
+                        {dayFocus.label}
+                      </span>
+                      {isToday && hasTasks && (
+                        <span className="px-2 py-0.5 rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/15 text-[11px] font-medium text-[#a07855] dark:text-[#b8896a]">
+                          {dayFocus.tasks.length} task{dayFocus.tasks.length !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                      {!isToday && hasTasks && (
+                        <span className="text-[12px] text-text-muted dark:text-[#7d8190]">
+                          {dayFocus.tasks.length} task{dayFocus.tasks.length !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                    {hasTasks ? (
+                      <motion.div
+                        animate={{ rotate: isExpanded ? 180 : 0 }}
+                        transition={{ duration: 0.2, ease: 'easeOut' }}
+                      >
+                        <ChevronDown className="w-5 h-5 text-[#a7a39e] dark:text-[#7d8190]" />
+                      </motion.div>
+                    ) : (
+                      <span className="text-[12px] text-text-muted dark:text-[#7d8190] italic">No tasks</span>
                     )}
                   </button>
 
@@ -520,15 +540,27 @@ export function ProgramDetailView({
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2, ease: 'easeInOut' }}
+                        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
                         className="overflow-hidden"
                       >
-                        <div className="px-4 pb-4">
-                          <ol className="font-sans text-[15px] text-text-secondary dark:text-[#b2b6c2] leading-[1.5] tracking-[-0.3px] list-decimal pl-6 space-y-2">
+                        <div className="px-5 pb-5 pt-1">
+                          <div className="space-y-2.5">
                             {dayFocus.tasks.map((task, i) => (
-                              <li key={task.id || i}>{task.title}</li>
+                              <div 
+                                key={task.id || i}
+                                className="flex items-start gap-3 group"
+                              >
+                                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center mt-0.5">
+                                  <span className="text-[11px] font-medium text-[#a7a39e] dark:text-[#7d8190]">
+                                    {i + 1}
+                                  </span>
+                                </span>
+                                <span className="font-sans text-[15px] text-text-secondary dark:text-[#b2b6c2] leading-[1.5] tracking-[-0.2px]">
+                                  {task.title}
+                                </span>
+                              </div>
                             ))}
-                          </ol>
+                          </div>
                         </div>
                       </motion.div>
                     )}

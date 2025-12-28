@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Users, Heart, Package, Funnel as FunnelIcon } from 'lucide-react';
+import { Users, Heart, Package, Funnel as FunnelIcon, FileText, MessageCircle } from 'lucide-react';
 import { ClientActivityTab } from './ClientActivityTab';
 import { AnalyticsTab } from '../AnalyticsTab';
 import { ProductAnalyticsTab } from './ProductAnalyticsTab';
 import { FunnelAnalyticsTab } from './FunnelAnalyticsTab';
+import { FeedAnalyticsTab } from './FeedAnalyticsTab';
+import { ChatAnalyticsTab } from './ChatAnalyticsTab';
 import { GAConnectButton } from './GAConnectButton';
 
-type TabType = 'clients' | 'community' | 'products' | 'funnels';
+type TabType = 'clients' | 'community' | 'feed' | 'chats' | 'products' | 'funnels';
 
 interface AnalyticsDashboardProps {
   apiBasePath?: string;
@@ -23,6 +25,8 @@ export function AnalyticsDashboard({ apiBasePath = '/api/coach/analytics' }: Ana
   const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
     { id: 'clients', label: 'Client Activity', icon: <Users className="w-4 h-4" /> },
     { id: 'community', label: 'Community Health', icon: <Heart className="w-4 h-4" /> },
+    { id: 'feed', label: 'Feed Stats', icon: <FileText className="w-4 h-4" /> },
+    { id: 'chats', label: 'Chat Stats', icon: <MessageCircle className="w-4 h-4" /> },
     { id: 'products', label: 'Products', icon: <Package className="w-4 h-4" /> },
     { id: 'funnels', label: 'Funnels', icon: <FunnelIcon className="w-4 h-4" /> },
   ];
@@ -100,6 +104,8 @@ export function AnalyticsDashboard({ apiBasePath = '/api/coach/analytics' }: Ana
         >
           {displayedTab === 'clients' && <ClientActivityTab apiBasePath={apiBasePath} />}
           {displayedTab === 'community' && <AnalyticsTab apiBasePath={apiBasePath} />}
+          {displayedTab === 'feed' && <FeedAnalyticsTab apiBasePath={apiBasePath} />}
+          {displayedTab === 'chats' && <ChatAnalyticsTab apiBasePath={apiBasePath} />}
           {displayedTab === 'products' && <ProductAnalyticsTab apiBasePath={apiBasePath} />}
           {displayedTab === 'funnels' && <FunnelAnalyticsTab apiBasePath={apiBasePath} />}
         </div>
