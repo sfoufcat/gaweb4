@@ -380,6 +380,9 @@ export default function ContentFunnelClient({
             config={config as FunnelStepConfigSignup}
             hostname={hostname}
             tenantSubdomain={tenantSubdomain}
+            flowSessionId={sessionId || ''}
+            organizationId={organization.id}
+            organizationName={organization.name}
             {...commonProps}
           />
         );
