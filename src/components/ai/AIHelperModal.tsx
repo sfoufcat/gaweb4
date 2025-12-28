@@ -394,9 +394,7 @@ export function AIHelperModal({
           {/* Header */}
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#a07855] to-[#8c6245] rounded-xl flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
+              <Sparkles className="w-6 h-6 text-[#a07855]" />
               <div>
                 <h2 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
                   {title}
@@ -450,7 +448,7 @@ export function AIHelperModal({
                       : "E.g., Create a landing page for busy professionals who want to level up their health. Tone should be friendly but professional. Highlight the community aspect and accountability..."
                     }
                     rows={6}
-                    className="w-full px-4 py-3 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none focus:outline-none focus:ring-2 focus:ring-[#a07855]/50"
+                    className="w-full px-4 py-3 border-2 border-[#a07855]/40 dark:border-[#a07855]/30 rounded-xl bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none focus:outline-none focus:border-[#a07855]"
                   />
                   <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
                     Be specific about your audience, outcomes, tone, and any constraints

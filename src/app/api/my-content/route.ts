@@ -123,59 +123,81 @@ export async function GET(request: Request) {
 
     // 2. Get program enrollments
     if (typeFilter === 'all' || typeFilter === 'programs') {
-      const enrollmentsSnapshot = await adminDb
-        .collection('program_enrollments')
-        .where('userId', '==', userId)
-        .where('status', 'in', ['active', 'upcoming', 'completed'])
-        .orderBy('createdAt', 'desc')
-        .get();
-
-      for (const doc of enrollmentsSnapshot.docs) {
-        const enrollment = doc.data() as ProgramEnrollment;
-        const contentKey = `program:${enrollment.programId}`;
-        
-        if (seenContentIds.has(contentKey)) continue;
-        seenContentIds.add(contentKey);
-
-        // Fetch program details
-        const programDoc = await adminDb
-          .collection('programs')
-          .doc(enrollment.programId)
+      try {
+        // Simplified query: get all enrollments for user, then filter in memory
+        // This avoids complex composite index requirements with 'in' + 'orderBy'
+        const enrollmentsSnapshot = await adminDb
+          .collection('program_enrollments')
+          .where('userId', '==', userId)
           .get();
 
-        if (programDoc.exists) {
-          const program = programDoc.data();
-          
-          // Get coach info
-          let coachName: string | undefined;
-          let coachImageUrl: string | undefined;
-          
-          if (program?.organizationId) {
-            const orgSettingsDoc = await adminDb
-              .collection('org_settings')
-              .doc(program.organizationId)
-              .get();
-            
-            if (orgSettingsDoc.exists) {
-              const orgSettings = orgSettingsDoc.data();
-              coachName = orgSettings?.coachDisplayName;
-              coachImageUrl = orgSettings?.coachAvatarUrl;
-            }
-          }
-
-          myContent.push({
-            id: doc.id,
-            contentType: 'program',
-            contentId: enrollment.programId,
-            title: program?.name || 'Unknown Program',
-            description: program?.description,
-            coverImageUrl: program?.coverImageUrl,
-            organizationId: enrollment.organizationId,
-            coachName,
-            coachImageUrl,
-            purchasedAt: enrollment.createdAt,
+        // Filter to valid statuses in memory
+        const validStatuses = ['active', 'upcoming', 'completed'];
+        const validEnrollments = enrollmentsSnapshot.docs
+          .filter(doc => {
+            const status = doc.data().status;
+            return validStatuses.includes(status);
+          })
+          .sort((a, b) => {
+            const aDate = a.data().createdAt || '';
+            const bDate = b.data().createdAt || '';
+            return bDate.localeCompare(aDate); // Descending
           });
+
+        console.log(`[MY_CONTENT] Found ${validEnrollments.length} program enrollments for user ${userId}`);
+
+        for (const doc of validEnrollments) {
+          const enrollment = doc.data() as ProgramEnrollment;
+          const contentKey = `program:${enrollment.programId}`;
+          
+          if (seenContentIds.has(contentKey)) continue;
+          seenContentIds.add(contentKey);
+
+          // Fetch program details
+          const programDoc = await adminDb
+            .collection('programs')
+            .doc(enrollment.programId)
+            .get();
+
+          if (programDoc.exists) {
+            const program = programDoc.data();
+            
+            // Get coach info
+            let coachName: string | undefined;
+            let coachImageUrl: string | undefined;
+            
+            if (program?.organizationId) {
+              const orgSettingsDoc = await adminDb
+                .collection('org_settings')
+                .doc(program.organizationId)
+                .get();
+              
+              if (orgSettingsDoc.exists) {
+                const orgSettings = orgSettingsDoc.data();
+                coachName = orgSettings?.coachDisplayName;
+                coachImageUrl = orgSettings?.coachAvatarUrl;
+              }
+            }
+
+            myContent.push({
+              id: doc.id,
+              contentType: 'program',
+              contentId: enrollment.programId,
+              title: program?.name || 'Unknown Program',
+              description: program?.description,
+              coverImageUrl: program?.coverImageUrl,
+              organizationId: enrollment.organizationId,
+              coachName,
+              coachImageUrl,
+              purchasedAt: enrollment.createdAt,
+            });
+          } else {
+            console.warn(`[MY_CONTENT] Program ${enrollment.programId} not found for enrollment ${doc.id}`);
+          }
         }
+      } catch (enrollmentError) {
+        console.error('[MY_CONTENT] Error fetching program enrollments:', enrollmentError);
+        // Continue without throwing - we want to return partial results
       }
     }
 

@@ -114,23 +114,22 @@ export async function GET(
     // Query both programIds array (new schema) and programId field (legacy schema)
     const now = new Date().toISOString().split('T')[0];
     const [eventsArraySnapshot, eventsLegacySnapshot] = await Promise.all([
+      // New schema: programIds array - can use date filter (array-contains allows additional filters)
       adminDb
         .collection('events')
         .where('programIds', 'array-contains', programId)
         .where('date', '>=', now)
         .orderBy('date', 'asc')
-        .limit(10)
+        .limit(20)
         .get(),
+      // Legacy schema: programId field - fetch all, filter in memory to avoid index requirement
       adminDb
         .collection('events')
         .where('programId', '==', programId)
-        .where('date', '>=', now)
-        .orderBy('date', 'asc')
-        .limit(10)
         .get(),
     ]);
 
-    // Merge and dedupe events, then sort by date and limit to 10
+    // Merge and dedupe events, then filter by date, sort, and limit to 10
     const mergedEvents = dedupeById([
       ...eventsArraySnapshot.docs.map(doc => ({
         id: doc.id,
@@ -142,7 +141,9 @@ export async function GET(
       })),
     ]) as DiscoverEvent[];
 
+    // Filter to upcoming events, sort by date, and limit
     const events: DiscoverEvent[] = mergedEvents
+      .filter(e => e.date >= now)
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(0, 10);
 

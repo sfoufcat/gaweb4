@@ -22,6 +22,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
+import { ContentPricingFields, getDefaultPricingData, type ContentPricingData } from '@/components/admin/ContentPricingFields';
 
 interface ProgramDownload {
   id: string;
@@ -64,10 +65,13 @@ function DownloadFormDialog({
     fileType: '',
     programIds: [] as string[],
     order: 0,
+    pricing: getDefaultPricingData() as ContentPricingData,
   });
 
   useEffect(() => {
     if (download) {
+      // Cast to any to access potential pricing fields
+      const downloadData = download as ProgramDownload & { priceInCents?: number; currency?: string; purchaseType?: string; isPublic?: boolean };
       setFormData({
         title: download.title || '',
         description: download.description || '',
@@ -75,6 +79,12 @@ function DownloadFormDialog({
         fileType: download.fileType || '',
         programIds: download.programIds || (download.programId ? [download.programId] : []),
         order: download.order || 0,
+        pricing: {
+          priceInCents: downloadData.priceInCents ?? null,
+          currency: downloadData.currency || 'USD',
+          purchaseType: (downloadData.purchaseType as 'popup' | 'landing_page') || 'popup',
+          isPublic: downloadData.isPublic !== false,
+        },
       });
     } else {
       setFormData({
@@ -84,6 +94,7 @@ function DownloadFormDialog({
         fileType: '',
         programIds: [],
         order: 0,
+        pricing: getDefaultPricingData(),
       });
     }
   }, [download, isOpen]);
@@ -97,10 +108,20 @@ function DownloadFormDialog({
         ? `${apiEndpoint}/${download.id}`
         : apiEndpoint;
       
+      // Flatten pricing into payload
+      const payload = {
+        ...formData,
+        priceInCents: formData.pricing.priceInCents,
+        currency: formData.pricing.currency,
+        purchaseType: formData.pricing.purchaseType,
+        isPublic: formData.pricing.isPublic,
+      };
+      delete (payload as Record<string, unknown>).pricing;
+
       const response = await fetch(url, {
         method: isEditing ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -222,6 +243,12 @@ function DownloadFormDialog({
                 programsApiEndpoint={programsApiEndpoint}
               />
             </div>
+
+            {/* Pricing & Access */}
+            <ContentPricingFields
+              value={formData.pricing}
+              onChange={(pricing) => setFormData(prev => ({ ...prev, pricing }))}
+            />
 
             {/* Order */}
             <div>

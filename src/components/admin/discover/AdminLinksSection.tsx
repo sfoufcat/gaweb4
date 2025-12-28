@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
+import { ContentPricingFields, getDefaultPricingData, type ContentPricingData } from '@/components/admin/ContentPricingFields';
 
 interface ProgramLink {
   id: string;
@@ -58,16 +59,25 @@ function LinkFormDialog({
     url: '',
     programIds: [] as string[],
     order: 0,
+    pricing: getDefaultPricingData() as ContentPricingData,
   });
 
   useEffect(() => {
     if (link) {
+      // Cast to any to access potential pricing fields
+      const linkData = link as ProgramLink & { priceInCents?: number; currency?: string; purchaseType?: string; isPublic?: boolean };
       setFormData({
         title: link.title || '',
         description: link.description || '',
         url: link.url || '',
         programIds: link.programIds || (link.programId ? [link.programId] : []),
         order: link.order || 0,
+        pricing: {
+          priceInCents: linkData.priceInCents ?? null,
+          currency: linkData.currency || 'USD',
+          purchaseType: (linkData.purchaseType as 'popup' | 'landing_page') || 'popup',
+          isPublic: linkData.isPublic !== false,
+        },
       });
     } else {
       setFormData({
@@ -76,6 +86,7 @@ function LinkFormDialog({
         url: '',
         programIds: [],
         order: 0,
+        pricing: getDefaultPricingData(),
       });
     }
   }, [link, isOpen]);
@@ -85,14 +96,24 @@ function LinkFormDialog({
     setSaving(true);
 
     try {
-      const url = isEditing 
+      const apiUrl = isEditing 
         ? `${apiEndpoint}/${link.id}`
         : apiEndpoint;
       
-      const response = await fetch(url, {
+      // Flatten pricing into payload
+      const payload = {
+        ...formData,
+        priceInCents: formData.pricing.priceInCents,
+        currency: formData.pricing.currency,
+        purchaseType: formData.pricing.purchaseType,
+        isPublic: formData.pricing.isPublic,
+      };
+      delete (payload as Record<string, unknown>).pricing;
+
+      const response = await fetch(apiUrl, {
         method: isEditing ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -173,6 +194,12 @@ function LinkFormDialog({
                 programsApiEndpoint={programsApiEndpoint}
               />
             </div>
+
+            {/* Pricing & Access */}
+            <ContentPricingFields
+              value={formData.pricing}
+              onChange={(pricing) => setFormData(prev => ({ ...prev, pricing }))}
+            />
 
             {/* Order */}
             <div>

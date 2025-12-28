@@ -27,6 +27,7 @@ import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
 import { AuthorSelector } from '@/components/admin/AuthorSelector';
 import { CategorySelector } from '@/components/admin/CategorySelector';
+import { ContentPricingFields, getDefaultPricingData, type ContentPricingData } from '@/components/admin/ContentPricingFields';
 
 // Article Form Dialog
 function ArticleFormDialog({
@@ -60,6 +61,7 @@ function ArticleFormDialog({
     programIds: [] as string[],
     featured: false,
     trending: false,
+    pricing: getDefaultPricingData() as ContentPricingData,
   });
 
   // Determine if we're in coach context based on API endpoint
@@ -83,6 +85,12 @@ function ArticleFormDialog({
         programIds: article.programIds || [],
         featured: article.featured || false,
         trending: article.trending || false,
+        pricing: {
+          priceInCents: article.priceInCents ?? null,
+          currency: article.currency || 'USD',
+          purchaseType: article.purchaseType || 'popup',
+          isPublic: article.isPublic !== false, // Default to true
+        },
       });
       // Show thumbnail section if article already has a thumbnail
       setShowThumbnail(!!article.thumbnailUrl);
@@ -101,6 +109,7 @@ function ArticleFormDialog({
         programIds: [],
         featured: false,
         trending: false,
+        pricing: getDefaultPricingData(),
       });
       setShowThumbnail(false);
     }
@@ -116,7 +125,14 @@ function ArticleFormDialog({
         thumbnailUrl: formData.thumbnailUrl || null,
         publishedAt: formData.publishedAt ? new Date(formData.publishedAt).toISOString() : new Date().toISOString(),
         programIds: formData.programIds,
+        // Flatten pricing fields
+        priceInCents: formData.pricing.priceInCents,
+        currency: formData.pricing.currency,
+        purchaseType: formData.pricing.purchaseType,
+        isPublic: formData.pricing.isPublic,
       };
+      // Remove the nested pricing object from payload
+      delete (payload as Record<string, unknown>).pricing;
 
       const url = isEditing 
         ? `${apiEndpoint}/${article.id}`
@@ -298,6 +314,12 @@ function ArticleFormDialog({
                 programsApiEndpoint={programsApiEndpoint}
               />
             </div>
+
+            {/* Pricing & Access */}
+            <ContentPricingFields
+              value={formData.pricing}
+              onChange={(pricing) => setFormData(prev => ({ ...prev, pricing }))}
+            />
 
             {/* Featured & Trending - Removed "Recommended" from Featured */}
             <div className="flex gap-6">

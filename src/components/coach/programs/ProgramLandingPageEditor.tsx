@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Plus, Trash2, Star, GripVertical, ImageIcon, X } from 'lucide-react';
+import { Plus, Trash2, Star, GripVertical, ImageIcon, X, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { MediaUpload } from '@/components/admin/MediaUpload';
@@ -156,7 +156,7 @@ export function ProgramLandingPageEditor({
             </button>
           </div>
         ) : (
-          <div className="w-full">
+          <div className="max-w-xs">
             <MediaUpload
               value={formData.landingPageCoverImageUrl || ''}
               onChange={(url) => onChange({ ...formData, landingPageCoverImageUrl: url })}
@@ -165,6 +165,7 @@ export function ProgramLandingPageEditor({
               uploadEndpoint={uploadEndpoint}
               hideLabel
               aspectRatio="16:9"
+              previewSize="thumbnail"
             />
           </div>
         )}
@@ -344,22 +345,75 @@ export function ProgramLandingPageEditor({
           ) : (
             formData.testimonials.map((testimonial, index) => (
               <div key={index} className="p-4 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <textarea
-                    value={testimonial.text}
-                    onChange={(e) => updateTestimonial(index, { text: e.target.value })}
-                    placeholder="What did they say about the program?"
-                    rows={3}
-                    className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm resize-none"
-                  />
-                  <button
-                    onClick={() => removeTestimonial(index)}
-                    className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4 text-red-500" />
-                  </button>
+                <div className="flex items-start gap-3">
+                  {/* Profile Picture */}
+                  <div className="flex-shrink-0">
+                    {testimonial.imageUrl ? (
+                      <div className="relative w-12 h-12 rounded-full overflow-hidden bg-[#faf8f6] dark:bg-[#11141b]">
+                        <Image
+                          src={testimonial.imageUrl}
+                          alt={testimonial.author || 'Profile'}
+                          fill
+                          className="object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => updateTestimonial(index, { imageUrl: '' })}
+                          className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-4 h-4 text-white" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="w-12 h-12 rounded-full bg-[#faf8f6] dark:bg-[#1e222a] border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] flex items-center justify-center cursor-pointer hover:border-[#a07855] transition-colors">
+                        <User className="w-5 h-5 text-[#d1ccc5] dark:text-[#7d8190]" />
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png,image/webp"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const formDataUpload = new FormData();
+                            formDataUpload.append('file', file);
+                            formDataUpload.append('folder', uploadFolder);
+                            try {
+                              const res = await fetch(uploadEndpoint, {
+                                method: 'POST',
+                                body: formDataUpload,
+                              });
+                              const data = await res.json();
+                              if (data.url) {
+                                updateTestimonial(index, { imageUrl: data.url });
+                              }
+                            } catch (err) {
+                              console.error('Upload failed:', err);
+                            }
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  
+                  {/* Quote and Delete */}
+                  <div className="flex-1 flex items-start gap-2">
+                    <textarea
+                      value={testimonial.text}
+                      onChange={(e) => updateTestimonial(index, { text: e.target.value })}
+                      placeholder="What did they say about the program?"
+                      rows={3}
+                      className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm resize-none"
+                    />
+                    <button
+                      onClick={() => removeTestimonial(index)}
+                      className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </button>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                
+                <div className="grid grid-cols-2 gap-3 pl-15">
                   <input
                     type="text"
                     value={testimonial.author}
@@ -375,7 +429,7 @@ export function ProgramLandingPageEditor({
                     className="px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm"
                   />
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 pl-15">
                   <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Rating:</span>
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button

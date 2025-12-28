@@ -28,6 +28,7 @@ import { MediaUpload } from '@/components/admin/MediaUpload';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
 import { CategorySelector } from '@/components/admin/CategorySelector';
+import { ContentPricingFields, getDefaultPricingData, type ContentPricingData } from '@/components/admin/ContentPricingFields';
 
 // Common timezones (same as SquadCallEditForm)
 const COMMON_TIMEZONES = [
@@ -141,6 +142,8 @@ function EventFormDialog({
     recurrence: 'none' as RecurrenceFrequency | 'none',
     recurrenceDayOfWeek: 1,
     recurrenceEndDate: '',
+    // Pricing
+    pricing: getDefaultPricingData() as ContentPricingData,
   });
 
   // Fetch coaches on mount
@@ -205,6 +208,12 @@ function EventFormDialog({
         recurrence: 'none',
         recurrenceDayOfWeek: 1,
         recurrenceEndDate: '',
+        pricing: {
+          priceInCents: event.priceInCents ?? null,
+          currency: event.currency || 'USD',
+          purchaseType: event.purchaseType || 'popup',
+          isPublic: event.isPublic !== false,
+        },
       });
       setShowImagePreview(!!event.coverImageUrl);
     } else {
@@ -231,6 +240,7 @@ function EventFormDialog({
         recurrence: 'none',
         recurrenceDayOfWeek: 1,
         recurrenceEndDate: '',
+        pricing: getDefaultPricingData(),
       });
       setShowImagePreview(false);
       setShowRecurrenceDetails(false);
@@ -304,6 +314,11 @@ function EventFormDialog({
           startDate: formData.date,
           endDate: formData.recurrenceEndDate || undefined,
         } : null,
+        // Pricing
+        priceInCents: formData.pricing.priceInCents,
+        currency: formData.pricing.currency,
+        purchaseType: formData.pricing.purchaseType,
+        isPublic: formData.pricing.isPublic,
       };
 
       const url = isEditing 
@@ -696,6 +711,12 @@ function EventFormDialog({
                 </div>
               </div>
             </details>
+
+            {/* Pricing & Access */}
+            <ContentPricingFields
+              value={formData.pricing}
+              onChange={(pricing) => setFormData(prev => ({ ...prev, pricing }))}
+            />
 
             {/* Max Attendees */}
             <div className="grid grid-cols-2 gap-3">

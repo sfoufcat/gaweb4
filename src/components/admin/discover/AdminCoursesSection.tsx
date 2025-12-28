@@ -26,6 +26,7 @@ import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { ProgramSelector } from '@/components/admin/ProgramSelector';
+import { ContentPricingFields, getDefaultPricingData, type ContentPricingData } from '@/components/admin/ContentPricingFields';
 
 // Track options for dropdown
 const TRACK_OPTIONS: { value: UserTrack | ''; label: string }[] = [
@@ -476,6 +477,7 @@ function CourseFormDialog({
     featured: false,
     trending: false,
     modules: [] as CourseModule[],
+    pricing: getDefaultPricingData() as ContentPricingData,
   });
 
   useEffect(() => {
@@ -491,6 +493,12 @@ function CourseFormDialog({
         featured: course.featured || false,
         trending: course.trending || false,
         modules: course.modules || [],
+        pricing: {
+          priceInCents: course.priceInCents ?? null,
+          currency: course.currency || 'USD',
+          purchaseType: course.purchaseType || 'popup',
+          isPublic: course.isPublic !== false,
+        },
       });
     } else {
       setFormData({
@@ -504,6 +512,7 @@ function CourseFormDialog({
         featured: false,
         trending: false,
         modules: [],
+        pricing: getDefaultPricingData(),
       });
     }
   }, [course, isOpen]);
@@ -521,7 +530,14 @@ function CourseFormDialog({
         ...formData,
         track: formData.track || null, // Convert empty string to null (deprecated)
         programIds: formData.programIds, // New program association
+        // Flatten pricing fields
+        priceInCents: formData.pricing.priceInCents,
+        currency: formData.pricing.currency,
+        purchaseType: formData.pricing.purchaseType,
+        isPublic: formData.pricing.isPublic,
       };
+      // Remove the nested pricing object from payload
+      delete (payload as Record<string, unknown>).pricing;
       
       const response = await fetch(url, {
         method: isEditing ? 'PATCH' : 'POST',
@@ -691,6 +707,12 @@ function CourseFormDialog({
                 
               </div>
               
+              {/* Pricing & Access */}
+              <ContentPricingFields
+                value={formData.pricing}
+                onChange={(pricing) => setFormData(prev => ({ ...prev, pricing }))}
+              />
+
               <div className="flex gap-6">
                 <div className="flex items-center gap-2">
                   <BrandedCheckbox

@@ -178,6 +178,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [landingPageSaved, setLandingPageSaved] = useState(true);
   const [deleteConfirmProgram, setDeleteConfirmProgram] = useState<Program | null>(null);
   const [deleteConfirmCohort, setDeleteConfirmCohort] = useState<ProgramCohort | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -272,6 +273,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           showEnrollmentCount: program.showEnrollmentCount || false,
           showCurriculum: program.showCurriculum || false,
         });
+        setLandingPageSaved(true);
       }
     } catch (err) {
       console.error('Error fetching program details:', err);
@@ -776,6 +778,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           showEnrollmentCount: data.program.showEnrollmentCount || false,
           showCurriculum: data.program.showCurriculum || false,
         });
+        setLandingPageSaved(true);
       }
       
       setIsAILandingPageModalOpen(false);
@@ -1751,12 +1754,24 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   <Sparkles className="w-4 h-4" />
                   Generate with AI
                 </Button>
-                <Button 
-                  onClick={handleSaveLandingPage}
-                  disabled={saving}
-                  className="bg-[#a07855] hover:bg-[#8c6245] text-white flex items-center gap-2"
+                <a
+                  href={`/discover/programs/${selectedProgram?.slug || selectedProgram?.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 hover:bg-[#faf8f6] dark:hover:bg-white/5 rounded-lg transition-colors"
+                  title="Preview landing page"
                 >
-                  {saving ? 'Saving...' : 'Save Changes'}
+                  <ExternalLink className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                </a>
+                <Button 
+                  onClick={() => {
+                    handleSaveLandingPage();
+                    setLandingPageSaved(true);
+                  }}
+                  disabled={saving || landingPageSaved}
+                  className={`flex items-center gap-2 ${landingPageSaved ? 'bg-[#d1ccc5] dark:bg-[#3d424d] cursor-not-allowed' : 'bg-[#a07855] hover:bg-[#8c6245]'} text-white`}
+                >
+                  {saving ? 'Saving...' : landingPageSaved ? 'Saved' : 'Save'}
                 </Button>
               </div>
             </div>
@@ -1786,7 +1801,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             ) : (
               <ProgramLandingPageEditor
                 formData={landingPageFormData}
-                onChange={setLandingPageFormData}
+                onChange={(data) => {
+                  setLandingPageFormData(data);
+                  setLandingPageSaved(false);
+                }}
               />
             )}
           </div>
