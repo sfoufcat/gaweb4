@@ -183,6 +183,7 @@ export type DiscoverCourse = {
   title: string;
   coverImageUrl: string;
   shortDescription: string;
+  longDescription?: string;
   category: string;
   level: string;
   totalDurationMinutes?: number;

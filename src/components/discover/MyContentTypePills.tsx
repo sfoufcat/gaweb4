@@ -28,14 +28,17 @@ export function MyContentTypePills({
   totalCount,
 }: MyContentTypePillsProps) {
   // Define filter options - only show types that have content
-  const filters: { key: MyContentFilter; label: string; count: number }[] = [
+  const allFilters: { key: MyContentFilter; label: string; count: number }[] = [
     { key: 'all', label: 'All', count: totalCount },
     { key: 'article', label: 'Articles', count: counts.articles },
     { key: 'course', label: 'Courses', count: counts.courses },
     { key: 'event', label: 'Events', count: counts.events },
     { key: 'program', label: 'Programs', count: counts.programs },
     { key: 'squad', label: 'Squads', count: counts.squads },
-  ].filter(f => f.key === 'all' || f.count > 0); // Always show All, only show others if they have items
+  ];
+  
+  // Always show All, only show others if they have items
+  const filters = allFilters.filter(f => f.key === 'all' || f.count > 0);
 
   return (
     <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4">
