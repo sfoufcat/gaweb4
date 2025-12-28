@@ -144,9 +144,19 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
 
   if (error) {
     return (
-      <div className="text-center py-12">
+      <div className="text-center py-12 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
         <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
-        <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">{error}</p>
+        <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">{error}</p>
+        <p className="text-xs text-[#5f5a55]/70 dark:text-[#b2b6c2]/70 font-albert max-w-md mx-auto">
+          If this error persists, the Firestore index may need to be deployed. 
+          Run <code className="px-1 py-0.5 bg-[#e1ddd8] dark:bg-[#262b35] rounded">firebase deploy --only firestore:indexes</code>
+        </p>
+        <button
+          onClick={() => fetchFunnels()}
+          className="mt-4 px-4 py-2 rounded-lg text-sm font-medium bg-[#a07855] text-white hover:bg-[#8c6245] transition-colors"
+        >
+          Try Again
+        </button>
       </div>
     );
   }
@@ -168,7 +178,7 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '0ms' }}>
           <div className="flex items-center gap-2 mb-2">
             <Eye className="w-5 h-5 text-blue-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Views</span>
@@ -179,7 +189,7 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Funnel sessions</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '50ms' }}>
           <div className="flex items-center gap-2 mb-2">
             <MousePointer className="w-5 h-5 text-purple-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Completions</span>
@@ -190,7 +200,7 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Conversions</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '100ms' }}>
           <div className="flex items-center gap-2 mb-2">
             <TrendingDown className="w-5 h-5 text-[#a07855]" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Conversion Rate</span>
@@ -201,7 +211,7 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Overall</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '150ms' }}>
           <div className="flex items-center gap-2 mb-2">
             <DollarSign className="w-5 h-5 text-emerald-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Revenue</span>
@@ -226,10 +236,11 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
         </div>
       ) : (
         <div className="space-y-4">
-          {funnels.map((funnel) => (
+          {funnels.map((funnel, index) => (
             <div 
               key={funnel.id}
-              className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden"
+              className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden animate-fadeIn"
+              style={{ animationDelay: `${200 + index * 50}ms` }}
             >
               {/* Funnel Header */}
               <button
@@ -264,13 +275,15 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
                     <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">{formatCurrency(funnel.totalRevenue)}</p>
                     <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">{funnel.totalCompletions} sales</p>
                   </div>
-                  <ChevronDown className={`w-5 h-5 text-[#5f5a55] transition-transform ${expandedFunnelId === funnel.id ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-5 h-5 text-[#5f5a55] transition-transform duration-200 ${expandedFunnelId === funnel.id ? 'rotate-180' : ''}`} />
                 </div>
               </button>
 
               {/* Expanded Step Details */}
-              {expandedFunnelId === funnel.id && (
-                <div className="border-t border-[#e1ddd8] dark:border-[#262b35] p-4">
+              <div className={`border-t border-[#e1ddd8] dark:border-[#262b35] overflow-hidden transition-all duration-300 ease-out ${
+                expandedFunnelId === funnel.id ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'
+              }`}>
+                <div className="p-4">
                   {/* Highest Drop-off Alert */}
                   {funnel.highestDropOffStep && funnel.highestDropOffStep.dropOffRate > 30 && (
                     <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 flex items-start gap-3">
@@ -339,7 +352,7 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           ))}
         </div>

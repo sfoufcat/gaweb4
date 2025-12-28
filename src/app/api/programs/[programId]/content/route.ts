@@ -18,12 +18,15 @@ export async function GET(
     const { userId } = await auth();
     const { programId } = await params;
 
+    console.log(`[PROGRAM_CONTENT] Fetching content for program: ${programId}, user: ${userId}`);
+
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // MULTI-TENANCY: Get org from tenant domain (null on platform domain)
     const organizationId = await getEffectiveOrgId();
+    console.log(`[PROGRAM_CONTENT] Organization context: ${organizationId || 'platform mode'}`);
 
     // Verify user is enrolled in this program
     const enrollmentSnapshot = await adminDb
@@ -127,8 +130,8 @@ export async function GET(
         .get(),
     ]);
 
-    // Merge and dedupe events, then filter by date, sort, and limit to 10
-    const mergedEvents = dedupeById([
+    // Merge and dedupe events from programIds and programId queries
+    let mergedEvents = dedupeById([
       ...eventsArraySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
@@ -139,6 +142,36 @@ export async function GET(
       })),
     ]) as DiscoverEvent[];
 
+    // Query 3: Get events from squads belonging to this program
+    const squadsSnapshot = await adminDb
+      .collection('squads')
+      .where('programId', '==', programId)
+      .get();
+
+    const squadIds = squadsSnapshot.docs.map(doc => doc.id);
+    
+    // Fetch events for squads (Firestore 'in' supports max 30 values)
+    if (squadIds.length > 0) {
+      const batchSize = 30;
+      for (let i = 0; i < squadIds.length; i += batchSize) {
+        const batch = squadIds.slice(i, i + batchSize);
+        const squadEventsSnapshot = await adminDb
+          .collection('events')
+          .where('squadId', 'in', batch)
+          .get();
+        
+        squadEventsSnapshot.docs.forEach(doc => {
+          // Add to mergedEvents if not already present
+          if (!mergedEvents.find(e => e.id === doc.id)) {
+            mergedEvents.push({
+              id: doc.id,
+              ...doc.data(),
+            } as DiscoverEvent);
+          }
+        });
+      }
+    }
+
     // Filter to upcoming events, sort by date, and limit
     const events: DiscoverEvent[] = mergedEvents
       .filter(e => e.date && e.date >= now)
@@ -146,28 +179,54 @@ export async function GET(
       .slice(0, 10);
 
     // Fetch program-specific links
-    const linksSnapshot = await adminDb
-      .collection('program_links')
-      .where('programId', '==', programId)
-      .orderBy('order', 'asc')
-      .get();
+    // Query both programIds array (new schema) and programId field (legacy schema)
+    // Remove orderBy to avoid composite index requirement - sort in memory instead
+    const [linksArraySnapshot, linksLegacySnapshot] = await Promise.all([
+      adminDb
+        .collection('program_links')
+        .where('programIds', 'array-contains', programId)
+        .get(),
+      adminDb
+        .collection('program_links')
+        .where('programId', '==', programId)
+        .get(),
+    ]);
 
-    const links = linksSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const links = dedupeById([
+      ...linksArraySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })),
+      ...linksLegacySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })),
+    ]).sort((a, b) => ((a as { order?: number }).order || 0) - ((b as { order?: number }).order || 0));
 
     // Fetch program-specific downloads
-    const downloadsSnapshot = await adminDb
-      .collection('program_downloads')
-      .where('programId', '==', programId)
-      .orderBy('order', 'asc')
-      .get();
+    // Query both programIds array (new schema) and programId field (legacy schema)
+    // Remove orderBy to avoid composite index requirement - sort in memory instead
+    const [downloadsArraySnapshot, downloadsLegacySnapshot] = await Promise.all([
+      adminDb
+        .collection('program_downloads')
+        .where('programIds', 'array-contains', programId)
+        .get(),
+      adminDb
+        .collection('program_downloads')
+        .where('programId', '==', programId)
+        .get(),
+    ]);
 
-    const downloads = downloadsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const downloads = dedupeById([
+      ...downloadsArraySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })),
+      ...downloadsLegacySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })),
+    ]).sort((a, b) => ((a as { order?: number }).order || 0) - ((b as { order?: number }).order || 0));
 
     // Fetch program days (for 3-day focus)
     // Get the user's enrollment to determine current day
@@ -192,6 +251,16 @@ export async function GET(
       tasks: doc.data().tasks || [],
     }));
 
+    console.log(`[PROGRAM_CONTENT] Results for program ${programId}:`, {
+      courses: courses.length,
+      articles: articles.length,
+      events: events.length,
+      links: links.length,
+      downloads: downloads.length,
+      days: days.length,
+      squadIds: squadIds.length,
+    });
+
     return NextResponse.json({
       success: true,
       courses,
@@ -202,7 +271,7 @@ export async function GET(
       days,
     });
   } catch (error) {
-    console.error('[API_PROGRAM_CONTENT_GET_ERROR]', error);
+    console.error('[PROGRAM_CONTENT] Error:', error);
     
     // Handle Firestore index errors gracefully
     if (error instanceof Error && error.message.includes('index')) {

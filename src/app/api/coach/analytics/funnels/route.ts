@@ -146,16 +146,22 @@ export async function GET(request: NextRequest) {
       const funnelId = funnelDoc.id;
 
       // Get flow sessions for this funnel in the time period
-      const sessionsSnapshot = await adminDb
-        .collection('flow_sessions')
-        .where('funnelId', '==', funnelId)
-        .where('createdAt', '>=', startDateStr)
-        .get();
+      let sessions: FlowSession[] = [];
+      try {
+        const sessionsSnapshot = await adminDb
+          .collection('flow_sessions')
+          .where('funnelId', '==', funnelId)
+          .where('createdAt', '>=', startDateStr)
+          .get();
 
-      const sessions = sessionsSnapshot.docs.map(d => ({
-        id: d.id,
-        ...d.data(),
-      })) as FlowSession[];
+        sessions = sessionsSnapshot.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+        })) as FlowSession[];
+      } catch (sessionError) {
+        console.warn(`[FUNNEL_ANALYTICS] Failed to fetch sessions for funnel ${funnelId}:`, sessionError);
+        // Continue with empty sessions - index may not be deployed yet
+      }
 
       // Calculate metrics
       const views = sessions.length;
@@ -195,17 +201,25 @@ export async function GET(request: NextRequest) {
       }
 
       // Fetch funnel steps from subcollection
-      const funnelStepsSnapshot = await adminDb
-        .collection('funnels')
-        .doc(funnelId)
-        .collection('funnel_steps')
-        .orderBy('order', 'asc')
-        .get();
-      
-      const funnelSteps = funnelStepsSnapshot.docs.map(d => ({
-        id: d.id,
-        ...d.data(),
-      })) as FunnelStep[];
+      // Sort in memory to avoid requiring composite index
+      let funnelSteps: FunnelStep[] = [];
+      try {
+        const funnelStepsSnapshot = await adminDb
+          .collection('funnels')
+          .doc(funnelId)
+          .collection('funnel_steps')
+          .get();
+        
+        funnelSteps = funnelStepsSnapshot.docs
+          .map(d => ({
+            id: d.id,
+            ...d.data(),
+          }) as FunnelStep)
+          .sort((a, b) => (a.order || 0) - (b.order || 0));
+      } catch (stepError) {
+        console.warn(`[FUNNEL_ANALYTICS] Failed to fetch steps for funnel ${funnelId}:`, stepError);
+        // Continue without steps
+      }
 
       // Calculate step-level analytics
       const stepAnalytics: FunnelStepAnalytics[] = [];

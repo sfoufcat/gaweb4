@@ -153,7 +153,7 @@ export function ProductAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Pr
     <div>
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '0ms' }}>
           <div className="flex items-center gap-2 mb-2">
             <Package className="w-5 h-5 text-[#a07855]" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Programs</span>
@@ -164,7 +164,7 @@ export function ProductAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Pr
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">{summary.totalEnrollments} enrollments</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '50ms' }}>
           <div className="flex items-center gap-2 mb-2">
             <Users className="w-5 h-5 text-blue-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Squads</span>
@@ -175,7 +175,7 @@ export function ProductAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Pr
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">{summary.totalMembers} members</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '100ms' }}>
           <div className="flex items-center gap-2 mb-2">
             <BookOpen className="w-5 h-5 text-purple-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Content</span>
@@ -186,7 +186,7 @@ export function ProductAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Pr
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Paid items</p>
         </div>
 
-        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '150ms' }}>
           <div className="flex items-center gap-2 mb-2">
             <DollarSign className="w-5 h-5 text-emerald-500" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Revenue</span>
@@ -211,19 +211,24 @@ export function ProductAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Pr
               <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Programs</h3>
               <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">({programs.length})</span>
             </div>
-            <ChevronDown className={`w-5 h-5 text-[#5f5a55] transition-transform ${expandedSection === 'programs' ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-5 h-5 text-[#5f5a55] transition-transform duration-200 ${expandedSection === 'programs' ? 'rotate-180' : ''}`} />
           </button>
           
-          {expandedSection === 'programs' && (
-            <div className="border-t border-[#e1ddd8] dark:border-[#262b35]">
+          <div className={`border-t border-[#e1ddd8] dark:border-[#262b35] overflow-hidden transition-all duration-300 ease-out ${
+            expandedSection === 'programs' ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
+          }`}>
               {programs.length === 0 ? (
                 <div className="px-4 py-8 text-center text-[#5f5a55] dark:text-[#b2b6c2]">
                   No programs yet
                 </div>
               ) : (
                 <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
-                  {programs.map((program) => (
-                    <div key={program.id} className="px-4 py-3 hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a]">
+                  {programs.map((program, index) => (
+                    <div 
+                      key={program.id} 
+                      className="px-4 py-3 hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a] transition-colors"
+                      style={{ animationDelay: `${index * 50}ms` }}
+                    >
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] text-sm">{program.name}</h4>
@@ -241,7 +246,6 @@ export function ProductAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Pr
                 </div>
               )}
             </div>
-          )}
         </div>
 
         {/* Squads Section */}
@@ -255,19 +259,24 @@ export function ProductAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Pr
               <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Squads</h3>
               <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">({squads.length})</span>
             </div>
-            <ChevronDown className={`w-5 h-5 text-[#5f5a55] transition-transform ${expandedSection === 'squads' ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-5 h-5 text-[#5f5a55] transition-transform duration-200 ${expandedSection === 'squads' ? 'rotate-180' : ''}`} />
           </button>
           
-          {expandedSection === 'squads' && (
-            <div className="border-t border-[#e1ddd8] dark:border-[#262b35]">
+          <div className={`border-t border-[#e1ddd8] dark:border-[#262b35] overflow-hidden transition-all duration-300 ease-out ${
+            expandedSection === 'squads' ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
+          }`}>
               {squads.length === 0 ? (
                 <div className="px-4 py-8 text-center text-[#5f5a55] dark:text-[#b2b6c2]">
                   No squads yet
                 </div>
               ) : (
                 <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
-                  {squads.map((squad) => (
-                    <div key={squad.id} className="px-4 py-3 hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a]">
+                  {squads.map((squad, index) => (
+                    <div 
+                      key={squad.id} 
+                      className="px-4 py-3 hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a] transition-colors"
+                      style={{ animationDelay: `${index * 50}ms` }}
+                    >
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] text-sm">{squad.name}</h4>
@@ -284,7 +293,6 @@ export function ProductAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Pr
                 </div>
               )}
             </div>
-          )}
         </div>
 
         {/* Content Section */}
@@ -298,19 +306,24 @@ export function ProductAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Pr
               <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Content Sales</h3>
               <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">({content.length})</span>
             </div>
-            <ChevronDown className={`w-5 h-5 text-[#5f5a55] transition-transform ${expandedSection === 'content' ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-5 h-5 text-[#5f5a55] transition-transform duration-200 ${expandedSection === 'content' ? 'rotate-180' : ''}`} />
           </button>
           
-          {expandedSection === 'content' && (
-            <div className="border-t border-[#e1ddd8] dark:border-[#262b35]">
+          <div className={`border-t border-[#e1ddd8] dark:border-[#262b35] overflow-hidden transition-all duration-300 ease-out ${
+            expandedSection === 'content' ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
+          }`}>
               {content.length === 0 ? (
                 <div className="px-4 py-8 text-center text-[#5f5a55] dark:text-[#b2b6c2]">
                   No paid content yet
                 </div>
               ) : (
                 <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
-                  {content.map((item) => (
-                    <div key={item.id} className="px-4 py-3 hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a]">
+                  {content.map((item, index) => (
+                    <div 
+                      key={item.id} 
+                      className="px-4 py-3 hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a] transition-colors"
+                      style={{ animationDelay: `${index * 50}ms` }}
+                    >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400">
@@ -333,7 +346,6 @@ export function ProductAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Pr
                 </div>
               )}
             </div>
-          )}
         </div>
       </div>
     </div>

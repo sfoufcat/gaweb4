@@ -106,11 +106,13 @@ const config: Config = {
   				'monospace'
   			]
   		},
-  		animation: {
-  			blob: 'blob 10s infinite',
-  			float: 'float 6s ease-in-out infinite',
-  			'fade-in-up': 'fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
-  		},
+	animation: {
+			blob: 'blob 10s infinite',
+			float: 'float 6s ease-in-out infinite',
+			'fade-in-up': 'fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
+			'fadeIn': 'fadeIn 0.4s ease-out forwards',
+			'slideIn': 'slideIn 0.3s ease-out forwards'
+		},
   		keyframes: {
   			blob: {
   				'0%': {
@@ -134,17 +136,37 @@ const config: Config = {
   					transform: 'translateY(-10px)'
   				}
   			},
-  			fadeInUp: {
-  				'0%': {
-  					opacity: '0',
-  					transform: 'translateY(20px)'
-  				},
-  				'100%': {
-  					opacity: '1',
-  					transform: 'translateY(0)'
-  				}
-  			}
-  		},
+		fadeInUp: {
+				'0%': {
+					opacity: '0',
+					transform: 'translateY(20px)'
+				},
+				'100%': {
+					opacity: '1',
+					transform: 'translateY(0)'
+				}
+			},
+			fadeIn: {
+				'0%': {
+					opacity: '0',
+					transform: 'translateY(8px)'
+				},
+				'100%': {
+					opacity: '1',
+					transform: 'translateY(0)'
+				}
+			},
+			slideIn: {
+				'0%': {
+					opacity: '0',
+					transform: 'translateX(-12px)'
+				},
+				'100%': {
+					opacity: '1',
+					transform: 'translateX(0)'
+				}
+			}
+		},
   		backgroundImage: {
   			'gradient-luxury': 'linear-gradient(to bottom right, hsl(var(--background)), hsl(var(--surface-elevated)))',
   			'gradient-bronze': 'linear-gradient(to right, hsl(var(--accent)), hsl(28 31% 42%))',

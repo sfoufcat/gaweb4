@@ -456,6 +456,7 @@ function CourseFormDialog({
   onSave,
   uploadEndpoint,
   programsApiEndpoint,
+  apiEndpoint,
 }: {
   course: DiscoverCourse | null;
   isOpen: boolean;
@@ -463,6 +464,7 @@ function CourseFormDialog({
   onSave: () => void;
   uploadEndpoint: string;
   programsApiEndpoint: string;
+  apiEndpoint: string;
 }) {
   const isEditing = !!course;
   const [saving, setSaving] = useState(false);
@@ -523,8 +525,8 @@ function CourseFormDialog({
 
     try {
       const url = isEditing 
-        ? `/api/admin/discover/courses/${course.id}`
-        : '/api/admin/discover/courses';
+        ? `${apiEndpoint}/${course.id}`
+        : apiEndpoint;
       
       const payload = {
         ...formData,
@@ -1125,6 +1127,7 @@ export function AdminCoursesSection({ apiEndpoint = '/api/admin/discover/courses
         onSave={fetchCourses}
         uploadEndpoint={uploadEndpoint}
         programsApiEndpoint={programsApiEndpoint}
+        apiEndpoint={apiEndpoint}
       />
 
       {/* Delete Confirmation */}
