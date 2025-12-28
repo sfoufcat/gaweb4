@@ -379,9 +379,37 @@ export async function PUT(
       }
     }
 
+    // Handle landing page hero section fields
+    if (body.heroHeadline !== undefined) {
+      updateData.heroHeadline = body.heroHeadline?.trim() || null;
+    }
+    if (body.heroSubheadline !== undefined) {
+      updateData.heroSubheadline = body.heroSubheadline?.trim() || null;
+    }
+    if (body.heroCtaText !== undefined) {
+      updateData.heroCtaText = body.heroCtaText?.trim() || null;
+    }
+    if (body.landingPageCoverImageUrl !== undefined) {
+      updateData.landingPageCoverImageUrl = body.landingPageCoverImageUrl || null;
+    }
+
     // Handle landing page content fields
     if (body.coachBio !== undefined) {
       updateData.coachBio = body.coachBio?.trim() || null;
+    }
+    if (body.coachHeadline !== undefined) {
+      updateData.coachHeadline = body.coachHeadline?.trim() || null;
+    }
+    if (body.coachBullets !== undefined) {
+      const coachBullets: string[] = [];
+      if (Array.isArray(body.coachBullets)) {
+        for (const bullet of body.coachBullets) {
+          if (typeof bullet === 'string' && bullet.trim()) {
+            coachBullets.push(bullet.trim());
+          }
+        }
+      }
+      updateData.coachBullets = coachBullets.length > 0 ? coachBullets : null;
     }
 
     if (body.keyOutcomes !== undefined) {

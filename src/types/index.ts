@@ -724,6 +724,7 @@ export interface Program {
   heroHeadline?: string; // Custom hero title (overrides program name on landing page)
   heroSubheadline?: string; // Custom hero subtitle (overrides description on landing page)
   heroCtaText?: string; // Custom CTA button text
+  landingPageCoverImageUrl?: string; // Hero cover image for landing page (overrides coverImageUrl)
   // Coach section
   coachBio?: string; // About the coach section
   coachHeadline?: string; // Custom headline for coach section (defaults to "About Your Coach")
