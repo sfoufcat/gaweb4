@@ -155,7 +155,7 @@ export function TemplatePreviewModal({
                 {template.category}
               </span>
               {template.featured && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#a07855] text-white text-xs font-medium">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#a07855] dark:bg-[#b8896a] text-white text-xs font-medium">
                   <Star className="w-3 h-3 fill-current" />
                   Featured
                 </span>
@@ -194,7 +194,7 @@ export function TemplatePreviewModal({
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2.5 rounded-lg text-sm font-medium font-albert transition-colors ${
                 activeTab === tab.id
-                  ? 'bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a] dark:bg-[#b8896a]/10 dark:text-[#b8896a]'
+                  ? 'bg-[#a07855]/10 text-[#a07855] dark:bg-[#b8896a]/10 dark:text-[#b8896a]'
                   : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
               }`}
             >
@@ -399,7 +399,7 @@ export function TemplatePreviewModal({
           <button
             onClick={onUseTemplate}
             disabled={loading}
-            className="px-6 py-3 rounded-xl bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white font-semibold font-albert transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="px-6 py-3 rounded-xl bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-semibold font-albert transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             Use This Template
             <ChevronRight className="w-4 h-4" />

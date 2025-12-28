@@ -158,7 +158,7 @@ export default function ObstaclesPage() {
                       {/* Letter indicator */}
                     <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all font-medium text-sm ${
                         isSelected 
-                          ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855] text-white' 
+                          ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855] dark:bg-[#b8896a] text-white' 
                           : 'border-[#d4d0cb] text-text-secondary'
                       }`}>
                         {option.letter}

@@ -224,7 +224,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
           </button>
           <button
             onClick={() => setShowCreateDialog(true)}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-[#a07855] text-white rounded-lg hover:bg-[#8c6245] transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors"
           >
             <Plus className="w-4 h-4" />
             New Invite
@@ -440,7 +440,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
                   <button
                     type="submit"
                     disabled={isCreating}
-                    className="flex-1 py-2 px-4 bg-[#a07855] text-white rounded-lg hover:bg-[#8c6245] disabled:opacity-50 transition-colors"
+                    className="flex-1 py-2 px-4 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:opacity-50 transition-colors"
                   >
                     {isCreating ? 'Creating...' : 'Create Invite'}
                   </button>
@@ -530,7 +530,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
                       <button
                         onClick={handleBulkImport}
                         disabled={isBulkImporting || !bulkCsv.trim()}
-                        className="flex-1 py-2 px-4 bg-[#a07855] text-white rounded-lg hover:bg-[#8c6245] disabled:opacity-50 transition-colors"
+                        className="flex-1 py-2 px-4 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:opacity-50 transition-colors"
                       >
                         {isBulkImporting ? 'Importing...' : 'Import'}
                       </button>
@@ -574,7 +574,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
                         setBulkResult(null);
                         setBulkCsv('');
                       }}
-                      className="w-full py-2 px-4 bg-[#a07855] text-white rounded-lg hover:bg-[#8c6245] transition-colors"
+                      className="w-full py-2 px-4 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors"
                     >
                       Done
                     </button>

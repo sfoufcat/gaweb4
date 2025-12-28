@@ -72,7 +72,7 @@ export function TemplateCard({ template, onSelect, featured }: TemplateCardProps
         {/* Featured Badge */}
         {featured && (
           <div className="absolute top-3 left-3">
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#a07855] text-white text-xs font-medium shadow-lg">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#a07855] dark:bg-[#b8896a] text-white text-xs font-medium shadow-lg">
               <Star className="w-3 h-3 fill-current" />
               Featured
             </span>

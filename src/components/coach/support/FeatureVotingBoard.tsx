@@ -230,7 +230,7 @@ export function FeatureVotingBoard() {
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-albert font-medium transition-all ${
                       hasVoted
                         ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
-                        : 'bg-[#faf8f6] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#a07855]/10 dark:hover:bg-[#b8896a]/10 hover:text-[#a07855] dark:text-[#b8896a] dark:hover:text-[#b8896a]'
+                        : 'bg-[#faf8f6] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#a07855]/10 dark:hover:bg-[#b8896a]/10 hover:text-[#a07855] dark:hover:text-[#b8896a]'
                     } disabled:opacity-50`}
                   >
                     {isVoting ? (

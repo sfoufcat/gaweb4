@@ -330,7 +330,7 @@ export default function SquadFunnelClient({
           <p className="text-[#5f5a55] mb-4">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-[#a07855] text-white rounded-full hover:bg-[#8c6245] transition-colors"
+            className="px-6 py-2 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-full hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors"
           >
             Try Again
           </button>

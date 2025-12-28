@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { DollarSign, Globe, ShoppingBag, AlertTriangle } from 'lucide-react';
 import { useStripeConnectStatus } from '@/hooks/useStripeConnectStatus';
@@ -37,6 +37,11 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
   // Check Stripe connection status - pricing requires connected Stripe account
   const { isConnected: stripeConnected, isLoading: stripeLoading } = useStripeConnectStatus();
   const canEnablePricing = stripeConnected || stripeLoading;
+
+  // Sync isPricingEnabled when value.priceInCents changes (e.g., when editing existing content)
+  useEffect(() => {
+    setIsPricingEnabled(value.priceInCents !== null && value.priceInCents > 0);
+  }, [value.priceInCents]);
 
   // Convert cents to dollars for display
   const priceInDollars = value.priceInCents 

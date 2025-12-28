@@ -309,7 +309,7 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#a07855] to-[#8c6245] flex items-center justify-center text-white">
+                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#a07855] to-[#8c6245] dark:from-[#b8896a] dark:to-[#a07855] flex items-center justify-center text-white">
                             <Hash className="w-5 h-5" />
                           </div>
                           <div>

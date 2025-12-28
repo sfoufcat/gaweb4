@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg, TenantRequiredError } from '@/lib/admin-utils-clerk';
-import type { Funnel, FunnelTargetType, FunnelTrackingConfig } from '@/types';
+import type { Funnel, FunnelTargetType, FunnelContentType, FunnelTrackingConfig } from '@/types';
 
 /**
  * GET /api/coach/org-funnels
@@ -10,7 +10,9 @@ import type { Funnel, FunnelTargetType, FunnelTrackingConfig } from '@/types';
  * Query params:
  * - programId?: string (filter by program)
  * - squadId?: string (filter by squad)
- * - targetType?: 'program' | 'squad' (filter by target type)
+ * - targetType?: 'program' | 'squad' | 'content' (filter by target type)
+ * - contentType?: string (filter by content type when targetType is 'content')
+ * - contentId?: string (filter by content ID)
  */
 export async function GET(req: Request) {
   try {
@@ -20,6 +22,8 @@ export async function GET(req: Request) {
     const programId = searchParams.get('programId');
     const squadId = searchParams.get('squadId');
     const targetType = searchParams.get('targetType') as FunnelTargetType | null;
+    const contentType = searchParams.get('contentType') as FunnelContentType | null;
+    const contentId = searchParams.get('contentId');
 
     // Build query
     let query = adminDb
@@ -34,6 +38,12 @@ export async function GET(req: Request) {
     }
     if (targetType) {
       query = query.where('targetType', '==', targetType);
+    }
+    if (contentType) {
+      query = query.where('contentType', '==', contentType);
+    }
+    if (contentId) {
+      query = query.where('contentId', '==', contentId);
     }
 
     const snapshot = await query.orderBy('createdAt', 'desc').get();
@@ -66,9 +76,11 @@ export async function GET(req: Request) {
  * Body:
  * - name: string
  * - slug: string
- * - targetType: 'program' | 'squad' (default: 'program')
+ * - targetType: 'program' | 'squad' | 'content' (default: 'program')
  * - programId?: string (required if targetType is 'program')
  * - squadId?: string (required if targetType is 'squad')
+ * - contentType?: string (required if targetType is 'content')
+ * - contentId?: string (required if targetType is 'content')
  * - description?: string
  * - accessType?: 'public' | 'invite_only'
  * - isDefault?: boolean
@@ -84,6 +96,8 @@ export async function POST(req: Request) {
       targetType = 'program' as FunnelTargetType,
       programId, 
       squadId,
+      contentType,
+      contentId,
       description, 
       accessType = 'public', 
       isDefault = false,
@@ -99,7 +113,7 @@ export async function POST(req: Request) {
     }
 
     // Validate target type
-    if (!['program', 'squad'].includes(targetType)) {
+    if (!['program', 'squad', 'content'].includes(targetType)) {
       return NextResponse.json({ error: 'Invalid target type' }, { status: 400 });
     }
 
@@ -110,6 +124,17 @@ export async function POST(req: Request) {
     if (targetType === 'squad' && !squadId) {
       return NextResponse.json({ error: 'Squad ID is required' }, { status: 400 });
     }
+    if (targetType === 'content') {
+      if (!contentType) {
+        return NextResponse.json({ error: 'Content type is required' }, { status: 400 });
+      }
+      if (!['article', 'course', 'event', 'download', 'link'].includes(contentType)) {
+        return NextResponse.json({ error: 'Invalid content type' }, { status: 400 });
+      }
+      if (!contentId) {
+        return NextResponse.json({ error: 'Content ID is required' }, { status: 400 });
+      }
+    }
 
     // Validate slug format
     if (!/^[a-z0-9-]+$/.test(slug)) {
@@ -119,9 +144,21 @@ export async function POST(req: Request) {
       );
     }
 
-    // Get target ID for uniqueness check
-    const targetId = targetType === 'program' ? programId : squadId;
-    const targetField = targetType === 'program' ? 'programId' : 'squadId';
+    // Get target ID and field for uniqueness check based on target type
+    let targetId: string;
+    let targetField: string;
+    
+    if (targetType === 'program') {
+      targetId = programId;
+      targetField = 'programId';
+    } else if (targetType === 'squad') {
+      targetId = squadId;
+      targetField = 'squadId';
+    } else {
+      // For content, use contentId as the target
+      targetId = contentId;
+      targetField = 'contentId';
+    }
 
     // Check slug uniqueness within target
     const existingSlug = await adminDb
@@ -148,7 +185,7 @@ export async function POST(req: Request) {
       if (programData?.organizationId !== organizationId) {
         return NextResponse.json({ error: 'Program not in your organization' }, { status: 403 });
       }
-    } else {
+    } else if (targetType === 'squad') {
       const squadDoc = await adminDb.collection('squads').doc(squadId).get();
       if (!squadDoc.exists) {
         return NextResponse.json({ error: 'Squad not found' }, { status: 404 });
@@ -156,6 +193,26 @@ export async function POST(req: Request) {
       const squadData = squadDoc.data();
       if (squadData?.organizationId !== organizationId) {
         return NextResponse.json({ error: 'Squad not in your organization' }, { status: 403 });
+      }
+    } else if (targetType === 'content') {
+      // Verify content belongs to this organization
+      // Map contentType to collection name
+      const collectionMap: Record<string, string> = {
+        article: 'articles',
+        course: 'courses',
+        event: 'events',
+        download: 'downloads',
+        link: 'links',
+      };
+      const collection = collectionMap[contentType];
+      
+      const contentDoc = await adminDb.collection(collection).doc(contentId).get();
+      if (!contentDoc.exists) {
+        return NextResponse.json({ error: `${contentType} not found` }, { status: 404 });
+      }
+      const contentData = contentDoc.data();
+      if (contentData?.organizationId !== organizationId) {
+        return NextResponse.json({ error: `${contentType} not in your organization` }, { status: 403 });
       }
     }
 
@@ -190,6 +247,8 @@ export async function POST(req: Request) {
       targetType,
       programId: targetType === 'program' ? programId : null,
       squadId: targetType === 'squad' ? squadId : null,
+      contentType: targetType === 'content' ? contentType : undefined,
+      contentId: targetType === 'content' ? contentId : undefined,
       slug: slug.toLowerCase(),
       name: name.trim(),
       description: description?.trim() || undefined,

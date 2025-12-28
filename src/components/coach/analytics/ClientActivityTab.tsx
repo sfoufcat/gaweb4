@@ -265,7 +265,7 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
             placeholder="Search clients..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30"
+            className="w-full pl-10 pr-4 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30"
           />
         </div>
 
@@ -323,7 +323,7 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
                             className="w-8 h-8 rounded-full object-cover"
                           />
                         ) : (
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] flex items-center justify-center text-white font-semibold text-sm">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] dark:from-[#b8896a] dark:to-[#a07855] flex items-center justify-center text-white font-semibold text-sm">
                             {client.name.charAt(0)}
                           </div>
                         )}

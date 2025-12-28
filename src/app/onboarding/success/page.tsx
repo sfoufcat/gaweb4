@@ -272,7 +272,7 @@ function CheckoutSuccessContent() {
                 {[0, 1, 2].map((i) => (
                   <div
                     key={i}
-                    className="w-2 h-2 rounded-full bg-[#a07855] animate-pulse"
+                    className="w-2 h-2 rounded-full bg-[#a07855] dark:bg-[#b8896a] animate-pulse"
                     style={{ animationDelay: `${i * 0.2}s` }}
                   />
                 ))}
@@ -300,7 +300,7 @@ function CheckoutSuccessContent() {
           {status === 'success' && (
             <>
               {/* Success Icon */}
-              <div className="mb-8 inline-flex items-center justify-center w-24 h-24 bg-[#a07855] rounded-3xl">
+              <div className="mb-8 inline-flex items-center justify-center w-24 h-24 bg-[#a07855] dark:bg-[#b8896a] rounded-3xl">
                 <Check className="w-12 h-12 text-white stroke-[3]" />
               </div>
 

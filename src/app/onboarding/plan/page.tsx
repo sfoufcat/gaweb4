@@ -555,7 +555,7 @@ export default function PlanPage() {
                   <div className="w-14 h-14 bg-[#faf8f6] rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <UserPlus className="w-7 h-7 text-[#a07855] dark:text-[#b8896a]" />
                   </div>
-                  <div className="inline-flex items-center justify-center w-6 h-6 bg-[#a07855] text-white font-sans text-[12px] font-bold rounded-full mb-3">
+                  <div className="inline-flex items-center justify-center w-6 h-6 bg-[#a07855] dark:bg-[#b8896a] text-white font-sans text-[12px] font-bold rounded-full mb-3">
                     1
                   </div>
                   <h4 className="font-sans text-[15px] font-semibold text-text-primary mb-2">
@@ -576,7 +576,7 @@ export default function PlanPage() {
                   <div className="w-14 h-14 bg-[#faf8f6] rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <ListChecks className="w-7 h-7 text-[#a07855] dark:text-[#b8896a]" />
                   </div>
-                  <div className="inline-flex items-center justify-center w-6 h-6 bg-[#a07855] text-white font-sans text-[12px] font-bold rounded-full mb-3">
+                  <div className="inline-flex items-center justify-center w-6 h-6 bg-[#a07855] dark:bg-[#b8896a] text-white font-sans text-[12px] font-bold rounded-full mb-3">
                     2
                   </div>
                   <h4 className="font-sans text-[15px] font-semibold text-text-primary mb-2">
@@ -597,7 +597,7 @@ export default function PlanPage() {
                   <div className="w-14 h-14 bg-[#faf8f6] rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Eye className="w-7 h-7 text-[#a07855] dark:text-[#b8896a]" />
                   </div>
-                  <div className="inline-flex items-center justify-center w-6 h-6 bg-[#a07855] text-white font-sans text-[12px] font-bold rounded-full mb-3">
+                  <div className="inline-flex items-center justify-center w-6 h-6 bg-[#a07855] dark:bg-[#b8896a] text-white font-sans text-[12px] font-bold rounded-full mb-3">
                     3
                   </div>
                   <h4 className="font-sans text-[15px] font-semibold text-text-primary mb-2">

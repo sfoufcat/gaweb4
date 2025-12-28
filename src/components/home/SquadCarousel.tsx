@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Users, ChevronRight, MessageCircle } from 'lucide-react';
@@ -24,6 +24,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
   const squadTermLower = squadTerm.toLowerCase();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [canScroll, setCanScroll] = useState(false);
   
   // Build list of squads that exist
   const squads = [
@@ -37,6 +38,22 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
     const cardWidth = 280;
     const newIndex = Math.round(container.scrollLeft / cardWidth);
     setActiveIndex(Math.max(0, Math.min(newIndex, squads.length)));
+  }, [squads.length]);
+  
+  // Check if scrolling is actually needed
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    
+    const checkScroll = () => {
+      setCanScroll(container.scrollWidth > container.clientWidth);
+    };
+    
+    checkScroll();
+    const observer = new ResizeObserver(checkScroll);
+    observer.observe(container);
+    
+    return () => observer.disconnect();
   }, [squads.length]);
   
   if (isLoading) {
@@ -237,7 +254,8 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
         </Link>
       </div>
       
-      {/* Dot Indicators */}
+      {/* Dot Indicators - only show if scrolling is needed */}
+      {canScroll && (
       <div className="flex justify-center gap-1.5 mt-3">
         {squads.map((_, i) => (
           <button
@@ -269,6 +287,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
           }`}
         />
       </div>
+      )}
     </div>
   );
 }

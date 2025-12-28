@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Users, User, ChevronRight, BookOpen } from 'lucide-react';
@@ -15,6 +15,7 @@ interface ProgramCarouselProps {
 export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms = true }: ProgramCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [canScroll, setCanScroll] = useState(false);
   
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
@@ -23,6 +24,22 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
     const newIndex = Math.round(container.scrollLeft / cardWidth);
     setActiveIndex(Math.max(0, Math.min(newIndex, enrollments.length - 1)));
   }, [enrollments.length]);
+  
+  // Check if scrolling is actually needed
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    
+    const checkScroll = () => {
+      setCanScroll(container.scrollWidth > container.clientWidth);
+    };
+    
+    checkScroll();
+    const observer = new ResizeObserver(checkScroll);
+    observer.observe(container);
+    
+    return () => observer.disconnect();
+  }, [enrollments.length, hasAvailablePrograms]);
   
   if (isLoading) {
     return (
@@ -188,8 +205,8 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
         )}
       </div>
       
-      {/* Dot Indicators */}
-      {(enrollments.length > 1 || (enrollments.length === 1 && hasAvailablePrograms)) && (
+      {/* Dot Indicators - only show if scrolling is needed */}
+      {canScroll && (enrollments.length > 1 || (enrollments.length === 1 && hasAvailablePrograms)) && (
         <div className="flex justify-center gap-1.5 mt-3">
           {enrollments.map((_, i) => (
             <button

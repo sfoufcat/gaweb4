@@ -1218,7 +1218,7 @@ export function CustomizeBrandingTab() {
           {tenantRequired.tenantUrl ? (
             <a
               href={`${tenantRequired.tenantUrl}/coach?tab=customize`}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[#a07855] text-white rounded-xl hover:bg-[#8c6245] transition-colors font-albert font-medium"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-xl hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors font-albert font-medium"
             >
               <ExternalLink className="w-4 h-4" />
               Go to {tenantRequired.subdomain}.growthaddicts.com

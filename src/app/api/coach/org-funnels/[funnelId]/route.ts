@@ -108,17 +108,32 @@ export async function PUT(
         );
       }
 
+      // Determine the target field for uniqueness check based on target type
+      let targetField: string;
+      let targetId: string | null | undefined;
+      
+      if (existingFunnel.targetType === 'program') {
+        targetField = 'programId';
+        targetId = existingFunnel.programId;
+      } else if (existingFunnel.targetType === 'squad') {
+        targetField = 'squadId';
+        targetId = existingFunnel.squadId;
+      } else {
+        targetField = 'contentId';
+        targetId = existingFunnel.contentId;
+      }
+
       // Check uniqueness
       const existingSlugDoc = await adminDb
         .collection('funnels')
-        .where('programId', '==', existingFunnel.programId)
+        .where(targetField, '==', targetId)
         .where('slug', '==', slug)
         .limit(1)
         .get();
 
       if (!existingSlugDoc.empty && existingSlugDoc.docs[0].id !== funnelId) {
         return NextResponse.json(
-          { error: 'A funnel with this slug already exists for this program' },
+          { error: `A funnel with this slug already exists for this ${existingFunnel.targetType}` },
           { status: 400 }
         );
       }
@@ -129,10 +144,25 @@ export async function PUT(
     // Handle isDefault change
     if (isDefault !== undefined && isDefault !== existingFunnel.isDefault) {
       if (isDefault) {
+        // Determine the target field for defaults based on target type
+        let targetField: string;
+        let targetId: string | null | undefined;
+        
+        if (existingFunnel.targetType === 'program') {
+          targetField = 'programId';
+          targetId = existingFunnel.programId;
+        } else if (existingFunnel.targetType === 'squad') {
+          targetField = 'squadId';
+          targetId = existingFunnel.squadId;
+        } else {
+          targetField = 'contentId';
+          targetId = existingFunnel.contentId;
+        }
+        
         // Unset existing default
         const existingDefaults = await adminDb
           .collection('funnels')
-          .where('programId', '==', existingFunnel.programId)
+          .where(targetField, '==', targetId)
           .where('isDefault', '==', true)
           .get();
 

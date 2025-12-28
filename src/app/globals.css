@@ -1290,3 +1290,235 @@ div[class*="LoadingIndicator"],
   background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 70%, black) !important;
 }
 
+/* ===========================================
+   Gradient Color Overrides
+   Maps gradient from/to colors to brand accent
+   =========================================== */
+
+/* Light mode gradient colors */
+.from-\[\#a07855\] {
+  --tw-gradient-from: var(--brand-accent-light, #a07855) var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(160 120 85 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+.to-\[\#a07855\] {
+  --tw-gradient-to: var(--brand-accent-light, #a07855) var(--tw-gradient-to-position);
+}
+
+.to-\[\#8c6245\] {
+  --tw-gradient-to: color-mix(in srgb, var(--brand-accent-light, #a07855) 85%, black) var(--tw-gradient-to-position);
+}
+
+.from-\[\#8c6245\] {
+  --tw-gradient-from: color-mix(in srgb, var(--brand-accent-light, #a07855) 85%, black) var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(140 98 69 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+/* Dark mode gradient colors */
+.dark .dark\:from-\[\#b8896a\] {
+  --tw-gradient-from: var(--brand-accent-dark, #b8896a) var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(184 137 106 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+.dark .dark\:to-\[\#b8896a\] {
+  --tw-gradient-to: var(--brand-accent-dark, #b8896a) var(--tw-gradient-to-position);
+}
+
+.dark .dark\:to-\[\#a07855\] {
+  --tw-gradient-to: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 85%, black) var(--tw-gradient-to-position);
+}
+
+.dark .dark\:from-\[\#a07855\] {
+  --tw-gradient-from: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 85%, black) var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(160 120 85 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+/* ===========================================
+   Focus-Visible Ring Overrides
+   Maps focus-visible ring colors to brand accent
+   =========================================== */
+
+.focus-visible\:ring-\[\#a07855\]:focus-visible {
+  --tw-ring-color: var(--brand-accent-light, #a07855);
+}
+
+.dark .dark\:focus-visible\:ring-\[\#b8896a\]:focus-visible {
+  --tw-ring-color: var(--brand-accent-dark, #b8896a);
+}
+
+/* ===========================================
+   Ring Opacity Variants
+   Maps ring colors with opacity to brand accent
+   =========================================== */
+
+/* Ring with 30% opacity */
+.ring-\[\#a07855\]\/30 {
+  --tw-ring-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 30%, transparent);
+}
+
+.dark .dark\:ring-\[\#b8896a\]\/30 {
+  --tw-ring-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent);
+}
+
+/* Focus ring with 30% opacity */
+.focus\:ring-\[\#a07855\]\/30:focus {
+  --tw-ring-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 30%, transparent);
+}
+
+.dark .dark\:focus\:ring-\[\#b8896a\]\/30:focus {
+  --tw-ring-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent);
+}
+
+/* Focus-visible ring with 30% opacity */
+.focus-visible\:ring-\[\#a07855\]\/30:focus-visible {
+  --tw-ring-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 30%, transparent);
+}
+
+.dark .dark\:focus-visible\:ring-\[\#b8896a\]\/30:focus-visible {
+  --tw-ring-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent);
+}
+
+/* ===========================================
+   Group Hover Text Overrides
+   Maps group-hover text colors to brand accent
+   =========================================== */
+
+.group:hover .group-hover\:text-\[\#a07855\] {
+  color: var(--brand-accent-light, #a07855);
+}
+
+.dark .group:hover .dark\:group-hover\:text-\[\#b8896a\] {
+  color: var(--brand-accent-dark, #b8896a);
+}
+
+/* ===========================================
+   Additional Background Opacity Variants
+   Maps background colors with opacity to brand accent
+   =========================================== */
+
+/* Background with 10% opacity */
+.bg-\[\#a07855\]\/10 {
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 10%, transparent);
+}
+
+.dark .dark\:bg-\[\#b8896a\]\/10 {
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 10%, transparent);
+}
+
+/* Background with 15% opacity */
+.bg-\[\#a07855\]\/15 {
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 15%, transparent);
+}
+
+.dark .dark\:bg-\[\#b8896a\]\/15 {
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 15%, transparent);
+}
+
+/* Background with 5% opacity */
+.bg-\[\#a07855\]\/5 {
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 5%, transparent);
+}
+
+.dark .dark\:bg-\[\#b8896a\]\/5 {
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 5%, transparent);
+}
+
+/* ===========================================
+   Hover Background Opacity Variants
+   =========================================== */
+
+.hover\:bg-\[\#a07855\]\/10:hover {
+  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 10%, transparent);
+}
+
+.dark .dark\:hover\:bg-\[\#b8896a\]\/10:hover {
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 10%, transparent);
+}
+
+/* ===========================================
+   Focus Border Overrides
+   Maps focus border colors to brand accent
+   =========================================== */
+
+.focus\:border-\[\#a07855\]:focus {
+  border-color: var(--brand-accent-light, #a07855);
+}
+
+.dark .dark\:focus\:border-\[\#b8896a\]:focus {
+  border-color: var(--brand-accent-dark, #b8896a);
+}
+
+/* ===========================================
+   Hover Border Overrides
+   Maps hover border colors to brand accent
+   =========================================== */
+
+.hover\:border-\[\#a07855\]:hover {
+  border-color: var(--brand-accent-light, #a07855);
+}
+
+.dark .dark\:hover\:border-\[\#b8896a\]:hover {
+  border-color: var(--brand-accent-dark, #b8896a);
+}
+
+/* Hover border with 50% opacity */
+.hover\:border-\[\#a07855\]\/50:hover {
+  border-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 50%, transparent);
+}
+
+.dark .dark\:hover\:border-\[\#b8896a\]\/50:hover {
+  border-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 50%, transparent);
+}
+
+/* ===========================================
+   Hover Text Overrides
+   Maps hover text colors to brand accent
+   =========================================== */
+
+.hover\:text-\[\#8c6245\]:hover {
+  color: color-mix(in srgb, var(--brand-accent-light, #a07855) 85%, black);
+}
+
+.dark .dark\:hover\:text-\[\#a07855\]:hover {
+  color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 85%, black);
+}
+
+/* ===========================================
+   Disabled Button Dark Mode Variants
+   =========================================== */
+
+.dark .dark\:disabled\:bg-\[\#b8896a\]\/50:disabled {
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 50%, transparent) !important;
+}
+
+/* ===========================================
+   Border Top/Bottom/Left Opacity Variants
+   =========================================== */
+
+.border-l-\[\#a07855\]\/20 {
+  border-left-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 20%, transparent);
+}
+
+.dark .dark\:border-l-\[\#b8896a\]\/20 {
+  border-left-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 20%, transparent);
+}
+
+/* ===========================================
+   Malformed Pattern Fixes
+   Handle legacy dark:ring-[...] patterns that
+   should have been dark:focus:ring-[...]
+   =========================================== */
+
+/* Override the malformed dark:ring- pattern to only apply on focus */
+.dark .dark\:ring-\[\#b8896a\] {
+  --tw-ring-color: var(--brand-accent-dark, #b8896a);
+}
+
+.dark .dark\:ring-\[\#b8896a\]\/30 {
+  --tw-ring-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent);
+}
+

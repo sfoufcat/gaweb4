@@ -312,7 +312,7 @@ function EmptyState({ searchQuery, category, onClearFilters }: EmptyStateProps) 
       {(searchQuery || category !== 'all') && (
         <button
           onClick={onClearFilters}
-          className="px-4 py-2 rounded-xl bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white font-albert text-sm transition-colors"
+          className="px-4 py-2 rounded-xl bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-albert text-sm transition-colors"
         >
           Clear filters
         </button>

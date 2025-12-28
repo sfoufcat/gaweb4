@@ -416,7 +416,7 @@ export function SubmitAsTemplateModal({
                       <button
                         onClick={handleSubmit}
                         disabled={loading || !formData.category || !formData.previewDescription.trim()}
-                        className="px-5 py-2.5 rounded-xl bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white font-semibold font-albert transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        className="px-5 py-2.5 rounded-xl bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-semibold font-albert transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                       >
                         {loading ? (
                           <>

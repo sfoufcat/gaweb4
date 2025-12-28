@@ -4,6 +4,13 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
+import { loadStripe, Stripe } from '@stripe/stripe-js';
+import {
+  Elements,
+  PaymentElement,
+  useStripe,
+  useElements,
+} from '@stripe/react-stripe-js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Drawer, 
@@ -21,6 +28,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useBrandingValues } from '@/contexts/BrandingContext';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { 
   Loader2, 
   Check, 
@@ -30,7 +38,9 @@ import {
   Calendar, 
   Download, 
   Link as LinkIcon,
-  X,
+  ArrowLeft,
+  Lock,
+  CreditCard,
 } from 'lucide-react';
 import type { PurchasableContentType } from '@/types/discover';
 
@@ -51,6 +61,8 @@ interface ContentPurchaseSheetProps {
   };
   onPurchaseComplete?: () => void;
 }
+
+type PurchaseStep = 'preview' | 'loading' | 'payment' | 'success';
 
 /**
  * Helper to convert hex to rgba
@@ -116,20 +128,166 @@ function formatPrice(cents: number, currency = 'usd') {
 }
 
 /**
- * Content inside the sheet/dialog
+ * Stripe Payment Form
  */
-function PurchaseContent({
+function StripePaymentForm({
+  onSuccess,
+  onBack,
+  priceInCents,
+  currency,
+  contentTitle,
+  accentColor,
+}: {
+  onSuccess: () => void;
+  onBack: () => void;
+  priceInCents: number;
+  currency: string;
+  contentTitle: string;
+  accentColor: string;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    setIsProcessing(true);
+    setError(null);
+
+    const { error: submitError, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: window.location.href,
+      },
+      redirect: 'if_required',
+    });
+
+    if (submitError) {
+      setError(submitError.message || 'Payment failed. Please try again.');
+      setIsProcessing(false);
+    } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+      onSuccess();
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col h-full">
+      {/* Header with back button */}
+      <div className="px-6 pb-4 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="p-2 -ml-2 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
+        </button>
+        <div>
+          <h3 className="font-albert font-semibold text-lg text-text-primary dark:text-[#f5f5f8]">
+            Complete Payment
+          </h3>
+          <p className="text-sm text-text-secondary dark:text-[#b2b6c2] line-clamp-1">
+            {contentTitle}
+          </p>
+        </div>
+      </div>
+
+      {/* Content area */}
+      <div className="flex-1 px-6 pb-4 overflow-y-auto">
+        {/* Order summary */}
+        <div className="bg-[#faf8f6] dark:bg-[#11141b] rounded-xl p-4 mb-5">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-text-secondary dark:text-[#b2b6c2]">Total</span>
+            <span className="font-albert text-xl font-semibold text-text-primary dark:text-[#f5f5f8]">
+              {formatPrice(priceInCents, currency)}
+            </span>
+          </div>
+        </div>
+
+        {/* Payment Element */}
+        <div className="bg-white dark:bg-[#171b22] rounded-xl border border-[#e1ddd8] dark:border-[#262b35] p-4">
+          <div className="flex items-center gap-2 mb-4">
+            <CreditCard className="w-4 h-4 text-text-secondary dark:text-[#b2b6c2]" />
+            <span className="text-sm font-medium text-text-primary dark:text-[#f5f5f8]">
+              Payment details
+            </span>
+          </div>
+          <PaymentElement
+            options={{
+              layout: 'tabs',
+              wallets: {
+                applePay: 'auto',
+                googlePay: 'auto',
+              },
+            }}
+          />
+        </div>
+
+        {/* Error message */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl"
+            >
+              <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Footer with submit */}
+      <div className="border-t border-[#e1ddd8] dark:border-[#262b35] px-6 py-5">
+        <button
+          type="submit"
+          disabled={!stripe || isProcessing}
+          className="w-full py-3.5 px-6 text-white rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+          style={{ backgroundColor: accentColor }}
+        >
+          {isProcessing ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <Lock className="w-4 h-4" />
+              Pay {formatPrice(priceInCents, currency)}
+            </>
+          )}
+        </button>
+
+        {/* Security note */}
+        <p className="text-center text-xs text-text-muted dark:text-[#7d8190] mt-3">
+          <Lock className="w-3 h-3 inline mr-1" />
+          Secured by Stripe. Your payment info is never stored on our servers.
+        </p>
+      </div>
+    </form>
+  );
+}
+
+/**
+ * Preview Content View
+ */
+function PreviewContent({
   content,
   onPurchase,
   isPurchasing,
   isSignedIn,
-  purchaseSuccess,
 }: {
   content: ContentPurchaseSheetProps['content'];
   onPurchase: () => void;
   isPurchasing: boolean;
   isSignedIn: boolean;
-  purchaseSuccess: boolean;
 }) {
   const { colors } = useBrandingValues();
   const ContentIcon = getContentTypeIcon(content.type);
@@ -137,27 +295,27 @@ function PurchaseContent({
   return (
     <div className="flex flex-col">
       {/* Content Preview */}
-      <div className="px-4 pb-4">
-        <div className="flex gap-4">
+      <div className="px-6 pb-6">
+        <div className="flex gap-5">
           {/* Cover Image or Icon */}
           <div className="flex-shrink-0">
             {content.coverImageUrl ? (
-              <div className="w-20 h-20 rounded-xl overflow-hidden">
+              <div className="w-28 h-28 rounded-2xl overflow-hidden shadow-md">
                 <Image
                   src={content.coverImageUrl}
                   alt={content.title}
-                  width={80}
-                  height={80}
+                  width={112}
+                  height={112}
                   className="w-full h-full object-cover"
                 />
               </div>
             ) : (
               <div 
-                className="w-20 h-20 rounded-xl flex items-center justify-center"
+                className="w-28 h-28 rounded-2xl flex items-center justify-center shadow-md"
                 style={{ backgroundColor: hexToRgba(colors.accentLight, 0.1) }}
               >
                 <ContentIcon 
-                  className="w-8 h-8" 
+                  className="w-10 h-10" 
                   style={{ color: colors.accentLight }} 
                 />
               </div>
@@ -165,9 +323,9 @@ function PurchaseContent({
           </div>
           
           {/* Content Info */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pt-1">
             <div 
-              className="text-xs font-medium px-2 py-0.5 rounded-full w-fit mb-1"
+              className="text-xs font-medium px-2.5 py-1 rounded-full w-fit mb-2"
               style={{ 
                 backgroundColor: hexToRgba(colors.accentLight, 0.1),
                 color: colors.accentLight 
@@ -175,11 +333,11 @@ function PurchaseContent({
             >
               {content.type.charAt(0).toUpperCase() + content.type.slice(1)}
             </div>
-            <h3 className="font-albert font-semibold text-lg text-text-primary dark:text-[#f5f5f8] line-clamp-2">
+            <h3 className="font-albert font-semibold text-xl text-text-primary dark:text-[#f5f5f8] line-clamp-2 leading-tight">
               {content.title}
             </h3>
             {content.coachName && (
-              <p className="text-sm text-text-secondary dark:text-[#b2b6c2] mt-1">
+              <p className="text-sm text-text-secondary dark:text-[#b2b6c2] mt-2">
                 by {content.coachName}
               </p>
             )}
@@ -188,9 +346,10 @@ function PurchaseContent({
         
         {/* Description */}
         {content.description && (
-          <p className="text-sm text-text-secondary dark:text-[#b2b6c2] mt-4 line-clamp-3">
-            {content.description}
-          </p>
+          <div 
+            className="text-sm text-text-secondary dark:text-[#b2b6c2] mt-5 line-clamp-4 prose prose-sm dark:prose-invert max-w-none [&>p]:m-0 [&>ul]:m-0 [&>ol]:m-0"
+            dangerouslySetInnerHTML={{ __html: content.description }}
+          />
         )}
         
         {/* Key Outcomes */}
@@ -217,113 +376,309 @@ function PurchaseContent({
       </div>
       
       {/* Price & CTA */}
-      <div className="border-t border-[#e1ddd8] dark:border-[#262b35] px-4 py-4">
-        <AnimatePresence mode="wait">
-          {!purchaseSuccess ? (
-            <motion.div
-              key="purchase"
-              initial={{ opacity: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <span className="text-2xl font-bold text-text-primary dark:text-[#f5f5f8]">
-                    {formatPrice(content.priceInCents, content.currency)}
-                  </span>
-                  {content.priceInCents > 0 && (
-                    <span className="text-sm text-text-secondary dark:text-[#b2b6c2] ml-2">
-                      one-time
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1 text-text-secondary dark:text-[#b2b6c2]">
-                  <Shield className="w-4 h-4" />
-                  <span className="text-xs">Secure checkout</span>
-                </div>
-              </div>
-              
-              <Button
-                onClick={onPurchase}
-                disabled={isPurchasing}
-                className="w-full py-3 text-white font-semibold rounded-xl transition-all"
-                style={{ 
-                  background: `linear-gradient(135deg, ${colors.accentLight}, ${colors.accentDark})`,
-                }}
-              >
-                {isPurchasing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : !isSignedIn ? (
-                  'Sign in to purchase'
-                ) : content.priceInCents === 0 ? (
-                  'Get for free'
-                ) : (
-                  `Purchase for ${formatPrice(content.priceInCents, content.currency)}`
-                )}
-              </Button>
-            </motion.div>
+      <div className="border-t border-[#e1ddd8] dark:border-[#262b35] px-6 py-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <span className="text-2xl font-bold text-text-primary dark:text-[#f5f5f8]">
+              {formatPrice(content.priceInCents, content.currency)}
+            </span>
+            {content.priceInCents > 0 && (
+              <span className="text-sm text-text-secondary dark:text-[#b2b6c2] ml-2">
+                one-time
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1 text-text-secondary dark:text-[#b2b6c2]">
+            <Shield className="w-4 h-4" />
+            <span className="text-xs">Secure checkout</span>
+          </div>
+        </div>
+        
+        <Button
+          onClick={onPurchase}
+          disabled={isPurchasing}
+          className="w-full py-3 text-white font-semibold rounded-xl transition-all"
+          style={{ 
+            background: `linear-gradient(135deg, ${colors.accentLight}, ${colors.accentDark})`,
+          }}
+        >
+          {isPurchasing ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Loading...
+            </>
+          ) : !isSignedIn ? (
+            'Sign in to purchase'
+          ) : content.priceInCents === 0 ? (
+            'Get for free'
           ) : (
-            <motion.div
-              key="success"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ 
-                duration: 0.4, 
-                ease: [0.34, 1.56, 0.64, 1] // Spring-like bounce
-              }}
-              className="flex flex-col items-center py-4"
-            >
-              {/* Success checkmark circle */}
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ 
-                  delay: 0.1,
-                  duration: 0.4,
-                  ease: [0.34, 1.56, 0.64, 1]
-                }}
-                className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center mb-4"
-              >
-                <motion.div
-                  initial={{ pathLength: 0, opacity: 0 }}
-                  animate={{ pathLength: 1, opacity: 1 }}
-                  transition={{ delay: 0.3, duration: 0.4 }}
-                >
-                  <Check className="w-8 h-8 text-white stroke-[3]" />
-                </motion.div>
-              </motion.div>
-              
-              <motion.p
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, duration: 0.3 }}
-                className="text-lg font-semibold text-text-primary dark:text-[#f5f5f8]"
-              >
-                Added to My Content
-              </motion.p>
-              
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5, duration: 0.3 }}
-                className="text-sm text-text-secondary dark:text-[#b2b6c2] mt-1"
-              >
-                Redirecting...
-              </motion.p>
-            </motion.div>
+            `Purchase for ${formatPrice(content.priceInCents, content.currency)}`
           )}
-        </AnimatePresence>
+        </Button>
       </div>
     </div>
   );
 }
 
 /**
+ * Success View
+ */
+function SuccessContent() {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 px-6">
+      {/* Success checkmark circle */}
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ 
+          duration: 0.4,
+          ease: [0.34, 1.56, 0.64, 1]
+        }}
+        className="w-20 h-20 rounded-full bg-green-500 flex items-center justify-center mb-6"
+      >
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.3 }}
+        >
+          <Check className="w-10 h-10 text-white stroke-[3]" />
+        </motion.div>
+      </motion.div>
+      
+      <motion.h3
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3, duration: 0.3 }}
+        className="text-xl font-semibold text-text-primary dark:text-[#f5f5f8] mb-2"
+      >
+        Payment Successful!
+      </motion.h3>
+      
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4, duration: 0.3 }}
+        className="text-sm text-text-secondary dark:text-[#b2b6c2]"
+      >
+        Redirecting to your content...
+      </motion.p>
+    </div>
+  );
+}
+
+/**
+ * Loading View
+ */
+function LoadingContent({ accentColor }: { accentColor: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 px-6">
+      <div className="relative mb-4">
+        <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8] dark:border-[#262b35]" />
+        <div 
+          className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin"
+          style={{ borderTopColor: accentColor }}
+        />
+      </div>
+      <p className="text-text-secondary dark:text-[#b2b6c2]">Setting up payment...</p>
+    </div>
+  );
+}
+
+/**
+ * Main Content Wrapper - handles all step animations
+ */
+function SheetContent({
+  content,
+  step,
+  setStep,
+  stripePromise,
+  clientSecret,
+  connectedAccountId,
+  onPurchaseComplete,
+  onOpenChange,
+}: {
+  content: ContentPurchaseSheetProps['content'];
+  step: PurchaseStep;
+  setStep: (step: PurchaseStep) => void;
+  stripePromise: Promise<Stripe | null> | null;
+  clientSecret: string | null;
+  connectedAccountId: string | null;
+  onPurchaseComplete?: () => void;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const router = useRouter();
+  const { isSignedIn } = useAuth();
+  const { colors } = useBrandingValues();
+  const [isPurchasing, setIsPurchasing] = useState(false);
+
+  const handleStartPurchase = async () => {
+    if (!isSignedIn) {
+      const returnPath = window.location.pathname;
+      router.push(`/sign-in?redirect=${encodeURIComponent(returnPath)}`);
+      return;
+    }
+
+    // For free content, use the old purchase flow
+    if (content.priceInCents === 0) {
+      setIsPurchasing(true);
+      try {
+        const response = await fetch('/api/content/purchase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contentType: content.type,
+            contentId: content.id,
+          }),
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.error || 'Purchase failed');
+        }
+        
+        setStep('success');
+        setTimeout(() => {
+          onOpenChange(false);
+          onPurchaseComplete?.();
+          router.push(getContentUrl(content.type, content.id));
+        }, 1500);
+      } catch (error) {
+        console.error('Purchase error:', error);
+      } finally {
+        setIsPurchasing(false);
+      }
+      return;
+    }
+
+    // For paid content, show the payment form
+    setStep('loading');
+  };
+
+  const handlePaymentSuccess = () => {
+    setStep('success');
+    
+    // Navigate to content page after animation
+    setTimeout(() => {
+      onOpenChange(false);
+      onPurchaseComplete?.();
+      router.push(getContentUrl(content.type, content.id));
+    }, 1500);
+  };
+
+  const handleBackToPreview = () => {
+    setStep('preview');
+  };
+
+  // Slide animation variants
+  const slideVariants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? 300 : -300,
+      opacity: 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+    },
+    exit: (direction: number) => ({
+      x: direction < 0 ? 300 : -300,
+      opacity: 0,
+    }),
+  };
+
+  const direction = step === 'preview' ? -1 : 1;
+
+  return (
+    <div className="overflow-hidden">
+      <AnimatePresence mode="wait" custom={direction}>
+        {step === 'preview' && (
+          <motion.div
+            key="preview"
+            custom={direction}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+          >
+            <PreviewContent
+              content={content}
+              onPurchase={handleStartPurchase}
+              isPurchasing={isPurchasing}
+              isSignedIn={!!isSignedIn}
+            />
+          </motion.div>
+        )}
+
+        {step === 'loading' && (
+          <motion.div
+            key="loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <LoadingContent accentColor={colors.accentLight} />
+          </motion.div>
+        )}
+
+        {step === 'payment' && clientSecret && stripePromise && (
+          <motion.div
+            key="payment"
+            custom={direction}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+          >
+            <Elements
+              stripe={stripePromise}
+              options={{
+                clientSecret,
+                appearance: {
+                  theme: 'stripe',
+                  variables: {
+                    colorPrimary: colors.accentLight,
+                    colorBackground: '#ffffff',
+                    colorText: '#1a1816',
+                    colorDanger: '#ef4444',
+                    fontFamily: 'Albert Sans, system-ui, -apple-system, sans-serif',
+                    borderRadius: '12px',
+                  },
+                },
+              }}
+            >
+              <StripePaymentForm
+                onSuccess={handlePaymentSuccess}
+                onBack={handleBackToPreview}
+                priceInCents={content.priceInCents}
+                currency={content.currency || 'usd'}
+                contentTitle={content.title}
+                accentColor={colors.accentLight}
+              />
+            </Elements>
+          </motion.div>
+        )}
+
+        {step === 'success' && (
+          <motion.div
+            key="success"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <SuccessContent />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/**
  * ContentPurchaseSheet - Slide-up on mobile, modal on desktop
- * Shows content preview and purchase button for quick purchases.
+ * Shows content preview and embedded Stripe checkout for purchases.
  */
 export function ContentPurchaseSheet({
   open,
@@ -331,119 +686,113 @@ export function ContentPurchaseSheet({
   content,
   onPurchaseComplete,
 }: ContentPurchaseSheetProps) {
-  const router = useRouter();
-  const { isSignedIn } = useAuth();
-  const [isPurchasing, setIsPurchasing] = useState(false);
-  const [purchaseSuccess, setPurchaseSuccess] = useState(false);
+  const [step, setStep] = useState<PurchaseStep>('preview');
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [connectedAccountId, setConnectedAccountId] = useState<string | null>(null);
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
+  const [error, setError] = useState<string | null>(null);
   
-  // Reset success state when sheet closes
+  // Detect desktop vs mobile to render only one component
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+  
+  // Reset state when sheet closes
   useEffect(() => {
     if (!open) {
-      setPurchaseSuccess(false);
+      // Small delay to allow close animation
+      const timer = setTimeout(() => {
+        setStep('preview');
+        setClientSecret(null);
+        setConnectedAccountId(null);
+        setStripePromise(null);
+        setError(null);
+      }, 300);
+      return () => clearTimeout(timer);
     }
   }, [open]);
-  
-  const handlePurchase = async () => {
-    if (!isSignedIn) {
-      // Redirect to sign-in
-      const returnPath = window.location.pathname;
-      router.push(`/sign-in?redirect=${encodeURIComponent(returnPath)}`);
-      return;
-    }
-    
-    setIsPurchasing(true);
-    
-    try {
-      const response = await fetch('/api/content/purchase', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contentType: content.type,
-          contentId: content.id,
-        }),
-      });
-      
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Purchase failed');
+
+  // Create payment intent when entering loading step
+  useEffect(() => {
+    if (step !== 'loading' || !open) return;
+
+    const createPaymentIntent = async () => {
+      try {
+        const response = await fetch('/api/content/create-payment-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contentType: content.type,
+            contentId: content.id,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to initialize payment');
+        }
+
+        const { clientSecret: secret, connectedAccountId: accountId } = await response.json();
+        setClientSecret(secret);
+        setConnectedAccountId(accountId);
+
+        // Load Stripe with the connected account
+        const stripeInstance = loadStripe(
+          process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
+          accountId ? { stripeAccount: accountId } : undefined
+        );
+        setStripePromise(stripeInstance);
+        
+        // Move to payment step
+        setStep('payment');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to initialize payment');
+        setStep('preview'); // Go back to preview on error
       }
-      
-      if (result.checkoutUrl) {
-        // Redirect to Stripe checkout
-        window.location.href = result.checkoutUrl;
-        return;
-      }
-      
-      // Show success animation
-      setPurchaseSuccess(true);
-      
-      // Navigate to content page after animation
-      setTimeout(() => {
-        onOpenChange(false);
-        onPurchaseComplete?.();
-        const contentUrl = getContentUrl(content.type, content.id);
-        router.push(contentUrl);
-      }, 1500);
-      
-    } catch (error) {
-      console.error('Purchase error:', error);
-      // Could add toast notification here
-    } finally {
-      setIsPurchasing(false);
-    }
-  };
+    };
+
+    createPaymentIntent();
+  }, [step, open, content.type, content.id]);
+
+  const sheetContent = (
+    <SheetContent
+      content={content}
+      step={step}
+      setStep={setStep}
+      stripePromise={stripePromise}
+      clientSecret={clientSecret}
+      connectedAccountId={connectedAccountId}
+      onPurchaseComplete={onPurchaseComplete}
+      onOpenChange={onOpenChange}
+    />
+  );
+
+  // Desktop: Dialog (larger size)
+  if (isDesktop) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-xl p-0 gap-0 overflow-hidden" hideCloseButton>
+          <DialogHeader className="sr-only">
+            <DialogTitle>{content.title}</DialogTitle>
+            <DialogDescription>Purchase this content</DialogDescription>
+          </DialogHeader>
+          
+          <div className="pt-8 pb-2 min-h-[400px]">
+            {sheetContent}
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
   
+  // Mobile: Drawer
   return (
-    <>
-      {/* Mobile: Drawer */}
-      <div className="lg:hidden">
-        <Drawer open={open} onOpenChange={onOpenChange}>
-          <DrawerContent className="max-h-[85vh]">
-            <DrawerHeader className="sr-only">
-              <DrawerTitle>{content.title}</DrawerTitle>
-              <DrawerDescription>Purchase this content</DrawerDescription>
-            </DrawerHeader>
-            <PurchaseContent
-              content={content}
-              onPurchase={handlePurchase}
-              isPurchasing={isPurchasing}
-              isSignedIn={!!isSignedIn}
-              purchaseSuccess={purchaseSuccess}
-            />
-          </DrawerContent>
-        </Drawer>
-      </div>
-      
-      {/* Desktop: Dialog */}
-      <div className="hidden lg:block">
-        <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="max-w-md p-0 gap-0">
-            <DialogHeader className="sr-only">
-              <DialogTitle>{content.title}</DialogTitle>
-              <DialogDescription>Purchase this content</DialogDescription>
-            </DialogHeader>
-            
-            {/* Close button */}
-            <button
-              onClick={() => onOpenChange(false)}
-              className="absolute right-4 top-4 z-10 rounded-full p-1.5 hover:bg-[#e1ddd8]/50 dark:hover:bg-[#262b35] transition-colors"
-            >
-              <X className="w-4 h-4 text-text-secondary" />
-            </button>
-            
-            <div className="pt-6">
-              <PurchaseContent
-                content={content}
-                onPurchase={handlePurchase}
-                isPurchasing={isPurchasing}
-                isSignedIn={!!isSignedIn}
-                purchaseSuccess={purchaseSuccess}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </>
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="max-h-[90vh]">
+        <DrawerHeader className="sr-only">
+          <DrawerTitle>{content.title}</DrawerTitle>
+          <DrawerDescription>Purchase this content</DrawerDescription>
+        </DrawerHeader>
+        {sheetContent}
+      </DrawerContent>
+    </Drawer>
   );
 }

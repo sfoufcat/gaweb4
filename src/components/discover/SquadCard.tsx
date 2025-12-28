@@ -119,7 +119,7 @@ export function SquadCard({ squad, variant = 'default' }: SquadCardProps) {
                   className="rounded-full"
                 />
               ) : (
-                <div className="w-5 h-5 rounded-full bg-[#a07855]/20 flex items-center justify-center">
+                <div className="w-5 h-5 rounded-full bg-[#a07855]/20 dark:bg-[#b8896a]/20 flex items-center justify-center">
                   <User className="w-3 h-3 text-[#a07855] dark:text-[#b8896a]" />
                 </div>
               )}

@@ -124,7 +124,7 @@ export function GAConnectButton({ apiBasePath = '/api/coach/analytics' }: GAConn
                   value={measurementId}
                   onChange={(e) => setMeasurementId(e.target.value.toUpperCase())}
                   placeholder="G-XXXXXXXXXX"
-                  className="w-full px-4 py-2.5 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30"
+                  className="w-full px-4 py-2.5 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30"
                 />
                 <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-2">
                   Find this in your Google Analytics 4 property under Admin → Data Streams

@@ -320,7 +320,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
                               className="w-8 h-8 rounded-full object-cover"
                             />
                           ) : (
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] flex items-center justify-center text-white font-semibold text-sm">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] dark:from-[#b8896a] dark:to-[#a07855] flex items-center justify-center text-white font-semibold text-sm">
                               {poster.name.charAt(0)}
                             </div>
                           )}

@@ -70,7 +70,7 @@ export const Pricing = ({
       key={index}
       className={`relative rounded-2xl p-8 flex flex-col ${
         plan.highlighted
-          ? 'bg-[#a07855] text-white shadow-xl scale-105 z-10'
+          ? 'bg-[#a07855] dark:bg-[#b8896a] text-white shadow-xl scale-105 z-10'
           : 'bg-white border border-[#e1ddd8] shadow-sm'
       }`}
     >

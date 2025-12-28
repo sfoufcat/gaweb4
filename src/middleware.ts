@@ -176,7 +176,6 @@ function canAccessAdminSection(role?: UserRole): boolean {
 
 // Define public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
-  '/',
   '/join(.*)',     // Unified funnel system (replaces /begin)
   '/sign-in(.*)',
   '/sign-up(.*)',
@@ -753,43 +752,24 @@ export default clerkMiddleware(async (auth, request) => {
     }
   }
   
-  // ==========================================================================
-  // UNAUTHENTICATED USER HANDLING
-  // ==========================================================================
-  
-  if (!userId) {
-    // If user is visiting root and not authenticated, redirect to sign-in or join
-    if (pathname === '/') {
-      // On custom domains (satellite domains), skip the auth redirect entirely
-      // ClerkProvider will sync the session client-side from the primary domain (subdomain)
-      // If user is truly not authenticated, the client-side will redirect to sign-in
-      if (isCustomDomain) {
-        console.log('[MIDDLEWARE] Custom domain - skipping auth redirect for session sync');
-        // Continue to page - ClerkProvider will handle auth check client-side
-      } else {
-        // On platform/subdomain: redirect unauthenticated users to sign-in
-        // Funnels should only be accessed via explicit funnel links (e.g., /join/program-slug/funnel-slug)
-        return NextResponse.redirect(new URL('/sign-in', request.url));
-      }
-    }
-  }
-
   // REDIRECT SIGNED-IN USERS AWAY FROM /sign-in
   if (userId && pathname.startsWith('/sign-in')) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
   // Protect non-public routes (require authentication)
-  if (!isPublicRoute(request)) {
+  if (!isPublicRoute(request) && !userId) {
     // For API routes, return JSON 401 instead of redirecting to sign-in HTML
-    if (pathname.startsWith('/api/') && !userId) {
+    if (pathname.startsWith('/api/')) {
       return NextResponse.json(
         { error: 'Unauthorized', message: 'Authentication required' },
         { status: 401 }
       );
     }
-    // For non-API routes, use Clerk's standard protection (redirect to sign-in)
-    await auth.protect();
+    // For non-API routes, redirect to custom /sign-in page with return URL
+    const signInUrl = new URL('/sign-in', request.url);
+    signInUrl.searchParams.set('redirect_url', request.url);
+    return NextResponse.redirect(signInUrl);
   }
 
   // Get role from JWT for access control

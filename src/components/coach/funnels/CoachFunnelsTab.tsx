@@ -16,9 +16,15 @@ import {
   Link2,
   Users,
   Check,
-  Globe
+  Globe,
+  UsersRound,
+  FileText,
+  BookOpen,
+  Calendar,
+  Download,
+  Link as LinkIcon
 } from 'lucide-react';
-import type { Funnel, Program } from '@/types';
+import type { Funnel, Program, FunnelTargetType, FunnelContentType } from '@/types';
 import { FunnelEditorDialog } from './FunnelEditorDialog';
 import { FunnelStepsEditor } from './FunnelStepsEditor';
 import {
@@ -47,17 +53,41 @@ interface Squad {
   slug?: string;
 }
 
+interface ContentItem {
+  id: string;
+  title: string;
+}
+
 interface CoachFunnelsTabProps {
   /** Optional program ID to filter funnels by */
   programId?: string;
 }
 
+const CONTENT_TYPE_OPTIONS: { value: FunnelContentType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { value: 'article', label: 'Articles', icon: FileText },
+  { value: 'course', label: 'Courses', icon: BookOpen },
+  { value: 'event', label: 'Events', icon: Calendar },
+  { value: 'download', label: 'Downloads', icon: Download },
+  { value: 'link', label: 'Links', icon: LinkIcon },
+];
+
 export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   const [funnels, setFunnels] = useState<Funnel[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [squads, setSquads] = useState<Squad[]>([]);
+  const [contentItems, setContentItems] = useState<Record<FunnelContentType, ContentItem[]>>({
+    article: [],
+    course: [],
+    event: [],
+    download: [],
+    link: [],
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Tab state
+  const [activeTab, setActiveTab] = useState<FunnelTargetType>('program');
+  const [selectedContentType, setSelectedContentType] = useState<FunnelContentType>('article');
   
   // Tenant required state - shown when accessing from platform domain
   const [tenantRequired, setTenantRequired] = useState<{
@@ -86,9 +116,17 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
       setIsLoading(true);
       setTenantRequired(null);
       const params = new URLSearchParams();
-      if (selectedProgramId) {
+      
+      // Filter by target type
+      params.append('targetType', activeTab);
+      
+      if (activeTab === 'program' && selectedProgramId) {
         params.append('programId', selectedProgramId);
       }
+      if (activeTab === 'content') {
+        params.append('contentType', selectedContentType);
+      }
+      
       const response = await fetch(`/api/coach/org-funnels?${params}`);
       
       // Check for tenant_required error
@@ -113,7 +151,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedProgramId]);
+  }, [activeTab, selectedProgramId, selectedContentType]);
 
   const fetchPrograms = useCallback(async () => {
     try {
@@ -137,11 +175,46 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
     }
   }, []);
 
+  const fetchContentItems = useCallback(async (contentType: FunnelContentType) => {
+    try {
+      const endpointMap: Record<FunnelContentType, string> = {
+        article: '/api/coach/org-discover/articles',
+        course: '/api/coach/org-discover/courses',
+        event: '/api/coach/org-discover/events',
+        download: '/api/coach/org-discover/downloads',
+        link: '/api/coach/org-discover/links',
+      };
+      
+      const response = await fetch(endpointMap[contentType]);
+      if (!response.ok) throw new Error('Failed to fetch content');
+      const data = await response.json();
+      
+      // Normalize the response
+      let items: ContentItem[] = [];
+      if (data.articles) items = data.articles.map((a: { id: string; title: string }) => ({ id: a.id, title: a.title }));
+      else if (data.courses) items = data.courses.map((c: { id: string; title: string }) => ({ id: c.id, title: c.title }));
+      else if (data.events) items = data.events.map((e: { id: string; title: string }) => ({ id: e.id, title: e.title }));
+      else if (data.downloads) items = data.downloads.map((d: { id: string; title: string }) => ({ id: d.id, title: d.title }));
+      else if (data.links) items = data.links.map((l: { id: string; title: string }) => ({ id: l.id, title: l.title }));
+      
+      setContentItems(prev => ({ ...prev, [contentType]: items }));
+    } catch (err) {
+      console.error(`Failed to fetch ${contentType}s:`, err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchFunnels();
     fetchPrograms();
     fetchSquads();
   }, [fetchFunnels, fetchPrograms, fetchSquads]);
+
+  // Fetch content items when content tab is active
+  useEffect(() => {
+    if (activeTab === 'content') {
+      fetchContentItems(selectedContentType);
+    }
+  }, [activeTab, selectedContentType, fetchContentItems]);
 
   const handleToggleActive = async (funnel: Funnel) => {
     try {
@@ -210,43 +283,33 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   };
 
   const copyFunnelLink = (funnel: Funnel) => {
-    // Debug logging to help diagnose issues
-    console.log('[DEBUG] Copying funnel link:', {
-      funnelId: funnel.id,
-      funnelName: funnel.name,
-      funnelSquadId: funnel.squadId,
-      funnelProgramId: funnel.programId,
-      loadedSquadsCount: squads.length,
-      loadedSquads: squads.map(s => ({ id: s.id, name: s.name, slug: s.slug })),
-      loadedProgramsCount: programs.length,
-    });
-
     let url: string | null = null;
     let errorMessage: string | null = null;
     
-    // Check if it's a squad funnel
-    if (funnel.squadId) {
+    // Check funnel target type
+    if (funnel.targetType === 'squad' && funnel.squadId) {
       const squad = squads.find(s => s.id === funnel.squadId);
-      console.log('[DEBUG] Squad lookup result:', squad ? { id: squad.id, name: squad.name, slug: squad.slug } : 'NOT FOUND');
       if (!squad) {
-        errorMessage = `Squad not found. Funnel references squadId "${funnel.squadId}" but only ${squads.length} squads are loaded. Try refreshing.`;
+        errorMessage = `Squad not found. Try refreshing.`;
       } else if (!squad.slug) {
         errorMessage = `Squad "${squad.name}" needs a URL slug. Edit the squad to add one.`;
       } else {
         url = `${window.location.origin}/join/squad/${squad.slug}/${funnel.slug}`;
       }
-    } else if (funnel.programId) {
-      // Program funnel
+    } else if (funnel.targetType === 'program' && funnel.programId) {
       const program = programs.find(p => p.id === funnel.programId);
       if (!program) {
-        errorMessage = `Program not found. Funnel references programId "${funnel.programId}" but only ${programs.length} programs are loaded. Try refreshing.`;
+        errorMessage = `Program not found. Try refreshing.`;
       } else if (!program.slug) {
         errorMessage = `Program "${program.name}" needs a URL slug. Edit the program to add one.`;
       } else {
         url = `${window.location.origin}/join/${program.slug}/${funnel.slug}`;
       }
+    } else if (funnel.targetType === 'content' && funnel.contentType && funnel.contentId) {
+      // Content funnels use a different URL structure
+      url = `${window.location.origin}/join/content/${funnel.contentType}/${funnel.contentId}/${funnel.slug}`;
     } else {
-      errorMessage = 'Funnel is not linked to a program or squad.';
+      errorMessage = 'Funnel is not linked to a program, squad, or content.';
     }
     
     if (url) {
@@ -261,10 +324,21 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
     }
   };
 
-  const getProgramName = (programId: string | null | undefined) => {
-    if (!programId) return 'Squad Funnel';
-    const program = programs.find(p => p.id === programId);
-    return program?.name || 'Unknown Program';
+  const getTargetName = (funnel: Funnel) => {
+    if (funnel.targetType === 'program') {
+      const program = programs.find(p => p.id === funnel.programId);
+      return program?.name || 'Unknown Program';
+    }
+    if (funnel.targetType === 'squad') {
+      const squad = squads.find(s => s.id === funnel.squadId);
+      return squad?.name || 'Unknown Squad';
+    }
+    if (funnel.targetType === 'content' && funnel.contentType && funnel.contentId) {
+      const items = contentItems[funnel.contentType] || [];
+      const item = items.find(i => i.id === funnel.contentId);
+      return item?.title || `Unknown ${funnel.contentType}`;
+    }
+    return 'Unknown';
   };
 
   // If editing a funnel's steps, show the step editor
@@ -277,15 +351,15 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
           <div className="flex items-center gap-4">
             <button
               onClick={handleBackToList}
-              className="p-2 rounded-lg hover:bg-[#f5f3f0] transition-colors"
+              className="p-2 rounded-lg hover:bg-[#f5f3f0] dark:hover:bg-white/10 transition-colors"
             >
-              <ArrowLeft className="w-5 h-5 text-text-secondary" />
+              <ArrowLeft className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
             </button>
             <div>
-              <h2 className="text-xl font-semibold text-text-primary">
+              <h2 className="text-xl font-semibold text-text-primary dark:text-[#f5f5f8]">
                 {editingFunnel?.name || 'Edit Funnel Steps'}
               </h2>
-              <p className="text-sm text-text-secondary">
+              <p className="text-sm text-text-secondary dark:text-[#b2b6c2]">
                 Configure the steps users will go through
               </p>
             </div>
@@ -295,13 +369,13 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
           {editingFunnel && (
             <button
               onClick={() => copyFunnelLink(editingFunnel)}
-              className="p-2 hover:bg-[#f5f3f0] rounded-lg transition-colors"
+              className="p-2 hover:bg-[#f5f3f0] dark:hover:bg-white/10 rounded-lg transition-colors"
               title={copiedFunnelId === editingFunnel.id ? "Copied!" : "Copy link"}
             >
               {copiedFunnelId === editingFunnel.id ? (
                 <Check className="w-5 h-5 text-green-600" />
               ) : (
-                <Link2 className="w-5 h-5 text-text-secondary" />
+                <Link2 className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
               )}
             </button>
           )}
@@ -324,21 +398,21 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-4 right-4 z-50 bg-red-50 border border-red-200 rounded-lg px-4 py-3 shadow-lg max-w-sm"
+            className="fixed top-4 right-4 z-50 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3 shadow-lg max-w-sm"
           >
             <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-red-100 flex items-center justify-center">
-                <svg className="w-3 h-3 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center">
+                <svg className="w-3 h-3 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>
               <div>
-                <p className="text-sm font-medium text-red-800">Can&apos;t copy link</p>
-                <p className="text-xs text-red-600 mt-0.5">{copyError}</p>
+                <p className="text-sm font-medium text-red-800 dark:text-red-300">Can&apos;t copy link</p>
+                <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">{copyError}</p>
               </div>
               <button
                 onClick={() => setCopyError(null)}
-                className="flex-shrink-0 text-red-400 hover:text-red-600"
+                className="flex-shrink-0 text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-400"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -352,41 +426,99 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-text-primary">Funnels</h2>
-          <p className="text-sm text-text-secondary">
-            Create and manage user acquisition funnels for your programs
+          <h2 className="text-xl font-semibold text-text-primary dark:text-[#f5f5f8]">Funnels</h2>
+          <p className="text-sm text-text-secondary dark:text-[#b2b6c2]">
+            Create and manage user acquisition funnels
           </p>
         </div>
         <button
           onClick={() => setShowCreateDialog(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#a07855] text-white rounded-lg hover:bg-[#8c6245] transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors"
         >
           <Plus className="w-4 h-4" />
           New Funnel
         </button>
       </div>
 
+      {/* Target Type Tabs */}
+      <div className="flex gap-2 p-1 bg-[#f5f3f0] dark:bg-[#1a1f27] rounded-lg w-fit">
+        <button
+          onClick={() => setActiveTab('program')}
+          className={`flex items-center gap-2 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+            activeTab === 'program'
+              ? 'bg-white dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] shadow-sm'
+              : 'text-text-secondary dark:text-[#b2b6c2] hover:text-text-primary dark:hover:text-[#f5f5f8]'
+          }`}
+        >
+          <Layers className="w-4 h-4" />
+          Programs
+        </button>
+        <button
+          onClick={() => setActiveTab('squad')}
+          className={`flex items-center gap-2 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+            activeTab === 'squad'
+              ? 'bg-white dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] shadow-sm'
+              : 'text-text-secondary dark:text-[#b2b6c2] hover:text-text-primary dark:hover:text-[#f5f5f8]'
+          }`}
+        >
+          <UsersRound className="w-4 h-4" />
+          Squads
+        </button>
+        <button
+          onClick={() => setActiveTab('content')}
+          className={`flex items-center gap-2 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+            activeTab === 'content'
+              ? 'bg-white dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] shadow-sm'
+              : 'text-text-secondary dark:text-[#b2b6c2] hover:text-text-primary dark:hover:text-[#f5f5f8]'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          Content
+        </button>
+      </div>
+
       {/* Filters */}
       <div className="flex gap-4">
-        <select
-          value={selectedProgramId}
-          onChange={(e) => setSelectedProgramId(e.target.value)}
-          className="px-4 py-2 bg-white border border-[#e1ddd8] rounded-lg text-text-primary focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
-        >
-          <option value="">All Programs</option>
-          {programs.map(program => (
-            <option key={program.id} value={program.id}>
-              {program.name}
-            </option>
-          ))}
-        </select>
+        {activeTab === 'program' && (
+          <select
+            value={selectedProgramId}
+            onChange={(e) => setSelectedProgramId(e.target.value)}
+            className="px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+          >
+            <option value="">All Programs</option>
+            {programs.map(program => (
+              <option key={program.id} value={program.id}>
+                {program.name}
+              </option>
+            ))}
+          </select>
+        )}
+        
+        {activeTab === 'content' && (
+          <div className="flex gap-2">
+            {CONTENT_TYPE_OPTIONS.map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                onClick={() => setSelectedContentType(value)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  selectedContentType === value
+                    ? 'bg-[#a07855]/10 text-[#a07855] dark:bg-[#b8896a]/10 dark:text-[#b8896a] border border-[#a07855]/30 dark:border-[#b8896a]/30'
+                    : 'bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] text-text-secondary dark:text-[#b2b6c2] hover:border-[#a07855]/50'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Loading state */}
       {isLoading && (
         <div className="space-y-3 animate-pulse">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white border border-[#e1ddd8] rounded-xl p-4">
+            <div key={i} className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-lg bg-[#e1ddd8]/50 dark:bg-[#272d38]/50" />
@@ -407,34 +539,34 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
 
       {/* Error state */}
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400">
           {error}
         </div>
       )}
 
       {/* Tenant required state */}
       {tenantRequired && (
-        <div className="bg-white border border-[#e1ddd8] rounded-2xl p-8 text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-100 flex items-center justify-center">
-            <Globe className="w-8 h-8 text-amber-600" />
+        <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-2xl p-8 text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+            <Globe className="w-8 h-8 text-amber-600 dark:text-amber-400" />
           </div>
-          <h3 className="text-lg font-semibold text-text-primary mb-2">
+          <h3 className="text-lg font-semibold text-text-primary dark:text-[#f5f5f8] mb-2">
             Access from Your Organization Domain
           </h3>
-          <p className="text-text-secondary mb-6 max-w-md mx-auto">
+          <p className="text-text-secondary dark:text-[#b2b6c2] mb-6 max-w-md mx-auto">
             To manage funnels, please access this page from your organization&apos;s domain.
           </p>
           
           {tenantRequired.tenantUrl ? (
             <a
               href={`${tenantRequired.tenantUrl}/coach?tab=funnels`}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[#a07855] text-white rounded-xl hover:bg-[#8c6245] transition-colors font-medium"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-xl hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors font-medium"
             >
               <ExternalLink className="w-4 h-4" />
               Go to {tenantRequired.subdomain}.growthaddicts.com
             </a>
           ) : (
-            <p className="text-text-muted text-sm">
+            <p className="text-text-muted dark:text-[#7f8694] text-sm">
               Your organization domain is not yet configured. Please contact support.
             </p>
           )}
@@ -443,15 +575,19 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
 
       {/* Empty state */}
       {!isLoading && !error && !tenantRequired && funnels.length === 0 && (
-        <div className="text-center py-12 bg-[#faf8f6] rounded-2xl border border-[#e1ddd8]">
-          <Layers className="w-12 h-12 text-text-muted mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-text-primary mb-2">No funnels yet</h3>
-          <p className="text-text-secondary mb-6">
-            Create your first funnel to start acquiring users for your programs.
+        <div className="text-center py-12 bg-[#faf8f6] dark:bg-[#11141b] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35]">
+          <Layers className="w-12 h-12 text-text-muted dark:text-[#7f8694] mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
+            No {activeTab === 'content' ? `${selectedContentType} ` : ''}funnels yet
+          </h3>
+          <p className="text-text-secondary dark:text-[#b2b6c2] mb-6">
+            {activeTab === 'program' && 'Create your first funnel to start acquiring users for your programs.'}
+            {activeTab === 'squad' && 'Create a funnel to let users join squads directly.'}
+            {activeTab === 'content' && `Create a funnel to sell or gate access to your ${selectedContentType}s.`}
           </p>
           <button
             onClick={() => setShowCreateDialog(true)}
-            className="px-6 py-2 bg-[#a07855] text-white rounded-lg hover:bg-[#8c6245] transition-colors"
+            className="px-6 py-2 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors"
           >
             Create Funnel
           </button>
@@ -466,29 +602,29 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
               key={funnel.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white border border-[#e1ddd8] rounded-xl p-4 hover:border-[#d4d0cb] transition-colors"
+              className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 hover:border-[#d4d0cb] dark:hover:border-[#363c49] transition-colors"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   {/* Status indicator */}
-                  <div className={`w-2 h-2 rounded-full ${funnel.isActive ? 'bg-green-500' : 'bg-gray-300'}`} />
+                  <div className={`w-2 h-2 rounded-full ${funnel.isActive ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
                   
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-text-primary">{funnel.name}</h3>
+                      <h3 className="font-medium text-text-primary dark:text-[#f5f5f8]">{funnel.name}</h3>
                       {funnel.isDefault && (
-                        <span className="px-2 py-0.5 text-xs bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a] rounded-full">
+                        <span className="px-2 py-0.5 text-xs bg-[#a07855]/10 text-[#a07855] dark:bg-[#b8896a]/10 dark:text-[#b8896a] rounded-full">
                           Default
                         </span>
                       )}
                       {funnel.accessType === 'invite_only' && (
-                        <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-600 rounded-full">
+                        <span className="px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full">
                           Invite Only
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-text-secondary">
-                      {getProgramName(funnel.programId)} · {funnel.stepCount || 0} steps
+                    <p className="text-sm text-text-secondary dark:text-[#b2b6c2]">
+                      {getTargetName(funnel)} · {funnel.stepCount || 0} steps
                     </p>
                   </div>
                 </div>
@@ -497,41 +633,41 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
                   {/* Quick actions */}
                   <button
                     onClick={() => handleEditSteps(funnel)}
-                    className="px-3 py-1.5 text-sm text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/5 rounded-lg transition-colors"
+                    className="px-3 py-1.5 text-sm text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/5 dark:hover:bg-[#b8896a]/5 rounded-lg transition-colors"
                   >
                     Edit Steps
                   </button>
                   
                   <button
                     onClick={() => copyFunnelLink(funnel)}
-                    className="p-2 hover:bg-[#f5f3f0] rounded-lg transition-colors"
+                    className="p-2 hover:bg-[#f5f3f0] dark:hover:bg-white/5 rounded-lg transition-colors"
                     title={copiedFunnelId === funnel.id ? "Copied!" : "Copy link"}
                   >
                     {copiedFunnelId === funnel.id ? (
                       <Check className="w-4 h-4 text-green-600" />
                     ) : (
-                      <Link2 className="w-4 h-4 text-text-secondary" />
+                      <Link2 className="w-4 h-4 text-text-secondary dark:text-[#b2b6c2]" />
                     )}
                   </button>
 
                   {/* More menu */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className="p-2 hover:bg-[#f5f3f0] rounded-lg transition-colors">
-                        <MoreVertical className="w-4 h-4 text-text-secondary" />
+                      <button className="p-2 hover:bg-[#f5f3f0] dark:hover:bg-white/5 rounded-lg transition-colors">
+                        <MoreVertical className="w-4 h-4 text-text-secondary dark:text-[#b2b6c2]" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48 rounded-xl border-[#e1ddd8]">
+                    <DropdownMenuContent align="end" className="w-48 rounded-xl border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
                       <DropdownMenuItem 
                         onClick={() => handleEditDetails(funnel)}
-                        className="flex items-center gap-2 cursor-pointer"
+                        className="flex items-center gap-2 cursor-pointer text-text-primary dark:text-[#f5f5f8]"
                       >
                         <Pencil className="w-4 h-4" />
                         Edit Details
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         onClick={() => handleToggleActive(funnel)}
-                        className="flex items-center gap-2 cursor-pointer"
+                        className="flex items-center gap-2 cursor-pointer text-text-primary dark:text-[#f5f5f8]"
                       >
                         {funnel.isActive ? (
                           <>
@@ -548,16 +684,16 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
                       {!funnel.isDefault && (
                         <DropdownMenuItem 
                           onClick={() => handleSetDefault(funnel)}
-                          className="flex items-center gap-2 cursor-pointer"
+                          className="flex items-center gap-2 cursor-pointer text-text-primary dark:text-[#f5f5f8]"
                         >
                           <Users className="w-4 h-4" />
                           Set as Default
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuSeparator className="bg-[#e1ddd8]" />
+                      <DropdownMenuSeparator className="bg-[#e1ddd8] dark:bg-[#262b35]" />
                       <DropdownMenuItem 
                         onClick={() => handleDelete(funnel)}
-                        className="flex items-center gap-2 text-red-600 focus:text-red-600 cursor-pointer"
+                        className="flex items-center gap-2 text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400 cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />
                         Delete
@@ -577,6 +713,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
           mode="create"
           programs={programs}
           squads={squads}
+          initialContentType={activeTab === 'content' ? selectedContentType : undefined}
           onClose={() => setShowCreateDialog(false)}
           onSaved={() => {
             setShowCreateDialog(false);
@@ -606,19 +743,19 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!funnelToDelete} onOpenChange={(open) => !open && setFunnelToDelete(null)}>
-        <AlertDialogContent className="max-w-sm rounded-2xl">
+        <AlertDialogContent className="max-w-sm rounded-2xl bg-white dark:bg-[#171b22] border-[#e1ddd8] dark:border-[#262b35]">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-albert text-[20px] tracking-[-0.5px]">
+            <AlertDialogTitle className="font-albert text-[20px] tracking-[-0.5px] text-text-primary dark:text-[#f5f5f8]">
               Delete funnel?
             </AlertDialogTitle>
-            <AlertDialogDescription className="font-albert text-[15px] text-text-secondary">
+            <AlertDialogDescription className="font-albert text-[15px] text-text-secondary dark:text-[#b2b6c2]">
               Are you sure you want to delete &ldquo;{funnelToDelete?.name}&rdquo;? This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-2">
             <AlertDialogCancel 
               disabled={isDeleting}
-              className="font-albert rounded-full border-[#e1ddd8]"
+              className="font-albert rounded-full border-[#e1ddd8] dark:border-[#262b35] text-text-primary dark:text-[#f5f5f8]"
             >
               Cancel
             </AlertDialogCancel>
@@ -635,4 +772,3 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
     </div>
   );
 }
-

@@ -1139,7 +1139,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             {tenantRequired.tenantUrl ? (
               <a
                 href={`${tenantRequired.tenantUrl}/coach?tab=programs`}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#a07855] text-white rounded-xl hover:bg-[#8c6245] transition-colors font-albert font-medium"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-xl hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors font-albert font-medium"
               >
                 <ExternalLink className="w-4 h-4" />
                 Go to {tenantRequired.subdomain}.growthaddicts.com
@@ -1290,7 +1290,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               {/* Fill with AI Button */}
               <button
                 onClick={() => setIsAIProgramContentModalOpen(true)}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 mb-3 bg-gradient-to-r from-[#a07855] to-[#8c6245] text-white text-sm font-medium rounded-lg hover:from-[#8c6245] hover:to-[#7a5639] transition-all shadow-sm"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 mb-3 bg-gradient-to-r from-[#a07855] to-[#8c6245] dark:from-[#b8896a] dark:to-[#a07855] text-white text-sm font-medium rounded-lg hover:from-[#8c6245] hover:to-[#7a5639] dark:hover:from-[#a07855] dark:hover:to-[#8c6245] transition-all shadow-sm"
               >
                 <Sparkles className="w-4 h-4" />
                 Fill with AI
@@ -1416,7 +1416,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                             onClick={() => updateTask(index, { isPrimary: !task.isPrimary })}
                             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
                               task.isPrimary 
-                                ? 'bg-[#a07855]/15 text-[#a07855] dark:text-[#b8896a] dark:bg-[#a07855]/20 dark:text-[#b8896a]' 
+                                ? 'bg-[#a07855]/15 text-[#a07855] dark:bg-[#b8896a]/20 dark:text-[#b8896a]' 
                                 : 'bg-[#f3f1ef] dark:bg-[#1d222b] text-[#5f5a55] dark:text-[#7d8190] hover:bg-[#eae7e3] dark:hover:bg-[#262b35]'
                             }`}
                           >

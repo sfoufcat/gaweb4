@@ -57,7 +57,7 @@ export function SquadCard({ squad, onJoin, isJoining, trackLabel }: SquadCardPro
             className="w-14 h-14 rounded-full object-cover flex-shrink-0"
           />
         ) : (
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] flex items-center justify-center flex-shrink-0">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] dark:from-[#b8896a] dark:to-[#a07855] flex items-center justify-center flex-shrink-0">
             <span className="text-white font-albert font-bold text-[20px]">
               {squad.name.charAt(0).toUpperCase()}
             </span>

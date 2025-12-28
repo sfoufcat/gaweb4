@@ -276,7 +276,7 @@ export function CheckInFlowEditorDialog({
                           key={template.id}
                           className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
                             selectedTemplateId === template.id
-                              ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 dark:border-[#b8896a] dark:bg-[#b8896a]/10'
+                              ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 dark:bg-[#b8896a]/10'
                               : 'border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-[#0d1015]'
                           }`}
                         >
@@ -350,7 +350,7 @@ export function CheckInFlowEditorDialog({
             <button
               type="submit"
               disabled={isSaving}
-              className="flex-1 py-3 bg-[#a07855] text-white rounded-xl hover:bg-[#8c6245] transition-colors disabled:opacity-50"
+              className="flex-1 py-3 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-xl hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors disabled:opacity-50"
             >
               {isSaving ? 'Saving...' : mode === 'create' ? 'Create' : 'Save'}
             </button>

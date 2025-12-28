@@ -175,7 +175,7 @@ export function PlanRevealStep({
               >
                 {timeLabels.map((label, i) => (
                   <div key={i} className="flex flex-col items-center">
-                    <div className="w-2 h-2 rounded-full bg-[#a07855]/30 mb-1" />
+                    <div className="w-2 h-2 rounded-full bg-[#a07855]/30 dark:bg-[#b8896a]/30 mb-1" />
                     <span className="text-xs text-text-muted">{label}</span>
                   </div>
                 ))}
@@ -186,11 +186,11 @@ export function PlanRevealStep({
           {/* Legend */}
           <div className="flex justify-center gap-6 text-sm">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#a07855]/30" />
+              <div className="w-3 h-3 rounded-full bg-[#a07855]/30 dark:bg-[#b8896a]/30" />
               <span className="text-text-muted">Today</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#a07855]" />
+              <div className="w-3 h-3 rounded-full bg-[#a07855] dark:bg-[#b8896a]" />
               <span className="text-text-muted">Goal</span>
             </div>
           </div>

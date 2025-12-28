@@ -165,7 +165,7 @@ export function FlowDisplayConfigEditor({ value, onChange }: FlowDisplayConfigEd
                 onClick={() => updateConfig({ icon: name })}
                 className={`p-2.5 rounded-xl transition-all ${
                   config.icon === name
-                    ? 'bg-[#a07855] text-white scale-110'
+                    ? 'bg-[#a07855] dark:bg-[#b8896a] text-white scale-110'
                     : 'bg-[#f5f3f0] dark:bg-[#0d1015] text-text-secondary dark:text-[#b2b6c2] hover:bg-[#e8e5e1] dark:hover:bg-[#1a1f28]'
                 }`}
               >

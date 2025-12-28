@@ -2442,7 +2442,12 @@ export type InvitePaymentStatus = 'required' | 'pre_paid' | 'free';
 /**
  * Funnel target type - what the funnel enrolls users into
  */
-export type FunnelTargetType = 'program' | 'squad';
+export type FunnelTargetType = 'program' | 'squad' | 'content';
+
+/**
+ * Content type for content funnels
+ */
+export type FunnelContentType = 'article' | 'course' | 'event' | 'download' | 'link';
 
 /**
  * Funnel - Coach-created user acquisition flow
@@ -2452,10 +2457,12 @@ export interface Funnel {
   id: string;
   organizationId: string;        // Clerk Organization ID (multi-tenant)
   
-  // Target - funnel can target either a program or a squad
+  // Target - funnel can target a program, squad, or content item
   targetType: FunnelTargetType;  // What this funnel enrolls users into
   programId: string | null;      // Program ID (when targetType = 'program')
   squadId: string | null;        // Squad ID (when targetType = 'squad')
+  contentType?: FunnelContentType; // Content type (when targetType = 'content')
+  contentId?: string;            // Content item ID (when targetType = 'content')
   
   // Identification
   slug: string;                  // URL-friendly identifier

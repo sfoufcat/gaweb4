@@ -246,7 +246,7 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
                         className="rounded-full"
                       />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] flex items-center justify-center text-white font-semibold">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] dark:from-[#b8896a] dark:to-[#a07855] flex items-center justify-center text-white font-semibold">
                         {community.squadName.charAt(0)}
                       </div>
                     )}
@@ -289,7 +289,7 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
                   <div className="mt-4 pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
                     {detailLoading ? (
                       <div className="flex items-center justify-center py-8">
-                        <div className="w-6 h-6 border-2 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin" />
+                        <div className="w-6 h-6 border-2 border-[#a07855] dark:border-[#b8896a] border-t-transparent dark:border-t-transparent rounded-full animate-spin" />
                       </div>
                     ) : squadDetail ? (
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

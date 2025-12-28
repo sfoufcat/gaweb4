@@ -52,7 +52,7 @@ export const Guarantee = ({
             {/* Badge/Icon */}
             {IconComponent && (
               <div className="flex justify-center mb-6">
-                <div className="w-20 h-20 rounded-full bg-[#a07855]/10 flex items-center justify-center">
+                <div className="w-20 h-20 rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/10 flex items-center justify-center">
                   <IconComponent className="w-10 h-10 text-[#a07855] dark:text-[#b8896a]" />
                 </div>
               </div>
@@ -61,7 +61,7 @@ export const Guarantee = ({
             {/* Days Badge */}
             {daysGuarantee > 0 && (
               <div className="flex justify-center mb-4">
-                <span className="px-4 py-1 bg-[#a07855] text-white rounded-full text-sm font-medium">
+                <span className="px-4 py-1 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-full text-sm font-medium">
                   {daysGuarantee} Days
                 </span>
               </div>

@@ -250,7 +250,7 @@ export function LandingPageEditor({
                     <div className="aspect-[4/3] relative overflow-hidden border-b border-border dark:border-[#262b35]">
                       <TemplatePreview template={template} />
                       <div className="absolute inset-0 bg-[#a07855]/0 group-hover:bg-[#a07855]/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <span className="px-4 py-2 bg-[#a07855] text-white rounded-lg font-medium text-sm shadow-lg flex items-center gap-2">
+                        <span className="px-4 py-2 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg font-medium text-sm shadow-lg flex items-center gap-2">
                           <Sparkles className="w-4 h-4" />
                           Use Template
                         </span>
@@ -335,7 +335,7 @@ export function LandingPageEditor({
             size="sm"
             onClick={() => handleSave(editorData)}
             disabled={isSaving}
-            className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white font-semibold px-4 shadow-sm"
+            className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-semibold px-4 shadow-sm"
           >
             {isSaving ? (
               <>

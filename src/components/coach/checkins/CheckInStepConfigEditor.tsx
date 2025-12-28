@@ -134,7 +134,7 @@ export function CheckInStepConfigEditor({ step, onClose, onSave }: CheckInStepCo
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="flex-1 py-3 bg-[#a07855] text-white rounded-xl hover:bg-[#8c6245] transition-colors disabled:opacity-50"
+            className="flex-1 py-3 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-xl hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors disabled:opacity-50"
           >
             {isSaving ? 'Saving...' : 'Save'}
           </button>
