@@ -274,34 +274,33 @@ export function ProgramDetailView({
           {isGroup ? (
             /* Group Program Overview */
             <>
-              {/* Stacked Avatars - Real member photos */}
-              <div className="flex items-center -space-x-3">
-                {(squadMembers && squadMembers.length > 0 
-                  ? squadMembers.slice(0, 3) 
-                  : [null, null, null]
-                ).map((member, i) => (
-                  <div
-                    key={member?.id || i}
-                    className="w-[38px] h-[38px] rounded-full border-2 border-white dark:border-[#05070b] overflow-hidden bg-[#d4cfc9] dark:bg-[#7d8190]"
-                  >
-                    {member?.imageUrl ? (
-                      <Image
-                        src={member.imageUrl}
-                        alt={`${member.firstName} ${member.lastName}`}
-                        width={38}
-                        height={38}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <span className="text-xs font-medium text-white">
-                          {member?.firstName?.[0] || '?'}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+              {/* Stacked Avatars - Only show actual members (1-3) */}
+              {squadMembers && squadMembers.length > 0 && (
+                <div className="flex items-center -space-x-3">
+                  {squadMembers.slice(0, 3).map((member) => (
+                    <div
+                      key={member.id}
+                      className="w-[38px] h-[38px] rounded-full border-2 border-white dark:border-[#05070b] overflow-hidden bg-[#d4cfc9] dark:bg-[#7d8190]"
+                    >
+                      {member.imageUrl ? (
+                        <Image
+                          src={member.imageUrl}
+                          alt={`${member.firstName} ${member.lastName}`}
+                          width={38}
+                          height={38}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="text-xs font-medium text-white">
+                            {member.firstName?.[0] || member.lastName?.[0] || 'M'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Group Info */}
               <div className="flex flex-col ml-2">
