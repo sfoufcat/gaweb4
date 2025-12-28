@@ -12,14 +12,15 @@
  *   - programId: filter by specific program
  *   - squadId: filter by specific squad
  *   - limit: max clients to return (default 100)
- *   - cursor: pagination cursor
+ * 
+ * IMPORTANT: This endpoint computes activity status in REAL-TIME using the Activity Resolver.
+ * It does NOT rely on cached/stale data.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
-import { batchResolveActivity, type ActivityResult } from '@/lib/analytics';
-import { ANALYTICS_COLLECTIONS } from '@/lib/analytics/constants';
+import { batchResolveActivity } from '@/lib/analytics';
 import type { HealthStatus } from '@/lib/analytics/constants';
 
 interface ClientActivityData {
@@ -49,44 +50,11 @@ export async function GET(request: NextRequest) {
     const squadIdFilter = searchParams.get('squadId');
     const limit = Math.min(parseInt(searchParams.get('limit') || '100', 10), 500);
 
-    // Try to get today's snapshot first (for fast response)
-    const today = new Date().toISOString().split('T')[0];
-    const snapshotDoc = await adminDb
-      .collection(ANALYTICS_COLLECTIONS.orgSnapshots)
-      .doc(`${organizationId}_clients_${today}`)
-      .get();
-
-    let summary = {
-      totalClients: 0,
-      thrivingCount: 0,
-      activeCount: 0,
-      inactiveCount: 0,
-      atRiskCount: 0,
-      activeRate: 0,
-    };
-
-    if (snapshotDoc.exists) {
-      const data = snapshotDoc.data();
-      summary = {
-        totalClients: data?.totalClients || 0,
-        thrivingCount: data?.thrivingCount || 0,
-        activeCount: data?.activeCount || 0,
-        inactiveCount: data?.inactiveCount || 0,
-        atRiskCount: data?.atRiskCount || 0,
-        activeRate: data?.activeRate || 0,
-      };
-    }
-
-    // Build query for org_memberships with filters
+    // Build base query for org_memberships
     let query = adminDb
       .collection('org_memberships')
       .where('organizationId', '==', organizationId)
       .where('isActive', '==', true);
-
-    // Apply status filter if available on membership docs
-    if (statusFilter !== 'all' && statusFilter !== 'at-risk') {
-      query = query.where('activityStatus', '==', statusFilter);
-    }
 
     // Apply squad filter
     if (squadIdFilter) {
@@ -98,24 +66,47 @@ export async function GET(request: NextRequest) {
       query = query.where('currentProgramId', '==', programIdFilter);
     }
 
-    // Limit results
-    query = query.limit(limit);
-
     const membershipsSnapshot = await query.get();
 
     if (membershipsSnapshot.empty) {
       return NextResponse.json({
-        summary,
+        summary: {
+          totalClients: 0,
+          thrivingCount: 0,
+          activeCount: 0,
+          inactiveCount: 0,
+          atRiskCount: 0,
+          activeRate: 0,
+        },
         clients: [],
-        computed: snapshotDoc.exists ? 'cached' : 'live',
+        computed: 'live',
       });
     }
 
-    // Get user details for members
-    const userIds = membershipsSnapshot.docs.map(d => d.data().userId);
-    const uniqueUserIds = [...new Set(userIds)];
+    // DEDUPLICATE by userId - keep the most recent membership per user
+    const membershipByUser = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
+    for (const doc of membershipsSnapshot.docs) {
+      const data = doc.data();
+      const userId = data.userId;
+      
+      if (!membershipByUser.has(userId)) {
+        membershipByUser.set(userId, doc);
+      } else {
+        // Keep the more recent one
+        const existingDoc = membershipByUser.get(userId)!;
+        const existingCreatedAt = existingDoc.data().createdAt || '';
+        const currentCreatedAt = data.createdAt || '';
+        
+        if (currentCreatedAt > existingCreatedAt) {
+          membershipByUser.set(userId, doc);
+        }
+      }
+    }
 
-    // Fetch user docs in batches
+    const uniqueMemberDocs = Array.from(membershipByUser.values());
+    const uniqueUserIds = Array.from(membershipByUser.keys());
+
+    // Fetch user docs for display
     const userDocs = await Promise.all(
       uniqueUserIds.slice(0, 100).map(id => adminDb.collection('users').doc(id).get())
     );
@@ -136,7 +127,7 @@ export async function GET(request: NextRequest) {
     const programIds = new Set<string>();
     const squadIds = new Set<string>();
     
-    for (const doc of membershipsSnapshot.docs) {
+    for (const doc of uniqueMemberDocs) {
       const data = doc.data();
       if (data.currentProgramId) programIds.add(data.currentProgramId);
       if (data.squadId) squadIds.add(data.squadId);
@@ -167,17 +158,46 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Build client list
-    const clients: ClientActivityData[] = [];
+    // COMPUTE ACTIVITY STATUS IN REAL-TIME using the Activity Resolver
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const activityResults = await batchResolveActivity(
+      organizationId, 
+      uniqueUserIds.slice(0, limit), 
+      sevenDaysAgo
+    );
 
-    for (const doc of membershipsSnapshot.docs) {
+    // Build client list with real activity data
+    const clients: ClientActivityData[] = [];
+    let thrivingCount = 0;
+    let activeCount = 0;
+    let inactiveCount = 0;
+    let atRiskCount = 0;
+
+    for (const doc of uniqueMemberDocs) {
       const data = doc.data();
       const userId = data.userId;
       const user = userMap.get(userId);
+      const activity = activityResults.get(userId);
 
-      // Apply at-risk filter if needed
-      if (statusFilter === 'at-risk' && !data.atRisk) {
-        continue;
+      // Use real computed status from Activity Resolver
+      const status = activity?.status || 'inactive';
+      const atRisk = activity?.atRisk || false;
+      const lastActivityAt = activity?.activitySignals.lastActivityAt?.toISOString() || null;
+      const primarySignal = activity?.activitySignals.primarySignal || null;
+      const daysActiveInPeriod = activity?.activitySignals.daysActiveInPeriod || 0;
+
+      // Count for summary
+      if (status === 'thriving') thrivingCount++;
+      else if (status === 'active') activeCount++;
+      else inactiveCount++;
+      if (atRisk) atRiskCount++;
+
+      // Apply status filter AFTER computing status
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'at-risk' && !atRisk) continue;
+        if (statusFilter !== 'at-risk' && status !== statusFilter) continue;
       }
 
       const client: ClientActivityData = {
@@ -185,11 +205,11 @@ export async function GET(request: NextRequest) {
         name: user?.name || 'Unknown',
         email: user?.email || '',
         avatarUrl: user?.avatarUrl,
-        status: data.activityStatus || 'inactive',
-        atRisk: data.atRisk || false,
-        lastActivityAt: data.lastActivityAt || null,
-        primarySignal: data.primaryActivityType || null,
-        daysActiveInPeriod: data.daysActiveInPeriod || 0,
+        status,
+        atRisk,
+        lastActivityAt,
+        primarySignal,
+        daysActiveInPeriod,
         programId: data.currentProgramId,
         programName: data.currentProgramId ? programMap.get(data.currentProgramId) : undefined,
         squadId: data.squadId,
@@ -218,10 +238,22 @@ export async function GET(request: NextRequest) {
       return new Date(a.lastActivityAt).getTime() - new Date(b.lastActivityAt).getTime();
     });
 
+    const totalClients = uniqueUserIds.length;
+    const activeRate = totalClients > 0 
+      ? Math.round(((thrivingCount + activeCount) / totalClients) * 100) 
+      : 0;
+
     return NextResponse.json({
-      summary,
-      clients,
-      computed: snapshotDoc.exists ? 'cached' : 'live',
+      summary: {
+        totalClients,
+        thrivingCount,
+        activeCount,
+        inactiveCount,
+        atRiskCount,
+        activeRate,
+      },
+      clients: clients.slice(0, limit),
+      computed: 'live',
       count: clients.length,
     });
   } catch (error) {
@@ -238,4 +270,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch client analytics' }, { status: 500 });
   }
 }
-

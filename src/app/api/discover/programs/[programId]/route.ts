@@ -43,7 +43,6 @@ export async function GET(
     // Get coach info - find the super_coach user from the organization
     let coachName = 'Coach';
     let coachImageUrl: string | undefined;
-    let coachBio: string | undefined;
     
     try {
       const { clerkClient } = await import('@clerk/nextjs/server');
@@ -206,7 +205,7 @@ export async function GET(
       id: programDoc.id,
       coachName,
       coachImageUrl,
-      coachBio,
+      // coachBio and other landing page fields come from programData
     };
 
     // Get total enrollments count and recent member avatars for social proof (if showEnrollmentCount is enabled)

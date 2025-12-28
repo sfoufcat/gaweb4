@@ -359,10 +359,10 @@ export default function ProgramDetailPage() {
           className="h-[200px] sm:h-[260px] w-full relative"
           style={{ background: `linear-gradient(to bottom right, ${hexToRgba(accentLight, 0.3)}, ${hexToRgba(accentLightHover, 0.1)})` }}
         >
-          {program.coverImageUrl ? (
+          {(program.landingPageCoverImageUrl || program.coverImageUrl) ? (
             <Image
-              src={program.coverImageUrl}
-              alt={program.name}
+              src={program.landingPageCoverImageUrl || program.coverImageUrl}
+              alt={program.heroHeadline || program.name}
               fill
               className="object-cover"
               priority
@@ -561,12 +561,22 @@ export default function ProgramDetailPage() {
                     &quot;{program.testimonials[0].text}&quot;
                   </p>
                   <div className="flex items-center gap-3">
-                    <div 
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-white font-albert font-semibold text-[13px]"
-                      style={{ background: `linear-gradient(to bottom right, ${accentLight}, ${accentDark})` }}
-                    >
-                      {program.testimonials[0].author.charAt(0).toUpperCase()}
-                    </div>
+                    {program.testimonials[0].imageUrl ? (
+                      <Image
+                        src={program.testimonials[0].imageUrl}
+                        alt={program.testimonials[0].author}
+                        width={36}
+                        height={36}
+                        className="w-9 h-9 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div 
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-white font-albert font-semibold text-[13px]"
+                        style={{ background: `linear-gradient(to bottom right, ${accentLight}, ${accentDark})` }}
+                      >
+                        {program.testimonials[0].author.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     <div>
                       <p className="font-albert text-[13px] font-medium text-text-primary">
                         {program.testimonials[0].author}
@@ -973,12 +983,22 @@ export default function ProgramDetailPage() {
                       &quot;{testimonial.text}&quot;
                     </p>
                     <div className="flex items-center gap-3">
-                      <div 
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-white font-albert font-semibold text-[12px]"
-                        style={{ background: `linear-gradient(to bottom right, ${accentLight}, ${accentDark})` }}
-                      >
-                        {testimonial.author.charAt(0).toUpperCase()}
-                      </div>
+                      {testimonial.imageUrl ? (
+                        <Image
+                          src={testimonial.imageUrl}
+                          alt={testimonial.author}
+                          width={32}
+                          height={32}
+                          className="w-8 h-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div 
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-white font-albert font-semibold text-[12px]"
+                          style={{ background: `linear-gradient(to bottom right, ${accentLight}, ${accentDark})` }}
+                        >
+                          {testimonial.author.charAt(0).toUpperCase()}
+                        </div>
+                      )}
                       <div>
                         <p className="font-albert text-[13px] font-medium text-text-primary">
                           {testimonial.author}

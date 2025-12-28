@@ -139,15 +139,21 @@ export async function GET(request: NextRequest) {
     // SQUADS
     // ========================
     if (typeFilter === 'all' || typeFilter === 'squads') {
+      // Fetch all squads and filter in memory to avoid != operator requiring composite index
       const squadsSnapshot = await adminDb
         .collection('squads')
         .where('organizationId', '==', organizationId)
-        .where('isClosed', '!=', true)
         .get();
+
+      // Filter out closed squads in memory
+      const openSquadDocs = squadsSnapshot.docs.filter(doc => {
+        const data = doc.data();
+        return data.isClosed !== true;
+      });
 
       // Get program names for program squads
       const programIds = new Set<string>();
-      for (const doc of squadsSnapshot.docs) {
+      for (const doc of openSquadDocs) {
         const squad = doc.data() as Squad;
         if (squad.programId) programIds.add(squad.programId);
       }
@@ -167,7 +173,7 @@ export async function GET(request: NextRequest) {
       const squads: SquadAnalytics[] = [];
       let totalMembers = 0;
 
-      for (const doc of squadsSnapshot.docs) {
+      for (const doc of openSquadDocs) {
         const squad = doc.data() as Squad;
         const memberCount = squad.memberIds?.length || 0;
 

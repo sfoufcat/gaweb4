@@ -10,6 +10,7 @@ import {
   Search,
   Calendar,
   ChevronRight,
+  RefreshCw,
 } from 'lucide-react';
 import type { HealthStatus } from '@/lib/analytics/constants';
 
@@ -54,13 +55,18 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
     activeRate: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'thriving' | 'active' | 'inactive' | 'at-risk'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchClients = useCallback(async () => {
+  const fetchClients = useCallback(async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       setError(null);
 
       const params = new URLSearchParams();
@@ -88,8 +94,13 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
       setError(err instanceof Error ? err.message : 'Failed to fetch analytics');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [apiBasePath, statusFilter]);
+
+  const handleRefresh = () => {
+    fetchClients(true);
+  };
 
   useEffect(() => {
     fetchClients();
@@ -172,6 +183,21 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
 
   return (
     <div>
+      {/* Header with Refresh Button */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+          Client Activity
+        </h3>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="px-4 py-2 rounded-lg text-sm font-medium bg-[#a07855] text-white hover:bg-[#8c6245] disabled:opacity-50 transition-colors flex items-center gap-2"
+        >
+          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Refreshing...' : 'Refresh'}
+        </button>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">

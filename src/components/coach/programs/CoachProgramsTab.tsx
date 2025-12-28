@@ -1788,15 +1788,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   <Sparkles className="w-4 h-4" />
                   Generate with AI
                 </Button>
-                <a
-                  href={`/discover/programs/${selectedProgram?.slug || selectedProgram?.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2 hover:bg-[#faf8f6] dark:hover:bg-white/5 rounded-lg transition-colors"
-                  title="Preview landing page"
-                >
-                  <ExternalLink className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                </a>
                 <Button 
                   onClick={() => {
                     handleSaveLandingPage();
@@ -1807,6 +1798,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 >
                   {saving ? 'Saving...' : landingPageSaved ? 'Saved' : 'Save'}
                 </Button>
+                <a
+                  href={`/discover/programs/${selectedProgram?.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 hover:bg-[#faf8f6] dark:hover:bg-white/5 rounded-lg transition-colors"
+                  title="Preview landing page"
+                >
+                  <ExternalLink className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                </a>
               </div>
             </div>
 
