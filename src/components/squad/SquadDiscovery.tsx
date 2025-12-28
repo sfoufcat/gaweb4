@@ -202,13 +202,13 @@ export function SquadDiscovery() {
       {communitySquads.length > 0 && (
         <section className="mb-8">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center">
-              <Users className="w-4 h-4 text-emerald-500" />
+            <div className="w-8 h-8 rounded-full bg-emerald-500/10 dark:bg-brand-accent/20 flex items-center justify-center">
+              <Users className="w-4 h-4 text-emerald-500 dark:text-brand-accent" />
             </div>
             <h2 className="font-albert text-[20px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px]">
               Community {squadLower}s
             </h2>
-            <span className="px-2 py-0.5 bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full text-[12px] font-albert font-medium">
+            <span className="px-2 py-0.5 bg-emerald-500/10 dark:bg-brand-accent/20 text-emerald-600 dark:text-brand-accent rounded-full text-[12px] font-albert font-medium">
               {communitySquads.length}
             </span>
           </div>

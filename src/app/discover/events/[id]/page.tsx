@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useUser } from '@clerk/nextjs';
 import { MapPin, AlertCircle, CheckCircle } from 'lucide-react';
-import { BackButton, ShareButton, AttendeeAvatars, RichContent, AddToCalendarButton, ContentLandingPage } from '@/components/discover';
+import { BackButton, ShareButton, AttendeeAvatars, RichContent, AddToCalendarButton, ContentLandingPage, ContentPurchaseSheet } from '@/components/discover';
 import { Button } from '@/components/ui/button';
 import type { DiscoverEvent, EventUpdate, EventAttendee } from '@/types/discover';
 
@@ -34,6 +34,7 @@ export default function EventDetailPage({ params }: EventPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
+  const [showPurchaseSheet, setShowPurchaseSheet] = useState(false);
   
   const justPurchased = searchParams.get('purchased') === 'true';
 
@@ -332,9 +333,10 @@ export default function EventDetailPage({ params }: EventPageProps) {
           </h1>
           
           {event.shortDescription && (
-            <p className="font-albert text-[15px] text-text-secondary leading-[1.6] mb-4">
-              {event.shortDescription}
-            </p>
+            <RichContent 
+              content={event.shortDescription}
+              className="font-albert text-[15px] text-text-secondary leading-[1.6] mb-4"
+            />
           )}
 
           {event.hostName && (
@@ -352,27 +354,12 @@ export default function EventDetailPage({ params }: EventPageProps) {
             </div>
 
             <Button
-              onClick={async () => {
+              onClick={() => {
                 if (!isSignedIn) {
                   router.push(`/sign-in?redirect=${encodeURIComponent(window.location.pathname)}`);
                   return;
                 }
-                
-                const response = await fetch('/api/content/purchase', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    contentType: 'event',
-                    contentId: event.id,
-                  }),
-                });
-                
-                const result = await response.json();
-                if (result.checkoutUrl) {
-                  window.location.href = result.checkoutUrl;
-                } else if (result.success) {
-                  window.location.reload();
-                }
+                setShowPurchaseSheet(true);
               }}
               className="w-full py-3 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-semibold rounded-xl"
             >
@@ -381,6 +368,26 @@ export default function EventDetailPage({ params }: EventPageProps) {
           </div>
         </div>
       </section>
+
+      {/* Purchase Sheet */}
+      <ContentPurchaseSheet
+        open={showPurchaseSheet}
+        onOpenChange={setShowPurchaseSheet}
+        content={{
+          id: event.id,
+          type: 'event',
+          title: event.title,
+          description: event.shortDescription || event.longDescription,
+          coverImageUrl: event.coverImageUrl,
+          priceInCents: event.priceInCents || 0,
+          currency: event.currency,
+          coachName: event.coachName || event.hostName,
+        }}
+        onPurchaseComplete={() => {
+          // Refetch to get updated access
+          fetchEvent();
+        }}
+      />
     </div>
   );
 }

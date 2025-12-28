@@ -12,22 +12,24 @@ import {
   CategoryPills, 
   ProgramTypePills,
   BrowseMyContentPills,
+  MyContentTypePills,
   TrendingItem, 
   RecommendedCard,
   SectionHeader,
   ArticleCard,
   SquadCard,
 } from '@/components/discover';
-import type { ProgramType, DiscoverViewMode } from '@/components/discover';
+import type { ProgramType, DiscoverViewMode, MyContentFilter } from '@/components/discover';
 import { FileText, BookOpen, Calendar, Download, Link as LinkIcon, Users, Layers } from 'lucide-react';
 
 export default function DiscoverPage() {
   const { upcomingEvents, pastEvents, courses, articles, categories, trending, recommended, groupPrograms, individualPrograms, enrollmentConstraints, publicSquads, loading } = useDiscover();
-  const { myContent, totalCount: myContentCount, loading: myContentLoading } = useMyContent();
+  const { myContent, totalCount: myContentCount, counts: myContentCounts, loading: myContentLoading } = useMyContent();
   const [viewMode, setViewMode] = useState<DiscoverViewMode>('browse');
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedProgramType, setSelectedProgramType] = useState<ProgramType>('group');
+  const [myContentFilter, setMyContentFilter] = useState<MyContentFilter>('all');
 
   // Filter out programs where user is already enrolled
   const availableGroupPrograms = useMemo(() => {
@@ -230,6 +232,18 @@ export default function DiscoverPage() {
       {/* MY CONTENT VIEW */}
       {viewMode === 'my-content' && (
         <section className="px-4 py-4">
+          {/* Content Type Filter Pills */}
+          {!myContentLoading && myContent.length > 0 && (
+            <div className="mb-4">
+              <MyContentTypePills
+                selectedFilter={myContentFilter}
+                onSelect={setMyContentFilter}
+                counts={myContentCounts}
+                totalCount={myContentCount}
+              />
+            </div>
+          )}
+
           {myContentLoading ? (
             <div className="flex flex-col gap-3">
               {[1, 2, 3].map((i) => (
@@ -264,7 +278,12 @@ export default function DiscoverPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {myContent.map((item) => {
+              {myContent
+                .filter((item) => {
+                  if (myContentFilter === 'all') return true;
+                  return item.contentType === myContentFilter;
+                })
+                .map((item) => {
                 const Icon = getContentIcon(item.contentType);
                 return (
                   <Link
@@ -287,14 +306,14 @@ export default function DiscoverPage() {
                           </div>
                         ) : (
                           <div className="w-16 h-16 flex-shrink-0 rounded-xl bg-earth-100 dark:bg-[#262b35] flex items-center justify-center">
-                            <Icon className="w-6 h-6 text-earth-500 dark:text-[#b8896a]" />
+                            <Icon className="w-6 h-6 text-earth-500 dark:text-brand-accent" />
                           </div>
                         )}
 
                         {/* Content */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-earth-100 dark:bg-[#262b35] text-earth-600 dark:text-[#b8896a] capitalize">
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-earth-100 dark:bg-[#262b35] text-earth-600 dark:text-brand-accent capitalize">
                               {item.contentType}
                             </span>
                             {item.includedInProgramName && (
@@ -317,6 +336,15 @@ export default function DiscoverPage() {
                   </Link>
                 );
               })}
+
+              {/* Empty state for filtered content */}
+              {myContentFilter !== 'all' && myContent.filter(item => item.contentType === myContentFilter).length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-text-muted font-sans text-sm">
+                    No {myContentFilter}s in your content library yet.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </section>

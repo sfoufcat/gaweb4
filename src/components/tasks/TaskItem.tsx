@@ -68,12 +68,12 @@ export function TaskItem({ task, onClick, isDraggable = true, trackDisplayName, 
           <div
             className={`w-6 h-6 rounded-md border ${
               isCompleted
-                ? 'border-accent-secondary dark:border-[#b8896a]'
+                ? 'border-brand-accent'
                 : 'border-[#e1ddd8] dark:border-[#262b35]'
             } flex items-center justify-center flex-shrink-0 transition-all duration-300 bg-white dark:bg-[#181d26]`}
           >
             {isCompleted && (
-              <div className="w-4 h-4 bg-accent-secondary dark:bg-[#b8896a] rounded-sm animate-in zoom-in-50 duration-300" />
+              <div className="w-4 h-4 bg-brand-accent rounded-sm animate-in zoom-in-50 duration-300" />
             )}
           </div>
 
@@ -134,12 +134,12 @@ export function TaskItemStatic({ task, onClick, trackDisplayName, onTaskUpdate }
           <div
             className={`w-6 h-6 rounded-md border ${
               isCompleted
-                ? 'border-accent-secondary dark:border-[#b8896a]'
+                ? 'border-brand-accent'
                 : 'border-[#e1ddd8] dark:border-[#262b35]'
             } flex items-center justify-center flex-shrink-0 transition-all duration-300 bg-white dark:bg-[#181d26]`}
           >
             {isCompleted && (
-              <div className="w-4 h-4 bg-accent-secondary dark:bg-[#b8896a] rounded-sm animate-in zoom-in-50 duration-300" />
+              <div className="w-4 h-4 bg-brand-accent rounded-sm animate-in zoom-in-50 duration-300" />
             )}
           </div>
 

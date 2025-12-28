@@ -4,7 +4,7 @@ import { use, useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
-import { BackButton, CopyLinkButton, AddToContentButton, RichContent, ContentLandingPage } from '@/components/discover';
+import { BackButton, CopyLinkButton, AddToContentButton, RichContent, ContentLandingPage, ContentPurchaseSheet } from '@/components/discover';
 import { Button } from '@/components/ui/button';
 import { User, AlertCircle, CheckCircle } from 'lucide-react';
 import type { DiscoverArticle } from '@/types/discover';
@@ -40,6 +40,7 @@ export default function ArticleDetailPage({ params }: ArticlePageProps) {
   const [error, setError] = useState<string | null>(null);
   const [authorProfile, setAuthorProfile] = useState<AuthorProfile | null>(null);
   const [authorLoading, setAuthorLoading] = useState(false);
+  const [showPurchaseSheet, setShowPurchaseSheet] = useState(false);
   
   const justPurchased = searchParams.get('purchased') === 'true';
 
@@ -225,27 +226,12 @@ export default function ArticleDetailPage({ params }: ArticlePageProps) {
             </div>
 
             <Button
-              onClick={async () => {
+              onClick={() => {
                 if (!isSignedIn) {
                   router.push(`/sign-in?redirect=${encodeURIComponent(window.location.pathname)}`);
                   return;
                 }
-                
-                const response = await fetch('/api/content/purchase', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    contentType: 'article',
-                    contentId: article.id,
-                  }),
-                });
-                
-                const result = await response.json();
-                if (result.checkoutUrl) {
-                  window.location.href = result.checkoutUrl;
-                } else if (result.success) {
-                  window.location.reload();
-                }
+                setShowPurchaseSheet(true);
               }}
               className="w-full py-3 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-semibold rounded-xl"
             >
@@ -254,6 +240,27 @@ export default function ArticleDetailPage({ params }: ArticlePageProps) {
           </div>
         </div>
       </section>
+
+      {/* Purchase Sheet */}
+      <ContentPurchaseSheet
+        open={showPurchaseSheet}
+        onOpenChange={setShowPurchaseSheet}
+        content={{
+          id: article.id,
+          type: 'article',
+          title: article.title,
+          description: article.content,
+          coverImageUrl: article.coverImageUrl,
+          priceInCents: article.priceInCents || 0,
+          currency: article.currency,
+          coachName: article.coachName || article.authorName,
+          coachImageUrl: article.coachImageUrl || article.authorAvatarUrl,
+        }}
+        onPurchaseComplete={() => {
+          // Refetch to get updated access
+          fetchArticle();
+        }}
+      />
     </div>
   );
 }

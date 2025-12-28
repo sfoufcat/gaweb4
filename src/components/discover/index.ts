@@ -7,6 +7,8 @@ export { ProgramTypePills } from './ProgramTypePills';
 export type { ProgramType } from './ProgramTypePills';
 export { BrowseMyContentPills } from './BrowseMyContentPills';
 export type { DiscoverViewMode } from './BrowseMyContentPills';
+export { MyContentTypePills } from './MyContentTypePills';
+export type { MyContentFilter } from './MyContentTypePills';
 export { TrendingItem } from './TrendingItem';
 export { RecommendedCard } from './RecommendedCard';
 export { SectionHeader } from './SectionHeader';

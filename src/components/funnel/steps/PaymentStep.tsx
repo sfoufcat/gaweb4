@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { loadStripe, Stripe } from '@stripe/stripe-js';
 import {
   Elements,
@@ -9,12 +9,38 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, CreditCard, Check, ArrowLeft } from 'lucide-react';
+import { Lock, CreditCard, Check, ArrowLeft, Plus, CircleCheck, Shield, Loader2 } from 'lucide-react';
 import type { FunnelStepConfigPayment } from '@/types';
 
 // CSS variable helper - uses values set by FunnelClient
 const primaryVar = 'var(--funnel-primary, #a07855)';
 const primaryHoverVar = 'var(--funnel-primary-hover, #8c6245)';
+
+// Saved payment method type
+interface SavedPaymentMethod {
+  id: string;
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+  isDefault: boolean;
+}
+
+/**
+ * Get card brand display name
+ */
+function getCardBrandName(brand: string): string {
+  const brands: Record<string, string> = {
+    visa: 'Visa',
+    mastercard: 'Mastercard',
+    amex: 'American Express',
+    discover: 'Discover',
+    diners: 'Diners Club',
+    jcb: 'JCB',
+    unionpay: 'UnionPay',
+  };
+  return brands[brand.toLowerCase()] || brand.charAt(0).toUpperCase() + brand.slice(1);
+}
 
 interface PaymentStepProps {
   config: FunnelStepConfigPayment;
@@ -29,6 +55,159 @@ interface PaymentStepProps {
   };
   skipPayment: boolean;
   isFirstStep: boolean;
+  organizationId?: string;
+}
+
+/**
+ * Saved Cards Selection for funnel
+ */
+function SavedCardsForFunnel({
+  savedMethods,
+  selectedMethodId,
+  onSelect,
+  onAddNew,
+  onPay,
+  isProcessing,
+  priceInCents,
+  currency,
+  programName,
+  features,
+}: {
+  savedMethods: SavedPaymentMethod[];
+  selectedMethodId: string | null;
+  onSelect: (id: string) => void;
+  onAddNew: () => void;
+  onPay: () => void;
+  isProcessing: boolean;
+  priceInCents: number;
+  currency: string;
+  programName: string;
+  features?: string[];
+}) {
+  const formatPrice = (cents: number, curr: string) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: curr.toUpperCase(),
+    }).format(cents / 100);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Plan summary */}
+      <div className="bg-[#faf8f6] rounded-2xl p-6">
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h3 className="font-medium text-text-primary">{programName}</h3>
+            <p className="text-sm text-text-secondary">Full access</p>
+          </div>
+          <div className="text-right">
+            <p className="font-albert text-2xl font-semibold text-text-primary">
+              {formatPrice(priceInCents, currency)}
+            </p>
+          </div>
+        </div>
+
+        {features && features.length > 0 && (
+          <div className="border-t border-[#e1ddd8] pt-4 space-y-2">
+            {features.map((feature, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+                <span className="text-sm text-text-secondary">{feature}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Saved cards */}
+      <div className="space-y-3">
+        <p className="text-sm font-medium text-text-primary">
+          Choose payment method
+        </p>
+
+        {savedMethods.map((method) => (
+          <button
+            key={method.id}
+            type="button"
+            onClick={() => onSelect(method.id)}
+            className={`w-full p-4 rounded-xl border-2 transition-all flex items-center gap-4 text-left ${
+              selectedMethodId === method.id
+                ? 'border-[#a07855] bg-[#a07855]/5'
+                : 'border-[#e1ddd8] hover:border-[#a07855]/50'
+            }`}
+          >
+            {/* Card icon */}
+            <div className="w-12 h-8 bg-gradient-to-br from-gray-600 to-gray-800 rounded-md flex items-center justify-center">
+              <CreditCard className="w-5 h-5 text-white" />
+            </div>
+            
+            {/* Card info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-text-primary">
+                  {getCardBrandName(method.brand)} •••• {method.last4}
+                </span>
+                {method.isDefault && (
+                  <span className="text-xs px-2 py-0.5 bg-[#e1ddd8] rounded-full text-text-muted">
+                    Default
+                  </span>
+                )}
+              </div>
+              <span className="text-sm text-text-secondary">
+                Expires {method.expMonth.toString().padStart(2, '0')}/{method.expYear.toString().slice(-2)}
+              </span>
+            </div>
+
+            {/* Selection indicator */}
+            {selectedMethodId === method.id && (
+              <CircleCheck className="w-6 h-6 flex-shrink-0 text-[#a07855]" />
+            )}
+          </button>
+        ))}
+
+        {/* Add new card option */}
+        <button
+          type="button"
+          onClick={onAddNew}
+          className="w-full p-4 rounded-xl border-2 border-dashed border-[#e1ddd8] hover:border-[#a07855]/50 transition-all flex items-center gap-4 text-left"
+        >
+          <div className="w-12 h-8 rounded-md flex items-center justify-center bg-[#a07855]/10">
+            <Plus className="w-5 h-5 text-[#a07855]" />
+          </div>
+          <span className="font-medium text-text-primary">
+            Add new card
+          </span>
+        </button>
+      </div>
+
+      {/* Pay button */}
+      <button
+        type="button"
+        onClick={onPay}
+        disabled={!selectedMethodId || isProcessing}
+        className="w-full py-4 px-6 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+        style={{ backgroundColor: primaryVar }}
+      >
+        {isProcessing ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Processing...
+          </>
+        ) : (
+          <>
+            <Lock className="w-4 h-4" />
+            Pay {formatPrice(priceInCents, currency)}
+          </>
+        )}
+      </button>
+
+      {/* Security note */}
+      <p className="text-center text-xs text-text-muted">
+        <Shield className="w-3 h-3 inline mr-1" />
+        Your saved payment info is securely stored by Stripe
+      </p>
+    </div>
+  );
 }
 
 interface PaymentFormProps {
@@ -178,12 +357,19 @@ export function PaymentStep({
   program,
   skipPayment,
   isFirstStep,
+  organizationId,
 }: PaymentStepProps) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [connectedAccountId, setConnectedAccountId] = useState<string | null>(null);
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Saved cards state
+  const [savedMethods, setSavedMethods] = useState<SavedPaymentMethod[]>([]);
+  const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
+  const [showSavedCards, setShowSavedCards] = useState(true);
+  const [isProcessingSaved, setIsProcessingSaved] = useState(false);
 
   // Determine price
   const priceInCents = config.useProgramPricing 
@@ -192,6 +378,28 @@ export function PaymentStep({
   
   const currency = program.currency || 'usd';
   const stripePriceId = config.stripePriceId || program.stripePriceId;
+
+  // Fetch saved payment methods
+  const fetchSavedMethods = useCallback(async () => {
+    if (!organizationId) return;
+
+    try {
+      const response = await fetch(`/api/payment-methods?organizationId=${organizationId}`);
+      if (response.ok) {
+        const result = await response.json();
+        const methods = result.paymentMethods || [];
+        setSavedMethods(methods);
+        
+        // Pre-select default method
+        if (methods.length > 0) {
+          const defaultMethod = methods.find((m: SavedPaymentMethod) => m.isDefault);
+          setSelectedMethodId(defaultMethod?.id || methods[0].id);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching saved payment methods:', err);
+    }
+  }, [organizationId]);
 
   // Skip payment if marked as pre-paid
   useEffect(() => {
@@ -206,11 +414,29 @@ export function PaymentStep({
       return;
     }
 
-    // Create payment intent
-    createPaymentIntent();
+    // Fetch saved methods first
+    fetchSavedMethods();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [skipPayment, priceInCents]);
 
+  // After fetching saved methods, decide what to show
+  useEffect(() => {
+    if (skipPayment || priceInCents === 0) return;
+    
+    // If we have saved methods, wait for user choice
+    if (savedMethods.length > 0) {
+      setIsLoading(false);
+      setShowSavedCards(true);
+    } else {
+      // No saved methods, create payment intent right away
+      setShowSavedCards(false);
+      createPaymentIntent();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps  
+  }, [savedMethods, priceInCents, skipPayment]);
+
   const createPaymentIntent = async () => {
+    setIsLoading(true);
     try {
       const response = await fetch('/api/funnel/create-payment-intent', {
         method: 'POST',
@@ -247,11 +473,51 @@ export function PaymentStep({
     }
   };
 
-  const handlePaymentSuccess = (paymentIntentId: string) => {
+  const handlePayWithSavedMethod = async () => {
+    if (!selectedMethodId || !organizationId) return;
+
+    setIsProcessingSaved(true);
+    setError(null);
+
+    try {
+      // Create payment intent and immediately charge the saved method
+      const response = await fetch('/api/funnel/charge-saved-method', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentMethodId: selectedMethodId,
+          priceInCents,
+          currency,
+          programId: data.programId,
+          flowSessionId: data.flowSessionId,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Payment failed');
+      }
+
+      handlePaymentSuccess(result.paymentIntentId, result.connectedAccountId);
+    } catch (err) {
+      console.error('Saved method payment error:', err);
+      setError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
+    } finally {
+      setIsProcessingSaved(false);
+    }
+  };
+
+  const handleAddNewCard = () => {
+    setShowSavedCards(false);
+    createPaymentIntent();
+  };
+
+  const handlePaymentSuccess = (paymentIntentId: string, accountId?: string | null) => {
     onComplete({
       stripePaymentIntentId: paymentIntentId,
       paidAmount: priceInCents,
-      connectedAccountId,
+      connectedAccountId: accountId || connectedAccountId,
     });
   };
 
@@ -313,6 +579,67 @@ export function PaymentStep({
 
   const heading = config.heading || 'Complete your enrollment';
 
+  // Show saved cards selection
+  if (showSavedCards && savedMethods.length > 0) {
+    return (
+      <div className="w-full max-w-xl mx-auto relative">
+        {/* Back button at top-left */}
+        {!isFirstStep && onBack && (
+          <button
+            onClick={onBack}
+            className="absolute -top-2 left-0 p-2 rounded-full hover:bg-[#f5f3f0] transition-colors"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="w-5 h-5 text-text-secondary" />
+          </button>
+        )}
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-8"
+        >
+          <h1 className="font-albert text-[28px] sm:text-[36px] text-text-primary tracking-[-1.5px] leading-[1.15] mb-3">
+            {heading}
+          </h1>
+        </motion.div>
+
+        {/* Error message */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl"
+            >
+              <p className="text-red-600 text-sm">{error}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <SavedCardsForFunnel
+            savedMethods={savedMethods}
+            selectedMethodId={selectedMethodId}
+            onSelect={setSelectedMethodId}
+            onAddNew={handleAddNewCard}
+            onPay={handlePayWithSavedMethod}
+            isProcessing={isProcessingSaved}
+            priceInCents={priceInCents}
+            currency={currency}
+            programName={program.name}
+            features={config.features}
+          />
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-xl mx-auto relative">
       {/* Back button at top-left */}
@@ -360,7 +687,7 @@ export function PaymentStep({
             }}
           >
             <PaymentForm
-              onSuccess={handlePaymentSuccess}
+              onSuccess={(paymentIntentId) => handlePaymentSuccess(paymentIntentId)}
               programName={program.name}
               priceInCents={priceInCents}
               currency={currency}

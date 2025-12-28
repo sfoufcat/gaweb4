@@ -232,7 +232,7 @@ function SpecialChannelItem({
       {avatarUrl ? (
         <Image src={avatarUrl} alt={name} width={48} height={48} className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
       ) : (
-        <div className="w-12 h-12 rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/15 flex items-center justify-center flex-shrink-0">
+        <div className="w-12 h-12 rounded-full bg-[#a07855]/10 dark:bg-brand-accent/15 flex items-center justify-center flex-shrink-0">
           {icon}
         </div>
       )}
@@ -244,7 +244,7 @@ function SpecialChannelItem({
               <CoachStarIcon className="w-4 h-4 text-amber-500 flex-shrink-0" />
             )}
             {isPinned && (
-              <PinIcon className="w-3.5 h-3.5 text-[#a07855] dark:text-[#b8896a] flex-shrink-0" />
+              <PinIcon className="w-3.5 h-3.5 text-[#a07855] dark:text-brand-accent flex-shrink-0" />
             )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -388,7 +388,7 @@ function EditChannelsLink() {
   return (
     <Link
       href="/coach?tab=channels"
-      className="flex items-center justify-center gap-2 px-4 py-2 mx-2 text-[#a07855] dark:text-[#b8896a] hover:bg-[#ffffff]/60 dark:hover:bg-[#171b22]/60 rounded-xl transition-colors"
+      className="flex items-center justify-center gap-2 px-4 py-2 mx-2 text-[#a07855] dark:text-brand-accent hover:bg-[#ffffff]/60 dark:hover:bg-[#171b22]/60 rounded-xl transition-colors"
     >
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
@@ -472,31 +472,31 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
                 showName={false}
               />
               ) : (channelId === ANNOUNCEMENTS_CHANNEL_ID || orgChannelType === 'announcements') ? (
-              <div className="w-9 h-9 rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/15 flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <div className="w-9 h-9 rounded-full bg-[#a07855]/10 dark:bg-brand-accent/15 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-[#a07855] dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
                 </svg>
               </div>
               ) : (channelId === SOCIAL_CORNER_CHANNEL_ID || orgChannelType === 'social') ? (
-                <div className="w-9 h-9 rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/15 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <div className="w-9 h-9 rounded-full bg-[#a07855]/10 dark:bg-brand-accent/15 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-[#a07855] dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                 </div>
               ) : (channelId === SHARE_WINS_CHANNEL_ID || orgChannelType === 'wins') ? (
-                <div className="w-9 h-9 rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/15 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <div className="w-9 h-9 rounded-full bg-[#a07855]/10 dark:bg-brand-accent/15 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-[#a07855] dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                   </svg>
                 </div>
               ) : isOrgChannel ? (
-                <div className="w-9 h-9 rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/15 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <div className="w-9 h-9 rounded-full bg-[#a07855]/10 dark:bg-brand-accent/15 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-[#a07855] dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5l-3.9 19.5m-2.1-19.5l-3.9 19.5" />
                   </svg>
                 </div>
               ) : (
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e] dark:from-[#b8896a] dark:to-[#8c7a6d] flex items-center justify-center text-white font-albert font-semibold text-sm flex-shrink-0">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e] dark:from-brand-accent dark:to-brand-accent/80 flex items-center justify-center text-white font-albert font-semibold text-sm flex-shrink-0">
                   {channelName.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -578,7 +578,7 @@ function SquadChannelHeader({ onBack }: { onBack?: () => void }) {
                 className="w-9 h-9 rounded-full object-cover flex-shrink-0"
               />
             ) : (
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e] dark:from-[#b8896a] dark:to-[#8c7a6d] flex items-center justify-center text-white font-albert font-semibold text-sm flex-shrink-0">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e] dark:from-brand-accent dark:to-brand-accent/80 flex items-center justify-center text-white font-albert font-semibold text-sm flex-shrink-0">
                 {squadInitial}
               </div>
             )}
@@ -670,7 +670,7 @@ function ChatTabs({
           Main
         </span>
         {mainUnread > 0 && (
-          <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[#a07855] dark:bg-[#b8896a] text-white text-[11px] font-albert font-semibold">
+          <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[#a07855] dark:bg-brand-accent text-white text-[11px] font-albert font-semibold">
             {mainUnread > 9 ? '9+' : mainUnread}
           </span>
         )}
@@ -695,7 +695,7 @@ function ChatTabs({
           Direct
         </span>
         {directUnread > 0 && (
-          <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[#a07855] dark:bg-[#b8896a] text-white text-[11px] font-albert font-semibold">
+          <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[#a07855] dark:bg-brand-accent text-white text-[11px] font-albert font-semibold">
             {directUnread > 9 ? '9+' : directUnread}
           </span>
         )}
@@ -1277,7 +1277,7 @@ function ChatContent({
                       <SpecialChannelItem
                         avatarUrl={coachSquad.avatarUrl}
                         icon={
-                          <svg className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <svg className="w-6 h-6 text-[#a07855] dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                           </svg>
                         }
@@ -1339,7 +1339,7 @@ function ChatContent({
                 <SpecialChannelItem
                   avatarUrl={standardSquad?.avatarUrl}
                   icon={
-                    <svg className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <svg className="w-6 h-6 text-[#a07855] dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                   }
@@ -1360,7 +1360,7 @@ function ChatContent({
                 <SpecialChannelItem
                   avatarUrl={squad?.avatarUrl}
                   icon={
-                    <svg className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <svg className="w-6 h-6 text-[#a07855] dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                   }
@@ -1387,7 +1387,7 @@ function ChatContent({
                   <SpecialChannelItem
                     avatarUrl={channelImage}
                     icon={
-                      <svg className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <svg className="w-6 h-6 text-[#a07855] dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     }
@@ -1422,22 +1422,22 @@ function ChatContent({
                 {!orgChannelsLoading && orgChannels.map((orgChannel) => {
                   const iconMap: Record<string, React.ReactNode> = {
                     megaphone: (
-                      <svg className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <svg className="w-6 h-6 text-[#a07855] dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
                       </svg>
                     ),
                     chat: (
-                      <svg className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <svg className="w-6 h-6 text-[#a07855] dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                       </svg>
                     ),
                     sparkles: (
-                      <svg className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <svg className="w-6 h-6 text-[#a07855] dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                       </svg>
                     ),
                     hash: (
-                      <svg className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <svg className="w-6 h-6 text-[#a07855] dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5l-3.9 19.5m-2.1-19.5l-3.9 19.5" />
                       </svg>
                     ),
@@ -1466,7 +1466,7 @@ function ChatContent({
                 <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
                   <SpecialChannelItem
                     icon={
-                      <svg className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <svg className="w-6 h-6 text-[#a07855] dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
                       </svg>
                     }
@@ -1483,7 +1483,7 @@ function ChatContent({
                 <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
                   <SpecialChannelItem
                     icon={
-                      <svg className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <svg className="w-6 h-6 text-[#a07855] dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                       </svg>
                     }
@@ -1500,7 +1500,7 @@ function ChatContent({
                 <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
                   <SpecialChannelItem
                     icon={
-                      <svg className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <svg className="w-6 h-6 text-[#a07855] dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                       </svg>
                     }
@@ -1522,7 +1522,7 @@ function ChatContent({
                 <SpecialChannelItem
                   avatarUrl={coach?.imageUrl}
                   icon={
-                    <svg className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <svg className="w-6 h-6 text-[#a07855] dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   }
@@ -1545,7 +1545,7 @@ function ChatContent({
                 <SpecialChannelItem
                   avatarUrl={programCoachInfo?.imageUrl}
                   icon={
-                    <svg className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <svg className="w-6 h-6 text-[#a07855] dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   }
@@ -1572,7 +1572,7 @@ function ChatContent({
                   <SpecialChannelItem
                     avatarUrl={channelImage}
                     icon={
-                      <svg className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <svg className="w-6 h-6 text-[#a07855] dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     }
@@ -1680,8 +1680,8 @@ function ChatContent({
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center px-4">
-              <div className="w-16 h-16 rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/15 flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <div className="w-16 h-16 rounded-full bg-[#a07855]/10 dark:bg-brand-accent/15 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-[#a07855] dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               </div>

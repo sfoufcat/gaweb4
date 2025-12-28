@@ -184,6 +184,7 @@ export async function POST(req: Request) {
       : 'Program enrollment';
 
     // Create payment intent on the Connected account with application fee
+    // Using setup_future_usage: 'off_session' to save the payment method for future use
     const paymentIntent = await getStripe().paymentIntents.create(
       {
         amount: priceInCents,
@@ -195,6 +196,7 @@ export async function POST(req: Request) {
         automatic_payment_methods: {
           enabled: true,
         },
+        setup_future_usage: 'off_session', // Save card for future one-click purchases
       },
       { stripeAccount: stripeConnectAccountId }
     );

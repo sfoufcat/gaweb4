@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
@@ -41,8 +41,20 @@ import {
   ArrowLeft,
   Lock,
   CreditCard,
+  Plus,
+  CircleCheck,
 } from 'lucide-react';
 import type { PurchasableContentType } from '@/types/discover';
+
+// Saved payment method type
+interface SavedPaymentMethod {
+  id: string;
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+  isDefault: boolean;
+}
 
 interface ContentPurchaseSheetProps {
   open: boolean;
@@ -58,11 +70,12 @@ interface ContentPurchaseSheetProps {
     coachName?: string;
     coachImageUrl?: string;
     keyOutcomes?: string[];
+    organizationId?: string; // For fetching saved cards
   };
   onPurchaseComplete?: () => void;
 }
 
-type PurchaseStep = 'preview' | 'loading' | 'payment' | 'success';
+type PurchaseStep = 'preview' | 'loading' | 'selectMethod' | 'payment' | 'processing' | 'success';
 
 /**
  * Helper to convert hex to rgba
@@ -125,6 +138,157 @@ function formatPrice(cents: number, currency = 'usd') {
     style: 'currency',
     currency: currency.toUpperCase(),
   }).format(amount);
+}
+
+/**
+ * Get card brand display name
+ */
+function getCardBrandName(brand: string): string {
+  const brands: Record<string, string> = {
+    visa: 'Visa',
+    mastercard: 'Mastercard',
+    amex: 'American Express',
+    discover: 'Discover',
+    diners: 'Diners Club',
+    jcb: 'JCB',
+    unionpay: 'UnionPay',
+  };
+  return brands[brand.toLowerCase()] || brand.charAt(0).toUpperCase() + brand.slice(1);
+}
+
+/**
+ * Saved Payment Methods Selection Component
+ */
+function SavedCardsSelection({
+  savedMethods,
+  selectedMethodId,
+  onSelect,
+  onAddNew,
+  onPay,
+  isProcessing,
+  priceInCents,
+  currency,
+  accentColor,
+}: {
+  savedMethods: SavedPaymentMethod[];
+  selectedMethodId: string | null;
+  onSelect: (id: string) => void;
+  onAddNew: () => void;
+  onPay: () => void;
+  isProcessing: boolean;
+  priceInCents: number;
+  currency: string;
+  accentColor: string;
+}) {
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="px-6 pb-4">
+        <h3 className="font-albert font-semibold text-lg text-text-primary dark:text-[#f5f5f8]">
+          Choose payment method
+        </h3>
+        <p className="text-sm text-text-secondary dark:text-[#b2b6c2]">
+          Select a saved card or add a new one
+        </p>
+      </div>
+
+      {/* Saved cards list */}
+      <div className="flex-1 px-6 pb-4 overflow-y-auto">
+        <div className="space-y-3">
+          {savedMethods.map((method) => (
+            <button
+              key={method.id}
+              type="button"
+              onClick={() => onSelect(method.id)}
+              className={`w-full p-4 rounded-xl border-2 transition-all flex items-center gap-4 text-left ${
+                selectedMethodId === method.id
+                  ? 'border-[var(--accent-color)] bg-[var(--accent-color)]/5'
+                  : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[var(--accent-color)]/50'
+              }`}
+              style={{ '--accent-color': accentColor } as React.CSSProperties}
+            >
+              {/* Card icon */}
+              <div className="w-12 h-8 bg-gradient-to-br from-gray-600 to-gray-800 rounded-md flex items-center justify-center">
+                <CreditCard className="w-5 h-5 text-white" />
+              </div>
+              
+              {/* Card info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-text-primary dark:text-[#f5f5f8]">
+                    {getCardBrandName(method.brand)} •••• {method.last4}
+                  </span>
+                  {method.isDefault && (
+                    <span className="text-xs px-2 py-0.5 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full text-text-muted">
+                      Default
+                    </span>
+                  )}
+                </div>
+                <span className="text-sm text-text-secondary dark:text-[#b2b6c2]">
+                  Expires {method.expMonth.toString().padStart(2, '0')}/{method.expYear.toString().slice(-2)}
+                </span>
+              </div>
+
+              {/* Selection indicator */}
+              {selectedMethodId === method.id && (
+                <CircleCheck 
+                  className="w-6 h-6 flex-shrink-0"
+                  style={{ color: accentColor }}
+                />
+              )}
+            </button>
+          ))}
+
+          {/* Add new card option */}
+          <button
+            type="button"
+            onClick={onAddNew}
+            className="w-full p-4 rounded-xl border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] hover:border-[var(--accent-color)]/50 transition-all flex items-center gap-4 text-left"
+            style={{ '--accent-color': accentColor } as React.CSSProperties}
+          >
+            <div 
+              className="w-12 h-8 rounded-md flex items-center justify-center"
+              style={{ backgroundColor: hexToRgba(accentColor, 0.1) }}
+            >
+              <Plus className="w-5 h-5" style={{ color: accentColor }} />
+            </div>
+            <span className="font-medium text-text-primary dark:text-[#f5f5f8]">
+              Add new card
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* Footer with pay button */}
+      <div className="border-t border-[#e1ddd8] dark:border-[#262b35] px-6 py-5">
+        <button
+          type="button"
+          onClick={onPay}
+          disabled={!selectedMethodId || isProcessing}
+          className="w-full py-3.5 px-6 text-white rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+          style={{ backgroundColor: accentColor }}
+        >
+          {isProcessing ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <Lock className="w-4 h-4" />
+              Pay {formatPrice(priceInCents, currency)}
+            </>
+          )}
+        </button>
+
+        {/* Security note */}
+        <p className="text-center text-xs text-text-muted dark:text-[#7d8190] mt-3">
+          <Shield className="w-3 h-3 inline mr-1" />
+          Your saved payment info is securely stored by Stripe
+        </p>
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -283,11 +447,13 @@ function PreviewContent({
   onPurchase,
   isPurchasing,
   isSignedIn,
+  hasSavedCards,
 }: {
   content: ContentPurchaseSheetProps['content'];
   onPurchase: () => void;
   isPurchasing: boolean;
   isSignedIn: boolean;
+  hasSavedCards?: boolean;
 }) {
   const { colors } = useBrandingValues();
   const ContentIcon = getContentTypeIcon(content.type);
@@ -411,6 +577,11 @@ function PreviewContent({
             'Sign in to purchase'
           ) : content.priceInCents === 0 ? (
             'Get for free'
+          ) : hasSavedCards ? (
+            <>
+              <CreditCard className="w-4 h-4 mr-2" />
+              Pay {formatPrice(content.priceInCents, content.currency)}
+            </>
           ) : (
             `Purchase for ${formatPrice(content.priceInCents, content.currency)}`
           )}
@@ -494,8 +665,12 @@ function SheetContent({
   stripePromise,
   clientSecret,
   connectedAccountId,
+  savedMethods,
+  selectedMethodId,
+  setSelectedMethodId,
   onPurchaseComplete,
   onOpenChange,
+  organizationId,
 }: {
   content: ContentPurchaseSheetProps['content'];
   step: PurchaseStep;
@@ -503,13 +678,18 @@ function SheetContent({
   stripePromise: Promise<Stripe | null> | null;
   clientSecret: string | null;
   connectedAccountId: string | null;
+  savedMethods: SavedPaymentMethod[];
+  selectedMethodId: string | null;
+  setSelectedMethodId: (id: string | null) => void;
   onPurchaseComplete?: () => void;
   onOpenChange: (open: boolean) => void;
+  organizationId: string | null;
 }) {
   const router = useRouter();
   const { isSignedIn } = useAuth();
   const { colors } = useBrandingValues();
   const [isPurchasing, setIsPurchasing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleStartPurchase = async () => {
     if (!isSignedIn) {
@@ -543,15 +723,67 @@ function SheetContent({
           onPurchaseComplete?.();
           router.push(getContentUrl(content.type, content.id));
         }, 1500);
-      } catch (error) {
-        console.error('Purchase error:', error);
+      } catch (err) {
+        console.error('Purchase error:', err);
       } finally {
         setIsPurchasing(false);
       }
       return;
     }
 
-    // For paid content, show the payment form
+    // For paid content, check if we have saved methods
+    if (savedMethods.length > 0) {
+      // Show saved methods selection
+      setStep('selectMethod');
+      // Pre-select default method
+      const defaultMethod = savedMethods.find(m => m.isDefault);
+      if (defaultMethod) {
+        setSelectedMethodId(defaultMethod.id);
+      } else {
+        setSelectedMethodId(savedMethods[0].id);
+      }
+    } else {
+      // No saved methods, go directly to payment
+      setStep('loading');
+    }
+  };
+
+  const handlePayWithSavedMethod = async () => {
+    if (!selectedMethodId) return;
+    
+    setIsPurchasing(true);
+    setError(null);
+    setStep('processing');
+
+    try {
+      const response = await fetch('/api/content/charge-saved-method', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contentType: content.type,
+          contentId: content.id,
+          paymentMethodId: selectedMethodId,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Payment failed');
+      }
+
+      handlePaymentSuccess();
+    } catch (err) {
+      console.error('Saved method payment error:', err);
+      setError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
+      setStep('selectMethod');
+    } finally {
+      setIsPurchasing(false);
+    }
+  };
+
+  const handleAddNewCard = () => {
+    // Go to new card payment flow
     setStep('loading');
   };
 
@@ -568,6 +800,15 @@ function SheetContent({
 
   const handleBackToPreview = () => {
     setStep('preview');
+    setError(null);
+  };
+
+  const handleBackToMethodSelection = () => {
+    if (savedMethods.length > 0) {
+      setStep('selectMethod');
+    } else {
+      setStep('preview');
+    }
   };
 
   // Slide animation variants
@@ -589,7 +830,7 @@ function SheetContent({
   const direction = step === 'preview' ? -1 : 1;
 
   return (
-    <div className="overflow-hidden">
+    <div className="flex flex-col min-h-0">
       <AnimatePresence mode="wait" custom={direction}>
         {step === 'preview' && (
           <motion.div
@@ -606,6 +847,50 @@ function SheetContent({
               onPurchase={handleStartPurchase}
               isPurchasing={isPurchasing}
               isSignedIn={!!isSignedIn}
+              hasSavedCards={savedMethods.length > 0}
+            />
+          </motion.div>
+        )}
+
+        {step === 'selectMethod' && (
+          <motion.div
+            key="selectMethod"
+            custom={direction}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+          >
+            {/* Back button header */}
+            <div className="px-6 pb-2">
+              <button
+                type="button"
+                onClick={handleBackToPreview}
+                className="p-2 -ml-2 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+                aria-label="Go back"
+              >
+                <ArrowLeft className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
+              </button>
+            </div>
+
+            {/* Error message */}
+            {error && (
+              <div className="mx-6 mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl">
+                <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+              </div>
+            )}
+
+            <SavedCardsSelection
+              savedMethods={savedMethods}
+              selectedMethodId={selectedMethodId}
+              onSelect={setSelectedMethodId}
+              onAddNew={handleAddNewCard}
+              onPay={handlePayWithSavedMethod}
+              isProcessing={isPurchasing}
+              priceInCents={content.priceInCents}
+              currency={content.currency || 'usd'}
+              accentColor={colors.accentLight}
             />
           </motion.div>
         )}
@@ -619,6 +904,27 @@ function SheetContent({
             transition={{ duration: 0.2 }}
           >
             <LoadingContent accentColor={colors.accentLight} />
+          </motion.div>
+        )}
+
+        {step === 'processing' && (
+          <motion.div
+            key="processing"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="flex flex-col items-center justify-center py-16 px-6">
+              <div className="relative mb-4">
+                <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8] dark:border-[#262b35]" />
+                <div 
+                  className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent animate-spin"
+                  style={{ borderTopColor: colors.accentLight }}
+                />
+              </div>
+              <p className="text-text-secondary dark:text-[#b2b6c2]">Processing payment...</p>
+            </div>
           </motion.div>
         )}
 
@@ -651,7 +957,7 @@ function SheetContent({
             >
               <StripePaymentForm
                 onSuccess={handlePaymentSuccess}
-                onBack={handleBackToPreview}
+                onBack={handleBackToMethodSelection}
                 priceInCents={content.priceInCents}
                 currency={content.currency || 'usd'}
                 contentTitle={content.title}
@@ -686,14 +992,71 @@ export function ContentPurchaseSheet({
   content,
   onPurchaseComplete,
 }: ContentPurchaseSheetProps) {
+  const { isSignedIn } = useAuth();
   const [step, setStep] = useState<PurchaseStep>('preview');
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [connectedAccountId, setConnectedAccountId] = useState<string | null>(null);
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [savedMethods, setSavedMethods] = useState<SavedPaymentMethod[]>([]);
+  const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
+  const [organizationId, setOrganizationId] = useState<string | null>(content.organizationId || null);
   
   // Detect desktop vs mobile to render only one component
   const isDesktop = useMediaQuery('(min-width: 1024px)');
+
+  // Fetch saved payment methods when sheet opens
+  const fetchSavedMethods = useCallback(async () => {
+    if (!isSignedIn || !organizationId) return;
+
+    try {
+      const response = await fetch(`/api/payment-methods?organizationId=${organizationId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSavedMethods(data.paymentMethods || []);
+      }
+    } catch (err) {
+      console.error('Error fetching saved payment methods:', err);
+    }
+  }, [isSignedIn, organizationId]);
+
+  // Fetch organization ID from content if not provided
+  useEffect(() => {
+    if (!open || organizationId) return;
+
+    const fetchOrganizationId = async () => {
+      try {
+        // Make a lightweight API call to get the organization ID
+        const response = await fetch('/api/content/create-payment-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contentType: content.type,
+            contentId: content.id,
+            checkOnly: true, // Just get org info, don't create intent
+          }),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.organizationId) {
+            setOrganizationId(data.organizationId);
+          }
+        }
+      } catch {
+        // Silently fail - we'll create payment intent when user clicks purchase
+      }
+    };
+
+    fetchOrganizationId();
+  }, [open, organizationId, content.type, content.id]);
+
+  // Fetch saved methods when sheet opens and we have org ID
+  useEffect(() => {
+    if (open && organizationId && isSignedIn) {
+      fetchSavedMethods();
+    }
+  }, [open, organizationId, isSignedIn, fetchSavedMethods]);
   
   // Reset state when sheet closes
   useEffect(() => {
@@ -705,6 +1068,8 @@ export function ContentPurchaseSheet({
         setConnectedAccountId(null);
         setStripePromise(null);
         setError(null);
+        setSelectedMethodId(null);
+        // Don't reset savedMethods and organizationId - they can be reused
       }, 300);
       return () => clearTimeout(timer);
     }
@@ -760,8 +1125,12 @@ export function ContentPurchaseSheet({
       stripePromise={stripePromise}
       clientSecret={clientSecret}
       connectedAccountId={connectedAccountId}
+      savedMethods={savedMethods}
+      selectedMethodId={selectedMethodId}
+      setSelectedMethodId={setSelectedMethodId}
       onPurchaseComplete={onPurchaseComplete}
       onOpenChange={onOpenChange}
+      organizationId={organizationId}
     />
   );
 
@@ -769,13 +1138,13 @@ export function ContentPurchaseSheet({
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-xl p-0 gap-0 overflow-hidden" hideCloseButton>
+        <DialogContent className="max-w-xl max-h-[85vh] p-0 gap-0 overflow-hidden flex flex-col" hideCloseButton>
           <DialogHeader className="sr-only">
             <DialogTitle>{content.title}</DialogTitle>
             <DialogDescription>Purchase this content</DialogDescription>
           </DialogHeader>
           
-          <div className="pt-8 pb-2 min-h-[400px]">
+          <div className="pt-8 pb-2 min-h-[400px] flex-1 overflow-y-auto">
             {sheetContent}
           </div>
         </DialogContent>

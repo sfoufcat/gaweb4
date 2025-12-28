@@ -1,10 +1,10 @@
 /**
- * Create Payment Intent for Content Purchase
+ * Charge Saved Payment Method for Content Purchase
  * 
- * POST /api/content/create-payment-intent
+ * POST /api/content/charge-saved-method
  * 
- * Creates a Stripe PaymentIntent for embedded checkout in the purchase popup.
- * Uses Stripe Connect to process payments to the coach's connected account.
+ * Creates and confirms a Stripe PaymentIntent using a saved payment method
+ * for one-click purchases without re-entering card details.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -40,9 +40,6 @@ interface ContentData {
   currency?: string;
   organizationId?: string;
   programIds?: string[];
-  coverImageUrl?: string;
-  description?: string;
-  shortDescription?: string;
 }
 
 /**
@@ -66,9 +63,6 @@ async function getContentData(
     currency: data?.currency || 'usd',
     organizationId: data?.organizationId,
     programIds: data?.programIds,
-    coverImageUrl: data?.coverImageUrl,
-    description: data?.description || data?.shortDescription || data?.longDescription,
-    shortDescription: data?.shortDescription,
   };
 }
 
@@ -92,11 +86,12 @@ async function hasExistingPurchase(
 }
 
 /**
- * POST /api/content/create-payment-intent
+ * POST /api/content/charge-saved-method
  * 
  * Body:
  * - contentType: 'event' | 'article' | 'course' | 'download' | 'link'
  * - contentId: string
+ * - paymentMethodId: string - The saved payment method to use
  */
 export async function POST(request: NextRequest) {
   try {
@@ -107,15 +102,16 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { contentType, contentId } = body as {
+    const { contentType, contentId, paymentMethodId } = body as {
       contentType: ContentPurchaseType;
       contentId: string;
+      paymentMethodId: string;
     };
 
     // Validate input
-    if (!contentType || !contentId) {
+    if (!contentType || !contentId || !paymentMethodId) {
       return NextResponse.json(
-        { error: 'Missing required fields: contentType and contentId' },
+        { error: 'Missing required fields: contentType, contentId, and paymentMethodId' },
         { status: 400 }
       );
     }
@@ -177,65 +173,22 @@ export async function POST(request: NextRequest) {
 
     const stripe = getStripe();
 
-    // Verify the connected account is ready to accept payments
-    try {
-      const account = await stripe.accounts.retrieve(stripeConnectAccountId);
-      if (!account.charges_enabled) {
-        return NextResponse.json(
-          { error: 'Payment processing is not yet enabled. Please try again later.' },
-          { status: 400 }
-        );
-      }
-    } catch (accountError) {
-      console.error('[CONTENT_PAYMENT_INTENT] Error checking Stripe Connect account:', accountError);
+    // Get user's customer ID for this connected account
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    const userData = userDoc.data();
+    const connectedCustomerIds = userData?.stripeConnectedCustomerIds || {};
+    const customerId = connectedCustomerIds[stripeConnectAccountId];
+
+    if (!customerId) {
       return NextResponse.json(
-        { error: 'Unable to verify payment configuration. Please contact support.' },
-        { status: 500 }
+        { error: 'No saved payment method found. Please add a payment method first.' },
+        { status: 400 }
       );
     }
-
-    // Get user email
-    const clerk = await clerkClient();
-    const clerkUser = await clerk.users.getUser(userId);
-    const email = clerkUser.emailAddresses[0]?.emailAddress;
 
     // Calculate platform fee
     const platformFeePercent = orgSettings?.platformFeePercent ?? 1;
     const applicationFeeAmount = Math.round(content.priceInCents * (platformFeePercent / 100));
-
-    // Get or create Stripe customer on the Connected account
-    let customerId: string | undefined;
-    const userDoc = await adminDb.collection('users').doc(userId).get();
-    const userData = userDoc.data();
-    const connectedCustomerIds = userData?.stripeConnectedCustomerIds || {};
-
-    if (connectedCustomerIds[stripeConnectAccountId]) {
-      customerId = connectedCustomerIds[stripeConnectAccountId];
-    } else {
-      // Create new Stripe customer on the Connected account
-      const customer = await stripe.customers.create(
-        {
-          email,
-          metadata: {
-            userId,
-            platformUserId: userId,
-          },
-        },
-        { stripeAccount: stripeConnectAccountId }
-      );
-      customerId = customer.id;
-
-      // Save customer ID for this connected account
-      await adminDb.collection('users').doc(userId).set(
-        {
-          stripeConnectedCustomerIds: {
-            ...connectedCustomerIds,
-            [stripeConnectAccountId]: customerId,
-          },
-        },
-        { merge: true }
-      );
-    }
 
     // Build metadata
     const metadata: Record<string, string> = {
@@ -249,40 +202,83 @@ export async function POST(request: NextRequest) {
     // Build description
     const description = `${content.title} - ${contentType.charAt(0).toUpperCase() + contentType.slice(1)} purchase`;
 
-    // Create payment intent on the Connected account with application fee
-    // Using setup_future_usage: 'off_session' to save the payment method for future use
-    const paymentIntent = await stripe.paymentIntents.create(
-      {
-        amount: content.priceInCents,
-        currency: (content.currency || 'usd').toLowerCase(),
-        customer: customerId,
-        description,
-        metadata,
-        application_fee_amount: applicationFeeAmount,
-        automatic_payment_methods: {
-          enabled: true,
+    // Create and confirm payment intent immediately with the saved payment method
+    let paymentIntent: Stripe.PaymentIntent;
+    
+    try {
+      paymentIntent = await stripe.paymentIntents.create(
+        {
+          amount: content.priceInCents,
+          currency: (content.currency || 'usd').toLowerCase(),
+          customer: customerId,
+          payment_method: paymentMethodId,
+          confirm: true, // Confirm immediately for one-click
+          off_session: true, // Customer not present
+          description,
+          metadata,
+          application_fee_amount: applicationFeeAmount,
         },
-        setup_future_usage: 'off_session', // Save card for future one-click purchases
-      },
-      { stripeAccount: stripeConnectAccountId }
-    );
+        { stripeAccount: stripeConnectAccountId }
+      );
+    } catch (stripeError) {
+      console.error('[CONTENT_CHARGE_SAVED] Stripe error:', stripeError);
+      
+      if (stripeError instanceof Stripe.errors.StripeCardError) {
+        return NextResponse.json(
+          { error: 'Payment failed: ' + stripeError.message },
+          { status: 400 }
+        );
+      }
+      
+      throw stripeError;
+    }
+
+    // Check if payment succeeded
+    if (paymentIntent.status !== 'succeeded') {
+      console.error('[CONTENT_CHARGE_SAVED] Payment not succeeded:', paymentIntent.status);
+      return NextResponse.json(
+        { 
+          error: 'Payment not completed', 
+          status: paymentIntent.status,
+          requiresAction: paymentIntent.status === 'requires_action',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Payment succeeded - create purchase record
+    const clerk = await clerkClient();
+    const clerkUser = await clerk.users.getUser(userId);
+    
+    const purchaseRecord = {
+      userId,
+      contentType,
+      contentId,
+      contentTitle: content.title,
+      organizationId: content.organizationId,
+      priceInCents: content.priceInCents,
+      currency: content.currency || 'usd',
+      stripePaymentIntentId: paymentIntent.id,
+      status: 'completed',
+      purchasedAt: new Date().toISOString(),
+      userEmail: clerkUser.emailAddresses[0]?.emailAddress,
+      userName: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim(),
+    };
+
+    await adminDb.collection('user_content_purchases').add(purchaseRecord);
 
     console.log(
-      `[CONTENT_PAYMENT_INTENT] Created payment intent ${paymentIntent.id} for ${contentType}/${contentId} user ${userId}`
+      `[CONTENT_CHARGE_SAVED] Successfully charged saved method for ${contentType}/${contentId} user ${userId}`
     );
 
     return NextResponse.json({
-      clientSecret: paymentIntent.client_secret,
+      success: true,
       paymentIntentId: paymentIntent.id,
-      connectedAccountId: stripeConnectAccountId,
-      priceInCents: content.priceInCents,
-      currency: content.currency || 'usd',
     });
   } catch (error) {
-    console.error('[CONTENT_PAYMENT_INTENT] Error:', error);
+    console.error('[CONTENT_CHARGE_SAVED] Error:', error);
     const message = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-
 

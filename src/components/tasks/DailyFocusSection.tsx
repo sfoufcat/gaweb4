@@ -41,12 +41,12 @@ function EmptyFocusDropZone({ isOver }: { isOver: boolean }) {
       ref={setNodeRef}
       className={`w-full rounded-[20px] p-4 border-2 border-dashed transition-all duration-200 ${
         isOver 
-          ? 'border-accent-secondary dark:border-[#b8896a] bg-accent-secondary/10 dark:bg-[#b8896a]/10 scale-[1.02]' 
+          ? 'border-brand-accent dark:border-brand-accent bg-brand-accent/10 dark:bg-brand-accent/10 scale-[1.02]' 
           : 'border-[#e1ddd8] dark:border-[#262b35] bg-[#f3f1ef]/50 dark:bg-[#11141b]/50'
       }`}
     >
       <p className={`text-center font-albert text-[16px] tracking-[-0.5px] leading-[1.3] transition-colors ${
-        isOver ? 'text-accent-secondary dark:text-[#b8896a]' : 'text-text-muted dark:text-[#7d8190]'
+        isOver ? 'text-accent-secondary dark:text-brand-accent' : 'text-text-muted dark:text-[#7d8190]'
       }`}>
         {isOver ? 'Drop here to add to Daily Focus' : 'Drop task here'}
       </p>
@@ -371,7 +371,7 @@ export function DailyFocusSection({
           {!isDayClosed && (
             <button
               onClick={() => handleAddTask(false)}
-              className="font-sans text-[12px] text-[#a07855] dark:text-[#b8896a] leading-[1.2] hover:opacity-80 transition-opacity"
+              className="font-sans text-[12px] text-[#a07855] dark:text-brand-accent leading-[1.2] hover:opacity-80 transition-opacity"
             >
               Add
             </button>
