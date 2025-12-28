@@ -28,6 +28,7 @@ import { DeleteConfirmationModal } from '@/components/feed/ConfirmationModal';
 
 interface CheckInFlowStepsEditorProps {
   flowId: string;
+  isSystemDefault?: boolean;
   onBack: () => void;
 }
 
@@ -144,7 +145,7 @@ const ADDABLE_STEP_TYPES: CheckInStepType[] = [
 // Steps that should typically be at the end
 const END_STEP_TYPES: CheckInStepType[] = ['completion', 'goal_achieved'];
 
-export function CheckInFlowStepsEditor({ flowId, onBack }: CheckInFlowStepsEditorProps) {
+export function CheckInFlowStepsEditor({ flowId, isSystemDefault = false, onBack }: CheckInFlowStepsEditorProps) {
   const [steps, setSteps] = useState<CheckInStep[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -320,12 +321,31 @@ export function CheckInFlowStepsEditor({ flowId, onBack }: CheckInFlowStepsEdito
     }
   };
 
+  const handleToggleStepEnabled = async (stepId: string, currentEnabled: boolean) => {
+    try {
+      setIsSaving(true);
+      const response = await fetch(`/api/coach/org-checkin-flows/${flowId}/steps/${stepId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: !currentEnabled }),
+      });
+
+      if (!response.ok) throw new Error('Failed to toggle step');
+      await fetchSteps();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to toggle step');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const renderStepRow = (step: CheckInStep) => {
     const typeInfo = STEP_TYPE_INFO[step.type];
     const Icon = typeInfo?.icon || Info;
+    const isDisabled = step.enabled === false;
 
     return (
-      <div className="p-4 bg-white dark:bg-[#171b22] hover:bg-[#faf8f6] dark:hover:bg-[#1a1f28] transition-colors">
+      <div className={`p-4 bg-white dark:bg-[#171b22] hover:bg-[#faf8f6] dark:hover:bg-[#1a1f28] transition-colors ${isDisabled ? 'opacity-50' : ''}`}>
         <div className="flex items-center gap-4">
           {/* Drag handle */}
           <div className="cursor-grab active:cursor-grabbing">
@@ -348,6 +368,11 @@ export function CheckInFlowStepsEditor({ flowId, onBack }: CheckInFlowStepsEdito
                   Conditional
                 </span>
               )}
+              {isDisabled && (
+                <span className="px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded">
+                  Disabled
+                </span>
+              )}
             </div>
             <p className="text-sm text-text-secondary dark:text-[#b2b6c2]">
               {step.name ? typeInfo?.label : typeInfo?.description}
@@ -363,13 +388,34 @@ export function CheckInFlowStepsEditor({ flowId, onBack }: CheckInFlowStepsEdito
             >
               <Pencil className="w-4 h-4 text-text-secondary dark:text-[#b2b6c2]" />
             </button>
-            <button
-              onClick={() => handleDeleteStep(step.id, step.type)}
-              className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-              title="Delete step"
-            >
-              <Trash2 className="w-4 h-4 text-red-500" />
-            </button>
+            {isSystemDefault ? (
+              /* Enable/Disable Toggle for default flows */
+              <button
+                onClick={() => handleToggleStepEnabled(step.id, step.enabled !== false)}
+                className={`
+                  relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0
+                  ${step.enabled !== false
+                    ? 'bg-[#4CAF50]' 
+                    : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                  }
+                `}
+                title={step.enabled !== false ? 'Disable step' : 'Enable step'}
+              >
+                <span className={`
+                  absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200
+                  ${step.enabled !== false ? 'left-[22px]' : 'left-0.5'}
+                `} />
+              </button>
+            ) : (
+              /* Delete button for custom flows */
+              <button
+                onClick={() => handleDeleteStep(step.id, step.type)}
+                className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                title="Delete step"
+              >
+                <Trash2 className="w-4 h-4 text-red-500" />
+              </button>
+            )}
           </div>
         </div>
       </div>

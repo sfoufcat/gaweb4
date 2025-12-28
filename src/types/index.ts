@@ -3207,6 +3207,7 @@ export interface CheckInStep {
   type: CheckInStepType;
   name?: string;                        // Custom name for coach differentiation
   config: CheckInStepConfig;
+  enabled?: boolean;                    // Whether step is active (default: true)
   
   // Conditional display (for evening/weekly conditional screens)
   conditions?: CheckInStepCondition[];

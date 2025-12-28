@@ -16,7 +16,8 @@ import {
   Eye,
   EyeOff,
   RotateCcw,
-  Globe
+  Globe,
+  Settings
 } from 'lucide-react';
 import type { OrgCheckInFlow, CheckInFlowTemplate, CheckInFlowType } from '@/types';
 import { CheckInFlowEditorDialog } from './CheckInFlowEditorDialog';
@@ -273,10 +274,22 @@ export function CoachCheckInsTab() {
               </p>
             </div>
           </div>
+          
+          {/* Settings icon for custom flows */}
+          {editingFlow && !editingFlow.isSystemDefault && (
+            <button
+              onClick={() => handleEditDetails(editingFlow)}
+              className="p-2 rounded-lg hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+              title="Flow settings"
+            >
+              <Settings className="w-5 h-5 text-text-secondary dark:text-[#b2b6c2]" />
+            </button>
+          )}
         </div>
 
         <CheckInFlowStepsEditor 
           flowId={editingFlowId}
+          isSystemDefault={editingFlow?.isSystemDefault}
           onBack={handleBackToList}
         />
       </div>
@@ -545,11 +558,6 @@ function FlowCard({ flow, onToggleEnabled, onEditSteps, onEditDetails, onDuplica
                   Default
                 </span>
               )}
-              {!flow.enabled && (
-                <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 rounded-full">
-                  Disabled
-                </span>
-              )}
             </div>
             <p className="text-sm text-text-secondary dark:text-[#b2b6c2]">
               {typeLabel} · {flow.stepCount || 0} steps
@@ -557,7 +565,25 @@ function FlowCard({ flow, onToggleEnabled, onEditSteps, onEditDetails, onDuplica
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* Enable/Disable Toggle */}
+          <button
+            onClick={onToggleEnabled}
+            className={`
+              relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0
+              ${flow.enabled 
+                ? 'bg-[#4CAF50]' 
+                : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+              }
+            `}
+            title={flow.enabled ? 'Disable flow' : 'Enable flow'}
+          >
+            <span className={`
+              absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200
+              ${flow.enabled ? 'left-[22px]' : 'left-0.5'}
+            `} />
+          </button>
+
           {/* Edit Steps button */}
           <button
             onClick={onEditSteps}
@@ -580,22 +606,6 @@ function FlowCard({ flow, onToggleEnabled, onEditSteps, onEditDetails, onDuplica
               >
                 <Pencil className="w-4 h-4" />
                 Edit Details
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={onToggleEnabled}
-                className="flex items-center gap-2 cursor-pointer"
-              >
-                {flow.enabled ? (
-                  <>
-                    <EyeOff className="w-4 h-4" />
-                    Disable
-                  </>
-                ) : (
-                  <>
-                    <Eye className="w-4 h-4" />
-                    Enable
-                  </>
-                )}
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={onDuplicate}

@@ -42,9 +42,15 @@ export function CheckInFlowRenderer({ flowType, flowId, onComplete, onClose }: C
   const [sessionData, setSessionData] = useState<Record<string, unknown>>({});
   const [isNavigating, setIsNavigating] = useState(false);
 
-  // Filter steps based on conditions
+  // Filter steps based on enabled status and conditions
   const visibleSteps = useMemo(() => {
     return steps.filter(step => {
+      // Skip disabled steps
+      if (step.enabled === false) {
+        return false;
+      }
+
+      // Check conditional display
       if (!step.conditions || step.conditions.length === 0) {
         return true;
       }

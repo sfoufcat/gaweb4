@@ -53,6 +53,7 @@ export async function GET(
  * Body:
  * - config?: object (step-specific config)
  * - name?: string
+ * - enabled?: boolean
  * - conditions?: CheckInStepCondition[]
  * - conditionLogic?: 'and' | 'or'
  */
@@ -85,7 +86,7 @@ export async function PUT(
     const existingStep = stepDoc.data() as CheckInStep;
 
     const body = await req.json();
-    const { config, name, conditions, conditionLogic } = body;
+    const { config, name, enabled, conditions, conditionLogic } = body;
 
     const now = new Date().toISOString();
     const updates: Partial<CheckInStep> = {
@@ -102,6 +103,10 @@ export async function PUT(
 
     if (name !== undefined) {
       updates.name = name || undefined;
+    }
+
+    if (enabled !== undefined) {
+      updates.enabled = enabled;
     }
 
     if (conditions !== undefined) {

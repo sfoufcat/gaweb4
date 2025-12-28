@@ -250,7 +250,10 @@ export async function GET(
 
     const days = daysSnapshot.docs.map(doc => ({
       dayIndex: doc.data().dayIndex,
-      tasks: doc.data().tasks || [],
+      tasks: (doc.data().tasks || []).map((task: { label?: string; id?: string; [key: string]: unknown }) => ({
+        ...task,
+        title: task.label || '',  // Map label to title for frontend compatibility
+      })),
     }));
 
     console.log(`[PROGRAM_CONTENT] Results for program ${programId}:`, {

@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Phone, ChevronDown, ExternalLink, Users, Loader2 } from 'lucide-react';
 import type { EnrolledProgramWithDetails } from '@/hooks/useMyPrograms';
 import { useProgramContent } from '@/hooks/useProgramContent';
@@ -476,7 +477,7 @@ export function ProgramDetailView({
 
       {/* 3 Day Focus Section - Connected Accordion */}
       {hasAnyTasks && (
-        <div className="space-y-3">
+        <div className="space-y-3 mb-4">
           <h2 className="font-albert text-[24px] font-medium text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3]">
             {isPreStart ? 'Program preview' : '3 day focus'}
           </h2>
@@ -513,15 +514,25 @@ export function ProgramDetailView({
                     )}
                   </button>
 
-                  {isExpanded && hasTasks && (
-                    <div className="px-4 pb-4">
-                      <ol className="font-sans text-[15px] text-text-secondary dark:text-[#b2b6c2] leading-[1.5] tracking-[-0.3px] list-decimal pl-6 space-y-2">
-                        {dayFocus.tasks.map((task, i) => (
-                          <li key={task.id || i}>{task.title}</li>
-                        ))}
-                      </ol>
-                    </div>
-                  )}
+                  <AnimatePresence initial={false}>
+                    {isExpanded && hasTasks && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2, ease: 'easeInOut' }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-4 pb-4">
+                          <ol className="font-sans text-[15px] text-text-secondary dark:text-[#b2b6c2] leading-[1.5] tracking-[-0.3px] list-decimal pl-6 space-y-2">
+                            {dayFocus.tasks.map((task, i) => (
+                              <li key={task.id || i}>{task.title}</li>
+                            ))}
+                          </ol>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               );
             })}
