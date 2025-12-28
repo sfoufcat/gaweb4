@@ -7,6 +7,9 @@ import { useRouter } from 'next/navigation';
 import { useHabits } from '@/hooks/useHabits';
 import { useAlignment } from '@/hooks/useAlignment';
 import { useDashboard } from '@/hooks/useDashboard';
+import { useAvailableCheckIns } from '@/hooks/useCheckInFlow';
+import { useDynamicPrompts, getGradientClass, getGradientStyle } from '@/hooks/useDynamicPrompts';
+import * as LucideIcons from 'lucide-react';
 import { useCurrentUserStoryAvailability } from '@/hooks/useUserStoryAvailability';
 import { useStoryViewTracking, useStoryViewStatus, generateStoryContentData } from '@/hooks/useStoryViewTracking';
 import { HabitCheckInModal } from '@/components/habits/HabitCheckInModal';
@@ -82,6 +85,17 @@ export default function Dashboard() {
   const eveningCheckInLoading = dashboardLoading;
   const tasksLoading = dashboardLoading;
   const enrollmentsLoading = dashboardLoading;
+  
+  // Check which check-in flows are enabled for this organization
+  const { 
+    isMorningEnabled, 
+    isEveningEnabled, 
+    isWeeklyEnabled,
+    isLoading: flowsLoading 
+  } = useAvailableCheckIns();
+  
+  // Fetch dynamic prompts (custom flows with conditions)
+  const { activePrompts: dynamicPrompts } = useDynamicPrompts();
   
   // Helper: Check if today is the user's first day (based on createdAt in local timezone)
   const isUserFirstDay = useCallback((createdAt: string | null): boolean => {
@@ -306,15 +320,16 @@ export default function Dashboard() {
   const allFocusTasksCompleted = focusTasks.length >= focusLimit && 
     focusTasks.every(task => task.status === 'completed');
   
-  // Should show morning check-in CTA (during morning hours when not completed, not on weekends)
-  const shouldShowMorningCheckInCTA = !checkInLoading && !isWeekend && isMorningWindow() && !isMorningCheckInCompleted;
+  // Should show morning check-in CTA (during morning hours when not completed, not on weekends, AND flow is enabled)
+  const shouldShowMorningCheckInCTA = !checkInLoading && !flowsLoading && isMorningEnabled && !isWeekend && isMorningWindow() && !isMorningCheckInCompleted;
   
   // Should show evening check-in CTA:
   // - Only after we've loaded the evening check-in status (to avoid flash)
+  // - Flow must be enabled for this organization
   // - Not on weekends (no daily check-ins on Saturday/Sunday)
   // - In evening window (5-11 PM) and not completed, OR
   // - All 3 focus tasks completed AND morning completed AND not evening completed
-  const shouldShowEveningCheckInCTA = !eveningCheckInLoading && !isWeekend && !isEveningCheckInCompleted && (
+  const shouldShowEveningCheckInCTA = !eveningCheckInLoading && !flowsLoading && isEveningEnabled && !isWeekend && !isEveningCheckInCompleted && (
     isEveningWindow() || 
     (allFocusTasksCompleted && isMorningCheckInCompleted)
   );
@@ -325,6 +340,9 @@ export default function Dashboard() {
 
   // Determine if weekly reflection should be shown
   const shouldShowWeeklyReflectionCTA = useMemo(() => {
+    // Flow must be enabled
+    if (!isWeeklyEnabled || flowsLoading) return false;
+    
     const today = new Date();
     const dayOfWeek = today.getDay(); // 0 = Sunday, 5 = Friday, 6 = Saturday
     
@@ -349,10 +367,10 @@ export default function Dashboard() {
     }
     
     return false;
-  }, [isEveningCheckInCompleted, weeklyReflection]);
+  }, [isEveningCheckInCompleted, weeklyReflection, isWeeklyEnabled, flowsLoading]);
   
-  // Should hide Daily Focus (during morning hours when check-in not completed, not on weekends)
-  const shouldHideDailyFocus = !checkInLoading && !isWeekend && isMorningWindow() && !isMorningCheckInCompleted;
+  // Should hide Daily Focus (during morning hours when check-in not completed, not on weekends, only if morning flow is enabled)
+  const shouldHideDailyFocus = !checkInLoading && !flowsLoading && isMorningEnabled && !isWeekend && isMorningWindow() && !isMorningCheckInCompleted;
   
   // First day experience logic
   const isFirstDay = isUserFirstDay(userCreatedAt);
@@ -362,8 +380,8 @@ export default function Dashboard() {
   // Determine if we're showing "missed check-in" version (first day, after 12pm, no check-in)
   const showFirstDayMissedCheckin = isFirstDay && isMorningWindowClosed && !isMorningCheckInCompleted;
   
-  // Check if any prompt is active (morning, evening, or weekly)
-  const hasActivePrompt = shouldShowMorningCheckInCTA || shouldShowEveningCheckInCTA || shouldShowWeeklyReflectionCTA;
+  // Check if any prompt is active (morning, evening, weekly, or dynamic prompts)
+  const hasActivePrompt = shouldShowMorningCheckInCTA || shouldShowEveningCheckInCTA || shouldShowWeeklyReflectionCTA || dynamicPrompts.length > 0;
   
   // Dynamic headline based on time of day and check-in/task state
   const dynamicHeadline = useMemo(() => {
@@ -929,6 +947,48 @@ export default function Dashboard() {
             <p className="font-sans text-[14px] text-white/80 leading-[1.2] mt-2">
               Close your week with intention
             </p>
+          </div>
+        </Link>
+      );
+    }
+    
+    // If we have dynamic prompts (custom flows), show the first one
+    if (dynamicPrompts.length > 0) {
+      const prompt = dynamicPrompts[0];
+      const { displayConfig } = prompt;
+      const gradientClass = getGradientClass(displayConfig.gradient);
+      const gradientStyle = getGradientStyle(displayConfig.gradient);
+      
+      // Get icon component if it's a Lucide icon name
+      const iconName = displayConfig.icon || 'sparkles';
+      const IconComponent = (LucideIcons as Record<string, React.ComponentType<{ className?: string }>>)[
+        iconName.charAt(0).toUpperCase() + iconName.slice(1).replace(/-([a-z])/g, (g) => g[1].toUpperCase())
+      ];
+      
+      return (
+        <Link 
+          key={`dynamic-${prompt.id}`}
+          href={prompt.url}
+          className={`${baseClasses} ${gradientClass || ''}`}
+          style={gradientStyle}
+        >
+          <div className="absolute inset-0 bg-black/10" />
+          <div className="relative z-10 text-center">
+            {IconComponent ? (
+              <IconComponent className={`${isMobile ? 'w-8 h-8' : 'w-10 h-10'} text-white mb-3 mx-auto`} />
+            ) : displayConfig.icon && (
+              <span className={`${isMobile ? 'text-[28px]' : 'text-[32px]'} mb-3 block`}>
+                {displayConfig.icon}
+              </span>
+            )}
+            <p className={`font-albert ${isMobile ? 'text-[24px]' : 'text-[28px]'} text-white leading-[1.2] tracking-[-1.3px] font-medium`}>
+              {displayConfig.title}
+            </p>
+            {displayConfig.subtitle && (
+              <p className="font-sans text-[14px] text-white/80 leading-[1.2] mt-2">
+                {displayConfig.subtitle}
+              </p>
+            )}
           </div>
         </Link>
       );

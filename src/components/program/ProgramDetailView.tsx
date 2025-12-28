@@ -116,50 +116,31 @@ export function ProgramDetailView({
   // Check if program hasn't started yet (pre-start state)
   const isPreStart = progress.currentDay < 1;
   
-  // Calculate which days to show (today, tomorrow, day after OR preview of Day 1-3 if pre-start)
+  // Calculate which days to show - always use dynamic labels (Today, Tomorrow, weekday name)
   const threeDayFocus = useMemo(() => {
     const today = new Date();
     const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ...
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     
-    // If program hasn't started, show Day 1, 2, 3 as a preview
-    if (isPreStart) {
-      return [
-        {
-          dayIndex: 1,
-          label: 'Day 1',
-          tasks: days.find(d => d.dayIndex === 1)?.tasks || [],
-        },
-        {
-          dayIndex: 2,
-          label: 'Day 2',
-          tasks: days.find(d => d.dayIndex === 2)?.tasks || [],
-        },
-        {
-          dayIndex: 3,
-          label: 'Day 3',
-          tasks: days.find(d => d.dayIndex === 3)?.tasks || [],
-        },
-      ];
-    }
+    // Base day index: either current progress day or day 1 for pre-start preview
+    const baseDayIndex = isPreStart ? 1 : progress.currentDay;
     
-    const currentDayIndex = progress.currentDay;
-    
+    // Always use dynamic labels (Today, Tomorrow, weekday name)
     return [
       {
-        dayIndex: currentDayIndex,
+        dayIndex: baseDayIndex,
         label: 'Today',
-        tasks: days.find(d => d.dayIndex === currentDayIndex)?.tasks || [],
+        tasks: days.find(d => d.dayIndex === baseDayIndex)?.tasks || [],
       },
       {
-        dayIndex: currentDayIndex + 1,
+        dayIndex: baseDayIndex + 1,
         label: 'Tomorrow',
-        tasks: days.find(d => d.dayIndex === currentDayIndex + 1)?.tasks || [],
+        tasks: days.find(d => d.dayIndex === baseDayIndex + 1)?.tasks || [],
       },
       {
-        dayIndex: currentDayIndex + 2,
+        dayIndex: baseDayIndex + 2,
         label: dayNames[(dayOfWeek + 2) % 7],
-        tasks: days.find(d => d.dayIndex === currentDayIndex + 2)?.tasks || [],
+        tasks: days.find(d => d.dayIndex === baseDayIndex + 2)?.tasks || [],
       },
     ];
   }, [progress.currentDay, days, isPreStart]);

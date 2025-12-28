@@ -1,7 +1,7 @@
 'use client';
 
 import { use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckInFlowRenderer } from '@/components/checkin/CheckInFlowRenderer';
 
 interface PageProps {
@@ -17,6 +17,7 @@ interface PageProps {
  *   /checkin/flow/morning - Morning check-in
  *   /checkin/flow/evening - Evening check-in
  *   /checkin/flow/weekly  - Weekly reflection
+ *   /checkin/flow/custom?flowId=xxx - Custom flow by ID
  * 
  * This is the new dynamic flow system. The old hardcoded pages at
  * /checkin/morning/*, /checkin/evening/*, /checkin/weekly/* remain
@@ -25,8 +26,43 @@ interface PageProps {
 export default function DynamicCheckInPage({ params }: PageProps) {
   const { type } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const flowId = searchParams.get('flowId');
 
-  // Validate flow type
+  // Handle custom flows with flowId
+  if (type === 'custom') {
+    if (!flowId) {
+      return (
+        <div className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] flex flex-col items-center justify-center z-[9999] p-6">
+          <div className="text-center max-w-md">
+            <p className="text-6xl mb-6">❓</p>
+            <h1 className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mb-4">
+              Flow Not Found
+            </h1>
+            <p className="text-[#5f5a55] dark:text-[#b2b6c2] mb-8">
+              No flow ID was provided.
+            </p>
+            <button
+              onClick={() => router.push('/')}
+              className="px-6 py-3 bg-[#2c2520] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] rounded-full font-medium"
+            >
+              Go home
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <CheckInFlowRenderer
+        flowId={flowId}
+        onComplete={() => router.push('/')}
+        onClose={() => router.push('/')}
+      />
+    );
+  }
+
+  // Validate standard flow types
   if (!['morning', 'evening', 'weekly'].includes(type)) {
     return (
       <div className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] flex flex-col items-center justify-center z-[9999] p-6">

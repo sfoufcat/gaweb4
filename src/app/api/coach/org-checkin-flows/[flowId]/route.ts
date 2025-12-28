@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
-import type { OrgCheckInFlow, CheckInStep, CheckInFlowTemplate } from '@/types';
+import type { OrgCheckInFlow, CheckInStep, CheckInFlowTemplate, FlowDisplayConfig, FlowShowConditions } from '@/types';
+import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * GET /api/coach/org-checkin-flows/[flowId]
@@ -73,9 +74,22 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { name, description, enabled } = body;
+    const { 
+      name, 
+      description, 
+      enabled,
+      displayConfig,
+      showConditions,
+    } = body as {
+      name?: string;
+      description?: string;
+      enabled?: boolean;
+      displayConfig?: FlowDisplayConfig;
+      showConditions?: FlowShowConditions;
+    };
 
-    const updates: Partial<OrgCheckInFlow> = {
+    // Build updates with proper typing for Firestore
+    const updates: Record<string, unknown> = {
       updatedAt: new Date().toISOString(),
       lastEditedByUserId: userId,
     };
@@ -83,6 +97,21 @@ export async function PUT(
     if (name !== undefined) updates.name = name.trim();
     if (description !== undefined) updates.description = description?.trim() || undefined;
     if (enabled !== undefined) updates.enabled = enabled;
+    
+    // Handle displayConfig and showConditions for custom flows
+    if (existingFlow.type === 'custom') {
+      if (displayConfig !== undefined) {
+        updates.displayConfig = displayConfig;
+      }
+      if (showConditions !== undefined) {
+        // If showConditions is null or has no conditions, remove it from the document
+        if (!showConditions || !showConditions.conditions?.length) {
+          updates.showConditions = FieldValue.delete();
+        } else {
+          updates.showConditions = showConditions;
+        }
+      }
+    }
 
     await adminDb.collection('orgCheckInFlows').doc(flowId).update(updates);
 

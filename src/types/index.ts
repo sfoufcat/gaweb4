@@ -2980,6 +2980,46 @@ export function getFlowSessionStatus(session: FlowSession): FlowSessionStatus {
 export type CheckInFlowType = 'morning' | 'evening' | 'weekly' | 'custom';
 
 /**
+ * Flow show condition types - for conditional display of custom flows on homepage
+ */
+export type FlowShowConditionType = 
+  | 'time_window'         // Between specific hours
+  | 'day_of_week'         // On specific days
+  | 'habit_completed'     // After completing a habit
+  | 'tasks_completed'     // After completing N tasks
+  | 'flow_completed'      // After completing morning/evening/weekly
+  | 'not_completed_today'; // Only show if not already done today
+
+/**
+ * Individual condition for when to show a flow
+ */
+export type FlowShowCondition =
+  | { type: 'time_window'; startHour: number; endHour: number; }
+  | { type: 'day_of_week'; days: number[]; }  // 0=Sun, 1=Mon, ..., 6=Sat
+  | { type: 'habit_completed'; habitId?: string; anyHabit?: boolean; }
+  | { type: 'tasks_completed'; minCount: number; }
+  | { type: 'flow_completed'; flowType: 'morning' | 'evening' | 'weekly'; }
+  | { type: 'not_completed_today'; };
+
+/**
+ * Show conditions configuration for a flow
+ */
+export interface FlowShowConditions {
+  logic: 'and' | 'or';
+  conditions: FlowShowCondition[];
+}
+
+/**
+ * Display configuration for flow prompt card on homepage
+ */
+export interface FlowDisplayConfig {
+  icon?: string;           // Lucide icon name (e.g., 'coffee', 'sun') or emoji
+  gradient?: string;       // CSS gradient or Tailwind class (e.g., 'from-blue-500 to-purple-600')
+  title: string;           // Card title (e.g., "Midday Reset")
+  subtitle?: string;       // Card subtitle (e.g., "Take a mindful break")
+}
+
+/**
  * Check-in step types - specific to check-in flows
  * Extends funnel step types where applicable
  */
@@ -3214,6 +3254,12 @@ export interface OrgCheckInFlow {
   
   // System vs custom
   isSystemDefault: boolean;             // True for morning/evening/weekly instances
+  
+  // Custom flow display config (for custom type flows shown on homepage)
+  displayConfig?: FlowDisplayConfig;    // Icon, gradient, title, subtitle for homepage card
+  
+  // Conditional display (for custom flows)
+  showConditions?: FlowShowConditions;  // When to show this flow on homepage
   
   // Audit
   createdByUserId: string;

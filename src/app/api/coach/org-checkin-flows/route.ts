@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg, TenantRequiredError } from '@/lib/admin-utils-clerk';
-import type { OrgCheckInFlow, CheckInFlowType, CheckInFlowTemplate } from '@/types';
+import type { OrgCheckInFlow, CheckInFlowType, CheckInFlowTemplate, FlowDisplayConfig, FlowShowConditions } from '@/types';
 
 /**
  * GET /api/coach/org-checkin-flows
@@ -138,7 +138,17 @@ export async function POST(req: Request) {
       description, 
       fromTemplateId,
       fromFlowId,
-    } = body;
+      displayConfig,
+      showConditions,
+    } = body as {
+      name: string;
+      type?: CheckInFlowType;
+      description?: string;
+      fromTemplateId?: string;
+      fromFlowId?: string;
+      displayConfig?: FlowDisplayConfig;
+      showConditions?: FlowShowConditions;
+    };
 
     // Validate required fields
     if (!name?.trim()) {
@@ -164,6 +174,9 @@ export async function POST(req: Request) {
       createdByUserId: userId,
       createdAt: now,
       updatedAt: now,
+      // Custom flow specific settings
+      ...(type === 'custom' && displayConfig ? { displayConfig } : {}),
+      ...(type === 'custom' && showConditions ? { showConditions } : {}),
     };
 
     // Get steps to copy if duplicating from template or existing flow

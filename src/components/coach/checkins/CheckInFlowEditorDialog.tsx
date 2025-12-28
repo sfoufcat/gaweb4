@@ -3,8 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { X, Sun, Moon, Calendar, Layers } from 'lucide-react';
-import type { OrgCheckInFlow, CheckInFlowTemplate, CheckInFlowType } from '@/types';
+import { X, Sun, Moon, Calendar, Layers, ChevronDown, ChevronUp } from 'lucide-react';
+import type { OrgCheckInFlow, CheckInFlowTemplate, CheckInFlowType, FlowDisplayConfig, FlowShowConditions } from '@/types';
+import { FlowConditionBuilder } from './FlowConditionBuilder';
+import { FlowDisplayConfigEditor } from './FlowDisplayConfigEditor';
 
 interface CheckInFlowEditorDialogProps {
   mode: 'create' | 'edit';
@@ -45,6 +47,13 @@ export function CheckInFlowEditorDialog({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  
+  // Custom flow specific settings
+  const [displayConfig, setDisplayConfig] = useState<FlowDisplayConfig | undefined>(flow?.displayConfig);
+  const [showConditions, setShowConditions] = useState<FlowShowConditions | undefined>(flow?.showConditions);
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  
+  const isCustomFlow = flow?.type === 'custom' || mode === 'create';
 
   useEffect(() => {
     setMounted(true);
@@ -67,6 +76,8 @@ export function CheckInFlowEditorDialog({
           name: name.trim(),
           type: 'custom',
           description: description.trim() || undefined,
+          displayConfig: displayConfig,
+          showConditions: showConditions,
         };
 
         if (selectedSource === 'template' && selectedTemplateId) {
@@ -87,13 +98,21 @@ export function CheckInFlowEditorDialog({
         }
       } else {
         // Edit mode
+        const body: Record<string, unknown> = {
+          name: name.trim(),
+          description: description.trim() || undefined,
+        };
+        
+        // Only include display config and show conditions for custom flows
+        if (isCustomFlow) {
+          body.displayConfig = displayConfig;
+          body.showConditions = showConditions;
+        }
+        
         const response = await fetch(`/api/coach/org-checkin-flows/${flow!.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: name.trim(),
-            description: description.trim() || undefined,
-          }),
+          body: JSON.stringify(body),
         });
 
         if (!response.ok) {
@@ -121,7 +140,7 @@ export function CheckInFlowEditorDialog({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white dark:bg-[#171b22] rounded-2xl w-full max-w-xl shadow-xl border border-[#e1ddd8] dark:border-[#262b35]"
+        className="bg-white dark:bg-[#171b22] rounded-2xl w-full max-w-xl shadow-xl border border-[#e1ddd8] dark:border-[#262b35] max-h-[90vh] overflow-y-auto"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-[#e1ddd8] dark:border-[#262b35]">
@@ -172,6 +191,42 @@ export function CheckInFlowEditorDialog({
               className="w-full px-4 py-3 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted dark:placeholder:text-[#666d7c] focus:outline-none focus:border-[#a07855] dark:focus:border-[#b8896a] resize-none"
             />
           </div>
+
+          {/* Display & Conditions (custom flows only) */}
+          {isCustomFlow && (
+            <div className="border-t border-[#e1ddd8] dark:border-[#262b35] pt-4">
+              <button
+                type="button"
+                onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+                className="w-full flex items-center justify-between py-2 text-left"
+              >
+                <span className="text-sm font-medium text-text-primary dark:text-[#f5f5f8]">
+                  Homepage Display & Conditions
+                </span>
+                {isAdvancedOpen ? (
+                  <ChevronUp className="w-4 h-4 text-text-muted dark:text-[#666d7c]" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-text-muted dark:text-[#666d7c]" />
+                )}
+              </button>
+              
+              {isAdvancedOpen && (
+                <div className="mt-4 space-y-6">
+                  <FlowDisplayConfigEditor
+                    value={displayConfig}
+                    onChange={setDisplayConfig}
+                  />
+                  
+                  <div className="border-t border-[#e1ddd8] dark:border-[#262b35] pt-4">
+                    <FlowConditionBuilder
+                      value={showConditions}
+                      onChange={setShowConditions}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Source selection (create mode only) */}
           {mode === 'create' && (

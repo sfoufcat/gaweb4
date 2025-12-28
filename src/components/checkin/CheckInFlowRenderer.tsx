@@ -10,7 +10,8 @@ import type { CheckInStep, CheckInStepType, CheckInStepCondition } from '@/types
 import { useCheckInFlow } from '@/hooks/useCheckInFlow';
 
 interface CheckInFlowRendererProps {
-  flowType: 'morning' | 'evening' | 'weekly';
+  flowType?: 'morning' | 'evening' | 'weekly' | 'custom';
+  flowId?: string;
   onComplete?: () => void;
   onClose?: () => void;
 }
@@ -31,9 +32,11 @@ interface StepComponentProps {
  * This component fetches the flow for the user's organization and renders
  * each step in sequence.
  */
-export function CheckInFlowRenderer({ flowType, onComplete, onClose }: CheckInFlowRendererProps) {
+export function CheckInFlowRenderer({ flowType, flowId, onComplete, onClose }: CheckInFlowRendererProps) {
   const router = useRouter();
-  const { flow, steps, isLoading, error, isDisabled } = useCheckInFlow({ type: flowType });
+  const { flow, steps, isLoading, error, isDisabled } = useCheckInFlow(
+    flowId ? { flowId } : { type: flowType }
+  );
   
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [sessionData, setSessionData] = useState<Record<string, unknown>>({});

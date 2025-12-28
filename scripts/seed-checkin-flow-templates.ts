@@ -12,23 +12,39 @@
  * 2. For each organization, creates OrgCheckInFlow instances if they don't exist
  */
 
-import * as admin from 'firebase-admin';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 import type { CheckInFlowTemplate, OrgCheckInFlow, CheckInStep, CheckInStepType } from '../src/types';
 
-// Initialize Firebase Admin if not already initialized
-if (!admin.apps.length) {
-  // Try to use application default credentials
+// Initialize Firebase Admin using env vars (same as the app)
+if (getApps().length === 0) {
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+  if (!projectId || !clientEmail || !privateKey) {
+    console.error('Missing Firebase credentials. Make sure to run with: doppler run -- npx tsx scripts/seed-checkin-flow-templates.ts');
+    console.error({ hasProjectId: !!projectId, hasClientEmail: !!clientEmail, hasPrivateKey: !!privateKey });
+    process.exit(1);
+  }
+
   try {
-    admin.initializeApp({
-      credential: admin.credential.applicationDefault(),
+    initializeApp({
+      credential: cert({
+        projectId,
+        clientEmail,
+        privateKey: privateKey.replace(/\\n/g, '\n'),
+      }),
     });
+    console.log('✅ Firebase Admin initialized');
   } catch (error) {
     console.error('Failed to initialize Firebase Admin:', error);
     process.exit(1);
   }
 }
 
-const db = admin.firestore();
+const db = getFirestore();
+db.settings({ ignoreUndefinedProperties: true });
 
 // =============================================================================
 // TEMPLATE DEFINITIONS

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig } from '@/types';
 import { ProgramLandingPageEditor } from './ProgramLandingPageEditor';
@@ -190,6 +190,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [saveError, setSaveError] = useState<string | null>(null);
   const [landingPageSaved, setLandingPageSaved] = useState(true);
   const [deleteConfirmProgram, setDeleteConfirmProgram] = useState<Program | null>(null);
+  
+  // Track previous program ID to detect actual selection changes vs updates
+  const prevProgramId = useRef<string | null>(null);
   const [deleteConfirmCohort, setDeleteConfirmCohort] = useState<ProgramCohort | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -387,8 +390,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
   useEffect(() => {
     if (selectedProgram) {
-      fetchProgramDetails(selectedProgram.id);
-      setSelectedDayIndex(1);
+      // Only reset to day 1 if selecting a DIFFERENT program, not when updating same program
+      const isNewSelection = prevProgramId.current !== selectedProgram.id;
+      
+      if (isNewSelection) {
+        fetchProgramDetails(selectedProgram.id);
+        setSelectedDayIndex(1);
+      }
+      
+      prevProgramId.current = selectedProgram.id;
     }
   }, [selectedProgram, fetchProgramDetails]);
 
@@ -557,8 +567,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       setIsProgramModalOpen(false);
       
       if (data.program) {
-        setSelectedProgram(data.program);
-        setViewMode('days');
+        if (editingProgram) {
+          // For edits: Update local state without triggering the useEffect that resets to Day 1
+          // The useEffect checks prevProgramId, so same ID won't trigger re-fetch
+          setSelectedProgram(prev => prev ? { ...prev, ...data.program } : data.program);
+        } else {
+          // For new programs: Select it normally and navigate to days view
+          setSelectedProgram(data.program);
+          setViewMode('days');
+        }
       }
     } catch (err) {
       console.error('Error saving program:', err);
