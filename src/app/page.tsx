@@ -961,7 +961,7 @@ export default function Dashboard() {
       
       // Get icon component if it's a Lucide icon name
       const iconName = displayConfig.icon || 'sparkles';
-      const IconComponent = (LucideIcons as Record<string, React.ComponentType<{ className?: string }>>)[
+      const IconComponent = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[
         iconName.charAt(0).toUpperCase() + iconName.slice(1).replace(/-([a-z])/g, (g) => g[1].toUpperCase())
       ];
       
