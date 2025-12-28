@@ -22,6 +22,7 @@ import { CoachCheckInsTab } from '@/components/coach/checkins';
 import { CoachPlanTab } from '@/components/coach/CoachPlanTab';
 import { DiscountCodesTab } from '@/components/coach/DiscountCodesTab';
 import { AnalyticsDashboard } from '@/components/coach/analytics';
+import { CoachSupportTab } from '@/components/coach/support';
 
 /**
  * Coach Dashboard Page
@@ -36,8 +37,8 @@ import { AnalyticsDashboard } from '@/components/coach/analytics';
  */
 
 // Valid tab values
-type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'checkins' | 'channels' | 'customize' | 'plan';
-const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'referrals', 'analytics', 'discounts', 'discover', 'upgrade-forms', 'coaching-forms', 'funnels', 'checkins', 'channels', 'customize', 'plan'];
+type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'checkins' | 'channels' | 'customize' | 'plan' | 'support';
+const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'referrals', 'analytics', 'discounts', 'discover', 'upgrade-forms', 'coaching-forms', 'funnels', 'checkins', 'channels', 'customize', 'plan', 'support'];
 
 // Columns for Coach Dashboard (excludes 'tier' - tiers are not used in coach context)
 // Uses 'programs' column instead of 'coaching' to show enrolled programs with (1:1)/(Group) prefixes
@@ -271,23 +272,14 @@ export default function CoachPage() {
             >
               Squads
             </TabsTrigger>
-            {/* 4. Analytics - full access only */}
-            {!isLimitedOrgCoach && (
-              <TabsTrigger 
-                value="analytics"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
-              >
-                Analytics
-              </TabsTrigger>
-            )}
-            {/* 5. Content - always visible */}
+            {/* 4. Content - always visible */}
             <TabsTrigger 
               value="discover"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
             >
               Content
             </TabsTrigger>
-            {/* 6-9. Funnels, Channels, Referrals, Discounts - full access only */}
+            {/* 5-6. Funnels, Analytics - full access only */}
             {!isLimitedOrgCoach && (
               <>
                 <TabsTrigger 
@@ -296,6 +288,17 @@ export default function CoachPage() {
                 >
                   Funnels
                 </TabsTrigger>
+                <TabsTrigger 
+                  value="analytics"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Analytics
+                </TabsTrigger>
+              </>
+            )}
+            {/* 7-10. Check-ins, Chats, Referrals, Discounts - full access only */}
+            {!isLimitedOrgCoach && (
+              <>
                 <TabsTrigger 
                   value="checkins"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
@@ -306,7 +309,7 @@ export default function CoachPage() {
                   value="channels"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
                 >
-                  Channels
+                  Chats
                 </TabsTrigger>
                 <TabsTrigger 
                   value="referrals"
@@ -336,6 +339,12 @@ export default function CoachPage() {
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
                 >
                   Plan
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="support"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Support
                 </TabsTrigger>
               </>
             )}
@@ -462,6 +471,11 @@ export default function CoachPage() {
           {/* Plan & Billing Tab */}
           <TabsContent value="plan">
             <CoachPlanTab />
+          </TabsContent>
+
+          {/* Support & Feedback Tab */}
+          <TabsContent value="support">
+            <CoachSupportTab />
           </TabsContent>
         </Tabs>
       </div>

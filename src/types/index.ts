@@ -1317,6 +1317,7 @@ export interface AlignmentActivityConfig {
   enabledActivities: AlignmentActivityKey[];
   taskCompletionThreshold?: CompletionThreshold;  // default: 'at_least_one'
   habitCompletionThreshold?: CompletionThreshold; // default: 'at_least_one'
+  weekendStreakEnabled?: boolean; // default: false - when true, weekends count toward streak
 }
 
 // Default alignment activities (for backward compatibility)
@@ -1332,6 +1333,7 @@ export const DEFAULT_ALIGNMENT_CONFIG: AlignmentActivityConfig = {
   enabledActivities: DEFAULT_ALIGNMENT_ACTIVITIES,
   taskCompletionThreshold: 'at_least_one',
   habitCompletionThreshold: 'at_least_one',
+  weekendStreakEnabled: false,
 };
 
 // Squad Alignment Types
@@ -3976,4 +3978,61 @@ export type CreateEventInput = Omit<UnifiedEvent, 'id' | 'createdAt' | 'updatedA
  * Helper type for event update (all fields optional except id)
  */
 export type UpdateEventInput = Partial<Omit<UnifiedEvent, 'id' | 'createdAt'>> & { id: string };
+
+// =============================================================================
+// FEATURE REQUESTS & VOTING
+// =============================================================================
+
+/**
+ * Feature Request Status
+ * - suggested: User-submitted, awaiting review
+ * - in_progress: Admin marked as actively being worked on
+ * - completed: Feature has been shipped
+ * - declined: Feature will not be implemented
+ */
+export type FeatureRequestStatus = 'suggested' | 'in_progress' | 'completed' | 'declined';
+
+/**
+ * FeatureRequest - User-submitted feature suggestions with voting
+ * Stored in Firestore 'feature_requests' collection
+ * 
+ * Global collection (not org-scoped) - all coaches can see and vote
+ */
+export interface FeatureRequest {
+  id: string;
+  title: string;
+  description: string;
+  status: FeatureRequestStatus;
+  voteCount: number;
+  
+  // Submitter info
+  suggestedBy: string;        // userId
+  suggestedByName: string;
+  suggestedByEmail?: string;
+  
+  // Admin management fields
+  adminNotes?: string;        // Internal notes (not shown to users)
+  priority?: number;          // For ordering in_progress items (lower = higher priority)
+  statusChangedAt?: string;   // When status was last changed
+  statusChangedBy?: string;   // Admin who changed status
+  
+  // Timestamps
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * FeatureVote - Individual vote on a feature request
+ * Stored in Firestore 'feature_votes' collection
+ * 
+ * Each user (coach) gets one vote per feature.
+ * Document ID format: `${featureId}_${userId}`
+ */
+export interface FeatureVote {
+  id: string;                 // Format: `${featureId}_${userId}`
+  featureId: string;
+  userId: string;
+  userName?: string;
+  createdAt: string;
+}
 

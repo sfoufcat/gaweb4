@@ -35,6 +35,7 @@ import {
   formatLimitValue,
   getNextTier,
 } from '@/lib/coach-permissions';
+import { CoachPlanSkeleton } from '@/components/coach/CoachPlanSkeleton';
 
 // Initialize Stripe outside component to avoid recreation on each render
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -271,14 +272,7 @@ export default function CoachPlanPage() {
   };
 
   if (!isLoaded || !user || isCheckingSubscription) {
-    return (
-      <div className="fixed inset-0 bg-app-bg flex items-center justify-center">
-        <div className="relative">
-          <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
-          <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-[#a07855] animate-spin" />
-        </div>
-      </div>
-    );
+    return <CoachPlanSkeleton />;
   }
 
   return (

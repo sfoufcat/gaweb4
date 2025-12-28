@@ -196,17 +196,17 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
                     Meta Pixel Event
                   </label>
                   <Select
-                    value={tracking?.metaEvent || ''}
+                    value={tracking?.metaEvent || 'none'}
                     onValueChange={(value) => setTracking(prev => ({
                       ...prev,
-                      metaEvent: value as MetaPixelEvent || undefined,
+                      metaEvent: value === 'none' ? undefined : value as MetaPixelEvent,
                     }))}
                   >
                     <SelectTrigger className="w-full font-albert">
                       <SelectValue placeholder="Select an event (optional)" />
                     </SelectTrigger>
                     <SelectContent className="font-albert">
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {META_PIXEL_EVENTS.map((event) => (
                         <SelectItem key={event.value} value={event.value}>
                           {event.label} - {event.description}

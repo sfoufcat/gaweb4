@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Compass, Check, ChevronDown } from 'lucide-react';
+import { Compass, Check, ChevronDown, Calendar } from 'lucide-react';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 import type { AlignmentActivityKey, CompletionThreshold, AlignmentActivityConfig } from '@/types';
 import { DEFAULT_ALIGNMENT_CONFIG } from '@/types';
@@ -167,6 +167,16 @@ export function AlignmentActivitiesSettings() {
     };
     setConfig(newConfig);
     setOpenDropdown(null);
+    saveConfig(newConfig);
+  }, [config, saveConfig]);
+
+  // Toggle weekend streak setting
+  const toggleWeekendStreak = useCallback(() => {
+    const newConfig = {
+      ...config,
+      weekendStreakEnabled: !config.weekendStreakEnabled,
+    };
+    setConfig(newConfig);
     saveConfig(newConfig);
   }, [config, saveConfig]);
 
@@ -351,6 +361,47 @@ export function AlignmentActivitiesSettings() {
         <p className="text-[12px] text-[#a7a39e] mt-1">
           {config.enabledActivities.length} of {ACTIVITY_ORDER.length} activities selected
         </p>
+      </div>
+
+      {/* Weekend Streak Setting */}
+      <div className="mt-4 pt-4 border-t border-[#e8e4df] dark:border-[#262b35]">
+        <div className="flex items-center gap-2 mb-3">
+          <Calendar className="w-4 h-4" style={{ color: accentColor }} />
+          <h4 className="font-semibold text-[14px] text-[#1a1a1a] dark:text-[#faf8f6]">
+            Streak Settings
+          </h4>
+        </div>
+        
+        <div className="flex items-center justify-between p-3 rounded-lg bg-[#f9f7f5] dark:bg-[#1a1f2a]">
+          <div className="flex-1 min-w-0 mr-4">
+            <span className="text-[14px] font-medium text-[#1a1a1a] dark:text-[#faf8f6]">
+              Count weekends toward streak
+            </span>
+            <p className="text-[12px] text-[#8a857f] dark:text-[#7d8190] mt-0.5">
+              When enabled, members must complete activities on weekends to maintain their streak
+            </p>
+          </div>
+          
+          {/* Toggle Switch */}
+          <button
+            onClick={toggleWeekendStreak}
+            disabled={isSaving}
+            className={`
+              relative w-11 h-6 rounded-full transition-colors flex-shrink-0
+              ${isSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+            `}
+            style={{
+              backgroundColor: config.weekendStreakEnabled ? accentColor : '#d1cdc8',
+            }}
+          >
+            <span
+              className={`
+                absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform
+                ${config.weekendStreakEnabled ? 'left-6' : 'left-1'}
+              `}
+            />
+          </button>
+        </div>
       </div>
 
       {/* Error message */}

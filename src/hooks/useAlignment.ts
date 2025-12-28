@@ -57,6 +57,7 @@ export function useAlignment(): UseAlignmentReturn {
   }, [mutate]);
 
   // Update alignment with optimistic update
+  // Note: Score calculation is delegated to the server since it depends on org config
   const updateAlignment = useCallback(async (updates: {
     didMorningCheckin?: boolean;
     didSetTasks?: boolean;
@@ -65,7 +66,7 @@ export function useAlignment(): UseAlignmentReturn {
   }) => {
     if (!alignment) return;
 
-    // Calculate optimistic state
+    // Optimistic flag updates only - server calculates actual score
     const updatedAlignment = { ...alignment };
     if (updates.didMorningCheckin !== undefined) {
       updatedAlignment.didMorningCheckin = updates.didMorningCheckin;
@@ -79,18 +80,10 @@ export function useAlignment(): UseAlignmentReturn {
     if (updates.hasActiveGoal !== undefined) {
       updatedAlignment.hasActiveGoal = updates.hasActiveGoal;
     }
-    
-    // Recalculate score
-    let score = 0;
-    if (updatedAlignment.didMorningCheckin) score += 25;
-    if (updatedAlignment.didSetTasks) score += 25;
-    if (updatedAlignment.didInteractWithSquad) score += 25;
-    if (updatedAlignment.hasActiveGoal) score += 25;
-    updatedAlignment.alignmentScore = score;
-    updatedAlignment.fullyAligned = score === 100;
 
     try {
-      // Optimistically update cache
+      // Optimistically update cache with flag changes
+      // Score will be corrected by server response
       await mutate(
         { alignment: updatedAlignment, summary: summary! },
         { revalidate: false }
@@ -109,7 +102,7 @@ export function useAlignment(): UseAlignmentReturn {
         throw new Error(responseData.error || 'Failed to update alignment');
       }
 
-      // Update with server response
+      // Update with server response (includes correct score based on org config)
       await mutate(
         { alignment: responseData.alignment, summary: responseData.summary },
         { revalidate: false }

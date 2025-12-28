@@ -157,6 +157,7 @@ export async function PATCH(request: NextRequest) {
         enabledActivities: config.enabledActivities,
         taskCompletionThreshold: config.taskCompletionThreshold || 'at_least_one',
         habitCompletionThreshold: config.habitCompletionThreshold || 'at_least_one',
+        weekendStreakEnabled: config.weekendStreakEnabled === true, // Default to false
       };
     }
 

@@ -1237,40 +1237,13 @@ export function CustomizeBrandingTab() {
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert tracking-[-0.5px]">
-              Customize Your Branding
-            </h2>
-            <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-sm">
-              Personalize the look and feel of your app. These settings will apply to your organization
-              when custom domains or subdomains are configured.
-            </p>
-          </div>
-          
-          {/* Preview Toggle */}
-          <button
-            onClick={handleTogglePreview}
-            className={`
-              flex items-center gap-2 px-4 py-2 rounded-full font-albert text-sm transition-all
-              ${isPreviewMode 
-                ? 'bg-[#a07855] text-white hover:bg-[#8c6245]' 
-                : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#e8e5e1] dark:hover:bg-[#313746]'
-              }
-            `}
-          >
-            {isPreviewMode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            {isPreviewMode ? 'Exit Preview' : 'Preview'}
-          </button>
-        </div>
-        
-        {isPreviewMode && (
-          <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl">
-            <p className="text-amber-700 dark:text-amber-300 text-sm font-albert">
-              Preview mode is active. The sidebar is showing your customized branding.
-            </p>
-          </div>
-        )}
+        <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert tracking-[-0.5px]">
+          Customize Your Branding
+        </h2>
+        <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-sm">
+          Personalize the look and feel of your app. These settings will apply to your organization
+          when custom domains or subdomains are configured.
+        </p>
       </div>
 
       {/* Error Message */}
@@ -1316,10 +1289,35 @@ export function CustomizeBrandingTab() {
         <>
           {/* Logo Section */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <ImageIcon className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Logos</h3>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <ImageIcon className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Logos</h3>
+          </div>
+          
+          {/* Preview Toggle */}
+          <button
+            onClick={handleTogglePreview}
+            className={`
+              flex items-center gap-2 px-4 py-2 rounded-full font-albert text-sm transition-all
+              ${isPreviewMode 
+                ? 'bg-[#a07855] text-white hover:bg-[#8c6245]' 
+                : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#e8e5e1] dark:hover:bg-[#313746]'
+              }
+            `}
+          >
+            {isPreviewMode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            {isPreviewMode ? 'Exit Preview' : 'Preview'}
+          </button>
         </div>
+        
+        {isPreviewMode && (
+          <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl">
+            <p className="text-amber-700 dark:text-amber-300 text-sm font-albert">
+              Preview mode is active. The sidebar is showing your customized branding.
+            </p>
+          </div>
+        )}
         
         <div className="space-y-6">
           {/* Square Logo */}

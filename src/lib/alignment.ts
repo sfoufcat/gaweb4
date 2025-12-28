@@ -594,8 +594,8 @@ async function invalidateUserSquadCache(userId: string, organizationId: string):
  * Check if the user's streak should be reset to 0 within an organization
  * Called on page load to proactively show broken streaks
  * 
- * If the previous weekday wasn't fully aligned, reset streak to 0 immediately
- * rather than waiting until the user next hits 100%
+ * If the previous day (or weekday if weekends disabled) wasn't fully aligned, 
+ * reset streak to 0 immediately rather than waiting until the user next hits 100%
  * Multi-tenancy: Streak is tracked separately per organization
  */
 async function checkAndResetBrokenStreak(userId: string, organizationId: string, today: string): Promise<void> {
@@ -603,6 +603,10 @@ async function checkAndResetBrokenStreak(userId: string, organizationId: string,
   const summaryRef = adminDb.collection('userAlignmentSummary').doc(summaryDocId);
   
   try {
+    // Get org config to check weekend setting
+    const config = await getOrgAlignmentConfig(organizationId);
+    const weekendStreakEnabled = config.weekendStreakEnabled === true;
+    
     const summaryDoc = await summaryRef.get();
     
     if (!summaryDoc.exists) return; // No streak to reset
@@ -612,13 +616,16 @@ async function checkAndResetBrokenStreak(userId: string, organizationId: string,
     // If already at 0, nothing to do
     if (summary.currentStreak === 0) return;
     
-    // Skip check on weekends (streaks don't break over weekends)
-    if (isWeekendDate(today)) return;
+    // Skip check on weekends only if weekend streak is disabled (default behavior)
+    if (!weekendStreakEnabled && isWeekendDate(today)) return;
     
-    const lastWeekday = getLastWeekdayDate(today);
+    // Get the expected last aligned date based on weekend setting
+    const expectedLastDate = weekendStreakEnabled 
+      ? getYesterdayDate() 
+      : getLastWeekdayDate(today);
     
-    // If last aligned date matches last weekday, streak is intact
-    if (summary.lastAlignedDate === lastWeekday) return;
+    // If last aligned date matches expected date, streak is intact
+    if (summary.lastAlignedDate === expectedLastDate) return;
     
     // If last aligned date is today, streak is intact (already aligned today)
     if (summary.lastAlignedDate === today) return;
@@ -629,7 +636,7 @@ async function checkAndResetBrokenStreak(userId: string, organizationId: string,
       updatedAt: new Date().toISOString(),
     });
     
-    console.log(`[ALIGNMENT] Reset broken streak for user ${userId} in org ${organizationId} (last aligned: ${summary.lastAlignedDate}, expected: ${lastWeekday})`);
+    console.log(`[ALIGNMENT] Reset broken streak for user ${userId} in org ${organizationId} (last aligned: ${summary.lastAlignedDate}, expected: ${expectedLastDate})`);
   } catch (error) {
     console.error('[ALIGNMENT] Error checking/resetting broken streak:', error);
   }
@@ -639,10 +646,15 @@ async function checkAndResetBrokenStreak(userId: string, organizationId: string,
  * Update the user's streak when they become fully aligned within an organization
  * Returns the new streak count
  * 
- * Weekend handling:
+ * Weekend handling (when weekendStreakEnabled is false - default):
  * - If called on a weekend, returns current streak without modification (safety guard)
  * - When checking streak continuity, looks back to last weekday (skipping Sat/Sun)
  * - This ensures streaks bridge from Friday to Monday without breaking
+ * 
+ * When weekendStreakEnabled is true:
+ * - Weekends are treated like any other day
+ * - Members must complete activities every day to maintain streak
+ * 
  * Multi-tenancy: Streak is tracked separately per organization
  */
 async function updateStreak(userId: string, organizationId: string, today: string): Promise<number> {
@@ -651,8 +663,12 @@ async function updateStreak(userId: string, organizationId: string, today: strin
   const now = new Date().toISOString();
 
   try {
-    // Safety guard: If somehow called on a weekend, don't modify streak
-    if (isWeekendDate(today)) {
+    // Get org config to check weekend setting
+    const config = await getOrgAlignmentConfig(organizationId);
+    const weekendStreakEnabled = config.weekendStreakEnabled === true;
+    
+    // Safety guard: If called on a weekend and weekends are disabled, don't modify streak
+    if (!weekendStreakEnabled && isWeekendDate(today)) {
       const summaryDoc = await summaryRef.get();
       if (summaryDoc.exists) {
         return (summaryDoc.data() as UserAlignmentSummary).currentStreak || 0;
@@ -668,10 +684,13 @@ async function updateStreak(userId: string, organizationId: string, today: strin
       const summaryData = summaryDoc.data() as UserAlignmentSummary;
       lastAlignedDate = summaryData.lastAlignedDate;
 
-      // Check if last weekday was aligned - if so, increment streak
-      // This skips weekends, so on Monday it checks Friday
-      const lastWeekday = getLastWeekdayDate(today);
-      if (lastAlignedDate === lastWeekday) {
+      // Get the expected last aligned date based on weekend setting
+      // If weekends enabled, check yesterday; otherwise check last weekday
+      const expectedLastDate = weekendStreakEnabled 
+        ? getYesterdayDate() 
+        : getLastWeekdayDate(today);
+      
+      if (lastAlignedDate === expectedLastDate) {
         currentStreak = (summaryData.currentStreak || 0) + 1;
       } else if (lastAlignedDate === today) {
         // Already aligned today, don't increment (shouldn't happen but safety check)
@@ -761,13 +780,28 @@ export async function initializeAlignmentForToday(userId: string, organizationId
       didEveningCheckin = await checkUserDidEveningCheckin(userId, organizationId, today);
     }
     
-    // Only update if something changed
+    // Build activity status and calculate expected score based on current config
+    // This ensures score is recalculated if config changed (e.g., activities enabled/disabled)
+    const activityStatus: ActivityStatus = {
+      morning_checkin: existing.didMorningCheckin || false,
+      evening_checkin: didEveningCheckin,
+      set_tasks: didSetTasks,
+      complete_tasks: didCompleteTasks,
+      chat_with_squad: existing.didInteractWithSquad || false,
+      active_goal: hasActiveGoal,
+      complete_habits: didCompleteHabits,
+    };
+    const expectedScore = calculateAlignmentScore(activityStatus, config);
+    const scoreNeedsUpdate = existing.alignmentScore !== expectedScore;
+    
+    // Only update if something changed (including score recalculation due to config change)
     const needsUpdate = 
       existing.hasActiveGoal !== hasActiveGoal || 
       existing.didSetTasks !== didSetTasks ||
       existing.didCompleteTasks !== didCompleteTasks ||
       existing.didCompleteHabits !== didCompleteHabits ||
-      existing.didEveningCheckin !== didEveningCheckin;
+      existing.didEveningCheckin !== didEveningCheckin ||
+      scoreNeedsUpdate;
       
     if (needsUpdate) {
       return (await updateAlignmentForToday(userId, organizationId, { 

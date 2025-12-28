@@ -23,6 +23,7 @@ import {
   ChevronDown, Shield
 } from 'lucide-react';
 import type { Program, ProgramCohort, ProgramDay, ProgramFeature, ProgramTestimonial, ProgramFAQ } from '@/types';
+import { ProgramLandingSkeleton } from '@/components/program/ProgramLandingSkeleton';
 
 interface CohortWithAvailability extends ProgramCohort {
   spotsRemaining: number;
@@ -310,14 +311,7 @@ export default function ProgramDetailPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#faf8f6] dark:bg-[#05070b]">
-        <div className="text-center">
-          <div className="w-10 h-10 border-3 border-[#a07855] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-text-secondary font-albert text-[14px]">Loading program...</p>
-        </div>
-      </div>
-    );
+    return <ProgramLandingSkeleton />;
   }
 
   if (error || !data) {

@@ -813,7 +813,7 @@ export default function SquadDetailPage() {
             <Button
               onClick={handleJoin}
               disabled={!canJoin || joining}
-              className="inline-block py-4 px-8 rounded-3xl font-albert text-[16px] font-semibold transition-all duration-200 text-white"
+              className="py-4 px-8 rounded-3xl font-albert text-[16px] font-semibold transition-all duration-200 text-white"
               style={{ 
                 background: `linear-gradient(135deg, ${accentLight}, ${accentDark})`,
                 boxShadow: `0 8px 25px -4px ${hexToRgba(accentLight, 0.4)}`

@@ -502,87 +502,81 @@ export function SquadFormDialog({
             </div>
           )}
 
-          {/* Two-column layout: Form fields + Squad Picture */}
-          <div className="flex gap-6">
-            {/* Left column: Name, Slug, Description */}
-            <div className="flex-1 space-y-4">
-              {/* Squad Name */}
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-                  Squad Name *
-                </label>
-                <input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  placeholder="Enter squad name"
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert"
-                  required
-                />
-              </div>
+          {/* Squad Name */}
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+              Squad Name *
+            </label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => handleNameChange(e.target.value)}
+              placeholder="Enter squad name"
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert"
+              required
+            />
+          </div>
 
-              {/* URL Slug */}
-              <div>
-                <label htmlFor="slug" className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-                  URL Slug
-                </label>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">/join/squad/</span>
-                  <input
-                    id="slug"
-                    type="text"
-                    value={slug}
-                    onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                    placeholder="my-squad"
-                    className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert font-mono text-sm"
-                  />
-                </div>
-                <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
-                  Used in funnel links. Auto-generated from name if left empty.
-                </p>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label htmlFor="description" className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-                  Description
-                </label>
-                <textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="What's this squad about?"
-                  rows={2}
-                  maxLength={200}
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert resize-none"
-                />
-                <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
-                  {description.length}/200 characters
-                </p>
-              </div>
+          {/* URL Slug */}
+          <div>
+            <label htmlFor="slug" className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+              URL Slug
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">/join/squad/</span>
+              <input
+                id="slug"
+                type="text"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                placeholder="my-squad"
+                className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert font-mono text-sm"
+              />
             </div>
+            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
+              Used in funnel links. Auto-generated from name if left empty.
+            </p>
+          </div>
 
-            {/* Right column: Squad Picture (compact) */}
-            <div className="flex-shrink-0 w-32">
-              <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-                Squad Picture
-              </label>
-              <div className="w-32 h-32 [&_.relative]:!h-32 [&_.aspect-square]:!aspect-auto">
-                <MediaUpload
-                  value={avatarUrl}
-                  onChange={setAvatarUrl}
-                  folder="squads"
-                  type="image"
-                  uploadEndpoint={uploadEndpoint}
-                  hideLabel
-                  aspectRatio="1:1"
-                />
-              </div>
-              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert text-center">
-                512 x 512px
-              </p>
+          {/* Description */}
+          <div>
+            <label htmlFor="description" className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+              Description
+            </label>
+            <textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What's this squad about?"
+              rows={2}
+              maxLength={200}
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] font-albert resize-none"
+            />
+            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
+              {description.length}/200 characters
+            </p>
+          </div>
+
+          {/* Squad Picture */}
+          <div>
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
+              Squad Picture
+            </label>
+            <div className="w-20 h-20 [&_.relative]:!h-20 [&_.aspect-square]:!aspect-auto">
+              <MediaUpload
+                value={avatarUrl}
+                onChange={setAvatarUrl}
+                folder="squads"
+                type="image"
+                uploadEndpoint={uploadEndpoint}
+                hideLabel
+                aspectRatio="1:1"
+              />
             </div>
+            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
+              512 x 512px
+            </p>
           </div>
 
           {/* Visibility */}

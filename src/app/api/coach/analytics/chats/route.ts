@@ -18,6 +18,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { getStreamServerClient } from '@/lib/stream-server';
+import { getOrgChannels } from '@/lib/org-channels';
 import type { Squad } from '@/types';
 
 interface ChannelStats {
@@ -69,6 +70,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Get organization channels from Firestore
+    const orgChannels = await getOrgChannels(organizationId);
+    const orgChannelIds = orgChannels.map(ch => ch.streamChannelId);
+
     // Query Stream Chat for channels belonging to this organization
     let channels: ChannelStats[] = [];
     let totalMessages = 0;
@@ -78,19 +83,15 @@ export async function GET(request: NextRequest) {
     try {
       const streamClient = await getStreamServerClient();
       
-      // Query channels that belong to this organization
-      // Stream Chat stores organization info in channel custom data
-      const orgIdClean = organizationId.replace('org_', '');
+      // Combine squad channel IDs and org channel IDs for the query
+      const squadChannelIds = Array.from(channelToSquadMap.keys());
+      const allChannelIds = [...squadChannelIds, ...orgChannelIds].slice(0, 50);
       
-      // Query squad/group channels
+      // Query squad and org channels by ID
       const channelsResponse = await streamClient.queryChannels(
         {
-          $or: [
-            // Squad chat channels
-            { type: 'messaging', id: { $in: Array.from(channelToSquadMap.keys()).slice(0, 30) } },
-            // Organization channels (use convention: org-{orgId}-*)
-            { type: 'messaging', id: { $regex: `^org-${orgIdClean}` } },
-          ],
+          type: 'messaging',
+          id: { $in: allChannelIds },
         },
         { last_message_at: -1 },
         { limit: 50, state: true, watch: false }
@@ -105,16 +106,19 @@ export async function GET(request: NextRequest) {
         const state = channel.state;
         const messageCount = state?.messages?.length || 0;
         
+        // Access channel data safely with type assertion for custom fields
+        const channelData = channel.data as Record<string, unknown> | undefined;
+        
         channels.push({
           channelId,
           channelType: channel.type || 'messaging',
-          name: (channel.data?.name as string) || squadInfo?.squadName || channelId,
+          name: (channelData?.name as string) || squadInfo?.squadName || channelId,
           squadId: squadInfo?.squadId,
           squadName: squadInfo?.squadName,
           memberCount: Object.keys(state?.members || {}).length,
           messageCount,
           lastMessageAt: state?.last_message_at?.toISOString() || null,
-          createdAt: channel.data?.created_at as string || null,
+          createdAt: (channelData?.created_at as string) || null,
         });
         
         totalMessages += messageCount;

@@ -15,6 +15,12 @@ export { CheckInFlowStepsEditor } from './checkins';
 export { CheckInFlowEditorDialog } from './checkins';
 export { CheckInStepConfigEditor } from './checkins';
 
+// Support & Feedback
+export { CoachSupportTab } from './support';
+export { ContactSupportForm } from './support';
+export { FeatureVotingBoard } from './support';
+export { PrivateFeedbackForm } from './support';
+
 
 
 

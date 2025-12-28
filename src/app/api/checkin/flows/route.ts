@@ -20,8 +20,13 @@ export async function GET(req: Request) {
   try {
     const { userId, orgId } = await auth();
     
-    if (!userId || !orgId) {
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Users without an org don't have org-specific check-in flows
+    if (!orgId) {
+      return NextResponse.json({ flows: [] });
     }
 
     const { searchParams } = new URL(req.url);

@@ -56,7 +56,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
     // Empty state - show find squad CTA
     return (
       <Link 
-        href="/program"
+        href="/squad"
         className="block bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#1a1512] dark:to-[#181310] border border-[#FFE4CC] dark:border-[#3d3530] rounded-[20px] p-5 hover:shadow-lg hover:border-[#a07855]/40 dark:hover:border-[#b8896a]/40 transition-all duration-300 group"
       >
         <div className="flex items-center gap-4">
