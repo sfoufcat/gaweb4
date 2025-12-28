@@ -153,7 +153,7 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
         </p>
         <button
           onClick={() => fetchFunnels()}
-          className="mt-4 px-4 py-2 rounded-lg text-sm font-medium bg-[#a07855] text-white hover:bg-[#8c6245] transition-colors"
+          className="mt-4 px-4 py-2 rounded-lg text-sm font-medium bg-[#a07855] dark:bg-[#b8896a] text-white hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors"
         >
           Try Again
         </button>
@@ -202,7 +202,7 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
 
         <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '100ms' }}>
           <div className="flex items-center gap-2 mb-2">
-            <TrendingDown className="w-5 h-5 text-[#a07855]" />
+            <TrendingDown className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Conversion Rate</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
@@ -309,7 +309,7 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
                           key={step.stepId} 
                           className={`flex items-center gap-4 p-3 rounded-lg ${isHighestDropOff ? 'bg-amber-50 dark:bg-amber-900/10' : 'bg-[#faf8f6] dark:bg-[#11141b]'}`}
                         >
-                          <div className="w-6 h-6 rounded-full bg-[#a07855] text-white text-xs flex items-center justify-center font-medium">
+                          <div className="w-6 h-6 rounded-full bg-[#a07855] dark:bg-[#b8896a] text-white text-xs flex items-center justify-center font-medium">
                             {index + 1}
                           </div>
                           <div className="flex-1">

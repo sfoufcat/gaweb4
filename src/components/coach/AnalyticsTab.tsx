@@ -151,7 +151,7 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
           onClick={() => setExcludeAdmins(!excludeAdmins)}
           className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
             excludeAdmins
-              ? 'bg-[#a07855] text-white'
+              ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
               : 'bg-[#e1ddd8]/50 text-[#5f5a55] hover:bg-[#e1ddd8] dark:bg-[#272d38]/50 dark:text-[#b2b6c2] dark:hover:bg-[#272d38]'
           }`}
         >
@@ -197,7 +197,7 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
 
         <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Users className="w-5 h-5 text-[#a07855]" />
+            <Users className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Total</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">

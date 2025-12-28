@@ -529,7 +529,7 @@ export function SquadCallEditForm({
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="font-albert text-[20px] tracking-[-0.5px] flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-[#a07855]" />
+              <Calendar className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
               {isEditing ? 'Edit squad call' : 'Schedule squad call'}
             </DialogTitle>
             <button
@@ -631,7 +631,7 @@ export function SquadCallEditForm({
                 onClick={() => setShowRecurrenceDetails(!showRecurrenceDetails)}
                 className="mt-2 w-full flex items-center justify-between px-3 py-2 bg-[#f9f7f5] dark:bg-[#1c2028] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-left group hover:border-[#a07855] transition-colors"
               >
-                <span className="font-albert text-[13px] text-[#a07855] dark:text-[#b8896a]">
+                <span className="font-albert text-[13px] text-[#a07855] dark:text-[#b8896a] font-medium">
                   {getRecurrenceSummary()}
                 </span>
                 {showRecurrenceDetails ? (
@@ -686,7 +686,7 @@ export function SquadCallEditForm({
                       onClick={() => setLocation(preset)}
                       className={`px-3 py-1.5 rounded-full font-albert text-[13px] transition-all ${
                         location === preset
-                          ? 'bg-[#a07855] text-white'
+                          ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
                           : 'bg-[#f3f1ef] dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#2e333d]'
                       }`}
                     >

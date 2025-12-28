@@ -168,7 +168,7 @@ export function GAConnectButton({ apiBasePath = '/api/coach/analytics' }: GAConn
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="px-4 py-2 rounded-lg text-sm font-medium bg-[#a07855] text-white hover:bg-[#8c6245] transition-colors disabled:opacity-50 flex items-center gap-2"
+                  className="px-4 py-2 rounded-lg text-sm font-medium bg-[#a07855] dark:bg-[#b8896a] text-white hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
                   {saving ? (
                     <>

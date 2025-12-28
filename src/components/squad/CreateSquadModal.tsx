@@ -224,7 +224,7 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
                         setTzSearch('');
                       }}
                       className={`w-full px-4 py-2 text-left font-albert text-[14px] hover:bg-[#faf8f6] transition-colors ${
-                        timezone === tz.value ? 'bg-[#a07855]/10 text-[#a07855]' : 'text-text-primary'
+                        timezone === tz.value ? 'bg-[#a07855]/10 dark:bg-[#b8896a]/10 text-[#a07855] dark:text-[#b8896a]' : 'text-text-primary'
                       }`}
                     >
                       {tz.label}
@@ -252,13 +252,13 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
                 onClick={() => setVisibility('public')}
                 className={`p-4 border rounded-[16px] text-left transition-all ${
                   visibility === 'public'
-                    ? 'border-[#a07855] bg-[#a07855]/5'
-                    : 'border-[#e1ddd8] hover:border-[#a07855]/50'
+                    ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 dark:bg-[#b8896a]/10'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855]/50 dark:hover:border-[#b8896a]/50'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <Globe className={`w-5 h-5 ${visibility === 'public' ? 'text-[#a07855]' : 'text-text-secondary'}`} />
-                  <span className={`font-albert font-semibold text-[14px] ${visibility === 'public' ? 'text-[#a07855]' : 'text-text-primary'}`}>
+                  <Globe className={`w-5 h-5 ${visibility === 'public' ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-text-secondary'}`} />
+                  <span className={`font-albert font-semibold text-[14px] ${visibility === 'public' ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-text-primary'}`}>
                     Public
                   </span>
                 </div>
@@ -273,13 +273,13 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
                 onClick={() => setVisibility('private')}
                 className={`p-4 border rounded-[16px] text-left transition-all ${
                   visibility === 'private'
-                    ? 'border-[#a07855] bg-[#a07855]/5'
-                    : 'border-[#e1ddd8] hover:border-[#a07855]/50'
+                    ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 dark:bg-[#b8896a]/10'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855]/50 dark:hover:border-[#b8896a]/50'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <Lock className={`w-5 h-5 ${visibility === 'private' ? 'text-[#a07855]' : 'text-text-secondary'}`} />
-                  <span className={`font-albert font-semibold text-[14px] ${visibility === 'private' ? 'text-[#a07855]' : 'text-text-primary'}`}>
+                  <Lock className={`w-5 h-5 ${visibility === 'private' ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-text-secondary'}`} />
+                  <span className={`font-albert font-semibold text-[14px] ${visibility === 'private' ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-text-primary'}`}>
                     Private
                   </span>
                 </div>
@@ -305,7 +305,7 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
             <Button
               type="submit"
               disabled={loading || !name.trim()}
-              className="flex-1 bg-[#a07855] hover:bg-[#8c6245] disabled:bg-[#a07855]/50 text-white rounded-[16px] py-3 font-albert font-semibold text-[16px]"
+              className="flex-1 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:bg-[#a07855]/50 dark:disabled:bg-[#b8896a]/50 text-white rounded-[16px] py-3 font-albert font-semibold text-[16px]"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">

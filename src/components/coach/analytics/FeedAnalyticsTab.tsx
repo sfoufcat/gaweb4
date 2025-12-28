@@ -197,7 +197,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '0ms' }}>
           <div className="flex items-center gap-2 mb-2">
-            <FileText className="w-5 h-5 text-[#a07855]" />
+            <FileText className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Posts</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
@@ -251,7 +251,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
             className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a] transition-colors"
           >
             <div className="flex items-center gap-3">
-              <Users className="w-5 h-5 text-[#a07855]" />
+              <Users className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
               <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Top Posters</h3>
               <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">({posters.length})</span>
             </div>
@@ -273,7 +273,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
                     onClick={() => handleSort('postCount')}
                     className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
                       sortField === 'postCount' 
-                        ? 'bg-[#a07855] text-white' 
+                        ? 'bg-[#a07855] dark:bg-[#b8896a] text-white' 
                         : 'bg-white dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2]'
                     }`}
                   >
@@ -284,7 +284,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
                     onClick={() => handleSort('lastPostAt')}
                     className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
                       sortField === 'lastPostAt' 
-                        ? 'bg-[#a07855] text-white' 
+                        ? 'bg-[#a07855] dark:bg-[#b8896a] text-white' 
                         : 'bg-white dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2]'
                     }`}
                   >
@@ -295,7 +295,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
                     onClick={() => handleSort('totalEngagement')}
                     className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
                       sortField === 'totalEngagement' 
-                        ? 'bg-[#a07855] text-white' 
+                        ? 'bg-[#a07855] dark:bg-[#b8896a] text-white' 
                         : 'bg-white dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2]'
                     }`}
                   >
@@ -398,7 +398,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
                       {/* Simple bar visualization */}
                       <div className="w-24 h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
                         <div 
-                          className="h-full bg-[#a07855] rounded-full transition-all duration-300"
+                          className="h-full bg-[#a07855] dark:bg-[#b8896a] rounded-full transition-all duration-300"
                           style={{ 
                             width: `${Math.min(100, (day.postCount / Math.max(1, Math.max(...dailyStats.map(d => d.postCount)))) * 100)}%` 
                           }}

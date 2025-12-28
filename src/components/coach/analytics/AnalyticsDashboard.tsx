@@ -25,8 +25,8 @@ export function AnalyticsDashboard({ apiBasePath = '/api/coach/analytics' }: Ana
   const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
     { id: 'clients', label: 'Client Activity', icon: <Users className="w-4 h-4" /> },
     { id: 'community', label: 'Community Health', icon: <Heart className="w-4 h-4" /> },
-    { id: 'feed', label: 'Feed Stats', icon: <FileText className="w-4 h-4" /> },
-    { id: 'chats', label: 'Chat Stats', icon: <MessageCircle className="w-4 h-4" /> },
+    { id: 'feed', label: 'Feed', icon: <FileText className="w-4 h-4" /> },
+    { id: 'chats', label: 'Chat', icon: <MessageCircle className="w-4 h-4" /> },
     { id: 'products', label: 'Products', icon: <Package className="w-4 h-4" /> },
     { id: 'funnels', label: 'Funnels', icon: <FunnelIcon className="w-4 h-4" /> },
   ];
@@ -82,7 +82,7 @@ export function AnalyticsDashboard({ apiBasePath = '/api/coach/analytics' }: Ana
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all duration-200 ${
                 activeTab === tab.id
-                  ? 'bg-[#a07855] text-white shadow-md scale-[1.02]'
+                  ? 'bg-[#a07855] dark:bg-[#b8896a] text-white shadow-md scale-[1.02]'
                   : 'bg-[#e1ddd8]/50 text-[#5f5a55] hover:bg-[#e1ddd8] dark:bg-[#272d38]/50 dark:text-[#b2b6c2] dark:hover:bg-[#272d38] hover:scale-[1.01]'
               }`}
             >

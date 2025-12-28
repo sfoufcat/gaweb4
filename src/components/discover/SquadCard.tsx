@@ -161,3 +161,5 @@ export function SquadCard({ squad, variant = 'default' }: SquadCardProps) {
 }
 
 
+
+

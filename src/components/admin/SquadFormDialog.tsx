@@ -613,12 +613,12 @@ export function SquadFormDialog({
                 onClick={() => setVisibility('public')}
                 className={`flex-1 flex items-center gap-2 p-3 border rounded-lg transition-all ${
                   visibility === 'public'
-                    ? 'border-[#a07855] bg-[#a07855]/5'
-                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855]/50'
+                    ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 dark:bg-[#b8896a]/10'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855]/50 dark:hover:border-[#b8896a]/50'
                 }`}
               >
-                <Globe className={`w-4 h-4 ${visibility === 'public' ? 'text-[#a07855]' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
-                <span className={`font-albert text-sm ${visibility === 'public' ? 'text-[#a07855] font-medium' : 'text-[#1a1a1a] dark:text-[#f5f5f8]'}`}>
+                <Globe className={`w-4 h-4 ${visibility === 'public' ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                <span className={`font-albert text-sm ${visibility === 'public' ? 'text-[#a07855] dark:text-[#b8896a] font-medium' : 'text-[#1a1a1a] dark:text-[#f5f5f8]'}`}>
                   Public
                 </span>
               </button>
@@ -627,12 +627,12 @@ export function SquadFormDialog({
                 onClick={() => setVisibility('private')}
                 className={`flex-1 flex items-center gap-2 p-3 border rounded-lg transition-all ${
                   visibility === 'private'
-                    ? 'border-[#a07855] bg-[#a07855]/5'
-                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855]/50'
+                    ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 dark:bg-[#b8896a]/10'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855]/50 dark:hover:border-[#b8896a]/50'
                 }`}
               >
-                <Lock className={`w-4 h-4 ${visibility === 'private' ? 'text-[#a07855]' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
-                <span className={`font-albert text-sm ${visibility === 'private' ? 'text-[#a07855] font-medium' : 'text-[#1a1a1a] dark:text-[#f5f5f8]'}`}>
+                <Lock className={`w-4 h-4 ${visibility === 'private' ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+                <span className={`font-albert text-sm ${visibility === 'private' ? 'text-[#a07855] dark:text-[#b8896a] font-medium' : 'text-[#1a1a1a] dark:text-[#f5f5f8]'}`}>
                   Private
                 </span>
               </button>
@@ -793,7 +793,7 @@ export function SquadFormDialog({
                   type="button"
                   onClick={() => setSubscriptionEnabled(!subscriptionEnabled)}
                   className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${
-                    subscriptionEnabled ? 'bg-[#a07855]' : 'bg-[#d1ccc6] dark:bg-[#3a3f4a]'
+                    subscriptionEnabled ? 'bg-[#a07855] dark:bg-[#b8896a]' : 'bg-[#d1ccc6] dark:bg-[#3a3f4a]'
                   }`}
                 >
                   <span
@@ -899,7 +899,7 @@ export function SquadFormDialog({
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                               </svg>
                             ) : (
-                              <span className="text-xs text-[#a07855] font-albert">Add</span>
+                              <span className="text-xs text-[#a07855] dark:text-[#b8896a] font-albert">Add</span>
                             )}
                           </div>
                         );
@@ -976,7 +976,7 @@ export function SquadFormDialog({
             <Button
               type="submit"
               disabled={loading}
-              className="bg-[#a07855] hover:bg-[#8c6245] text-white font-albert"
+              className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-albert"
             >
               {loading ? 'Saving...' : squad ? 'Update Squad' : 'Create Squad'}
             </Button>
