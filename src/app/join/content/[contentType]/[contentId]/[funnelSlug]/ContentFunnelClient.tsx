@@ -273,17 +273,17 @@ export default function ContentFunnelClient({
         let shouldShow = false;
         
         switch (nextStep.showIf.operator) {
-          case 'equals':
+          case 'eq':
             shouldShow = fieldValue === nextStep.showIf.value;
             break;
-          case 'not_equals':
+          case 'neq':
             shouldShow = fieldValue !== nextStep.showIf.value;
             break;
           case 'in':
             shouldShow = Array.isArray(nextStep.showIf.value) && 
               nextStep.showIf.value.includes(fieldValue as string);
             break;
-          case 'not_in':
+          case 'nin':
             shouldShow = Array.isArray(nextStep.showIf.value) && 
               !nextStep.showIf.value.includes(fieldValue as string);
             break;
