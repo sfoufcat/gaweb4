@@ -76,11 +76,12 @@ export async function GET(request: NextRequest) {
       }
       
       // Build user map for display names later
-      if (membership.displayName || membership.email) {
+      const displayName = [membership.firstName, membership.lastName].filter(Boolean).join(' ');
+      if (displayName || membership.imageUrl) {
         userMap.set(membership.userId, {
-          name: membership.displayName || 'Unknown',
-          email: membership.email || '',
-          avatarUrl: membership.avatarUrl,
+          name: displayName || 'Unknown',
+          email: '', // Email not stored on OrgMembership - will be enriched from users collection
+          avatarUrl: membership.imageUrl,
         });
       }
     }
@@ -178,9 +179,9 @@ export async function GET(request: NextRequest) {
     const dailyStats = Array.from(dailyStatsMap.values())
       .sort((a, b) => b.date.localeCompare(a.date)); // Most recent first
 
-    // Fetch user details for posters we don't have info for
+    // Fetch user details for posters we don't have info for (name unknown OR email missing)
     const unknownUserIds = posters
-      .filter(p => p.name === 'Unknown')
+      .filter(p => p.name === 'Unknown' || !p.email)
       .map(p => p.userId)
       .slice(0, 50);
     
