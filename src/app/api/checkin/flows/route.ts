@@ -25,7 +25,8 @@ export async function GET(req: Request) {
     const type = searchParams.get('type') as CheckInFlowType | null;
     const enabledOnly = searchParams.get('enabledOnly') !== 'false';
 
-    // Build query
+    // Build query - only filter by organizationId and type in Firestore
+    // Filter by enabled in memory to avoid composite index requirements
     let query = adminDb
       .collection('orgCheckInFlows')
       .where('organizationId', '==', orgId);
@@ -34,13 +35,9 @@ export async function GET(req: Request) {
       query = query.where('type', '==', type);
     }
 
-    if (enabledOnly) {
-      query = query.where('enabled', '==', true);
-    }
-
     const snapshot = await query.get();
 
-    const flows = snapshot.docs.map(doc => {
+    let flows = snapshot.docs.map(doc => {
       const data = doc.data() as Omit<OrgCheckInFlow, 'id'>;
       return {
         id: doc.id,
@@ -51,6 +48,11 @@ export async function GET(req: Request) {
         stepCount: data.stepCount,
       };
     });
+
+    // Filter by enabled status in memory (avoids needing composite index)
+    if (enabledOnly) {
+      flows = flows.filter(flow => flow.enabled);
+    }
 
     return NextResponse.json({ flows });
   } catch (error) {
