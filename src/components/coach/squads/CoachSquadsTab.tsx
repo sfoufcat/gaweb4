@@ -547,7 +547,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
               Squads
             </h2>
             <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-              Manage your standalone communities and masterminds
+              Manage your masterminds and communities
             </p>
           </div>
           <Button
@@ -584,14 +584,14 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                   : 'bg-[#faf8f6] dark:bg-[#11141b] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#171b22]'
               }`}
             >
-              Standalone ({standaloneCount})
+              Masterminds ({standaloneCount})
             </button>
             
             {/* Program Squads with sub-filters */}
             {programCount > 0 && (
               <>
                 <div className="w-px h-6 bg-[#e1ddd8] dark:bg-[#262b35] mx-1" />
-                <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Program Squads:</span>
+                <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Communities:</span>
                 <button
                   onClick={() => setSquadFilter('program-all')}
                   className={`px-3 py-1.5 rounded-lg text-sm font-albert transition-colors ${
@@ -640,7 +640,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
             </h3>
             <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1 mb-4">
               {squads.length === 0 
-                ? 'Create your first standalone squad or community'
+                ? 'Create your first mastermind'
                 : 'Try selecting a different filter or create a new squad'
               }
             </p>

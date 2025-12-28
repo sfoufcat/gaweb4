@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Rocket, 
   ThumbsUp, 
@@ -308,6 +309,11 @@ function SuggestFeatureModal({ onClose, onSubmit }: SuggestFeatureModalProps) {
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -322,110 +328,119 @@ function SuggestFeatureModal({ onClose, onSubmit }: SuggestFeatureModalProps) {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+  if (!mounted) return null;
+
+  const modalContent = (
+    <>
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100]"
         onClick={onClose}
       />
       
       {/* Modal */}
-      <div className="relative w-full max-w-md bg-white dark:bg-[#171b22] rounded-2xl shadow-2xl border border-[#e1ddd8] dark:border-[#262b35] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
-          <h3 className="font-albert font-semibold text-lg text-[#1a1a1a] dark:text-[#f5f5f8]">
-            Suggest a Feature
-          </h3>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          <div>
-            <label 
-              htmlFor="feature-title"
-              className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1.5"
-            >
-              Feature Title
-            </label>
-            <input
-              id="feature-title"
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Dark mode for mobile app"
-              required
-              minLength={5}
-              maxLength={100}
-              className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8680] dark:placeholder:text-[#6b7280] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a] transition-all"
-            />
-          </div>
-
-          <div>
-            <label 
-              htmlFor="feature-description"
-              className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1.5"
-            >
-              Description
-            </label>
-            <textarea
-              id="feature-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe the feature and why it would be helpful..."
-              required
-              minLength={20}
-              maxLength={1000}
-              rows={4}
-              className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8680] dark:placeholder:text-[#6b7280] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a] transition-all resize-none"
-            />
-            <p className="mt-1 text-xs text-[#8c8680] dark:text-[#6b7280] font-albert">
-              {description.length}/1000 characters (min 20)
-            </p>
-          </div>
-
-          {error && (
-            <p className="text-sm text-red-600 dark:text-red-400 font-albert">
-              {error}
-            </p>
-          )}
-
-          <div className="flex gap-3 pt-2">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 pointer-events-none">
+        <div 
+          className="relative w-full max-w-md bg-white dark:bg-[#171b22] rounded-2xl shadow-2xl border border-[#e1ddd8] dark:border-[#262b35] overflow-hidden pointer-events-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
+            <h3 className="font-albert font-semibold text-lg text-[#1a1a1a] dark:text-[#f5f5f8]">
+              Suggest a Feature
+            </h3>
             <button
-              type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] font-albert font-medium rounded-xl hover:bg-[#e1ddd8] dark:hover:bg-[#2d333e] transition-colors"
+              className="p-1.5 text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-[#262b35] rounded-lg transition-colors"
             >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting || title.trim().length < 5 || description.trim().length < 20}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#a07855] to-[#8c6245] hover:from-[#8c6245] hover:to-[#7a5539] text-white font-albert font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4" />
-                  Submit
-                </>
-              )}
+              <X className="w-5 h-5" />
             </button>
           </div>
-        </form>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="p-4 space-y-4">
+            <div>
+              <label 
+                htmlFor="feature-title"
+                className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1.5"
+              >
+                Feature Title
+              </label>
+              <input
+                id="feature-title"
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g., Dark mode for mobile app"
+                required
+                minLength={5}
+                maxLength={100}
+                className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8680] dark:placeholder:text-[#6b7280] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a] transition-all"
+              />
+            </div>
+
+            <div>
+              <label 
+                htmlFor="feature-description"
+                className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1.5"
+              >
+                Description
+              </label>
+              <textarea
+                id="feature-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe the feature and why it would be helpful..."
+                required
+                minLength={20}
+                maxLength={1000}
+                rows={4}
+                className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8680] dark:placeholder:text-[#6b7280] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a] transition-all resize-none"
+              />
+              <p className="mt-1 text-xs text-[#8c8680] dark:text-[#6b7280] font-albert">
+                {description.length}/1000 characters (min 20)
+              </p>
+            </div>
+
+            {error && (
+              <p className="text-sm text-red-600 dark:text-red-400 font-albert">
+                {error}
+              </p>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] font-albert font-medium rounded-xl hover:bg-[#e1ddd8] dark:hover:bg-[#2d333e] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting || title.trim().length < 5 || description.trim().length < 20}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#a07855] to-[#8c6245] hover:from-[#8c6245] hover:to-[#7a5539] text-white font-albert font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4" />
+                    Submit
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
+    </>
   );
+
+  return createPortal(modalContent, document.body);
 }
 
 

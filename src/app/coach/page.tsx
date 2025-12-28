@@ -220,8 +220,8 @@ export default function CoachPage() {
                     <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
                       {item.daysUntilClose} day{item.daysUntilClose !== 1 ? 's' : ''} until squads close.
                       {item.convertSquadsToCommunity 
-                        ? ' Squads will be converted to standalone communities.'
-                        : ' Convert to community to keep members connected?'}
+                        ? ' Squads will be converted to masterminds.'
+                        : ' Convert to mastermind to keep members connected?'}
                     </p>
                     {/* Show squads that can be converted */}
                     {!item.convertSquadsToCommunity && item.squads.length > 0 && (
@@ -332,7 +332,7 @@ export default function CoachPage() {
                   value="customize"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#a07855]/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-[#a07855]/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
                 >
-                  Customize
+                  Customize & Settings
                 </TabsTrigger>
                 <TabsTrigger 
                   value="plan"

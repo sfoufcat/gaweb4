@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { Globe, Lock, Copy, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Globe, Lock, Copy, RefreshCw, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Squad, FirebaseUser, SquadMember, SquadVisibility } from '@/types';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { Button } from '@/components/ui/button';
@@ -97,6 +97,9 @@ export function SquadFormDialog({
   
   // Stripe Connect status for payment guards
   const { isConnected: stripeConnected, isLoading: stripeLoading } = useStripeConnectStatus();
+  
+  // Collapsible section state
+  const [isSquadPictureExpanded, setIsSquadPictureExpanded] = useState(false);
 
   // Check if squad is in grace period
   const isInGracePeriod = squad?.programId && squad?.gracePeriodStartDate && !squad?.isClosed;
@@ -445,7 +448,7 @@ export function SquadFormDialog({
           </AlertDialogTitle>
           {!squad && (
             <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-              Standalone squads are perfect for evergreen masterminds, ongoing communities, or paid peer groups that don&apos;t follow a fixed program schedule.
+              Masterminds are perfect for evergreen groups, ongoing communities, or paid peer groups that don&apos;t follow a fixed program schedule.
             </p>
           )}
         </AlertDialogHeader>
@@ -466,7 +469,7 @@ export function SquadFormDialog({
                     This squad is in grace period
                   </h3>
                   <p className="text-xs text-amber-700 dark:text-amber-300 font-albert mt-0.5">
-                    The linked program has ended. Convert to a standalone community to keep members connected.
+                    The linked program has ended. Convert to a mastermind to keep members connected.
                   </p>
                   <Button
                     type="button"
@@ -474,7 +477,7 @@ export function SquadFormDialog({
                     disabled={converting}
                     className="mt-2 bg-amber-600 hover:bg-amber-700 text-white text-xs px-3 py-1 h-auto"
                   >
-                    {converting ? 'Converting...' : 'Convert to Community'}
+                    {converting ? 'Converting...' : 'Convert to Mastermind'}
                   </Button>
                 </div>
               </div>
@@ -492,10 +495,10 @@ export function SquadFormDialog({
                 </div>
                 <div>
                   <h3 className="font-albert font-semibold text-sm text-green-800 dark:text-green-200">
-                    Converted to community!
+                    Converted to mastermind!
                   </h3>
                   <p className="text-xs text-green-700 dark:text-green-300 font-albert">
-                    This squad is now a standalone community.
+                    This squad is now a mastermind.
                   </p>
                 </div>
               </div>
@@ -558,25 +561,45 @@ export function SquadFormDialog({
             </p>
           </div>
 
-          {/* Squad Picture */}
-          <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-1 font-albert">
-              Squad Picture
-            </label>
-            <div className="w-20 h-20 [&_.relative]:!h-20 [&_.aspect-square]:!aspect-auto">
-              <MediaUpload
-                value={avatarUrl}
-                onChange={setAvatarUrl}
-                folder="squads"
-                type="image"
-                uploadEndpoint={uploadEndpoint}
-                hideLabel
-                aspectRatio="1:1"
-              />
-            </div>
-            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
-              512 x 512px
-            </p>
+          {/* Squad Picture - Collapsible */}
+          <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-lg overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setIsSquadPictureExpanded(!isSquadPictureExpanded)}
+              className="w-full flex items-center justify-between px-3 py-2 bg-[#faf8f6] dark:bg-[#1d222b] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                  Squad Picture
+                </span>
+                <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                  512 x 512px
+                </span>
+                {avatarUrl && !isSquadPictureExpanded && (
+                  <div className="w-6 h-6 rounded overflow-hidden border border-[#e1ddd8] dark:border-[#262b35]">
+                    <img src={avatarUrl} alt="Squad" className="w-full h-full object-cover" />
+                  </div>
+                )}
+              </div>
+              {isSquadPictureExpanded ? (
+                <ChevronUp className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+              )}
+            </button>
+            {isSquadPictureExpanded && (
+              <div className="p-3 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                <MediaUpload
+                  value={avatarUrl}
+                  onChange={setAvatarUrl}
+                  folder="squads"
+                  type="image"
+                  uploadEndpoint={uploadEndpoint}
+                  hideLabel
+                  aspectRatio="1:1"
+                />
+              </div>
+            )}
           </div>
 
           {/* Visibility */}

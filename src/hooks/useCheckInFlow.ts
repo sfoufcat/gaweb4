@@ -48,7 +48,12 @@ export function useCheckInFlow({ type, flowId }: UseCheckInFlowOptions): UseChec
         url = `/api/checkin/flows/by-type/${type}`;
       }
 
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+        },
+      });
       
       if (response.status === 404) {
         const data = await response.json();
@@ -101,7 +106,12 @@ export function useAvailableCheckIns() {
   const fetchFlows = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/checkin/flows?enabledOnly=true');
+      const response = await fetch('/api/checkin/flows?enabledOnly=true', {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+        },
+      });
       
       if (!response.ok) {
         throw new Error('Failed to fetch available check-ins');

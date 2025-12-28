@@ -7,7 +7,7 @@ import { ProgramLandingPageEditor } from './ProgramLandingPageEditor';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Edit2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, Gift, Sparkles } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Edit2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles } from 'lucide-react';
 import { AIHelperModal } from '@/components/ai';
 import type { ProgramContentDraft, LandingPageDraft, AIGenerationContext } from '@/lib/ai/types';
 import { ReferralConfigForm } from '@/components/coach/referrals';
@@ -79,6 +79,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   // AI Helper modals
   const [isAIProgramContentModalOpen, setIsAIProgramContentModalOpen] = useState(false);
   const [isAILandingPageModalOpen, setIsAILandingPageModalOpen] = useState(false);
+  
+  // Collapsible section state
+  const [isCoverImageExpanded, setIsCoverImageExpanded] = useState(false);
   
   // Program form
   const [programFormData, setProgramFormData] = useState<{
@@ -2079,20 +2082,45 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       />
                     </div>
 
-                    {/* Cover Image */}
-                    <div>
-                      <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
-                        Cover Image <span className="text-text-muted text-xs font-normal">(1200 x 675px)</span>
-                      </label>
-                      <MediaUpload
-                        value={programFormData.coverImageUrl}
-                        onChange={(url) => setProgramFormData({ ...programFormData, coverImageUrl: url })}
-                        folder="programs"
-                        type="image"
-                        uploadEndpoint="/api/coach/org-upload-media"
-                        hideLabel
-                        aspectRatio="16:9"
-                      />
+                    {/* Cover Image - Collapsible */}
+                    <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-lg overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setIsCoverImageExpanded(!isCoverImageExpanded)}
+                        className="w-full flex items-center justify-between px-3 py-2 bg-[#faf8f6] dark:bg-[#1d222b] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                            Cover Image
+                          </span>
+                          <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                            1200 x 675px
+                          </span>
+                          {programFormData.coverImageUrl && !isCoverImageExpanded && (
+                            <div className="w-10 h-6 rounded overflow-hidden border border-[#e1ddd8] dark:border-[#262b35]">
+                              <img src={programFormData.coverImageUrl} alt="Cover" className="w-full h-full object-cover" />
+                            </div>
+                          )}
+                        </div>
+                        {isCoverImageExpanded ? (
+                          <ChevronUp className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                        )}
+                      </button>
+                      {isCoverImageExpanded && (
+                        <div className="p-3 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                          <MediaUpload
+                            value={programFormData.coverImageUrl}
+                            onChange={(url) => setProgramFormData({ ...programFormData, coverImageUrl: url })}
+                            folder="programs"
+                            type="image"
+                            uploadEndpoint="/api/coach/org-upload-media"
+                            hideLabel
+                            aspectRatio="16:9"
+                          />
+                        </div>
+                      )}
                     </div>
 
                     {/* Duration & Price */}
@@ -2504,11 +2532,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                             onChange={() => setCohortFormData({ ...cohortFormData, convertSquadsToCommunity: true })}
                             className="text-[#a07855]"
                           />
-                          Convert to standalone community
+                          Convert to mastermind
                         </label>
                       </div>
                       <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
-                        Standalone communities remain active for alumni to stay connected
+                        Masterminds remain active for alumni to stay connected
                       </p>
                     </div>
 
