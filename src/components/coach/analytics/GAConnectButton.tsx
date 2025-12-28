@@ -86,8 +86,16 @@ export function GAConnectButton({ apiBasePath = '/api/coach/analytics' }: GAConn
 
       {/* Modal - rendered via portal to escape overflow-hidden containers */}
       {isOpen && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-[#171b22] rounded-xl shadow-xl w-full max-w-md border border-[#e1ddd8] dark:border-[#262b35]">
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] animate-backdrop-fade-in"
+            onClick={() => setIsOpen(false)}
+          />
+          
+          {/* Modal Container */}
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none">
+            <div className="bg-white dark:bg-[#171b22] rounded-xl shadow-2xl w-full max-w-md border border-[#e1ddd8] dark:border-[#262b35] animate-modal-zoom-in pointer-events-auto">
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
               <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
@@ -173,8 +181,9 @@ export function GAConnectButton({ apiBasePath = '/api/coach/analytics' }: GAConn
                 </button>
               </div>
             </div>
+            </div>
           </div>
-        </div>,
+        </>,
         document.body
       )}
     </>
