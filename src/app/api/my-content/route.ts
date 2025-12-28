@@ -139,9 +139,12 @@ export async function GET(request: Request) {
             return validStatuses.includes(status);
           })
           .sort((a, b) => {
-            const aDate = a.data().createdAt || '';
-            const bDate = b.data().createdAt || '';
-            return bDate.localeCompare(aDate); // Descending
+            const aDate = a.data().createdAt;
+            const bDate = b.data().createdAt;
+            // Convert Firestore Timestamps to milliseconds for comparison
+            const aMillis = aDate?.toMillis?.() ?? 0;
+            const bMillis = bDate?.toMillis?.() ?? 0;
+            return bMillis - aMillis; // Descending
           });
 
         console.log(`[MY_CONTENT] Found ${validEnrollments.length} program enrollments for user ${userId}`);

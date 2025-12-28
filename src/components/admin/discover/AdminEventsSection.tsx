@@ -321,6 +321,9 @@ function EventFormDialog({
         isPublic: formData.pricing.isPublic,
       };
 
+      // Remove nested pricing object to avoid duplicate data
+      delete (payload as Record<string, unknown>).pricing;
+
       const url = isEditing 
         ? `${apiEndpoint}/${event!.id}`
         : apiEndpoint;
@@ -833,7 +836,8 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
     
     try {
       setDeleteLoading(true);
-      const response = await fetch(`/api/admin/discover/events/${eventToDelete.id}`, {
+      // Use dynamic apiEndpoint instead of hardcoded admin route
+      const response = await fetch(`${apiEndpoint}/${eventToDelete.id}`, {
         method: 'DELETE',
       });
       
@@ -852,15 +856,28 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
     }
   };
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = (dateStr: string | undefined | null) => {
+    // Handle empty, undefined, or null dates
+    if (!dateStr) return 'Invalid Date';
+    
     try {
-      return new Date(dateStr).toLocaleDateString('en-US', {
+      // Handle Firestore Timestamp objects that may have been serialized
+      const dateValue = typeof dateStr === 'object' && 'toDate' in dateStr 
+        ? (dateStr as { toDate: () => Date }).toDate()
+        : new Date(dateStr);
+      
+      // Check if date is valid
+      if (isNaN(dateValue.getTime())) {
+        return 'Invalid Date';
+      }
+      
+      return dateValue.toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
       });
     } catch {
-      return dateStr;
+      return 'Invalid Date';
     }
   };
 

@@ -437,7 +437,8 @@ export function AdminArticlesSection({ apiEndpoint = '/api/admin/discover/articl
     
     try {
       setDeleteLoading(true);
-      const response = await fetch(`/api/admin/discover/articles/${articleToDelete.id}`, {
+      // Use dynamic apiEndpoint instead of hardcoded admin route
+      const response = await fetch(`${apiEndpoint}/${articleToDelete.id}`, {
         method: 'DELETE',
       });
       

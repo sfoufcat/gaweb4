@@ -632,8 +632,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     }
   };
 
-  const handleSaveLandingPage = async () => {
-    if (!selectedProgram) return;
+  const handleSaveLandingPage = async (): Promise<boolean> => {
+    if (!selectedProgram) return false;
     
     try {
       setSaving(true);
@@ -656,9 +656,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       if (data.program) {
         setSelectedProgram(data.program);
       }
+      return true;
     } catch (err) {
       console.error('Error saving landing page:', err);
       setSaveError(err instanceof Error ? err.message : 'Failed to save landing page');
+      return false;
     } finally {
       setSaving(false);
     }
@@ -1789,9 +1791,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   Generate with AI
                 </Button>
                 <Button 
-                  onClick={() => {
-                    handleSaveLandingPage();
-                    setLandingPageSaved(true);
+                  onClick={async () => {
+                    const success = await handleSaveLandingPage();
+                    if (success) {
+                      setLandingPageSaved(true);
+                    }
                   }}
                   disabled={saving || landingPageSaved}
                   className={`flex items-center gap-2 ${landingPageSaved ? 'bg-[#d1ccc5] dark:bg-[#3d424d] cursor-not-allowed' : 'bg-[#a07855] hover:bg-[#8c6245]'} text-white`}
