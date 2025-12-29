@@ -53,6 +53,7 @@ export interface TenantSubscriptionData {
   subscriptionStatus: CoachSubscriptionStatus;
   currentPeriodEnd?: string;
   cancelAtPeriodEnd?: boolean;
+  graceEndsAt?: string;  // ISO date when payment failure grace period ends
 }
 
 /**

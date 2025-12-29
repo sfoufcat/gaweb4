@@ -5,7 +5,8 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { sendWelcomeEmail } from '@/lib/email';
 import { updateUserBillingInClerk, updateUserCoachingInClerk, type BillingStatus } from '@/lib/admin-utils-clerk';
 import { archiveOldSquadMemberships } from '@/lib/program-engine';
-import { syncSubscriptionToEdgeConfig, type TenantSubscriptionData } from '@/lib/tenant-edge-config';
+import { syncSubscriptionToEdgeConfig, type TenantSubscriptionData, type TenantBrandingData } from '@/lib/tenant-edge-config';
+import { DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_APP_TITLE, DEFAULT_BRANDING_COLORS } from '@/types';
 import { getStreamServerClient } from '@/lib/stream-server';
 import { addUserToOrganization } from '@/lib/clerk-organizations';
 import type { CoachingStatus, CoachingPlan, FlowSession, Program, ProgramEnrollment, ProgramInvite, NewProgramEnrollmentStatus, CoachTier, CoachSubscriptionStatus, Squad, SquadMember } from '@/types';
@@ -27,6 +28,7 @@ async function syncBillingToClerkOrg(
     currentPeriodEnd?: string;
     trialEnd?: string;
     cancelAtPeriodEnd?: boolean;
+    graceEndsAt?: string;
     onboardingState?: 'needs_profile' | 'needs_plan' | 'active';
   }
 ): Promise<void> {
@@ -47,6 +49,7 @@ async function syncBillingToClerkOrg(
         currentPeriodEnd: billingState.currentPeriodEnd,
         trialEnd: billingState.trialEnd,
         cancelAtPeriodEnd: billingState.cancelAtPeriodEnd,
+        graceEndsAt: billingState.graceEndsAt,
         onboardingState: billingState.onboardingState,
       },
     });
@@ -76,9 +79,30 @@ async function syncBillingToClerkOrg(
         subscriptionStatus: billingState.subscriptionStatus,
         currentPeriodEnd: billingState.currentPeriodEnd,
         cancelAtPeriodEnd: billingState.cancelAtPeriodEnd,
+        graceEndsAt: billingState.graceEndsAt,
       };
       
-      await syncSubscriptionToEdgeConfig(organizationId, subdomain, subscriptionData, customDomain);
+      // Fetch branding from Firestore to prevent reset to defaults when Edge Config is empty
+      let fallbackBranding: TenantBrandingData | undefined;
+      try {
+        const brandingDoc = await adminDb.collection('org_branding').doc(organizationId).get();
+        if (brandingDoc.exists) {
+          const brandingData = brandingDoc.data();
+          fallbackBranding = {
+            logoUrl: brandingData?.logoUrl ?? null,
+            horizontalLogoUrl: brandingData?.horizontalLogoUrl ?? null,
+            appTitle: brandingData?.appTitle ?? DEFAULT_APP_TITLE,
+            colors: brandingData?.colors ?? DEFAULT_BRANDING_COLORS,
+            menuTitles: brandingData?.menuTitles ?? DEFAULT_MENU_TITLES,
+            menuIcons: brandingData?.menuIcons ?? DEFAULT_MENU_ICONS,
+            menuOrder: brandingData?.menuOrder ?? DEFAULT_MENU_ORDER,
+          };
+        }
+      } catch (brandingError) {
+        console.warn(`[STRIPE_WEBHOOK] Could not fetch branding from Firestore:`, brandingError);
+      }
+      
+      await syncSubscriptionToEdgeConfig(organizationId, subdomain, subscriptionData, customDomain, fallbackBranding);
       console.log(`[STRIPE_WEBHOOK] Synced billing to Edge Config for subdomain ${subdomain}`);
     } else {
       console.warn(`[STRIPE_WEBHOOK] No subdomain found for org ${organizationId} - Edge Config not updated`);
@@ -795,13 +819,51 @@ async function updateCoachPlatformSubscriptionStatus(subscription: Stripe.Subscr
   const cancelAtPeriodEnd = subscription.cancel_at_period_end;
   const now = new Date().toISOString();
   
-  // Find and update the coach_subscriptions document
+  // Grace period handling for payment failures
+  // When status becomes past_due, set a 3-day grace period
+  // When status becomes active/trialing, clear the grace period
+  let graceEndsAt: string | null = null;
+  
+  // Find existing subscription to check current state
   const subscriptionQuery = await adminDb
     .collection('coach_subscriptions')
     .where('stripeSubscriptionId', '==', subscription.id)
     .limit(1)
     .get();
   
+  const existingData = !subscriptionQuery.empty ? subscriptionQuery.docs[0].data() : null;
+  const wasActive = existingData?.status === 'active' || existingData?.status === 'trialing';
+  const isNowPastDue = status === 'past_due';
+  const isNowActive = status === 'active' || status === 'trialing';
+  
+  if (isNowPastDue) {
+    // If transitioning to past_due and no existing grace period, set one
+    if (!existingData?.graceEndsAt) {
+      const graceEnd = new Date();
+      graceEnd.setDate(graceEnd.getDate() + 3); // 3-day grace period
+      graceEndsAt = graceEnd.toISOString();
+      console.log(`[STRIPE_WEBHOOK] Setting 3-day grace period for org ${organizationId}, ends: ${graceEndsAt}`);
+      
+      // Send payment failed email to coach
+      try {
+        const { sendPaymentFailedEmail } = await import('@/lib/email');
+        await sendPaymentFailedEmail({ organizationId, graceEndsAt });
+      } catch (emailError) {
+        console.error(`[STRIPE_WEBHOOK] Failed to send payment failed email for org ${organizationId}:`, emailError);
+      }
+    } else {
+      // Keep existing grace period (don't extend it)
+      graceEndsAt = existingData.graceEndsAt;
+    }
+  } else if (isNowActive) {
+    // Clear grace period when payment succeeds
+    graceEndsAt = null;
+    if (existingData?.graceEndsAt) {
+      console.log(`[STRIPE_WEBHOOK] Clearing grace period for org ${organizationId} - payment successful`);
+    }
+  }
+  
+  // Update coach_subscriptions document
   if (!subscriptionQuery.empty) {
     const subDoc = subscriptionQuery.docs[0];
     await subDoc.ref.update({
@@ -810,6 +872,7 @@ async function updateCoachPlatformSubscriptionStatus(subscription: Stripe.Subscr
       currentPeriodEnd,
       trialEnd,
       cancelAtPeriodEnd,
+      graceEndsAt,
       updatedAt: now,
     });
   }
@@ -818,10 +881,11 @@ async function updateCoachPlatformSubscriptionStatus(subscription: Stripe.Subscr
   await adminDb.collection('org_settings').doc(organizationId).set({
     coachTier: tier,
     subscriptionStatus: status,
+    graceEndsAt,
     updatedAt: now,
   }, { merge: true });
   
-  console.log(`[STRIPE_WEBHOOK] Updated coach platform subscription for org ${organizationId}: tier=${tier}, status=${status}`);
+  console.log(`[STRIPE_WEBHOOK] Updated coach platform subscription for org ${organizationId}: tier=${tier}, status=${status}, graceEndsAt=${graceEndsAt || 'none'}`);
   
   // CRITICAL: Sync to Clerk org publicMetadata for instant middleware gating
   await syncBillingToClerkOrg(organizationId, {
@@ -830,6 +894,7 @@ async function updateCoachPlatformSubscriptionStatus(subscription: Stripe.Subscr
     currentPeriodEnd,
     trialEnd,
     cancelAtPeriodEnd,
+    graceEndsAt: graceEndsAt || undefined,
     onboardingState: status === 'active' || status === 'trialing' ? 'active' : 'needs_plan',
   });
 }

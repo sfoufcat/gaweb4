@@ -41,20 +41,32 @@ interface ClerkOrgPublicMetadata {
   currentPeriodEnd?: string;
   trialEnd?: string;
   cancelAtPeriodEnd?: boolean;
+  graceEndsAt?: string;
   onboardingState?: 'needs_profile' | 'needs_plan' | 'active';
 }
 
 /**
  * Check if org subscription is active for coach dashboard access
+ * Includes grace period support for payment failures
  */
 function hasActiveOrgSubscription(
   status?: CoachSubscriptionStatus,
   currentPeriodEnd?: string,
-  cancelAtPeriodEnd?: boolean
+  cancelAtPeriodEnd?: boolean,
+  graceEndsAt?: string
 ): boolean {
   // Active or trialing = full access
   if (status === 'active' || status === 'trialing') {
     return true;
+  }
+  
+  // Past due but within grace period = allow access with warning
+  if (status === 'past_due' && graceEndsAt) {
+    const graceEnd = new Date(graceEndsAt);
+    const now = new Date();
+    if (graceEnd > now) {
+      return true; // Still within grace period
+    }
   }
   
   // Canceled but still in paid period
@@ -1006,9 +1018,10 @@ export default clerkMiddleware(async (auth, request) => {
     const orgStatus: CoachSubscriptionStatus = orgMetadata?.subscriptionStatus || edgeConfigSubscription?.subscriptionStatus || 'none';
     const orgPeriodEnd = orgMetadata?.currentPeriodEnd || edgeConfigSubscription?.currentPeriodEnd;
     const orgCancelAtPeriodEnd = orgMetadata?.cancelAtPeriodEnd || edgeConfigSubscription?.cancelAtPeriodEnd;
+    const orgGraceEndsAt = orgMetadata?.graceEndsAt || edgeConfigSubscription?.graceEndsAt;
     
-    // Check subscription is active
-    const isSubscriptionActive = hasActiveOrgSubscription(orgStatus, orgPeriodEnd, orgCancelAtPeriodEnd);
+    // Check subscription is active (includes grace period for payment failures)
+    const isSubscriptionActive = hasActiveOrgSubscription(orgStatus, orgPeriodEnd, orgCancelAtPeriodEnd, orgGraceEndsAt);
     
     if (!isSubscriptionActive) {
       // COACH: Allow access to plan/reactivate pages, block everything else

@@ -78,6 +78,9 @@ export interface CoachSubscription {
   manualBilling?: boolean;
   manualExpiresAt?: string | null;    // ISO date when manual access expires
   
+  // Grace period for payment failures (3 days to update payment)
+  graceEndsAt?: string | null;        // ISO date when grace period ends
+  
   createdAt: string;
   updatedAt: string;
 }

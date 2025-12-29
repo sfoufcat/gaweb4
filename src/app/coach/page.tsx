@@ -4,10 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useOrganization } from '@clerk/nextjs';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
-import { ClientDetailView, CustomizeBrandingTab, ChannelManagementTab } from '@/components/coach';
+import { ClientDetailView, CustomizeBrandingTab, ChannelManagementTab, PaymentFailedBanner } from '@/components/coach';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, AlertCircle, Users } from 'lucide-react';
-import type { ClerkPublicMetadata, OrgRole, ProgramCohort } from '@/types';
+import type { ClerkPublicMetadata, OrgRole, ProgramCohort, CoachSubscription } from '@/types';
 
 // Admin components for expanded coach dashboard
 import { AdminUsersTab, type ColumnKey } from '@/components/admin/AdminUsersTab';
@@ -65,6 +65,9 @@ export default function CoachPage() {
   }
   const [endingCohorts, setEndingCohorts] = useState<EndingCohortData[]>([]);
   const [convertingSquads, setConvertingSquads] = useState<Set<string>>(new Set());
+  
+  // Payment failed banner state
+  const [subscription, setSubscription] = useState<CoachSubscription | null>(null);
   
   // Get initial tab from URL query param, default to 'clients'
   const tabFromUrl = searchParams.get('tab') as CoachTab | null;
@@ -139,12 +142,26 @@ export default function CoachPage() {
       console.error('Error fetching ending cohorts:', error);
     }
   }, []);
+  
+  // Fetch subscription status for payment failed banner
+  const fetchSubscription = useCallback(async () => {
+    try {
+      const response = await fetch('/api/coach/subscription');
+      if (response.ok) {
+        const data = await response.json();
+        setSubscription(data.subscription || null);
+      }
+    } catch (error) {
+      console.error('Error fetching subscription:', error);
+    }
+  }, []);
 
   useEffect(() => {
     if (isLoaded && mounted && hasAccess && !isLimitedOrgCoach) {
       fetchEndingCohorts();
+      fetchSubscription();
     }
-  }, [isLoaded, mounted, hasAccess, isLimitedOrgCoach, fetchEndingCohorts]);
+  }, [isLoaded, mounted, hasAccess, isLimitedOrgCoach, fetchEndingCohorts, fetchSubscription]);
 
   // Handle squad conversion to community
   const handleConvertToCommunity = async (squadId: string) => {
@@ -215,6 +232,38 @@ export default function CoachPage() {
   const handleTourComplete = () => {
     setIsTourActive(false);
   };
+  
+  // Handle payment update (opens Stripe customer portal)
+  const handleUpdatePayment = async () => {
+    try {
+      const response = await fetch('/api/coach/subscription/portal', { method: 'POST' });
+      if (response.ok) {
+        const { url } = await response.json();
+        window.location.href = url;
+      } else {
+        console.error('Failed to get portal URL');
+      }
+    } catch (error) {
+      console.error('Error opening payment portal:', error);
+    }
+  };
+  
+  // Handle payment retry
+  const handleRetryPayment = async (): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/coach/subscription/retry-payment', { method: 'POST' });
+      const data = await response.json();
+      return data.success === true;
+    } catch (error) {
+      console.error('Error retrying payment:', error);
+      return false;
+    }
+  };
+  
+  // Check if in grace period (past_due with valid graceEndsAt)
+  const isInGracePeriod = subscription?.status === 'past_due' && 
+    subscription?.graceEndsAt && 
+    new Date(subscription.graceEndsAt) > new Date();
 
   return (
     <div className="min-h-screen">
@@ -224,6 +273,15 @@ export default function CoachPage() {
         onComplete={handleTourComplete}
         onSkip={handleTourComplete}
       />
+      
+      {/* Payment Failed Banner - shown when in grace period */}
+      {isInGracePeriod && subscription?.graceEndsAt && (
+        <PaymentFailedBanner
+          graceEndsAt={subscription.graceEndsAt}
+          onUpdatePayment={handleUpdatePayment}
+          onRetryPayment={handleRetryPayment}
+        />
+      )}
 
       <div className="px-4 sm:px-8 lg:px-16 py-6 pb-32">
         {/* Header */}

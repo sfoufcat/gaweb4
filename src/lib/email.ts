@@ -555,3 +555,169 @@ export async function processAbandonedEmails(): Promise<{
   return stats;
 }
 
+/**
+ * Send payment failed email to coach when their subscription payment fails
+ * Includes information about the 3-day grace period and buttons to update payment
+ */
+export async function sendPaymentFailedEmail({
+  organizationId,
+  graceEndsAt,
+}: {
+  organizationId: string;
+  graceEndsAt: string;
+}): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  // Get coach email from organization membership (organization owner)
+  let coachEmail: string | null = null;
+  let coachFirstName: string | null = null;
+  
+  try {
+    const { clerkClient } = await import('@clerk/nextjs/server');
+    const clerk = await clerkClient();
+    
+    // Get organization members to find the admin/coach
+    const members = await clerk.organizations.getOrganizationMembershipList({
+      organizationId,
+      limit: 10,
+    });
+    
+    // Find admin/owner
+    const adminMember = members.data.find(
+      m => m.role === 'org:admin' || m.role === 'org:coach'
+    );
+    
+    if (adminMember?.publicUserData?.userId) {
+      const user = await clerk.users.getUser(adminMember.publicUserData.userId);
+      coachEmail = user.emailAddresses.find(e => e.id === user.primaryEmailAddressId)?.emailAddress || null;
+      coachFirstName = user.firstName;
+    }
+  } catch (error) {
+    console.error('[PAYMENT_FAILED_EMAIL] Error fetching coach from Clerk:', error);
+  }
+  
+  if (!coachEmail) {
+    console.log('[PAYMENT_FAILED_EMAIL] Skipping - No coach email found for org:', organizationId);
+    return { success: false, error: 'No coach email found' };
+  }
+  
+  // Get tenant branding
+  const appTitle = await getAppTitleForEmail(organizationId);
+  const logoUrl = await getLogoUrlForEmail(organizationId);
+  const teamName = appTitle === 'GrowthAddicts' ? 'Growth Addicts' : appTitle;
+  
+  // Calculate grace period details
+  const graceEnd = new Date(graceEndsAt);
+  const daysRemaining = Math.max(0, Math.ceil((graceEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+  const formattedDate = graceEnd.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  
+  const name = coachFirstName || 'there';
+  const updatePaymentUrl = `${APP_URL}/coach?action=update-payment`;
+  
+  const subject = `⚠️ Payment Failed - Update Your Payment Method (${daysRemaining} days remaining)`;
+  
+  const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f5f5f5;">
+    <tr>
+      <td style="padding: 40px 20px;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); padding: 30px 40px; text-align: center;">
+              ${logoUrl ? `<img src="${logoUrl}" alt="${teamName}" style="max-height: 50px; max-width: 180px; margin-bottom: 15px;">` : ''}
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">Payment Failed</h1>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px;">
+              <p style="font-size: 16px; color: #374151; line-height: 1.6; margin: 0 0 20px 0;">
+                Hi ${name},
+              </p>
+              
+              <p style="font-size: 16px; color: #374151; line-height: 1.6; margin: 0 0 20px 0;">
+                We were unable to process your subscription payment for ${teamName}. This could be due to an expired card, insufficient funds, or an issue with your payment method.
+              </p>
+              
+              <!-- Warning Box -->
+              <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <p style="font-size: 16px; color: #991b1b; font-weight: 600; margin: 0 0 8px 0;">
+                  ⚠️ Grace Period: ${daysRemaining} Days Remaining
+                </p>
+                <p style="font-size: 14px; color: #7f1d1d; margin: 0;">
+                  You and your members will continue to have access until <strong>${formattedDate}</strong>. After this date, access will be suspended until payment is successful.
+                </p>
+              </div>
+              
+              <p style="font-size: 16px; color: #374151; line-height: 1.6; margin: 0 0 30px 0;">
+                Please update your payment method to avoid any interruption to your service and your members' access.
+              </p>
+              
+              <!-- CTA Button -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                  <td style="text-align: center;">
+                    <a href="${updatePaymentUrl}" style="display: inline-block; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: #ffffff; text-decoration: none; padding: 16px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                      Update Payment Method
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              
+              <p style="font-size: 14px; color: #6b7280; line-height: 1.6; margin: 30px 0 0 0; text-align: center;">
+                If you have any questions, please reply to this email or contact our support team.
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 20px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="font-size: 12px; color: #9ca3af; margin: 0;">
+                © ${new Date().getFullYear()} ${teamName}. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const result = await sendTenantEmail({
+    to: coachEmail,
+    subject,
+    html: htmlBody,
+    organizationId,
+  });
+  
+  if (result.success) {
+    console.log('[PAYMENT_FAILED_EMAIL] Sent to coach:', {
+      organizationId,
+      email: coachEmail,
+      graceEndsAt,
+      messageId: result.messageId,
+    });
+  } else {
+    console.error('[PAYMENT_FAILED_EMAIL] Failed to send:', {
+      organizationId,
+      email: coachEmail,
+      error: result.error,
+    });
+  }
+  
+  return { success: result.success, messageId: result.messageId, error: result.error };
+}
