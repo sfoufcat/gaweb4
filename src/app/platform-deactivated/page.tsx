@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useUser, SignOutButton } from '@clerk/nextjs';
 import { useBrandingValues } from '@/contexts/BrandingContext';
-import { PauseCircle, Mail, LogOut, RefreshCw } from 'lucide-react';
+import { PauseCircle, LogOut, RefreshCw } from 'lucide-react';
 
 /**
  * Platform Deactivated Page
@@ -14,12 +14,12 @@ import { PauseCircle, Mail, LogOut, RefreshCw } from 'lucide-react';
  */
 export default function PlatformDeactivatedPage() {
   const { user, isLoaded } = useUser();
-  const { appTitle, coachName, coachEmail } = useBrandingValues();
+  const { appTitle } = useBrandingValues();
   const [isRefreshing, setIsRefreshing] = useState(false);
   
-  // Try to get coach info from branding
+  // Platform name from branding, coach info not available in branding context
   const platformName = appTitle || 'This platform';
-  const coachDisplayName = coachName || 'The coach';
+  const coachDisplayName = 'The coach';
   
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -75,16 +75,7 @@ export default function PlatformDeactivatedPage() {
             {isRefreshing ? 'Checking...' : 'Check Again'}
           </button>
           
-          {/* Contact coach - only show if email available */}
-          {coachEmail && (
-            <a
-              href={`mailto:${coachEmail}`}
-              className="flex items-center justify-center gap-2 w-full px-6 py-3 border border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#f5f2ef] dark:hover:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium rounded-xl transition-colors font-albert"
-            >
-              <Mail className="w-5 h-5" />
-              Contact {coachDisplayName}
-            </a>
-          )}
+          {/* Contact coach button removed - email not available in branding context */}
           
           {/* Sign out */}
           <SignOutButton>
