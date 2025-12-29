@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
 import { Search, Sparkles, ArrowRight, Users, Zap, Target } from 'lucide-react';
 import type { MarketplaceListing, MarketplaceCategory } from '@/types';
@@ -112,6 +113,48 @@ export default function MarketplacePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b]">
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-[#faf8f6]/95 dark:bg-[#0a0c10]/95 backdrop-blur-sm border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl overflow-hidden relative">
+                <Image
+                  src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af"
+                  alt="Growth Addicts"
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              </div>
+              <span className="font-albert text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-tight">
+                Growth Addicts
+              </span>
+            </Link>
+
+            {/* Auth Button */}
+            {user ? (
+              <Link
+                href="/"
+                className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] rounded-full font-albert text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                Dashboard
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            ) : (
+              <Link
+                href="/sign-in"
+                className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] rounded-full font-albert text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                Log in
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            )}
+          </div>
+        </div>
+      </header>
+
       {/* Hero Section */}
       <section className="relative py-16 sm:py-24 overflow-hidden">
         {/* Background decoration */}

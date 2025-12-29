@@ -186,6 +186,8 @@ const isPublicRoute = createRouteMatcher([
   '/tenant-not-found',  // Tenant not found page
   '/access-denied',     // Access denied page
   '/marketplace(.*)',   // Public marketplace - coach discovery
+  '/coach/complete-signup',  // Coach OAuth completion - handles org creation
+  '/coach/onboarding(.*)',   // Coach onboarding - pages verify auth via API
   '/api/webhooks(.*)',
   '/api/notifications/cron(.*)',  // Cron jobs - auth via CRON_SECRET header
   '/api/squad/validate-invite',  // Allow validating invite tokens without auth

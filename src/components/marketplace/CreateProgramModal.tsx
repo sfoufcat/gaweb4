@@ -93,7 +93,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
       await signUp.authenticateWithRedirect({
         strategy: 'oauth_google',
         redirectUrl: '/sso-callback',
-        redirectUrlComplete: '/coach?onboarding=profile',
+        redirectUrlComplete: '/coach/complete-signup',
         unsafeMetadata: { coachSignup: true },
       });
     } catch (err: any) {
@@ -186,8 +186,8 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
         throw new Error(data.error || 'Failed to create organization');
       }
       
-      // Redirect to coach dashboard with onboarding state
-      router.push('/coach?onboarding=profile');
+      // Redirect to coach onboarding profile page
+      router.push('/coach/onboarding/profile');
       onClose();
     } catch (err: any) {
       console.error('Create org error:', err);
