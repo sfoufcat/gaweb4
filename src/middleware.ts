@@ -185,6 +185,7 @@ const isPublicRoute = createRouteMatcher([
   '/auth/sync(.*)',  // Session handoff for custom domains - handles its own auth
   '/tenant-not-found',  // Tenant not found page
   '/access-denied',     // Access denied page
+  '/marketplace(.*)',   // Public marketplace - coach discovery
   '/api/webhooks(.*)',
   '/api/notifications/cron(.*)',  // Cron jobs - auth via CRON_SECRET header
   '/api/squad/validate-invite',  // Allow validating invite tokens without auth
@@ -195,6 +196,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/goal/save',      // Goal save - used during onboarding (has own auth check)
   '/api/tenant/resolve',  // Tenant resolution API - no auth required
   '/api/org/branding',  // Branding API - needs to work for SSR before auth is established
+  '/api/marketplace/listings',  // Public marketplace listings API
   '/terms(.*)',
   '/privacy(.*)',
   '/refund-policy(.*)',

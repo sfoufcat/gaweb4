@@ -4068,3 +4068,86 @@ export interface FeatureVote {
   createdAt: string;
 }
 
+// =============================================================================
+// MARKETPLACE LISTINGS
+// =============================================================================
+
+/**
+ * Coach onboarding state
+ * - needs_profile: Coach hasn't completed profile (avatar, bio)
+ * - needs_plan: Coach hasn't selected a plan / subscription not active
+ * - active: Coach has completed onboarding and has active/trialing subscription
+ */
+export type CoachOnboardingState = 'needs_profile' | 'needs_plan' | 'active';
+
+/**
+ * MarketplaceListing - Public listing for a coach's program/funnel
+ * Stored in Firestore 'marketplace_listings' collection
+ * 
+ * One listing per organization. When enabled, shows the coach's program
+ * on the public marketplace page with a link to their selected funnel.
+ */
+export interface MarketplaceListing {
+  id: string;
+  organizationId: string;           // Clerk Organization ID (unique per org)
+  enabled: boolean;                 // Whether listing is publicly visible
+  
+  // Listing content (required when enabled=true)
+  title: string;                    // e.g., "12-Week Fitness Transformation"
+  description: string;              // Short description (max ~200 chars)
+  coverImageUrl: string;            // Hero/cover image URL
+  
+  // Link configuration
+  funnelId: string;                 // ID of funnel to link to
+  
+  // Organization info (denormalized for fast queries)
+  coachName?: string;               // Coach/org display name
+  coachAvatarUrl?: string;          // Coach/org avatar
+  subdomain?: string;               // For building funnel URLs
+  
+  // Searchable text (lowercased concat of title, description, coachName)
+  searchableText: string;
+  
+  // Optional category tags
+  categories?: string[];            // e.g., ['health', 'fitness', 'coaching']
+  
+  // Analytics
+  viewCount?: number;
+  clickCount?: number;
+  
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * MarketplaceListing creation input (omits auto-generated fields)
+ */
+export type CreateMarketplaceListingInput = Omit<
+  MarketplaceListing, 
+  'id' | 'searchableText' | 'viewCount' | 'clickCount' | 'createdAt' | 'updatedAt'
+>;
+
+/**
+ * MarketplaceListing update input (partial)
+ */
+export type UpdateMarketplaceListingInput = Partial<
+  Omit<MarketplaceListing, 'id' | 'organizationId' | 'createdAt'>
+>;
+
+/**
+ * Marketplace category options
+ */
+export const MARKETPLACE_CATEGORIES = [
+  { value: 'health', label: 'Health & Fitness', emoji: '🏃' },
+  { value: 'business', label: 'Business', emoji: '💼' },
+  { value: 'money', label: 'Money & Finance', emoji: '💰' },
+  { value: 'mindset', label: 'Mindset', emoji: '🧠' },
+  { value: 'relationships', label: 'Relationships', emoji: '❤️' },
+  { value: 'creativity', label: 'Creativity', emoji: '🎨' },
+  { value: 'tech', label: 'Tech & Skills', emoji: '💻' },
+  { value: 'spirituality', label: 'Spirituality', emoji: '🙏' },
+  { value: 'lifestyle', label: 'Lifestyle', emoji: '✨' },
+] as const;
+
+export type MarketplaceCategory = typeof MARKETPLACE_CATEGORIES[number]['value'];
+

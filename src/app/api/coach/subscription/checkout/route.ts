@@ -36,7 +36,11 @@ export async function POST(req: Request) {
     const { userId, organizationId } = await requireCoachWithOrg();
 
     const body = await req.json();
-    const { tier } = body as { tier: CoachTier };
+    const { tier, trial, onboarding } = body as { 
+      tier: CoachTier; 
+      trial?: boolean;      // Request 7-day trial
+      onboarding?: boolean; // Is part of onboarding flow
+    };
 
     // Validate tier
     if (!tier || !['starter', 'pro', 'scale'].includes(tier)) {
@@ -109,6 +113,11 @@ export async function POST(req: Request) {
     // Build checkout session params for embedded checkout
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://growthaddicts.app';
     
+    // Determine return URL based on context
+    const returnUrl = onboarding
+      ? `${baseUrl}/coach?onboarding=complete&session_id={CHECKOUT_SESSION_ID}`
+      : `${baseUrl}/coach?tab=plan&success=true&session_id={CHECKOUT_SESSION_ID}`;
+    
     // Use embedded checkout mode for in-page payment experience
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'subscription',
@@ -121,12 +130,13 @@ export async function POST(req: Request) {
           quantity: 1,
         },
       ],
-      return_url: `${baseUrl}/coach?tab=plan&success=true&session_id={CHECKOUT_SESSION_ID}`,
+      return_url: returnUrl,
       metadata: {
         userId,
         organizationId,
         tier,
         type: 'coach_subscription',
+        onboarding: onboarding ? 'true' : 'false',
       },
       subscription_data: {
         metadata: {
@@ -135,6 +145,8 @@ export async function POST(req: Request) {
           tier,
           type: 'coach_subscription',
         },
+        // Add 7-day trial if requested (typically during onboarding)
+        ...(trial ? { trial_period_days: 7 } : {}),
       },
       allow_promotion_codes: true,
     };

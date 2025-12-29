@@ -8,6 +8,7 @@ export { InviteClientsDialog } from './InviteClientsDialog';
 export { CoachPlanTab } from './CoachPlanTab';
 export { LockedFeature, LockedFeatureBadge, LockedIndicator } from './LockedFeature';
 export { LimitReachedModal, useLimitCheck } from './LimitReachedModal';
+export { MarketplaceSettings } from './MarketplaceSettings';
 
 // Check-in flow management
 export { CoachCheckInsTab } from './checkins';

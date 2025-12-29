@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock, Mail, Send, Bell, Settings, Moon, GripVertical, Menu, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock, Mail, Send, Bell, Settings, Moon, GripVertical, Menu, Sparkles, Store } from 'lucide-react';
 import { useBranding } from '@/contexts/BrandingContext';
 import { FeedSettingsToggle } from './FeedSettingsToggle';
 import { PublicSignupToggle } from './PublicSignupToggle';
@@ -12,6 +12,7 @@ import { MenuEmptyStateSettings } from './MenuEmptyStateSettings';
 import { DailyFocusSettings } from './DailyFocusSettings';
 import { AlignmentActivitiesSettings } from './AlignmentActivitiesSettings';
 import { GlobalPixelsSettings } from './GlobalPixelsSettings';
+import { MarketplaceSettings } from './MarketplaceSettings';
 import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus, OrgEmailDefaults, OrgSystemNotifications, MenuItemKey } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_EMAIL_SETTINGS, DEFAULT_EMAIL_DEFAULTS, DEFAULT_SYSTEM_NOTIFICATIONS, validateSubdomain } from '@/types';
 import { IconPicker } from './IconPicker';
@@ -146,12 +147,13 @@ function getDnsRecordNames(domain: string): { routing: string; clerk: string } {
  * - Preview mode to see changes before saving
  */
 // Subtab type definition
-type CustomizeSubtab = 'branding' | 'navigation' | 'features' | 'domains' | 'communications';
+type CustomizeSubtab = 'branding' | 'navigation' | 'features' | 'marketplace' | 'domains' | 'communications';
 
 const SUBTABS: { id: CustomizeSubtab; label: string; icon: React.ReactNode }[] = [
   { id: 'branding', label: 'Branding', icon: <Palette className="w-4 h-4" /> },
   { id: 'navigation', label: 'Navigation', icon: <Menu className="w-4 h-4" /> },
   { id: 'features', label: 'Features', icon: <Sparkles className="w-4 h-4" /> },
+  { id: 'marketplace', label: 'Marketplace', icon: <Store className="w-4 h-4" /> },
   { id: 'domains', label: 'Domains', icon: <Globe className="w-4 h-4" /> },
   { id: 'communications', label: 'Communications', icon: <Mail className="w-4 h-4" /> },
 ];
@@ -1789,6 +1791,16 @@ export function CustomizeBrandingTab() {
           <GlobalPixelsSettings />
         </div>
       </div>
+        </>
+      )}
+
+      {/* ===== MARKETPLACE SUBTAB ===== */}
+      {activeSubtab === 'marketplace' && (
+        <>
+          {/* Marketplace Listing Section */}
+          <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
+            <MarketplaceSettings />
+          </div>
         </>
       )}
 

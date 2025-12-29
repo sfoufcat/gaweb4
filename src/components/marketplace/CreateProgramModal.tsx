@@ -1,0 +1,521 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useUser, useSignUp } from '@clerk/nextjs';
+import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  X, 
+  Sparkles, 
+  Users, 
+  Zap, 
+  Target,
+  ArrowRight,
+  Check,
+  Loader2,
+  Mail,
+  Lock,
+  User
+} from 'lucide-react';
+
+interface CreateProgramModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+type ModalStep = 'persuasion' | 'signup' | 'creating';
+
+/**
+ * Create Program Modal
+ * 
+ * Multi-step modal flow:
+ * 1. Persuasion - Value props and benefits
+ * 2. Signup - Create account (if not logged in)
+ * 3. Creating - Organization creation in progress
+ */
+export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps) {
+  const router = useRouter();
+  const { user, isLoaded: userLoaded } = useUser();
+  const { signUp, isLoaded: signUpLoaded, setActive } = useSignUp();
+  
+  const [step, setStep] = useState<ModalStep>('persuasion');
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Signup form state
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [pendingVerification, setPendingVerification] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setStep('persuasion');
+      setError(null);
+      setFirstName('');
+      setLastName('');
+      setEmail('');
+      setPassword('');
+      setPendingVerification(false);
+      setVerificationCode('');
+    }
+  }, [isOpen]);
+  
+  // Handle "Get Started" click
+  const handleGetStarted = async () => {
+    if (!userLoaded) return;
+    
+    if (user) {
+      // User is already logged in, create their organization
+      setStep('creating');
+      await createCoachOrganization();
+    } else {
+      // Show signup form
+      setStep('signup');
+    }
+  };
+  
+  // Handle signup form submission
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!signUpLoaded || !signUp) return;
+    
+    setError(null);
+    setIsLoading(true);
+    
+    try {
+      // Create the signup
+      await signUp.create({
+        firstName,
+        lastName,
+        emailAddress: email,
+        password,
+      });
+      
+      // Prepare email verification
+      await signUp.prepareEmailAddressVerification({
+        strategy: 'email_code',
+      });
+      
+      setPendingVerification(true);
+    } catch (err: any) {
+      console.error('Signup error:', err);
+      setError(err.errors?.[0]?.longMessage || err.message || 'Failed to create account');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Handle email verification
+  const handleVerification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!signUpLoaded || !signUp) return;
+    
+    setError(null);
+    setIsLoading(true);
+    
+    try {
+      const completeSignUp = await signUp.attemptEmailAddressVerification({
+        code: verificationCode,
+      });
+      
+      if (completeSignUp.status === 'complete') {
+        // Set the session
+        await setActive({ session: completeSignUp.createdSessionId });
+        
+        // Now create the organization
+        setStep('creating');
+        await createCoachOrganization();
+      } else {
+        setError('Verification incomplete. Please try again.');
+      }
+    } catch (err: any) {
+      console.error('Verification error:', err);
+      setError(err.errors?.[0]?.longMessage || err.message || 'Invalid verification code');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Create coach organization
+  const createCoachOrganization = async () => {
+    setError(null);
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch('/api/coach/create-organization', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // Will use default name from user's name
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create organization');
+      }
+      
+      // Redirect to coach dashboard with onboarding state
+      router.push('/coach?onboarding=profile');
+      onClose();
+    } catch (err: any) {
+      console.error('Create org error:', err);
+      setError(err.message || 'Failed to create organization');
+      setStep('persuasion'); // Go back to allow retry
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const valueProps = [
+    {
+      icon: Users,
+      title: 'Build engaged communities',
+      description: 'Squads, check-ins, and accountability tools that keep members coming back',
+    },
+    {
+      icon: Zap,
+      title: 'Launch in minutes',
+      description: 'Custom funnels, branded experience, and built-in payments',
+    },
+    {
+      icon: Target,
+      title: 'Focus on transformation',
+      description: 'We handle the tech so you can focus on changing lives',
+    },
+  ];
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+          />
+          
+          {/* Modal */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
+          >
+            <div className="w-full max-w-lg bg-white dark:bg-[#171b22] rounded-3xl shadow-2xl overflow-hidden pointer-events-auto">
+              {/* Close button */}
+              <button
+                onClick={onClose}
+                className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              <AnimatePresence mode="wait">
+                {/* Step 1: Persuasion */}
+                {step === 'persuasion' && (
+                  <motion.div
+                    key="persuasion"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {/* Hero header with gradient */}
+                    <div className="relative h-48 bg-gradient-to-br from-[#a07855] via-[#b8896a] to-[#e8b923] flex items-center justify-center overflow-hidden">
+                      {/* Decorative elements */}
+                      <div className="absolute top-6 left-6 w-20 h-20 bg-white/10 rounded-full blur-2xl" />
+                      <div className="absolute bottom-4 right-8 w-32 h-32 bg-[#e8b923]/30 rounded-full blur-3xl" />
+                      
+                      <div className="relative text-center text-white z-10">
+                        <Sparkles className="w-10 h-10 mx-auto mb-3" />
+                        <h2 className="font-albert text-[28px] font-bold tracking-[-1px]">
+                          Create your program
+                        </h2>
+                        <p className="font-sans text-white/90 text-[15px] mt-1">
+                          Join coaches building thriving communities
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Value props */}
+                    <div className="p-6 space-y-4">
+                      {valueProps.map((prop, i) => (
+                        <div key={i} className="flex gap-4 items-start">
+                          <div className="w-10 h-10 rounded-xl bg-[#f3f1ef] dark:bg-[#1e222a] flex items-center justify-center flex-shrink-0">
+                            <prop.icon className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                          </div>
+                          <div>
+                            <h4 className="font-albert text-[15px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                              {prop.title}
+                            </h4>
+                            <p className="font-sans text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
+                              {prop.description}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* CTA */}
+                    <div className="px-6 pb-6">
+                      <button
+                        onClick={handleGetStarted}
+                        disabled={!userLoaded}
+                        className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#d4a61d] hover:to-[#c09819] text-[#2c2520] rounded-xl font-albert text-[16px] font-semibold transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {!userLoaded ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <>
+                            Get started free
+                            <ArrowRight className="w-5 h-5" />
+                          </>
+                        )}
+                      </button>
+                      <p className="text-center font-sans text-[12px] text-[#a7a39e] dark:text-[#7d8190] mt-3">
+                        7-day free trial • No credit card required
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+                
+                {/* Step 2: Signup */}
+                {step === 'signup' && (
+                  <motion.div
+                    key="signup"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {/* Header */}
+                    <div className="p-6 pb-0">
+                      <button
+                        onClick={() => setStep('persuasion')}
+                        className="flex items-center gap-1 text-[#5f5a55] dark:text-[#b2b6c2] font-sans text-sm hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors mb-4"
+                      >
+                        ← Back
+                      </button>
+                      
+                      <div className="text-center mb-6">
+                        <h2 className="font-albert text-[24px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
+                          {pendingVerification ? 'Check your email' : 'Create your account'}
+                        </h2>
+                        <p className="font-sans text-[14px] text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
+                          {pendingVerification 
+                            ? `We sent a code to ${email}`
+                            : 'Start building your coaching program'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Form */}
+                    <div className="px-6 pb-6">
+                      {error && (
+                        <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-xl">
+                          <p className="font-sans text-[13px] text-red-600 dark:text-red-400">{error}</p>
+                        </div>
+                      )}
+                      
+                      {!pendingVerification ? (
+                        <form onSubmit={handleSignup} className="space-y-4">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="font-sans text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] mb-1.5 block">
+                                First name
+                              </label>
+                              <div className="relative">
+                                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
+                                <input
+                                  type="text"
+                                  value={firstName}
+                                  onChange={(e) => setFirstName(e.target.value)}
+                                  required
+                                  placeholder="Alex"
+                                  className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="font-sans text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] mb-1.5 block">
+                                Last name
+                              </label>
+                              <input
+                                type="text"
+                                value={lastName}
+                                onChange={(e) => setLastName(e.target.value)}
+                                required
+                                placeholder="Smith"
+                                className="w-full px-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <label className="font-sans text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] mb-1.5 block">
+                              Email
+                            </label>
+                            <div className="relative">
+                              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
+                              <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                                placeholder="alex@example.com"
+                                className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <label className="font-sans text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] mb-1.5 block">
+                              Password
+                            </label>
+                            <div className="relative">
+                              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
+                              <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                minLength={8}
+                                placeholder="••••••••"
+                                className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                              />
+                            </div>
+                          </div>
+                          
+                          <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white rounded-xl font-albert text-[15px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isLoading ? (
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                              <>
+                                Continue
+                                <ArrowRight className="w-4 h-4" />
+                              </>
+                            )}
+                          </button>
+                        </form>
+                      ) : (
+                        <form onSubmit={handleVerification} className="space-y-4">
+                          <div>
+                            <label className="font-sans text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] mb-1.5 block">
+                              Verification code
+                            </label>
+                            <input
+                              type="text"
+                              value={verificationCode}
+                              onChange={(e) => setVerificationCode(e.target.value)}
+                              required
+                              placeholder="Enter 6-digit code"
+                              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] text-center tracking-[0.5em] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                            />
+                          </div>
+                          
+                          <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white rounded-xl font-albert text-[15px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isLoading ? (
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                              <>
+                                Verify & continue
+                                <ArrowRight className="w-4 h-4" />
+                              </>
+                            )}
+                          </button>
+                          
+                          <button
+                            type="button"
+                            onClick={() => setPendingVerification(false)}
+                            className="w-full text-center font-sans text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors"
+                          >
+                            Use a different email
+                          </button>
+                        </form>
+                      )}
+                      
+                      <div className="mt-6 pt-4 border-t border-[#e1ddd8]/50 dark:border-[#313746]/50 text-center">
+                        <p className="font-sans text-[13px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                          Already have an account?{' '}
+                          <a href="/sign-in" className="text-[#a07855] dark:text-[#b8896a] hover:underline font-medium">
+                            Sign in
+                          </a>
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+                
+                {/* Step 3: Creating */}
+                {step === 'creating' && (
+                  <motion.div
+                    key="creating"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="py-16 px-6"
+                  >
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-gradient-to-br from-[#a07855] to-[#b8896a] rounded-2xl flex items-center justify-center mx-auto mb-6 animate-pulse">
+                        <Sparkles className="w-8 h-8 text-white" />
+                      </div>
+                      <h2 className="font-albert text-[24px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px] mb-2">
+                        Setting things up...
+                      </h2>
+                      <p className="font-sans text-[14px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                        Creating your coaching workspace
+                      </p>
+                      
+                      <div className="mt-8 space-y-3 max-w-xs mx-auto">
+                        {[
+                          { text: 'Creating organization', done: true },
+                          { text: 'Setting up workspace', done: true },
+                          { text: 'Preparing dashboard', done: false },
+                        ].map((item, i) => (
+                          <div key={i} className="flex items-center gap-3 text-left">
+                            {item.done ? (
+                              <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center">
+                                <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                              </div>
+                            ) : (
+                              <Loader2 className="w-5 h-5 text-[#a07855] dark:text-[#b8896a] animate-spin" />
+                            )}
+                            <span className={`font-sans text-[14px] ${
+                              item.done 
+                                ? 'text-[#5f5a55] dark:text-[#b2b6c2]' 
+                                : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+                            }`}>
+                              {item.text}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+

@@ -7,7 +7,7 @@ import { ProgramLandingPageEditor } from './ProgramLandingPageEditor';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Edit2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle } from 'lucide-react';
 import { AIHelperModal } from '@/components/ai';
 import type { ProgramContentDraft, LandingPageDraft, AIGenerationContext } from '@/lib/ai/types';
 import { ReferralConfigForm } from '@/components/coach/referrals';
@@ -542,6 +542,32 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   };
 
   const [duplicatingCohort, setDuplicatingCohort] = useState<string | null>(null);
+  const [duplicatingProgram, setDuplicatingProgram] = useState<string | null>(null);
+
+  const handleDuplicateProgram = async (program: ProgramWithStats) => {
+    try {
+      setDuplicatingProgram(program.id);
+      
+      const response = await fetch(
+        `${apiBasePath}/${program.id}/duplicate`,
+        { method: 'POST' }
+      );
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to duplicate program');
+      }
+      
+      // Refresh programs list
+      await fetchPrograms();
+    } catch (err) {
+      console.error('Error duplicating program:', err);
+      setSaveError(err instanceof Error ? err.message : 'Failed to duplicate program');
+    } finally {
+      setDuplicatingProgram(null);
+    }
+  };
 
   const handleDuplicateCohort = async (cohort: ProgramCohort) => {
     if (!selectedProgram) return;
@@ -1295,8 +1321,24 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                           handleOpenProgramModal(program);
                         }}
                         className="p-1.5 text-[#5f5a55] hover:text-[#a07855] dark:text-[#b8896a] rounded"
+                        title="Program settings"
                       >
-                        <Edit2 className="w-4 h-4" />
+                        <Settings className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDuplicateProgram(program);
+                        }}
+                        disabled={duplicatingProgram === program.id}
+                        className="p-1.5 text-[#5f5a55] hover:text-[#a07855] dark:text-[#b8896a] rounded disabled:opacity-50"
+                        title="Duplicate program"
+                      >
+                        {duplicatingProgram === program.id ? (
+                          <div className="w-4 h-4 border-2 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
                       </button>
                       <button
                         onClick={(e) => {
@@ -1304,6 +1346,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                           setDeleteConfirmProgram(program);
                         }}
                         className="p-1.5 text-[#5f5a55] hover:text-red-500 rounded"
+                        title="Delete program"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
