@@ -36,7 +36,7 @@ export function CreateStoryModal({
   const [showDiscardModal, setShowDiscardModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
+  const accentColor = colors.accentLight || 'var(--brand-accent-light)';
   const hasContent = !!mediaUrl;
 
   // Auto-open file picker when modal opens

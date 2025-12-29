@@ -512,7 +512,7 @@ export function CustomMessageInput() {
             type="submit"
             className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors shadow-lg disabled:opacity-50 ${
               isEditing 
-                ? 'bg-[#a07855] hover:bg-[#8d6548] dark:bg-brand-accent dark:hover:bg-brand-accent/90' 
+                ? 'bg-brand-accent hover:bg-[#8d6548] dark:bg-brand-accent dark:hover:bg-brand-accent/90' 
                 : 'bg-[#2c2520] hover:bg-[#1a1a1a] dark:bg-brand-accent dark:hover:bg-brand-accent/90'
             }`}
             aria-label={isEditing ? "Update message" : "Send message"}

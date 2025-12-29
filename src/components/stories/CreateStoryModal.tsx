@@ -45,7 +45,7 @@ export function CreateStoryModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
+  const accentColor = colors.accentLight || 'var(--brand-accent-light)';
 
   // Reset state
   const resetState = useCallback(() => {

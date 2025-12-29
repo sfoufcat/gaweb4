@@ -126,7 +126,7 @@ export function AuthorSelector({
                     className="rounded-full object-cover"
                   />
                 ) : (
-                  <div className="w-6 h-6 rounded-full bg-[#a07855] flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-full bg-brand-accent flex items-center justify-center">
                     <User className="w-3 h-3 text-white" />
                   </div>
                 )}
@@ -181,7 +181,7 @@ export function AuthorSelector({
                       className="rounded-full object-cover flex-shrink-0"
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-[#a07855] flex items-center justify-center flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-brand-accent flex items-center justify-center flex-shrink-0">
                       <User className="w-4 h-4 text-white" />
                     </div>
                   )}

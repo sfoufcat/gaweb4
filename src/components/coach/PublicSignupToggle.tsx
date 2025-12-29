@@ -11,7 +11,7 @@ import { useBrandingValues } from '@/contexts/BrandingContext';
  */
 export function PublicSignupToggle() {
   const { colors, isDefault } = useBrandingValues();
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
+  const accentColor = colors.accentLight || 'var(--brand-accent-light)';
 
   const [publicSignupEnabled, setPublicSignupEnabled] = useState(true);
   const [isLoading, setIsLoading] = useState(true);

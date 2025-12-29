@@ -51,7 +51,7 @@ export function BrowseMyContentPills({
           {myContentCount !== undefined && myContentCount > 0 && (
             <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${
               selectedMode === 'my-content'
-                ? 'bg-brand-accent/20 text-[#a07855] dark:bg-brand-accent/20 dark:text-brand-accent'
+                ? 'bg-brand-accent/20 text-brand-accent dark:bg-brand-accent/20 dark:text-brand-accent'
                 : 'bg-[#e1ddd8]/50 dark:bg-[#262b35] text-text-muted dark:text-[#7d8190]'
             }`}>
               {myContentCount}

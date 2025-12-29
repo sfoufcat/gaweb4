@@ -98,7 +98,7 @@ const darkAppearance = {
 // Light theme - use defaults with brand colors
 const lightAppearance = {
   variables: {
-    colorPrimary: '#a07855',
+    colorPrimary: 'var(--brand-accent-light)',
     borderRadius: '12px',
   },
   elements: {

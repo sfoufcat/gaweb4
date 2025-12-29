@@ -73,7 +73,7 @@ const ACTIVITY_ORDER: AlignmentActivityKey[] = [
  */
 export function AlignmentActivitiesSettings() {
   const { colors, isDefault } = useBrandingValues();
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
+  const accentColor = colors.accentLight || 'var(--brand-accent-light)';
 
   const [config, setConfig] = useState<AlignmentActivityConfig>(DEFAULT_ALIGNMENT_CONFIG);
   const [isLoading, setIsLoading] = useState(true);

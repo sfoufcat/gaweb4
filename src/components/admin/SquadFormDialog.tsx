@@ -919,7 +919,7 @@ export function SquadFormDialog({
                             {user.imageUrl ? (
                               <Image src={user.imageUrl} alt="" width={24} height={24} className="w-6 h-6 rounded-full object-cover" />
                             ) : (
-                              <div className="w-6 h-6 rounded-full bg-[#a07855] flex items-center justify-center text-white text-xs font-bold">
+                              <div className="w-6 h-6 rounded-full bg-brand-accent flex items-center justify-center text-white text-xs font-bold">
                                 {user.name.charAt(0).toUpperCase()}
                               </div>
                             )}
@@ -960,7 +960,7 @@ export function SquadFormDialog({
                       {member.imageUrl ? (
                         <Image src={member.imageUrl} alt="" width={32} height={32} className="w-8 h-8 rounded-full object-cover" />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-[#a07855] flex items-center justify-center text-white text-sm font-bold">
+                        <div className="w-8 h-8 rounded-full bg-brand-accent flex items-center justify-center text-white text-sm font-bold">
                           {member.firstName?.charAt(0) || member.lastName?.charAt(0) || '?'}
                         </div>
                       )}

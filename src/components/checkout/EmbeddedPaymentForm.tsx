@@ -186,7 +186,7 @@ export function EmbeddedPaymentForm({
   const appearance: import('@stripe/stripe-js').Appearance = {
     theme: 'stripe',
     variables: {
-      colorPrimary: '#a07855',
+      colorPrimary: 'var(--brand-accent-light)',
       colorBackground: '#ffffff',
       colorText: '#2c2520',
       colorTextSecondary: '#6b6560',
@@ -203,8 +203,8 @@ export function EmbeddedPaymentForm({
         padding: '12px 14px',
       },
       '.Input:focus': {
-        borderColor: '#a07855',
-        boxShadow: '0 0 0 1px #a07855',
+        borderColor: 'var(--brand-accent-light)',
+        boxShadow: '0 0 0 1px var(--brand-accent-light)',
       },
       '.Label': {
         fontWeight: '500',
@@ -214,7 +214,7 @@ export function EmbeddedPaymentForm({
         borderColor: '#e1ddd8',
       },
       '.Tab--selected': {
-        borderColor: '#a07855',
+        borderColor: 'var(--brand-accent-light)',
         backgroundColor: '#faf8f6',
       },
     },

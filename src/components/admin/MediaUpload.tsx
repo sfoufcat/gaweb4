@@ -276,7 +276,7 @@ export function MediaUpload({
                     <div className="w-8 h-8 relative">
                       <svg className="w-8 h-8 transform -rotate-90" viewBox="0 0 36 36">
                         <circle cx="18" cy="18" r="16" fill="none" stroke="#e1ddd8" strokeWidth="3" />
-                        <circle cx="18" cy="18" r="16" fill="none" stroke="#a07855" strokeWidth="3" strokeDasharray={`${progress} 100`} strokeLinecap="round" />
+                        <circle cx="18" cy="18" r="16" fill="none" stroke="var(--brand-accent-light)" strokeWidth="3" strokeDasharray={`${progress} 100`} strokeLinecap="round" />
                       </svg>
                       <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-brand-accent font-albert">
                         {progress}%
@@ -299,7 +299,7 @@ export function MediaUpload({
                             cy="18"
                             r="16"
                             fill="none"
-                            stroke="#a07855"
+                            stroke="var(--brand-accent-light)"
                             strokeWidth="2"
                             strokeDasharray={`${progress} 100`}
                             strokeLinecap="round"

@@ -387,7 +387,7 @@ export function AdminUsersWithoutSquadTab({ currentUserRole: _currentUserRole }:
                                     className="w-5 h-5 rounded-full object-cover"
                                   />
                                 ) : (
-                                  <div className="w-5 h-5 rounded-full bg-[#a07855] flex items-center justify-center text-white text-xs font-bold">
+                                  <div className="w-5 h-5 rounded-full bg-brand-accent flex items-center justify-center text-white text-xs font-bold">
                                     {squad.name.charAt(0).toUpperCase()}
                                   </div>
                                 )}

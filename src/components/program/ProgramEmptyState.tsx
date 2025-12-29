@@ -70,7 +70,7 @@ export function ProgramEmptyState() {
         {/* CTA Button - Figma style */}
         <button
           onClick={() => router.push('/discover')}
-          className="bg-[#a07855] border border-[rgba(215,210,204,0.5)] rounded-[32px] px-8 py-4 font-bold text-[16px] text-white leading-[1.4] tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+          className="bg-brand-accent border border-[rgba(215,210,204,0.5)] rounded-[32px] px-8 py-4 font-bold text-[16px] text-brand-accent-foreground leading-[1.4] tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all"
         >
           Discover more content
         </button>

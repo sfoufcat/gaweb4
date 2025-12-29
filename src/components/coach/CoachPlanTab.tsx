@@ -350,7 +350,7 @@ export function CoachPlanTab() {
           {tier !== 'scale' && (
             <button
               onClick={() => router.push('/coach/plan')}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#a07855] hover:bg-[#8b6847] text-white font-sans font-medium text-[14px] rounded-xl transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-accent hover:bg-[#8b6847] text-white font-sans font-medium text-[14px] rounded-xl transition-colors"
             >
               <Zap className="w-4 h-4" />
               Upgrade Plan

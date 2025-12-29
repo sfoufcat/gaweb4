@@ -513,7 +513,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
           <select
             value={selectedProgramId}
             onChange={(e) => setSelectedProgramId(e.target.value)}
-            className="px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-[#a07855]"
+            className="px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:border-brand-accent"
           >
             <option value="">All Programs</option>
             {programs.map(program => (
@@ -532,7 +532,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
                 onClick={() => setSelectedContentType(value)}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                   selectedContentType === value
-                    ? 'bg-brand-accent/10 text-[#a07855] dark:bg-brand-accent/10 dark:text-brand-accent border border-brand-accent/30'
+                    ? 'bg-brand-accent/10 text-brand-accent dark:bg-brand-accent/10 dark:text-brand-accent border border-brand-accent/30'
                     : 'bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] text-text-secondary dark:text-[#b2b6c2] hover:border-brand-accent/50'
                 }`}
               >
@@ -650,7 +650,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium text-text-primary dark:text-[#f5f5f8]">{funnel.name}</h3>
                       {funnel.isDefault && (
-                        <span className="px-2 py-0.5 text-xs bg-brand-accent/10 text-[#a07855] dark:bg-brand-accent/10 dark:text-brand-accent rounded-full">
+                        <span className="px-2 py-0.5 text-xs bg-brand-accent/10 text-brand-accent dark:bg-brand-accent/10 dark:text-brand-accent rounded-full">
                           Default
                         </span>
                       )}

@@ -56,7 +56,7 @@ export function ShareToChatModal({ postId, postUrl, onClose, onSuccess }: ShareT
   // Track if initial fetch has been done to prevent double fetching
   const hasFetchedRef = useRef(false);
 
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
+  const accentColor = colors.accentLight || 'var(--brand-accent-light)';
 
   // Fetch post data for rich preview
   useEffect(() => {

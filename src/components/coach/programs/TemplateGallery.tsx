@@ -133,7 +133,7 @@ export function TemplateGallery({ onSelectTemplate, onBack, onClose }: TemplateG
               onClick={() => setSelectedCategory(cat.value)}
               className={`px-4 py-2 rounded-full text-sm font-medium font-albert transition-all duration-200 ${
                 selectedCategory === cat.value
-                  ? 'bg-[#a07855] text-white dark:bg-brand-accent'
+                  ? 'bg-brand-accent text-brand-accent-foreground dark:bg-brand-accent'
                   : 'bg-white dark:bg-[#1d222b] text-[#5f5a55] dark:text-[#b2b6c2] border border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent dark:hover:border-brand-accent'
               }`}
             >
@@ -152,7 +152,7 @@ export function TemplateGallery({ onSelectTemplate, onBack, onClose }: TemplateG
                 onClick={() => setSelectedDuration(dur.value)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-albert transition-all duration-200 ${
                   selectedDuration === dur.value
-                    ? 'bg-[#a07855] text-white dark:bg-brand-accent'
+                    ? 'bg-brand-accent text-brand-accent-foreground dark:bg-brand-accent'
                     : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
                 }`}
               >

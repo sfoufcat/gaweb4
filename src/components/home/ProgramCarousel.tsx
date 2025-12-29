@@ -230,7 +230,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
               }}
               className={`w-2 h-2 rounded-full transition-all ${
                 i === activeIndex 
-                  ? 'bg-[#a07855] w-4' 
+                  ? 'bg-brand-accent w-4' 
                   : 'bg-[#e1ddd8] dark:bg-[#272d38]'
               }`}
             />
@@ -246,7 +246,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
               }}
               className={`w-2 h-2 rounded-full transition-all ${
                 activeIndex >= enrollments.length
-                  ? 'bg-[#a07855] w-4' 
+                  ? 'bg-brand-accent w-4' 
                   : 'bg-[#e1ddd8] dark:bg-[#272d38]'
               }`}
             />

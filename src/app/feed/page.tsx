@@ -81,7 +81,7 @@ export default function FeedPage() {
   const [selectedPostForView, setSelectedPostForView] = useState<string | null>(null);
   const [selectedStoryStartIndex, setSelectedStoryStartIndex] = useState<number | null>(null);
 
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
+  const accentColor = colors.accentLight || 'var(--brand-accent-light)';
 
   // Current user info for story viewer
   const currentUserInfo = useMemo(() => {

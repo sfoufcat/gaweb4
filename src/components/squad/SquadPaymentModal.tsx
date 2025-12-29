@@ -164,7 +164,7 @@ function PaymentForm({ onSuccess, onCancel, squadName, priceInCents, currency, b
       <button
         type="submit"
         disabled={!stripe || isProcessing}
-        className="w-full py-4 px-6 bg-[#a07855] hover:bg-brand-accent/90 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+        className="w-full py-4 px-6 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
       >
         {isProcessing ? (
           <>
@@ -303,7 +303,7 @@ export function SquadPaymentModal({
   const appearance: import('@stripe/stripe-js').Appearance = {
     theme: 'stripe',
     variables: {
-      colorPrimary: '#a07855',
+      colorPrimary: 'var(--brand-accent-light)',
       colorBackground: '#ffffff',
       colorText: '#2c2520',
       colorTextSecondary: '#6b6560',
@@ -320,8 +320,8 @@ export function SquadPaymentModal({
         padding: '12px 14px',
       },
       '.Input:focus': {
-        borderColor: '#a07855',
-        boxShadow: '0 0 0 1px #a07855',
+        borderColor: 'var(--brand-accent-light)',
+        boxShadow: '0 0 0 1px var(--brand-accent-light)',
       },
       '.Label': {
         fontWeight: '500',
@@ -331,7 +331,7 @@ export function SquadPaymentModal({
         borderColor: '#e1ddd8',
       },
       '.Tab--selected': {
-        borderColor: '#a07855',
+        borderColor: 'var(--brand-accent-light)',
         backgroundColor: '#faf8f6',
       },
     },
@@ -362,7 +362,7 @@ export function SquadPaymentModal({
                 {/* Loading state */}
                 {loading && (
                   <div className="flex flex-col items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-[#a07855]" />
+                    <Loader2 className="w-8 h-8 animate-spin text-brand-accent" />
                     <p className="mt-4 text-[#5f5a55] dark:text-[#b2b6c2]">
                       Setting up payment...
                     </p>
@@ -390,7 +390,7 @@ export function SquadPaymentModal({
                       </button>
                       <button
                         onClick={createSubscriptionIntent}
-                        className="px-4 py-2 text-sm font-medium text-white bg-[#a07855] hover:bg-brand-accent/90 rounded-lg transition-colors"
+                        className="px-4 py-2 text-sm font-medium text-white bg-brand-accent hover:bg-brand-accent/90 rounded-lg transition-colors"
                       >
                         Try again
                       </button>
@@ -420,7 +420,7 @@ export function SquadPaymentModal({
                 {/* Completing state */}
                 {completing && !success && (
                   <div className="flex flex-col items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-[#a07855]" />
+                    <Loader2 className="w-8 h-8 animate-spin text-brand-accent" />
                     <p className="mt-4 text-[#5f5a55] dark:text-[#b2b6c2]">
                       Activating your membership...
                     </p>

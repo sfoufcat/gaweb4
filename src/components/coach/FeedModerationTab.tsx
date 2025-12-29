@@ -44,7 +44,7 @@ const RESOLUTION_LABELS: Record<FeedReportResolution, string> = {
  */
 export function FeedModerationTab() {
   const { colors, isDefault } = useBrandingValues();
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
+  const accentColor = colors.accentLight || 'var(--brand-accent-light)';
 
   const [reports, setReports] = useState<ReportWithUser[]>([]);
   const [counts, setCounts] = useState<ReportCounts>({ pending: 0, reviewed: 0, total: 0 });

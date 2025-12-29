@@ -250,7 +250,7 @@ export function NextSquadCallCard({ squad, isCoach = false, onCallUpdated, coach
                     unoptimized
                   />
                 ) : (
-                  <div className="w-5 h-5 rounded-full bg-[#a07855] flex items-center justify-center shrink-0">
+                  <div className="w-5 h-5 rounded-full bg-brand-accent flex items-center justify-center shrink-0">
                     <span className="text-[10px] font-medium text-white">
                       {coachInfo.firstName.charAt(0)}
                     </span>

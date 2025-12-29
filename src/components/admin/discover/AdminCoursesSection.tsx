@@ -344,7 +344,7 @@ function ModuleEditor({
       {/* Module Header */}
       <div className="p-4 bg-white dark:bg-[#171b22] border-b border-[#e1ddd8] dark:border-[#262b35]">
         <div className="flex items-start gap-3">
-          <span className="w-8 h-8 flex items-center justify-center bg-[#a07855] rounded-lg text-sm font-bold text-white font-albert flex-shrink-0">
+          <span className="w-8 h-8 flex items-center justify-center bg-brand-accent rounded-lg text-sm font-bold text-white font-albert flex-shrink-0">
             {String(index + 1).padStart(2, '0')}
           </span>
           <div className="flex-1 space-y-2">

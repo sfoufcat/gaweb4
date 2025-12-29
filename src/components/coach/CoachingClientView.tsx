@@ -646,7 +646,7 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
                   <div className="mt-2 flex items-center gap-2">
                     <div className="flex-1 h-2 bg-[#e1ddd8] rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-[#a07855] rounded-full"
+                        className="h-full bg-brand-accent rounded-full"
                         style={{ width: `${user.goalProgress}%` }}
                       />
                     </div>

@@ -10,7 +10,7 @@ import { useBrandingValues } from '@/contexts/BrandingContext';
  */
 export function FeedSettingsToggle() {
   const { colors, isDefault } = useBrandingValues();
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
+  const accentColor = colors.accentLight || 'var(--brand-accent-light)';
 
   const [feedEnabled, setFeedEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

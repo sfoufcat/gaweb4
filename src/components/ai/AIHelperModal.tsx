@@ -185,7 +185,7 @@ function LandingPagePreview({ draft }: { draft: LandingPageDraft }) {
         <h3 className="text-lg font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mt-1">{draft.hero.title}</h3>
         <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-1">{draft.hero.subtitle}</p>
         <div className="flex gap-2 mt-3">
-          <span className="px-3 py-1 bg-[#a07855] text-white text-sm rounded-lg">{draft.hero.primaryCta}</span>
+          <span className="px-3 py-1 bg-brand-accent text-brand-accent-foreground text-sm rounded-lg">{draft.hero.primaryCta}</span>
           {draft.hero.secondaryCta && (
             <span className="px-3 py-1 border border-brand-accent text-brand-accent text-sm rounded-lg">{draft.hero.secondaryCta}</span>
           )}
@@ -508,7 +508,7 @@ export function AIHelperModal({
                         animationDelay: `${i * 0.25}s`,
                       }}
                     >
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" className="text-[#a07855]/70 dark:text-brand-accent/70">
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" className="text-brand-accent/70 dark:text-brand-accent/70">
                         <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
                       </svg>
                     </div>

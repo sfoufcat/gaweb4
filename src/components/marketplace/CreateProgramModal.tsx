@@ -297,7 +297,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                       <button
                         onClick={handleGetStarted}
                         disabled={!userLoaded}
-                        className="w-full flex items-center justify-center gap-2 py-4 bg-[#a07855] hover:bg-brand-accent/90 text-white rounded-full font-sans font-bold text-[16px] transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                        className="w-full flex items-center justify-center gap-2 py-4 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-full font-sans font-bold text-[16px] transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                       >
                         {!userLoaded ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
@@ -392,7 +392,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                                     onChange={(e) => setFirstName(e.target.value)}
                                     required
                                     placeholder="Alex"
-                                    className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-[#a07855] dark:focus:border-brand-accent"
+                                    className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-brand-accent dark:focus:border-brand-accent"
                                   />
                                 </div>
                               </div>
@@ -406,7 +406,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                                   onChange={(e) => setLastName(e.target.value)}
                                   required
                                   placeholder="Smith"
-                                  className="w-full px-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-[#a07855] dark:focus:border-brand-accent"
+                                  className="w-full px-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-brand-accent dark:focus:border-brand-accent"
                                 />
                               </div>
                             </div>
@@ -423,7 +423,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                                   onChange={(e) => setEmail(e.target.value)}
                                   required
                                   placeholder="alex@example.com"
-                                  className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-[#a07855] dark:focus:border-brand-accent"
+                                  className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-brand-accent dark:focus:border-brand-accent"
                                 />
                               </div>
                             </div>
@@ -441,7 +441,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                                   required
                                   minLength={8}
                                   placeholder="••••••••"
-                                  className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-[#a07855] dark:focus:border-brand-accent"
+                                  className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-brand-accent dark:focus:border-brand-accent"
                                 />
                               </div>
                             </div>
@@ -449,7 +449,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                             <button
                               type="submit"
                               disabled={isLoading}
-                              className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#a07855] hover:bg-brand-accent/90 text-white rounded-full font-sans font-bold text-[15px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                              className="w-full flex items-center justify-center gap-2 py-3.5 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-full font-sans font-bold text-[15px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                             >
                               {isLoading ? (
                                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -474,7 +474,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                           <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#a07855] hover:bg-brand-accent/90 text-white rounded-full font-sans font-bold text-[15px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                            className="w-full flex items-center justify-center gap-2 py-3.5 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-full font-sans font-bold text-[15px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                           >
                             {isLoading ? (
                               <Loader2 className="w-5 h-5 animate-spin" />

@@ -14,7 +14,7 @@ import type { EmptyStateBehavior } from '@/types';
 export function MenuEmptyStateSettings() {
   const { colors, isDefault } = useBrandingValues();
   const { program: programTitle, squad: squadTitle, programLower, squadLower } = useMenuTitles();
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
+  const accentColor = colors.accentLight || 'var(--brand-accent-light)';
 
   const [programBehavior, setProgramBehavior] = useState<EmptyStateBehavior>('discover');
   const [squadBehavior, setSquadBehavior] = useState<EmptyStateBehavior>('discover');

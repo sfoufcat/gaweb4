@@ -244,12 +244,12 @@ export function LandingPageEditor({
                   <button
                     key={template.id}
                     onClick={() => handleSelectTemplate(template)}
-                    className="text-left bg-card dark:bg-[#171b22] border border-border dark:border-[#262b35] rounded-2xl overflow-hidden hover:border-brand-accent hover:shadow-lg dark:hover:shadow-[#a07855]/10 transition-all duration-200 group"
+                    className="text-left bg-card dark:bg-[#171b22] border border-border dark:border-[#262b35] rounded-2xl overflow-hidden hover:border-brand-accent hover:shadow-lg dark:hover:shadow-brand-accent/10 transition-all duration-200 group"
                   >
                     {/* Thumbnail/Preview */}
                     <div className="aspect-[4/3] relative overflow-hidden border-b border-border dark:border-[#262b35]">
                       <TemplatePreview template={template} />
-                      <div className="absolute inset-0 bg-[#a07855]/0 group-hover:bg-brand-accent/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <div className="absolute inset-0 bg-brand-accent/0 group-hover:bg-brand-accent/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
                         <span className="px-4 py-2 bg-brand-accent text-white rounded-lg font-medium text-sm shadow-lg flex items-center gap-2">
                           <Sparkles className="w-4 h-4" />
                           Use Template

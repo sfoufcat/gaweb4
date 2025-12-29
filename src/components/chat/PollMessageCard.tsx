@@ -29,7 +29,7 @@ interface PollMessageCardProps {
 }
 
 // Check icon for voted option
-function CheckCircleIcon({ fill = '#a07855', stroke = '#faf8f6' }: { fill?: string; stroke?: string }) {
+function CheckCircleIcon({ fill = 'var(--brand-accent-light)', stroke = '#faf8f6' }: { fill?: string; stroke?: string }) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="8" cy="8" r="7" fill={fill} stroke={stroke} strokeWidth="2"/>
@@ -61,7 +61,7 @@ export function PollMessageCard({
     bgOption: isOwnMessage ? 'bg-[#8a6c4a]/40' : 'bg-[#f3f1ef]',
     progressBg: isOwnMessage ? 'bg-[#b8a999]/40' : 'bg-[#e1ddd8]',
     progressFill: isOwnMessage ? 'bg-[#f5e6d3]' : 'bg-brand-accent',
-    checkFill: isOwnMessage ? '#f5e6d3' : '#a07855',
+    checkFill: isOwnMessage ? '#f5e6d3' : 'var(--brand-accent-light)',
     checkStroke: isOwnMessage ? '#7d5c3e' : '#faf8f6',
   };
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);

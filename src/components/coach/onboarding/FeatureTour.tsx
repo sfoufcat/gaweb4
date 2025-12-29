@@ -258,7 +258,7 @@ export function FeatureTour({ isActive, onComplete, onSkip }: FeatureTourProps) 
                 <div className="px-5 pt-5 pb-3">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-xl bg-[#FFD036]/20 flex items-center justify-center flex-shrink-0">
-                      <StepIcon className="w-5 h-5 text-[#a07855]" />
+                      <StepIcon className="w-5 h-5 text-brand-accent" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-albert text-lg font-bold text-[#1a1a1a] dark:text-[#f5f5f8]">
@@ -281,7 +281,7 @@ export function FeatureTour({ isActive, onComplete, onSkip }: FeatureTourProps) 
                         onClick={() => setCurrentStep(index)}
                         className={`w-2 h-2 rounded-full transition-all ${
                           index === currentStep
-                            ? 'bg-[#a07855] w-6'
+                            ? 'bg-brand-accent w-6'
                             : index < currentStep
                             ? 'bg-brand-accent/50'
                             : 'bg-[#e1ddd8] dark:bg-[#313746]'

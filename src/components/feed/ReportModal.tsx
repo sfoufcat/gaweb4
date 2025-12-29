@@ -45,7 +45,7 @@ export function ReportModal({ postId, onClose }: ReportModalProps) {
   const [submitted, setSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
+  const accentColor = colors.accentLight || 'var(--brand-accent-light)';
 
   // Handle submit
   const handleSubmit = useCallback(async () => {

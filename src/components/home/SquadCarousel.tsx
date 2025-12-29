@@ -151,7 +151,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
             )}
             <Link
               href="/program?tab=squad"
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-[#a07855] dark:bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent/90 text-white rounded-full font-albert font-semibold text-[14px] transition-all hover:scale-[1.02]"
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent/90 text-white rounded-full font-albert font-semibold text-[14px] transition-all hover:scale-[1.02]"
             >
               Go to {squadTermLower}
               <ChevronRight className="w-4 h-4" />
@@ -225,7 +225,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
                   )}
                   <Link
                     href="/program?tab=squad"
-                    className="flex-1 py-2 px-3 bg-[#a07855] dark:bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent/90 rounded-xl flex items-center justify-center gap-1 text-white transition-all"
+                    className="flex-1 py-2 px-3 bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent/90 rounded-xl flex items-center justify-center gap-1 text-white transition-all"
                   >
                     <span className="font-sans text-[12px] font-medium">View</span>
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -268,7 +268,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
             }}
             className={`w-2 h-2 rounded-full transition-all ${
               i === activeIndex 
-                ? 'bg-[#a07855] w-4' 
+                ? 'bg-brand-accent w-4' 
                 : 'bg-[#e1ddd8] dark:bg-[#272d38]'
             }`}
           />
@@ -282,7 +282,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
           }}
           className={`w-2 h-2 rounded-full transition-all ${
             activeIndex >= squads.length
-              ? 'bg-[#a07855] w-4' 
+              ? 'bg-brand-accent w-4' 
               : 'bg-[#e1ddd8] dark:bg-[#272d38]'
           }`}
         />

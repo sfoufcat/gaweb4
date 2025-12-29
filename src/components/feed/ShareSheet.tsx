@@ -14,7 +14,7 @@ export function ShareSheet({ postId, onClose }: ShareSheetProps) {
   const [copied, setCopied] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
 
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
+  const accentColor = colors.accentLight || 'var(--brand-accent-light)';
   const postUrl = typeof window !== 'undefined' 
     ? `${window.location.origin}/feed?post=${postId}`
     : `/feed?post=${postId}`;

@@ -297,7 +297,7 @@ export function BrandingSetupModal({ isOpen, onComplete, businessName }: Brandin
                   )}
                   {isUploading && (
                     <div className="absolute inset-0 bg-white/80 dark:bg-black/50 flex items-center justify-center">
-                      <Loader2 className="w-5 h-5 animate-spin text-[#a07855]" />
+                      <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
                     </div>
                   )}
                 </div>

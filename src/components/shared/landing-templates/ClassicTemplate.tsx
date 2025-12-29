@@ -151,7 +151,7 @@ export function ClassicTemplate({
   durationDays = 30,
   enrolledCount = 0,
   programType = 'individual',
-  accentLight = '#a07855',
+  accentLight = 'var(--brand-accent-light)',
   accentDark = '#b8896a',
 }: LandingTemplateProps) {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);

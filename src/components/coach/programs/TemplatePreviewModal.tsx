@@ -194,7 +194,7 @@ export function TemplatePreviewModal({
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2.5 rounded-lg text-sm font-medium font-albert transition-colors ${
                 activeTab === tab.id
-                  ? 'bg-brand-accent/10 text-[#a07855] dark:bg-brand-accent/10 dark:text-brand-accent'
+                  ? 'bg-brand-accent/10 text-brand-accent dark:bg-brand-accent/10 dark:text-brand-accent'
                   : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
               }`}
             >

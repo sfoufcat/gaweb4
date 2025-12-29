@@ -22,7 +22,7 @@ interface FunnelOption {
  */
 export function MarketplaceSettings() {
   const { colors, isDefault } = useBrandingValues();
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
+  const accentColor = colors.accentLight || 'var(--brand-accent-light)';
   
   // Listing state
   const [listing, setListing] = useState<MarketplaceListing | null>(null);
@@ -262,7 +262,7 @@ export function MarketplaceSettings() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., 12-Week Fitness Transformation"
-              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-[#a07855] dark:focus:border-brand-accent"
+              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-brand-accent dark:focus:border-brand-accent"
               maxLength={100}
             />
           </div>
@@ -276,7 +276,7 @@ export function MarketplaceSettings() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe your program in 1-2 sentences..."
-              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-[#a07855] dark:focus:border-brand-accent resize-none"
+              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-brand-accent dark:focus:border-brand-accent resize-none"
               rows={3}
               maxLength={200}
             />
@@ -365,7 +365,7 @@ export function MarketplaceSettings() {
               <select
                 value={selectedFunnelId}
                 onChange={(e) => setSelectedFunnelId(e.target.value)}
-                className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-[#a07855] dark:focus:border-brand-accent"
+                className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-brand-accent dark:focus:border-brand-accent"
               >
                 <option value="">Select a funnel...</option>
                 {funnels.map((funnel) => (

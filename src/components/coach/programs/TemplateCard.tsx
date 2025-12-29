@@ -152,7 +152,7 @@ export function TemplateCard({ template, onSelect, featured }: TemplateCardProps
           <span className="text-sm font-medium text-brand-accent font-albert group-hover:underline">
             View template
           </span>
-          <div className="w-8 h-8 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center group-hover:bg-[#a07855] dark:group-hover:bg-brand-accent transition-colors">
+          <div className="w-8 h-8 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center group-hover:bg-brand-accent transition-colors">
             <ArrowRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] group-hover:text-white transition-colors" />
           </div>
         </div>

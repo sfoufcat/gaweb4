@@ -187,7 +187,7 @@ const WHY_UPGRADE_SCALE = [
 const stripeAppearance: import('@stripe/stripe-js').Appearance = {
   theme: 'stripe',
   variables: {
-    colorPrimary: '#a07855',
+    colorPrimary: 'var(--brand-accent-light)',
     colorBackground: '#ffffff',
     colorText: '#1a1a1a',
     colorTextSecondary: '#5f5a55',
@@ -204,8 +204,8 @@ const stripeAppearance: import('@stripe/stripe-js').Appearance = {
       padding: '12px 14px',
     },
     '.Input:focus': {
-      borderColor: '#a07855',
-      boxShadow: '0 0 0 1px #a07855',
+      borderColor: 'var(--brand-accent-light)',
+      boxShadow: '0 0 0 1px var(--brand-accent-light)',
     },
     '.Label': {
       fontWeight: '500',
@@ -216,7 +216,7 @@ const stripeAppearance: import('@stripe/stripe-js').Appearance = {
       borderColor: '#e1ddd8',
     },
     '.Tab--selected': {
-      borderColor: '#a07855',
+      borderColor: 'var(--brand-accent-light)',
       backgroundColor: '#faf8f6',
     },
   },

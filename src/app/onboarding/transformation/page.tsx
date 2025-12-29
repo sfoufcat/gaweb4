@@ -261,9 +261,9 @@ export default function TransformationPage() {
                   
                   {/* Subtle grid lines - adjusted for new viewBox */}
                   <g opacity="0.1">
-                    <line x1="30" y1="120" x2="370" y2="120" stroke="#a07855" strokeWidth="1" />
-                    <line x1="30" y1="85" x2="370" y2="85" stroke="#a07855" strokeWidth="1" strokeDasharray="4 4" />
-                    <line x1="30" y1="50" x2="370" y2="50" stroke="#a07855" strokeWidth="1" strokeDasharray="4 4" />
+                    <line x1="30" y1="120" x2="370" y2="120" stroke="var(--brand-accent-light)" strokeWidth="1" />
+                    <line x1="30" y1="85" x2="370" y2="85" stroke="var(--brand-accent-light)" strokeWidth="1" strokeDasharray="4 4" />
+                    <line x1="30" y1="50" x2="370" y2="50" stroke="var(--brand-accent-light)" strokeWidth="1" strokeDasharray="4 4" />
                   </g>
                   
                   {/* Area fill under curve - adjusted y positions */}

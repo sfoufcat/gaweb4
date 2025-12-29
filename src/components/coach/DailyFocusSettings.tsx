@@ -15,7 +15,7 @@ const MAX_FOCUS_SLOTS = 6;
  */
 export function DailyFocusSettings() {
   const { colors, isDefault } = useBrandingValues();
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
+  const accentColor = colors.accentLight || 'var(--brand-accent-light)';
 
   const [focusSlots, setFocusSlots] = useState(DEFAULT_FOCUS_SLOTS);
   const [isLoading, setIsLoading] = useState(true);

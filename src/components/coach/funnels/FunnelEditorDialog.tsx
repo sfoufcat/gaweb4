@@ -332,7 +332,7 @@ export function FunnelEditorDialog({
                   <select
                     value={formData.programId}
                     onChange={(e) => setFormData(prev => ({ ...prev, programId: e.target.value }))}
-                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] text-text-primary dark:text-[#f5f5f8]"
+                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-brand-accent text-text-primary dark:text-[#f5f5f8]"
                     required={formData.targetType === 'program'}
                   >
                     <option value="">Select a program</option>
@@ -354,7 +354,7 @@ export function FunnelEditorDialog({
                   <select
                     value={formData.squadId}
                     onChange={(e) => setFormData(prev => ({ ...prev, squadId: e.target.value }))}
-                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] text-text-primary dark:text-[#f5f5f8]"
+                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-brand-accent text-text-primary dark:text-[#f5f5f8]"
                     required={formData.targetType === 'squad'}
                   >
                     <option value="">Select a squad</option>
@@ -405,7 +405,7 @@ export function FunnelEditorDialog({
                     <select
                       value={formData.contentId}
                       onChange={(e) => setFormData(prev => ({ ...prev, contentId: e.target.value }))}
-                      className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] text-text-primary dark:text-[#f5f5f8]"
+                      className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-brand-accent text-text-primary dark:text-[#f5f5f8]"
                       required={formData.targetType === 'content'}
                       disabled={isLoadingContent}
                     >
@@ -439,7 +439,7 @@ export function FunnelEditorDialog({
               value={formData.name}
               onChange={(e) => handleNameChange(e.target.value)}
               placeholder="e.g., Discovery Quiz"
-              className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] text-text-primary dark:text-[#f5f5f8]"
+              className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-brand-accent text-text-primary dark:text-[#f5f5f8]"
               required
             />
           </div>
@@ -461,7 +461,7 @@ export function FunnelEditorDialog({
                   slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') 
                 }))}
                 placeholder="discovery-quiz"
-                className="flex-1 px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-r-lg focus:outline-none focus:border-[#a07855] text-text-primary dark:text-[#f5f5f8]"
+                className="flex-1 px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-r-lg focus:outline-none focus:border-brand-accent text-text-primary dark:text-[#f5f5f8]"
                 required
               />
             </div>
@@ -477,7 +477,7 @@ export function FunnelEditorDialog({
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Brief description for internal use"
               rows={2}
-              className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] text-text-primary dark:text-[#f5f5f8] resize-none"
+              className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-brand-accent text-text-primary dark:text-[#f5f5f8] resize-none"
             />
           </div>
 
