@@ -1726,7 +1726,7 @@ function UpsellDownsellConfigForm({
   
   // Create strongly typed local config to prevent 'unknown' type inference issues
   interface UpsellConfig {
-    productType: 'program' | 'squad';
+    productType: 'program' | 'squad' | 'article' | 'course';
     productId?: string;
     productName?: string;
     productImageUrl?: string;
@@ -1747,7 +1747,7 @@ function UpsellDownsellConfigForm({
   }
   
   const typedConfig: UpsellConfig = {
-    productType: (config.productType as 'program' | 'squad') || 'program',
+    productType: (config.productType as 'program' | 'squad' | 'article' | 'course') || 'program',
     productId: config.productId as string | undefined,
     productName: config.productName as string | undefined,
     productImageUrl: config.productImageUrl as string | undefined,
@@ -1789,24 +1789,54 @@ function UpsellDownsellConfigForm({
     const fetchProducts = async () => {
       setIsLoadingProducts(true);
       try {
-        const endpoint = productType === 'program' ? '/api/coach/org-programs' : '/api/coach/org-squads';
+        // Determine endpoint based on product type
+        let endpoint = '/api/coach/org-programs';
+        if (productType === 'squad') endpoint = '/api/coach/org-squads';
+        if (productType === 'article') endpoint = '/api/coach/org-discover/articles';
+        if (productType === 'course') endpoint = '/api/coach/org-discover/courses';
+        
         const response = await fetch(endpoint);
         if (response.ok) {
           const data = await response.json();
-          const items = productType === 'program' 
-            ? data.programs?.map((p: { id: string; name: string; coverImageUrl?: string; priceInCents?: number }) => ({
-                id: p.id,
-                name: p.name,
-                imageUrl: p.coverImageUrl,
-                priceInCents: p.priceInCents || 0,
-              }))
-            : data.squads?.map((s: { id: string; name: string; coverImageUrl?: string; priceInCents?: number }) => ({
-                id: s.id,
-                name: s.name,
-                imageUrl: s.coverImageUrl,
-                priceInCents: s.priceInCents || 0,
-              }));
-          setProducts(items || []);
+          let items: Array<{ id: string; name: string; imageUrl?: string; priceInCents: number }> = [];
+          
+          if (productType === 'program') {
+            items = data.programs?.map((p: { id: string; name: string; coverImageUrl?: string; priceInCents?: number }) => ({
+              id: p.id,
+              name: p.name,
+              imageUrl: p.coverImageUrl,
+              priceInCents: p.priceInCents || 0,
+            })) || [];
+          } else if (productType === 'squad') {
+            items = data.squads?.map((s: { id: string; name: string; coverImageUrl?: string; avatarUrl?: string; priceInCents?: number }) => ({
+              id: s.id,
+              name: s.name,
+              imageUrl: s.coverImageUrl || s.avatarUrl,
+              priceInCents: s.priceInCents || 0,
+            })) || [];
+          } else if (productType === 'article') {
+            // Filter to only show gated articles (priceInCents > 0)
+            items = data.articles
+              ?.filter((a: { priceInCents?: number }) => a.priceInCents && a.priceInCents > 0)
+              .map((a: { id: string; title: string; coverImageUrl?: string; thumbnailUrl?: string; priceInCents?: number }) => ({
+                id: a.id,
+                name: a.title,
+                imageUrl: a.thumbnailUrl || a.coverImageUrl,
+                priceInCents: a.priceInCents || 0,
+              })) || [];
+          } else if (productType === 'course') {
+            // Filter to only show gated courses (priceInCents > 0)
+            items = data.courses
+              ?.filter((c: { priceInCents?: number }) => c.priceInCents && c.priceInCents > 0)
+              .map((c: { id: string; title: string; coverImageUrl?: string; priceInCents?: number }) => ({
+                id: c.id,
+                name: c.title,
+                imageUrl: c.coverImageUrl,
+                priceInCents: c.priceInCents || 0,
+              })) || [];
+          }
+          
+          setProducts(items);
         }
       } catch (err) {
         console.error('Failed to fetch products:', err);
@@ -1930,6 +1960,8 @@ function UpsellDownsellConfigForm({
           <SelectContent>
             <SelectItem value="program">Program</SelectItem>
             <SelectItem value="squad">Squad</SelectItem>
+            <SelectItem value="article">Article</SelectItem>
+            <SelectItem value="course">Course</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -1937,17 +1969,27 @@ function UpsellDownsellConfigForm({
       {/* Product Selector */}
       <div>
         <label className="block text-sm font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
-          Select {productType === 'program' ? 'Program' : 'Squad'}
+          Select {productType === 'program' ? 'Program' : productType === 'squad' ? 'Squad' : productType === 'article' ? 'Article' : 'Course'}
+          {(productType === 'article' || productType === 'course') && (
+            <span className="text-xs text-text-muted dark:text-[#b2b6c2] ml-1">(gated content only)</span>
+          )}
         </label>
         {isLoadingProducts ? (
           <div className="text-text-secondary text-sm">Loading...</div>
+        ) : products.length === 0 ? (
+          <div className="text-text-secondary text-sm p-3 bg-[#f9f8f6] dark:bg-[#11141b] rounded-lg">
+            {(productType === 'article' || productType === 'course') 
+              ? `No gated ${productType}s found. To use content as an upsell, set a price on it first.`
+              : `No ${productType}s found.`
+            }
+          </div>
         ) : (
           <Select
             value={typedConfig.productId || ''}
             onValueChange={handleProductChange}
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder={`Select a ${productType}`} />
+              <SelectValue placeholder={`Select a ${productType === 'article' ? 'Article' : productType === 'course' ? 'Course' : productType}`} />
             </SelectTrigger>
             <SelectContent>
               {products.map((product) => (
@@ -1998,7 +2040,7 @@ function UpsellDownsellConfigForm({
         {/* Original Price (read-only from product) */}
         <div>
           <label className="block text-sm text-text-secondary dark:text-[#b2b6c2] mb-1">
-            Original Price (from {productType})
+            Original Price (from {productType === 'article' ? 'Article' : productType === 'course' ? 'Course' : productType})
           </label>
           <div className="text-lg font-semibold text-text-primary dark:text-[#f5f5f8]">
             ${(originalPriceInCents / 100).toFixed(2)}

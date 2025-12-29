@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
@@ -301,6 +301,7 @@ function StripePaymentForm({
   currency,
   contentTitle,
   accentColor,
+  organizationId,
 }: {
   onSuccess: () => void;
   onBack: () => void;
@@ -308,11 +309,13 @@ function StripePaymentForm({
   currency: string;
   contentTitle: string;
   accentColor: string;
+  organizationId?: string | null;
 }) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveCard, setSaveCard] = useState(true); // Auto-checked
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -336,6 +339,22 @@ function StripePaymentForm({
       setError(submitError.message || 'Payment failed. Please try again.');
       setIsProcessing(false);
     } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+      // If user chose not to save card, delete it after successful payment
+      if (!saveCard && organizationId && paymentIntent.payment_method) {
+        try {
+          await fetch('/api/payment-methods', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              organizationId,
+              paymentMethodId: paymentIntent.payment_method,
+            }),
+          });
+        } catch (err) {
+          // Non-critical error, don't block success
+          console.error('Failed to remove saved card:', err);
+        }
+      }
       onSuccess();
     }
   };
@@ -391,6 +410,27 @@ function StripePaymentForm({
               },
             }}
           />
+
+          {/* Save card checkbox */}
+          <label className="flex items-center gap-3 mt-4 cursor-pointer select-none">
+            <div className="relative">
+              <input 
+                type="checkbox" 
+                checked={saveCard}
+                onChange={(e) => setSaveCard(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div 
+                className="w-5 h-5 rounded-md border-2 border-[#d1ccc5] dark:border-[#3d424d] peer-checked:border-transparent transition-colors flex items-center justify-center"
+                style={{ backgroundColor: saveCard ? accentColor : 'transparent' }}
+              >
+                {saveCard && <Check className="w-3.5 h-3.5 text-white" />}
+              </div>
+            </div>
+            <span className="text-sm text-text-secondary dark:text-[#b2b6c2]">
+              Save card for future purchases
+            </span>
+          </label>
         </div>
 
         {/* Error message */}
@@ -461,27 +501,27 @@ function PreviewContent({
   return (
     <div className="flex flex-col">
       {/* Content Preview */}
-      <div className="px-6 pb-6">
-        <div className="flex gap-5">
+      <div className="px-5 sm:px-6 pb-5">
+        <div className="flex gap-4">
           {/* Cover Image or Icon */}
           <div className="flex-shrink-0">
             {content.coverImageUrl ? (
-              <div className="w-28 h-28 rounded-2xl overflow-hidden shadow-md">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
                 <Image
                   src={content.coverImageUrl}
                   alt={content.title}
-                  width={112}
-                  height={112}
+                  width={96}
+                  height={96}
                   className="w-full h-full object-cover"
                 />
               </div>
             ) : (
               <div 
-                className="w-28 h-28 rounded-2xl flex items-center justify-center shadow-md"
-                style={{ backgroundColor: hexToRgba(colors.accentLight, 0.1) }}
+                className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl flex items-center justify-center shadow-sm ring-1 ring-black/5 dark:ring-white/10"
+                style={{ backgroundColor: hexToRgba(colors.accentLight, 0.08) }}
               >
                 <ContentIcon 
-                  className="w-10 h-10" 
+                  className="w-8 h-8 sm:w-9 sm:h-9" 
                   style={{ color: colors.accentLight }} 
                 />
               </div>
@@ -489,9 +529,9 @@ function PreviewContent({
           </div>
           
           {/* Content Info */}
-          <div className="flex-1 min-w-0 pt-1">
+          <div className="flex-1 min-w-0 flex flex-col justify-center">
             <div 
-              className="text-xs font-medium px-2.5 py-1 rounded-full w-fit mb-2"
+              className="text-[11px] font-semibold px-2 py-0.5 rounded-md w-fit mb-1.5"
               style={{ 
                 backgroundColor: hexToRgba(colors.accentLight, 0.1),
                 color: colors.accentLight 
@@ -499,11 +539,11 @@ function PreviewContent({
             >
               {content.type.charAt(0).toUpperCase() + content.type.slice(1)}
             </div>
-            <h3 className="font-albert font-semibold text-xl text-text-primary dark:text-[#f5f5f8] line-clamp-2 leading-tight">
+            <h3 className="font-albert font-semibold text-[17px] sm:text-lg text-text-primary dark:text-[#f5f5f8] line-clamp-2 leading-snug tracking-[-0.3px]">
               {content.title}
             </h3>
             {content.coachName && (
-              <p className="text-sm text-text-secondary dark:text-[#b2b6c2] mt-2">
+              <p className="text-[13px] text-text-secondary dark:text-[#b2b6c2] mt-1">
                 by {content.coachName}
               </p>
             )}
@@ -513,25 +553,25 @@ function PreviewContent({
         {/* Description */}
         {content.description && (
           <div 
-            className="text-sm text-text-secondary dark:text-[#b2b6c2] mt-5 line-clamp-4 prose prose-sm dark:prose-invert max-w-none [&>p]:m-0 [&>ul]:m-0 [&>ol]:m-0"
+            className="text-[13px] text-text-secondary dark:text-[#b2b6c2] mt-4 line-clamp-3 leading-relaxed prose prose-sm dark:prose-invert max-w-none [&>p]:m-0 [&>ul]:m-0 [&>ol]:m-0"
             dangerouslySetInnerHTML={{ __html: content.description }}
           />
         )}
         
         {/* Key Outcomes */}
         {content.keyOutcomes && content.keyOutcomes.length > 0 && (
-          <div className="mt-4 space-y-2">
-            <p className="text-sm font-medium text-text-primary dark:text-[#f5f5f8]">
+          <div className="mt-4 space-y-1.5">
+            <p className="text-[13px] font-medium text-text-primary dark:text-[#f5f5f8]">
               What you&apos;ll get:
             </p>
-            <ul className="space-y-1.5">
+            <ul className="space-y-1">
               {content.keyOutcomes.slice(0, 3).map((outcome, index) => (
                 <li key={index} className="flex items-start gap-2">
                   <Check 
-                    className="w-4 h-4 mt-0.5 flex-shrink-0" 
+                    className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" 
                     style={{ color: colors.accentLight }}
                   />
-                  <span className="text-sm text-text-secondary dark:text-[#b2b6c2]">
+                  <span className="text-[13px] text-text-secondary dark:text-[#b2b6c2] leading-snug">
                     {outcome}
                   </span>
                 </li>
@@ -542,28 +582,28 @@ function PreviewContent({
       </div>
       
       {/* Price & CTA */}
-      <div className="border-t border-[#e1ddd8] dark:border-[#262b35] px-6 py-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <span className="text-2xl font-bold text-text-primary dark:text-[#f5f5f8]">
+      <div className="border-t border-[#e8e4df] dark:border-[#262b35] bg-[#faf9f7] dark:bg-[#11141b] px-5 sm:px-6 py-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-[22px] font-bold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px]">
               {formatPrice(content.priceInCents, content.currency)}
             </span>
             {content.priceInCents > 0 && (
-              <span className="text-sm text-text-secondary dark:text-[#b2b6c2] ml-2">
+              <span className="text-[13px] text-text-muted dark:text-[#7d8190]">
                 one-time
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1 text-text-secondary dark:text-[#b2b6c2]">
-            <Shield className="w-4 h-4" />
-            <span className="text-xs">Secure checkout</span>
+          <div className="flex items-center gap-1.5 text-text-muted dark:text-[#7d8190]">
+            <Shield className="w-3.5 h-3.5" />
+            <span className="text-[11px] font-medium">Secure checkout</span>
           </div>
         </div>
         
         <Button
           onClick={onPurchase}
           disabled={isPurchasing}
-          className="w-full py-3 text-white font-semibold rounded-xl transition-all"
+          className="w-full h-12 text-[15px] text-white font-semibold rounded-xl transition-all hover:brightness-105 active:scale-[0.98]"
           style={{ 
             background: `linear-gradient(135deg, ${colors.accentLight}, ${colors.accentDark})`,
           }}
@@ -690,6 +730,13 @@ function SheetContent({
   const { colors } = useBrandingValues();
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Track if this is the initial mount to skip animation on first open
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    // After first render, mark initial mount as complete
+    isInitialMount.current = false;
+  }, []);
 
   const handleStartPurchase = async () => {
     if (!isSignedIn) {
@@ -837,7 +884,7 @@ function SheetContent({
             key="preview"
             custom={direction}
             variants={slideVariants}
-            initial="enter"
+            initial={isInitialMount.current ? false : "enter"}
             animate="center"
             exit="exit"
             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
@@ -962,6 +1009,7 @@ function SheetContent({
                 currency={content.currency || 'usd'}
                 contentTitle={content.title}
                 accentColor={colors.accentLight}
+                organizationId={organizationId}
               />
             </Elements>
           </motion.div>
@@ -1138,13 +1186,13 @@ export function ContentPurchaseSheet({
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-xl max-h-[85vh] p-0 gap-0 overflow-hidden flex flex-col" hideCloseButton>
+        <DialogContent className="max-w-md max-h-[85vh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl" hideCloseButton>
           <DialogHeader className="sr-only">
             <DialogTitle>{content.title}</DialogTitle>
             <DialogDescription>Purchase this content</DialogDescription>
           </DialogHeader>
           
-          <div className="pt-8 pb-2 min-h-[400px] flex-1 overflow-y-auto">
+          <div className="pt-6 flex-1 overflow-y-auto">
             {sheetContent}
           </div>
         </DialogContent>
@@ -1155,12 +1203,14 @@ export function ContentPurchaseSheet({
   // Mobile: Drawer
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[90vh]">
+      <DrawerContent className="max-h-[85vh]">
         <DrawerHeader className="sr-only">
           <DrawerTitle>{content.title}</DrawerTitle>
           <DrawerDescription>Purchase this content</DrawerDescription>
         </DrawerHeader>
-        {sheetContent}
+        <div className="pt-2">
+          {sheetContent}
+        </div>
       </DrawerContent>
     </Drawer>
   );

@@ -216,13 +216,15 @@ interface PaymentFormProps {
   priceInCents: number;
   currency: string;
   features?: string[];
+  organizationId?: string;
 }
 
-function PaymentForm({ onSuccess, programName, priceInCents, currency, features }: PaymentFormProps) {
+function PaymentForm({ onSuccess, programName, priceInCents, currency, features, organizationId }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveCard, setSaveCard] = useState(true); // Auto-checked
 
   const formatPrice = (cents: number, curr: string) => {
     return new Intl.NumberFormat('en-US', {
@@ -253,6 +255,22 @@ function PaymentForm({ onSuccess, programName, priceInCents, currency, features 
       setError(submitError.message || 'Payment failed. Please try again.');
       setIsProcessing(false);
     } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+      // If user chose not to save card, delete it after successful payment
+      if (!saveCard && organizationId && paymentIntent.payment_method) {
+        try {
+          await fetch('/api/payment-methods', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              organizationId,
+              paymentMethodId: paymentIntent.payment_method,
+            }),
+          });
+        } catch (err) {
+          // Non-critical error, don't block success
+          console.error('Failed to remove saved card:', err);
+        }
+      }
       onSuccess(paymentIntent.id);
     }
   };
@@ -302,6 +320,27 @@ function PaymentForm({ onSuccess, programName, priceInCents, currency, features 
             },
           }}
         />
+
+        {/* Save card checkbox */}
+        <label className="flex items-center gap-3 mt-4 cursor-pointer select-none">
+          <div className="relative">
+            <input 
+              type="checkbox" 
+              checked={saveCard}
+              onChange={(e) => setSaveCard(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div 
+              className="w-5 h-5 rounded-md border-2 border-[#d1ccc5] peer-checked:border-transparent transition-colors flex items-center justify-center"
+              style={{ backgroundColor: saveCard ? primaryVar : 'transparent' }}
+            >
+              {saveCard && <Check className="w-3.5 h-3.5 text-white" />}
+            </div>
+          </div>
+          <span className="text-sm text-text-secondary">
+            Save card for future purchases
+          </span>
+        </label>
       </div>
 
       {/* Error */}
@@ -692,6 +731,7 @@ export function PaymentStep({
               priceInCents={priceInCents}
               currency={currency}
               features={config.features}
+              organizationId={organizationId}
             />
           </Elements>
         </motion.div>

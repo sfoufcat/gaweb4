@@ -65,8 +65,10 @@ export async function enrollUserInProduct(
         return await enrollInSquad(userId, productId, userInfo, options as EnrollSquadOptions);
       case 'course':
         return await enrollInCourse(userId, productId);
+      case 'article':
+        return await grantContentAccess(userId, productId, 'article');
       case 'content':
-        return await grantContentAccess(userId, productId);
+        return await grantContentAccess(userId, productId, 'content');
       default:
         return { success: false, error: `Unknown product type: ${productType}` };
     }
@@ -287,11 +289,13 @@ async function enrollInCourse(
 }
 
 /**
- * Grant user access to premium content (future implementation)
+ * Grant user access to premium content (articles and other gated content)
+ * @param contentType - Type of content (e.g., 'article', 'content')
  */
 async function grantContentAccess(
   userId: string,
-  contentId: string
+  contentId: string,
+  contentType: 'article' | 'content' = 'content'
 ): Promise<EnrollmentResult> {
   const now = new Date().toISOString();
 
@@ -311,11 +315,12 @@ async function grantContentAccess(
   const accessRef = await adminDb.collection('content_access').add({
     userId,
     contentId,
+    contentType, // Store the type for proper tracking
     grantedAt: now,
     createdAt: now,
   });
 
-  console.log(`[ENROLL_USER] Granted user ${userId} access to content ${contentId}`);
+  console.log(`[ENROLL_USER] Granted user ${userId} access to ${contentType} ${contentId}`);
   
   return { success: true, enrollmentId: accessRef.id };
 }

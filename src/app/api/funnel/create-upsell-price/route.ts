@@ -108,6 +108,44 @@ export async function POST(req: Request) {
       
       productName = squad.name;
       productImageUrl = squad.avatarUrl;
+    } else if (productType === 'article') {
+      const articleDoc = await adminDb.collection('articles').doc(productId).get();
+      if (!articleDoc.exists) {
+        return NextResponse.json({ error: 'Article not found' }, { status: 404 });
+      }
+      const article = articleDoc.data() as { title: string; coverImageUrl?: string; thumbnailUrl?: string; organizationId?: string; priceInCents?: number };
+      
+      // Verify article belongs to this organization
+      if (article.organizationId !== organizationId) {
+        return NextResponse.json({ error: 'Article does not belong to your organization' }, { status: 403 });
+      }
+      
+      // Verify article is gated (has a price)
+      if (!article.priceInCents || article.priceInCents <= 0) {
+        return NextResponse.json({ error: 'Article must have a price to be used as an upsell' }, { status: 400 });
+      }
+      
+      productName = article.title;
+      productImageUrl = article.thumbnailUrl || article.coverImageUrl;
+    } else if (productType === 'course') {
+      const courseDoc = await adminDb.collection('courses').doc(productId).get();
+      if (!courseDoc.exists) {
+        return NextResponse.json({ error: 'Course not found' }, { status: 404 });
+      }
+      const course = courseDoc.data() as { title: string; coverImageUrl?: string; organizationId?: string; priceInCents?: number };
+      
+      // Verify course belongs to this organization
+      if (course.organizationId !== organizationId) {
+        return NextResponse.json({ error: 'Course does not belong to your organization' }, { status: 403 });
+      }
+      
+      // Verify course is gated (has a price)
+      if (!course.priceInCents || course.priceInCents <= 0) {
+        return NextResponse.json({ error: 'Course must have a price to be used as an upsell' }, { status: 400 });
+      }
+      
+      productName = course.title;
+      productImageUrl = course.coverImageUrl;
     } else {
       // For future product types, just use generic name
       productName = `${productType} - ${productId}`;

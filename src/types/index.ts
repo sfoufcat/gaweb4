@@ -2737,8 +2737,10 @@ export interface FunnelStepConfigLandingPage {
 
 /**
  * Product types available for upsell/downsell (extensible for future products)
+ * - 'article' maps to content_access collection for generic content
+ * - 'course' maps to course_enrollments collection with progress tracking
  */
-export type UpsellProductType = 'program' | 'squad' | 'course' | 'content';
+export type UpsellProductType = 'program' | 'squad' | 'course' | 'article' | 'content';
 
 /**
  * Upsell step configuration - one-click offer shown after payment
