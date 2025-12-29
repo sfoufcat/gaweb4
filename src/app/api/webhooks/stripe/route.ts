@@ -440,7 +440,8 @@ async function handleCoachCheckoutCompleted(session: Stripe.Checkout.Session) {
   
   // Also update the user's publicMetadata via Clerk to reflect active billing
   try {
-    const clerk = await import('@clerk/backend').then(m => m.clerkClient());
+    const { clerkClient } = await import('@clerk/nextjs/server');
+    const clerk = await clerkClient();
     await clerk.users.updateUserMetadata(userId, {
       publicMetadata: {
         billingStatus: subscriptionStatus,
