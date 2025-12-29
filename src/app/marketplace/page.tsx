@@ -362,11 +362,11 @@ export default function MarketplacePage() {
 }
 
 // Extended listing type with funnel info from API
-interface ListingWithFunnel extends MarketplaceListing {
+type ListingWithFunnel = Omit<MarketplaceListing, 'customDomain'> & {
   funnelSlug?: string | null;
   programSlug?: string | null;
   customDomain?: string | null;
-}
+};
 
 // Listing Card Component
 function ListingCard({ listing }: { listing: ListingWithFunnel }) {
