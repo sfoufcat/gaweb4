@@ -27,7 +27,16 @@ const NOTIFICATION_TYPE_TO_SYSTEM_KEY: Record<NotificationType, keyof OrgSystemN
   event_reminder_24h: 'squadCall24h',
   event_reminder_1h: 'squadCall1h',
   event_live: 'squadCall1h',
-  general: null, // General notifications always sent
+  // Coaching call notifications - always sent (handled by coaching module)
+  coaching_call_24h: null,
+  coaching_call_1h: null,
+  coaching_call_live: null,
+  // Feed notifications - always sent
+  feed_like: null,
+  feed_comment: null,
+  feed_repost: null,
+  feed_mention: null,
+  story_reaction: null,
 };
 
 /**
