@@ -21,7 +21,8 @@ interface FunnelOption {
  * When disabled: Listing is hidden from public marketplace
  */
 export function MarketplaceSettings() {
-  const { accentColor } = useBrandingValues();
+  const { colors, isDefault } = useBrandingValues();
+  const accentColor = isDefault ? '#a07855' : colors.accentLight;
   
   // Listing state
   const [listing, setListing] = useState<MarketplaceListing | null>(null);
