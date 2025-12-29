@@ -10,8 +10,8 @@ import { AlumniDiscountToggle } from './AlumniDiscountToggle';
 import { MenuEmptyStateSettings } from './MenuEmptyStateSettings';
 import { DailyFocusSettings } from './DailyFocusSettings';
 import { AlignmentActivitiesSettings } from './AlignmentActivitiesSettings';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus, OrgEmailDefaults, MenuItemKey } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_EMAIL_SETTINGS, DEFAULT_EMAIL_DEFAULTS, validateSubdomain } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus, OrgEmailDefaults, OrgSystemNotifications, MenuItemKey } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_EMAIL_SETTINGS, DEFAULT_EMAIL_DEFAULTS, DEFAULT_SYSTEM_NOTIFICATIONS, validateSubdomain } from '@/types';
 import { IconPicker } from './IconPicker';
 import {
   DndContext,
@@ -282,6 +282,11 @@ export function CustomizeBrandingTab() {
   const [emailDefaultsLoading, setEmailDefaultsLoading] = useState(true);
   const [emailDefaultsSaving, setEmailDefaultsSaving] = useState<string | null>(null);
 
+  // System Notifications state
+  const [systemNotifications, setSystemNotifications] = useState<OrgSystemNotifications>(DEFAULT_SYSTEM_NOTIFICATIONS);
+  const [systemNotificationsLoading, setSystemNotificationsLoading] = useState(true);
+  const [systemNotificationsSaving, setSystemNotificationsSaving] = useState<string | null>(null);
+
   // Fetch current branding on mount
   // On tenant domain, branding comes from x-tenant-org-id header
   // On platform domain (without super_admin), this will return default branding
@@ -449,6 +454,56 @@ export function CustomizeBrandingTab() {
       setEmailDefaultsSaving(null);
     }
   };
+
+  // Fetch System Notifications settings
+  const fetchSystemNotifications = useCallback(async () => {
+    try {
+      setSystemNotificationsLoading(true);
+      const response = await fetch('/api/org/system-notifications');
+      if (!response.ok) {
+        console.error('Failed to fetch system notifications');
+        return;
+      }
+      
+      const data = await response.json();
+      setSystemNotifications(data.systemNotifications || DEFAULT_SYSTEM_NOTIFICATIONS);
+    } catch (err) {
+      console.error('Error fetching system notifications:', err);
+    } finally {
+      setSystemNotificationsLoading(false);
+    }
+  }, []);
+
+  // Handle system notification toggle
+  const handleSystemNotificationToggle = async (key: keyof OrgSystemNotifications, value: boolean) => {
+    setSystemNotificationsSaving(key);
+    
+    try {
+      const response = await fetch('/api/org/system-notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: value }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update system notifications');
+      }
+      
+      const data = await response.json();
+      setSystemNotifications(data.systemNotifications);
+      
+      // If system notification is disabled, also disable email for that type
+      if (!value && emailDefaults[key]) {
+        handleEmailDefaultToggle(key, false);
+      }
+    } catch (err) {
+      console.error('Error updating system notifications:', err);
+      setError('Failed to update system notification settings');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setSystemNotificationsSaving(null);
+    }
+  };
   
   useEffect(() => {
     fetchBranding();
@@ -456,6 +511,7 @@ export function CustomizeBrandingTab() {
     fetchStripeConnect();
     fetchEmailDomain();
     fetchEmailDefaults();
+    fetchSystemNotifications();
     
     // Check URL for Stripe callback status
     const urlParams = new URLSearchParams(window.location.search);
@@ -2485,155 +2541,282 @@ export function CustomizeBrandingTab() {
         )}
       </div>
 
-      {/* Email Notification Defaults Section */}
+      {/* Notification Settings Section */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-4">
           <Bell className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Email Notification Defaults</h3>
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Notification Settings</h3>
         </div>
         
         <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mb-6 font-albert">
-          Set the default email notification preferences for new members in your organization. 
-          Members can still customize their own preferences in their settings.
+          Control which notifications are sent to members. Changes apply to all members immediately.
+          Members can re-enable email in their settings, but org changes always take precedence.
         </p>
         
-        {emailDefaultsLoading ? (
+        {(emailDefaultsLoading || systemNotificationsLoading) ? (
           <div className="space-y-1 animate-pulse">
-            {[1, 2, 3, 4].map((i) => (
+            {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
                 <div className="space-y-2">
                   <div className="h-4 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
                   <div className="h-3 w-48 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
                 </div>
-                <div className="w-12 h-7 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-7 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+                  <div className="w-12 h-7 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded-full" />
+                </div>
               </div>
             ))}
           </div>
         ) : (
           <div className="space-y-1">
+            {/* Header Row */}
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <div className="flex-1" />
+              <div className="flex items-center gap-6">
+                <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert w-14 text-center">System</span>
+                <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert w-14 text-center">Email</span>
+              </div>
+            </div>
+
             {/* Morning Check-in */}
             <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Morning check-in</p>
                 <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Daily reminder to set focus tasks</p>
               </div>
-              <button
-                onClick={() => handleEmailDefaultToggle('morningCheckIn', !emailDefaults.morningCheckIn)}
-                disabled={emailDefaultsSaving === 'morningCheckIn'}
-                className={`
-                  relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
-                  ${emailDefaults.morningCheckIn 
-                    ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
-                    : 'bg-[#d1cec9] dark:bg-[#3d4351]'
-                  }
-                  ${emailDefaultsSaving === 'morningCheckIn' ? 'opacity-50' : ''}
-                `}
-              >
-                <span className={`
-                  absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
-                  ${emailDefaults.morningCheckIn ? 'left-6' : 'left-1'}
-                `} />
-              </button>
+              <div className="flex items-center gap-6">
+                {/* System Toggle */}
+                <button
+                  onClick={() => handleSystemNotificationToggle('morningCheckIn', !systemNotifications.morningCheckIn)}
+                  disabled={systemNotificationsSaving === 'morningCheckIn'}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${systemNotifications.morningCheckIn 
+                      ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
+                      : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                    }
+                    ${systemNotificationsSaving === 'morningCheckIn' ? 'opacity-50' : ''}
+                  `}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${systemNotifications.morningCheckIn ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+                {/* Email Toggle */}
+                <button
+                  onClick={() => handleEmailDefaultToggle('morningCheckIn', !emailDefaults.morningCheckIn)}
+                  disabled={emailDefaultsSaving === 'morningCheckIn' || !systemNotifications.morningCheckIn}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${!systemNotifications.morningCheckIn 
+                      ? 'bg-[#d1cec9]/50 dark:bg-[#3d4351]/50 cursor-not-allowed' 
+                      : emailDefaults.morningCheckIn 
+                        ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
+                        : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                    }
+                    ${emailDefaultsSaving === 'morningCheckIn' ? 'opacity-50' : ''}
+                  `}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${!systemNotifications.morningCheckIn ? 'left-1 opacity-50' : emailDefaults.morningCheckIn ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+              </div>
             </div>
 
             {/* Evening Check-in */}
             <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Evening check-in</p>
                 <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Daily reminder to reflect on completed tasks</p>
               </div>
-              <button
-                onClick={() => handleEmailDefaultToggle('eveningCheckIn', !emailDefaults.eveningCheckIn)}
-                disabled={emailDefaultsSaving === 'eveningCheckIn'}
-                className={`
-                  relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
-                  ${emailDefaults.eveningCheckIn 
-                    ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
-                    : 'bg-[#d1cec9] dark:bg-[#3d4351]'
-                  }
-                  ${emailDefaultsSaving === 'eveningCheckIn' ? 'opacity-50' : ''}
-                `}
-              >
-                <span className={`
-                  absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
-                  ${emailDefaults.eveningCheckIn ? 'left-6' : 'left-1'}
-                `} />
-              </button>
+              <div className="flex items-center gap-6">
+                {/* System Toggle */}
+                <button
+                  onClick={() => handleSystemNotificationToggle('eveningCheckIn', !systemNotifications.eveningCheckIn)}
+                  disabled={systemNotificationsSaving === 'eveningCheckIn'}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${systemNotifications.eveningCheckIn 
+                      ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
+                      : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                    }
+                    ${systemNotificationsSaving === 'eveningCheckIn' ? 'opacity-50' : ''}
+                  `}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${systemNotifications.eveningCheckIn ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+                {/* Email Toggle */}
+                <button
+                  onClick={() => handleEmailDefaultToggle('eveningCheckIn', !emailDefaults.eveningCheckIn)}
+                  disabled={emailDefaultsSaving === 'eveningCheckIn' || !systemNotifications.eveningCheckIn}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${!systemNotifications.eveningCheckIn 
+                      ? 'bg-[#d1cec9]/50 dark:bg-[#3d4351]/50 cursor-not-allowed' 
+                      : emailDefaults.eveningCheckIn 
+                        ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
+                        : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                    }
+                    ${emailDefaultsSaving === 'eveningCheckIn' ? 'opacity-50' : ''}
+                  `}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${!systemNotifications.eveningCheckIn ? 'left-1 opacity-50' : emailDefaults.eveningCheckIn ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+              </div>
             </div>
 
             {/* Weekly Review */}
             <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Weekly review</p>
-                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Weekly reflection and planning email</p>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Weekly reflection and planning</p>
               </div>
-              <button
-                onClick={() => handleEmailDefaultToggle('weeklyReview', !emailDefaults.weeklyReview)}
-                disabled={emailDefaultsSaving === 'weeklyReview'}
-                className={`
-                  relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
-                  ${emailDefaults.weeklyReview 
-                    ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
-                    : 'bg-[#d1cec9] dark:bg-[#3d4351]'
-                  }
-                  ${emailDefaultsSaving === 'weeklyReview' ? 'opacity-50' : ''}
-                `}
-              >
-                <span className={`
-                  absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
-                  ${emailDefaults.weeklyReview ? 'left-6' : 'left-1'}
-                `} />
-              </button>
+              <div className="flex items-center gap-6">
+                {/* System Toggle */}
+                <button
+                  onClick={() => handleSystemNotificationToggle('weeklyReview', !systemNotifications.weeklyReview)}
+                  disabled={systemNotificationsSaving === 'weeklyReview'}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${systemNotifications.weeklyReview 
+                      ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
+                      : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                    }
+                    ${systemNotificationsSaving === 'weeklyReview' ? 'opacity-50' : ''}
+                  `}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${systemNotifications.weeklyReview ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+                {/* Email Toggle */}
+                <button
+                  onClick={() => handleEmailDefaultToggle('weeklyReview', !emailDefaults.weeklyReview)}
+                  disabled={emailDefaultsSaving === 'weeklyReview' || !systemNotifications.weeklyReview}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${!systemNotifications.weeklyReview 
+                      ? 'bg-[#d1cec9]/50 dark:bg-[#3d4351]/50 cursor-not-allowed' 
+                      : emailDefaults.weeklyReview 
+                        ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
+                        : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                    }
+                    ${emailDefaultsSaving === 'weeklyReview' ? 'opacity-50' : ''}
+                  `}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${!systemNotifications.weeklyReview ? 'left-1 opacity-50' : emailDefaults.weeklyReview ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+              </div>
             </div>
 
             {/* Squad Call 24h */}
             <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Cohort call (24h before)</p>
                 <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Reminder 24 hours before scheduled calls</p>
               </div>
-              <button
-                onClick={() => handleEmailDefaultToggle('squadCall24h', !emailDefaults.squadCall24h)}
-                disabled={emailDefaultsSaving === 'squadCall24h'}
-                className={`
-                  relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
-                  ${emailDefaults.squadCall24h 
-                    ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
-                    : 'bg-[#d1cec9] dark:bg-[#3d4351]'
-                  }
-                  ${emailDefaultsSaving === 'squadCall24h' ? 'opacity-50' : ''}
-                `}
-              >
-                <span className={`
-                  absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
-                  ${emailDefaults.squadCall24h ? 'left-6' : 'left-1'}
-                `} />
-              </button>
+              <div className="flex items-center gap-6">
+                {/* System Toggle */}
+                <button
+                  onClick={() => handleSystemNotificationToggle('squadCall24h', !systemNotifications.squadCall24h)}
+                  disabled={systemNotificationsSaving === 'squadCall24h'}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${systemNotifications.squadCall24h 
+                      ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
+                      : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                    }
+                    ${systemNotificationsSaving === 'squadCall24h' ? 'opacity-50' : ''}
+                  `}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${systemNotifications.squadCall24h ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+                {/* Email Toggle */}
+                <button
+                  onClick={() => handleEmailDefaultToggle('squadCall24h', !emailDefaults.squadCall24h)}
+                  disabled={emailDefaultsSaving === 'squadCall24h' || !systemNotifications.squadCall24h}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${!systemNotifications.squadCall24h 
+                      ? 'bg-[#d1cec9]/50 dark:bg-[#3d4351]/50 cursor-not-allowed' 
+                      : emailDefaults.squadCall24h 
+                        ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
+                        : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                    }
+                    ${emailDefaultsSaving === 'squadCall24h' ? 'opacity-50' : ''}
+                  `}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${!systemNotifications.squadCall24h ? 'left-1 opacity-50' : emailDefaults.squadCall24h ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+              </div>
             </div>
 
             {/* Squad Call 1h */}
             <div className="flex items-center justify-between py-4">
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Cohort call (1h before)</p>
                 <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Reminder 1 hour before scheduled calls</p>
               </div>
-              <button
-                onClick={() => handleEmailDefaultToggle('squadCall1h', !emailDefaults.squadCall1h)}
-                disabled={emailDefaultsSaving === 'squadCall1h'}
-                className={`
-                  relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
-                  ${emailDefaults.squadCall1h 
-                    ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
-                    : 'bg-[#d1cec9] dark:bg-[#3d4351]'
-                  }
-                  ${emailDefaultsSaving === 'squadCall1h' ? 'opacity-50' : ''}
-                `}
-              >
-                <span className={`
-                  absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
-                  ${emailDefaults.squadCall1h ? 'left-6' : 'left-1'}
-                `} />
-              </button>
+              <div className="flex items-center gap-6">
+                {/* System Toggle */}
+                <button
+                  onClick={() => handleSystemNotificationToggle('squadCall1h', !systemNotifications.squadCall1h)}
+                  disabled={systemNotificationsSaving === 'squadCall1h'}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${systemNotifications.squadCall1h 
+                      ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
+                      : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                    }
+                    ${systemNotificationsSaving === 'squadCall1h' ? 'opacity-50' : ''}
+                  `}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${systemNotifications.squadCall1h ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+                {/* Email Toggle */}
+                <button
+                  onClick={() => handleEmailDefaultToggle('squadCall1h', !emailDefaults.squadCall1h)}
+                  disabled={emailDefaultsSaving === 'squadCall1h' || !systemNotifications.squadCall1h}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${!systemNotifications.squadCall1h 
+                      ? 'bg-[#d1cec9]/50 dark:bg-[#3d4351]/50 cursor-not-allowed' 
+                      : emailDefaults.squadCall1h 
+                        ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
+                        : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                    }
+                    ${emailDefaultsSaving === 'squadCall1h' ? 'opacity-50' : ''}
+                  `}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${!systemNotifications.squadCall1h ? 'left-1 opacity-50' : emailDefaults.squadCall1h ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+              </div>
             </div>
           </div>
         )}

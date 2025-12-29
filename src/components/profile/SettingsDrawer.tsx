@@ -81,28 +81,28 @@ export function SettingsDrawer({
     }
   };
 
-  // Handle Manage Subscription click
-  const handleManageSubscription = async () => {
+  // Handle Manage Payments click - redirects to coach's Stripe Connect portal
+  const handleManagePayments = async () => {
     setIsLoadingPortal(true);
     setError(null);
 
     try {
-      const response = await fetch('/api/billing/portal', {
+      const response = await fetch('/api/billing/coach-portal', {
         method: 'POST',
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to open billing portal');
+        throw new Error(data.error || 'Failed to open payment portal');
       }
 
       const { url } = await response.json();
       
-      // Redirect to Stripe billing portal
+      // Redirect to coach's Stripe billing portal
       window.location.href = url;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to open billing portal');
-      console.error('Error opening billing portal:', err);
+      setError(err instanceof Error ? err.message : 'Failed to open payment portal');
+      console.error('Error opening payment portal:', err);
       setIsLoadingPortal(false);
     }
   };
@@ -238,17 +238,17 @@ export function SettingsDrawer({
                         </div>
                       </div>
 
-                      {/* Section B: Manage Subscription */}
+                      {/* Section B: Manage Payments */}
                       <div className="mb-8">
                         <h3 className="font-albert text-lg text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px] mb-4">
-                          Subscription
+                          Payments
                         </h3>
                         <button
-                          onClick={handleManageSubscription}
+                          onClick={handleManagePayments}
                           disabled={isLoadingPortal}
                           className="w-full py-4 px-6 bg-white dark:bg-[#171b22] border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl font-sans font-medium text-base text-text-primary dark:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
                         >
-                          <span>Manage Subscription</span>
+                          <span>Manage Payments</span>
                           {isLoadingPortal ? (
                             <svg className="w-5 h-5 animate-spin text-text-secondary dark:text-[#b2b6c2]" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -261,7 +261,7 @@ export function SettingsDrawer({
                           )}
                         </button>
                         <p className="mt-2 px-1 font-sans text-xs text-text-secondary dark:text-[#b2b6c2]">
-                          Update payment method, change plan, or view invoices
+                          Update payment method or view invoices
                         </p>
                       </div>
 

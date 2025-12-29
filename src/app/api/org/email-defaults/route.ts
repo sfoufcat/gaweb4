@@ -62,6 +62,9 @@ export async function GET() {
  * 
  * Only accessible by users who can access the coach dashboard (coach, admin, super_admin)
  * 
+ * IMPORTANT: Changes propagate to ALL users in the organization immediately.
+ * Users can re-enable in their settings, but org changes always overwrite.
+ * 
  * Body: Partial<OrgEmailDefaults> - fields to update
  */
 export async function POST(request: Request) {
@@ -128,6 +131,57 @@ export async function POST(request: Request) {
       },
       { merge: true }
     );
+
+    // PROPAGATION: Update ALL users in this organization
+    // Org changes always override user preferences
+    if (Object.keys(updates).length > 0) {
+      try {
+        const usersSnapshot = await adminDb
+          .collection('users')
+          .where('primaryOrganizationId', '==', organizationId)
+          .get();
+
+        if (!usersSnapshot.empty) {
+          const batch = adminDb.batch();
+          let batchCount = 0;
+          const MAX_BATCH_SIZE = 500; // Firestore limit
+
+          for (const userDoc of usersSnapshot.docs) {
+            const userData = userDoc.data();
+            const currentPrefs = userData.emailPreferences || DEFAULT_EMAIL_DEFAULTS;
+            
+            // Apply the org updates to user's preferences
+            const updatedPrefs = {
+              ...currentPrefs,
+              ...updates,
+            };
+
+            batch.update(userDoc.ref, {
+              emailPreferences: updatedPrefs,
+              updatedAt: now,
+            });
+
+            batchCount++;
+
+            // Commit in batches of 500 (Firestore limit)
+            if (batchCount >= MAX_BATCH_SIZE) {
+              await batch.commit();
+              batchCount = 0;
+            }
+          }
+
+          // Commit remaining updates
+          if (batchCount > 0) {
+            await batch.commit();
+          }
+
+          console.log(`[ORG_EMAIL_DEFAULTS_POST] Propagated changes to ${usersSnapshot.size} users in org ${organizationId}`);
+        }
+      } catch (propagationError) {
+        // Log but don't fail the request - org settings are saved
+        console.error('[ORG_EMAIL_DEFAULTS_POST] Error propagating to users:', propagationError);
+      }
+    }
 
     console.log(`[ORG_EMAIL_DEFAULTS_POST] Updated email defaults for org ${organizationId}:`, updates);
 

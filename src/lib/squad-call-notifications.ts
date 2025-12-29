@@ -262,6 +262,7 @@ async function sendSquadCallNotification({
   if (!user) return;
 
   const userTimezone = user.timezone || 'UTC';
+  const organizationId = user.primaryOrganizationId;
   const squadTime = formatCallTimeForDisplay(callDateTime, callTimezone);
   const userTime = formatCallTimeInUserTimezone(callDateTime, userTimezone);
 
@@ -296,6 +297,7 @@ async function sendSquadCallNotification({
     title,
     body,
     actionRoute: '/squad',
+    organizationId,
   });
 }
 

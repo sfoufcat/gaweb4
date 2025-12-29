@@ -8,9 +8,69 @@
  */
 
 import { adminDb } from './firebase-admin';
-import type { NotificationType, Notification, FirebaseUser } from '@/types';
+import type { NotificationType, Notification, FirebaseUser, OrgSystemNotifications } from '@/types';
+import { DEFAULT_SYSTEM_NOTIFICATIONS } from '@/types';
 import { sendTenantEmail, APP_BASE_URL, getAppTitleForEmail } from './email-sender';
 import { getTodayInTimezone, DEFAULT_TIMEZONE } from './timezone';
+
+/**
+ * Map notification types to their corresponding key in OrgSystemNotifications
+ */
+const NOTIFICATION_TYPE_TO_SYSTEM_KEY: Record<NotificationType, keyof OrgSystemNotifications | null> = {
+  morning_checkin: 'morningCheckIn',
+  evening_checkin_complete_tasks: 'eveningCheckIn',
+  evening_checkin_incomplete_tasks: 'eveningCheckIn',
+  weekly_reflection: 'weeklyReview',
+  squad_call_24h: 'squadCall24h',
+  squad_call_1h: 'squadCall1h',
+  squad_call_live: 'squadCall1h', // Use same setting as 1h for live notifications
+  event_reminder_24h: 'squadCall24h',
+  event_reminder_1h: 'squadCall1h',
+  event_live: 'squadCall1h',
+  general: null, // General notifications always sent
+};
+
+/**
+ * Get organization's system notification settings
+ * Returns defaults if org has no custom settings
+ */
+async function getOrgSystemNotifications(organizationId?: string): Promise<OrgSystemNotifications> {
+  if (!organizationId) {
+    return DEFAULT_SYSTEM_NOTIFICATIONS;
+  }
+
+  try {
+    const brandingDoc = await adminDb.collection('org_branding').doc(organizationId).get();
+    if (brandingDoc.exists && brandingDoc.data()?.systemNotifications) {
+      return {
+        ...DEFAULT_SYSTEM_NOTIFICATIONS,
+        ...brandingDoc.data()?.systemNotifications,
+      };
+    }
+  } catch (error) {
+    console.error('[NOTIFICATIONS] Error fetching org system notifications:', error);
+  }
+
+  return DEFAULT_SYSTEM_NOTIFICATIONS;
+}
+
+/**
+ * Check if a notification type is enabled for an organization
+ */
+async function isNotificationTypeEnabled(
+  type: NotificationType,
+  organizationId?: string
+): Promise<boolean> {
+  const systemKey = NOTIFICATION_TYPE_TO_SYSTEM_KEY[type];
+  
+  // Types without a system key mapping are always enabled
+  if (systemKey === null) {
+    return true;
+  }
+
+  const systemNotifications = await getOrgSystemNotifications(organizationId);
+  return systemNotifications[systemKey] !== false;
+}
 
 export interface NotifyUserInput {
   userId: string;
@@ -210,12 +270,22 @@ async function getUserById(userId: string): Promise<FirebaseUser | null> {
  * All notification triggers should call this function to ensure consistent behavior.
  * This is the single source of truth for creating notifications.
  * 
+ * IMPORTANT: Checks org-level system notifications settings first.
+ * If disabled, neither in-app notification nor email is sent.
+ * 
  * Email is sent automatically for all users whenever a notification is created.
  * The upstream business rules (one evening notification per day, one weekly per week, etc.)
  * are enforced BEFORE calling this function, so email sending respects those rules.
  */
-export async function notifyUser(input: NotifyUserInput): Promise<string> {
+export async function notifyUser(input: NotifyUserInput): Promise<string | null> {
   const { userId, type, title, body, actionRoute, organizationId } = input;
+
+  // Check if this notification type is enabled at org level
+  const isEnabled = await isNotificationTypeEnabled(type, organizationId);
+  if (!isEnabled) {
+    console.log(`[NOTIFY_USER] Skipping ${type} - disabled at org level for org ${organizationId}`);
+    return null;
+  }
 
   // 1) Create in-app notification document
   // Note: organizationId is required for multi-tenancy, but we support legacy notifications without it
@@ -491,12 +561,13 @@ export async function getUserNotifications(
  * Called by scheduled job or when conditions are met
  */
 export async function sendMorningCheckInNotification(userId: string): Promise<string | null> {
-  // Get user's timezone for accurate "today" check
+  // Get user's timezone and organization for accurate "today" check
   const user = await getUserById(userId);
   const timezone = user?.timezone;
+  const organizationId = user?.primaryOrganizationId;
 
-  // Check if already sent today
-  const alreadySent = await hasNotificationForToday(userId, 'morning_checkin', timezone);
+  // Check if already sent today (scoped by organization for multi-tenancy)
+  const alreadySent = await hasNotificationForToday(userId, 'morning_checkin', timezone, organizationId);
   if (alreadySent) {
     return null;
   }
@@ -507,6 +578,7 @@ export async function sendMorningCheckInNotification(userId: string): Promise<st
     title: 'Your morning check-in is ready',
     body: "Start your day strong by checking in and setting today's focus.",
     actionRoute: '/checkin/morning/start',
+    organizationId,
   });
 }
 
@@ -514,12 +586,13 @@ export async function sendMorningCheckInNotification(userId: string): Promise<st
  * Send notification when all 3 daily focus tasks are completed
  */
 export async function sendTasksCompletedNotification(userId: string): Promise<string | null> {
-  // Get user's timezone for accurate "today" check
+  // Get user's timezone and organization for accurate "today" check
   const user = await getUserById(userId);
   const timezone = user?.timezone;
+  const organizationId = user?.primaryOrganizationId;
 
-  // Check if ANY evening notification already exists for today
-  const alreadySent = await hasAnyEveningNotificationForToday(userId, timezone);
+  // Check if ANY evening notification already exists for today (scoped by organization)
+  const alreadySent = await hasAnyEveningNotificationForToday(userId, timezone, organizationId);
   if (alreadySent) {
     return null;
   }
@@ -530,6 +603,7 @@ export async function sendTasksCompletedNotification(userId: string): Promise<st
     title: "Nice work! You completed today's focus",
     body: "You've finished your big three. Complete your evening check-in to close the day.",
     actionRoute: '/checkin/evening/start',
+    organizationId,
   });
 }
 
@@ -538,12 +612,13 @@ export async function sendTasksCompletedNotification(userId: string): Promise<st
  * Called by scheduled job around 5 PM local time
  */
 export async function sendEveningReminderNotification(userId: string): Promise<string | null> {
-  // Get user's timezone for accurate "today" check
+  // Get user's timezone and organization for accurate "today" check
   const user = await getUserById(userId);
   const timezone = user?.timezone;
+  const organizationId = user?.primaryOrganizationId;
 
-  // Check if ANY evening notification already exists for today
-  const alreadySent = await hasAnyEveningNotificationForToday(userId, timezone);
+  // Check if ANY evening notification already exists for today (scoped by organization)
+  const alreadySent = await hasAnyEveningNotificationForToday(userId, timezone, organizationId);
   if (alreadySent) {
     return null;
   }
@@ -554,6 +629,7 @@ export async function sendEveningReminderNotification(userId: string): Promise<s
     title: 'Close your day with a quick check-in',
     body: "Not every day is a hit, and that's okay. Take a moment to reflect and close your day.",
     actionRoute: '/checkin/evening/start',
+    organizationId,
   });
 }
 
@@ -565,8 +641,12 @@ export async function sendWeeklyReflectionNotification(
   userId: string,
   isAfterFridayEvening: boolean = false
 ): Promise<string | null> {
-  // Check if already sent this week
-  const alreadySent = await hasWeeklyReflectionNotificationForThisWeek(userId);
+  // Get user's organization for multi-tenancy
+  const user = await getUserById(userId);
+  const organizationId = user?.primaryOrganizationId;
+
+  // Check if already sent this week (scoped by organization)
+  const alreadySent = await hasWeeklyReflectionNotificationForThisWeek(userId, organizationId);
   if (alreadySent) {
     return null;
   }
@@ -582,6 +662,7 @@ export async function sendWeeklyReflectionNotification(
     title,
     body,
     actionRoute: '/checkin/weekly/checkin',
+    organizationId,
   });
 }
 

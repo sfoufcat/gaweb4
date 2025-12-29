@@ -316,6 +316,7 @@ async function sendEventNotification({
   if (!user) return;
 
   const userTimezone = user.timezone || 'UTC';
+  const organizationId = user.primaryOrganizationId;
   const eventTime = formatEventTimeForDisplay(job.eventDateTime, job.eventTimezone);
   const userTime = formatEventTimeInUserTimezone(job.eventDateTime, userTimezone);
 
@@ -349,6 +350,7 @@ async function sendEventNotification({
     title,
     body,
     actionRoute: getActionRoute(job),
+    organizationId,
   });
 }
 

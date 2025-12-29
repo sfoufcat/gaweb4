@@ -213,24 +213,29 @@ async function sendCoachingCallNotification({
   if (!user) return;
 
   const userTimezone = user.timezone || 'UTC';
+  const organizationId = user.primaryOrganizationId;
   const callTime = formatCallTimeForDisplay(callDateTime, callTimezone);
   const userTime = formatCallTimeInUserTimezone(callDateTime, userTimezone);
 
   let title: string;
   let body: string;
+  let notificationType: 'squad_call_24h' | 'squad_call_1h' | 'squad_call_live';
 
   switch (jobType) {
     case 'notification_24h':
       title = 'Coaching call tomorrow';
       body = `Your 1:1 coaching call with ${coachName} is tomorrow at ${callTime} (${userTime} your time).`;
+      notificationType = 'squad_call_24h';
       break;
     case 'notification_1h':
       title = 'Coaching call in 1 hour';
       body = `Your 1:1 coaching call with ${coachName} starts in 1 hour.`;
+      notificationType = 'squad_call_1h';
       break;
     case 'notification_live':
       title = 'Your coaching call is starting';
       body = `Your 1:1 coaching call with ${coachName} is happening now. Join via My Coach.`;
+      notificationType = 'squad_call_live';
       break;
     default:
       return;
@@ -238,10 +243,11 @@ async function sendCoachingCallNotification({
 
   await notifyUser({
     userId,
-    type: 'squad_call_24h', // Reuse existing notification type
+    type: notificationType,
     title,
     body,
     actionRoute: '/my-coach',
+    organizationId,
   });
 }
 

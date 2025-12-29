@@ -1420,6 +1420,19 @@ export const DEFAULT_EMAIL_DEFAULTS: EmailPreferences = {
   squadCall1h: true,
 };
 
+// Organization-level system notification settings (controls whether in-app notifications are sent at all)
+// If a system notification is disabled, the email for that type is also disabled (hard override)
+export type OrgSystemNotifications = EmailPreferences;
+
+// Default system notifications (all enabled by default)
+export const DEFAULT_SYSTEM_NOTIFICATIONS: OrgSystemNotifications = {
+  morningCheckIn: true,
+  eveningCheckIn: true,
+  weeklyReview: true,
+  squadCall24h: true,
+  squadCall1h: true,
+};
+
 export interface NotificationPreferences {
   email?: EmailNotificationPreferences;
 }
