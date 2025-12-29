@@ -47,8 +47,8 @@ export function ConfirmationModal({
   const variantStyles = {
     default: {
       iconBg: 'bg-[#f3f1ef] dark:bg-[#1e222a]',
-      iconColor: 'text-earth-900 dark:text-[#b8896a]',
-      confirmBg: 'bg-[#2c2520] dark:bg-[#b8896a] hover:bg-[#1a1a1a] dark:hover:bg-[#a07855]',
+      iconColor: 'text-earth-900 dark:text-brand-accent',
+      confirmBg: 'bg-[#2c2520] dark:bg-brand-accent hover:bg-[#1a1a1a] dark:hover:bg-brand-accent/90',
       confirmText: 'text-white',
     },
     destructive: {

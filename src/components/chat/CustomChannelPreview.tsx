@@ -78,14 +78,14 @@ export function CustomChannelPreview(props: CustomChannelPreviewProps) {
             className="w-12 h-12 rounded-full object-cover"
           />
         ) : (
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e] flex items-center justify-center text-white font-albert font-semibold text-lg">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-accent to-[#7d5c3e] flex items-center justify-center text-white font-albert font-semibold text-lg">
             {avatarInitial}
           </div>
         )}
         
         {/* Unread indicator */}
         {unread && unread > 0 && (
-          <div className="absolute -top-1 -right-1 w-5 h-5 bg-[#a07855] dark:bg-[#b8896a] rounded-full flex items-center justify-center">
+          <div className="absolute -top-1 -right-1 w-5 h-5 bg-brand-accent rounded-full flex items-center justify-center">
             <span className="font-albert text-[10px] font-semibold text-white">
               {unread > 9 ? '9+' : unread}
             </span>

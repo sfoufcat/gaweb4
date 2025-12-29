@@ -170,7 +170,7 @@ export function PollResultsSheet({ isOpen, onClose, poll }: PollResultsSheetProp
                                 className="w-full h-full object-cover"
                               />
                             ) : (
-                              <div className="w-full h-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e] flex items-center justify-center text-white text-[10px] font-semibold">
+                              <div className="w-full h-full bg-gradient-to-br from-brand-accent to-[#7d5c3e] flex items-center justify-center text-white text-[10px] font-semibold">
                                 {(voter.userName || '?').charAt(0).toUpperCase()}
                               </div>
                             )}

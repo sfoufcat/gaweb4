@@ -129,8 +129,8 @@ export function VerificationCodeInput({
               ${error 
                 ? 'border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20' 
                 : digits[index] 
-                  ? 'border-[#a07855] dark:border-[#b8896a] focus:border-[#a07855] dark:border-[#b8896a] focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20' 
-                  : 'border-[#e1ddd8] focus:border-[#a07855] dark:border-[#b8896a] focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20'
+                  ? 'border-brand-accent focus:border-brand-accent focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20' 
+                  : 'border-[#e1ddd8] focus:border-brand-accent focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20'
               }
             `}
           />

@@ -78,7 +78,7 @@ export function LockedFeature({
         <div className="text-center max-w-sm mx-auto px-6">
           {/* Lock Icon */}
           <div className="w-14 h-14 bg-gradient-to-br from-[#f5f2ed] to-[#e9e5df] dark:from-[#262b35] dark:to-[#1f242d] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
-            <Lock className="w-7 h-7 text-[#a07855] dark:text-[#b8896a]" />
+            <Lock className="w-7 h-7 text-brand-accent" />
           </div>
 
           {/* Title */}
@@ -94,7 +94,7 @@ export function LockedFeature({
           {/* Upgrade Button */}
           <button
             onClick={() => router.push('/coach/plan')}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#a07855] to-[#c9a07a] text-white font-sans font-medium text-[14px] rounded-xl hover:shadow-lg transition-all"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-brand-accent to-[#c9a07a] text-white font-sans font-medium text-[14px] rounded-xl hover:shadow-lg transition-all"
           >
             <Zap className="w-4 h-4" />
             Upgrade to {tierInfo.name}
@@ -160,10 +160,10 @@ export function LockedIndicator({ requiredTier, onClick }: LockedIndicatorProps)
   return (
     <button
       onClick={handleClick}
-      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-[#faf8f6] to-[#f5f2ed] dark:from-[#262b35] dark:to-[#1f242d] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:border-[#a07855] dark:border-[#b8896a] dark:hover:border-[#b8896a] transition-colors group"
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-[#faf8f6] to-[#f5f2ed] dark:from-[#262b35] dark:to-[#1f242d] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:border-brand-accent dark:hover:border-brand-accent transition-colors group"
     >
-      <Lock className="w-3.5 h-3.5 text-[#9ca3af] group-hover:text-[#a07855] dark:text-[#b8896a] dark:group-hover:text-[#b8896a] transition-colors" />
-      <span className="font-sans text-[12px] text-text-secondary dark:text-[#b2b6c2] group-hover:text-[#a07855] dark:text-[#b8896a] dark:group-hover:text-[#b8896a] transition-colors">
+      <Lock className="w-3.5 h-3.5 text-[#9ca3af] group-hover:text-brand-accent dark:group-hover:text-brand-accent transition-colors" />
+      <span className="font-sans text-[12px] text-text-secondary dark:text-[#b2b6c2] group-hover:text-brand-accent dark:group-hover:text-brand-accent transition-colors">
         {tierInfo.name}
       </span>
     </button>

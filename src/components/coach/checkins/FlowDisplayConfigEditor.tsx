@@ -106,7 +106,7 @@ export function FlowDisplayConfigEditor({ value, onChange }: FlowDisplayConfigEd
           value={config.title}
           onChange={(e) => updateConfig({ title: e.target.value })}
           placeholder="e.g., Midday Reset"
-          className="w-full px-4 py-2.5 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted dark:placeholder:text-[#666d7c] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a]"
+          className="w-full px-4 py-2.5 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted dark:placeholder:text-[#666d7c] focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent"
         />
       </div>
 
@@ -120,7 +120,7 @@ export function FlowDisplayConfigEditor({ value, onChange }: FlowDisplayConfigEd
           value={config.subtitle || ''}
           onChange={(e) => updateConfig({ subtitle: e.target.value || undefined })}
           placeholder="e.g., Take a mindful break"
-          className="w-full px-4 py-2.5 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted dark:placeholder:text-[#666d7c] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a]"
+          className="w-full px-4 py-2.5 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted dark:placeholder:text-[#666d7c] focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent"
         />
       </div>
 
@@ -165,7 +165,7 @@ export function FlowDisplayConfigEditor({ value, onChange }: FlowDisplayConfigEd
                 onClick={() => updateConfig({ icon: name })}
                 className={`p-2.5 rounded-xl transition-all ${
                   config.icon === name
-                    ? 'bg-[#a07855] dark:bg-[#b8896a] text-white scale-110'
+                    ? 'bg-brand-accent text-white scale-110'
                     : 'bg-[#f5f3f0] dark:bg-[#0d1015] text-text-secondary dark:text-[#b2b6c2] hover:bg-[#e8e5e1] dark:hover:bg-[#1a1f28]'
                 }`}
               >
@@ -183,7 +183,7 @@ export function FlowDisplayConfigEditor({ value, onChange }: FlowDisplayConfigEd
                   onClick={() => updateConfig({ icon: emoji })}
                   className={`p-2 text-xl rounded-xl transition-all ${
                     config.icon === emoji
-                      ? 'bg-[#a07855]/20 scale-110 ring-2 ring-[#a07855] dark:ring-[#b8896a]'
+                      ? 'bg-brand-accent/20 scale-110 ring-2 ring-brand-accent dark:ring-brand-accent'
                       : 'bg-[#f5f3f0] dark:bg-[#0d1015] hover:bg-[#e8e5e1] dark:hover:bg-[#1a1f28]'
                   }`}
                 >
@@ -220,7 +220,7 @@ export function FlowDisplayConfigEditor({ value, onChange }: FlowDisplayConfigEd
               title={preset.name}
               className={`h-10 rounded-lg bg-gradient-to-br ${preset.value} transition-all ${
                 config.gradient === preset.value
-                  ? 'ring-2 ring-[#a07855] dark:ring-[#b8896a] ring-offset-2 ring-offset-white dark:ring-offset-[#171b22] scale-105'
+                  ? 'ring-2 ring-brand-accent dark:ring-brand-accent ring-offset-2 ring-offset-white dark:ring-offset-[#171b22] scale-105'
                   : 'hover:scale-105'
               }`}
             />

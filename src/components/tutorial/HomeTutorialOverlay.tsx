@@ -66,7 +66,7 @@ function ExitConfirmationModal({ isOpen, onContinue, onExit }: ExitModalProps) {
         <div className="flex gap-3">
           <button
             onClick={onContinue}
-            className="flex-1 py-3 px-4 bg-[#2c2520] dark:bg-[#b8896a] text-white rounded-xl font-sans font-semibold text-[14px] hover:bg-[#1a1a1a] dark:hover:bg-[#a07855] transition-colors"
+            className="flex-1 py-3 px-4 bg-[#2c2520] dark:bg-brand-accent text-white rounded-xl font-sans font-semibold text-[14px] hover:bg-[#1a1a1a] dark:hover:bg-brand-accent/90 transition-colors"
           >
             Continue tutorial
           </button>
@@ -363,7 +363,7 @@ export function HomeTutorialOverlay({
             }}
           >
             {/* Highlight ring */}
-            <div className="absolute inset-0 rounded-2xl ring-4 ring-[#a07855] dark:ring-[#b8896a] ring-offset-4 ring-offset-transparent" />
+            <div className="absolute inset-0 rounded-2xl ring-4 ring-brand-accent dark:ring-brand-accent ring-offset-4 ring-offset-transparent" />
           </div>
         ) : (
           /* Fallback: full dark overlay when no highlight target */
@@ -401,9 +401,9 @@ export function HomeTutorialOverlay({
                 key={i}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
                   i === currentStepIndex
-                    ? 'w-6 bg-[#a07855] dark:bg-[#b8896a]'
+                    ? 'w-6 bg-brand-accent'
                     : i < currentStepIndex
-                    ? 'w-1.5 bg-[#a07855]/50 dark:bg-[#b8896a]/50'
+                    ? 'w-1.5 bg-brand-accent/50 dark:bg-brand-accent/50'
                     : 'w-1.5 bg-[#e1ddd8] dark:bg-[#262b35]'
                 }`}
               />
@@ -435,7 +435,7 @@ export function HomeTutorialOverlay({
 
             <button
               onClick={isLastStep ? onComplete : onNext}
-              className="flex items-center gap-1 px-5 py-2.5 bg-[#2c2520] dark:bg-[#b8896a] text-white rounded-xl font-sans text-[13px] font-semibold hover:bg-[#1a1a1a] dark:hover:bg-[#a07855] transition-colors"
+              className="flex items-center gap-1 px-5 py-2.5 bg-[#2c2520] dark:bg-brand-accent text-white rounded-xl font-sans text-[13px] font-semibold hover:bg-[#1a1a1a] dark:hover:bg-brand-accent/90 transition-colors"
             >
               {isLastStep ? 'Finish' : 'Next'}
               {!isLastStep && <ChevronRight className="w-4 h-4" />}

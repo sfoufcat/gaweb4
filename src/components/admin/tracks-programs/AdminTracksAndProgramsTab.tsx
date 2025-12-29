@@ -38,7 +38,7 @@ export function AdminTracksAndProgramsTab({
             onClick={() => setActiveSubTab('programs')}
             className={`px-4 py-3 font-albert text-sm font-medium border-b-2 transition-colors ${
               activeSubTab === 'programs'
-                ? 'border-[#a07855] dark:border-[#b8896a] text-[#a07855] dark:text-[#b8896a]'
+                ? 'border-brand-accent text-brand-accent'
                 : 'border-transparent text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
             }`}
           >
@@ -48,7 +48,7 @@ export function AdminTracksAndProgramsTab({
             onClick={() => setActiveSubTab('prompts')}
             className={`px-4 py-3 font-albert text-sm font-medium border-b-2 transition-colors ${
               activeSubTab === 'prompts'
-                ? 'border-[#a07855] dark:border-[#b8896a] text-[#a07855] dark:text-[#b8896a]'
+                ? 'border-brand-accent text-brand-accent'
                 : 'border-transparent text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
             }`}
           >

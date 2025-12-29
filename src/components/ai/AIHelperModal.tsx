@@ -80,8 +80,8 @@ function ProgramContentPreview({ draft }: { draft: ProgramContentDraft }) {
       
       {/* Global Habits */}
       {draft.globalDefaultHabits.length > 0 && (
-        <div className="bg-[#a07855]/10 dark:bg-[#a07855]/20 rounded-lg p-3">
-          <h4 className="text-sm font-medium text-[#a07855] dark:text-[#b8896a] dark:text-[#c49a6c] mb-2">
+        <div className="bg-brand-accent/10 dark:bg-brand-accent/20 rounded-lg p-3">
+          <h4 className="text-sm font-medium text-brand-accent dark:text-[#c49a6c] mb-2">
             Global Default Habits
           </h4>
           <div className="space-y-1">
@@ -180,14 +180,14 @@ function LandingPagePreview({ draft }: { draft: LandingPageDraft }) {
   return (
     <div className="space-y-4 max-h-[400px] overflow-y-auto">
       {/* Hero */}
-      <div className="bg-gradient-to-br from-[#a07855]/20 to-[#a07855]/5 dark:from-[#a07855]/30 dark:to-[#a07855]/10 rounded-lg p-4">
-        <span className="text-xs font-medium text-[#a07855] dark:text-[#b8896a] dark:text-[#c49a6c] uppercase tracking-wide">Hero Section</span>
+      <div className="bg-gradient-to-br from-brand-accent/20 to-brand-accent/5 dark:from-brand-accent/30 dark:to-brand-accent/10 rounded-lg p-4">
+        <span className="text-xs font-medium text-brand-accent dark:text-[#c49a6c] uppercase tracking-wide">Hero Section</span>
         <h3 className="text-lg font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mt-1">{draft.hero.title}</h3>
         <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-1">{draft.hero.subtitle}</p>
         <div className="flex gap-2 mt-3">
           <span className="px-3 py-1 bg-[#a07855] text-white text-sm rounded-lg">{draft.hero.primaryCta}</span>
           {draft.hero.secondaryCta && (
-            <span className="px-3 py-1 border border-[#a07855] dark:border-[#b8896a] text-[#a07855] dark:text-[#b8896a] text-sm rounded-lg">{draft.hero.secondaryCta}</span>
+            <span className="px-3 py-1 border border-brand-accent text-brand-accent text-sm rounded-lg">{draft.hero.secondaryCta}</span>
           )}
         </div>
       </div>
@@ -394,7 +394,7 @@ export function AIHelperModal({
           {/* Header */}
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
-              <Sparkles className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" />
+              <Sparkles className="w-6 h-6 text-brand-accent" />
               <div>
                 <h2 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
                   {title}
@@ -448,7 +448,7 @@ export function AIHelperModal({
                       : "E.g., Create a landing page for busy professionals who want to level up their health. Tone should be friendly but professional. Highlight the community aspect and accountability..."
                     }
                     rows={6}
-                    className="w-full px-4 py-3 border-2 border-[#a07855] dark:border-[#b8896a]/40 dark:border-[#a07855] dark:border-[#b8896a]/30 rounded-xl bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
+                    className="w-full px-4 py-3 border-2 border-brand-accent/40 dark:border-brand-accent/30 rounded-xl bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none focus:outline-none focus:border-brand-accent"
                   />
                   <p className="mt-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
                     Be specific about your audience, outcomes, tone, and any constraints
@@ -478,12 +478,12 @@ export function AIHelperModal({
                 {/* Sparkle Animation Container */}
                 <div className="relative w-24 h-24">
                   {/* Outer glow ring */}
-                  <div className="absolute inset-0 rounded-full bg-[#a07855]/20 dark:bg-[#b8896a]/20 animate-sparkle-pulse-ring" />
+                  <div className="absolute inset-0 rounded-full bg-brand-accent/20 dark:bg-brand-accent/20 animate-sparkle-pulse-ring" />
                   
                   {/* Central icon container */}
                   <div className="absolute inset-0 flex items-center justify-center animate-sparkle-pulse-glow">
                     <Sparkles 
-                      className="w-10 h-10 text-[#a07855] dark:text-[#b8896a]"
+                      className="w-10 h-10 text-brand-accent"
                       style={{ filter: 'drop-shadow(0 0 8px rgba(160, 120, 85, 0.6))' }}
                     />
                   </div>
@@ -492,7 +492,7 @@ export function AIHelperModal({
                   {[...Array(8)].map((_, i) => (
                     <div
                       key={i}
-                      className={`absolute w-2 h-2 rounded-full bg-[#a07855] dark:bg-[#b8896a] left-1/2 top-1/2 opacity-0 animate-sparkle-float-${i % 4}`}
+                      className={`absolute w-2 h-2 rounded-full bg-brand-accent left-1/2 top-1/2 opacity-0 animate-sparkle-float-${i % 4}`}
                       style={{ animationDelay: `${i * 0.375}s` }}
                     />
                   ))}
@@ -508,7 +508,7 @@ export function AIHelperModal({
                         animationDelay: `${i * 0.25}s`,
                       }}
                     >
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" className="text-[#a07855]/70 dark:text-[#b8896a]/70">
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" className="text-[#a07855]/70 dark:text-brand-accent/70">
                         <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
                       </svg>
                     </div>
@@ -577,7 +577,7 @@ export function AIHelperModal({
                 <Button
                   onClick={handleGenerate}
                   disabled={userPrompt.trim().length < 10}
-                  className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white flex items-center gap-2"
+                  className="bg-brand-accent hover:bg-brand-accent/90 text-white flex items-center gap-2"
                 >
                   <Sparkles className="w-4 h-4" />
                   Generate
@@ -610,7 +610,7 @@ export function AIHelperModal({
                 <Button
                   onClick={handleApply}
                   disabled={isApplying}
-                  className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white flex items-center gap-2"
+                  className="bg-brand-accent hover:bg-brand-accent/90 text-white flex items-center gap-2"
                 >
                   {isApplying ? (
                     <>
@@ -641,7 +641,7 @@ export function AIHelperModal({
                     setStep('input');
                     setError(null);
                   }}
-                  className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white flex items-center gap-2"
+                  className="bg-brand-accent hover:bg-brand-accent/90 text-white flex items-center gap-2"
                 >
                   <RefreshCw className="w-4 h-4" />
                   Try Again

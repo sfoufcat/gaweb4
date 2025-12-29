@@ -357,7 +357,7 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="w-12 h-12 border-4 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <div className="w-12 h-12 border-4 border-brand-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
         <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Loading programs...</p>
       </div>
     );
@@ -370,7 +370,7 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
         <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-sm">{error}</p>
         <Button 
           onClick={fetchPrograms} 
-          className="mt-4 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+          className="mt-4 bg-brand-accent hover:bg-brand-accent/90 text-white"
         >
           Retry
         </Button>
@@ -390,7 +390,7 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
             <Button 
               onClick={() => handleOpenProgramModal()}
               size="sm"
-              className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+              className="bg-brand-accent hover:bg-brand-accent/90 text-white"
             >
               Add
             </Button>
@@ -403,7 +403,7 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
                 onClick={() => setSelectedProgram(program)}
                 className={`p-3 rounded-lg cursor-pointer transition-colors ${
                   selectedProgram?.id === program.id
-                    ? 'bg-[#a07855]/10 border border-[#a07855] dark:border-[#b8896a]/30'
+                    ? 'bg-brand-accent/10 border border-brand-accent/30'
                     : 'hover:bg-[#faf8f6] dark:hover:bg-white/5 border border-transparent'
                 }`}
               >
@@ -417,7 +417,7 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
                         e.stopPropagation();
                         handleOpenProgramModal(program);
                       }}
-                      className="text-[#a07855] dark:text-[#b8896a] hover:text-[#8c6245] text-sm"
+                      className="text-brand-accent hover:text-brand-accent/90 text-sm"
                     >
                       Edit
                     </button>
@@ -502,7 +502,7 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
 
               {loadingDays ? (
                 <div className="text-center py-8">
-                  <div className="w-8 h-8 border-4 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin mx-auto"></div>
+                  <div className="w-8 h-8 border-4 border-brand-accent border-t-transparent rounded-full animate-spin mx-auto"></div>
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -566,7 +566,7 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
                             onClick={() => updateTask(index, { isPrimary: !task.isPrimary })}
                             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
                               task.isPrimary 
-                                ? 'bg-[#a07855]/15 text-[#a07855] dark:text-[#b8896a] dark:bg-[#a07855]/20 dark:text-[#b8896a]' 
+                                ? 'bg-brand-accent/15 text-brand-accent dark:bg-brand-accent/20 dark:text-brand-accent' 
                                 : 'bg-[#f3f1ef] dark:bg-[#1d222b] text-[#5f5a55] dark:text-[#7d8190] hover:bg-[#eae7e3] dark:hover:bg-[#262b35]'
                             }`}
                           >
@@ -602,7 +602,7 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
                       <button
                         type="button"
                         onClick={addTask}
-                        className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#a07855] dark:text-[#b8896a] hover:border-[#a07855] dark:border-[#b8896a]/50 hover:bg-[#a07855]/5 dark:hover:bg-[#a07855]/10 transition-all duration-200 font-albert font-medium text-sm"
+                        className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-brand-accent hover:border-brand-accent/50 hover:bg-brand-accent/5 dark:hover:bg-brand-accent/90/10 transition-all duration-200 font-albert font-medium text-sm"
                       >
                         <Plus className="w-4 h-4" />
                         Add Task
@@ -632,7 +632,7 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
                             className="group relative flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:shadow-sm hover:border-[#d4d0cb] dark:hover:border-[#313746] transition-all duration-200"
                           >
                             {/* Habit Icon - Dashed Ring */}
-                            <div className="w-5 h-5 rounded-full border-2 border-dashed border-[#a07855] dark:border-[#b8896a]/40 dark:border-[#b8896a]/40 flex-shrink-0" />
+                            <div className="w-5 h-5 rounded-full border-2 border-dashed border-brand-accent/40 dark:border-brand-accent/40 flex-shrink-0" />
                             
                             {/* Input */}
                             <input
@@ -648,7 +648,7 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
                               <select
                                 value={habit.frequency}
                                 onChange={(e) => updateHabit(index, { frequency: e.target.value as 'daily' | 'weekday' | 'custom' })}
-                                className="appearance-none pl-3 pr-8 py-1.5 bg-[#f3f1ef] dark:bg-[#1d222b] border-none rounded-lg text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30"
+                                className="appearance-none pl-3 pr-8 py-1.5 bg-[#f3f1ef] dark:bg-[#1d222b] border-none rounded-lg text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30"
                               >
                                 <option value="daily">Daily</option>
                                 <option value="weekday">Weekday</option>
@@ -685,7 +685,7 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
                         <button
                           type="button"
                           onClick={addHabit}
-                          className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#a07855] dark:text-[#b8896a] hover:border-[#a07855] dark:border-[#b8896a]/50 hover:bg-[#a07855]/5 dark:hover:bg-[#a07855]/10 transition-all duration-200 font-albert font-medium text-sm"
+                          className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-brand-accent hover:border-brand-accent/50 hover:bg-brand-accent/5 dark:hover:bg-brand-accent/90/10 transition-all duration-200 font-albert font-medium text-sm"
                         >
                           <Plus className="w-4 h-4" />
                           Add Habit
@@ -704,7 +704,7 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
                     <Button
                       onClick={handleSaveDay}
                       disabled={saving}
-                      className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+                      className="bg-brand-accent hover:bg-brand-accent/90 text-white"
                     >
                       {saving ? 'Saving...' : 'Save Day'}
                     </Button>
@@ -861,7 +861,7 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
                             className="group relative flex items-center gap-3 p-3 bg-[#faf8f6] dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:border-[#d4d0cb] dark:hover:border-[#313746] transition-all duration-200"
                           >
                             {/* Habit Icon - Dashed Ring */}
-                            <div className="w-4 h-4 rounded-full border-2 border-dashed border-[#a07855] dark:border-[#b8896a]/40 dark:border-[#b8896a]/40 flex-shrink-0" />
+                            <div className="w-4 h-4 rounded-full border-2 border-dashed border-brand-accent/40 dark:border-brand-accent/40 flex-shrink-0" />
                             
                             {/* Input */}
                             <input
@@ -887,7 +887,7 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
                         <button
                           type="button"
                           onClick={addProgramHabit}
-                          className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#a07855] dark:text-[#b8896a] hover:border-[#a07855] dark:border-[#b8896a]/50 hover:bg-[#a07855]/5 dark:hover:bg-[#a07855]/10 transition-all duration-200 font-albert font-medium text-sm"
+                          className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-brand-accent hover:border-brand-accent/50 hover:bg-brand-accent/5 dark:hover:bg-brand-accent/90/10 transition-all duration-200 font-albert font-medium text-sm"
                         >
                           <Plus className="w-4 h-4" />
                           Add Habit
@@ -932,7 +932,7 @@ export function AdminStarterProgramsTab({ apiBasePath = '/api/admin/starter-prog
                     <Button
                       onClick={handleSaveProgram}
                       disabled={saving || !programFormData.slug || !programFormData.name}
-                      className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+                      className="bg-brand-accent hover:bg-brand-accent/90 text-white"
                     >
                       {saving ? 'Saving...' : (editingProgram ? 'Update' : 'Create')}
                     </Button>

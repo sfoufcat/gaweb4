@@ -84,7 +84,7 @@ function UsageMeter({
                 ? 'text-red-600 dark:text-red-400' 
                 : isWarning
                   ? 'text-amber-600 dark:text-amber-400'
-                  : 'text-[#a07855] dark:text-[#b8896a]'
+                  : 'text-brand-accent'
             }`} />
           </div>
           <span className="font-sans text-[14px] text-text-secondary dark:text-[#b2b6c2]">
@@ -104,7 +104,7 @@ function UsageMeter({
               ? 'bg-red-500' 
               : isWarning
                 ? 'bg-amber-500'
-                : 'bg-gradient-to-r from-[#a07855] to-[#c9a07a]'
+                : 'bg-gradient-to-r from-brand-accent to-[#c9a07a]'
           }`}
           style={{ width: `${isUnlimited ? 0 : Math.min(100, percent)}%` }}
         />
@@ -273,7 +273,7 @@ export function CoachPlanTab() {
         <p className="text-red-600 dark:text-red-400 mb-4">{error || 'Failed to load subscription'}</p>
         <button 
           onClick={() => window.location.reload()}
-          className="text-[#a07855] dark:text-[#b8896a] underline"
+          className="text-brand-accent underline"
         >
           Retry
         </button>
@@ -411,7 +411,7 @@ export function CoachPlanTab() {
         {tier === 'starter' && (
           <div className="mt-6 p-4 bg-gradient-to-br from-[#faf8f6] to-[#f5f2ed] dark:from-[#262b35] dark:to-[#1f242d] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#a07855] to-[#c9a07a] rounded-xl flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 bg-gradient-to-br from-brand-accent to-[#c9a07a] rounded-xl flex items-center justify-center flex-shrink-0">
                 <Zap className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -423,7 +423,7 @@ export function CoachPlanTab() {
                 </p>
                 <button
                   onClick={() => router.push('/coach/plan')}
-                  className="inline-flex items-center gap-1.5 text-[#a07855] dark:text-[#b8896a] font-sans text-[13px] font-medium hover:underline"
+                  className="inline-flex items-center gap-1.5 text-brand-accent font-sans text-[13px] font-medium hover:underline"
                 >
                   View Plans
                   <ArrowUpRight className="w-3.5 h-3.5" />

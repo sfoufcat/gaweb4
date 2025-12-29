@@ -45,8 +45,8 @@ const STATUS_CONFIG: Record<FeatureRequestStatus, {
   in_progress: {
     label: 'In Progress',
     icon: Rocket,
-    color: 'text-[#a07855] dark:text-[#b8896a]',
-    bgColor: 'bg-[#a07855]/10 dark:bg-[#b8896a]/20',
+    color: 'text-brand-accent',
+    bgColor: 'bg-brand-accent/10 dark:bg-brand-accent/20',
   },
   suggested: {
     label: 'Suggested',
@@ -169,7 +169,7 @@ export function AdminFeaturesTab() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-8 h-8 animate-spin text-[#a07855] dark:text-[#b8896a]" />
+        <Loader2 className="w-8 h-8 animate-spin text-brand-accent" />
       </div>
     );
   }
@@ -180,7 +180,7 @@ export function AdminFeaturesTab() {
         <p className="text-red-600 dark:text-red-400 font-albert mb-4">{error}</p>
         <button
           onClick={fetchFeatures}
-          className="text-[#a07855] dark:text-[#b8896a] hover:underline font-albert"
+          className="text-brand-accent hover:underline font-albert"
         >
           Try again
         </button>
@@ -202,7 +202,7 @@ export function AdminFeaturesTab() {
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#a07855] to-[#8c6245] hover:from-[#8c6245] hover:to-[#7a5539] text-white font-albert font-medium rounded-xl transition-all shadow-sm hover:shadow-md"
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-brand-accent to-[#8c6245] hover:from-[#8c6245] hover:to-[#7a5539] text-white font-albert font-medium rounded-xl transition-all shadow-sm hover:shadow-md"
         >
           <Plus className="w-4 h-4" />
           Add Feature
@@ -240,7 +240,7 @@ export function AdminFeaturesTab() {
       {/* In Progress Section */}
       <section>
         <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3 flex items-center gap-2">
-          <Rocket className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+          <Rocket className="w-5 h-5 text-brand-accent" />
           In Progress ({data?.byStatus.in_progress.length || 0})
         </h3>
         <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
@@ -617,7 +617,7 @@ function FeatureModal({ feature, onClose, onSave }: FeatureModalProps) {
               placeholder="Feature title"
               required
               minLength={3}
-              className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30"
+              className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30"
             />
           </div>
 
@@ -630,7 +630,7 @@ function FeatureModal({ feature, onClose, onSave }: FeatureModalProps) {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Feature description (optional)"
               rows={3}
-              className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 resize-none"
+              className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 resize-none"
             />
           </div>
 
@@ -642,7 +642,7 @@ function FeatureModal({ feature, onClose, onSave }: FeatureModalProps) {
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as FeatureRequestStatus)}
-                className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30"
+                className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30"
               >
                 {Object.entries(STATUS_CONFIG).map(([value, config]) => (
                   <option key={value} value={value}>{config.label}</option>
@@ -660,7 +660,7 @@ function FeatureModal({ feature, onClose, onSave }: FeatureModalProps) {
                 onChange={(e) => setPriority(e.target.value)}
                 placeholder="1, 2, 3..."
                 min={1}
-                className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30"
+                className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30"
               />
             </div>
           </div>
@@ -674,7 +674,7 @@ function FeatureModal({ feature, onClose, onSave }: FeatureModalProps) {
               onChange={(e) => setAdminNotes(e.target.value)}
               placeholder="Internal notes not shown to users..."
               rows={2}
-              className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 resize-none"
+              className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 resize-none"
             />
           </div>
 
@@ -693,7 +693,7 @@ function FeatureModal({ feature, onClose, onSave }: FeatureModalProps) {
             <button
               type="submit"
               disabled={isSubmitting || !title.trim()}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#a07855] to-[#8c6245] hover:from-[#8c6245] hover:to-[#7a5539] text-white font-albert font-medium rounded-xl transition-all disabled:opacity-50"
+              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-brand-accent to-[#8c6245] hover:from-[#8c6245] hover:to-[#7a5539] text-white font-albert font-medium rounded-xl transition-all disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>

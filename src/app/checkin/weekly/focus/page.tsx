@@ -154,9 +154,9 @@ export default function FocusPage() {
               </p>
               <button
                 onClick={() => setText(suggestion.suggestion || '')}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#a07855]/10 to-[#8c6245]/5 hover:from-[#a07855]/20 hover:to-[#8c6245]/10 border border-[#a07855] dark:border-[#b8896a]/20 rounded-full transition-all hover:scale-[1.02] active:scale-[0.98]"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-brand-accent/10 to-[#8c6245]/5 hover:from-brand-accent/20 hover:to-[#8c6245]/10 border border-brand-accent/20 rounded-full transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
-                <Sparkles className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+                <Sparkles className="w-4 h-4 text-brand-accent" />
                 <span className="font-sans text-[14px] text-[#1a1a1a] font-medium">
                   {suggestion.suggestion}
                 </span>

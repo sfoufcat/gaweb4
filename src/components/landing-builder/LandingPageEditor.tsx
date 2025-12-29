@@ -69,7 +69,7 @@ class PuckErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState
             </p>
             <Button
               onClick={this.handleReset}
-              className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+              className="bg-brand-accent hover:bg-brand-accent/90 text-white"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Try Again
@@ -106,31 +106,31 @@ function TemplatePreview({ template }: { template: LandingPageTemplate }) {
     <div className="w-full h-full bg-gradient-to-br from-[#f5f2ee] to-[#e1ddd8] dark:from-[#1d222b] dark:to-[#11141b] p-4 flex flex-col relative">
       {/* Mini header representation */}
       <div className="flex items-center gap-2 mb-3">
-        <div className="w-5 h-5 rounded-full bg-[#a07855]/30" />
-        <div className="flex-1 h-1.5 bg-[#a07855]/20 rounded" />
+        <div className="w-5 h-5 rounded-full bg-brand-accent/30" />
+        <div className="flex-1 h-1.5 bg-brand-accent/20 rounded" />
       </div>
       
       {/* Hero section representation */}
       <div className="flex-1 flex flex-col items-center justify-center mb-3">
-        <div className="w-12 h-12 rounded-xl bg-[#a07855]/20 flex items-center justify-center mb-2">
-          <Icon className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" />
+        <div className="w-12 h-12 rounded-xl bg-brand-accent/20 flex items-center justify-center mb-2">
+          <Icon className="w-6 h-6 text-brand-accent" />
         </div>
-        <div className="w-3/4 h-2 bg-[#a07855]/30 rounded mb-1.5" />
-        <div className="w-1/2 h-1.5 bg-[#a07855]/15 rounded" />
+        <div className="w-3/4 h-2 bg-brand-accent/30 rounded mb-1.5" />
+        <div className="w-1/2 h-1.5 bg-brand-accent/15 rounded" />
       </div>
       
       {/* Section indicators */}
       <div className="flex gap-1.5 justify-center">
         {template.puckData.content.slice(0, 5).map((_, i) => (
-          <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#a07855]/40" />
+          <div key={i} className="w-1.5 h-1.5 rounded-full bg-brand-accent/40" />
         ))}
         {template.puckData.content.length > 5 && (
-          <span className="text-[9px] text-[#a07855] dark:text-[#b8896a]/60 ml-0.5">+{template.puckData.content.length - 5}</span>
+          <span className="text-[9px] text-brand-accent/60 ml-0.5">+{template.puckData.content.length - 5}</span>
         )}
       </div>
       
       {/* Section count badge */}
-      <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-[#a07855]/20 text-[#a07855] dark:text-[#b8896a] text-[10px] font-medium">
+      <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-brand-accent/20 text-brand-accent text-[10px] font-medium">
         {template.puckData.content.length} sections
       </div>
     </div>
@@ -226,10 +226,10 @@ export function LandingPageEditor({
               {/* Blank Page Option */}
               <button
                 onClick={handleStartBlank}
-                className="h-64 border-2 border-dashed border-border dark:border-[#262b35] rounded-2xl hover:border-[#a07855] dark:border-[#b8896a] hover:bg-[#a07855]/5 dark:hover:bg-[#a07855]/10 transition-all duration-200 flex flex-col items-center justify-center gap-4 group"
+                className="h-64 border-2 border-dashed border-border dark:border-[#262b35] rounded-2xl hover:border-brand-accent hover:bg-brand-accent/5 dark:hover:bg-brand-accent/90/10 transition-all duration-200 flex flex-col items-center justify-center gap-4 group"
               >
-                <div className="w-14 h-14 rounded-2xl bg-surface-elevated dark:bg-[#1d222b] flex items-center justify-center group-hover:bg-[#a07855]/10 transition-colors border border-border dark:border-[#262b35]">
-                  <Layout className="w-7 h-7 text-text-muted dark:text-[#7d8190] group-hover:text-[#a07855] dark:text-[#b8896a] transition-colors" />
+                <div className="w-14 h-14 rounded-2xl bg-surface-elevated dark:bg-[#1d222b] flex items-center justify-center group-hover:bg-brand-accent/10 transition-colors border border-border dark:border-[#262b35]">
+                  <Layout className="w-7 h-7 text-text-muted dark:text-[#7d8190] group-hover:text-brand-accent transition-colors" />
                 </div>
                 <div className="text-center">
                   <span className="font-semibold text-lg text-text-primary dark:text-[#f5f5f8] block">Blank Page</span>
@@ -244,13 +244,13 @@ export function LandingPageEditor({
                   <button
                     key={template.id}
                     onClick={() => handleSelectTemplate(template)}
-                    className="text-left bg-card dark:bg-[#171b22] border border-border dark:border-[#262b35] rounded-2xl overflow-hidden hover:border-[#a07855] dark:border-[#b8896a] hover:shadow-lg dark:hover:shadow-[#a07855]/10 transition-all duration-200 group"
+                    className="text-left bg-card dark:bg-[#171b22] border border-border dark:border-[#262b35] rounded-2xl overflow-hidden hover:border-brand-accent hover:shadow-lg dark:hover:shadow-[#a07855]/10 transition-all duration-200 group"
                   >
                     {/* Thumbnail/Preview */}
                     <div className="aspect-[4/3] relative overflow-hidden border-b border-border dark:border-[#262b35]">
                       <TemplatePreview template={template} />
-                      <div className="absolute inset-0 bg-[#a07855]/0 group-hover:bg-[#a07855]/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <span className="px-4 py-2 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg font-medium text-sm shadow-lg flex items-center gap-2">
+                      <div className="absolute inset-0 bg-[#a07855]/0 group-hover:bg-brand-accent/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <span className="px-4 py-2 bg-brand-accent text-white rounded-lg font-medium text-sm shadow-lg flex items-center gap-2">
                           <Sparkles className="w-4 h-4" />
                           Use Template
                         </span>
@@ -260,10 +260,10 @@ export function LandingPageEditor({
                     {/* Info */}
                     <div className="p-4">
                       <div className="flex items-center gap-2 mb-1">
-                        <CategoryIcon className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
-                        <span className="text-xs text-[#a07855] dark:text-[#b8896a] capitalize font-medium">{template.category}</span>
+                        <CategoryIcon className="w-4 h-4 text-brand-accent" />
+                        <span className="text-xs text-brand-accent capitalize font-medium">{template.category}</span>
                       </div>
-                      <h3 className="font-semibold text-text-primary dark:text-[#f5f5f8] group-hover:text-[#a07855] dark:text-[#b8896a] transition-colors">
+                      <h3 className="font-semibold text-text-primary dark:text-[#f5f5f8] group-hover:text-brand-accent transition-colors">
                         {template.name}
                       </h3>
                       <p className="text-sm text-text-secondary dark:text-[#b2b6c2] mt-1 line-clamp-2">
@@ -295,13 +295,13 @@ export function LandingPageEditor({
             <ChevronLeft className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#a07855]/10 dark:bg-[#b8896a]/20 flex items-center justify-center">
-              <LayoutTemplate className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+            <div className="w-8 h-8 rounded-lg bg-brand-accent/10 dark:bg-brand-accent/20 flex items-center justify-center">
+              <LayoutTemplate className="w-4 h-4 text-brand-accent" />
             </div>
             <div>
               <h1 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">Landing Page Builder</h1>
               {hasChanges && (
-                <span className="text-[10px] text-[#a07855] dark:text-[#b8896a]">Unsaved changes</span>
+                <span className="text-[10px] text-brand-accent">Unsaved changes</span>
               )}
             </div>
           </div>
@@ -314,7 +314,7 @@ export function LandingPageEditor({
             variant="outline"
             size="sm"
             onClick={() => setShowTemplates(true)}
-            className="border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:border-[#a07855] dark:border-[#b8896a] dark:hover:border-[#b8896a]"
+            className="border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] hover:border-brand-accent dark:hover:border-brand-accent"
           >
             <LayoutTemplate className="w-4 h-4 mr-2" />
             Templates
@@ -335,7 +335,7 @@ export function LandingPageEditor({
             size="sm"
             onClick={() => handleSave(editorData)}
             disabled={isSaving}
-            className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-semibold px-4 shadow-sm"
+            className="bg-brand-accent hover:bg-brand-accent/90 text-white font-semibold px-4 shadow-sm"
           >
             {isSaving ? (
               <>

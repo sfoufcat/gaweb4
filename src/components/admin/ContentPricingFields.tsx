@@ -74,10 +74,10 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
   const currencySymbol = CURRENCIES.find(c => c.code === value.currency)?.symbol || '$';
 
   return (
-    <div className="space-y-4 p-4 bg-gradient-to-br from-[#a07855]/5 via-transparent to-transparent border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
+    <div className="space-y-4 p-4 bg-gradient-to-br from-brand-accent/5 via-transparent to-transparent border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-[#a07855]/10 flex items-center justify-center">
-          <DollarSign className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+        <div className="w-8 h-8 rounded-lg bg-brand-accent/10 flex items-center justify-center">
+          <DollarSign className="w-4 h-4 text-brand-accent" />
         </div>
         <div>
           <h3 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
@@ -146,7 +146,7 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
                   value={priceInDollars}
                   onChange={(e) => handlePriceChange(e.target.value)}
                   placeholder="0.00"
-                  className="w-full pl-7 pr-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c]"
+                  className="w-full pl-7 pr-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c]"
                 />
               </div>
             </div>
@@ -158,7 +158,7 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
               <select
                 value={value.currency}
                 onChange={(e) => onChange({ ...value, currency: e.target.value })}
-                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+                className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
               >
                 {CURRENCIES.map((currency) => (
                   <option key={currency.code} value={currency.code}>
@@ -180,12 +180,12 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
                 onClick={() => onChange({ ...value, purchaseType: 'popup' })}
                 className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
                   value.purchaseType === 'popup'
-                    ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5'
-                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a]/50'
+                    ? 'border-brand-accent bg-brand-accent/5'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
                 }`}
               >
                 <ShoppingBag className={`w-5 h-5 ${
-                  value.purchaseType === 'popup' ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-[#5f5a55] dark:text-[#b2b6c2]'
+                  value.purchaseType === 'popup' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'
                 }`} />
                 <div className="text-left">
                   <span className={`block text-sm font-medium font-albert ${
@@ -206,12 +206,12 @@ export function ContentPricingFields({ value, onChange }: ContentPricingFieldsPr
                 onClick={() => onChange({ ...value, purchaseType: 'landing_page' })}
                 className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
                   value.purchaseType === 'landing_page'
-                    ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5'
-                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a]/50'
+                    ? 'border-brand-accent bg-brand-accent/5'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
                 }`}
               >
                 <Globe className={`w-5 h-5 ${
-                  value.purchaseType === 'landing_page' ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-[#5f5a55] dark:text-[#b2b6c2]'
+                  value.purchaseType === 'landing_page' ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'
                 }`} />
                 <div className="text-left">
                   <span className={`block text-sm font-medium font-albert ${

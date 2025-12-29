@@ -19,7 +19,7 @@ import {
 import type { InfluencePromptConfig, InfluencePromptType } from '@/types';
 
 // CSS variable helpers - uses values set by FunnelClient
-const primaryVar = 'var(--funnel-primary, #a07855)';
+const primaryVar = 'var(--funnel-primary, var(--brand-accent-light))';
 
 // Icon mapping
 const INFLUENCE_ICONS: Record<InfluencePromptType, LucideIcon> = {

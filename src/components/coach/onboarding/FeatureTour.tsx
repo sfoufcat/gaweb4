@@ -283,7 +283,7 @@ export function FeatureTour({ isActive, onComplete, onSkip }: FeatureTourProps) 
                           index === currentStep
                             ? 'bg-[#a07855] w-6'
                             : index < currentStep
-                            ? 'bg-[#a07855]/50'
+                            ? 'bg-brand-accent/50'
                             : 'bg-[#e1ddd8] dark:bg-[#313746]'
                         }`}
                       />

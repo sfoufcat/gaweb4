@@ -84,7 +84,7 @@ export const FAQ = ({
     <div className="bg-card border border-border rounded-xl p-6">
       <h3 className="font-medium text-foreground mb-3 flex items-start gap-3">
         {showNumbers && (
-          <span className="text-sm text-[#a07855] dark:text-[#b8896a] font-bold">{String(index + 1).padStart(2, '0')}</span>
+          <span className="text-sm text-brand-accent font-bold">{String(index + 1).padStart(2, '0')}</span>
         )}
         {item.question}
       </h3>
@@ -98,7 +98,7 @@ export const FAQ = ({
     <div className="py-6 border-b border-border last:border-0">
       <h3 className="font-medium text-foreground mb-2 flex items-start gap-3">
         {showNumbers && (
-          <span className="text-[#a07855] dark:text-[#b8896a] font-bold">{index + 1}.</span>
+          <span className="text-brand-accent font-bold">{index + 1}.</span>
         )}
         {item.question}
       </h3>

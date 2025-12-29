@@ -140,7 +140,7 @@ function SessionDetailModal({
               <ul className="space-y-2">
                 {session.takeaways.map((takeaway, index) => (
                   <li key={index} className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-[#a07855] dark:text-[#b8896a] mt-0.5 shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-brand-accent mt-0.5 shrink-0" />
                     <span className="font-albert text-[15px] text-[#5f5a55] dark:text-[#b2b6c2]">{takeaway}</span>
                   </li>
                 ))}
@@ -300,7 +300,7 @@ export default function MyCoachPage() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#faf8f6] to-[#f5f2ed]">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-12 h-12 border-4 border-brand-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-[#5f5a55] font-albert">Loading...</p>
         </div>
       </div>
@@ -342,7 +342,7 @@ export default function MyCoachPage() {
         {loading && !error && (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
-              <div className="w-12 h-12 border-4 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <div className="w-12 h-12 border-4 border-brand-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
               <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Loading your coaching data...</p>
             </div>
           </div>
@@ -370,7 +370,7 @@ export default function MyCoachPage() {
                         unoptimized
                       />
                     ) : (
-                      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#a07855] to-[#7d5c3e] flex items-center justify-center text-white text-2xl font-albert font-bold">
+                      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-accent to-[#7d5c3e] flex items-center justify-center text-white text-2xl font-albert font-bold">
                         {coach.name?.charAt(0) || 'C'}
                       </div>
                     )}
@@ -382,14 +382,14 @@ export default function MyCoachPage() {
                       {coach.name}
                     </h2>
                     {coach.title && (
-                      <p className="font-albert text-[15px] text-[#a07855] dark:text-[#b8896a] font-medium">
+                      <p className="font-albert text-[15px] text-brand-accent font-medium">
                         {coach.title}
                       </p>
                     )}
                     {coach.email && (
                       <div className="flex items-center gap-2 mt-2 text-[#5f5a55] dark:text-[#b2b6c2]">
                         <Mail className="w-4 h-4" />
-                        <a href={`mailto:${coach.email}`} className="font-albert text-sm hover:text-[#a07855] dark:text-[#b8896a] dark:hover:text-[#b8896a] transition-colors">
+                        <a href={`mailto:${coach.email}`} className="font-albert text-sm hover:text-brand-accent dark:hover:text-brand-accent transition-colors">
                           {coach.email}
                         </a>
                       </div>
@@ -426,7 +426,7 @@ export default function MyCoachPage() {
                   {coachingData?.chatChannelId && (
                     <button
                       onClick={handleGoToChat}
-                      className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] rounded-full font-albert text-[15px] font-medium text-white transition-colors shrink-0"
+                      className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-brand-accent hover:bg-brand-accent/90 rounded-full font-albert text-[15px] font-medium text-white transition-colors shrink-0"
                     >
                       <MessageCircle className="w-5 h-5" />
                       Message Coach
@@ -437,14 +437,14 @@ export default function MyCoachPage() {
                 /* No Coach Assigned Yet */
                 <div className="text-center py-6">
                   <div className="w-16 h-16 rounded-2xl bg-[#f3f1ef] dark:bg-[#222631] flex items-center justify-center mx-auto mb-4">
-                    <HelpCircle className="w-8 h-8 text-[#a07855] dark:text-[#b8896a]" />
+                    <HelpCircle className="w-8 h-8 text-brand-accent" />
                   </div>
                   <h2 className="font-albert text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
                     Your coach will be assigned soon
                   </h2>
                   <p className="font-albert text-[15px] text-[#5f5a55] dark:text-[#b2b6c2] max-w-md mx-auto">
                     If you have questions, contact support at{' '}
-                    <a href="mailto:hi@growthaddicts.com" className="text-[#a07855] dark:text-[#b8896a] hover:underline">
+                    <a href="mailto:hi@growthaddicts.com" className="text-brand-accent hover:underline">
                       hi@growthaddicts.com
                     </a>
                   </p>
@@ -457,7 +457,7 @@ export default function MyCoachPage() {
             ================================================================ */}
             <div className="bg-white/80 dark:bg-[#171b22] backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35] rounded-2xl p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
-                <Calendar className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                <Calendar className="w-5 h-5 text-brand-accent" />
                 <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
                   Next coaching call
                 </h3>
@@ -486,7 +486,7 @@ export default function MyCoachPage() {
                             href={coachingData.nextCall.location}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[#a07855] dark:text-[#b8896a] hover:underline"
+                            className="text-brand-accent hover:underline"
                           >
                             {coachingData.nextCall.location}
                           </a>
@@ -527,7 +527,7 @@ export default function MyCoachPage() {
                     {coachingData?.chatChannelId && (
                       <button
                         onClick={handleGoToChat}
-                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] rounded-full font-albert text-[14px] font-medium text-white transition-colors"
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-accent hover:bg-brand-accent/90 rounded-full font-albert text-[14px] font-medium text-white transition-colors"
                       >
                         <MessageCircle className="w-4 h-4" />
                         Go to chat
@@ -553,7 +553,7 @@ export default function MyCoachPage() {
             ================================================================ */}
             <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-5 shadow-sm dark:shadow-none">
               <div className="flex items-center gap-2 mb-4">
-                <Target className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                <Target className="w-5 h-5 text-brand-accent" />
                 <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
                   Current Focus
                 </h3>
@@ -563,7 +563,7 @@ export default function MyCoachPage() {
                 <ul className="space-y-2">
                   {coachingData.focusAreas.map((focus, index) => (
                     <li key={index} className="flex items-start gap-2">
-                      <span className="text-[#a07855] dark:text-[#b8896a] mt-0.5">–</span>
+                      <span className="text-brand-accent mt-0.5">–</span>
                       <span className="font-albert text-[15px] text-[#5f5a55] dark:text-[#b2b6c2]">{focus}</span>
                     </li>
                   ))}
@@ -580,7 +580,7 @@ export default function MyCoachPage() {
             ================================================================ */}
             <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-5 shadow-sm dark:shadow-none">
               <div className="flex items-center gap-2 mb-4">
-                <ClipboardList className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                <ClipboardList className="w-5 h-5 text-brand-accent" />
                 <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
                   Your Actions
                 </h3>
@@ -596,7 +596,7 @@ export default function MyCoachPage() {
                         className="mt-0.5 shrink-0 transition-opacity disabled:opacity-50"
                       >
                         {item.completed ? (
-                          <CheckCircle2 className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                          <CheckCircle2 className="w-5 h-5 text-brand-accent" />
                         ) : (
                           <Circle className="w-5 h-5 text-[#c4bfb9] dark:text-[#7d8190]" />
                         )}
@@ -621,7 +621,7 @@ export default function MyCoachPage() {
             ================================================================ */}
             <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-5 shadow-sm dark:shadow-none">
               <div className="flex items-center gap-2 mb-4">
-                <History className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                <History className="w-5 h-5 text-brand-accent" />
                 <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
                   Session History
                 </h3>
@@ -664,7 +664,7 @@ export default function MyCoachPage() {
             ================================================================ */}
             <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-5 shadow-sm dark:shadow-none">
               <div className="flex items-center gap-2 mb-4">
-                <BookOpen className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                <BookOpen className="w-5 h-5 text-brand-accent" />
                 <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
                   Resources From Your Coach
                 </h3>
@@ -680,11 +680,11 @@ export default function MyCoachPage() {
                         rel="noopener noreferrer"
                         className="flex items-start gap-3 px-4 py-3 rounded-xl hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] transition-colors group"
                       >
-                        <div className="w-10 h-10 rounded-lg bg-[#a07855]/10 dark:bg-[#b8896a]/20 flex items-center justify-center shrink-0">
-                          <ExternalLink className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                        <div className="w-10 h-10 rounded-lg bg-brand-accent/10 dark:bg-brand-accent/20 flex items-center justify-center shrink-0">
+                          <ExternalLink className="w-5 h-5 text-brand-accent" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-albert text-[15px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] group-hover:text-[#a07855] dark:text-[#b8896a] dark:group-hover:text-[#b8896a] transition-colors">
+                          <p className="font-albert text-[15px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] group-hover:text-brand-accent dark:group-hover:text-brand-accent transition-colors">
                             {resource.title}
                           </p>
                           {resource.description && (
@@ -707,9 +707,9 @@ export default function MyCoachPage() {
             {/* ================================================================
                 SECTION G: How Coaching Works (Static Info)
             ================================================================ */}
-            <div className="bg-gradient-to-br from-[#a07855]/5 to-[#8c6245]/5 dark:from-[#b8896a]/10 dark:to-[#a07855]/5 border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
+            <div className="bg-gradient-to-br from-brand-accent/5 to-[#8c6245]/5 dark:from-brand-accent/10 dark:to-brand-accent/5 border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
               <div className="flex items-center gap-2 mb-4">
-                <HelpCircle className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                <HelpCircle className="w-5 h-5 text-brand-accent" />
                 <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
                   How your coaching works
                 </h3>
@@ -717,28 +717,28 @@ export default function MyCoachPage() {
 
               <ul className="space-y-3">
                 <li className="flex items-start gap-2">
-                  <span className="text-[#a07855] dark:text-[#b8896a] mt-0.5">–</span>
+                  <span className="text-brand-accent mt-0.5">–</span>
                   <span className="font-albert text-[15px] text-[#5f5a55] dark:text-[#b2b6c2]">
                     Weekly 1:1 calls with your coach
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-[#a07855] dark:text-[#b8896a] mt-0.5">–</span>
+                  <span className="text-brand-accent mt-0.5">–</span>
                   <span className="font-albert text-[15px] text-[#5f5a55] dark:text-[#b2b6c2]">
                     Your coach responds to chat messages within 24–48 hours on weekdays
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-[#a07855] dark:text-[#b8896a] mt-0.5">–</span>
+                  <span className="text-brand-accent mt-0.5">–</span>
                   <span className="font-albert text-[15px] text-[#5f5a55] dark:text-[#b2b6c2]">
                     You&apos;ll receive new focus areas and action items regularly
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-[#a07855] dark:text-[#b8896a] mt-0.5">–</span>
+                  <span className="text-brand-accent mt-0.5">–</span>
                   <span className="font-albert text-[15px] text-[#5f5a55] dark:text-[#b2b6c2]">
                     Manage your coaching subscription in{' '}
-                    <Link href="/profile" className="text-[#a07855] dark:text-[#b8896a] hover:underline">
+                    <Link href="/profile" className="text-brand-accent hover:underline">
                       Settings → Manage Subscription
                     </Link>
                   </span>

@@ -369,7 +369,7 @@ export function CustomMessageInput() {
       {/* Edit Mode Indicator */}
       {isEditing && (
         <div className="flex items-center justify-between mb-2 px-1">
-          <div className="flex items-center gap-2 text-[#a07855] dark:text-[#b8896a]">
+          <div className="flex items-center gap-2 text-brand-accent">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
@@ -421,8 +421,8 @@ export function CustomMessageInput() {
       )}
       
       <div className={`flex items-center gap-2 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-3xl px-3 py-2 transition-all duration-200 ${
-        isFocused ? 'ring-2 ring-[#a07855] dark:ring-[#b8896a]/20 dark:ring-[#b8896a]/20' : ''
-      } ${isEditing ? 'ring-2 ring-[#a07855] dark:ring-[#b8896a]/30 dark:ring-[#b8896a]/30' : ''}`}>
+        isFocused ? 'ring-2 ring-brand-accent dark:ring-brand-accent/20 dark:ring-brand-accent/20' : ''
+      } ${isEditing ? 'ring-2 ring-brand-accent dark:ring-brand-accent/30 dark:ring-brand-accent/30' : ''}`}>
         {/* Plus/Attachment Button - Hidden during edit */}
         {!isEditing && (
           <div className="relative">
@@ -512,8 +512,8 @@ export function CustomMessageInput() {
             type="submit"
             className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors shadow-lg disabled:opacity-50 ${
               isEditing 
-                ? 'bg-[#a07855] hover:bg-[#8d6548] dark:bg-[#b8896a] dark:hover:bg-[#a07855]' 
-                : 'bg-[#2c2520] hover:bg-[#1a1a1a] dark:bg-[#b8896a] dark:hover:bg-[#a07855]'
+                ? 'bg-[#a07855] hover:bg-[#8d6548] dark:bg-brand-accent dark:hover:bg-brand-accent/90' 
+                : 'bg-[#2c2520] hover:bg-[#1a1a1a] dark:bg-brand-accent dark:hover:bg-brand-accent/90'
             }`}
             aria-label={isEditing ? "Update message" : "Send message"}
             disabled={isUploading}

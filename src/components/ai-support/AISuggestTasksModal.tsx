@@ -58,7 +58,7 @@ export function AISuggestTasksModal({
         <div className="p-6 pb-0">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-accent-secondary dark:text-[#b8896a]" />
+              <Sparkles className="w-5 h-5 text-accent-secondary dark:text-brand-accent" />
               <h3 className="font-albert text-[20px] text-text-primary dark:text-[#f5f5f8] font-semibold tracking-[-1px]">
                 AI suggestions for today
               </h3>
@@ -94,7 +94,7 @@ export function AISuggestTasksModal({
                 disabled={!canSelect && !isSelected}
                 className={`w-full p-4 rounded-[16px] text-left transition-all flex items-start gap-3 ${
                   isSelected
-                    ? 'bg-accent-secondary/10 dark:bg-[#b8896a]/10 border-2 border-accent-secondary dark:border-[#b8896a]'
+                    ? 'bg-accent-secondary/10 dark:bg-brand-accent/10 border-2 border-accent-secondary dark:border-brand-accent'
                     : canSelect
                     ? 'bg-[#f9f7f5] dark:bg-[#1d222b] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] border-2 border-transparent'
                     : 'bg-[#f9f7f5] dark:bg-[#1d222b] opacity-50 cursor-not-allowed border-2 border-transparent'
@@ -102,7 +102,7 @@ export function AISuggestTasksModal({
               >
                 <div className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 ${
                   isSelected
-                    ? 'bg-accent-secondary dark:bg-[#b8896a]'
+                    ? 'bg-accent-secondary dark:bg-brand-accent'
                     : 'border-2 border-[#e1ddd8] dark:border-[#3d414d] bg-white dark:bg-[#171b22]'
                 }`}>
                   {isSelected && <Check className="w-3 h-3 text-white" />}
@@ -138,7 +138,7 @@ export function AISuggestTasksModal({
             className={`flex-1 py-3 rounded-full font-sans text-[14px] font-medium transition-all ${
               selectedTasks.size === 0 || isAdding
                 ? 'bg-[#e1ddd8] dark:bg-[#262b35] text-text-muted cursor-not-allowed'
-                : 'bg-accent-secondary dark:bg-[#b8896a] text-white hover:opacity-90'
+                : 'bg-accent-secondary dark:bg-brand-accent text-white hover:opacity-90'
             }`}
           >
             {isAdding ? 'Adding...' : `Add ${selectedTasks.size} task${selectedTasks.size !== 1 ? 's' : ''} to today`}

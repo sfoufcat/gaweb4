@@ -164,7 +164,7 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
               onChange={(e) => setName(e.target.value)}
               placeholder="Enter squad name"
               maxLength={50}
-              className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-[12px] font-albert text-[16px] text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] transition-all"
+              className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-[12px] font-albert text-[16px] text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 focus:border-brand-accent transition-all"
               required
             />
           </div>
@@ -180,7 +180,7 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
               placeholder="What's your squad about?"
               rows={3}
               maxLength={200}
-              className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-[12px] font-albert text-[16px] text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] transition-all resize-none"
+              className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-[12px] font-albert text-[16px] text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 focus:border-brand-accent transition-all resize-none"
             />
             <p className="text-[12px] text-text-secondary mt-1 font-albert">
               {description.length}/200 characters
@@ -195,7 +195,7 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
             <button
               type="button"
               onClick={() => setShowTzDropdown(!showTzDropdown)}
-              className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-[12px] font-albert text-[16px] text-text-primary text-left flex items-center justify-between hover:border-[#a07855] dark:border-[#b8896a] transition-all"
+              className="w-full px-4 py-3 bg-white border border-[#e1ddd8] rounded-[12px] font-albert text-[16px] text-text-primary text-left flex items-center justify-between hover:border-brand-accent transition-all"
             >
               <span className="truncate">{selectedTzLabel}</span>
               <ChevronDown className={`w-5 h-5 text-text-secondary transition-transform ${showTzDropdown ? 'rotate-180' : ''}`} />
@@ -224,7 +224,7 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
                         setTzSearch('');
                       }}
                       className={`w-full px-4 py-2 text-left font-albert text-[14px] hover:bg-[#faf8f6] transition-colors ${
-                        timezone === tz.value ? 'bg-[#a07855]/10 dark:bg-[#b8896a]/10 text-[#a07855] dark:text-[#b8896a]' : 'text-text-primary'
+                        timezone === tz.value ? 'bg-brand-accent/10 text-brand-accent' : 'text-text-primary'
                       }`}
                     >
                       {tz.label}
@@ -252,13 +252,13 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
                 onClick={() => setVisibility('public')}
                 className={`p-4 border rounded-[16px] text-left transition-all ${
                   visibility === 'public'
-                    ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 dark:bg-[#b8896a]/10'
-                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a]/50 dark:hover:border-[#b8896a]/50'
+                    ? 'border-brand-accent bg-brand-accent/5 dark:bg-brand-accent/10'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50 dark:hover:border-brand-accent/50'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <Globe className={`w-5 h-5 ${visibility === 'public' ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-text-secondary'}`} />
-                  <span className={`font-albert font-semibold text-[14px] ${visibility === 'public' ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-text-primary'}`}>
+                  <Globe className={`w-5 h-5 ${visibility === 'public' ? 'text-brand-accent' : 'text-text-secondary'}`} />
+                  <span className={`font-albert font-semibold text-[14px] ${visibility === 'public' ? 'text-brand-accent' : 'text-text-primary'}`}>
                     Public
                   </span>
                 </div>
@@ -273,13 +273,13 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
                 onClick={() => setVisibility('private')}
                 className={`p-4 border rounded-[16px] text-left transition-all ${
                   visibility === 'private'
-                    ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 dark:bg-[#b8896a]/10'
-                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a]/50 dark:hover:border-[#b8896a]/50'
+                    ? 'border-brand-accent bg-brand-accent/5 dark:bg-brand-accent/10'
+                    : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50 dark:hover:border-brand-accent/50'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <Lock className={`w-5 h-5 ${visibility === 'private' ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-text-secondary'}`} />
-                  <span className={`font-albert font-semibold text-[14px] ${visibility === 'private' ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-text-primary'}`}>
+                  <Lock className={`w-5 h-5 ${visibility === 'private' ? 'text-brand-accent' : 'text-text-secondary'}`} />
+                  <span className={`font-albert font-semibold text-[14px] ${visibility === 'private' ? 'text-brand-accent' : 'text-text-primary'}`}>
                     Private
                   </span>
                 </div>
@@ -305,7 +305,7 @@ export function CreateSquadModal({ open, onClose, onSuccess }: CreateSquadModalP
             <Button
               type="submit"
               disabled={loading || !name.trim()}
-              className="flex-1 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:bg-[#a07855]/50 dark:disabled:bg-[#b8896a]/50 text-white rounded-[16px] py-3 font-albert font-semibold text-[16px]"
+              className="flex-1 bg-brand-accent hover:bg-brand-accent/90 disabled:bg-brand-accent/50 dark:disabled:bg-brand-accent/50 text-white rounded-[16px] py-3 font-albert font-semibold text-[16px]"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">

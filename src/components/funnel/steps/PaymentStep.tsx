@@ -13,8 +13,8 @@ import { Lock, CreditCard, Check, ArrowLeft, Plus, CircleCheck, Shield, Loader2 
 import type { FunnelStepConfigPayment } from '@/types';
 
 // CSS variable helper - uses values set by FunnelClient
-const primaryVar = 'var(--funnel-primary, #a07855)';
-const primaryHoverVar = 'var(--funnel-primary-hover, #8c6245)';
+const primaryVar = 'var(--funnel-primary, var(--brand-accent-light))';
+const primaryHoverVar = 'var(--funnel-primary-hover, var(--brand-accent-dark))';
 
 // Saved payment method type
 interface SavedPaymentMethod {
@@ -111,7 +111,7 @@ function SavedCardsForFunnel({
           <div className="border-t border-[#e1ddd8] pt-4 space-y-2">
             {features.map((feature, i) => (
               <div key={i} className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+                <Check className="w-4 h-4 text-brand-accent" />
                 <span className="text-sm text-text-secondary">{feature}</span>
               </div>
             ))}
@@ -132,8 +132,8 @@ function SavedCardsForFunnel({
             onClick={() => onSelect(method.id)}
             className={`w-full p-4 rounded-xl border-2 transition-all flex items-center gap-4 text-left ${
               selectedMethodId === method.id
-                ? 'border-[#a07855] bg-[#a07855]/5'
-                : 'border-[#e1ddd8] hover:border-[#a07855]/50'
+                ? 'border-brand-accent bg-brand-accent/5'
+                : 'border-[#e1ddd8] hover:border-brand-accent/50'
             }`}
           >
             {/* Card icon */}
@@ -160,7 +160,7 @@ function SavedCardsForFunnel({
 
             {/* Selection indicator */}
             {selectedMethodId === method.id && (
-              <CircleCheck className="w-6 h-6 flex-shrink-0 text-[#a07855]" />
+              <CircleCheck className="w-6 h-6 flex-shrink-0 text-brand-accent" />
             )}
           </button>
         ))}
@@ -169,10 +169,10 @@ function SavedCardsForFunnel({
         <button
           type="button"
           onClick={onAddNew}
-          className="w-full p-4 rounded-xl border-2 border-dashed border-[#e1ddd8] hover:border-[#a07855]/50 transition-all flex items-center gap-4 text-left"
+          className="w-full p-4 rounded-xl border-2 border-dashed border-[#e1ddd8] hover:border-brand-accent/50 transition-all flex items-center gap-4 text-left"
         >
-          <div className="w-12 h-8 rounded-md flex items-center justify-center bg-[#a07855]/10">
-            <Plus className="w-5 h-5 text-[#a07855]" />
+          <div className="w-12 h-8 rounded-md flex items-center justify-center bg-brand-accent/10">
+            <Plus className="w-5 h-5 text-brand-accent" />
           </div>
           <span className="font-medium text-text-primary">
             Add new card
@@ -295,7 +295,7 @@ function PaymentForm({ onSuccess, programName, priceInCents, currency, features,
           <div className="border-t border-[#e1ddd8] pt-4 space-y-2">
             {features.map((feature, i) => (
               <div key={i} className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+                <Check className="w-4 h-4 text-brand-accent" />
                 <span className="text-sm text-text-secondary">{feature}</span>
               </div>
             ))}
@@ -715,7 +715,7 @@ export function PaymentStep({
               appearance: {
                 theme: 'stripe',
                 variables: {
-                  colorPrimary: '#a07855',
+                  colorPrimary: 'var(--brand-accent-light)',
                   colorBackground: '#ffffff',
                   colorText: '#1a1816',
                   colorDanger: '#ef4444',

@@ -165,7 +165,7 @@ export default function OnboardingWelcomePage() {
           >
             <h1 className="font-albert text-[28px] sm:text-[36px] lg:text-[44px] text-text-primary tracking-[-1.5px] leading-[1.1] mb-4">
               Build the life you want,{' '}
-              <span className="bg-gradient-to-r from-[#a07855] via-[#c9a07a] to-[#a07855] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-brand-accent via-brand-accent/80 to-brand-accent bg-clip-text text-transparent">
                 one powerful step at a time.
               </span>
             </h1>
@@ -197,7 +197,7 @@ export default function OnboardingWelcomePage() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.4, delay: 0.4 + index * 0.08 }}
                 >
-                  <div className="w-8 h-8 rounded-full bg-[#faf5ef] border border-[#e8dfd4] flex items-center justify-center flex-shrink-0 text-[#a07855] dark:text-[#b8896a]">
+                  <div className="w-8 h-8 rounded-full bg-[#faf5ef] border border-[#e8dfd4] flex items-center justify-center flex-shrink-0 text-brand-accent">
                     {prop.icon}
                   </div>
                   <p className="font-sans text-[14px] lg:text-[15px] text-text-primary tracking-[-0.2px] leading-[1.5] pt-1.5">
@@ -257,7 +257,7 @@ export default function OnboardingWelcomePage() {
             transition={{ duration: 0.5, delay: 0.85 }}
           >
             <div className="bg-white rounded-2xl border border-[#e8dfd4] p-5 shadow-sm">
-              <p className="font-sans text-[12px] font-medium text-[#a07855] dark:text-[#b8896a] uppercase tracking-[0.5px] mb-4">
+              <p className="font-sans text-[12px] font-medium text-brand-accent uppercase tracking-[0.5px] mb-4">
                 What to expect
               </p>
               <div className="space-y-2.5">
@@ -266,7 +266,7 @@ export default function OnboardingWelcomePage() {
                     key={index}
                     className="flex gap-3 items-center"
                   >
-                    <div className="w-6 h-6 rounded-md bg-[#faf5ef] flex items-center justify-center flex-shrink-0 text-[#a07855] dark:text-[#b8896a]">
+                    <div className="w-6 h-6 rounded-md bg-[#faf5ef] flex items-center justify-center flex-shrink-0 text-brand-accent">
                       <span className="font-sans text-[12px] font-semibold">{index + 1}</span>
                     </div>
                     <div className="flex-1 flex items-center gap-2">

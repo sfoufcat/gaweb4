@@ -217,7 +217,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-start gap-3">
               <div className="p-2.5 bg-[#f3f1ef] dark:bg-[#11141b] rounded-full shrink-0">
-                <Calendar className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                <Calendar className="w-5 h-5 text-brand-accent" />
               </div>
               <div>
                 <h3 className="font-albert text-[15px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.3px]">
@@ -231,7 +231,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
             
             <button
               onClick={() => setShowSuggestModal(true)}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] rounded-full font-albert text-[14px] font-medium text-white transition-colors shrink-0"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-accent hover:bg-brand-accent/90 rounded-full font-albert text-[14px] font-medium text-white transition-colors shrink-0"
             >
               <Calendar className="w-4 h-4" />
               Suggest a call
@@ -262,7 +262,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+              <Calendar className="w-5 h-5 text-brand-accent" />
               <h3 className="font-albert text-[16px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px]">
                 Suggested squad call
               </h3>
@@ -271,7 +271,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
             {/* Edit button */}
             <button
               onClick={() => setShowSuggestModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-[#a07855] dark:text-[#b8896a] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] rounded-full transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-brand-accent hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] rounded-full transition-colors"
             >
               <Pencil className="w-3.5 h-3.5" />
               Propose change
@@ -303,7 +303,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
                         href={event.locationLabel}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[#a07855] dark:text-[#b8896a] hover:underline"
+                        className="text-brand-accent hover:underline"
                       >
                         {event.locationLabel}
                       </a>
@@ -320,7 +320,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
                 <p className="font-albert text-[14px] text-text-secondary">
                   <span className="font-medium text-text-primary">{yesCount} of {totalMembers}</span> members confirmed
                   {votesNeeded > 0 && (
-                    <span className="text-[#a07855] dark:text-[#b8896a]"> · {votesNeeded} more needed</span>
+                    <span className="text-brand-accent"> · {votesNeeded} more needed</span>
                   )}
                 </p>
               </div>
@@ -376,7 +376,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+              <Calendar className="w-5 h-5 text-brand-accent" />
               <h3 className="font-albert text-[16px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px]">
                 Next squad call
               </h3>
@@ -385,7 +385,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
             {/* Edit button */}
             <button
               onClick={() => setShowSuggestModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-[#a07855] dark:text-[#b8896a] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] rounded-full transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-brand-accent hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] rounded-full transition-colors"
             >
               <Pencil className="w-3.5 h-3.5" />
               Edit
@@ -420,7 +420,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
                     href={event.locationLabel}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[#a07855] dark:text-[#b8896a] hover:underline"
+                    className="text-brand-accent hover:underline"
                   >
                     {event.locationLabel}
                   </a>
@@ -450,7 +450,7 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
               {squad.chatChannelId && (
                 <button
                   onClick={handleGoToChat}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] rounded-full font-albert text-[14px] font-medium text-white transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-accent hover:bg-brand-accent/90 rounded-full font-albert text-[14px] font-medium text-white transition-colors"
                 >
                   <MessageCircle className="w-4 h-4" />
                   Go to chat

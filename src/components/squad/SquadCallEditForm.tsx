@@ -529,7 +529,7 @@ export function SquadCallEditForm({
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="font-albert text-[20px] tracking-[-0.5px] flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+              <Calendar className="w-5 h-5 text-brand-accent" />
               {isEditing ? 'Edit squad call' : 'Schedule squad call'}
             </DialogTitle>
             <button
@@ -560,7 +560,7 @@ export function SquadCallEditForm({
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 min={minDate}
-                className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] transition-all"
+                className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 focus:border-brand-accent transition-all"
               />
             </div>
             
@@ -575,7 +575,7 @@ export function SquadCallEditForm({
                   type="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] transition-all"
+                  className="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 focus:border-brand-accent transition-all"
                 />
               </div>
             </div>
@@ -589,7 +589,7 @@ export function SquadCallEditForm({
             <select
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
-              className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] transition-all appearance-none cursor-pointer"
+              className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 focus:border-brand-accent transition-all appearance-none cursor-pointer"
             >
               {COMMON_TIMEZONES.map((tz) => (
                 <option key={tz.value} value={tz.value}>
@@ -615,7 +615,7 @@ export function SquadCallEditForm({
                   setRecurrenceDayOfWeek(getDayOfWeekFromDate(date));
                 }
               }}
-              className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] transition-all appearance-none cursor-pointer"
+              className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 focus:border-brand-accent transition-all appearance-none cursor-pointer"
             >
               {RECURRENCE_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -629,15 +629,15 @@ export function SquadCallEditForm({
               <button
                 type="button"
                 onClick={() => setShowRecurrenceDetails(!showRecurrenceDetails)}
-                className="mt-2 w-full flex items-center justify-between px-3 py-2 bg-[#f9f7f5] dark:bg-[#1c2028] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-left group hover:border-[#a07855] dark:border-[#b8896a] transition-colors"
+                className="mt-2 w-full flex items-center justify-between px-3 py-2 bg-[#f9f7f5] dark:bg-[#1c2028] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-left group hover:border-brand-accent transition-colors"
               >
-                <span className="font-albert text-[13px] text-[#a07855] dark:text-[#b8896a] font-medium">
+                <span className="font-albert text-[13px] text-brand-accent font-medium">
                   {getRecurrenceSummary()}
                 </span>
                 {showRecurrenceDetails ? (
-                  <ChevronUp className="w-4 h-4 text-text-secondary group-hover:text-[#a07855] dark:text-[#b8896a] transition-colors" />
+                  <ChevronUp className="w-4 h-4 text-text-secondary group-hover:text-brand-accent transition-colors" />
                 ) : (
-                  <ChevronDown className="w-4 h-4 text-text-secondary group-hover:text-[#a07855] dark:text-[#b8896a] transition-colors" />
+                  <ChevronDown className="w-4 h-4 text-text-secondary group-hover:text-brand-accent transition-colors" />
                 )}
               </button>
             )}
@@ -663,7 +663,7 @@ export function SquadCallEditForm({
                   value={recurrenceEndDate}
                   onChange={(e) => setRecurrenceEndDate(e.target.value)}
                   min={date}
-                  className="w-full px-3 py-2 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg font-albert text-[13px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] transition-all"
+                  className="w-full px-3 py-2 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg font-albert text-[13px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 focus:border-brand-accent transition-all"
                 />
               </div>
             </div>
@@ -686,7 +686,7 @@ export function SquadCallEditForm({
                       onClick={() => setLocation(preset)}
                       className={`px-3 py-1.5 rounded-full font-albert text-[13px] transition-all ${
                         location === preset
-                          ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
+                          ? 'bg-brand-accent text-white'
                           : 'bg-[#f3f1ef] dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#2e333d]'
                       }`}
                     >
@@ -697,7 +697,7 @@ export function SquadCallEditForm({
                 <button
                   type="button"
                   onClick={() => setUseCustomLocation(true)}
-                  className="text-[13px] text-[#a07855] dark:text-[#b8896a] hover:underline font-albert"
+                  className="text-[13px] text-brand-accent hover:underline font-albert"
                 >
                   + Add custom location/link
                 </button>
@@ -709,7 +709,7 @@ export function SquadCallEditForm({
                   value={customLocation}
                   onChange={(e) => setCustomLocation(e.target.value)}
                   placeholder="e.g., https://zoom.us/j/... or meeting room name"
-                  className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-secondary/60 dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] transition-all"
+                  className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-secondary/60 dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 focus:border-brand-accent transition-all"
                 />
                 <button
                   type="button"
@@ -717,7 +717,7 @@ export function SquadCallEditForm({
                     setUseCustomLocation(false);
                     setCustomLocation('');
                   }}
-                  className="text-[13px] text-[#a07855] dark:text-[#b8896a] hover:underline font-albert"
+                  className="text-[13px] text-brand-accent hover:underline font-albert"
                 >
                   ← Use preset location
                 </button>
@@ -735,7 +735,7 @@ export function SquadCallEditForm({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Squad coaching call"
-              className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-secondary/60 dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] transition-all"
+              className="w-full px-4 py-3 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-secondary/60 dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 focus:border-brand-accent transition-all"
             />
           </div>
           
@@ -747,11 +747,11 @@ export function SquadCallEditForm({
                   type="checkbox"
                   checked={visibility === 'program_wide'}
                   onChange={(e) => setVisibility(e.target.checked ? 'program_wide' : 'squad_only')}
-                  className="mt-1 w-5 h-5 rounded-md border-2 border-[#d4cfc9] dark:border-[#3a3f4a] text-[#a07855] dark:text-[#b8896a] focus:ring-[#a07855] dark:ring-[#b8896a] focus:ring-offset-0 cursor-pointer"
+                  className="mt-1 w-5 h-5 rounded-md border-2 border-[#d4cfc9] dark:border-[#3a3f4a] text-brand-accent focus:ring-brand-accent dark:ring-brand-accent focus:ring-offset-0 cursor-pointer"
                 />
                 <div>
                   <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+                    <Users className="w-4 h-4 text-brand-accent" />
                     <span className="font-albert font-medium text-[14px] text-text-primary dark:text-[#f5f5f8]">
                       Show on program calendar
                     </span>
@@ -772,16 +772,16 @@ export function SquadCallEditForm({
               className="w-full flex items-center justify-between text-left group"
             >
               <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+                <FileText className="w-4 h-4 text-brand-accent" />
                 <span className="font-albert font-medium text-[14px] text-text-primary dark:text-[#f5f5f8]">
                   Add details for event page
                 </span>
                 <span className="text-[12px] text-text-secondary dark:text-[#7d8190]">(optional)</span>
               </div>
               {showRichContent ? (
-                <ChevronUp className="w-4 h-4 text-text-secondary group-hover:text-[#a07855] dark:text-[#b8896a] transition-colors" />
+                <ChevronUp className="w-4 h-4 text-text-secondary group-hover:text-brand-accent transition-colors" />
               ) : (
-                <ChevronDown className="w-4 h-4 text-text-secondary group-hover:text-[#a07855] dark:text-[#b8896a] transition-colors" />
+                <ChevronDown className="w-4 h-4 text-text-secondary group-hover:text-brand-accent transition-colors" />
               )}
             </button>
             
@@ -814,7 +814,7 @@ export function SquadCallEditForm({
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="What will this call cover?"
                     rows={3}
-                    className="w-full px-3 py-2 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg font-albert text-[13px] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] transition-all resize-none"
+                    className="w-full px-3 py-2 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg font-albert text-[13px] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 focus:border-brand-accent transition-all resize-none"
                   />
                 </div>
                 
@@ -835,7 +835,7 @@ export function SquadCallEditForm({
                             setBulletPoints(newPoints);
                           }}
                           placeholder="What attendees will learn..."
-                          className="flex-1 px-3 py-2 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg font-albert text-[13px] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] transition-all"
+                          className="flex-1 px-3 py-2 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg font-albert text-[13px] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 focus:border-brand-accent transition-all"
                         />
                         {bulletPoints.length > 1 && (
                           <button
@@ -851,7 +851,7 @@ export function SquadCallEditForm({
                     <button
                       type="button"
                       onClick={() => setBulletPoints([...bulletPoints, ''])}
-                      className="flex items-center gap-1 text-[12px] text-[#a07855] dark:text-[#b8896a] hover:text-[#8c6245] dark:hover:text-[#d4a57a] font-albert"
+                      className="flex items-center gap-1 text-[12px] text-brand-accent hover:text-brand-accent/90 dark:hover:text-[#d4a57a] font-albert"
                     >
                       <Plus className="w-3 h-3" />
                       Add bullet point
@@ -868,7 +868,7 @@ export function SquadCallEditForm({
                       value={additionalInfo.type}
                       onChange={(e) => setAdditionalInfo({ ...additionalInfo, type: e.target.value })}
                       placeholder="Q&A"
-                      className="w-full px-2 py-1.5 text-[12px] bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30"
+                      className="w-full px-2 py-1.5 text-[12px] bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30"
                     />
                   </div>
                   <div>
@@ -877,7 +877,7 @@ export function SquadCallEditForm({
                       type="text"
                       value={additionalInfo.language}
                       onChange={(e) => setAdditionalInfo({ ...additionalInfo, language: e.target.value })}
-                      className="w-full px-2 py-1.5 text-[12px] bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30"
+                      className="w-full px-2 py-1.5 text-[12px] bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30"
                     />
                   </div>
                   <div>
@@ -886,7 +886,7 @@ export function SquadCallEditForm({
                       type="text"
                       value={additionalInfo.difficulty}
                       onChange={(e) => setAdditionalInfo({ ...additionalInfo, difficulty: e.target.value })}
-                      className="w-full px-2 py-1.5 text-[12px] bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30"
+                      className="w-full px-2 py-1.5 text-[12px] bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30"
                     />
                   </div>
                 </div>
@@ -921,7 +921,7 @@ export function SquadCallEditForm({
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting || isDeleting}
-              className="inline-flex h-10 items-center justify-center px-4 py-2 font-albert rounded-full bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white text-sm font-semibold flex-1 sm:flex-none disabled:opacity-50 disabled:pointer-events-none transition-colors"
+              className="inline-flex h-10 items-center justify-center px-4 py-2 font-albert rounded-full bg-brand-accent hover:bg-brand-accent/90 text-white text-sm font-semibold flex-1 sm:flex-none disabled:opacity-50 disabled:pointer-events-none transition-colors"
             >
               {isSubmitting ? 'Saving...' : isEditing ? 'Update call' : 'Schedule call'}
             </button>

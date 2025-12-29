@@ -80,7 +80,7 @@ export default function UpgradeSquadPage() {
                     {[1, 2, 3, 4].map((i) => (
                       <div
                         key={i}
-                        className="w-6 h-6 rounded-full border-2 border-white bg-gradient-to-br from-[#a07855] to-[#7d5c3e]"
+                        className="w-6 h-6 rounded-full border-2 border-white bg-gradient-to-br from-brand-accent to-[#7d5c3e]"
                       />
                     ))}
                   </div>
@@ -129,7 +129,7 @@ export default function UpgradeSquadPage() {
                     {['M', 'J', 'A', 'K'].map((initial, i) => (
                       <div
                         key={i}
-                        className="w-8 h-8 rounded-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e] flex items-center justify-center text-white font-albert font-semibold text-[12px] border-2 border-white"
+                        className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-accent to-[#7d5c3e] flex items-center justify-center text-white font-albert font-semibold text-[12px] border-2 border-white"
                       >
                         {initial}
                       </div>

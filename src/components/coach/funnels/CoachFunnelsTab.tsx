@@ -463,7 +463,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
             }
             setShowCreateDialog(true);
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors"
         >
           <Plus className="w-4 h-4" />
           New Funnel
@@ -532,8 +532,8 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
                 onClick={() => setSelectedContentType(value)}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                   selectedContentType === value
-                    ? 'bg-[#a07855]/10 text-[#a07855] dark:bg-[#b8896a]/10 dark:text-[#b8896a] border border-[#a07855]/30 dark:border-[#b8896a]/30'
-                    : 'bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] text-text-secondary dark:text-[#b2b6c2] hover:border-[#a07855]/50'
+                    ? 'bg-brand-accent/10 text-[#a07855] dark:bg-brand-accent/10 dark:text-brand-accent border border-brand-accent/30'
+                    : 'bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] text-text-secondary dark:text-[#b2b6c2] hover:border-brand-accent/50'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -590,7 +590,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
           {tenantRequired.tenantUrl ? (
             <a
               href={`${tenantRequired.tenantUrl}/coach?tab=funnels`}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-xl hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors font-medium"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-brand-accent text-white rounded-xl hover:bg-brand-accent/90 transition-colors font-medium"
             >
               <ExternalLink className="w-4 h-4" />
               Go to {tenantRequired.subdomain}.growthaddicts.com
@@ -624,7 +624,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
               }
               setShowCreateDialog(true);
             }}
-            className="px-6 py-2 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors"
+            className="px-6 py-2 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors"
           >
             Create Funnel
           </button>
@@ -650,7 +650,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium text-text-primary dark:text-[#f5f5f8]">{funnel.name}</h3>
                       {funnel.isDefault && (
-                        <span className="px-2 py-0.5 text-xs bg-[#a07855]/10 text-[#a07855] dark:bg-[#b8896a]/10 dark:text-[#b8896a] rounded-full">
+                        <span className="px-2 py-0.5 text-xs bg-brand-accent/10 text-[#a07855] dark:bg-brand-accent/10 dark:text-brand-accent rounded-full">
                           Default
                         </span>
                       )}
@@ -670,7 +670,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
                   {/* Quick actions */}
                   <button
                     onClick={() => handleEditSteps(funnel)}
-                    className="px-3 py-1.5 text-sm text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/5 dark:hover:bg-[#b8896a]/5 rounded-lg transition-colors"
+                    className="px-3 py-1.5 text-sm text-brand-accent hover:bg-brand-accent/5 dark:hover:bg-brand-accent/5 rounded-lg transition-colors"
                   >
                     Edit Steps
                   </button>

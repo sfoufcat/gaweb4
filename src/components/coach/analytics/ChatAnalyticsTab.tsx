@@ -195,7 +195,7 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '0ms' }}>
           <div className="flex items-center gap-2 mb-2">
-            <Hash className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+            <Hash className="w-5 h-5 text-brand-accent" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Channels</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
@@ -247,7 +247,7 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
             className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a] transition-colors"
           >
             <div className="flex items-center gap-3">
-              <Hash className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+              <Hash className="w-5 h-5 text-brand-accent" />
               <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Chat Channels</h3>
               <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">({channels.length})</span>
             </div>
@@ -269,7 +269,7 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
                     onClick={() => handleSort('messageCount')}
                     className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
                       sortField === 'messageCount' 
-                        ? 'bg-[#a07855] dark:bg-[#b8896a] text-white' 
+                        ? 'bg-brand-accent text-white' 
                         : 'bg-white dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2]'
                     }`}
                   >
@@ -280,7 +280,7 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
                     onClick={() => handleSort('lastMessageAt')}
                     className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
                       sortField === 'lastMessageAt' 
-                        ? 'bg-[#a07855] dark:bg-[#b8896a] text-white' 
+                        ? 'bg-brand-accent text-white' 
                         : 'bg-white dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2]'
                     }`}
                   >
@@ -291,7 +291,7 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
                     onClick={() => handleSort('memberCount')}
                     className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
                       sortField === 'memberCount' 
-                        ? 'bg-[#a07855] dark:bg-[#b8896a] text-white' 
+                        ? 'bg-brand-accent text-white' 
                         : 'bg-white dark:bg-[#171b22] text-[#5f5a55] dark:text-[#b2b6c2]'
                     }`}
                   >
@@ -309,7 +309,7 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#a07855] to-[#8c6245] dark:from-[#b8896a] dark:to-[#a07855] flex items-center justify-center text-white">
+                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-brand-accent to-[#8c6245] dark:from-[#b8896a] dark:to-brand-accent flex items-center justify-center text-white">
                             <Hash className="w-5 h-5" />
                           </div>
                           <div>

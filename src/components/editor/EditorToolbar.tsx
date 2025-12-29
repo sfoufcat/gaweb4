@@ -25,7 +25,7 @@ export function EditorToolbar({
   onAddImage,
   onAddLink,
   onAddYoutube,
-  accentColor = '#a07855',
+  accentColor = 'var(--brand-accent-light)',
   isUploading = false,
 }: EditorToolbarProps) {
   // Button base classes

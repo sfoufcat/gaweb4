@@ -7,8 +7,8 @@ import { useTypewriter } from '@/hooks/useTypewriter';
 import type { FunnelStepConfigIdentity } from '@/types';
 
 // CSS variable helper - uses values set by FunnelClient
-const primaryVar = 'var(--funnel-primary, #a07855)';
-const primaryHoverVar = 'var(--funnel-primary-hover, #8c6245)';
+const primaryVar = 'var(--funnel-primary, var(--brand-accent-light))';
+const primaryHoverVar = 'var(--funnel-primary-hover, var(--brand-accent-dark))';
 
 const DEFAULT_IDENTITY_EXAMPLES = [
   "someone who brings value to others",
@@ -165,7 +165,7 @@ export function IdentityStep({
         </label>
 
         {/* Input Box */}
-        <div className="relative bg-white border-2 border-[#e1ddd8] rounded-xl p-4 focus-within:border-[#a07855] dark:border-[#b8896a] transition-colors">
+        <div className="relative bg-white border-2 border-[#e1ddd8] rounded-xl p-4 focus-within:border-brand-accent transition-colors">
           <AnimatePresence mode="wait">
             {!isValidated && !suggestion ? (
               <motion.div
@@ -201,7 +201,7 @@ export function IdentityStep({
             ) : (
               <motion.p 
                 key="validated"
-                className="bg-gradient-to-r from-[#a07855] via-[#c9a07a] to-[#a07855] bg-clip-text text-transparent text-lg"
+                className="bg-gradient-to-r from-brand-accent via-brand-accent/80 to-brand-accent bg-clip-text text-transparent text-lg"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
               >
@@ -230,7 +230,7 @@ export function IdentityStep({
               <button
                 key={index}
                 onClick={() => handleExampleClick(example)}
-                className="px-4 py-2 bg-[#faf8f6] border border-[#e1ddd8] rounded-full text-sm text-text-secondary hover:bg-[#f5f2ef] hover:border-[#a07855] dark:border-[#b8896a] hover:text-text-primary active:scale-[0.98] transition-all"
+                className="px-4 py-2 bg-[#faf8f6] border border-[#e1ddd8] rounded-full text-sm text-text-secondary hover:bg-[#f5f2ef] hover:border-brand-accent hover:text-text-primary active:scale-[0.98] transition-all"
               >
                 {example}
               </button>

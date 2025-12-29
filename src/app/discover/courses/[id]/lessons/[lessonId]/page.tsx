@@ -266,7 +266,7 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
           {prevLesson ? (
             <button
               onClick={() => router.push(`/discover/courses/${courseId}/lessons/${prevLesson.id}`)}
-              className="flex items-center gap-2 text-earth-600 dark:text-[#b8896a] hover:text-earth-700 dark:hover:text-[#d4b896] transition-colors group"
+              className="flex items-center gap-2 text-earth-600 dark:text-brand-accent hover:text-earth-700 dark:hover:text-[#d4b896] transition-colors group"
             >
               <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -281,7 +281,7 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
           {nextLesson ? (
             <button
               onClick={() => router.push(`/discover/courses/${courseId}/lessons/${nextLesson.id}`)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-earth-500 dark:bg-[#b8896a] rounded-full hover:bg-earth-600 dark:hover:bg-[#a07855] transition-colors text-white group"
+              className="flex items-center gap-2 px-5 py-2.5 bg-earth-500 dark:bg-brand-accent rounded-full hover:bg-earth-600 dark:hover:bg-brand-accent/90 transition-colors text-white group"
             >
               <span className="font-sans text-sm font-medium">Next</span>
               <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -291,7 +291,7 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
           ) : (
             <Link
               href={`/discover/courses/${courseId}`}
-              className="flex items-center gap-2 px-5 py-2.5 bg-earth-500 dark:bg-[#b8896a] rounded-full hover:bg-earth-600 dark:hover:bg-[#a07855] transition-colors text-white group"
+              className="flex items-center gap-2 px-5 py-2.5 bg-earth-500 dark:bg-brand-accent rounded-full hover:bg-earth-600 dark:hover:bg-brand-accent/90 transition-colors text-white group"
             >
               <span className="font-sans text-sm font-medium">Complete</span>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -340,14 +340,14 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
                         </svg>
                       </div>
                     ) : isCurrentLesson ? (
-                      <div className="w-8 h-8 rounded-full bg-earth-500 dark:bg-[#b8896a] flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-full bg-earth-500 dark:bg-brand-accent flex items-center justify-center">
                         <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M8 5v14l11-7z" />
                         </svg>
                       </div>
                     ) : (
                       <div className="w-8 h-8 rounded-full bg-earth-100 dark:bg-[#262b35] flex items-center justify-center">
-                        <svg className="w-4 h-4 text-earth-500 dark:text-[#b8896a] ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 text-earth-500 dark:text-brand-accent ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M8 5v14l11-7z" />
                         </svg>
                       </div>
@@ -356,7 +356,7 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
                     {/* Lesson Info */}
                     <div className="flex flex-col">
                       <span className={`font-sans text-sm leading-[1.2] ${
-                        isCurrentLesson ? 'text-earth-600 dark:text-[#b8896a] font-medium' : 'text-text-primary dark:text-[#f5f5f8]'
+                        isCurrentLesson ? 'text-earth-600 dark:text-brand-accent font-medium' : 'text-text-primary dark:text-[#f5f5f8]'
                       }`}>
                         {idx + 1}. {moduleLesson.title}
                       </span>
@@ -365,7 +365,7 @@ export default function LessonDetailPage({ params }: LessonPageProps) {
 
                   {/* Duration or Current indicator */}
                   {isCurrentLesson ? (
-                    <span className="font-sans text-xs text-earth-600 dark:text-[#b8896a] font-medium">Playing</span>
+                    <span className="font-sans text-xs text-earth-600 dark:text-brand-accent font-medium">Playing</span>
                   ) : moduleLesson.durationMinutes ? (
                     <span className="font-sans text-xs text-text-muted dark:text-[#7d8190]">
                       {moduleLesson.durationMinutes} min

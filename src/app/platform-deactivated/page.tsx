@@ -69,7 +69,7 @@ export default function PlatformDeactivatedPage() {
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="flex items-center justify-center gap-2 w-full px-6 py-3 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-medium rounded-xl transition-colors font-albert disabled:opacity-50"
+            className="flex items-center justify-center gap-2 w-full px-6 py-3 bg-brand-accent hover:bg-brand-accent/90 text-white font-medium rounded-xl transition-colors font-albert disabled:opacity-50"
           >
             <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
             {isRefreshing ? 'Checking...' : 'Check Again'}

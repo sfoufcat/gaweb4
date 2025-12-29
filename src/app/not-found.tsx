@@ -12,7 +12,7 @@ export default function NotFound() {
         </h1>
         
         {/* Divider */}
-        <div className="w-16 h-0.5 bg-[#a07855]/30 mx-auto my-6" />
+        <div className="w-16 h-0.5 bg-brand-accent/30 mx-auto my-6" />
         
         {/* Message */}
         <p className="text-lg md:text-xl text-[#5f5a55] font-albert mb-8">

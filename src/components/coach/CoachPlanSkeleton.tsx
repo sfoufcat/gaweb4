@@ -38,7 +38,7 @@ export function CoachPlanSkeleton() {
               key={index}
               className={`relative p-6 rounded-[24px] border-2 ${
                 index === 1
-                  ? 'border-[#a07855] dark:border-[#b8896a]/30 bg-[#faf8f6] dark:bg-[#171b22]'
+                  ? 'border-brand-accent/30 bg-[#faf8f6] dark:bg-[#171b22]'
                   : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]'
               }`}
               style={{ animationDelay: `${index * 100}ms` }}
@@ -48,7 +48,7 @@ export function CoachPlanSkeleton() {
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <div className={`h-6 w-24 rounded-full animate-pulse ${
                     index === 1 
-                      ? 'bg-gradient-to-r from-[#a07855]/40 to-[#c9a07a]/40' 
+                      ? 'bg-gradient-to-r from-brand-accent/40 to-[#c9a07a]/40' 
                       : 'bg-[#6b7280]/30'
                   }`} />
                 </div>
@@ -96,7 +96,7 @@ export function CoachPlanSkeleton() {
 
         {/* CTA Button Skeleton */}
         <div className="max-w-md mx-auto mb-12">
-          <div className="w-full h-14 rounded-[32px] bg-gradient-to-r from-[#a07855]/30 to-[#c9a07a]/30 animate-pulse" />
+          <div className="w-full h-14 rounded-[32px] bg-gradient-to-r from-brand-accent/30 to-[#c9a07a]/30 animate-pulse" />
           <div className="h-3 w-40 mx-auto mt-4 rounded bg-[#e1ddd8]/40 dark:bg-[#262b35]/60 animate-pulse" />
         </div>
 

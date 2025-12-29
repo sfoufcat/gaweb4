@@ -145,7 +145,7 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
               type="text"
               value={stepName}
               onChange={(e) => setStepName(e.target.value)}
-              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8] font-albert"
               placeholder={`e.g., "${step.type.replace(/_/g, ' ')} - Main"`}
             />
             <p className="text-xs font-albert text-text-muted dark:text-[#b2b6c2] mt-1">A custom name to help you identify this step</p>
@@ -231,7 +231,7 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
                       ...prev,
                       googleEvent: e.target.value || undefined,
                     }))}
-                    className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
+                    className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8] font-albert"
                     placeholder="e.g., funnel_step_signup"
                   />
                   <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1 font-albert">
@@ -251,7 +251,7 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
                       ...prev,
                       googleAdsConversionLabel: e.target.value || undefined,
                     }))}
-                    className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
+                    className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8] font-albert"
                     placeholder="e.g., AbC123_xyz"
                   />
                   <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1 font-albert">
@@ -270,7 +270,7 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
                       ...prev,
                       customHtml: e.target.value || undefined,
                     }))}
-                    className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] resize-none font-mono text-sm dark:text-[#f5f5f8]"
+                    className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent resize-none font-mono text-sm dark:text-[#f5f5f8]"
                     rows={3}
                     placeholder="<!-- TikTok, Snapchat, or other pixel events -->"
                   />
@@ -294,7 +294,7 @@ export function StepConfigEditor({ step, onClose, onSave }: StepConfigEditorProp
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="flex-1 py-2 px-4 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:opacity-50 transition-colors"
+            className="flex-1 py-2 px-4 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 disabled:opacity-50 transition-colors"
           >
             {isSaving ? 'Saving...' : 'Save'}
           </button>
@@ -388,7 +388,7 @@ function QuestionConfigEditor({ config, onChange }: { config: Record<string, unk
         <textarea
           value={config.question as string || ''}
           onChange={(e) => onChange({ ...config, question: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] resize-none font-albert"
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8] resize-none font-albert"
           rows={2}
           placeholder="Enter your question..."
           required
@@ -401,7 +401,7 @@ function QuestionConfigEditor({ config, onChange }: { config: Record<string, unk
           type="text"
           value={config.fieldName as string || 'answer'}
           onChange={(e) => onChange({ ...config, fieldName: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8] font-albert"
           placeholder="e.g., workdayStyle"
         />
         <p className="text-xs font-albert text-text-muted dark:text-[#b2b6c2] mt-1">This is the key used to store the answer</p>
@@ -417,7 +417,7 @@ function QuestionConfigEditor({ config, onChange }: { config: Record<string, unk
                 type="number"
                 value={config.scaleMin as number || 1}
                 onChange={(e) => onChange({ ...config, scaleMin: parseInt(e.target.value) || 1 })}
-                className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
+                className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8] font-albert"
                 min={0}
                 max={10}
               />
@@ -428,7 +428,7 @@ function QuestionConfigEditor({ config, onChange }: { config: Record<string, unk
                 type="number"
                 value={config.scaleMax as number || 10}
                 onChange={(e) => onChange({ ...config, scaleMax: parseInt(e.target.value) || 10 })}
-                className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
+                className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8] font-albert"
                 min={1}
                 max={20}
               />
@@ -449,7 +449,7 @@ function QuestionConfigEditor({ config, onChange }: { config: Record<string, unk
                     min: e.target.value 
                   }
                 })}
-                className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
+                className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8] font-albert"
                 placeholder="e.g., Strongly disagree"
               />
             </div>
@@ -465,7 +465,7 @@ function QuestionConfigEditor({ config, onChange }: { config: Record<string, unk
                     max: e.target.value 
                   }
                 })}
-                className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] font-albert"
+                className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8] font-albert"
                 placeholder="e.g., Strongly agree"
               />
             </div>
@@ -485,7 +485,7 @@ function QuestionConfigEditor({ config, onChange }: { config: Record<string, unk
                     type="text"
                     value={option.label}
                     onChange={(e) => updateOption(option.id, { label: e.target.value })}
-                    className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] text-sm font-albert"
+                    className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8] text-sm font-albert"
                     placeholder="Option label (emojis allowed)"
                     required
                   />
@@ -522,11 +522,11 @@ function QuestionConfigEditor({ config, onChange }: { config: Record<string, unk
                       <button
                         onClick={() => fileInputRefs.current[option.id]?.click()}
                         disabled={uploadingOptionId === option.id}
-                        className="w-10 h-10 rounded-lg border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a] transition-colors flex items-center justify-center"
+                        className="w-10 h-10 rounded-lg border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent transition-colors flex items-center justify-center"
                         title="Add image"
                       >
                         {uploadingOptionId === option.id ? (
-                          <div className="w-4 h-4 border-2 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin" />
+                          <div className="w-4 h-4 border-2 border-brand-accent border-t-transparent rounded-full animate-spin" />
                         ) : (
                           <ImageIcon className="w-4 h-4 text-text-muted" />
                         )}
@@ -544,7 +544,7 @@ function QuestionConfigEditor({ config, onChange }: { config: Record<string, unk
             ))}
             <button
               onClick={addOption}
-              className="w-full py-2 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-secondary dark:text-[#b2b6c2] hover:border-[#a07855] dark:border-[#b8896a] hover:text-[#a07855] dark:text-[#b8896a] transition-colors flex items-center justify-center gap-2 font-albert"
+              className="w-full py-2 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-secondary dark:text-[#b2b6c2] hover:border-brand-accent hover:text-brand-accent transition-colors flex items-center justify-center gap-2 font-albert"
             >
               <Plus className="w-4 h-4" />
               Add Option
@@ -600,7 +600,7 @@ function SignupConfigEditor({ config, onChange }: { config: Record<string, unkno
           type="text"
           value={config.heading as string || ''}
           onChange={(e) => onChange({ ...config, heading: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
+          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent"
           placeholder="Create your account"
         />
       </div>
@@ -611,7 +611,7 @@ function SignupConfigEditor({ config, onChange }: { config: Record<string, unkno
           type="text"
           value={config.subheading as string || ''}
           onChange={(e) => onChange({ ...config, subheading: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
+          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent"
           placeholder="Sign up to continue your journey"
         />
       </div>
@@ -640,7 +640,7 @@ function PaymentConfigEditor({ config, onChange }: { config: Record<string, unkn
             type="number"
             value={config.priceInCents as number || 0}
             onChange={(e) => onChange({ ...config, priceInCents: parseInt(e.target.value) || 0 })}
-            className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
+            className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent"
             placeholder="9900"
           />
           <p className="text-xs text-text-muted mt-1">e.g., 9900 = $99.00</p>
@@ -653,7 +653,7 @@ function PaymentConfigEditor({ config, onChange }: { config: Record<string, unkn
           type="text"
           value={config.heading as string || ''}
           onChange={(e) => onChange({ ...config, heading: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
+          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent"
           placeholder="Complete your enrollment"
         />
       </div>
@@ -673,7 +673,7 @@ function GoalConfigEditor({ config, onChange }: { config: Record<string, unknown
           type="number"
           value={config.timelineDays as number || 90}
           onChange={(e) => onChange({ ...config, timelineDays: parseInt(e.target.value) || 90 })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
+          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent"
         />
       </div>
 
@@ -682,7 +682,7 @@ function GoalConfigEditor({ config, onChange }: { config: Record<string, unknown
         <textarea
           value={examples.join('\n')}
           onChange={(e) => onChange({ ...config, examples: e.target.value.split('\n').filter(Boolean) })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] resize-none"
+          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent resize-none"
           rows={4}
           placeholder="One example per line..."
         />
@@ -695,7 +695,7 @@ function GoalConfigEditor({ config, onChange }: { config: Record<string, unknown
           type="text"
           value={config.heading as string || ''}
           onChange={(e) => onChange({ ...config, heading: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
+          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent"
           placeholder="Set your 90-day goal"
         />
       </div>
@@ -714,7 +714,7 @@ function IdentityConfigEditor({ config, onChange }: { config: Record<string, unk
         <textarea
           value={examples.join('\n')}
           onChange={(e) => onChange({ ...config, examples: e.target.value.split('\n').filter(Boolean) })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] resize-none"
+          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent resize-none"
           rows={4}
           placeholder="One example per line..."
         />
@@ -726,7 +726,7 @@ function IdentityConfigEditor({ config, onChange }: { config: Record<string, unk
           type="text"
           value={config.heading as string || ''}
           onChange={(e) => onChange({ ...config, heading: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
+          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent"
           placeholder="Who are you becoming?"
         />
       </div>
@@ -737,7 +737,7 @@ function IdentityConfigEditor({ config, onChange }: { config: Record<string, unk
           type="text"
           value={config.promptText as string || ''}
           onChange={(e) => onChange({ ...config, promptText: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
+          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent"
           placeholder="I am becoming..."
         />
       </div>
@@ -783,7 +783,7 @@ function AnalyzingConfigEditor({ config, onChange }: { config: Record<string, un
           type="number"
           value={config.durationMs as number || 3000}
           onChange={(e) => onChange({ ...config, durationMs: parseInt(e.target.value) || 3000 })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
+          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent"
         />
         <p className="text-xs text-text-muted mt-1">e.g., 3000 = 3 seconds</p>
       </div>
@@ -793,7 +793,7 @@ function AnalyzingConfigEditor({ config, onChange }: { config: Record<string, un
         <textarea
           value={messages.join('\n')}
           onChange={(e) => onChange({ ...config, messages: e.target.value.split('\n').filter(Boolean) })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] resize-none"
+          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent resize-none"
           rows={4}
           placeholder="One message per line..."
         />
@@ -807,7 +807,7 @@ function AnalyzingConfigEditor({ config, onChange }: { config: Record<string, un
           {testimonials.length < 3 && (
             <button
               onClick={addTestimonial}
-              className="text-sm text-[#a07855] dark:text-[#b8896a] hover:text-[#8c6245] font-medium"
+              className="text-sm text-brand-accent hover:text-brand-accent/90 font-medium"
             >
               + Add testimonial
             </button>
@@ -836,7 +836,7 @@ function AnalyzingConfigEditor({ config, onChange }: { config: Record<string, un
                     type="text"
                     value={testimonial.name}
                     onChange={(e) => updateTestimonial(index, { name: e.target.value })}
-                    className="w-full px-3 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] text-sm"
+                    className="w-full px-3 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent text-sm"
                     placeholder="John D."
                   />
                 </div>
@@ -846,7 +846,7 @@ function AnalyzingConfigEditor({ config, onChange }: { config: Record<string, un
                   <textarea
                     value={testimonial.text}
                     onChange={(e) => updateTestimonial(index, { text: e.target.value })}
-                    className="w-full px-3 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] text-sm resize-none"
+                    className="w-full px-3 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent text-sm resize-none"
                     rows={2}
                     placeholder="This program changed my life..."
                   />
@@ -893,7 +893,7 @@ function PlanRevealConfigEditor({ config, onChange }: { config: Record<string, u
           type="text"
           value={config.heading as string || ''}
           onChange={(e) => onChange({ ...config, heading: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
+          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent"
           placeholder="Your {X}-month plan is ready!"
         />
         <p className="text-xs text-text-muted mt-1">Use {'{X}'} to insert the timeline duration</p>
@@ -904,7 +904,7 @@ function PlanRevealConfigEditor({ config, onChange }: { config: Record<string, u
         <textarea
           value={config.body as string || ''}
           onChange={(e) => onChange({ ...config, body: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] resize-none"
+          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent resize-none"
           rows={3}
           placeholder="Custom encouragement text..."
         />
@@ -916,7 +916,7 @@ function PlanRevealConfigEditor({ config, onChange }: { config: Record<string, u
           type="text"
           value={config.ctaText as string || ''}
           onChange={(e) => onChange({ ...config, ctaText: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
+          className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent"
           placeholder="Continue"
         />
       </div>
@@ -1022,7 +1022,7 @@ function ExplainerConfigEditor({ config, onChange }: { config: Record<string, un
               type="url"
               value={config.youtubeUrl as string || ''}
               onChange={(e) => onChange({ ...config, youtubeUrl: e.target.value })}
-              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8]"
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8]"
               placeholder="https://www.youtube.com/watch?v=..."
             />
             <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
@@ -1048,7 +1048,7 @@ function ExplainerConfigEditor({ config, onChange }: { config: Record<string, un
               type="url"
               value={config.vimeoUrl as string || ''}
               onChange={(e) => onChange({ ...config, vimeoUrl: e.target.value })}
-              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8]"
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8]"
               placeholder="https://vimeo.com/..."
             />
             <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
@@ -1074,7 +1074,7 @@ function ExplainerConfigEditor({ config, onChange }: { config: Record<string, un
               type="url"
               value={config.loomUrl as string || ''}
               onChange={(e) => onChange({ ...config, loomUrl: e.target.value })}
-              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8]"
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8]"
               placeholder="https://www.loom.com/share/..."
             />
             <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
@@ -1099,7 +1099,7 @@ function ExplainerConfigEditor({ config, onChange }: { config: Record<string, un
             <textarea
               value={config.iframeCode as string || ''}
               onChange={(e) => onChange({ ...config, iframeCode: e.target.value })}
-              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] resize-none font-mono text-sm"
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8] resize-none font-mono text-sm"
               rows={4}
               placeholder='<iframe src="..." ...></iframe> or https://...'
             />
@@ -1127,8 +1127,8 @@ function ExplainerConfigEditor({ config, onChange }: { config: Record<string, un
               onClick={() => onChange({ ...config, mediaType: option.value })}
               className={`p-3 rounded-lg border-2 transition-all flex flex-col items-center gap-1 ${
                 mediaType === option.value
-                  ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 text-[#a07855] dark:text-[#b8896a]'
-                  : 'border-[#e1ddd8] dark:border-[#262b35] text-text-muted hover:border-[#a07855] dark:border-[#b8896a]/50'
+                  ? 'border-brand-accent bg-brand-accent/5 text-brand-accent'
+                  : 'border-[#e1ddd8] dark:border-[#262b35] text-text-muted hover:border-brand-accent/50'
               }`}
             >
               {option.icon}
@@ -1190,8 +1190,8 @@ function ExplainerConfigEditor({ config, onChange }: { config: Record<string, un
               onClick={() => onChange({ ...config, layout: option.value })}
               className={`p-3 rounded-lg border-2 transition-all flex flex-col items-center gap-1 ${
                 layout === option.value
-                  ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 text-[#a07855] dark:text-[#b8896a]'
-                  : 'border-[#e1ddd8] dark:border-[#262b35] text-text-muted hover:border-[#a07855] dark:border-[#b8896a]/50'
+                  ? 'border-brand-accent bg-brand-accent/5 text-brand-accent'
+                  : 'border-[#e1ddd8] dark:border-[#262b35] text-text-muted hover:border-brand-accent/50'
               }`}
             >
               {option.icon}
@@ -1210,7 +1210,7 @@ function ExplainerConfigEditor({ config, onChange }: { config: Record<string, un
               type="text"
               value={config.heading as string || ''}
               onChange={(e) => onChange({ ...config, heading: e.target.value })}
-              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8]"
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8]"
               placeholder="Welcome"
             />
           </div>
@@ -1220,7 +1220,7 @@ function ExplainerConfigEditor({ config, onChange }: { config: Record<string, un
             <textarea
               value={config.body as string || ''}
               onChange={(e) => onChange({ ...config, body: e.target.value })}
-              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] resize-none"
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8] resize-none"
               rows={4}
               placeholder="Your information text..."
             />
@@ -1234,7 +1234,7 @@ function ExplainerConfigEditor({ config, onChange }: { config: Record<string, un
           type="text"
           value={config.ctaText as string || ''}
           onChange={(e) => onChange({ ...config, ctaText: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8]"
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8]"
           placeholder="Continue"
         />
       </div>
@@ -1414,7 +1414,7 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
               type="text"
               value={config.skipSuccessRedirect as string || ''}
               onChange={(e) => onChange({ ...config, skipSuccessRedirect: e.target.value })}
-              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8]"
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8]"
               placeholder="/ (homepage)"
             />
             <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">
@@ -1453,7 +1453,7 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
                     onClick={() => setIsMusicDrawerOpen(!isMusicDrawerOpen)}
                     className="w-full flex items-center gap-3 px-3 py-2.5 bg-white dark:bg-[#11141b] hover:bg-[#faf8f6] dark:hover:bg-[#1a1f28] transition-colors"
                   >
-                    <svg className="w-4 h-4 text-[#a07855] dark:text-[#b8896a] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="w-4 h-4 text-brand-accent flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                     </svg>
                     <span className="text-sm text-text-primary dark:text-[#f5f5f8] flex-1 text-left">{selectedTrackName}</span>
@@ -1480,14 +1480,14 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
                   >
                     <div className="border-t border-[#e1ddd8] dark:border-[#262b35] divide-y divide-[#e1ddd8] dark:divide-[#262b35] max-h-[200px] overflow-y-auto">
                       {/* None option */}
-                      <label className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-[#faf8f6] dark:hover:bg-[#1a1f28] transition-colors ${!config.celebrationSound ? 'bg-[#a07855]/5' : ''}`}>
+                      <label className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-[#faf8f6] dark:hover:bg-[#1a1f28] transition-colors ${!config.celebrationSound ? 'bg-brand-accent/5' : ''}`}>
                         <input
                           type="radio"
                           name="celebrationSound"
                           value=""
                           checked={!config.celebrationSound}
                           onChange={() => handleTrackChange('')}
-                          className="w-4 h-4 accent-[#a07855]"
+                          className="w-4 h-4 accent-brand-accent"
                         />
                         <span className="text-sm text-text-primary dark:text-[#f5f5f8] flex-1">None</span>
                       </label>
@@ -1495,7 +1495,7 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
                       {tracks.map(track => (
                         <label 
                           key={track.id} 
-                          className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-[#faf8f6] dark:hover:bg-[#1a1f28] transition-colors ${config.celebrationSound === track.id ? 'bg-[#a07855]/5' : ''}`}
+                          className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-[#faf8f6] dark:hover:bg-[#1a1f28] transition-colors ${config.celebrationSound === track.id ? 'bg-brand-accent/5' : ''}`}
                         >
                           <input
                             type="radio"
@@ -1503,7 +1503,7 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
                             value={track.id}
                             checked={config.celebrationSound === track.id}
                             onChange={() => handleTrackChange(track.id)}
-                            className="w-4 h-4 accent-[#a07855]"
+                            className="w-4 h-4 accent-brand-accent"
                           />
                           <span className="text-sm text-text-primary dark:text-[#f5f5f8] flex-1">{track.name}</span>
                           <button
@@ -1513,11 +1513,11 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
                               e.stopPropagation();
                               handlePreviewToggle(track.id);
                             }}
-                            className="p-1.5 rounded-full hover:bg-[#a07855]/10 transition-colors"
+                            className="p-1.5 rounded-full hover:bg-brand-accent/10 transition-colors"
                             title={playingTrackId === track.id ? 'Stop' : 'Preview'}
                           >
                             {playingTrackId === track.id ? (
-                              <svg className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" fill="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4 text-brand-accent" fill="currentColor" viewBox="0 0 24 24">
                                 <rect x="6" y="4" width="4" height="16" />
                                 <rect x="14" y="4" width="4" height="16" />
                               </svg>
@@ -1545,7 +1545,7 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
               type="number"
               value={config.redirectDelay as number || 3000}
               onChange={(e) => onChange({ ...config, redirectDelay: parseInt(e.target.value) || 3000 })}
-              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8]"
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8]"
             />
             <p className="text-xs text-text-muted dark:text-[#b2b6c2] mt-1">Time before redirecting to dashboard</p>
           </div>
@@ -1556,7 +1556,7 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
               type="text"
               value={config.heading as string || ''}
               onChange={(e) => onChange({ ...config, heading: e.target.value })}
-              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8]"
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8]"
               placeholder="Welcome to [Program]! 🎉"
             />
           </div>
@@ -1566,7 +1566,7 @@ function SuccessConfigEditor({ config, onChange }: { config: Record<string, unkn
             <textarea
               value={config.body as string || ''}
               onChange={(e) => onChange({ ...config, body: e.target.value })}
-              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] resize-none"
+              className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8] resize-none"
               rows={2}
               placeholder="You're all set! Taking you to your dashboard..."
             />
@@ -1667,7 +1667,7 @@ function DiscountValueInput({
               discountValue: isFixedDiscount ? Math.round(val * 100) : val,
             });
           }}
-          className="w-32 px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8]"
+          className="w-32 px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8]"
           min={0}
           max={isPercentDiscount ? 100 : originalPriceInCents / 100}
         />
@@ -1697,7 +1697,7 @@ function FinalPricePreview({
               ${(originalPriceInCents / 100).toFixed(2)}
             </span>
           ) : null}
-          <span className="text-xl font-bold text-[#a07855] dark:text-[#b8896a]">
+          <span className="text-xl font-bold text-brand-accent">
             ${(finalPriceInCents / 100).toFixed(2)}
           </span>
         </div>
@@ -2011,7 +2011,7 @@ function UpsellDownsellConfigForm({
           type="text"
           value={typedConfig.headline || ''}
           onChange={(e) => onChange({ ...config, headline: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8]"
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8]"
           placeholder={type === 'upsell' ? "Wait! Special One-Time Offer" : "Before You Go..."}
         />
       </div>
@@ -2024,7 +2024,7 @@ function UpsellDownsellConfigForm({
         <textarea
           value={typedConfig.description || ''}
           onChange={(e) => onChange({ ...config, description: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8] resize-none"
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8] resize-none"
           rows={4}
           placeholder="List benefits, one per line:&#10;• Exclusive content&#10;• Community access&#10;• Weekly coaching calls"
         />
@@ -2121,7 +2121,7 @@ function UpsellDownsellConfigForm({
           <button
             onClick={createStripePrice}
             disabled={isCreatingPrice}
-            className="w-full py-2 px-4 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:opacity-50 transition-colors text-sm"
+            className="w-full py-2 px-4 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 disabled:opacity-50 transition-colors text-sm"
           >
             {isCreatingPrice ? 'Creating...' : typedConfig.stripePriceId ? 'Update Stripe Price' : 'Create Stripe Price'}
           </button>
@@ -2143,7 +2143,7 @@ function UpsellDownsellConfigForm({
           type="text"
           value={typedConfig.ctaText || ''}
           onChange={(e) => onChange({ ...config, ctaText: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8]"
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8]"
           placeholder={type === 'upsell' ? "Add to Order" : "Yes, I Want This Deal!"}
         />
       </div>
@@ -2157,7 +2157,7 @@ function UpsellDownsellConfigForm({
           type="text"
           value={typedConfig.declineText || ''}
           onChange={(e) => onChange({ ...config, declineText: e.target.value })}
-          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:text-[#f5f5f8]"
+          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:text-[#f5f5f8]"
           placeholder={type === 'upsell' ? "No thanks, skip this offer" : "No thanks, I'll pass"}
         />
       </div>

@@ -291,7 +291,7 @@ export function ProgramLandingPageEditor({
                 variant="outline"
                 size="sm"
                 onClick={addCoachBullet}
-                className="flex items-center gap-1 border-[#a07855] dark:border-[#b8896a] text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/10"
+                className="flex items-center gap-1 border-brand-accent text-brand-accent hover:bg-brand-accent/10"
               >
                 <Plus className="w-4 h-4" />
                 Add
@@ -345,7 +345,7 @@ export function ProgramLandingPageEditor({
             variant="outline"
             size="sm"
             onClick={addOutcome}
-            className="flex items-center gap-1 border-[#a07855] dark:border-[#b8896a] text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/10"
+            className="flex items-center gap-1 border-brand-accent text-brand-accent hover:bg-brand-accent/10"
           >
             <Plus className="w-4 h-4" />
             Add
@@ -394,7 +394,7 @@ export function ProgramLandingPageEditor({
             variant="outline"
             size="sm"
             onClick={addFeature}
-            className="flex items-center gap-1 border-[#a07855] dark:border-[#b8896a] text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/10"
+            className="flex items-center gap-1 border-brand-accent text-brand-accent hover:bg-brand-accent/10"
           >
             <Plus className="w-4 h-4" />
             Add
@@ -473,7 +473,7 @@ export function ProgramLandingPageEditor({
             variant="outline"
             size="sm"
             onClick={addTestimonial}
-            className="flex items-center gap-1 border-[#a07855] dark:border-[#b8896a] text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/10"
+            className="flex items-center gap-1 border-brand-accent text-brand-accent hover:bg-brand-accent/10"
           >
             <Plus className="w-4 h-4" />
             Add
@@ -507,7 +507,7 @@ export function ProgramLandingPageEditor({
                         </button>
                       </div>
                     ) : (
-                      <label className="w-12 h-12 rounded-full bg-[#faf8f6] dark:bg-[#1e222a] border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] flex items-center justify-center cursor-pointer hover:border-[#a07855] dark:border-[#b8896a] transition-colors">
+                      <label className="w-12 h-12 rounded-full bg-[#faf8f6] dark:bg-[#1e222a] border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] flex items-center justify-center cursor-pointer hover:border-brand-accent transition-colors">
                         <User className="w-5 h-5 text-[#d1ccc5] dark:text-[#7d8190]" />
                         <input
                           type="file"
@@ -611,7 +611,7 @@ export function ProgramLandingPageEditor({
             variant="outline"
             size="sm"
             onClick={addFAQ}
-            className="flex items-center gap-1 border-[#a07855] dark:border-[#b8896a] text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/10"
+            className="flex items-center gap-1 border-brand-accent text-brand-accent hover:bg-brand-accent/10"
           >
             <Plus className="w-4 h-4" />
             Add

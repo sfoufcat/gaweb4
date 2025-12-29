@@ -233,8 +233,8 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
                   className="rounded-xl object-cover"
                 />
               ) : (
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-[#a07855]/20 to-[#8c6245]/10 flex items-center justify-center">
-                  <Building2 className="w-8 h-8 text-[#a07855] dark:text-[#b8896a]" />
+                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-brand-accent/20 to-[#8c6245]/10 flex items-center justify-center">
+                  <Building2 className="w-8 h-8 text-brand-accent" />
                 </div>
               )}
               <div className="flex-1">
@@ -262,7 +262,7 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
                       href={selectedOrg.tenantUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[#a07855] dark:text-[#b8896a] hover:underline font-albert text-sm flex items-center gap-1"
+                      className="text-brand-accent hover:underline font-albert text-sm flex items-center gap-1"
                     >
                       <Globe className="w-4 h-4" />
                       {selectedOrg.subdomain}.growthaddicts.com
@@ -306,7 +306,7 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
                   
                   {loadingTier ? (
                     <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-6 h-6 animate-spin text-[#a07855] dark:text-[#b8896a]" />
+                      <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -374,7 +374,7 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
                             value={editingManualExpiresAt}
                             onChange={(e) => setEditingManualExpiresAt(e.target.value)}
                             min={new Date().toISOString().split('T')[0]}
-                            className="w-full h-10 px-3 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#313746] bg-white dark:bg-[#1e222a] text-sm text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20 focus:border-[#a07855] dark:border-[#b8896a] font-albert disabled:opacity-50"
+                            className="w-full h-10 px-3 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#313746] bg-white dark:bg-[#1e222a] text-sm text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20 focus:border-brand-accent font-albert disabled:opacity-50"
                             disabled={savingTier}
                           />
                           <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
@@ -400,7 +400,7 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
                   handleSaveTier();
                 }}
                 disabled={savingTier || loadingTier}
-                className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-albert"
+                className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
               >
                 {savingTier ? 'Saving...' : 'Save Changes'}
               </AlertDialogAction>
@@ -416,7 +416,7 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
     return (
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl p-8">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-12 h-12 border-4 border-brand-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Loading organizations...</p>
         </div>
       </div>
@@ -432,7 +432,7 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
           <p className="font-albert text-sm">{error}</p>
           <Button 
             onClick={fetchOrganizations} 
-            className="mt-4 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+            className="mt-4 bg-brand-accent hover:bg-brand-accent/90 text-white"
           >
             Try Again
           </Button>
@@ -469,8 +469,8 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
       <div className="p-6">
         {organizations.length === 0 ? (
           <div className="text-center py-12">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#a07855]/10 flex items-center justify-center">
-              <Building2 className="w-8 h-8 text-[#a07855] dark:text-[#b8896a]" />
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-brand-accent/10 flex items-center justify-center">
+              <Building2 className="w-8 h-8 text-brand-accent" />
             </div>
             <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-lg mb-2">No organizations found</p>
             <p className="text-[#5f5a55] dark:text-[#b2b6c2]/70 font-albert text-sm">
@@ -499,12 +499,12 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
                       className="rounded-lg object-cover"
                     />
                   ) : (
-                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#a07855]/20 to-[#8c6245]/10 flex items-center justify-center flex-shrink-0">
-                      <Building2 className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" />
+                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-brand-accent/20 to-[#8c6245]/10 flex items-center justify-center flex-shrink-0">
+                      <Building2 className="w-6 h-6 text-brand-accent" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate group-hover:text-[#a07855] dark:text-[#b8896a] dark:group-hover:text-[#b8896a] transition-colors">
+                    <h4 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate group-hover:text-brand-accent dark:group-hover:text-brand-accent transition-colors">
                       {org.name}
                     </h4>
                     <div className="flex items-center gap-2 mt-1">
@@ -513,7 +513,7 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
                         {org.membersCount}
                       </span>
                       {org.subdomain && (
-                        <span className="text-[#a07855] dark:text-[#b8896a] font-albert text-xs flex items-center gap-1">
+                        <span className="text-brand-accent font-albert text-xs flex items-center gap-1">
                           <Globe className="w-3 h-3" />
                           {org.subdomain}
                         </span>

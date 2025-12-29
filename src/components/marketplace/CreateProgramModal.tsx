@@ -278,7 +278,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                       {valueProps.map((prop, i) => (
                         <div key={i} className="flex gap-4 items-start">
                           <div className="w-10 h-10 rounded-xl bg-[#f3f1ef] dark:bg-[#1e222a] flex items-center justify-center flex-shrink-0">
-                            <prop.icon className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                            <prop.icon className="w-5 h-5 text-brand-accent" />
                           </div>
                           <div>
                             <h4 className="font-albert text-[15px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
@@ -297,7 +297,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                       <button
                         onClick={handleGetStarted}
                         disabled={!userLoaded}
-                        className="w-full flex items-center justify-center gap-2 py-4 bg-[#a07855] hover:bg-[#8c6245] text-white rounded-full font-sans font-bold text-[16px] transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                        className="w-full flex items-center justify-center gap-2 py-4 bg-[#a07855] hover:bg-brand-accent/90 text-white rounded-full font-sans font-bold text-[16px] transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                       >
                         {!userLoaded ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
@@ -392,7 +392,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                                     onChange={(e) => setFirstName(e.target.value)}
                                     required
                                     placeholder="Alex"
-                                    className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                                    className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-[#a07855] dark:focus:border-brand-accent"
                                   />
                                 </div>
                               </div>
@@ -406,7 +406,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                                   onChange={(e) => setLastName(e.target.value)}
                                   required
                                   placeholder="Smith"
-                                  className="w-full px-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                                  className="w-full px-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-[#a07855] dark:focus:border-brand-accent"
                                 />
                               </div>
                             </div>
@@ -423,7 +423,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                                   onChange={(e) => setEmail(e.target.value)}
                                   required
                                   placeholder="alex@example.com"
-                                  className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                                  className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-[#a07855] dark:focus:border-brand-accent"
                                 />
                               </div>
                             </div>
@@ -441,7 +441,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                                   required
                                   minLength={8}
                                   placeholder="••••••••"
-                                  className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                                  className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-[#a07855] dark:focus:border-brand-accent"
                                 />
                               </div>
                             </div>
@@ -449,7 +449,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                             <button
                               type="submit"
                               disabled={isLoading}
-                              className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#a07855] hover:bg-[#8c6245] text-white rounded-full font-sans font-bold text-[15px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                              className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#a07855] hover:bg-brand-accent/90 text-white rounded-full font-sans font-bold text-[15px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                             >
                               {isLoading ? (
                                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -474,7 +474,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                           <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#a07855] hover:bg-[#8c6245] text-white rounded-full font-sans font-bold text-[15px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                            className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#a07855] hover:bg-brand-accent/90 text-white rounded-full font-sans font-bold text-[15px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                           >
                             {isLoading ? (
                               <Loader2 className="w-5 h-5 animate-spin" />
@@ -499,7 +499,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                       <div className="mt-6 pt-4 border-t border-[#e1ddd8]/50 dark:border-[#313746]/50 text-center">
                         <p className="font-sans text-[13px] text-[#5f5a55] dark:text-[#b2b6c2]">
                           Already have an account?{' '}
-                          <a href="/sign-in" className="text-[#a07855] dark:text-[#b8896a] hover:underline font-medium">
+                          <a href="/sign-in" className="text-brand-accent hover:underline font-medium">
                             Sign in
                           </a>
                         </p>
@@ -517,7 +517,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                     className="py-16 px-6"
                   >
                     <div className="text-center">
-                      <div className="w-16 h-16 bg-gradient-to-br from-[#a07855] to-[#b8896a] rounded-2xl flex items-center justify-center mx-auto mb-6 animate-pulse">
+                      <div className="w-16 h-16 bg-gradient-to-br from-brand-accent to-brand-accent rounded-2xl flex items-center justify-center mx-auto mb-6 animate-pulse">
                         <Sparkles className="w-8 h-8 text-white" />
                       </div>
                       <h2 className="font-albert text-[24px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px] mb-2">
@@ -539,7 +539,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                                 <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                               </div>
                             ) : (
-                              <Loader2 className="w-5 h-5 text-[#a07855] dark:text-[#b8896a] animate-spin" />
+                              <Loader2 className="w-5 h-5 text-brand-accent animate-spin" />
                             )}
                             <span className={`font-sans text-[14px] ${
                               item.done 

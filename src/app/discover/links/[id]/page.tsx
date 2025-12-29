@@ -59,7 +59,7 @@ export default function LinkDetailPage({ params }: LinkPageProps) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#faf8f6] dark:bg-[#05070b]">
         <div className="text-center">
-          <div className="w-10 h-10 border-3 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-10 h-10 border-3 border-brand-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-text-secondary font-albert text-[14px]">Loading resource...</p>
         </div>
       </div>
@@ -77,7 +77,7 @@ export default function LinkDetailPage({ params }: LinkPageProps) {
           </h2>
           <Button
             onClick={() => router.push('/discover')}
-            className="mt-4 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+            className="mt-4 bg-brand-accent hover:bg-brand-accent/90 text-white"
           >
             Back to Discover
           </Button>
@@ -118,7 +118,7 @@ export default function LinkDetailPage({ params }: LinkPageProps) {
           <div className="bg-white dark:bg-[#171b22] rounded-3xl p-6 border border-[#e1ddd8] dark:border-[#262b35]">
             <div className="flex items-center gap-4 mb-6">
               <div className="w-16 h-16 rounded-2xl bg-earth-100 dark:bg-[#262b35] flex items-center justify-center">
-                <LinkIcon className="w-8 h-8 text-earth-500 dark:text-[#b8896a]" />
+                <LinkIcon className="w-8 h-8 text-earth-500 dark:text-brand-accent" />
               </div>
               <div>
                 <h1 className="font-albert text-[24px] font-semibold text-text-primary tracking-[-1px]">
@@ -143,7 +143,7 @@ export default function LinkDetailPage({ params }: LinkPageProps) {
               href={link.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white rounded-xl font-semibold transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-xl font-semibold transition-colors"
             >
               <LinkIcon className="w-5 h-5" />
               Open Resource
@@ -194,7 +194,7 @@ export default function LinkDetailPage({ params }: LinkPageProps) {
         <div className="bg-white dark:bg-[#171b22] rounded-3xl p-6 border border-[#e1ddd8] dark:border-[#262b35]">
           <div className="flex items-center gap-4 mb-4">
             <div className="w-16 h-16 rounded-2xl bg-earth-100 dark:bg-[#262b35] flex items-center justify-center">
-              <LinkIcon className="w-8 h-8 text-earth-500 dark:text-[#b8896a]" />
+              <LinkIcon className="w-8 h-8 text-earth-500 dark:text-brand-accent" />
             </div>
             <div>
               <h1 className="font-albert text-[24px] font-semibold text-text-primary tracking-[-1px]">
@@ -240,7 +240,7 @@ export default function LinkDetailPage({ params }: LinkPageProps) {
                   window.location.reload();
                 }
               }}
-              className="w-full py-3 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-semibold rounded-xl"
+              className="w-full py-3 bg-brand-accent hover:bg-brand-accent/90 text-white font-semibold rounded-xl"
             >
               {!isSignedIn ? 'Sign in to purchase' : 'Purchase Resource'}
             </Button>

@@ -65,7 +65,7 @@ export function SquadManagerPopover({
       <div className="flex items-center gap-1.5 max-w-[200px]">
         {userSquadIds.length > 0 ? (
           <>
-            <span className="inline-flex items-center px-2 py-0.5 bg-[#a07855]/10 dark:bg-[#b8896a]/10 text-[#a07855] dark:text-[#b8896a] rounded-full text-xs font-medium font-albert truncate max-w-[140px]">
+            <span className="inline-flex items-center px-2 py-0.5 bg-brand-accent/10 text-brand-accent rounded-full text-xs font-medium font-albert truncate max-w-[140px]">
               {displayText}
             </span>
             {extraCount > 0 && (
@@ -93,7 +93,7 @@ export function SquadManagerPopover({
         >
           {userSquadIds.length > 0 ? (
             <>
-              <span className="inline-flex items-center px-2 py-0.5 bg-[#a07855]/10 dark:bg-[#b8896a]/10 text-[#a07855] dark:text-[#b8896a] rounded-full text-xs font-medium font-albert truncate max-w-[120px]">
+              <span className="inline-flex items-center px-2 py-0.5 bg-brand-accent/10 text-brand-accent rounded-full text-xs font-medium font-albert truncate max-w-[120px]">
                 {displayText}
               </span>
               {extraCount > 0 && (

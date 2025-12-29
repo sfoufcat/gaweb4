@@ -451,8 +451,8 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                   <ChevronLeft className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
                 </button>
               )}
-              <div className="w-10 h-10 rounded-xl bg-[#a07855]/10 dark:bg-[#b8896a]/10 flex items-center justify-center">
-                <UserPlus className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+              <div className="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center">
+                <UserPlus className="w-5 h-5 text-brand-accent" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
@@ -502,7 +502,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
             {!isLoading && !error && funnels.length === 0 && (
               <div className="text-center py-8">
                 <div className="w-16 h-16 rounded-2xl bg-[#faf8f6] dark:bg-[#11141b] flex items-center justify-center mx-auto mb-4">
-                  <Layers className="w-8 h-8 text-[#a07855] dark:text-[#b8896a]" />
+                  <Layers className="w-8 h-8 text-brand-accent" />
                 </div>
                 <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                   No Funnels Yet
@@ -513,7 +513,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                 <button
                   onClick={autoCreateFunnel}
                   disabled={isAutoCreating}
-                  className="px-6 py-3 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-xl font-albert font-medium hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:opacity-50 transition-colors flex items-center gap-2 mx-auto"
+                  className="px-6 py-3 bg-brand-accent text-white rounded-xl font-albert font-medium hover:bg-brand-accent/90 disabled:opacity-50 transition-colors flex items-center gap-2 mx-auto"
                 >
                   {isAutoCreating ? (
                     <>
@@ -594,7 +594,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                         <select
                           value={selectedFunnelId || ''}
                           onChange={(e) => setSelectedFunnelId(e.target.value)}
-                          className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] appearance-none cursor-pointer"
+                          className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent appearance-none cursor-pointer"
                         >
                           {funnels.map(funnel => (
                             <option key={funnel.id} value={funnel.id}>
@@ -627,7 +627,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                         </button>
                         <button
                           onClick={() => setCurrentView('create')}
-                          className="flex items-center gap-2 px-3 py-1.5 text-sm bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors font-albert"
+                          className="flex items-center gap-2 px-3 py-1.5 text-sm bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors font-albert"
                         >
                           <Plus className="w-4 h-4" />
                           New Invite
@@ -638,7 +638,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                     {/* Invites Loading */}
                     {invitesLoading && (
                       <div className="flex justify-center py-8">
-                        <Loader2 className="w-6 h-6 text-[#a07855] dark:text-[#b8896a] animate-spin" />
+                        <Loader2 className="w-6 h-6 text-brand-accent animate-spin" />
                       </div>
                     )}
 
@@ -652,7 +652,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                     {/* Empty state */}
                     {!invitesLoading && !invitesError && invites.length === 0 && (
                       <div className="text-center py-8 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl border border-[#e1ddd8] dark:border-[#262b35]">
-                        <Mail className="w-10 h-10 text-[#a07855] dark:text-[#b8896a]/50 dark:text-[#b8896a]/50 mx-auto mb-3" />
+                        <Mail className="w-10 h-10 text-brand-accent/50 dark:text-brand-accent/50 mx-auto mb-3" />
                         <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">No invites yet</p>
                         <p className="text-sm text-[#5f5a55]/70 dark:text-[#b2b6c2]/70 font-albert mt-1">
                           Create your first invite to get started
@@ -746,7 +746,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                         type="email"
                         value={createForm.email}
                         onChange={(e) => setCreateForm(prev => ({ ...prev, email: e.target.value }))}
-                        className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                        className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                         placeholder="user@example.com"
                       />
                       <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
@@ -762,7 +762,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                         type="text"
                         value={createForm.name}
                         onChange={(e) => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
-                        className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                        className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                         placeholder="John Doe"
                       />
                     </div>
@@ -777,7 +777,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                           ...prev, 
                           paymentStatus: e.target.value as 'required' | 'pre_paid' | 'free' 
                         }))}
-                        className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                        className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                       >
                         <option value="required">Payment Required</option>
                         <option value="pre_paid">Pre-paid (skip payment)</option>
@@ -794,7 +794,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                           type="text"
                           value={createForm.prePaidNote}
                           onChange={(e) => setCreateForm(prev => ({ ...prev, prePaidNote: e.target.value }))}
-                          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                          className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                           placeholder="e.g., Invoice #123"
                         />
                       </div>
@@ -808,7 +808,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                           onChange={(checked) => setCreateForm(prev => ({ ...prev, sendEmail: checked }))}
                         />
                         <span className="flex items-center gap-2 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setCreateForm(prev => ({ ...prev, sendEmail: !prev.sendEmail }))}>
-                          <Send className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+                          <Send className="w-4 h-4 text-brand-accent" />
                           Send invite email to {createForm.email}
                         </span>
                       </div>
@@ -825,7 +825,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                       <button
                         type="submit"
                         disabled={isCreating}
-                        className="flex-1 py-2.5 px-4 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:opacity-50 transition-colors font-albert flex items-center justify-center gap-2"
+                        className="flex-1 py-2.5 px-4 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 disabled:opacity-50 transition-colors font-albert flex items-center justify-center gap-2"
                       >
                         {isCreating ? (
                           <>
@@ -852,7 +852,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                           <textarea
                             value={bulkCsv}
                             onChange={(e) => setBulkCsv(e.target.value)}
-                            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8] resize-none font-mono text-sm"
+                            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] resize-none font-mono text-sm"
                             rows={8}
                             placeholder={`email@example.com, John Doe\nanother@example.com, Jane Doe\n...`}
                           />
@@ -868,7 +868,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                           <select
                             value={bulkPaymentStatus}
                             onChange={(e) => setBulkPaymentStatus(e.target.value as 'required' | 'pre_paid' | 'free')}
-                            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                            className="w-full px-4 py-2 border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] rounded-lg focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
                           >
                             <option value="required">Payment Required</option>
                             <option value="pre_paid">Pre-paid (skip payment)</option>
@@ -883,7 +883,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                             onChange={(checked) => setBulkSendEmails(checked)}
                           />
                           <span className="flex items-center gap-2 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert cursor-pointer" onClick={() => setBulkSendEmails(!bulkSendEmails)}>
-                            <Send className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+                            <Send className="w-4 h-4 text-brand-accent" />
                             Send invite emails to all addresses
                           </span>
                         </div>
@@ -899,7 +899,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                           <button
                             onClick={handleBulkImport}
                             disabled={isBulkImporting || !bulkCsv.trim()}
-                            className="flex-1 py-2.5 px-4 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:opacity-50 transition-colors font-albert flex items-center justify-center gap-2"
+                            className="flex-1 py-2.5 px-4 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 disabled:opacity-50 transition-colors font-albert flex items-center justify-center gap-2"
                           >
                             {isBulkImporting ? (
                               <>
@@ -926,7 +926,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                             {bulkResult.skipped > 0 && `, skipped ${bulkResult.skipped} duplicates`}
                           </p>
                           {bulkResult.emailsSent > 0 && (
-                            <p className="text-sm text-[#a07855] dark:text-[#b8896a] font-albert mt-1">
+                            <p className="text-sm text-brand-accent font-albert mt-1">
                               {bulkResult.emailsSent} invite emails sent
                             </p>
                           )}
@@ -955,7 +955,7 @@ export function InviteClientsDialog({ isOpen, onClose }: InviteClientsDialogProp
                             setBulkResult(null);
                             setBulkCsv('');
                           }}
-                          className="w-full py-2.5 px-4 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors font-albert"
+                          className="w-full py-2.5 px-4 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors font-albert"
                         >
                           Done
                         </button>

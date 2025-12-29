@@ -90,7 +90,7 @@ export function SquadChatHeader({ onBack, showBackButton = false }: SquadChatHea
                         className="w-12 h-12 rounded-full object-cover"
                       />
                     ) : (
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e] flex items-center justify-center text-white font-albert font-semibold">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-accent to-[#7d5c3e] flex items-center justify-center text-white font-albert font-semibold">
                         {initial}
                       </div>
                     )}

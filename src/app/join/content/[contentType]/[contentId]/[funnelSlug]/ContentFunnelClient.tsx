@@ -452,7 +452,7 @@ export default function ContentFunnelClient({
             <p className="text-text-secondary">Unknown step type: {step.type}</p>
             <button
               onClick={() => handleStepComplete({})}
-              className="mt-4 px-6 py-2 bg-[#a07855] text-white rounded-lg"
+              className="mt-4 px-6 py-2 bg-brand-accent text-white rounded-lg"
             >
               Continue
             </button>
@@ -466,7 +466,7 @@ export default function ContentFunnelClient({
     return (
       <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-10 h-10 border-3 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-10 h-10 border-3 border-brand-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-text-secondary dark:text-[#b2b6c2] font-albert text-[14px]">Loading...</p>
         </div>
       </div>
@@ -482,7 +482,7 @@ export default function ContentFunnelClient({
           <p className="text-text-secondary dark:text-[#b2b6c2] mb-4">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg"
+            className="px-6 py-2 bg-brand-accent text-white rounded-lg"
           >
             Try Again
           </button>

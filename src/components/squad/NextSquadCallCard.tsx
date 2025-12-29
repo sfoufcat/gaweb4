@@ -177,7 +177,7 @@ export function NextSquadCallCard({ squad, isCoach = false, onCallUpdated, coach
       {/* Card Title */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+          <Calendar className="w-5 h-5 text-brand-accent" />
           <h3 className="font-albert text-[16px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px]">
             Next squad call
           </h3>
@@ -225,7 +225,7 @@ export function NextSquadCallCard({ squad, isCoach = false, onCallUpdated, coach
                     href={event.locationLabel}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[#a07855] dark:text-[#b8896a] hover:underline"
+                    className="text-brand-accent hover:underline"
                   >
                     {event.locationLabel}
                   </a>
@@ -280,7 +280,7 @@ export function NextSquadCallCard({ squad, isCoach = false, onCallUpdated, coach
             {squad.chatChannelId && (
               <button
                 onClick={handleGoToChat}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] rounded-full font-albert text-[14px] font-medium text-white transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-accent hover:bg-brand-accent/90 rounded-full font-albert text-[14px] font-medium text-white transition-colors"
               >
                 <MessageCircle className="w-4 h-4" />
                 Go to chat
@@ -308,7 +308,7 @@ export function NextSquadCallCard({ squad, isCoach = false, onCallUpdated, coach
             {squad.chatChannelId && (
               <button
                 onClick={handleGoToChat}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] rounded-full font-albert text-[14px] font-medium text-white transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-accent hover:bg-brand-accent/90 rounded-full font-albert text-[14px] font-medium text-white transition-colors"
               >
                 <MessageCircle className="w-4 h-4" />
                 Go to chat

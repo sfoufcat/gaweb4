@@ -127,7 +127,7 @@ export default function UpgradePremiumPage() {
                   just as committed has pushed me to achieve more than I thought possible.&quot;
                 </p>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e] flex items-center justify-center text-white font-albert font-semibold text-[14px] border-2 border-white">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-accent to-[#7d5c3e] flex items-center justify-center text-white font-albert font-semibold text-[14px] border-2 border-white">
                     S
                   </div>
                   <div>

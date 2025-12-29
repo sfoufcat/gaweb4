@@ -12,9 +12,9 @@ export default function TenantNotFoundPage() {
     <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b] flex items-center justify-center p-4">
       <div className="max-w-md w-full text-center">
         {/* Icon */}
-        <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/10 flex items-center justify-center">
+        <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-brand-accent/10 flex items-center justify-center">
           <svg
-            className="w-10 h-10 text-[#a07855] dark:text-[#b8896a]"
+            className="w-10 h-10 text-brand-accent"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -43,7 +43,7 @@ export default function TenantNotFoundPage() {
         <div className="space-y-3">
           <Link
             href="https://growthaddicts.com"
-            className="block w-full px-6 py-3 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-medium rounded-xl transition-colors font-albert"
+            className="block w-full px-6 py-3 bg-brand-accent hover:bg-brand-accent/90 text-white font-medium rounded-xl transition-colors font-albert"
           >
             Go to GrowthAddicts
           </Link>
@@ -59,7 +59,7 @@ export default function TenantNotFoundPage() {
         {/* Help text */}
         <p className="mt-8 text-sm text-[#8c8c8c] dark:text-[#7d8190] font-albert">
           If you believe this is an error, please contact{' '}
-          <a href="mailto:hello@growthaddicts.com" className="text-[#a07855] dark:text-[#b8896a] hover:underline">
+          <a href="mailto:hello@growthaddicts.com" className="text-brand-accent hover:underline">
             hello@growthaddicts.com
           </a>
         </p>

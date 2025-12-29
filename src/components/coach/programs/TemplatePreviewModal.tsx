@@ -155,7 +155,7 @@ export function TemplatePreviewModal({
                 {template.category}
               </span>
               {template.featured && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#a07855] dark:bg-[#b8896a] text-white text-xs font-medium">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-accent text-white text-xs font-medium">
                   <Star className="w-3 h-3 fill-current" />
                   Featured
                 </span>
@@ -194,7 +194,7 @@ export function TemplatePreviewModal({
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2.5 rounded-lg text-sm font-medium font-albert transition-colors ${
                 activeTab === tab.id
-                  ? 'bg-[#a07855]/10 text-[#a07855] dark:bg-[#b8896a]/10 dark:text-[#b8896a]'
+                  ? 'bg-brand-accent/10 text-[#a07855] dark:bg-brand-accent/10 dark:text-brand-accent'
                   : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35]'
               }`}
             >
@@ -208,12 +208,12 @@ export function TemplatePreviewModal({
       <div className="flex-1 overflow-y-auto px-6 py-6">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 text-[#a07855] dark:text-[#b8896a] animate-spin" />
+            <Loader2 className="w-8 h-8 text-brand-accent animate-spin" />
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <p className="text-red-500 mb-2">{error}</p>
-            <button onClick={() => window.location.reload()} className="text-[#a07855] dark:text-[#b8896a] text-sm hover:underline">
+            <button onClick={() => window.location.reload()} className="text-brand-accent text-sm hover:underline">
               Try again
             </button>
           </div>
@@ -238,7 +238,7 @@ export function TemplatePreviewModal({
                 {template.keyOutcomes && template.keyOutcomes.length > 0 && (
                   <div className="bg-[#faf8f6] dark:bg-[#1d222b] rounded-xl p-5">
                     <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-4 flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                      <Sparkles className="w-5 h-5 text-brand-accent" />
                       What You'll Achieve
                     </h3>
                     <ul className="space-y-3">
@@ -256,7 +256,7 @@ export function TemplatePreviewModal({
                 {template.faqs && template.faqs.length > 0 && (
                   <div>
                     <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-4 flex items-center gap-2">
-                      <HelpCircle className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                      <HelpCircle className="w-5 h-5 text-brand-accent" />
                       Common Questions
                     </h3>
                     <div className="space-y-3">
@@ -305,8 +305,8 @@ export function TemplatePreviewModal({
                         key={i}
                         className="flex items-start gap-4 p-4 rounded-xl bg-[#faf8f6] dark:bg-[#1d222b] border border-[#e1ddd8] dark:border-[#262b35]"
                       >
-                        <div className="w-10 h-10 rounded-xl bg-[#a07855]/10 dark:bg-[#b8896a]/10 flex items-center justify-center flex-shrink-0">
-                          <CheckCircle2 className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                        <div className="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
+                          <CheckCircle2 className="w-5 h-5 text-brand-accent" />
                         </div>
                         <div>
                           <h4 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
@@ -356,7 +356,7 @@ export function TemplatePreviewModal({
                 {template.testimonials && template.testimonials.length > 0 && (
                   <div>
                     <h3 className="text-base font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-4 flex items-center gap-2">
-                      <MessageSquare className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                      <MessageSquare className="w-5 h-5 text-brand-accent" />
                       Sample Testimonials
                     </h3>
                     <p className="text-sm text-[#a7a39e] dark:text-[#7d8190] font-albert mb-3">
@@ -399,7 +399,7 @@ export function TemplatePreviewModal({
           <button
             onClick={onUseTemplate}
             disabled={loading}
-            className="px-6 py-3 rounded-xl bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-semibold font-albert transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="px-6 py-3 rounded-xl bg-brand-accent hover:bg-brand-accent/90 text-white font-semibold font-albert transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             Use This Template
             <ChevronRight className="w-4 h-4" />
@@ -420,7 +420,7 @@ interface StatBadgeProps {
 function StatBadge({ icon: Icon, label, value }: StatBadgeProps) {
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35]">
-      <Icon className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+      <Icon className="w-4 h-4 text-brand-accent" />
       <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">{label}:</span>
       <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">{value}</span>
     </div>
@@ -445,8 +445,8 @@ function WeekAccordion({ weekNum, days, isExpanded, onToggle }: WeekAccordionPro
         className="w-full flex items-center justify-between p-4 bg-white dark:bg-[#171b22] hover:bg-[#faf8f6] dark:hover:bg-[#1d222b] transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[#a07855]/10 dark:bg-[#b8896a]/10 flex items-center justify-center">
-            <span className="text-sm font-semibold text-[#a07855] dark:text-[#b8896a]">{weekNum}</span>
+          <div className="w-8 h-8 rounded-lg bg-brand-accent/10 flex items-center justify-center">
+            <span className="text-sm font-semibold text-brand-accent">{weekNum}</span>
           </div>
           <div className="text-left">
             <h4 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
@@ -487,7 +487,7 @@ function WeekAccordion({ weekNum, days, isExpanded, onToggle }: WeekAccordionPro
                         {day.summary}
                       </p>
                     )}
-                    <p className="text-xs text-[#a07855] dark:text-[#b8896a] mt-1">
+                    <p className="text-xs text-brand-accent mt-1">
                       {day.tasks?.length || 0} tasks
                     </p>
                   </div>

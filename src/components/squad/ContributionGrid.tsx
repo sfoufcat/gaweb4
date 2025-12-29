@@ -55,7 +55,7 @@ function getContributionColor(rate: number): string {
     return 'bg-[rgba(44,37,32,0.6)] dark:bg-[rgba(184,137,106,0.6)]';
   }
   // >90% → darkest
-  return 'bg-[#2c2520] dark:bg-[#b8896a]';
+  return 'bg-[#2c2520] dark:bg-brand-accent';
 }
 
 export function ContributionGrid({ 
@@ -107,7 +107,7 @@ export function ContributionGrid({
           <div className="w-3 h-3 rounded-sm border border-[#e1ddd8] dark:border-[#262b35]" />
           <div className="w-3 h-3 rounded-sm bg-[rgba(44,37,32,0.2)] dark:bg-[rgba(184,137,106,0.2)]" />
           <div className="w-3 h-3 rounded-sm bg-[rgba(44,37,32,0.6)] dark:bg-[rgba(184,137,106,0.6)]" />
-          <div className="w-3 h-3 rounded-sm bg-[#2c2520] dark:bg-[#b8896a]" />
+          <div className="w-3 h-3 rounded-sm bg-[#2c2520] dark:bg-brand-accent" />
         </div>
         <span className="font-sans text-[12px] text-text-secondary dark:text-[#b2b6c2] leading-[1.2]">
           More

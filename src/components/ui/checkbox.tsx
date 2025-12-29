@@ -25,8 +25,8 @@ export function BrandedCheckbox({ checked, onChange, id, disabled, className = '
       className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 
         transition-all duration-200 
         ${isActive 
-          ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855] dark:bg-[#b8896a]' 
-          : 'border-[#d1cdc8] dark:border-[#3a4150] bg-white dark:bg-[#171b22] hover:border-[#a07855] dark:hover:border-[#b8896a]/50'
+          ? 'border-brand-accent bg-brand-accent' 
+          : 'border-[#d1cdc8] dark:border-[#3a4150] bg-white dark:bg-[#171b22] hover:border-brand-accent dark:hover:border-brand-accent/50'
         }
         ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         ${className}

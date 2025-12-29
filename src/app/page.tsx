@@ -1501,7 +1501,7 @@ export default function Dashboard() {
               </p>
               <Link
                 href="/checkin/morning/start"
-                className="inline-block mt-4 px-6 py-3 bg-[#2c2520] dark:bg-[#b8896a] text-white rounded-full font-sans text-[14px] font-medium hover:bg-[#1a1a1a] dark:hover:bg-[#a07855] transition-colors"
+                className="inline-block mt-4 px-6 py-3 bg-[#2c2520] dark:bg-brand-accent text-white rounded-full font-sans text-[14px] font-medium hover:bg-[#1a1a1a] dark:hover:bg-brand-accent/90 transition-colors"
               >
                 Start Check-In
               </Link>
@@ -1571,7 +1571,7 @@ export default function Dashboard() {
                 </p>
                 <Link 
                   href="/habits/new"
-                  className="inline-block px-6 py-2 bg-earth-900 dark:bg-[#b8896a] text-white rounded-full font-sans text-[12px] font-medium hover:scale-105 transition-all"
+                  className="inline-block px-6 py-2 bg-earth-900 dark:bg-brand-accent text-white rounded-full font-sans text-[12px] font-medium hover:scale-105 transition-all"
                 >
                   Add your first habit
                 </Link>
@@ -1584,7 +1584,7 @@ export default function Dashboard() {
                 </p>
                 <Link 
                   href="/habits/new"
-                  className="inline-block px-6 py-2 bg-earth-900 dark:bg-[#b8896a] text-white rounded-full font-sans text-[12px] font-medium hover:scale-105 transition-all"
+                  className="inline-block px-6 py-2 bg-earth-900 dark:bg-brand-accent text-white rounded-full font-sans text-[12px] font-medium hover:scale-105 transition-all"
                 >
                   Create your first habit
                 </Link>
@@ -1804,7 +1804,7 @@ export default function Dashboard() {
                     console.error('Error restarting program:', error);
                   }
                 }}
-                className="w-full py-4 px-6 bg-[#2c2520] dark:bg-[#b8896a] text-white rounded-2xl font-sans font-semibold text-[15px] hover:bg-[#1a1a1a] dark:hover:bg-[#a07855] transition-all hover:scale-[1.02] active:scale-[0.98]"
+                className="w-full py-4 px-6 bg-[#2c2520] dark:bg-brand-accent text-white rounded-2xl font-sans font-semibold text-[15px] hover:bg-[#1a1a1a] dark:hover:bg-brand-accent/90 transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
                 Restart Program
               </button>
@@ -1821,7 +1821,7 @@ export default function Dashboard() {
                   setShowProgramCompletionModal(false);
                   router.push('/discover');
                 }}
-                className="w-full py-4 px-6 text-[#a07855] dark:text-[#b8896a] font-sans font-semibold text-[15px] hover:text-[#8c6245] dark:hover:text-[#a07855] dark:text-[#b8896a] transition-colors"
+                className="w-full py-4 px-6 text-brand-accent font-sans font-semibold text-[15px] hover:text-brand-accent/90 dark:hover:text-brand-accent transition-colors"
               >
                 Explore new programs
               </button>

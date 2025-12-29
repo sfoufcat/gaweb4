@@ -3,7 +3,6 @@
 import { useState, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { useUser } from '@clerk/nextjs';
-import { useBrandingValues } from '@/contexts/BrandingContext';
 import { DiscardConfirmationModal } from './ConfirmationModal';
 import { RichTextEditor } from '@/components/editor';
 import { PollComposer } from '@/components/chat/PollComposer';
@@ -24,7 +23,6 @@ export function CreatePostModal({
   onPostCreated,
 }: CreatePostModalProps) {
   const { user } = useUser();
-  const { colors, isDefault } = useBrandingValues();
   const [content, setContent] = useState<{ json: object; html: string; text: string } | null>(null);
   const [images, setImages] = useState<string[]>([]);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -38,7 +36,6 @@ export function CreatePostModal({
   const [showPollComposer, setShowPollComposer] = useState(false);
   const [attachedPoll, setAttachedPoll] = useState<ChatPollState | null>(null);
 
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
 
   const hasContent = (content?.text?.trim()) || images.length > 0 || videoUrl || attachedPoll;
   const canAddImage = images.length < MAX_IMAGES && !videoUrl;
@@ -274,11 +271,11 @@ export function CreatePostModal({
           <button
             onClick={handleSubmit}
             disabled={!hasContent || isSubmitting}
-            className="px-4 py-1.5 rounded-full text-[14px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{
-              backgroundColor: hasContent ? accentColor : '#e8e4df',
-              color: hasContent ? '#fff' : '#8a857f',
-            }}
+            className={`px-4 py-1.5 rounded-full text-[14px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              hasContent 
+                ? 'bg-brand-accent text-brand-accent-foreground' 
+                : 'bg-[#e8e4df] dark:bg-[#262b35] text-[#8a857f]'
+            }`}
           >
             {isSubmitting ? 'Posting...' : 'Post'}
           </button>
@@ -315,7 +312,6 @@ export function CreatePostModal({
             placeholder="What's on your mind?"
             onChange={handleContentChange}
             onUploadImage={handleUploadImage}
-            accentColor={accentColor}
             autoFocus={true}
             minHeight="120px"
             maxHeight="300px"
@@ -380,10 +376,10 @@ export function CreatePostModal({
                 </svg>
               </button>
               <div className="flex items-center gap-2 mb-2">
-                <svg className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-5 h-5 text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                <span className="text-[13px] font-medium text-[#a07855] dark:text-[#b8896a]">Poll attached</span>
+                <span className="text-[13px] font-medium text-brand-accent">Poll attached</span>
               </div>
               <h4 className="font-semibold text-[15px] text-[#1a1a1a] dark:text-[#faf8f6] mb-2">
                 {attachedPoll.question}

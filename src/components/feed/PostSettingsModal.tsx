@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { mutate } from 'swr';
-import { useBrandingValues } from '@/contexts/BrandingContext';
 import { SIDEBAR_BOOKMARKS_KEY, SIDEBAR_TRENDING_KEY } from './FeedSidebar';
 import type { FeedPost } from '@/hooks/useFeed';
 
@@ -31,8 +30,6 @@ export function PostSettingsModal({
   onClose,
   onSettingsUpdated,
 }: PostSettingsModalProps) {
-  const { colors, isDefault } = useBrandingValues();
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
 
   // Settings state
   const [pinnedToFeed, setPinnedToFeed] = useState(post.pinnedToFeed || false);
@@ -138,11 +135,11 @@ export function PostSettingsModal({
             <button
               onClick={handleSave}
               disabled={!hasChanges || isSubmitting}
-              className="px-4 py-1.5 rounded-full text-[14px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                backgroundColor: hasChanges ? accentColor : '#e8e4df',
-                color: hasChanges ? '#fff' : '#8a857f',
-              }}
+              className={`px-4 py-1.5 rounded-full text-[14px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                hasChanges 
+                  ? 'bg-brand-accent text-brand-accent-foreground' 
+                  : 'bg-[#e8e4df] dark:bg-[#262b35] text-[#8a857f]'
+              }`}
             >
               {isSubmitting ? 'Saving...' : 'Save'}
             </button>
@@ -156,7 +153,6 @@ export function PostSettingsModal({
               description="Show this post at the top of the feed"
               checked={pinnedToFeed}
               onChange={setPinnedToFeed}
-              accentColor={accentColor}
             />
 
             {/* Pin to Sidebar */}
@@ -165,7 +161,6 @@ export function PostSettingsModal({
               description="Show this post in the sidebar Pinned section"
               checked={pinnedToSidebar}
               onChange={setPinnedToSidebar}
-              accentColor={accentColor}
             />
 
             {/* Divider */}
@@ -177,7 +172,6 @@ export function PostSettingsModal({
               description="Hide author name, profile picture, and date"
               checked={hideMetadata}
               onChange={setHideMetadata}
-              accentColor={accentColor}
             />
 
             {/* Disable Interactions */}
@@ -186,7 +180,6 @@ export function PostSettingsModal({
               description="Hide like, comment, share, and save buttons"
               checked={disableInteractions}
               onChange={setDisableInteractions}
-              accentColor={accentColor}
             />
 
             {/* Error message */}
@@ -222,13 +215,11 @@ function SettingsToggle({
   description,
   checked,
   onChange,
-  accentColor,
 }: {
   label: string;
   description: string;
   checked: boolean;
   onChange: (value: boolean) => void;
-  accentColor: string;
 }) {
   return (
     <button
@@ -247,9 +238,8 @@ function SettingsToggle({
       {/* Toggle switch */}
       <div
         className={`relative w-11 h-6 rounded-full transition-colors ${
-          checked ? '' : 'bg-[#e8e4df] dark:bg-[#262b35]'
+          checked ? 'bg-brand-accent' : 'bg-[#e8e4df] dark:bg-[#262b35]'
         }`}
-        style={checked ? { backgroundColor: accentColor } : undefined}
       >
         <div
           className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${

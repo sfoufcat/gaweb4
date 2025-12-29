@@ -164,7 +164,7 @@ function PaymentForm({ onSuccess, onCancel, squadName, priceInCents, currency, b
       <button
         type="submit"
         disabled={!stripe || isProcessing}
-        className="w-full py-4 px-6 bg-[#a07855] hover:bg-[#8c6245] text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+        className="w-full py-4 px-6 bg-[#a07855] hover:bg-brand-accent/90 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
       >
         {isProcessing ? (
           <>
@@ -390,7 +390,7 @@ export function SquadPaymentModal({
                       </button>
                       <button
                         onClick={createSubscriptionIntent}
-                        className="px-4 py-2 text-sm font-medium text-white bg-[#a07855] hover:bg-[#8c6245] rounded-lg transition-colors"
+                        className="px-4 py-2 text-sm font-medium text-white bg-[#a07855] hover:bg-brand-accent/90 rounded-lg transition-colors"
                       >
                         Try again
                       </button>

@@ -109,13 +109,13 @@ export function IncomingCallHandler() {
               className="w-20 h-20 rounded-full object-cover"
             />
           ) : (
-            <div className="w-20 h-20 rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/10 flex items-center justify-center">
+            <div className="w-20 h-20 rounded-full bg-brand-accent/10 flex items-center justify-center">
               {isSquadCall ? (
-                <Users className="w-10 h-10 text-[#a07855] dark:text-[#b8896a]" />
+                <Users className="w-10 h-10 text-brand-accent" />
               ) : incomingCallData.isVideo ? (
-                <Video className="w-10 h-10 text-[#a07855] dark:text-[#b8896a]" />
+                <Video className="w-10 h-10 text-brand-accent" />
               ) : (
-                <Phone className="w-10 h-10 text-[#a07855] dark:text-[#b8896a]" />
+                <Phone className="w-10 h-10 text-brand-accent" />
               )}
             </div>
           )}

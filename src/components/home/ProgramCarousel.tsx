@@ -113,7 +113,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
           >
             <div className="bg-white dark:bg-surface rounded-[20px] overflow-hidden hover:shadow-lg transition-all group">
               {/* Program Cover */}
-              <div className="relative w-full h-32 bg-gradient-to-br from-[#a07855]/20 to-[#8c6245]/10">
+              <div className="relative w-full h-32 bg-gradient-to-br from-brand-accent/20 to-[#8c6245]/10">
                 {enrollment.program.coverImageUrl ? (
                   <Image 
                     src={enrollment.program.coverImageUrl} 

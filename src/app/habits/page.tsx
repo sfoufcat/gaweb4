@@ -286,7 +286,7 @@ export default function GrowingHabitsPage() {
             {activeTab === 'active' && (
               <Link 
                 href="/habits/new"
-                className="inline-block px-8 py-3 bg-earth-900 dark:bg-[#b8896a] text-white rounded-full font-sans text-[14px] font-medium hover:scale-105 transition-all"
+                className="inline-block px-8 py-3 bg-earth-900 dark:bg-brand-accent text-white rounded-full font-sans text-[14px] font-medium hover:scale-105 transition-all"
               >
                 Create your first habit
               </Link>
@@ -467,7 +467,7 @@ export default function GrowingHabitsPage() {
           <div className="bg-white dark:bg-[#171b22] rounded-[24px] p-6 max-w-[400px] w-full animate-in fade-in zoom-in-95 duration-200">
             {/* Icon */}
             <div className="w-14 h-14 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-7 h-7 text-earth-900 dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-7 h-7 text-earth-900 dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </div>
@@ -476,7 +476,7 @@ export default function GrowingHabitsPage() {
               Restore habit?
             </h3>
             
-            <p className="font-albert text-[16px] font-semibold text-earth-900 dark:text-[#b8896a] tracking-[-0.5px] text-center mb-2">
+            <p className="font-albert text-[16px] font-semibold text-earth-900 dark:text-brand-accent tracking-[-0.5px] text-center mb-2">
               {habitToRestore.text}
             </p>
             
@@ -504,7 +504,7 @@ export default function GrowingHabitsPage() {
               <button
                 onClick={() => handleRestoreHabit(restoreHabitId)}
                 disabled={isRestoring}
-                className="flex-1 py-3 px-6 rounded-full font-sans text-[14px] font-medium bg-earth-900 dark:bg-[#b8896a] text-white hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 py-3 px-6 rounded-full font-sans text-[14px] font-medium bg-earth-900 dark:bg-brand-accent text-white hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isRestoring ? (
                   <>

@@ -118,7 +118,7 @@ export function FrequencySelector({
                     w-full text-left px-7 py-4 rounded-xl font-albert text-[18px] tracking-[-1px] leading-[1.3]
                     transition-all duration-300
                     ${frequencyType === option.value
-                      ? 'bg-[#a07855] dark:bg-[#b8896a] text-white scale-[1.02] shadow-md'
+                      ? 'bg-brand-accent text-white scale-[1.02] shadow-md'
                       : 'text-text-primary dark:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#1e222a] hover:scale-[1.01] active:scale-[0.99]'
                     }
                   `}

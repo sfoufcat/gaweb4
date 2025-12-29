@@ -52,7 +52,7 @@ export default function AccessDeniedPage() {
         <div className="space-y-3">
           <Link
             href="https://growthaddicts.com"
-            className="block w-full px-6 py-3 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-medium rounded-xl transition-colors font-albert"
+            className="block w-full px-6 py-3 bg-brand-accent hover:bg-brand-accent/90 text-white font-medium rounded-xl transition-colors font-albert"
           >
             Go to My Dashboard
           </Link>
@@ -67,7 +67,7 @@ export default function AccessDeniedPage() {
         {/* Help text */}
         <p className="mt-8 text-sm text-[#8c8c8c] dark:text-[#7d8190] font-albert">
           Need access? Contact the organization administrator or{' '}
-          <a href="mailto:hello@growthaddicts.com" className="text-[#a07855] dark:text-[#b8896a] hover:underline">
+          <a href="mailto:hello@growthaddicts.com" className="text-brand-accent hover:underline">
             reach out to support
           </a>
         </p>

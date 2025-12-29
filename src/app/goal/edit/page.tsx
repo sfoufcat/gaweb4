@@ -440,7 +440,7 @@ export default function EditGoalPage() {
           className={`w-full py-4 text-white rounded-[32px] font-sans font-bold text-[16px] tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] transition-all disabled:opacity-50 disabled:hover:scale-100 ${
             isProgressComplete 
               ? 'bg-gradient-to-r from-emerald-500 to-teal-600' 
-              : 'bg-button-primary dark:bg-[#b8896a]'
+              : 'bg-button-primary dark:bg-brand-accent'
           }`}
         >
           {saving ? 'Saving...' : isProgressComplete ? '🎉 Mark as Complete' : 'Update'}

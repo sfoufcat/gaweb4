@@ -387,8 +387,8 @@ export function FunnelEditorDialog({
                           onClick={() => setFormData(prev => ({ ...prev, contentType: value, contentId: '' }))}
                           className={`flex flex-col items-center gap-1 py-3 px-2 rounded-lg border transition-all ${
                             formData.contentType === value
-                              ? 'bg-[#a07855]/10 border-[#a07855] text-[#a07855] dark:bg-[#b8896a]/10 dark:border-[#b8896a] dark:text-[#b8896a]'
-                              : 'bg-white dark:bg-[#1a1f27] border-[#e1ddd8] dark:border-[#262b35] text-text-secondary dark:text-[#b2b6c2] hover:border-[#a07855]/50'
+                              ? 'bg-brand-accent/10 border-brand-accent text-brand-accent dark:bg-brand-accent/10 dark:border-brand-accent dark:text-brand-accent'
+                              : 'bg-white dark:bg-[#1a1f27] border-[#e1ddd8] dark:border-[#262b35] text-text-secondary dark:text-[#b2b6c2] hover:border-brand-accent/50'
                           }`}
                         >
                           <Icon className="w-5 h-5" />
@@ -494,7 +494,7 @@ export function FunnelEditorDialog({
                   value="public"
                   checked={formData.accessType === 'public'}
                   onChange={(e) => setFormData(prev => ({ ...prev, accessType: e.target.value as 'public' | 'invite_only' }))}
-                  className="text-[#a07855] dark:text-[#b8896a] focus:ring-[#a07855] dark:ring-[#b8896a]"
+                  className="text-brand-accent focus:ring-brand-accent dark:ring-brand-accent"
                 />
                 <span className="text-text-primary dark:text-[#f5f5f8]">Public</span>
               </label>
@@ -505,7 +505,7 @@ export function FunnelEditorDialog({
                   value="invite_only"
                   checked={formData.accessType === 'invite_only'}
                   onChange={(e) => setFormData(prev => ({ ...prev, accessType: e.target.value as 'public' | 'invite_only' }))}
-                  className="text-[#a07855] dark:text-[#b8896a] focus:ring-[#a07855] dark:ring-[#b8896a]"
+                  className="text-brand-accent focus:ring-brand-accent dark:ring-brand-accent"
                 />
                 <span className="text-text-primary dark:text-[#f5f5f8]">Invite Only</span>
               </label>
@@ -575,7 +575,7 @@ export function FunnelEditorDialog({
                       tracking: { ...prev.tracking, metaPixelId: e.target.value }
                     }))}
                     placeholder="e.g., 1234567890"
-                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
+                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-brand-accent text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
                   />
                   <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
                     Facebook/Meta Pixel ID for conversion tracking
@@ -595,7 +595,7 @@ export function FunnelEditorDialog({
                       tracking: { ...prev.tracking, googleAnalyticsId: e.target.value }
                     }))}
                     placeholder="e.g., G-XXXXXXXXXX"
-                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
+                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-brand-accent text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
                   />
                   <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
                     Google Analytics 4 measurement ID
@@ -615,7 +615,7 @@ export function FunnelEditorDialog({
                       tracking: { ...prev.tracking, googleAdsId: e.target.value }
                     }))}
                     placeholder="e.g., AW-XXXXXXXXXX"
-                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
+                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-brand-accent text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
                   />
                   <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
                     Google Ads conversion tracking ID
@@ -635,7 +635,7 @@ export function FunnelEditorDialog({
                     }))}
                     placeholder="<!-- TikTok Pixel, Snapchat Pixel, etc. -->"
                     rows={3}
-                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] resize-none font-mono text-sm text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
+                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-brand-accent resize-none font-mono text-sm text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
                   />
                   <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
                     Custom scripts injected in &lt;head&gt; - use for other tracking pixels
@@ -655,7 +655,7 @@ export function FunnelEditorDialog({
                     }))}
                     placeholder="<!-- Scripts that need to run in body -->"
                     rows={3}
-                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] resize-none font-mono text-sm text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
+                    className="w-full px-4 py-2 bg-white dark:bg-[#1a1f27] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg focus:outline-none focus:border-brand-accent resize-none font-mono text-sm text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted"
                   />
                   <p className="text-xs text-text-muted dark:text-[#7f8694] mt-1">
                     Custom scripts injected in &lt;body&gt;
@@ -684,7 +684,7 @@ export function FunnelEditorDialog({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 py-2 px-4 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:opacity-50 transition-colors"
+              className="flex-1 py-2 px-4 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 disabled:opacity-50 transition-colors"
             >
               {isSubmitting ? 'Saving...' : mode === 'create' ? 'Create Funnel' : 'Save Changes'}
             </button>

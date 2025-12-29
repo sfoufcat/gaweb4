@@ -1154,7 +1154,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-sm">{error}</p>
         <Button 
           onClick={fetchPrograms} 
-          className="mt-4 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+          className="mt-4 bg-brand-accent hover:bg-brand-accent/90 text-white"
         >
           Retry
         </Button>
@@ -1186,7 +1186,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   }
                   setIsNewProgramModalOpen(true);
                 }}
-                className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white flex items-center gap-2"
+                className="bg-brand-accent hover:bg-brand-accent/90 text-white flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 New Program
@@ -1197,7 +1197,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setViewMode('list')}
-                  className="text-[#a07855] dark:text-[#b8896a] hover:text-[#8c6245] font-albert text-sm"
+                  className="text-brand-accent hover:text-brand-accent/90 font-albert text-sm"
                 >
                   ← Back to Programs
                 </button>
@@ -1218,7 +1218,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   onClick={() => setViewMode('days')}
                   className={`px-3 py-1.5 rounded-lg text-sm font-albert ${
                     viewMode === 'days'
-                      ? 'bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a]'
+                      ? 'bg-brand-accent/10 text-brand-accent'
                       : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
                   }`}
                 >
@@ -1229,7 +1229,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     onClick={() => setViewMode('cohorts')}
                     className={`px-3 py-1.5 rounded-lg text-sm font-albert ${
                       viewMode === 'cohorts'
-                        ? 'bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a]'
+                        ? 'bg-brand-accent/10 text-brand-accent'
                         : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
                     }`}
                   >
@@ -1240,7 +1240,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   onClick={() => setViewMode('enrollments')}
                   className={`px-3 py-1.5 rounded-lg text-sm font-albert ${
                     viewMode === 'enrollments'
-                      ? 'bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a]'
+                      ? 'bg-brand-accent/10 text-brand-accent'
                       : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
                   }`}
                 >
@@ -1250,7 +1250,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   onClick={() => setViewMode('landing')}
                   className={`px-3 py-1.5 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
                     viewMode === 'landing'
-                      ? 'bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a]'
+                      ? 'bg-brand-accent/10 text-brand-accent'
                       : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
                   }`}
                 >
@@ -1261,7 +1261,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   onClick={() => setViewMode('referrals')}
                   className={`px-3 py-1.5 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
                     viewMode === 'referrals'
-                      ? 'bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a]'
+                      ? 'bg-brand-accent/10 text-brand-accent'
                       : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
                   }`}
                 >
@@ -1289,7 +1289,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             {tenantRequired.tenantUrl ? (
               <a
                 href={`${tenantRequired.tenantUrl}/coach?tab=programs`}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-xl hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors font-albert font-medium"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-brand-accent text-white rounded-xl hover:bg-brand-accent/90 transition-colors font-albert font-medium"
               >
                 <ExternalLink className="w-4 h-4" />
                 Go to {tenantRequired.subdomain}.growthaddicts.com
@@ -1316,7 +1316,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 }}
               >
                 {/* Cover Image */}
-                <div className="h-32 bg-gradient-to-br from-[#a07855]/20 to-[#8c6245]/10 relative">
+                <div className="h-32 bg-gradient-to-br from-brand-accent/20 to-[#8c6245]/10 relative">
                   {program.coverImageUrl && (
                     <img 
                       src={program.coverImageUrl} 
@@ -1386,7 +1386,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                           e.stopPropagation();
                           handleOpenProgramModal(program);
                         }}
-                        className="p-1.5 text-[#5f5a55] hover:text-[#a07855] dark:text-[#b8896a] rounded"
+                        className="p-1.5 text-[#5f5a55] hover:text-brand-accent rounded"
                         title="Program settings"
                       >
                         <Settings className="w-4 h-4" />
@@ -1397,11 +1397,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                           handleDuplicateProgram(program);
                         }}
                         disabled={duplicatingProgram === program.id}
-                        className="p-1.5 text-[#5f5a55] hover:text-[#a07855] dark:text-[#b8896a] rounded disabled:opacity-50"
+                        className="p-1.5 text-[#5f5a55] hover:text-brand-accent rounded disabled:opacity-50"
                         title="Duplicate program"
                       >
                         {duplicatingProgram === program.id ? (
-                          <div className="w-4 h-4 border-2 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin" />
+                          <div className="w-4 h-4 border-2 border-brand-accent border-t-transparent rounded-full animate-spin" />
                         ) : (
                           <Copy className="w-4 h-4" />
                         )}
@@ -1425,8 +1425,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
             {programs.length === 0 && (
               <div className="col-span-full text-center py-12">
-                <div className="w-16 h-16 bg-[#a07855]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <LayoutTemplate className="w-8 h-8 text-[#a07855] dark:text-[#b8896a]" />
+                <div className="w-16 h-16 bg-brand-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <LayoutTemplate className="w-8 h-8 text-brand-accent" />
                 </div>
                 <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
                   No programs yet
@@ -1436,7 +1436,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 </p>
                 <Button 
                   onClick={() => setIsNewProgramModalOpen(true)}
-                  className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+                  className="bg-brand-accent hover:bg-brand-accent/90 text-white"
                 >
                   Create Program
                 </Button>
@@ -1457,7 +1457,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               {/* Fill with AI Button */}
               <button
                 onClick={() => setIsAIProgramContentModalOpen(true)}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 mb-3 bg-gradient-to-r from-[#a07855] to-[#8c6245] dark:from-[#b8896a] dark:to-[#a07855] text-white text-sm font-medium rounded-lg hover:from-[#8c6245] hover:to-[#7a5639] dark:hover:from-[#a07855] dark:hover:to-[#8c6245] transition-all shadow-sm"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 mb-3 bg-gradient-to-r from-brand-accent to-[#8c6245] dark:from-[#b8896a] dark:to-brand-accent text-white text-sm font-medium rounded-lg hover:from-[#8c6245] hover:to-[#7a5639] dark:hover:from-brand-accent dark:hover:to-[#8c6245] transition-all shadow-sm"
               >
                 <Sparkles className="w-4 h-4" />
                 Fill with AI
@@ -1528,7 +1528,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                                   onClick={() => setSelectedDayIndex(day)}
                                   className={`w-full text-left px-3 py-1.5 rounded-lg text-sm font-albert transition-colors ${
                                     selectedDayIndex === day
-                                      ? 'bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a]'
+                                      ? 'bg-brand-accent/10 text-brand-accent'
                                       : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
                                   }`}
                                 >
@@ -1645,7 +1645,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                             onClick={() => updateTask(index, { isPrimary: !task.isPrimary })}
                             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
                               task.isPrimary 
-                                ? 'bg-[#a07855]/15 text-[#a07855] dark:bg-[#b8896a]/20 dark:text-[#b8896a]' 
+                                ? 'bg-brand-accent/15 text-brand-accent' 
                                 : 'bg-[#f3f1ef] dark:bg-[#1d222b] text-[#5f5a55] dark:text-[#7d8190] hover:bg-[#eae7e3] dark:hover:bg-[#262b35]'
                             }`}
                           >
@@ -1681,7 +1681,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       <button
                         type="button"
                         onClick={addTask}
-                        className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#a07855] dark:text-[#b8896a] hover:border-[#a07855] dark:border-[#b8896a]/50 hover:bg-[#a07855]/5 dark:hover:bg-[#a07855]/10 transition-all duration-200 font-albert font-medium text-sm"
+                        className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-brand-accent hover:border-brand-accent/50 hover:bg-brand-accent/5 dark:hover:bg-brand-accent/90/10 transition-all duration-200 font-albert font-medium text-sm"
                       >
                         <Plus className="w-4 h-4" />
                         Add Task
@@ -1711,7 +1711,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                             className="group relative flex items-center gap-3 p-4 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:shadow-sm hover:border-[#d4d0cb] dark:hover:border-[#313746] transition-all duration-200"
                           >
                             {/* Habit Icon - Dashed Ring */}
-                            <div className="w-5 h-5 rounded-full border-2 border-dashed border-[#a07855] dark:border-[#b8896a]/40 dark:border-[#b8896a]/40 flex-shrink-0" />
+                            <div className="w-5 h-5 rounded-full border-2 border-dashed border-brand-accent/40 dark:border-brand-accent/40 flex-shrink-0" />
                             
                             {/* Input */}
                             <input
@@ -1727,7 +1727,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                               <select
                                 value={habit.frequency}
                                 onChange={(e) => updateHabit(index, { frequency: e.target.value as 'daily' | 'weekday' | 'custom' })}
-                                className="appearance-none pl-3 pr-8 py-1.5 bg-[#f3f1ef] dark:bg-[#1d222b] border-none rounded-lg text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30"
+                                className="appearance-none pl-3 pr-8 py-1.5 bg-[#f3f1ef] dark:bg-[#1d222b] border-none rounded-lg text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30"
                               >
                                 <option value="daily">Daily</option>
                                 <option value="weekday">Weekday</option>
@@ -1763,7 +1763,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                         <button
                           type="button"
                           onClick={addHabit}
-                          className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#a07855] dark:text-[#b8896a] hover:border-[#a07855] dark:border-[#b8896a]/50 hover:bg-[#a07855]/5 dark:hover:bg-[#a07855]/10 transition-all duration-200 font-albert font-medium text-sm"
+                          className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-brand-accent hover:border-brand-accent/50 hover:bg-brand-accent/5 dark:hover:bg-brand-accent/90/10 transition-all duration-200 font-albert font-medium text-sm"
                         >
                           <Plus className="w-4 h-4" />
                           Add Habit
@@ -1782,7 +1782,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     <Button
                       onClick={handleSaveDay}
                       disabled={saving}
-                      className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+                      className="bg-brand-accent hover:bg-brand-accent/90 text-white"
                     >
                       {saving ? 'Saving...' : 'Save Day'}
                     </Button>
@@ -1800,7 +1800,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               </p>
               <Button 
                 onClick={() => handleOpenCohortModal()}
-                className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white flex items-center gap-2"
+                className="bg-brand-accent hover:bg-brand-accent/90 text-white flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Add Cohort
@@ -1850,18 +1850,18 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       <button
                         onClick={() => handleDuplicateCohort(cohort)}
                         disabled={duplicatingCohort === cohort.id}
-                        className="p-1.5 text-[#5f5a55] hover:text-[#a07855] dark:text-[#b8896a] rounded disabled:opacity-50"
+                        className="p-1.5 text-[#5f5a55] hover:text-brand-accent rounded disabled:opacity-50"
                         title="Duplicate cohort"
                       >
                         {duplicatingCohort === cohort.id ? (
-                          <div className="w-4 h-4 border-2 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin" />
+                          <div className="w-4 h-4 border-2 border-brand-accent border-t-transparent rounded-full animate-spin" />
                         ) : (
                           <Copy className="w-4 h-4" />
                         )}
                       </button>
                       <button
                         onClick={() => handleOpenCohortModal(cohort)}
-                        className="p-1.5 text-[#5f5a55] hover:text-[#a07855] dark:text-[#b8896a] rounded"
+                        className="p-1.5 text-[#5f5a55] hover:text-brand-accent rounded"
                         title="Edit cohort"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -1889,7 +1889,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   </p>
                   <Button 
                     onClick={() => handleOpenCohortModal()}
-                    className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+                    className="bg-brand-accent hover:bg-brand-accent/90 text-white"
                   >
                     Add First Cohort
                   </Button>
@@ -1952,8 +1952,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                             className="rounded-full object-cover"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-[#a07855]/20 flex items-center justify-center">
-                            <User className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                          <div className="w-10 h-10 rounded-full bg-brand-accent/20 flex items-center justify-center">
+                            <User className="w-5 h-5 text-brand-accent" />
                           </div>
                         )}
                         <div>
@@ -2034,7 +2034,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 <Button
                   variant="outline"
                   onClick={() => setIsAILandingPageModalOpen(true)}
-                  className="border-[#a07855] dark:border-[#b8896a] text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/10 flex items-center gap-2"
+                  className="border-brand-accent text-brand-accent hover:bg-brand-accent/10 flex items-center gap-2"
                 >
                   <Sparkles className="w-4 h-4" />
                   Generate with AI
@@ -2047,7 +2047,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     }
                   }}
                   disabled={saving || landingPageSaved}
-                  className={`flex items-center gap-2 ${landingPageSaved ? 'bg-[#d1ccc5] dark:bg-[#3d424d] cursor-not-allowed' : 'bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855]'} text-white`}
+                  className={`flex items-center gap-2 ${landingPageSaved ? 'bg-[#d1ccc5] dark:bg-[#3d424d] cursor-not-allowed' : 'bg-brand-accent hover:bg-brand-accent/90'} text-white`}
                 >
                   {saving ? 'Saving...' : landingPageSaved ? 'Saved' : 'Save'}
                 </Button>
@@ -2253,11 +2253,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                           disabled={!!editingProgram}
                           className={`flex-1 p-3 rounded-lg border-2 transition-colors ${
                             programFormData.type === 'group'
-                              ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5'
-                              : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a]/50'
+                              ? 'border-brand-accent bg-brand-accent/5'
+                              : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
                           } ${editingProgram ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                          <Users className="w-5 h-5 mx-auto mb-1 text-[#a07855] dark:text-[#b8896a]" />
+                          <Users className="w-5 h-5 mx-auto mb-1 text-brand-accent" />
                           <span className="text-sm font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">Group</span>
                           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Cohorts & Squads</p>
                         </button>
@@ -2267,11 +2267,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                           disabled={!!editingProgram}
                           className={`flex-1 p-3 rounded-lg border-2 transition-colors ${
                             programFormData.type === 'individual'
-                              ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5'
-                              : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a]/50'
+                              ? 'border-brand-accent bg-brand-accent/5'
+                              : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
                           } ${editingProgram ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                          <User className="w-5 h-5 mx-auto mb-1 text-[#a07855] dark:text-[#b8896a]" />
+                          <User className="w-5 h-5 mx-auto mb-1 text-brand-accent" />
                           <span className="text-sm font-albert text-[#1a1a1a] dark:text-[#f5f5f8]">1:1</span>
                           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Individual coaching</p>
                         </button>
@@ -2417,8 +2417,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                                   onClick={() => setProgramFormData({ ...programFormData, billingInterval: interval })}
                                   className={`flex-1 py-2 px-3 rounded-lg text-sm font-albert transition-colors ${
                                     programFormData.billingInterval === interval
-                                      ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
-                                      : 'bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:border-[#a07855] dark:hover:border-[#b8896a]'
+                                      ? 'bg-brand-accent text-white'
+                                      : 'bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:border-brand-accent dark:hover:border-brand-accent'
                                   }`}
                                 >
                                   {interval.charAt(0).toUpperCase() + interval.slice(1)}
@@ -2649,7 +2649,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                             variant="ghost"
                             size="sm"
                             onClick={addProgramHabit}
-                            className="text-[#a07855] dark:text-[#b8896a] hover:text-[#8c6245]"
+                            className="text-brand-accent hover:text-brand-accent/90"
                           >
                             + Add
                           </Button>
@@ -2722,7 +2722,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     <Button
                       onClick={handleSaveProgram}
                       disabled={saving || !programFormData.name}
-                      className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+                      className="bg-brand-accent hover:bg-brand-accent/90 text-white"
                     >
                       {saving ? 'Saving...' : (editingProgram ? 'Update' : 'Create')}
                     </Button>
@@ -2849,7 +2849,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                             name="afterProgramEnds"
                             checked={!cohortFormData.convertSquadsToCommunity}
                             onChange={() => setCohortFormData({ ...cohortFormData, convertSquadsToCommunity: false })}
-                            className="text-[#a07855] dark:text-[#b8896a]"
+                            className="text-brand-accent"
                           />
                           Close squad after grace period
                         </label>
@@ -2859,7 +2859,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                             name="afterProgramEnds"
                             checked={cohortFormData.convertSquadsToCommunity}
                             onChange={() => setCohortFormData({ ...cohortFormData, convertSquadsToCommunity: true })}
-                            className="text-[#a07855] dark:text-[#b8896a]"
+                            className="text-brand-accent"
                           />
                           Convert to mastermind
                         </label>
@@ -2888,7 +2888,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     <Button
                       onClick={handleSaveCohort}
                       disabled={saving || !cohortFormData.name || !cohortFormData.startDate}
-                      className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+                      className="bg-brand-accent hover:bg-brand-accent/90 text-white"
                     >
                       {saving ? 'Saving...' : (editingCohort ? 'Update' : 'Create')}
                     </Button>

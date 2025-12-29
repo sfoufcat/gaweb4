@@ -89,7 +89,7 @@ export function IdentityInput({
           className="absolute inset-0 w-full h-full bg-transparent outline-none resize-none z-10 font-sans text-[24px] tracking-[-0.5px] leading-[1.2] text-text-primary p-0 border-none focus:ring-0"
           style={{ 
             textIndent: indent ? `${indent}px` : '52px',
-            caretColor: '#a07855'
+            caretColor: 'var(--brand-accent-light)'
           }}
           autoFocus
           spellCheck={false}

@@ -202,9 +202,9 @@ export function SquadInviteDialog({
       case 'premium':
         return <Crown className="w-5 h-5 text-[#f7c948]" />;
       case 'private':
-        return <Lock className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />;
+        return <Lock className="w-5 h-5 text-brand-accent" />;
       default:
-        return <Globe className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />;
+        return <Globe className="w-5 h-5 text-brand-accent" />;
     }
   };
 
@@ -320,7 +320,7 @@ export function SquadInviteDialog({
         </label>
         {loading ? (
           <div className="flex items-center justify-center py-4">
-            <Loader2 className="w-5 h-5 text-[#a07855] dark:text-[#b8896a] animate-spin" />
+            <Loader2 className="w-5 h-5 text-brand-accent animate-spin" />
             <span className="ml-2 font-sans text-[14px] text-text-secondary dark:text-[#b2b6c2]">
               Generating link...
             </span>

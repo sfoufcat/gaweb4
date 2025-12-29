@@ -109,7 +109,7 @@ export default function CoachWelcomePage() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b] flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#a07855] dark:text-[#b8896a] mx-auto mb-4" />
+          <Loader2 className="w-8 h-8 animate-spin text-brand-accent mx-auto mb-4" />
           <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-sans">
             Setting up your workspace...
           </p>
@@ -122,7 +122,7 @@ export default function CoachWelcomePage() {
     <div className="min-h-screen bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b]">
       {/* Background decoration */}
       <div className="absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-[#a07855]/10 dark:bg-[#b8896a]/10 rounded-full blur-3xl" />
+        <div className="absolute top-20 left-10 w-72 h-72 bg-brand-accent/10 rounded-full blur-3xl" />
         <div className="absolute bottom-10 right-10 w-96 h-96 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-full blur-3xl" />
       </div>
       
@@ -205,20 +205,20 @@ export default function CoachWelcomePage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.3, delay: 0.3 + index * 0.1 }}
                 onClick={() => router.push(step.action)}
-                className="w-full flex items-center gap-4 p-5 bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:hover:border-[#b8896a] transition-all group text-left"
+                className="w-full flex items-center gap-4 p-5 bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent dark:hover:border-brand-accent transition-all group text-left"
               >
-                <div className="w-12 h-12 rounded-xl bg-[#f3f1ef] dark:bg-[#1e222a] flex items-center justify-center flex-shrink-0 group-hover:bg-[#a07855]/10 dark:group-hover:bg-[#b8896a]/10 transition-colors">
-                  <step.icon className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" />
+                <div className="w-12 h-12 rounded-xl bg-[#f3f1ef] dark:bg-[#1e222a] flex items-center justify-center flex-shrink-0 group-hover:bg-brand-accent/10 dark:group-hover:bg-brand-accent/10 transition-colors">
+                  <step.icon className="w-6 h-6 text-brand-accent" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] group-hover:text-[#a07855] dark:group-hover:text-[#b8896a] transition-colors">
+                  <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] group-hover:text-brand-accent transition-colors">
                     {step.title}
                   </h3>
                   <p className="font-sans text-[14px] text-[#5f5a55] dark:text-[#b2b6c2]">
                     {step.description}
                   </p>
                 </div>
-                <ArrowRight className="w-5 h-5 text-[#a7a39e] dark:text-[#7d8190] group-hover:text-[#a07855] dark:group-hover:text-[#b8896a] group-hover:translate-x-1 transition-all flex-shrink-0" />
+                <ArrowRight className="w-5 h-5 text-[#a7a39e] dark:text-[#7d8190] group-hover:text-brand-accent group-hover:translate-x-1 transition-all flex-shrink-0" />
               </motion.button>
             ))}
           </div>
@@ -233,7 +233,7 @@ export default function CoachWelcomePage() {
         >
           <button
             onClick={handleGoToDashboard}
-            className="inline-flex items-center gap-2 px-8 py-4 bg-[#a07855] hover:bg-[#8c6245] text-white rounded-full font-sans font-bold text-[16px] transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-[#a07855]/20"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-full font-sans font-bold text-[16px] transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-[#a07855]/20"
           >
             <LayoutDashboard className="w-5 h-5" />
             Go to your dashboard

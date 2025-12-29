@@ -51,7 +51,7 @@ export function FunnelDeactivated({ coachName, platformName }: FunnelDeactivated
           {/* Go back / home */}
           <a
             href="https://growthaddicts.com"
-            className="flex items-center justify-center gap-2 w-full px-6 py-3 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-medium rounded-xl transition-colors font-albert"
+            className="flex items-center justify-center gap-2 w-full px-6 py-3 bg-brand-accent hover:bg-brand-accent/90 text-white font-medium rounded-xl transition-colors font-albert"
           >
             <ArrowLeft className="w-5 h-5" />
             Go to Growth Addicts

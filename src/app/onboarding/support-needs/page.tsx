@@ -151,7 +151,7 @@ export default function SupportNeedsPage() {
                     onClick={() => toggleOption(option.value)}
                     className={`w-full p-5 rounded-[20px] border-2 text-left transition-all ${
                       isSelected 
-                      ? 'border-[#a07855] dark:border-[#b8896a] bg-[#faf8f6] shadow-sm' 
+                      ? 'border-brand-accent bg-[#faf8f6] shadow-sm' 
                       : 'border-[#e1ddd8] bg-white hover:border-[#d4d0cb] hover:shadow-sm'
                     }`}
                   initial={{ opacity: 0, y: 20 }}
@@ -164,7 +164,7 @@ export default function SupportNeedsPage() {
                       {/* Checkbox */}
                     <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-all ${
                         isSelected 
-                          ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855] dark:bg-[#b8896a]' 
+                          ? 'border-brand-accent bg-brand-accent' 
                           : 'border-[#d4d0cb]'
                       }`}>
                         {isSelected && (

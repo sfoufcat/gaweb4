@@ -97,7 +97,7 @@ export function AITaskHelpButton({ task, onTaskUpdate }: AITaskHelpButtonProps) 
     <>
       <button
         onClick={handleClick}
-        className="p-1.5 rounded-lg text-text-muted dark:text-[#7d8190] hover:text-[#a07855] dark:text-[#b8896a] dark:hover:text-[#b8896a] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-all flex-shrink-0"
+        className="p-1.5 rounded-lg text-text-muted dark:text-[#7d8190] hover:text-brand-accent dark:hover:text-brand-accent hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-all flex-shrink-0"
         title="Get AI help to complete this task"
       >
         <Sparkles className="w-4 h-4" />

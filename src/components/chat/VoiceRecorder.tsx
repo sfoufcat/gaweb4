@@ -318,7 +318,7 @@ export function VoiceRecordingUI({
         {[...Array(20)].map((_, i) => (
           <div
             key={i}
-            className="w-[3px] bg-[#a07855] dark:bg-[#b8896a] rounded-full animate-pulse"
+            className="w-[3px] bg-brand-accent rounded-full animate-pulse"
             style={{
               height: `${Math.random() * 16 + 8}px`,
               animationDelay: `${i * 50}ms`,
@@ -331,7 +331,7 @@ export function VoiceRecordingUI({
       <button
         type="button"
         onClick={onStop}
-        className="w-9 h-9 rounded-full bg-[#2c2520] hover:bg-[#1a1a1a] dark:bg-[#b8896a] dark:hover:bg-[#a07855] flex items-center justify-center transition-colors shadow-lg"
+        className="w-9 h-9 rounded-full bg-[#2c2520] hover:bg-[#1a1a1a] dark:bg-brand-accent dark:hover:bg-brand-accent/90 flex items-center justify-center transition-colors shadow-lg"
         aria-label="Send voice message"
       >
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-5 h-5">

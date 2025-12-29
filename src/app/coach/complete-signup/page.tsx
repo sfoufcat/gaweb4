@@ -116,7 +116,7 @@ export default function CompleteSignupPage() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b] flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin text-[#a07855] dark:text-[#b8896a] mx-auto mb-4" />
+          <Loader2 className="w-10 h-10 animate-spin text-brand-accent mx-auto mb-4" />
           <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-sans">
             Loading...
           </p>
@@ -140,7 +140,7 @@ export default function CompleteSignupPage() {
             />
           </div>
           
-          <div className="w-16 h-16 bg-gradient-to-br from-[#a07855] to-[#b8896a] rounded-2xl flex items-center justify-center mx-auto mb-6 animate-pulse">
+          <div className="w-16 h-16 bg-gradient-to-br from-brand-accent to-brand-accent rounded-2xl flex items-center justify-center mx-auto mb-6 animate-pulse">
             <Sparkles className="w-8 h-8 text-white" />
           </div>
           
@@ -165,7 +165,7 @@ export default function CompleteSignupPage() {
                     </svg>
                   </div>
                 ) : (
-                  <Loader2 className="w-5 h-5 text-[#a07855] dark:text-[#b8896a] animate-spin" />
+                  <Loader2 className="w-5 h-5 text-brand-accent animate-spin" />
                 )}
                 <span className={`font-sans text-[14px] ${
                   item.done 
@@ -187,7 +187,7 @@ export default function CompleteSignupPage() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b] flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin text-[#a07855] dark:text-[#b8896a] mx-auto mb-4" />
+          <Loader2 className="w-10 h-10 animate-spin text-brand-accent mx-auto mb-4" />
           <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-sans">
             Redirecting to onboarding...
           </p>
@@ -215,7 +215,7 @@ export default function CompleteSignupPage() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
               onClick={() => window.location.reload()}
-              className="px-6 py-3 bg-[#a07855] hover:bg-[#8c6245] text-white rounded-xl font-sans font-medium text-[14px] transition-colors"
+              className="px-6 py-3 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-xl font-sans font-medium text-[14px] transition-colors"
             >
               Try again
             </button>

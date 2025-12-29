@@ -95,7 +95,7 @@ export function PlatformEmptyState() {
                 <a
                   key={domain.organizationId}
                   href={domain.tenantUrl!}
-                  className="flex items-center gap-4 p-4 bg-white dark:bg-[#171b22] rounded-xl border border-[#e1ddd8] dark:border-[#2a2f38] hover:border-[#a07855] dark:border-[#b8896a] dark:hover:border-[#a07855] dark:border-[#b8896a] transition-colors group"
+                  className="flex items-center gap-4 p-4 bg-white dark:bg-[#171b22] rounded-xl border border-[#e1ddd8] dark:border-[#2a2f38] hover:border-brand-accent dark:hover:border-brand-accent transition-colors group"
                 >
                   {/* Org logo */}
                   <div className="w-12 h-12 rounded-lg bg-[#f3f1ef] dark:bg-[#11141b] flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -123,7 +123,7 @@ export function PlatformEmptyState() {
                   </div>
                   
                   {/* Arrow */}
-                  <ExternalLink className="w-5 h-5 text-text-secondary group-hover:text-[#a07855] dark:text-[#b8896a] transition-colors flex-shrink-0" />
+                  <ExternalLink className="w-5 h-5 text-text-secondary group-hover:text-brand-accent transition-colors flex-shrink-0" />
                 </a>
               ))}
             </div>

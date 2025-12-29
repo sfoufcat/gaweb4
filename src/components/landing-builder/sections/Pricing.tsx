@@ -70,7 +70,7 @@ export const Pricing = ({
       key={index}
       className={`relative rounded-2xl p-8 flex flex-col ${
         plan.highlighted
-          ? 'bg-[#a07855] dark:bg-[#b8896a] text-white shadow-xl scale-105 z-10'
+          ? 'bg-brand-accent text-white shadow-xl scale-105 z-10'
           : 'bg-white border border-[#e1ddd8] shadow-sm'
       }`}
     >
@@ -78,8 +78,8 @@ export const Pricing = ({
       {plan.badge && (
         <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-xl text-sm font-medium ${
           plan.highlighted
-            ? 'bg-white text-[#a07855] dark:text-[#b8896a]'
-            : 'bg-[#a07855] dark:bg-[#b8896a] text-white'
+            ? 'bg-white text-brand-accent'
+            : 'bg-brand-accent text-white'
         }`}>
           {plan.badge}
         </div>
@@ -110,7 +110,7 @@ export const Pricing = ({
         {plan.features.map((feature, featureIndex) => (
           <li key={featureIndex} className="flex items-start gap-3">
             <Check className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
-              plan.highlighted ? 'text-white' : 'text-[#a07855] dark:text-[#b8896a]'
+              plan.highlighted ? 'text-white' : 'text-brand-accent'
             }`} />
             <span className={plan.highlighted ? 'text-white/90' : 'text-[#1a1a1a]'}>
               {feature}
@@ -124,8 +124,8 @@ export const Pricing = ({
         href={plan.ctaUrl}
         className={`w-full py-3 px-6 rounded-xl font-semibold text-center transition-colors ${
           plan.highlighted
-            ? 'bg-white text-[#a07855] dark:text-[#b8896a] hover:bg-gray-100'
-            : 'bg-[#a07855] dark:bg-[#b8896a] text-white hover:bg-[#8c6245] dark:hover:bg-[#a07855]'
+            ? 'bg-white text-brand-accent hover:bg-gray-100'
+            : 'bg-brand-accent text-white hover:bg-brand-accent/90'
         }`}
       >
         {plan.ctaText}

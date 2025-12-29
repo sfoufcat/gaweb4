@@ -25,7 +25,7 @@ export const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(
             className={`
               w-full bg-white border border-[#e1ddd8] rounded-2xl py-4 px-5
               font-sans text-base text-text-primary placeholder:text-[#a7a39e]
-              focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20
+              focus:outline-none focus:border-brand-accent focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20
               transition-all duration-200
               disabled:opacity-50 disabled:cursor-not-allowed
               ${error ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : ''}

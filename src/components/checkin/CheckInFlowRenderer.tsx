@@ -256,7 +256,7 @@ export function CheckInFlowRenderer({ flowType, flowId, onComplete, onClose }: C
               key={index}
               className={`w-2 h-2 rounded-full transition-colors ${
                 index <= currentStepIndex
-                  ? 'bg-[#a07855] dark:bg-[#b8896a]'
+                  ? 'bg-brand-accent'
                   : 'bg-[#e1ddd8] dark:bg-[#262b35]'
               }`}
             />
@@ -551,7 +551,7 @@ function SingleSelectStep({ config, onComplete }: { config: Record<string, unkno
               onClick={() => setSelected(option.value)}
               className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
                 selected === option.value
-                  ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 dark:bg-[#b8896a]/10'
+                  ? 'border-brand-accent bg-brand-accent/5 dark:bg-brand-accent/10'
                   : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#d4d0cb] dark:hover:border-[#363d4a]'
               }`}
             >
@@ -597,7 +597,7 @@ function OpenTextStep({ config, onComplete }: { config: Record<string, unknown>;
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={(config.placeholder as string) || 'Start typing...'}
-          className="flex-1 w-full p-4 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#666d7c] resize-none focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] min-h-[200px]"
+          className="flex-1 w-full p-4 bg-white dark:bg-[#0d1015] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#666d7c] resize-none focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent min-h-[200px]"
         />
       </div>
 
@@ -685,7 +685,7 @@ function BreathingStep({ config, onComplete }: { config: Record<string, unknown>
           <motion.div
             animate={{ scale: getCircleScale() }}
             transition={{ duration: phase === 'inhale' ? pattern.inhale : phase === 'exhale' ? pattern.exhale : 0.1 }}
-            className="absolute inset-0 rounded-full bg-gradient-to-br from-[#a07855]/30 to-[#8c6245]/30 dark:from-[#b8896a]/30 dark:to-[#a07855]/30"
+            className="absolute inset-0 rounded-full bg-gradient-to-br from-brand-accent/30 to-[#8c6245]/30 dark:from-[#b8896a]/30 dark:to-brand-accent/30"
           />
           <div className="absolute inset-4 rounded-full bg-[#faf8f6] dark:bg-[#05070b] flex items-center justify-center">
             <span className="font-albert text-[20px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] capitalize">
@@ -783,7 +783,7 @@ function ProgressScaleStep({ config, data, onComplete }: { config: Record<string
           {config.question as string}
         </h1>
 
-        <div className="text-6xl font-bold text-[#a07855] dark:text-[#b8896a] mb-8">
+        <div className="text-6xl font-bold text-brand-accent mb-8">
           {progress}%
         </div>
 
@@ -793,7 +793,7 @@ function ProgressScaleStep({ config, data, onComplete }: { config: Record<string
           max="100"
           value={progress}
           onChange={(e) => setProgress(parseInt(e.target.value))}
-          className="w-full h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg appearance-none cursor-pointer accent-[#a07855]"
+          className="w-full h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-lg appearance-none cursor-pointer accent-brand-accent"
         />
 
         <div className="flex justify-between w-full mt-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
@@ -887,7 +887,7 @@ function VisualizationStep({ config, onComplete }: { config: Record<string, unkn
         <motion.div
           animate={{ scale: [1, 1.1, 1] }}
           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          className="w-48 h-48 mx-auto mb-8 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] dark:from-[#b8896a] dark:to-[#a07855] flex items-center justify-center"
+          className="w-48 h-48 mx-auto mb-8 rounded-full bg-gradient-to-br from-brand-accent to-[#8c6245] dark:from-[#b8896a] dark:to-brand-accent flex items-center justify-center"
         >
           <span className="text-5xl">✨</span>
         </motion.div>

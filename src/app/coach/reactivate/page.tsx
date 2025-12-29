@@ -249,7 +249,7 @@ export default function ReactivatePage() {
   if (!isLoaded || !user) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b] flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-[#a07855]/20 border-t-[#a07855] rounded-full animate-spin" />
+        <div className="w-12 h-12 border-4 border-brand-accent/20 border-t-[#a07855] rounded-full animate-spin" />
       </div>
     );
   }
@@ -329,7 +329,7 @@ export default function ReactivatePage() {
                         onClick={() => setSelectedPlan(plan.id)}
                         className={`relative w-full p-5 rounded-xl border-2 text-left transition-all duration-200 ${
                           isSelected
-                            ? 'border-[#a07855] dark:border-[#b8896a] bg-white dark:bg-[#171b22] shadow-lg shadow-[#a07855]/10'
+                            ? 'border-brand-accent bg-white dark:bg-[#171b22] shadow-lg shadow-[#a07855]/10'
                             : 'border-[#e1ddd8] dark:border-[#313746] bg-white dark:bg-[#171b22] hover:border-[#d4d0cb] dark:hover:border-[#424958]'
                         }`}
                       >
@@ -345,7 +345,7 @@ export default function ReactivatePage() {
                         {/* Popular badge */}
                         {plan.popular && !wasPreviousPlan && (
                           <div className="absolute -top-2.5 left-4">
-                            <span className="bg-[#a07855] text-white font-albert text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+                            <span className="bg-brand-accent text-white font-albert text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
                               Most Popular
                             </span>
                           </div>
@@ -354,7 +354,7 @@ export default function ReactivatePage() {
                         {/* Selection indicator */}
                         <div className={`absolute top-4 right-4 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                           isSelected
-                            ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855] dark:bg-[#b8896a]'
+                            ? 'border-brand-accent bg-brand-accent'
                             : 'border-[#d4d0cb] dark:border-[#424958]'
                         }`}>
                           {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
@@ -404,7 +404,7 @@ export default function ReactivatePage() {
               transition={{ delay: 0.2 }}
             >
               <h2 className="font-albert text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1px] mb-6">
-                <CreditCard className="w-6 h-6 inline mr-2 text-[#a07855] dark:text-[#b8896a]" />
+                <CreditCard className="w-6 h-6 inline mr-2 text-brand-accent" />
                 Payment Details
               </h2>
 
@@ -435,7 +435,7 @@ export default function ReactivatePage() {
                 <button
                   onClick={handleReactivate}
                   disabled={isStartingCheckout || isLoadingSubscription}
-                  className="w-full flex items-center justify-center gap-2 py-4 bg-[#a07855] hover:bg-[#8b6847] text-white rounded-xl font-sans font-semibold text-base shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-2 py-4 bg-brand-accent hover:bg-[#8b6847] text-white rounded-xl font-sans font-semibold text-base shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isStartingCheckout ? (
                     <>
@@ -508,7 +508,7 @@ export default function ReactivatePage() {
               {/* Modal Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#313746]">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#a07855] rounded-xl flex items-center justify-center">
+                  <div className="w-10 h-10 bg-brand-accent rounded-xl flex items-center justify-center">
                     <CreditCard className="w-5 h-5 text-white" />
                   </div>
                   <div>

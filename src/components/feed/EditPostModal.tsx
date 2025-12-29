@@ -3,7 +3,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { useUser } from '@clerk/nextjs';
-import { useBrandingValues } from '@/contexts/BrandingContext';
 import { DiscardConfirmationModal } from './ConfirmationModal';
 import { RichTextEditor } from '@/components/editor';
 import type { FeedPost } from '@/hooks/useFeed';
@@ -24,7 +23,6 @@ export function EditPostModal({
   onPostUpdated,
 }: EditPostModalProps) {
   const { user } = useUser();
-  const { colors, isDefault } = useBrandingValues();
   const [content, setContent] = useState<{ json: object; html: string; text: string } | null>(null);
   const [images, setImages] = useState<string[]>(post.images || []);
   const [videoUrl, setVideoUrl] = useState<string | null>(post.videoUrl || null);
@@ -35,7 +33,6 @@ export function EditPostModal({
   const [editorKey, setEditorKey] = useState(0); // Force editor remount
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
 
   // Track if content has changed
   const originalContent = useRef({
@@ -245,11 +242,11 @@ export function EditPostModal({
           <button
             onClick={handleSubmit}
             disabled={!hasContent || isSubmitting || !hasChanges}
-            className="px-4 py-1.5 rounded-full text-[14px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{
-              backgroundColor: hasChanges && hasContent ? accentColor : '#e8e4df',
-              color: hasChanges && hasContent ? '#fff' : '#8a857f',
-            }}
+            className={`px-4 py-1.5 rounded-full text-[14px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              hasChanges && hasContent 
+                ? 'bg-brand-accent text-brand-accent-foreground' 
+                : 'bg-[#e8e4df] dark:bg-[#262b35] text-[#8a857f]'
+            }`}
           >
             {isSubmitting ? 'Saving...' : 'Save'}
           </button>
@@ -289,7 +286,6 @@ export function EditPostModal({
             placeholder="What's on your mind?"
             onChange={handleContentChange}
             onUploadImage={handleUploadImage}
-            accentColor={accentColor}
             autoFocus={true}
             minHeight="120px"
             maxHeight="300px"

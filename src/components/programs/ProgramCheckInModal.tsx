@@ -162,7 +162,7 @@ export function ProgramCheckInModal({
                   }}
                 >
                   <Sparkles className={`w-4 h-4 ${
-                    i % 3 === 0 ? 'text-[#f5d799]' : i % 3 === 1 ? 'text-[#d4a574]' : 'text-[#a07855] dark:text-[#b8896a]'
+                    i % 3 === 0 ? 'text-[#f5d799]' : i % 3 === 1 ? 'text-[#d4a574]' : 'text-brand-accent'
                   }`} />
                 </motion.div>
               ))}
@@ -172,7 +172,7 @@ export function ProgramCheckInModal({
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.2 }}
-              className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-[#f5d799] to-[#a07855] rounded-full flex items-center justify-center shadow-lg relative z-10"
+              className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-[#f5d799] to-brand-accent rounded-full flex items-center justify-center shadow-lg relative z-10"
             >
               <motion.div
                 animate={{ rotate: [0, 10, -10, 0] }}
@@ -194,7 +194,7 @@ export function ProgramCheckInModal({
               <p className="text-lg text-[#5f5a55] dark:text-[#b2b6c2] font-sans mb-2">
                 You completed the
               </p>
-              <p className="text-xl font-albert font-semibold text-[#a07855] dark:text-[#b8896a] mb-4">
+              <p className="text-xl font-albert font-semibold text-brand-accent mb-4">
                 {programName}
               </p>
               <div className="flex items-center justify-center gap-2 text-[#5f5a55] dark:text-[#b2b6c2]">
@@ -233,14 +233,14 @@ export function ProgramCheckInModal({
                   onClick={() => setData(prev => ({ ...prev, programRating: option.value }))}
                   className={`flex flex-col items-center gap-2 p-4 rounded-xl transition-all ${
                     data.programRating === option.value
-                      ? 'bg-[#a07855]/10 ring-2 ring-[#a07855] dark:ring-[#b8896a] scale-105'
+                      ? 'bg-brand-accent/10 ring-2 ring-brand-accent dark:ring-brand-accent scale-105'
                       : 'bg-[#faf8f6] dark:bg-white/5 hover:bg-[#f0ebe6] dark:hover:bg-white/10'
                   }`}
                 >
                   <span className="text-3xl">{option.emoji}</span>
                   <span className={`text-xs font-albert ${
                     data.programRating === option.value
-                      ? 'text-[#a07855] dark:text-[#b8896a] font-medium'
+                      ? 'text-brand-accent font-medium'
                       : 'text-[#5f5a55] dark:text-[#b2b6c2]'
                   }`}>
                     {option.label}
@@ -261,7 +261,7 @@ export function ProgramCheckInModal({
             className="py-4"
           >
             <div className="flex items-center justify-center gap-2 mb-2">
-              <Target className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" />
+              <Target className="w-6 h-6 text-brand-accent" />
               <h2 className="text-2xl font-albert font-bold text-[#1a1a1a] dark:text-[#f5f5f8]">
                 Are you on track?
               </h2>
@@ -277,13 +277,13 @@ export function ProgramCheckInModal({
                   onClick={() => setData(prev => ({ ...prev, progressStatus: option.value }))}
                   className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all text-left ${
                     data.progressStatus === option.value
-                      ? 'bg-[#a07855]/10 ring-2 ring-[#a07855] dark:ring-[#b8896a]'
+                      ? 'bg-brand-accent/10 ring-2 ring-brand-accent dark:ring-brand-accent'
                       : 'bg-[#faf8f6] dark:bg-white/5 hover:bg-[#f0ebe6] dark:hover:bg-white/10'
                   }`}
                 >
                   <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                     data.progressStatus === option.value
-                      ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855] dark:bg-[#b8896a]'
+                      ? 'border-brand-accent bg-brand-accent'
                       : 'border-[#ccc] dark:border-[#555]'
                   }`}>
                     {data.progressStatus === option.value && (
@@ -293,7 +293,7 @@ export function ProgramCheckInModal({
                   <div>
                     <p className={`font-albert font-medium ${
                       data.progressStatus === option.value
-                        ? 'text-[#a07855] dark:text-[#b8896a]'
+                        ? 'text-brand-accent'
                         : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
                     }`}>
                       {option.label}
@@ -331,7 +331,7 @@ export function ProgramCheckInModal({
               value={data.whatWentWell}
               onChange={(e) => setData(prev => ({ ...prev, whatWentWell: e.target.value }))}
               placeholder="I made progress on... I learned... I'm proud of..."
-              className="w-full h-32 p-4 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-sans placeholder:text-[#999] resize-none focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]"
+              className="w-full h-32 p-4 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-sans placeholder:text-[#999] resize-none focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent"
             />
           </motion.div>
         );
@@ -359,7 +359,7 @@ export function ProgramCheckInModal({
               value={data.obstacles}
               onChange={(e) => setData(prev => ({ ...prev, obstacles: e.target.value }))}
               placeholder="I struggled with... Next time I would... I learned that..."
-              className="w-full h-32 p-4 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-sans placeholder:text-[#999] resize-none focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]"
+              className="w-full h-32 p-4 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-sans placeholder:text-[#999] resize-none focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent"
             />
           </motion.div>
         );
@@ -374,7 +374,7 @@ export function ProgramCheckInModal({
             className="py-4"
           >
             <div className="flex items-center justify-center gap-2 mb-2">
-              <ArrowRight className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" />
+              <ArrowRight className="w-6 h-6 text-brand-accent" />
               <h2 className="text-2xl font-albert font-bold text-[#1a1a1a] dark:text-[#f5f5f8]">
                 Would you like to keep going?
               </h2>
@@ -388,14 +388,14 @@ export function ProgramCheckInModal({
                 onClick={() => setData(prev => ({ ...prev, continueChoice: 'continue' }))}
                 className={`w-full p-5 rounded-xl transition-all text-left ${
                   data.continueChoice === 'continue'
-                    ? 'bg-[#a07855]/10 ring-2 ring-[#a07855] dark:ring-[#b8896a]'
+                    ? 'bg-brand-accent/10 ring-2 ring-brand-accent dark:ring-brand-accent'
                     : 'bg-[#faf8f6] dark:bg-white/5 hover:bg-[#f0ebe6] dark:hover:bg-white/10'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                     data.continueChoice === 'continue'
-                      ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
+                      ? 'bg-brand-accent text-white'
                       : 'bg-[#e1ddd8] dark:bg-[#262b35] text-[#5f5a55]'
                   }`}>
                     <ChevronRight className="w-5 h-5" />
@@ -403,7 +403,7 @@ export function ProgramCheckInModal({
                   <div>
                     <p className={`font-albert font-semibold ${
                       data.continueChoice === 'continue'
-                        ? 'text-[#a07855] dark:text-[#b8896a]'
+                        ? 'text-brand-accent'
                         : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
                     }`}>
                       Continue with the program
@@ -419,14 +419,14 @@ export function ProgramCheckInModal({
                 onClick={() => setData(prev => ({ ...prev, continueChoice: 'own_tasks' }))}
                 className={`w-full p-5 rounded-xl transition-all text-left ${
                   data.continueChoice === 'own_tasks'
-                    ? 'bg-[#a07855]/10 ring-2 ring-[#a07855] dark:ring-[#b8896a]'
+                    ? 'bg-brand-accent/10 ring-2 ring-brand-accent dark:ring-brand-accent'
                     : 'bg-[#faf8f6] dark:bg-white/5 hover:bg-[#f0ebe6] dark:hover:bg-white/10'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                     data.continueChoice === 'own_tasks'
-                      ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
+                      ? 'bg-brand-accent text-white'
                       : 'bg-[#e1ddd8] dark:bg-[#262b35] text-[#5f5a55]'
                   }`}>
                     <Sparkles className="w-5 h-5" />
@@ -434,7 +434,7 @@ export function ProgramCheckInModal({
                   <div>
                     <p className={`font-albert font-semibold ${
                       data.continueChoice === 'own_tasks'
-                        ? 'text-[#a07855] dark:text-[#b8896a]'
+                        ? 'text-brand-accent'
                         : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
                     }`}>
                       I&apos;ll create my own tasks
@@ -489,7 +489,7 @@ export function ProgramCheckInModal({
                         key={i}
                         className={`h-1.5 rounded-full transition-all ${
                           i < getStepNumber()
-                            ? 'w-8 bg-[#a07855] dark:bg-[#b8896a]'
+                            ? 'w-8 bg-brand-accent'
                             : 'w-4 bg-[#e1ddd8] dark:bg-[#262b35]'
                         }`}
                       />
@@ -527,7 +527,7 @@ export function ProgramCheckInModal({
                     <Button
                       onClick={handleComplete}
                       disabled={!canProceed() || isSubmitting}
-                      className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white px-8"
+                      className="bg-brand-accent hover:bg-brand-accent/90 text-white px-8"
                     >
                       {isSubmitting ? 'Saving...' : 'Finish'}
                     </Button>
@@ -535,7 +535,7 @@ export function ProgramCheckInModal({
                     <Button
                       onClick={handleNext}
                       disabled={!canProceed()}
-                      className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white px-8"
+                      className="bg-brand-accent hover:bg-brand-accent/90 text-white px-8"
                     >
                       Continue
                     </Button>

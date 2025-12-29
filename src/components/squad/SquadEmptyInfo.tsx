@@ -28,7 +28,7 @@ export function SquadEmptyInfo({
       {/* Large Circular Gradient Avatar */}
       <div className={`relative ${compact ? 'w-24 h-24 mb-4' : 'w-40 h-40 mb-8'}`}>
         <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#F5E6A8] via-[#EDD96C] to-[#E8C547] opacity-90" />
-        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#a07855]/20 to-transparent" />
+        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-brand-accent/20 to-transparent" />
         <div className="absolute inset-0 flex items-center justify-center">
           <svg 
             className={`${compact ? 'w-12 h-12' : 'w-20 h-20'} text-[#4A5D54]`} 

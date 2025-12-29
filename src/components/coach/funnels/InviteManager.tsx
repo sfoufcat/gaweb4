@@ -224,7 +224,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
           </button>
           <button
             onClick={() => setShowCreateDialog(true)}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors"
           >
             <Plus className="w-4 h-4" />
             New Invite
@@ -375,7 +375,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
                     type="email"
                     value={createForm.email}
                     onChange={(e) => setCreateForm(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
+                    className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent"
                     placeholder="user@example.com"
                   />
                   <p className="text-xs text-text-muted mt-1">
@@ -391,7 +391,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
                     type="text"
                     value={createForm.name}
                     onChange={(e) => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
+                    className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent"
                     placeholder="John Doe"
                   />
                 </div>
@@ -406,7 +406,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
                       ...prev, 
                       paymentStatus: e.target.value as 'required' | 'pre_paid' | 'free' 
                     }))}
-                    className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
+                    className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent"
                   >
                     <option value="required">Payment Required</option>
                     <option value="pre_paid">Pre-paid (skip payment)</option>
@@ -423,7 +423,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
                       type="text"
                       value={createForm.prePaidNote}
                       onChange={(e) => setCreateForm(prev => ({ ...prev, prePaidNote: e.target.value }))}
-                      className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
+                      className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent"
                       placeholder="e.g., Invoice #123"
                     />
                   </div>
@@ -440,7 +440,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
                   <button
                     type="submit"
                     disabled={isCreating}
-                    className="flex-1 py-2 px-4 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:opacity-50 transition-colors"
+                    className="flex-1 py-2 px-4 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 disabled:opacity-50 transition-colors"
                   >
                     {isCreating ? 'Creating...' : 'Create Invite'}
                   </button>
@@ -492,7 +492,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
                       <textarea
                         value={bulkCsv}
                         onChange={(e) => setBulkCsv(e.target.value)}
-                        className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] resize-none font-mono text-sm"
+                        className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent resize-none font-mono text-sm"
                         rows={8}
                         placeholder="email@example.com, John Doe&#10;another@example.com, Jane Doe&#10;..."
                       />
@@ -511,7 +511,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
                           ...prev, 
                           paymentStatus: e.target.value as 'required' | 'pre_paid' | 'free' 
                         }))}
-                        className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-[#a07855] dark:border-[#b8896a]"
+                        className="w-full px-4 py-2 border border-[#e1ddd8] rounded-lg focus:outline-none focus:border-brand-accent"
                       >
                         <option value="required">Payment Required</option>
                         <option value="pre_paid">Pre-paid (skip payment)</option>
@@ -530,7 +530,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
                       <button
                         onClick={handleBulkImport}
                         disabled={isBulkImporting || !bulkCsv.trim()}
-                        className="flex-1 py-2 px-4 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:opacity-50 transition-colors"
+                        className="flex-1 py-2 px-4 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 disabled:opacity-50 transition-colors"
                       >
                         {isBulkImporting ? 'Importing...' : 'Import'}
                       </button>
@@ -574,7 +574,7 @@ export function InviteManager({ funnelId, funnel, program }: InviteManagerProps)
                         setBulkResult(null);
                         setBulkCsv('');
                       }}
-                      className="w-full py-2 px-4 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors"
+                      className="w-full py-2 px-4 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors"
                     >
                       Done
                     </button>

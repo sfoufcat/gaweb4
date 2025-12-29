@@ -25,7 +25,7 @@ export function ProgramLandingSkeleton() {
 
         {/* Type badge placeholder */}
         <div className="absolute top-4 right-4">
-          <div className="w-20 h-7 rounded-full bg-[#a07855]/30 backdrop-blur-md animate-pulse" />
+          <div className="w-20 h-7 rounded-full bg-brand-accent/30 backdrop-blur-md animate-pulse" />
         </div>
       </div>
 
@@ -39,7 +39,7 @@ export function ProgramLandingSkeleton() {
             {/* Left Column - Program Info */}
             <div className="lg:col-span-3">
               {/* Badge */}
-              <div className="w-36 h-8 rounded-full bg-[#a07855]/10 dark:bg-[#a07855]/20 animate-pulse mb-4" />
+              <div className="w-36 h-8 rounded-full bg-brand-accent/10 dark:bg-brand-accent/20 animate-pulse mb-4" />
 
               {/* Title */}
               <div className="space-y-3 mb-4">
@@ -98,7 +98,7 @@ export function ProgramLandingSkeleton() {
                 <div className="space-y-3">
                   {[0, 1, 2, 3].map((i) => (
                     <div key={i} className="flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-full bg-[#a07855]/10 dark:bg-[#a07855]/20 animate-pulse flex-shrink-0 mt-0.5" />
+                      <div className="w-6 h-6 rounded-full bg-brand-accent/10 dark:bg-brand-accent/20 animate-pulse flex-shrink-0 mt-0.5" />
                       <div 
                         className="h-5 rounded bg-[#e1ddd8]/40 dark:bg-[#262b35]/60 animate-pulse"
                         style={{ width: `${70 + Math.random() * 25}%` }}
@@ -135,7 +135,7 @@ export function ProgramLandingSkeleton() {
               <div className="bg-white dark:bg-[#171b22] rounded-3xl p-6 sm:p-8 shadow-lg border border-[#e1ddd8] dark:border-[#262b35]">
                 {/* Program badge */}
                 <div className="flex items-center justify-center gap-2 mb-6">
-                  <div className="w-32 h-8 rounded-full bg-[#a07855]/10 dark:bg-[#a07855]/20 animate-pulse" />
+                  <div className="w-32 h-8 rounded-full bg-brand-accent/10 dark:bg-brand-accent/20 animate-pulse" />
                 </div>
 
                 {/* Price */}
@@ -145,8 +145,8 @@ export function ProgramLandingSkeleton() {
                 </div>
 
                 {/* Duration callout */}
-                <div className="rounded-xl p-3 mb-6 bg-[#a07855]/5 dark:bg-[#a07855]/10">
-                  <div className="h-4 w-40 mx-auto rounded bg-[#a07855]/20 animate-pulse" />
+                <div className="rounded-xl p-3 mb-6 bg-brand-accent/5 dark:bg-brand-accent/10">
+                  <div className="h-4 w-40 mx-auto rounded bg-brand-accent/20 animate-pulse" />
                 </div>
 
                 {/* Cohort Selection placeholder */}
@@ -171,7 +171,7 @@ export function ProgramLandingSkeleton() {
                 </div>
 
                 {/* CTA Button */}
-                <div className="w-full h-14 rounded-2xl bg-gradient-to-r from-[#a07855]/40 to-[#c9a07a]/40 animate-pulse" />
+                <div className="w-full h-14 rounded-2xl bg-gradient-to-r from-brand-accent/40 to-[#c9a07a]/40 animate-pulse" />
 
                 {/* Trust badges */}
                 <div className="flex items-center justify-center gap-4 mt-6 pt-6 border-t border-[#e1ddd8] dark:border-[#262b35]">
@@ -197,7 +197,7 @@ export function ProgramLandingSkeleton() {
                   key={i} 
                   className="flex items-start gap-4 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-[#a07855]/10 dark:bg-[#a07855]/20 animate-pulse flex-shrink-0" />
+                  <div className="w-10 h-10 rounded-xl bg-brand-accent/10 dark:bg-brand-accent/20 animate-pulse flex-shrink-0" />
                   <div className="flex-1">
                     <div className="h-4 w-28 rounded bg-[#e1ddd8]/60 dark:bg-[#262b35] animate-pulse mb-2" />
                     <div className="h-3 w-full rounded bg-[#e1ddd8]/40 dark:bg-[#262b35]/60 animate-pulse" />
@@ -216,7 +216,7 @@ export function ProgramLandingSkeleton() {
                   key={i} 
                   className="flex items-center gap-4 p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl"
                 >
-                  <div className="w-10 h-10 rounded-lg bg-[#a07855]/10 dark:bg-[#a07855]/20 animate-pulse flex-shrink-0" />
+                  <div className="w-10 h-10 rounded-lg bg-brand-accent/10 dark:bg-brand-accent/20 animate-pulse flex-shrink-0" />
                   <div 
                     className="h-4 rounded bg-[#e1ddd8]/50 dark:bg-[#262b35] animate-pulse"
                     style={{ width: `${50 + Math.random() * 40}%` }}
@@ -233,7 +233,7 @@ export function ProgramLandingSkeleton() {
         <div className="max-w-[600px] mx-auto px-4 text-center">
           <div className="h-8 w-80 mx-auto rounded-lg bg-white/10 animate-pulse mb-3" />
           <div className="h-4 w-64 mx-auto rounded bg-white/5 animate-pulse mb-6" />
-          <div className="w-48 h-12 mx-auto rounded-3xl bg-gradient-to-r from-[#a07855]/50 to-[#c9a07a]/50 animate-pulse" />
+          <div className="w-48 h-12 mx-auto rounded-3xl bg-gradient-to-r from-brand-accent/50 to-[#c9a07a]/50 animate-pulse" />
         </div>
       </div>
     </div>

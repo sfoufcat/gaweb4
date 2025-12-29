@@ -10,7 +10,7 @@ import type { FunnelStepConfigSignup } from '@/types';
 import { SignUpForm, OAuthButton } from '@/components/auth';
 
 // CSS variable helper - uses values set by FunnelClient
-const primaryVar = 'var(--funnel-primary, #a07855)';
+const primaryVar = 'var(--funnel-primary, var(--brand-accent-light))';
 
 interface SignupStepProps {
   config: FunnelStepConfigSignup;
@@ -336,9 +336,9 @@ export function SignupStep({
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-              className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6"
+              className="w-20 h-20 rounded-full bg-brand-accent/10 flex items-center justify-center mx-auto mb-6"
             >
-              <CheckCircle className="w-10 h-10 text-green-600" />
+              <CheckCircle className="w-10 h-10 text-brand-accent" />
             </motion.div>
 
             {/* Heading */}
@@ -351,7 +351,7 @@ export function SignupStep({
 
             {/* Auto-continue indicator */}
             <div className="flex items-center justify-center gap-2 text-text-muted">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-brand-accent animate-pulse" />
               <span className="text-sm">Continuing in {autoCountdown}s</span>
             </div>
 
@@ -359,7 +359,7 @@ export function SignupStep({
             <button
               onClick={handleConfirmJoin}
               className="mt-6 w-full py-4 px-6 rounded-full font-sans font-bold text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg"
-              style={{ backgroundColor: branding.primaryColor || '#a07855' }}
+              style={{ backgroundColor: branding.primaryColor || 'var(--brand-accent-light)' }}
             >
               Continue now
             </button>
@@ -460,7 +460,7 @@ export function SignupStep({
                 onClick={handleConfirmJoin}
                 disabled={isLinking}
                 className="w-full py-4 px-6 rounded-full font-sans font-bold text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: branding.primaryColor || '#a07855' }}
+                style={{ backgroundColor: branding.primaryColor || 'var(--brand-accent-light)' }}
               >
                 {isLinking ? 'Setting up...' : `Continue as ${displayName || displayEmail}`}
               </button>
@@ -614,7 +614,7 @@ export function SignupStep({
           {/* Sign in link for existing users */}
           <p className="text-center mt-8 lg:mt-10 font-sans text-[15px] text-text-secondary">
             Already have an account?{' '}
-            <Link href="/sign-in" className="text-[#a07855] dark:text-[#b8896a] hover:text-[#8a6649] font-medium">
+            <Link href="/sign-in" className="text-brand-accent hover:text-[#8a6649] font-medium">
               Sign in
             </Link>
           </p>

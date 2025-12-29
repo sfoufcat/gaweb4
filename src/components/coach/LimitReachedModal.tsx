@@ -83,7 +83,7 @@ export function LimitReachedModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -142,12 +142,12 @@ export function LimitReachedModal({
             {nextTier && nextTierLimit !== null && (
               <div className="flex items-center justify-between pt-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
                 <div className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
-                  <span className="font-sans text-[13px] font-medium text-[#a07855] dark:text-[#b8896a]">
+                  <Zap className="w-4 h-4 text-brand-accent" />
+                  <span className="font-sans text-[13px] font-medium text-brand-accent">
                     {nextTierInfo?.name}
                   </span>
                 </div>
-                <span className="font-albert text-[16px] font-semibold text-[#a07855] dark:text-[#b8896a]">
+                <span className="font-albert text-[16px] font-semibold text-brand-accent">
                   {nextTierLimit === -1 ? 'Unlimited' : nextTierLimit}
                 </span>
               </div>
@@ -161,7 +161,7 @@ export function LimitReachedModal({
             <>
               <button
                 onClick={handleUpgrade}
-                className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-[#a07855] hover:bg-[#8b6847] text-white font-sans font-semibold text-[15px] rounded-xl transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-brand-accent hover:bg-brand-accent/90 text-brand-accent-foreground font-sans font-semibold text-[15px] rounded-xl transition-colors"
               >
                 <Zap className="w-5 h-5" />
                 Upgrade to {nextTierInfo?.name}

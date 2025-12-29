@@ -99,7 +99,7 @@ export function CoachSelector({
                       />
                     )}
                     <span className="max-w-[100px] truncate">{coach.name}</span>
-                    <span className="text-[#a07855] dark:text-[#b8896a] font-medium">#{index + 1}</span>
+                    <span className="text-brand-accent font-medium">#{index + 1}</span>
                     <button
                       type="button"
                       onClick={(e) => removeCoach(coach.id, e)}
@@ -125,7 +125,7 @@ export function CoachSelector({
               placeholder="Search coaches..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8]"
+              className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8]"
             />
           </div>
           <div className="max-h-[250px] overflow-y-auto p-1">
@@ -152,7 +152,7 @@ export function CoachSelector({
                     <div
                       className={`flex h-5 w-5 items-center justify-center rounded-md border-2 flex-shrink-0 transition-all ${
                         isSelected
-                          ? 'bg-[#a07855] dark:bg-[#b8896a] border-[#a07855] dark:border-[#b8896a]'
+                          ? 'bg-brand-accent border-brand-accent'
                           : 'border-[#d1cdc8] dark:border-[#3a4150] bg-white dark:bg-[#171b22]'
                       }`}
                     >
@@ -178,7 +178,7 @@ export function CoachSelector({
                       </div>
                     </div>
                     {isSelected && (
-                      <span className="text-xs text-[#a07855] dark:text-[#b8896a] font-medium flex-shrink-0">
+                      <span className="text-xs text-brand-accent font-medium flex-shrink-0">
                         #{selectionIndex + 1}
                       </span>
                     )}

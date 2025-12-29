@@ -49,7 +49,7 @@ export function RichTextEditor({
   autoFocus = true,
   minHeight = '120px',
   maxHeight = '400px',
-  accentColor = '#a07855',
+  accentColor = 'var(--brand-accent-light)',
   readOnly = false,
 }: RichTextEditorProps) {
   const [isUploading, setIsUploading] = useState(false);

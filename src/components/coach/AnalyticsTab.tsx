@@ -151,7 +151,7 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
           onClick={() => setExcludeAdmins(!excludeAdmins)}
           className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
             excludeAdmins
-              ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
+              ? 'bg-brand-accent text-white'
               : 'bg-[#e1ddd8]/50 text-[#5f5a55] hover:bg-[#e1ddd8] dark:bg-[#272d38]/50 dark:text-[#b2b6c2] dark:hover:bg-[#272d38]'
           }`}
         >
@@ -197,7 +197,7 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
 
         <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Users className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+            <Users className="w-5 h-5 text-brand-accent" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Total</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
@@ -246,7 +246,7 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
                         className="rounded-full"
                       />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] dark:from-[#b8896a] dark:to-[#a07855] flex items-center justify-center text-white font-semibold">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-accent to-[#8c6245] dark:from-[#b8896a] dark:to-brand-accent flex items-center justify-center text-white font-semibold">
                         {community.squadName.charAt(0)}
                       </div>
                     )}
@@ -289,7 +289,7 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
                   <div className="mt-4 pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
                     {detailLoading ? (
                       <div className="flex items-center justify-center py-8">
-                        <div className="w-6 h-6 border-2 border-[#a07855] dark:border-[#b8896a] border-t-transparent dark:border-t-transparent rounded-full animate-spin" />
+                        <div className="w-6 h-6 border-2 border-brand-accent border-t-transparent dark:border-t-transparent rounded-full animate-spin" />
                       </div>
                     ) : squadDetail ? (
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

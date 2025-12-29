@@ -185,7 +185,7 @@ export default function OnboardingProfilePage() {
   if (!isLoaded || !user) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b] flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-[#a07855]/20 border-t-[#a07855] rounded-full animate-spin" />
+        <div className="w-12 h-12 border-4 border-brand-accent/20 border-t-[#a07855] rounded-full animate-spin" />
       </div>
     );
   }
@@ -212,7 +212,7 @@ export default function OnboardingProfilePage() {
           
           {/* Progress indicator */}
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-[#a07855] dark:bg-[#b8896a] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-brand-accent flex items-center justify-center">
               <span className="text-white text-sm font-bold">1</span>
             </div>
             <div className="w-8 h-1 bg-[#e1ddd8] dark:bg-[#313746] rounded-full" />
@@ -230,8 +230,8 @@ export default function OnboardingProfilePage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-10"
         >
-          <div className="w-16 h-16 bg-gradient-to-br from-[#a07855]/20 to-[#b8896a]/10 dark:from-[#b8896a]/20 dark:to-[#a07855]/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <User className="w-8 h-8 text-[#a07855] dark:text-[#b8896a]" />
+          <div className="w-16 h-16 bg-gradient-to-br from-brand-accent/20 to-[#b8896a]/10 dark:from-[#b8896a]/20 dark:to-brand-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <User className="w-8 h-8 text-brand-accent" />
           </div>
           
           <h1 className="font-albert text-[32px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-3">
@@ -305,7 +305,7 @@ export default function OnboardingProfilePage() {
               onChange={(e) => setBusinessName(e.target.value)}
               placeholder="e.g., Sarah's Fitness Coaching"
               required
-              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[15px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[15px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-brand-accent dark:focus:border-brand-accent"
             />
           </div>
 
@@ -320,7 +320,7 @@ export default function OnboardingProfilePage() {
               placeholder="Tell potential clients what you do and who you help..."
               rows={3}
               maxLength={200}
-              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[15px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a] resize-none"
+              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[15px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-brand-accent dark:focus:border-brand-accent resize-none"
             />
             <p className="mt-1 font-sans text-[11px] text-[#a7a39e] dark:text-[#7d8190] text-right">
               {description.length}/200
@@ -339,7 +339,7 @@ export default function OnboardingProfilePage() {
           <button
             type="submit"
             disabled={isSubmitting || !businessName.trim()}
-            className="w-full flex items-center justify-center gap-2 py-4 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white rounded-xl font-albert text-[16px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-2 py-4 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-xl font-albert text-[16px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <Loader2 className="w-5 h-5 animate-spin" />

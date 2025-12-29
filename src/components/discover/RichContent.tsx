@@ -108,7 +108,7 @@ const parserOptions: HTMLReactParserOptions = {
             href={attribs.href} 
             target="_blank" 
             rel="noopener noreferrer"
-            className="text-earth-600 dark:text-[#b8896a] hover:text-earth-700 dark:hover:text-[#a07855] dark:text-[#b8896a] underline"
+            className="text-earth-600 dark:text-brand-accent hover:text-earth-700 dark:hover:text-brand-accent underline"
           >
             {domToReact(children as DOMNode[], parserOptions)}
           </a>
@@ -143,7 +143,7 @@ const parserOptions: HTMLReactParserOptions = {
       // Style blockquotes
       if (name === 'blockquote') {
         return (
-          <blockquote className="border-l-4 border-earth-300 dark:border-[#b8896a] pl-4 my-4 italic text-text-muted">
+          <blockquote className="border-l-4 border-earth-300 dark:border-brand-accent pl-4 my-4 italic text-text-muted">
             {domToReact(children as DOMNode[], parserOptions)}
           </blockquote>
         );

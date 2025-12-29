@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { useUser } from '@clerk/nextjs';
 import { formatDistanceToNow } from 'date-fns';
 import { useComments, type FeedComment } from '@/hooks/useFeed';
-import { useBrandingValues } from '@/contexts/BrandingContext';
 import { getProfileUrl } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import {
@@ -23,7 +22,6 @@ interface CommentSheetProps {
 export function CommentSheet({ postId, onClose }: CommentSheetProps) {
   const router = useRouter();
   const { user } = useUser();
-  const { colors, isDefault } = useBrandingValues();
   const {
     comments,
     isLoading,
@@ -43,7 +41,6 @@ export function CommentSheet({ postId, onClose }: CommentSheetProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
 
   // Focus input on mount
   useEffect(() => {
@@ -212,14 +209,13 @@ export function CommentSheet({ postId, onClose }: CommentSheetProps) {
                   onEdit={() => setEditingCommentId(comment.id)}
                   onEditSubmit={(newText) => handleEditComment(comment.id, newText)}
                   onEditCancel={() => setEditingCommentId(null)}
-                  accentColor={accentColor}
                 />
               ))}
               
               {/* Loading more */}
               {isValidating && (
                 <div className="flex justify-center py-2">
-                  <div className="w-5 h-5 border-2 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-brand-accent border-t-transparent rounded-full animate-spin" />
                 </div>
               )}
             </>
@@ -279,16 +275,14 @@ export function CommentSheet({ postId, onClose }: CommentSheetProps) {
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Write a comment..."
-            className="flex-1 px-4 py-2 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[14px] text-[#1a1a1a] dark:text-[#faf8f6] placeholder-[#8a857f] focus:outline-none focus:ring-2 focus:ring-opacity-50"
-            style={{ focusRing: accentColor } as React.CSSProperties}
+            className="flex-1 px-4 py-2 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[14px] text-[#1a1a1a] dark:text-[#faf8f6] placeholder-[#8a857f] focus:outline-none focus:ring-2 focus:ring-opacity-50 focus:ring-brand-accent"
           />
 
           {/* Submit button */}
           <button
             type="submit"
             disabled={!newComment.trim() || isSubmitting}
-            className="p-2 rounded-full transition-colors disabled:opacity-50"
-            style={{ color: newComment.trim() ? accentColor : '#8a857f' }}
+            className={`p-2 rounded-full transition-colors disabled:opacity-50 ${newComment.trim() ? 'text-brand-accent' : 'text-[#8a857f]'}`}
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
@@ -311,7 +305,6 @@ function CommentItem({
   onEdit,
   onEditSubmit,
   onEditCancel,
-  accentColor,
 }: {
   comment: FeedComment;
   currentUserId?: string;
@@ -322,7 +315,6 @@ function CommentItem({
   onEdit: () => void;
   onEditSubmit: (newText: string) => void;
   onEditCancel: () => void;
-  accentColor: string;
 }) {
   const [editText, setEditText] = useState(comment.text);
   const editInputRef = useRef<HTMLInputElement>(null);
@@ -400,14 +392,12 @@ function CommentItem({
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="flex-1 px-3 py-1.5 rounded-full bg-[#f5f3f0] dark:bg-[#262b35] text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] placeholder-[#8a857f] focus:outline-none focus:ring-2 focus:ring-inset"
-              style={{ '--tw-ring-color': accentColor } as React.CSSProperties}
+              className="flex-1 px-3 py-1.5 rounded-full bg-[#f5f3f0] dark:bg-[#262b35] text-[13px] text-[#1a1a1a] dark:text-[#faf8f6] placeholder-[#8a857f] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-accent"
             />
             <button
               type="submit"
               disabled={!editText.trim()}
-              className="p-1.5 rounded-full transition-colors disabled:opacity-50"
-              style={{ color: editText.trim() ? accentColor : '#8a857f' }}
+              className={`p-1.5 rounded-full transition-colors disabled:opacity-50 ${editText.trim() ? 'text-brand-accent' : 'text-[#8a857f]'}`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />

@@ -34,7 +34,7 @@ export const RichText = ({
             prose-headings:text-foreground
             prose-p:text-muted-foreground
             prose-strong:text-foreground
-            prose-a:text-[#a07855] dark:text-[#b8896a] prose-a:no-underline hover:prose-a:underline
+            prose-a:text-brand-accent prose-a:no-underline hover:prose-a:underline
             prose-ul:text-muted-foreground
             prose-ol:text-muted-foreground
             prose-li:text-muted-foreground"

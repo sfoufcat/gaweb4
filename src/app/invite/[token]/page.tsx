@@ -214,9 +214,9 @@ export default function InvitePage() {
       case 'premium':
         return <Crown className="w-6 h-6 text-[#f7c948]" />;
       case 'private':
-        return <Lock className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" />;
+        return <Lock className="w-6 h-6 text-brand-accent" />;
       default:
-        return <Users className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" />;
+        return <Users className="w-6 h-6 text-brand-accent" />;
     }
   };
 
@@ -361,7 +361,7 @@ export default function InvitePage() {
                   className="text-center"
                 >
                   <div className="w-16 h-16 bg-[#faf8f6] rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Loader2 className="w-8 h-8 text-[#a07855] dark:text-[#b8896a] animate-spin" />
+                    <Loader2 className="w-8 h-8 text-brand-accent animate-spin" />
                   </div>
                   <h1 className="font-albert text-[28px] text-text-primary tracking-[-1px] mb-3">
                     Joining {tokenPayload.squadName}...

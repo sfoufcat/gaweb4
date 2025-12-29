@@ -87,8 +87,8 @@ export function PrivateFeedbackForm({ isOpen, onClose }: PrivateFeedbackFormProp
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-[#a07855]/10 dark:bg-[#b8896a]/20 flex items-center justify-center">
-                <Lock className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+              <div className="w-8 h-8 rounded-lg bg-brand-accent/10 dark:bg-brand-accent/20 flex items-center justify-center">
+                <Lock className="w-4 h-4 text-brand-accent" />
               </div>
               <h3 className="font-albert font-semibold text-lg text-[#1a1a1a] dark:text-[#f5f5f8]">
                 Private Feedback
@@ -131,7 +131,7 @@ export function PrivateFeedbackForm({ isOpen, onClose }: PrivateFeedbackFormProp
                     id="feedback-category"
                     value={category}
                     onChange={(e) => setCategory(e.target.value as FeedbackCategory)}
-                    className="w-full appearance-none px-4 py-2.5 pr-10 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] transition-all cursor-pointer"
+                    className="w-full appearance-none px-4 py-2.5 pr-10 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-brand-accent dark:focus:border-brand-accent transition-all cursor-pointer"
                   >
                     {CATEGORY_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -159,7 +159,7 @@ export function PrivateFeedbackForm({ isOpen, onClose }: PrivateFeedbackFormProp
                   minLength={10}
                   maxLength={2000}
                   rows={5}
-                  className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8680] dark:placeholder:text-[#6b7280] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] transition-all resize-none"
+                  className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8680] dark:placeholder:text-[#6b7280] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-brand-accent dark:focus:border-brand-accent transition-all resize-none"
                 />
                 <p className="mt-1 text-xs text-[#8c8680] dark:text-[#6b7280] font-albert">
                   {message.length}/2000 characters

@@ -325,7 +325,7 @@ export default function ProgramDetailPage() {
           </h2>
           <Button
             onClick={() => router.push('/discover')}
-            className="mt-4 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+            className="mt-4 bg-brand-accent hover:bg-brand-accent/90 text-white"
           >
             Back to Discover
           </Button>
@@ -778,12 +778,12 @@ export default function ProgramDetailPage() {
                       type="checkbox"
                       checked={joinCommunity}
                       onChange={(e) => setJoinCommunity(e.target.checked)}
-                      className="w-5 h-5 mt-0.5 rounded border-2 border-[#d4cfc9] dark:border-[#3a3f4b] text-[#a07855] dark:text-[#b8896a] focus:ring-[#a07855] dark:ring-[#b8896a] focus:ring-offset-0"
+                      className="w-5 h-5 mt-0.5 rounded border-2 border-[#d4cfc9] dark:border-[#3a3f4b] text-brand-accent focus:ring-brand-accent dark:ring-brand-accent focus:ring-offset-0"
                       style={{ accentColor: accentLight }}
                     />
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" style={{ color: accentLight }} />
+                        <Users className="w-4 h-4 text-brand-accent" style={{ color: accentLight }} />
                         <span className="font-semibold font-albert text-[14px] text-text-primary">
                           Join the Client Community
                         </span>

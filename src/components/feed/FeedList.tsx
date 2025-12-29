@@ -2,8 +2,6 @@
 
 import { useEffect, useRef } from 'react';
 import { PostCard } from './PostCard';
-import { useBrandingValues } from '@/contexts/BrandingContext';
-import { useTheme } from '@/contexts/ThemeContext';
 import type { FeedPost } from '@/hooks/useFeed';
 
 interface FeedListProps {
@@ -69,7 +67,7 @@ function PostCardSkeleton({ delay = 0 }: { delay?: number }) {
 }
 
 // Empty state component
-function EmptyState({ onCreatePost, accentColor }: { onCreatePost?: () => void; accentColor: string }) {
+function EmptyState({ onCreatePost }: { onCreatePost?: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 animate-feed-fade-up">
       {/* Illustration */}
@@ -84,7 +82,7 @@ function EmptyState({ onCreatePost, accentColor }: { onCreatePost?: () => void; 
         {/* Icon container */}
         <div className="relative w-20 h-20 rounded-full bg-white dark:bg-[#171b22] shadow-lg flex items-center justify-center border border-[#e8e4df] dark:border-[#262b35]">
           {/* Chat bubbles icon */}
-          <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} style={{ color: accentColor }}>
+          <svg className="w-10 h-10 text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M20 12c0-1.657-1.343-3-3-3H7c-1.657 0-3 1.343-3 3v5c0 1.657 1.343 3 3 3h1v2l3-2h6c1.657 0 3-1.343 3-3v-5z" />
             <path strokeLinecap="round" strokeLinejoin="round" d="M8 9V7c0-1.657 1.343-3 3-3h6c1.657 0 3 1.343 3 3v5c0 1.657-1.343 3-3 3h-1" />
           </svg>
@@ -103,8 +101,7 @@ function EmptyState({ onCreatePost, accentColor }: { onCreatePost?: () => void; 
       {onCreatePost && (
         <button
           onClick={onCreatePost}
-          className="px-6 py-3 rounded-full text-white text-[15px] font-semibold transition-all hover:scale-105 hover:shadow-lg active:scale-95"
-          style={{ backgroundColor: accentColor }}
+          className="px-6 py-3 rounded-full text-brand-accent-foreground text-[15px] font-semibold transition-all hover:scale-105 hover:shadow-lg active:scale-95 bg-brand-accent"
         >
           Create your first post
         </button>
@@ -133,11 +130,6 @@ export function FeedList({
   onOpenSettings,
 }: FeedListProps) {
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const { colors, isDefault } = useBrandingValues();
-  const { theme } = useTheme();
-  const accentColor = isDefault 
-    ? (theme === 'dark' ? '#b8896a' : '#a07855')
-    : (theme === 'dark' ? colors.accentDark : colors.accentLight);
 
   // Intersection observer for infinite scroll
   useEffect(() => {
@@ -170,7 +162,7 @@ export function FeedList({
 
   // Empty state
   if (isEmpty) {
-    return <EmptyState onCreatePost={onCreatePost} accentColor={accentColor} />;
+    return <EmptyState onCreatePost={onCreatePost} />;
   }
 
   // Get animation delay class based on index (only for first 5 posts)
@@ -210,18 +202,9 @@ export function FeedList({
       {isValidating && (
         <div className="flex justify-center py-6">
           <div className="flex gap-1.5">
-            <div 
-              className="w-2 h-2 rounded-full animate-bounce"
-              style={{ backgroundColor: accentColor, animationDelay: '0ms' }}
-            />
-            <div 
-              className="w-2 h-2 rounded-full animate-bounce"
-              style={{ backgroundColor: accentColor, animationDelay: '150ms' }}
-            />
-            <div 
-              className="w-2 h-2 rounded-full animate-bounce"
-              style={{ backgroundColor: accentColor, animationDelay: '300ms' }}
-            />
+            <div className="w-2 h-2 rounded-full animate-bounce bg-brand-accent" style={{ animationDelay: '0ms' }} />
+            <div className="w-2 h-2 rounded-full animate-bounce bg-brand-accent" style={{ animationDelay: '150ms' }} />
+            <div className="w-2 h-2 rounded-full animate-bounce bg-brand-accent" style={{ animationDelay: '300ms' }} />
           </div>
         </div>
       )}

@@ -55,12 +55,12 @@ export function PollMessageCard({
     primary: isOwnMessage ? 'text-[#faf8f6]' : 'text-[#1a1a1a]',
     secondary: isOwnMessage ? 'text-[#d4c8bb]' : 'text-[#5f5a55]',
     muted: isOwnMessage ? 'text-[#b8a999]' : 'text-[#a7a39e]',
-    accent: isOwnMessage ? 'text-[#f5e6d3]' : 'text-[#a07855] dark:text-[#b8896a]',
+    accent: isOwnMessage ? 'text-[#f5e6d3]' : 'text-brand-accent',
     border: isOwnMessage ? 'border-[#b8a999]' : 'border-[#e1ddd8]',
     bgHover: isOwnMessage ? 'hover:bg-[#8a6c4a]/30' : 'hover:bg-[#f3f1ef]/50',
     bgOption: isOwnMessage ? 'bg-[#8a6c4a]/40' : 'bg-[#f3f1ef]',
     progressBg: isOwnMessage ? 'bg-[#b8a999]/40' : 'bg-[#e1ddd8]',
-    progressFill: isOwnMessage ? 'bg-[#f5e6d3]' : 'bg-[#a07855] dark:bg-[#b8896a]',
+    progressFill: isOwnMessage ? 'bg-[#f5e6d3]' : 'bg-brand-accent',
     checkFill: isOwnMessage ? '#f5e6d3' : '#a07855',
     checkStroke: isOwnMessage ? '#7d5c3e' : '#faf8f6',
   };
@@ -269,7 +269,7 @@ export function PollMessageCard({
                   {vote.userImage ? (
                     <Image src={vote.userImage} alt="" width={14} height={14} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e]" />
+                    <div className="w-full h-full bg-gradient-to-br from-brand-accent to-[#7d5c3e]" />
                   )}
                 </div>
               ))}

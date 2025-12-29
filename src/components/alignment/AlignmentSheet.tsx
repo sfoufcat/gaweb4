@@ -342,7 +342,7 @@ export function AlignmentSheet({
                   {/* Checkbox */}
                   <div className="w-4 h-4 border border-[#e1ddd8] dark:border-[#262b35] rounded-[4px] flex items-center justify-center flex-shrink-0">
                     {item.completed && (
-                      <div className="w-2 h-2 bg-accent-secondary dark:bg-[#b8896a] rounded-[2px]" />
+                      <div className="w-2 h-2 bg-accent-secondary dark:bg-brand-accent rounded-[2px]" />
                     )}
                   </div>
                   {/* Label */}

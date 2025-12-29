@@ -234,7 +234,7 @@ export function AdminDynamicPromptsTab({ apiBasePath = '/api/admin/dynamic-promp
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="w-12 h-12 border-4 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <div className="w-12 h-12 border-4 border-brand-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
         <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Loading prompts...</p>
       </div>
     );
@@ -247,7 +247,7 @@ export function AdminDynamicPromptsTab({ apiBasePath = '/api/admin/dynamic-promp
         <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-sm">{error}</p>
         <Button 
           onClick={fetchPrompts} 
-          className="mt-4 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+          className="mt-4 bg-brand-accent hover:bg-brand-accent/90 text-white"
         >
           Retry
         </Button>
@@ -316,7 +316,7 @@ export function AdminDynamicPromptsTab({ apiBasePath = '/api/admin/dynamic-promp
           
           <Button 
             onClick={() => handleOpenModal()}
-            className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+            className="bg-brand-accent hover:bg-brand-accent/90 text-white"
           >
             Add Prompt
           </Button>
@@ -385,7 +385,7 @@ export function AdminDynamicPromptsTab({ apiBasePath = '/api/admin/dynamic-promp
                     variant="ghost"
                     size="sm"
                     onClick={() => handleOpenModal(prompt)}
-                    className="text-[#a07855] dark:text-[#b8896a] hover:text-[#8c6245]"
+                    className="text-brand-accent hover:text-brand-accent/90"
                   >
                     Edit
                   </Button>
@@ -575,7 +575,7 @@ export function AdminDynamicPromptsTab({ apiBasePath = '/api/admin/dynamic-promp
                       <Button
                         onClick={handleSave}
                         disabled={saving || deleting || !formData.body}
-                        className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+                        className="bg-brand-accent hover:bg-brand-accent/90 text-white"
                       >
                         {saving ? 'Saving...' : (editingPrompt ? 'Update' : 'Create')}
                       </Button>

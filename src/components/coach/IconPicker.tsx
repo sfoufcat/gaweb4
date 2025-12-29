@@ -126,7 +126,7 @@ export function IconPicker({ value, onChange, label, className = '', compact = f
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert hover:border-[#a07855] dark:border-[#b8896a] dark:hover:border-[#b8896a] transition-colors ${
+        className={`flex items-center gap-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert hover:border-brand-accent dark:hover:border-brand-accent transition-colors ${
           compact ? 'px-3 py-3' : 'px-4 py-3 w-full'
         }`}
       >
@@ -152,7 +152,7 @@ export function IconPicker({ value, onChange, label, className = '', compact = f
               onClick={() => setActiveTab('icons')}
               className={`flex-1 px-4 py-2.5 text-sm font-medium font-albert transition-colors ${
                 activeTab === 'icons'
-                  ? 'text-[#a07855] dark:text-[#b8896a] border-b-2 border-[#a07855] dark:border-[#b8896a]'
+                  ? 'text-brand-accent border-b-2 border-brand-accent'
                   : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
               }`}
             >
@@ -163,7 +163,7 @@ export function IconPicker({ value, onChange, label, className = '', compact = f
               onClick={() => setActiveTab('emoji')}
               className={`flex-1 px-4 py-2.5 text-sm font-medium font-albert transition-colors ${
                 activeTab === 'emoji'
-                  ? 'text-[#a07855] dark:text-[#b8896a] border-b-2 border-[#a07855] dark:border-[#b8896a]'
+                  ? 'text-brand-accent border-b-2 border-brand-accent'
                   : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
               }`}
             >
@@ -183,7 +183,7 @@ export function IconPicker({ value, onChange, label, className = '', compact = f
                     title={icon.name}
                     className={`p-2 rounded-lg transition-colors ${
                       value === icon.id
-                        ? 'bg-[#a07855]/20 dark:bg-[#b8896a]/20 text-[#a07855] dark:text-[#b8896a]'
+                        ? 'bg-brand-accent/20 text-brand-accent'
                         : 'hover:bg-[#f5f5f8] dark:hover:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2]'
                     }`}
                   >
@@ -204,7 +204,7 @@ export function IconPicker({ value, onChange, label, className = '', compact = f
                       onClick={() => handleSelectEmoji(emoji)}
                       className={`p-2 text-lg rounded-lg transition-colors ${
                         value === emoji
-                          ? 'bg-[#a07855]/20 dark:bg-[#b8896a]/20'
+                          ? 'bg-brand-accent/20'
                           : 'hover:bg-[#f5f5f8] dark:hover:bg-[#262b35]'
                       }`}
                     >
@@ -224,13 +224,13 @@ export function IconPicker({ value, onChange, label, className = '', compact = f
                       value={customEmoji}
                       onChange={(e) => setCustomEmoji(e.target.value)}
                       placeholder="Paste emoji..."
-                      className="flex-1 px-3 py-2 bg-[#f5f5f8] dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] text-sm font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a]"
+                      className="flex-1 px-3 py-2 bg-[#f5f5f8] dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#313746] rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] text-sm font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:border-brand-accent dark:focus:border-brand-accent"
                     />
                     <button
                       type="button"
                       onClick={handleCustomEmojiSubmit}
                       disabled={!customEmoji || !isEmoji(customEmoji)}
-                      className="px-3 py-2 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg text-sm font-albert font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#8a6647] dark:hover:bg-[#a07855] transition-colors"
+                      className="px-3 py-2 bg-brand-accent text-white rounded-lg text-sm font-albert font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#8a6647] dark:hover:bg-brand-accent/90 transition-colors"
                     >
                       Use
                     </button>

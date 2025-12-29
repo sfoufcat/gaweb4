@@ -182,7 +182,7 @@ export default function EditHabitPage({ params }: { params: Promise<{ id: string
           <div className="bg-white dark:bg-[#171b22] rounded-[24px] p-6 max-w-[400px] w-full animate-in fade-in zoom-in-95 duration-200">
             {/* Icon */}
             <div className="w-14 h-14 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-7 h-7 text-earth-900 dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-7 h-7 text-earth-900 dark:text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
@@ -191,7 +191,7 @@ export default function EditHabitPage({ params }: { params: Promise<{ id: string
               Complete & Archive?
             </h3>
             
-            <p className="font-albert text-[16px] font-semibold text-earth-900 dark:text-[#b8896a] tracking-[-0.5px] text-center mb-2">
+            <p className="font-albert text-[16px] font-semibold text-earth-900 dark:text-brand-accent tracking-[-0.5px] text-center mb-2">
               {habit.text}
             </p>
             
@@ -210,7 +210,7 @@ export default function EditHabitPage({ params }: { params: Promise<{ id: string
               <button
                 onClick={confirmArchive}
                 disabled={isArchiving}
-                className="flex-1 py-3 px-6 rounded-full font-sans text-[14px] font-medium bg-earth-900 dark:bg-[#b8896a] text-white hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 py-3 px-6 rounded-full font-sans text-[14px] font-medium bg-earth-900 dark:bg-brand-accent text-white hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isArchiving ? (
                   <>

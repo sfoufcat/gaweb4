@@ -520,7 +520,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
   if (loading && squads.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#a07855] dark:border-[#b8896a]" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-accent" />
       </div>
     );
   }
@@ -583,7 +583,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
               setEditingSquad(null);
               setIsSquadModalOpen(true);
             }}
-            className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-albert"
+            className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
           >
             <Plus className="w-4 h-4 mr-2" />
             New Squad
@@ -598,7 +598,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
               onClick={() => setSquadFilter('all')}
               className={`px-3 py-1.5 rounded-lg text-sm font-albert transition-colors ${
                 squadFilter === 'all'
-                  ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
+                  ? 'bg-brand-accent text-white'
                   : 'bg-[#faf8f6] dark:bg-[#11141b] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#171b22]'
               }`}
             >
@@ -608,7 +608,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
               onClick={() => setSquadFilter('standalone')}
               className={`px-3 py-1.5 rounded-lg text-sm font-albert transition-colors ${
                 squadFilter === 'standalone'
-                  ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
+                  ? 'bg-brand-accent text-white'
                   : 'bg-[#faf8f6] dark:bg-[#11141b] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#171b22]'
               }`}
             >
@@ -624,7 +624,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                   onClick={() => setSquadFilter('program-all')}
                   className={`px-3 py-1.5 rounded-lg text-sm font-albert transition-colors ${
                     squadFilter === 'program-all'
-                      ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
+                      ? 'bg-brand-accent text-white'
                       : 'bg-[#faf8f6] dark:bg-[#11141b] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#171b22]'
                   }`}
                 >
@@ -675,7 +675,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
             {squads.length === 0 && (
               <Button
                 onClick={() => setIsSquadModalOpen(true)}
-                className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-albert"
+                className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Create Squad
@@ -687,7 +687,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
             {filteredSquads.map((squad) => (
               <div
                 key={squad.id}
-                className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 hover:border-[#a07855] dark:border-[#b8896a]/50 transition-colors cursor-pointer group"
+                className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 hover:border-brand-accent/50 transition-colors cursor-pointer group"
                 onClick={() => handleSelectSquad(squad)}
               >
                 <div className="flex items-start gap-3">
@@ -700,8 +700,8 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                       className="w-12 h-12 rounded-lg object-cover"
                     />
                   ) : (
-                    <div className="w-12 h-12 rounded-lg bg-[#a07855]/10 flex items-center justify-center">
-                      <Users className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" />
+                    <div className="w-12 h-12 rounded-lg bg-brand-accent/10 flex items-center justify-center">
+                      <Users className="w-6 h-6 text-brand-accent" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
@@ -726,7 +726,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                         {squad.memberCount || 0} members
                       </span>
                       {squad.priceInCents && squad.priceInCents > 0 && (
-                        <span className="text-[#a07855] dark:text-[#b8896a] font-medium">
+                        <span className="text-brand-accent font-medium">
                           ${(squad.priceInCents / 100).toFixed(0)}
                           {squad.subscriptionEnabled && `/${squad.billingInterval?.slice(0, 2)}`}
                         </span>
@@ -745,7 +745,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                       </div>
                     )}
                   </div>
-                  <ChevronRight className="w-5 h-5 text-[#d1ccc5] dark:text-[#7d8190] group-hover:text-[#a07855] dark:text-[#b8896a] transition-colors flex-shrink-0" />
+                  <ChevronRight className="w-5 h-5 text-[#d1ccc5] dark:text-[#7d8190] group-hover:text-brand-accent transition-colors flex-shrink-0" />
                 </div>
                 
                 {/* Action buttons (show on hover) */}
@@ -843,8 +843,8 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                 className="w-10 h-10 rounded-lg object-cover"
               />
             ) : (
-              <div className="w-10 h-10 rounded-lg bg-[#a07855]/10 flex items-center justify-center">
-                <Users className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+              <div className="w-10 h-10 rounded-lg bg-brand-accent/10 flex items-center justify-center">
+                <Users className="w-5 h-5 text-brand-accent" />
               </div>
             )}
             <div>
@@ -887,7 +887,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
           onClick={() => setViewMode('members')}
           className={`px-3 py-1.5 rounded-lg text-sm font-albert ${
             viewMode === 'members'
-              ? 'bg-[#a07855]/10 dark:bg-[#b8896a]/10 text-[#a07855] dark:text-[#b8896a]'
+              ? 'bg-brand-accent/10 text-brand-accent'
               : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
           }`}
         >
@@ -898,7 +898,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
           onClick={() => setViewMode('landing')}
           className={`px-3 py-1.5 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
             viewMode === 'landing'
-              ? 'bg-[#a07855]/10 dark:bg-[#b8896a]/10 text-[#a07855] dark:text-[#b8896a]'
+              ? 'bg-brand-accent/10 text-brand-accent'
               : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
           }`}
         >
@@ -909,7 +909,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
           onClick={() => setViewMode('referrals')}
           className={`px-3 py-1.5 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
             viewMode === 'referrals'
-              ? 'bg-[#a07855]/10 dark:bg-[#b8896a]/10 text-[#a07855] dark:text-[#b8896a]'
+              ? 'bg-brand-accent/10 text-brand-accent'
               : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
           }`}
         >
@@ -955,7 +955,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                               className="w-7 h-7 rounded-full object-cover"
                             />
                           ) : (
-                            <div className="w-7 h-7 rounded-full bg-[#a07855]/10 flex items-center justify-center text-[#a07855] dark:text-[#b8896a] text-xs font-bold">
+                            <div className="w-7 h-7 rounded-full bg-brand-accent/10 flex items-center justify-center text-brand-accent text-xs font-bold">
                               {currentCoach.firstName?.charAt(0) || '?'}
                             </div>
                           )}
@@ -990,7 +990,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
 
           {loadingMembers ? (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#a07855] dark:border-[#b8896a]" />
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-accent" />
             </div>
           ) : squadMembers.length === 0 ? (
             <div className="text-center py-8 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
@@ -1012,7 +1012,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                       className="w-10 h-10 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-[#a07855]/10 flex items-center justify-center text-[#a07855] dark:text-[#b8896a] font-bold">
+                    <div className="w-10 h-10 rounded-full bg-brand-accent/10 flex items-center justify-center text-brand-accent font-bold">
                       {member.firstName?.charAt(0) || '?'}
                     </div>
                   )}
@@ -1020,7 +1020,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                     <p className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
                       {member.firstName} {member.lastName}
                       {selectedSquad.coachId === member.userId && (
-                        <span className="ml-2 text-xs text-[#a07855] dark:text-[#b8896a]">(Coach)</span>
+                        <span className="ml-2 text-xs text-brand-accent">(Coach)</span>
                       )}
                     </p>
                     <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert truncate">
@@ -1052,7 +1052,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                 href={`/discover/squads/${selectedSquad.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-[#a07855] dark:text-[#b8896a] hover:underline flex items-center gap-1 mt-1"
+                className="text-xs text-brand-accent hover:underline flex items-center gap-1 mt-1"
               >
                 <ExternalLink className="w-3 h-3" />
                 Preview landing page
@@ -1062,7 +1062,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
               <Button
                 variant="outline"
                 onClick={() => setIsAILandingPageModalOpen(true)}
-                className="border-[#a07855] dark:border-[#b8896a] text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/10 dark:hover:bg-[#b8896a]/10 flex items-center gap-2"
+                className="border-brand-accent text-brand-accent hover:bg-brand-accent/10 flex items-center gap-2"
               >
                 <Sparkles className="w-4 h-4" />
                 Generate with AI
@@ -1070,7 +1070,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
               <Button
                 onClick={handleSaveLandingPage}
                 disabled={saving}
-                className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-albert"
+                className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
               >
                 {saving ? 'Saving...' : 'Save Changes'}
               </Button>

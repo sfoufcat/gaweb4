@@ -778,7 +778,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                 unoptimized
               />
             ) : (
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#a07855] to-[#7d5c3e] dark:from-[#b8896a] dark:to-[#8c7a6d] flex items-center justify-center text-white text-2xl font-albert font-bold">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-accent to-[#7d5c3e] dark:from-[#b8896a] dark:to-[#8c7a6d] flex items-center justify-center text-white text-2xl font-albert font-bold">
                 {displayName.charAt(0).toUpperCase()}
               </div>
             )}
@@ -817,7 +817,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                   <div className="mt-2 flex items-center gap-2">
                     <div className="flex-1 h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-[#a07855] dark:bg-[#b8896a] rounded-full"
+                        className="h-full bg-brand-accent rounded-full"
                         style={{ width: `${user.goalProgress}%` }}
                       />
                     </div>
@@ -833,7 +833,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
             {hasCoaching && coachingData?.chatChannelId && (
               <button
                 onClick={handleGoToChat}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] dark:bg-[#b8896a] dark:hover:bg-[#a07855] rounded-full font-albert text-[14px] font-medium text-white transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent dark:hover:bg-brand-accent/90 rounded-full font-albert text-[14px] font-medium text-white transition-colors"
               >
                 <MessageCircle className="w-4 h-4" />
                 Message
@@ -855,7 +855,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
       {/* Main Details Section */}
       <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
-          <User className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+          <User className="w-5 h-5 text-brand-accent" />
           <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
             Main Details
           </h3>
@@ -879,12 +879,12 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                     return (
                       <span
                         key={squadId}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#a07855]/10 dark:bg-[#b8896a]/10 text-[#a07855] dark:text-[#b8896a] rounded-full text-[13px] font-medium font-albert"
+                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand-accent/10 text-brand-accent rounded-full text-[13px] font-medium font-albert"
                       >
                         {squad?.name || 'Unknown'}
                         <button
                           onClick={() => handleRemoveFromSquad(squadId)}
-                          className="hover:bg-[#a07855]/20 dark:hover:bg-[#b8896a]/20 rounded-full p-0.5 transition-colors"
+                          className="hover:bg-brand-accent/20 dark:hover:bg-brand-accent/20 rounded-full p-0.5 transition-colors"
                           title={`Remove from ${squad?.name || 'squad'}`}
                         >
                           <X className="w-3.5 h-3.5" />
@@ -935,7 +935,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
               onChange={(e) => setCoachNotes(e.target.value)}
               placeholder="Add notes about this client..."
               rows={3}
-              className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 resize-none"
+              className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30 resize-none"
             />
           </div>
         </div>
@@ -944,7 +944,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
       {/* One-on-One Coaching Section */}
       <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
-          <Users className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+          <Users className="w-5 h-5 text-brand-accent" />
           <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
             One-on-One Coaching
           </h3>
@@ -967,14 +967,14 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
             <div className="p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                  <Calendar className="w-5 h-5 text-brand-accent" />
                   <span className="font-albert text-[15px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
                     Next Call
                   </span>
                 </div>
                 <button
                   onClick={() => setShowCallModal(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-[#a07855] dark:text-[#b8896a] hover:bg-white dark:hover:bg-[#171b22] rounded-full transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-brand-accent hover:bg-white dark:hover:bg-[#171b22] rounded-full transition-colors"
                 >
                   <Pencil className="w-3.5 h-3.5" />
                   {coachingData?.nextCall?.datetime ? 'Edit' : 'Schedule'}
@@ -1000,7 +1000,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
             {/* Focus Areas */}
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <Target className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                <Target className="w-5 h-5 text-brand-accent" />
                 <span className="font-albert text-[15px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
                   Current Focus
                 </span>
@@ -1009,7 +1009,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
               <div className="space-y-2 mb-3">
                 {focusAreas.map((focus, index) => (
                   <div key={index} className="flex items-start gap-2 group">
-                    <span className="text-[#a07855] dark:text-[#b8896a] mt-0.5">–</span>
+                    <span className="text-brand-accent mt-0.5">–</span>
                     <span className="font-albert text-[14px] text-[#5f5a55] dark:text-[#b2b6c2] flex-1">{focus}</span>
                     <button
                       onClick={() => handleRemoveFocusArea(index)}
@@ -1028,7 +1028,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                   onChange={(e) => setNewFocusArea(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddFocusArea()}
                   placeholder="Add focus area..."
-                  className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
+                  className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
                 />
                 <button
                   onClick={handleAddFocusArea}
@@ -1043,7 +1043,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
             {/* Action Items */}
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <ClipboardList className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                <ClipboardList className="w-5 h-5 text-brand-accent" />
                 <span className="font-albert text-[15px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
                   Action Items
                 </span>
@@ -1052,7 +1052,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
               <div className="space-y-2 mb-3">
                 {actionItems.map((item) => (
                   <div key={item.id} className="flex items-start gap-2 group">
-                    <span className={`mt-0.5 ${item.completed ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-[#c4bfb9] dark:text-[#7d8190]'}`}>
+                    <span className={`mt-0.5 ${item.completed ? 'text-brand-accent' : 'text-[#c4bfb9] dark:text-[#7d8190]'}`}>
                       {item.completed ? '✓' : '○'}
                     </span>
                     <span className={`font-albert text-[14px] flex-1 ${
@@ -1077,7 +1077,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                   onChange={(e) => setNewActionItem(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddActionItem()}
                   placeholder="Add action item..."
-                  className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
+                  className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
                 />
                 <button
                   onClick={handleAddActionItem}
@@ -1092,7 +1092,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
             {/* Resources */}
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <BookOpen className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                <BookOpen className="w-5 h-5 text-brand-accent" />
                 <span className="font-albert text-[15px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
                   Resources
                 </span>
@@ -1106,7 +1106,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                         href={resource.url} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="font-albert text-[14px] text-[#a07855] dark:text-[#b8896a] hover:underline"
+                        className="font-albert text-[14px] text-brand-accent hover:underline"
                       >
                         {resource.title}
                       </a>
@@ -1130,26 +1130,26 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                   value={newResourceTitle}
                   onChange={(e) => setNewResourceTitle(e.target.value)}
                   placeholder="Resource title..."
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#171b22] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
+                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#171b22] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
                 />
                 <input
                   type="url"
                   value={newResourceUrl}
                   onChange={(e) => setNewResourceUrl(e.target.value)}
                   placeholder="URL..."
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#171b22] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
+                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#171b22] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
                 />
                 <input
                   type="text"
                   value={newResourceDescription}
                   onChange={(e) => setNewResourceDescription(e.target.value)}
                   placeholder="Description (optional)..."
-                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#171b22] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
+                  className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#171b22] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
                 />
                 <button
                   onClick={handleAddResource}
                   disabled={!newResourceTitle.trim() || !newResourceUrl.trim()}
-                  className="w-full px-3 py-2 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white rounded-lg font-albert text-[14px] font-medium transition-colors disabled:opacity-50"
+                  className="w-full px-3 py-2 bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent dark:hover:bg-brand-accent/90 text-white rounded-lg font-albert text-[14px] font-medium transition-colors disabled:opacity-50"
                 >
                   Add Resource
                 </button>
@@ -1160,14 +1160,14 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <History className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                  <History className="w-5 h-5 text-brand-accent" />
                   <span className="font-albert text-[15px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
                     Session History
                   </span>
                 </div>
                 <button
                   onClick={() => setShowSessionModal(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-[#a07855] dark:text-[#b8896a] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] rounded-full transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-brand-accent hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] rounded-full transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Add Session
@@ -1206,7 +1206,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
               <button
                 onClick={handleSaveCoachingChanges}
                 disabled={saving}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] dark:bg-[#b8896a] dark:hover:bg-[#a07855] rounded-full font-albert text-[15px] font-medium text-white transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent dark:hover:bg-brand-accent/90 rounded-full font-albert text-[15px] font-medium text-white transition-colors disabled:opacity-50"
               >
                 <Save className="w-5 h-5" />
                 {saving ? 'Saving...' : 'Save Changes'}
@@ -1222,7 +1222,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
           <AlertDialogHeader>
             <div className="flex items-center justify-between">
               <AlertDialogTitle className="font-albert text-[20px] tracking-[-0.5px] flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                <Calendar className="w-5 h-5 text-brand-accent" />
                 {coachingData?.nextCall?.datetime ? 'Edit Call' : 'Schedule Call'}
               </AlertDialogTitle>
               <button
@@ -1243,7 +1243,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                   value={callDate}
                   onChange={(e) => setCallDate(e.target.value)}
                   min={minDate}
-                  className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
+                  className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
                 />
               </div>
               <div>
@@ -1254,7 +1254,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                     type="time"
                     value={callTime}
                     onChange={(e) => setCallTime(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
+                    className="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
                   />
                 </div>
               </div>
@@ -1265,7 +1265,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
               <select
                 value={callTimezone}
                 onChange={(e) => setCallTimezone(e.target.value)}
-                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 appearance-none cursor-pointer"
+                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30 appearance-none cursor-pointer"
               >
                 {COMMON_TIMEZONES.map((tz) => (
                   <option key={tz.value} value={tz.value}>{tz.label}</option>
@@ -1288,7 +1288,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                         onClick={() => setCallLocation(preset)}
                         className={`px-3 py-1.5 rounded-full font-albert text-[13px] transition-all ${
                           callLocation === preset
-                            ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
+                            ? 'bg-brand-accent text-white'
                             : 'bg-[#f3f1ef] dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#171b22]'
                         }`}
                       >
@@ -1299,7 +1299,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                   <button
                     type="button"
                     onClick={() => setUseCustomLocation(true)}
-                    className="text-[13px] text-[#a07855] dark:text-[#b8896a] hover:underline font-albert"
+                    className="text-[13px] text-brand-accent hover:underline font-albert"
                   >
                     + Add custom location/link
                   </button>
@@ -1311,7 +1311,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                     value={customLocation}
                     onChange={(e) => setCustomLocation(e.target.value)}
                     placeholder="e.g., https://zoom.us/j/..."
-                    className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
+                    className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
                   />
                   <button
                     type="button"
@@ -1319,7 +1319,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                       setUseCustomLocation(false);
                       setCustomLocation('');
                     }}
-                    className="text-[13px] text-[#a07855] dark:text-[#b8896a] hover:underline font-albert"
+                    className="text-[13px] text-brand-accent hover:underline font-albert"
                   >
                     ← Use preset location
                   </button>
@@ -1346,7 +1346,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
               <AlertDialogAction
                 onClick={handleScheduleCall}
                 disabled={schedulingCall || !callDate || !callTime}
-                className="font-albert rounded-full bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white flex-1 sm:flex-none"
+                className="font-albert rounded-full bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent dark:hover:bg-brand-accent/90 text-white flex-1 sm:flex-none"
               >
                 {schedulingCall ? 'Saving...' : 'Save'}
               </AlertDialogAction>
@@ -1371,7 +1371,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                 type="date"
                 value={sessionDate}
                 onChange={(e) => setSessionDate(e.target.value)}
-                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
+                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
               />
             </div>
             <div>
@@ -1381,7 +1381,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                 value={sessionTitle}
                 onChange={(e) => setSessionTitle(e.target.value)}
                 placeholder="e.g., Focus & Prioritization"
-                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
+                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
               />
             </div>
             <div>
@@ -1391,7 +1391,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                 onChange={(e) => setSessionSummary(e.target.value)}
                 placeholder="Brief summary of what was covered..."
                 rows={3}
-                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 resize-none"
+                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30 resize-none"
               />
             </div>
             <div>
@@ -1407,7 +1407,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                       setSessionTakeaways(updated);
                     }}
                     placeholder={`Takeaway ${index + 1}...`}
-                    className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30"
+                    className="flex-1 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
                   />
                   {sessionTakeaways.length > 1 && (
                     <button
@@ -1421,7 +1421,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
               ))}
               <button
                 onClick={() => setSessionTakeaways([...sessionTakeaways, ''])}
-                className="text-[13px] text-[#a07855] dark:text-[#b8896a] hover:underline font-albert"
+                className="text-[13px] text-brand-accent hover:underline font-albert"
               >
                 + Add takeaway
               </button>
@@ -1435,7 +1435,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
             <AlertDialogAction
               onClick={handleAddSession}
               disabled={addingSession || !sessionTitle.trim() || !sessionDate}
-              className="font-albert rounded-full bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white"
+              className="font-albert rounded-full bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent dark:hover:bg-brand-accent/90 text-white"
             >
               {addingSession ? 'Adding...' : 'Add Session'}
             </AlertDialogAction>
@@ -1462,7 +1462,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                 onChange={(e) => setCurrentNotes(e.target.value)}
                 placeholder="Your private notes about this client..."
                 rows={5}
-                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 resize-none"
+                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30 resize-none"
               />
             </div>
             <div>
@@ -1474,7 +1474,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
                 onChange={(e) => setPlannedTopics(e.target.value)}
                 placeholder="Topics to cover in the next session..."
                 rows={3}
-                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 resize-none"
+                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30 resize-none"
               />
             </div>
           </div>
@@ -1486,7 +1486,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
             <AlertDialogAction
               onClick={handleSavePrivateNotes}
               disabled={savingPrivateNotes}
-              className="font-albert rounded-full bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] dark:bg-[#b8896a] dark:hover:bg-[#a07855] text-white"
+              className="font-albert rounded-full bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent dark:hover:bg-brand-accent/90 text-white"
             >
               {savingPrivateNotes ? 'Saving...' : 'Save Notes'}
             </AlertDialogAction>

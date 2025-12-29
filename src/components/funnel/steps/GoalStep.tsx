@@ -7,8 +7,8 @@ import { useTypewriter } from '@/hooks/useTypewriter';
 import type { FunnelStepConfigGoal } from '@/types';
 
 // CSS variable helper - uses values set by FunnelClient
-const primaryVar = 'var(--funnel-primary, #a07855)';
-const primaryHoverVar = 'var(--funnel-primary-hover, #8c6245)';
+const primaryVar = 'var(--funnel-primary, var(--brand-accent-light))';
+const primaryHoverVar = 'var(--funnel-primary-hover, var(--brand-accent-dark))';
 
 const DEFAULT_GOAL_EXAMPLES = [
   "grow to 10k followers",
@@ -206,7 +206,7 @@ export function GoalStep({
             ) : (
               <motion.p 
                 key="validated"
-                className="bg-gradient-to-r from-[#a07855] via-[#c9a07a] to-[#a07855] bg-clip-text text-transparent text-lg min-h-[72px]"
+                className="bg-gradient-to-r from-brand-accent via-brand-accent/80 to-brand-accent bg-clip-text text-transparent text-lg min-h-[72px]"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
               >

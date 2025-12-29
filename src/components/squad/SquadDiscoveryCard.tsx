@@ -46,7 +46,7 @@ export function SquadDiscoveryCard({ squad }: SquadDiscoveryCardProps) {
     <Link href={`/discover/squads/${squad.id}`}>
       <div className="bg-white/70 dark:bg-[#171b22] rounded-[20px] w-full hover:shadow-lg dark:hover:shadow-black/30 transition-all cursor-pointer overflow-hidden group border border-[#e1ddd8]/50 dark:border-[#262b35]">
         {/* Cover Image */}
-        <div className="relative w-full h-[140px] bg-gradient-to-br from-[#a07855]/20 to-[#8c6245]/10 dark:from-[#a07855]/10 dark:to-[#8c6245]/5">
+        <div className="relative w-full h-[140px] bg-gradient-to-br from-brand-accent/20 to-[#8c6245]/10 dark:from-brand-accent/10 dark:to-[#8c6245]/5">
           {squad.avatarUrl ? (
             <Image
               src={squad.avatarUrl}
@@ -57,7 +57,7 @@ export function SquadDiscoveryCard({ squad }: SquadDiscoveryCardProps) {
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Users className="w-10 h-10 text-[#a07855] dark:text-[#b8896a]/40" />
+              <Users className="w-10 h-10 text-brand-accent/40" />
             </div>
           )}
           
@@ -116,8 +116,8 @@ export function SquadDiscoveryCard({ squad }: SquadDiscoveryCardProps) {
                   className="rounded-full"
                 />
               ) : (
-                <div className="w-5 h-5 rounded-full bg-[#a07855]/20 flex items-center justify-center">
-                  <User className="w-3 h-3 text-[#a07855] dark:text-[#b8896a]" />
+                <div className="w-5 h-5 rounded-full bg-brand-accent/20 flex items-center justify-center">
+                  <User className="w-3 h-3 text-brand-accent" />
                 </div>
               )}
               <span className="font-sans text-xs text-[#5f5a55] dark:text-[#b2b6c2]">

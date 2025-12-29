@@ -109,7 +109,7 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
       <>
         <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-3xl p-12 text-center">
           <div className="w-20 h-20 bg-[#f3f1ef] dark:bg-[#11141b] rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-10 h-10 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <svg className="w-10 h-10 text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           </div>
@@ -121,7 +121,7 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
           </p>
           <button
             onClick={() => setShowInviteDialog(true)}
-            className="px-6 py-3 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-xl hover:bg-[#8c6245] dark:hover:bg-[#a07855] font-albert font-medium transition-colors inline-flex items-center gap-2"
+            className="px-6 py-3 bg-brand-accent text-brand-accent-foreground rounded-xl hover:bg-brand-accent/90 font-albert font-medium transition-colors inline-flex items-center gap-2"
           >
             <UserPlus className="w-5 h-5" />
             Add New Clients
@@ -157,7 +157,7 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
           </button>
           <button
             onClick={() => setShowInviteDialog(true)}
-            className="px-4 py-2 bg-[#a07855] dark:bg-[#b8896a] text-white text-sm rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] font-albert font-medium transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-brand-accent text-brand-accent-foreground text-sm rounded-lg hover:bg-brand-accent/90 font-albert font-medium transition-colors flex items-center gap-2"
           >
             <UserPlus className="w-4 h-4" />
             Add New Clients
@@ -193,7 +193,7 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
                   unoptimized
                 />
               ) : (
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e] dark:from-[#b8896a] dark:to-[#8c7a6d] flex items-center justify-center text-white font-albert font-semibold">
+                <div className="w-12 h-12 rounded-full bg-brand-accent flex items-center justify-center text-brand-accent-foreground font-albert font-semibold">
                   {client.user?.firstName?.charAt(0) || 'C'}
                 </div>
               )}
@@ -220,8 +220,8 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
               {/* Next Call Info */}
               {client.nextCall?.datetime && (
                 <div className="flex items-center gap-1.5 mt-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-[#a07855] dark:text-[#b8896a]" />
-                  <span className="font-albert text-xs text-[#a07855] dark:text-[#b8896a]">
+                  <Calendar className="w-3.5 h-3.5 text-brand-accent" />
+                  <span className="font-albert text-xs text-brand-accent">
                     Next call: {formatDate(client.nextCall.datetime)}
                   </span>
                 </div>

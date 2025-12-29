@@ -678,7 +678,7 @@ export function AdminUsersTab({
           <p className="font-albert text-sm">{error}</p>
           <Button 
             onClick={fetchUsers} 
-            className="mt-4 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+            className="mt-4 bg-brand-accent hover:bg-brand-accent/90 text-white"
           >
             Retry
           </Button>
@@ -711,7 +711,7 @@ export function AdminUsersTab({
                   placeholder="Search by name or email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full sm:w-64 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190]"
+                  className="w-full sm:w-64 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190]"
                 />
                 <svg
                   className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#7d8190]"
@@ -753,7 +753,7 @@ export function AdminUsersTab({
                 {showInviteButton && (
                   <Button
                     onClick={() => setShowInviteDialog(true)}
-                    className="flex-1 sm:flex-none bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] active:bg-[#7a5639] dark:bg-[#b8896a] dark:hover:bg-[#a07855] dark:active:bg-[#96714d] text-white font-albert"
+                    className="flex-1 sm:flex-none bg-brand-accent hover:bg-brand-accent/90 active:bg-[#7a5639] dark:bg-brand-accent dark:hover:bg-brand-accent/90 dark:active:bg-[#96714d] text-white font-albert"
                   >
                     <UserPlus className="w-4 h-4 mr-2" />
                     Add New Clients
@@ -766,7 +766,7 @@ export function AdminUsersTab({
 
         {/* Bulk Actions Toolbar */}
         {selectedUserIds.size > 0 && isOrgScopedApi && !readOnly && (
-          <div className="px-6 py-3 bg-[#a07855]/10 dark:bg-[#b8896a]/10 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50 flex items-center gap-4 flex-wrap">
+          <div className="px-6 py-3 bg-brand-accent/10 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50 flex items-center gap-4 flex-wrap">
             <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">
               {selectedUserIds.size} user{selectedUserIds.size !== 1 ? 's' : ''} selected
             </span>
@@ -800,7 +800,7 @@ export function AdminUsersTab({
             
             {bulkUpdating && (
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-4 h-4 border-2 border-brand-accent border-t-transparent rounded-full animate-spin"></div>
                 <span className="font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2]">Updating...</span>
               </div>
             )}
@@ -854,7 +854,7 @@ export function AdminUsersTab({
                 return (
                   <TableRow 
                     key={user.id}
-                    className={`${onSelectUser ? 'cursor-pointer' : ''} ${selectedUserIds.has(user.id) ? 'bg-[#a07855]/5 dark:bg-[#b8896a]/5' : ''} hover:bg-[#faf8f6] dark:hover:bg-[#11141b]`}
+                    className={`${onSelectUser ? 'cursor-pointer' : ''} ${selectedUserIds.has(user.id) ? 'bg-brand-accent/5 dark:bg-brand-accent/5' : ''} hover:bg-[#faf8f6] dark:hover:bg-[#11141b]`}
                     onClick={() => onSelectUser?.(user.id)}
                   >
                     {/* Checkbox for selection */}
@@ -879,7 +879,7 @@ export function AdminUsersTab({
                             className="w-10 h-10 rounded-full object-cover"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] flex items-center justify-center text-white font-bold">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-accent to-[#8c6245] flex items-center justify-center text-white font-bold">
                             {user.name.charAt(0).toUpperCase()}
                           </div>
                         )}
@@ -1129,9 +1129,9 @@ export function AdminUsersTab({
           <div className="p-12 text-center">
             {searchQuery ? (
               <>
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#a07855]/10 flex items-center justify-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-brand-accent/10 flex items-center justify-center">
                   <svg
-                    className="w-8 h-8 text-[#a07855] dark:text-[#b8896a]"
+                    className="w-8 h-8 text-brand-accent"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -1221,7 +1221,7 @@ export function AdminUsersTab({
                           setSubdomainError(null);
                         }}
                         placeholder="acme"
-                        className="flex-1 h-10 px-3 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#313746] bg-white dark:bg-[#1e222a] text-sm text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20 focus:border-[#a07855] dark:border-[#b8896a] font-albert disabled:opacity-50"
+                        className="flex-1 h-10 px-3 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#313746] bg-white dark:bg-[#1e222a] text-sm text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20 focus:border-brand-accent font-albert disabled:opacity-50"
                         disabled={subdomainLoading}
                       />
                       <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert whitespace-nowrap">
@@ -1300,7 +1300,7 @@ export function AdminUsersTab({
                         value={manualExpiresAt}
                         onChange={(e) => setManualExpiresAt(e.target.value)}
                         min={new Date().toISOString().split('T')[0]}
-                        className="w-full h-10 px-3 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#313746] bg-white dark:bg-[#1e222a] text-sm text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20 focus:border-[#a07855] dark:border-[#b8896a] font-albert disabled:opacity-50"
+                        className="w-full h-10 px-3 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#313746] bg-white dark:bg-[#1e222a] text-sm text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20 focus:border-brand-accent font-albert disabled:opacity-50"
                         disabled={subdomainLoading}
                       />
                       <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
@@ -1310,8 +1310,8 @@ export function AdminUsersTab({
                   )}
                   
                   {subdomain && !subdomainError && (
-                    <div className="p-3 bg-[#a07855]/10 dark:bg-[#b8896a]/10 rounded-lg">
-                      <p className="text-sm font-medium text-[#a07855] dark:text-[#b8896a] font-albert">
+                    <div className="p-3 bg-brand-accent/10 rounded-lg">
+                      <p className="text-sm font-medium text-brand-accent font-albert">
                         Preview:
                       </p>
                       <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert font-mono">
@@ -1342,7 +1342,7 @@ export function AdminUsersTab({
                 handleSubdomainSubmit();
               }}
               disabled={!subdomain || subdomainLoading}
-              className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-albert"
+              className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
             >
               {subdomainLoading ? 'Creating...' : 'Assign Coach Role'}
             </AlertDialogAction>

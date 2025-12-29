@@ -146,7 +146,7 @@ export function AdminSquadsTab({
           <p className="font-albert text-sm">{error}</p>
           <Button 
             onClick={fetchSquads} 
-            className="mt-4 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+            className="mt-4 bg-brand-accent hover:bg-brand-accent/90 text-white"
           >
             Retry
           </Button>
@@ -176,7 +176,7 @@ export function AdminSquadsTab({
             </Button>
             <Button 
               onClick={() => setShowCreateDialog(true)}
-              className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+              className="bg-brand-accent hover:bg-brand-accent/90 text-white"
             >
               Create Squad
             </Button>
@@ -216,7 +216,7 @@ export function AdminSquadsTab({
                           className="w-8 h-8 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] flex items-center justify-center text-white text-sm font-bold">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-accent to-[#8c6245] flex items-center justify-center text-white text-sm font-bold">
                           {squad.name.charAt(0).toUpperCase()}
                         </div>
                       )}
@@ -283,7 +283,7 @@ export function AdminSquadsTab({
                   </TableCell>
                   <TableCell className="font-albert text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2] whitespace-nowrap">
                     {squad.memberCount > 0 ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a]">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-brand-accent/10 text-brand-accent">
                         {squad.memberCount} member{squad.memberCount !== 1 ? 's' : ''}
                       </span>
                     ) : (
@@ -302,7 +302,7 @@ export function AdminSquadsTab({
                           e.stopPropagation();
                           setSquadToEdit(squad);
                         }}
-                        className="text-[#a07855] dark:text-[#b8896a] hover:text-[#8c6245] hover:bg-[#a07855]/10 font-albert"
+                        className="text-brand-accent hover:text-brand-accent/90 hover:bg-brand-accent/10 font-albert"
                       >
                         Edit
                       </Button>
@@ -330,7 +330,7 @@ export function AdminSquadsTab({
             <p className="text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2] font-albert mb-4">No squads found</p>
             <Button 
               onClick={() => setShowCreateDialog(true)}
-              className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+              className="bg-brand-accent hover:bg-brand-accent/90 text-white"
             >
               Create Your First Squad
             </Button>

@@ -191,7 +191,7 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          className="px-4 py-2 rounded-lg text-sm font-medium bg-[#a07855] dark:bg-[#b8896a] text-white hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:opacity-50 transition-colors flex items-center gap-2"
+          className="px-4 py-2 rounded-lg text-sm font-medium bg-brand-accent text-white hover:bg-brand-accent/90 disabled:opacity-50 transition-colors flex items-center gap-2"
         >
           <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
           {refreshing ? 'Refreshing...' : 'Refresh'}
@@ -202,7 +202,7 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '0ms' }}>
           <div className="flex items-center gap-2 mb-2">
-            <Users className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+            <Users className="w-5 h-5 text-brand-accent" />
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Total</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
@@ -265,7 +265,7 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
             placeholder="Search clients..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30"
+            className="w-full pl-10 pr-4 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
           />
         </div>
 
@@ -276,7 +276,7 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
               onClick={() => setStatusFilter(status)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 statusFilter === status
-                  ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
+                  ? 'bg-brand-accent text-white'
                   : 'bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#e1ddd8] dark:hover:bg-[#272d38]'
               }`}
             >
@@ -323,7 +323,7 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
                             className="w-8 h-8 rounded-full object-cover"
                           />
                         ) : (
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] dark:from-[#b8896a] dark:to-[#a07855] flex items-center justify-center text-white font-semibold text-sm">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-accent to-[#8c6245] dark:from-[#b8896a] dark:to-brand-accent flex items-center justify-center text-white font-semibold text-sm">
                             {client.name.charAt(0)}
                           </div>
                         )}

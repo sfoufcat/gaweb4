@@ -512,7 +512,7 @@ export function ProgramDetailView({
                         {dayFocus.label}
                       </span>
                       {isToday && hasTasks && (
-                        <span className="px-2 py-0.5 rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/15 text-[11px] font-medium text-[#a07855] dark:text-[#b8896a]">
+                        <span className="px-2 py-0.5 rounded-full bg-brand-accent/10 dark:bg-brand-accent/15 text-[11px] font-medium text-brand-accent">
                           {dayFocus.tasks.length} task{dayFocus.tasks.length !== 1 ? 's' : ''}
                         </span>
                       )}

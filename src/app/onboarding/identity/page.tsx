@@ -220,7 +220,7 @@ export default function OnboardingIdentityPage() {
                           disabled={isValidating || isSaving}
                           rows={3}
                           maxLength={MAX_LENGTH}
-                          className="w-full bg-transparent border-b-2 border-[#e1ddd8] focus:border-[#a07855] dark:border-[#b8896a] outline-none pb-2 placeholder:text-transparent transition-colors resize-none"
+                          className="w-full bg-transparent border-b-2 border-[#e1ddd8] focus:border-brand-accent outline-none pb-2 placeholder:text-transparent transition-colors resize-none"
                           autoFocus
                         />
                       </motion.div>
@@ -229,7 +229,7 @@ export default function OnboardingIdentityPage() {
                     {/* Show gradient text when accepted */}
                     {validationState === 'accepted' && (
                       <motion.p 
-                        className="bg-gradient-to-r from-[#ff6b6b] via-[#ff8c42] via-[#ffa500] via-[#9b59b6] to-[#a07855] bg-clip-text text-transparent border-b-2 border-[#e1ddd8] pb-2"
+                        className="bg-gradient-to-r from-[#ff6b6b] via-[#ff8c42] via-[#ffa500] via-[#9b59b6] to-brand-accent bg-clip-text text-transparent border-b-2 border-[#e1ddd8] pb-2"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.4 }}
@@ -241,7 +241,7 @@ export default function OnboardingIdentityPage() {
                     {/* Show gradient text when needs suggestion */}
                     {validationState === 'needs_suggestion' && (
                       <motion.p 
-                        className="bg-gradient-to-r from-[#ff6b6b] via-[#ff8c42] via-[#ffa500] via-[#9b59b6] to-[#a07855] bg-clip-text text-transparent border-b-2 border-[#e1ddd8] pb-2"
+                        className="bg-gradient-to-r from-[#ff6b6b] via-[#ff8c42] via-[#ffa500] via-[#9b59b6] to-brand-accent bg-clip-text text-transparent border-b-2 border-[#e1ddd8] pb-2"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.4 }}
@@ -372,7 +372,7 @@ export default function OnboardingIdentityPage() {
                   transition={{ duration: 0.3, delay: 0.3 }}
                 >
                   <h3 className="font-albert text-[18px] font-medium text-text-primary tracking-[-0.5px] leading-[1.3] flex items-center gap-2">
-                    <span className="text-[#a07855] dark:text-[#b8896a]">💡</span>
+                    <span className="text-brand-accent">💡</span>
                     Tip:
                   </h3>
                   <p className="font-sans text-[14px] text-text-secondary leading-[1.4]">

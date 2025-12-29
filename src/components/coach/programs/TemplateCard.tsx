@@ -42,7 +42,7 @@ export function TemplateCard({ template, onSelect, featured }: TemplateCardProps
     <motion.button
       onClick={onSelect}
       className={`group relative w-full text-left rounded-2xl overflow-hidden border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] transition-all duration-300 ${
-        featured ? 'ring-2 ring-[#a07855] dark:ring-[#b8896a]/20 dark:ring-[#b8896a]/20' : ''
+        featured ? 'ring-2 ring-brand-accent dark:ring-brand-accent/20 dark:ring-brand-accent/20' : ''
       }`}
       whileHover={{ 
         y: -4, 
@@ -72,7 +72,7 @@ export function TemplateCard({ template, onSelect, featured }: TemplateCardProps
         {/* Featured Badge */}
         {featured && (
           <div className="absolute top-3 left-3">
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#a07855] dark:bg-[#b8896a] text-white text-xs font-medium shadow-lg">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-accent text-white text-xs font-medium shadow-lg">
               <Star className="w-3 h-3 fill-current" />
               Featured
             </span>
@@ -105,7 +105,7 @@ export function TemplateCard({ template, onSelect, featured }: TemplateCardProps
       {/* Content */}
       <div className="p-5">
         {/* Title */}
-        <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-[-0.3px] mb-2 line-clamp-1 group-hover:text-[#a07855] dark:text-[#b8896a] dark:group-hover:text-[#b8896a] transition-colors">
+        <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert tracking-[-0.3px] mb-2 line-clamp-1 group-hover:text-brand-accent dark:group-hover:text-brand-accent transition-colors">
           {template.name}
         </h3>
 
@@ -149,17 +149,17 @@ export function TemplateCard({ template, onSelect, featured }: TemplateCardProps
 
         {/* CTA */}
         <div className="flex items-center justify-between pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
-          <span className="text-sm font-medium text-[#a07855] dark:text-[#b8896a] font-albert group-hover:underline">
+          <span className="text-sm font-medium text-brand-accent font-albert group-hover:underline">
             View template
           </span>
-          <div className="w-8 h-8 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center group-hover:bg-[#a07855] dark:group-hover:bg-[#b8896a] transition-colors">
+          <div className="w-8 h-8 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center group-hover:bg-[#a07855] dark:group-hover:bg-brand-accent transition-colors">
             <ArrowRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] group-hover:text-white transition-colors" />
           </div>
         </div>
       </div>
 
       {/* Hover border effect */}
-      <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-[#a07855] dark:border-[#b8896a]/30 dark:group-hover:border-[#b8896a]/30 transition-colors pointer-events-none" />
+      <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-brand-accent/30 dark:group-hover:border-brand-accent/30 transition-colors pointer-events-none" />
     </motion.button>
   );
 }

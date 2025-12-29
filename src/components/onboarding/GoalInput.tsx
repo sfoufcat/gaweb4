@@ -86,7 +86,7 @@ export function GoalInput({
           className="absolute inset-0 w-full h-full bg-transparent outline-none resize-none z-10 font-sans text-[24px] tracking-[-0.5px] leading-[1.2] text-text-primary p-0 border-none focus:ring-0"
           style={{ 
             textIndent: indent ? `${indent}px` : '100px',
-            caretColor: '#a07855'
+            caretColor: 'var(--brand-accent-light)'
           }}
           autoFocus
           spellCheck={false}
@@ -107,7 +107,7 @@ export function GoalInput({
             onChange={(e) => onDateChange(e.target.value)}
             min={new Date().toISOString().split('T')[0]}
             placeholder="By when?"
-            className="w-full pl-12 pr-4 py-3 rounded-xl border border-[#e1ddd8] hover:border-[#a07855] dark:border-[#b8896a] focus:border-[#a07855] dark:border-[#b8896a] focus:outline-none focus:ring-0 transition-all font-sans text-[18px] tracking-[-0.5px] leading-[1.2] text-text-primary cursor-pointer"
+            className="w-full pl-12 pr-4 py-3 rounded-xl border border-[#e1ddd8] hover:border-brand-accent focus:border-brand-accent focus:outline-none focus:ring-0 transition-all font-sans text-[18px] tracking-[-0.5px] leading-[1.2] text-text-primary cursor-pointer"
             style={{
               colorScheme: 'light',
             }}

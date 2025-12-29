@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { formatDistanceToNow, format } from 'date-fns';
 import { mutate } from 'swr';
-import { useBrandingValues } from '@/contexts/BrandingContext';
 import { DeleteConfirmationModal } from './ConfirmationModal';
 import { InlineComments } from './InlineComments';
 import { SIDEBAR_BOOKMARKS_KEY } from './FeedSidebar';
@@ -49,7 +48,6 @@ export function PostCard({
 }: PostCardProps) {
   const router = useRouter();
   const { user } = useUser();
-  const { colors, isDefault } = useBrandingValues();
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showComments, setShowComments] = useState(false);
@@ -195,8 +193,7 @@ export function PostCard({
     router.push(getProfileUrl(post.authorId, user?.id || ''));
   };
 
-  // Accent color for interactions
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
+  // Note: We use text-brand-accent Tailwind class instead of inline styles for accent colors
 
   // Poll handlers
   const handlePollVote = useCallback(async (pollId: string, optionIds: string[]) => {
@@ -262,7 +259,7 @@ export function PostCard({
       {/* Pinned indicator + Menu (combined row when hideMetadata is true) */}
       {post.pinnedToFeed && post.hideMetadata && (
         <div className={`flex items-center justify-between ${isEmbedded ? 'pb-2' : 'px-4 pt-3 pb-0'}`}>
-          <div className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color: accentColor }}>
+          <div className="flex items-center gap-1.5 text-[12px] font-medium text-brand-accent">
             <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M16 12V4h1V2H7v2h1v8l-3 5v2h6v5l1 1 1-1v-5h6v-2l-3-5z" />
             </svg>
@@ -343,7 +340,7 @@ export function PostCard({
 
       {/* Pinned indicator only (when metadata is visible) */}
       {post.pinnedToFeed && !post.hideMetadata && (
-        <div className={`flex items-center gap-1.5 text-[12px] font-medium ${isEmbedded ? 'pb-2' : 'px-4 pt-3 pb-0'}`} style={{ color: accentColor }}>
+        <div className={`flex items-center gap-1.5 text-[12px] font-medium text-brand-accent ${isEmbedded ? 'pb-2' : 'px-4 pt-3 pb-0'}`}>
           <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
             <path d="M16 12V4h1V2H7v2h1v8l-3 5v2h6v5l1 1 1-1v-5h6v-2l-3-5z" />
           </svg>
@@ -652,16 +649,16 @@ export function PostCard({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
             >
               <svg
-                className={`w-5 h-5 transition-colors ${likeAnimating ? 'animate-heart-pop' : ''}`}
-                fill={post.hasLiked ? accentColor : 'none'}
+                className={`w-5 h-5 transition-colors ${likeAnimating ? 'animate-heart-pop' : ''} ${post.hasLiked ? 'text-brand-accent fill-brand-accent' : ''}`}
+                fill={post.hasLiked ? 'currentColor' : 'none'}
                 viewBox="0 0 24 24"
-                stroke={post.hasLiked ? accentColor : 'currentColor'}
+                stroke="currentColor"
                 strokeWidth={2}
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
               {post.likeCount > 0 && (
-                <span className={`text-[13px] font-medium ${post.hasLiked ? '' : 'text-[#8a857f]'}`} style={post.hasLiked ? { color: accentColor } : undefined}>
+                <span className={`text-[13px] font-medium ${post.hasLiked ? 'text-brand-accent' : 'text-[#8a857f]'}`}>
                   {post.likeCount}
                 </span>
               )}
@@ -670,8 +667,7 @@ export function PostCard({
             {/* Comment */}
             <button
               onClick={() => setShowComments(!showComments)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors ${showComments ? '' : 'text-[#8a857f]'}`}
-              style={showComments ? { color: accentColor } : undefined}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors ${showComments ? 'text-brand-accent' : 'text-[#8a857f]'}`}
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -701,10 +697,10 @@ export function PostCard({
             className="p-1.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
           >
             <svg
-              className={`w-5 h-5 transition-colors ${bookmarkAnimating ? 'animate-bookmark-bounce' : ''}`}
-              fill={post.hasBookmarked ? accentColor : 'none'}
+              className={`w-5 h-5 transition-colors ${bookmarkAnimating ? 'animate-bookmark-bounce' : ''} ${post.hasBookmarked ? 'text-brand-accent fill-brand-accent' : ''}`}
+              fill={post.hasBookmarked ? 'currentColor' : 'none'}
               viewBox="0 0 24 24"
-              stroke={post.hasBookmarked ? accentColor : 'currentColor'}
+              stroke="currentColor"
               strokeWidth={2}
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />

@@ -6,8 +6,8 @@ import { ArrowLeft } from 'lucide-react';
 import type { FunnelStepConfigPlanReveal } from '@/types';
 
 // CSS variable helper - uses values set by FunnelClient
-const primaryVar = 'var(--funnel-primary, #a07855)';
-const primaryHoverVar = 'var(--funnel-primary-hover, #8c6245)';
+const primaryVar = 'var(--funnel-primary, var(--brand-accent-light))';
+const primaryHoverVar = 'var(--funnel-primary-hover, var(--brand-accent-dark))';
 
 interface PlanRevealStepProps {
   config: FunnelStepConfigPlanReveal;
@@ -133,11 +133,11 @@ export function PlanRevealStep({
               </div>
 
               {/* Growth curve */}
-              <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <svg className="absolute inset-0 w-full h-full text-brand-accent" viewBox="0 0 100 100" preserveAspectRatio="none">
                 <motion.path
                   d="M 0 90 Q 30 85, 50 60 T 100 10"
                   fill="none"
-                  stroke="#a07855"
+                  stroke="currentColor"
                   strokeWidth="3"
                   strokeLinecap="round"
                   initial={{ pathLength: 0 }}
@@ -149,7 +149,7 @@ export function PlanRevealStep({
                   cx="0"
                   cy="90"
                   r="4"
-                  fill="#a07855"
+                  fill="currentColor"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: animateGraph ? 1 : 0 }}
                   transition={{ delay: 0.2 }}
@@ -159,7 +159,7 @@ export function PlanRevealStep({
                   cx="100"
                   cy="10"
                   r="4"
-                  fill="#a07855"
+                  fill="currentColor"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: animateGraph ? 1 : 0 }}
                   transition={{ delay: 1.5 }}
@@ -175,7 +175,7 @@ export function PlanRevealStep({
               >
                 {timeLabels.map((label, i) => (
                   <div key={i} className="flex flex-col items-center">
-                    <div className="w-2 h-2 rounded-full bg-[#a07855]/30 dark:bg-[#b8896a]/30 mb-1" />
+                    <div className="w-2 h-2 rounded-full bg-brand-accent/30 mb-1" />
                     <span className="text-xs text-text-muted">{label}</span>
                   </div>
                 ))}
@@ -186,11 +186,11 @@ export function PlanRevealStep({
           {/* Legend */}
           <div className="flex justify-center gap-6 text-sm">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#a07855]/30 dark:bg-[#b8896a]/30" />
+              <div className="w-3 h-3 rounded-full bg-brand-accent/30" />
               <span className="text-text-muted">Today</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#a07855] dark:bg-[#b8896a]" />
+              <div className="w-3 h-3 rounded-full bg-brand-accent" />
               <span className="text-text-muted">Goal</span>
             </div>
           </div>
@@ -219,7 +219,7 @@ export function PlanRevealStep({
               transition={{ delay: 0.5 + i * 0.1 }}
               className="flex items-start gap-3"
             >
-              <svg className="w-5 h-5 text-[#a07855] dark:text-[#b8896a] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-5 h-5 text-brand-accent flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
               <span className="text-text-secondary">{item}</span>

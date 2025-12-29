@@ -262,7 +262,7 @@ export function MarketplaceSettings() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., 12-Week Fitness Transformation"
-              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-[#a07855] dark:focus:border-brand-accent"
               maxLength={100}
             />
           </div>
@@ -276,7 +276,7 @@ export function MarketplaceSettings() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe your program in 1-2 sentences..."
-              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a] resize-none"
+              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-[#a07855] dark:focus:border-brand-accent resize-none"
               rows={3}
               maxLength={200}
             />
@@ -310,7 +310,7 @@ export function MarketplaceSettings() {
                 <label className="cursor-pointer">
                   <div className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors">
                     {uploading ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-[#a07855] dark:text-[#b8896a]" />
+                      <Loader2 className="w-4 h-4 animate-spin text-brand-accent" />
                     ) : (
                       <Upload className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
                     )}
@@ -365,7 +365,7 @@ export function MarketplaceSettings() {
               <select
                 value={selectedFunnelId}
                 onChange={(e) => setSelectedFunnelId(e.target.value)}
-                className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-[#a07855] dark:focus:border-brand-accent"
               >
                 <option value="">Select a funnel...</option>
                 {funnels.map((funnel) => (
@@ -392,7 +392,7 @@ export function MarketplaceSettings() {
                   onClick={() => toggleCategory(cat.value)}
                   className={`px-3 py-1.5 rounded-full text-sm font-albert transition-colors ${
                     categories.includes(cat.value)
-                      ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
+                      ? 'bg-brand-accent text-white'
                       : 'bg-[#f3f1ef] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#e9e5e0] dark:hover:bg-[#313746]'
                   }`}
                 >

@@ -6,7 +6,7 @@ import confetti from 'canvas-confetti';
 import type { FunnelStepConfigSuccess } from '@/types';
 
 // CSS variable helper - uses values set by FunnelClient
-const primaryVar = 'var(--funnel-primary, #a07855)';
+const primaryVar = 'var(--funnel-primary, var(--brand-accent-light))';
 
 // Fade duration in milliseconds
 const FADE_DURATION = 500;
@@ -138,7 +138,7 @@ export function SuccessStep({
 
       // Festive confetti colors including the brand accent
       const colors = [
-        branding?.primaryColor || '#a07855',  // Brand color
+        branding?.primaryColor || 'var(--brand-accent-light)',  // Brand color
         '#FFD700',  // Gold
         '#FF6B6B',  // Coral red
         '#4ECDC4',  // Teal
@@ -194,13 +194,13 @@ export function SuccessStep({
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-        className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center mb-8"
+        className="w-24 h-24 rounded-full bg-brand-accent/10 flex items-center justify-center mb-8"
       >
         <motion.svg
           initial={{ pathLength: 0 }}
           animate={{ pathLength: 1 }}
           transition={{ delay: 0.2, duration: 0.5 }}
-          className="w-12 h-12 text-green-600"
+          className="w-12 h-12 text-brand-accent"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"

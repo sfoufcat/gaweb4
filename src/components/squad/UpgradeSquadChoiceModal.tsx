@@ -149,7 +149,7 @@ export function UpgradeSquadChoiceModal({
           >
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Star className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                <Star className="w-5 h-5 text-brand-accent" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-albert text-[16px] font-semibold text-text-primary dark:text-[#f5f5f8] mb-1">

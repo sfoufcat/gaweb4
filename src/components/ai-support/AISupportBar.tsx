@@ -231,7 +231,7 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
         <div className="bg-[#f9f7f5] dark:bg-transparent rounded-[20px] p-4">
           {/* Header */}
           <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-4 h-4 text-accent-secondary dark:text-[#b8896a]" />
+            <Sparkles className="w-4 h-4 text-accent-secondary dark:text-brand-accent" />
             <span className="font-albert text-[15px] text-text-primary dark:text-[#f5f5f8] font-medium tracking-[-0.5px]">
               Need help with today?
             </span>
@@ -261,7 +261,7 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
                   {isLoading && activeAction === 'help_complete_task' ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Target className="w-4 h-4 text-accent-secondary dark:text-[#b8896a]" />
+                    <Target className="w-4 h-4 text-accent-secondary dark:text-brand-accent" />
                   )}
                   <span>Help me complete a task</span>
                 </button>
@@ -278,7 +278,7 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
                   {isLoading && activeAction === 'suggest_tasks_for_today' ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Lightbulb className="w-4 h-4 text-accent-secondary dark:text-[#b8896a]" />
+                    <Lightbulb className="w-4 h-4 text-accent-secondary dark:text-brand-accent" />
                   )}
                   <span>Suggest tasks for today</span>
                 </button>
@@ -298,7 +298,7 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
                   {isLoading && activeAction === 'suggest_tasks_for_today' ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Lightbulb className="w-4 h-4 text-accent-secondary dark:text-[#b8896a]" />
+                    <Lightbulb className="w-4 h-4 text-accent-secondary dark:text-brand-accent" />
                   )}
                   <span>Suggest tasks for today</span>
                 </button>
@@ -315,7 +315,7 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
                   {isLoading && activeAction === 'help_complete_task' ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Target className="w-4 h-4 text-accent-secondary dark:text-[#b8896a]" />
+                    <Target className="w-4 h-4 text-accent-secondary dark:text-brand-accent" />
                   )}
                   <span>Help me complete a task</span>
                 </button>
@@ -334,7 +334,7 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
                 {isLoading && activeAction === 'track_specific_help' ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Sparkles className="w-4 h-4 text-accent-secondary dark:text-[#b8896a]" />
+                  <Sparkles className="w-4 h-4 text-accent-secondary dark:text-brand-accent" />
                 )}
                 <span>{programHelpLabel}</span>
               </button>
@@ -348,7 +348,7 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
                 key={index}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
                   carouselIndex === index 
-                    ? 'w-4 bg-accent-secondary dark:bg-[#b8896a]' 
+                    ? 'w-4 bg-accent-secondary dark:bg-brand-accent' 
                     : 'w-1.5 bg-[#e1ddd8] dark:bg-[#262b35]'
                 }`}
               />
@@ -371,7 +371,7 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
                 {isLoading && activeAction === 'help_complete_task' ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Target className="w-4 h-4 text-accent-secondary dark:text-[#b8896a]" />
+                  <Target className="w-4 h-4 text-accent-secondary dark:text-brand-accent" />
                 )}
                 <span>Help me complete a task</span>
               </button>
@@ -388,7 +388,7 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
                 {isLoading && activeAction === 'suggest_tasks_for_today' ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Lightbulb className="w-4 h-4 text-accent-secondary dark:text-[#b8896a]" />
+                  <Lightbulb className="w-4 h-4 text-accent-secondary dark:text-brand-accent" />
                 )}
                 <span>Suggest tasks for today</span>
               </button>
@@ -408,7 +408,7 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
                 {isLoading && activeAction === 'suggest_tasks_for_today' ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Lightbulb className="w-4 h-4 text-accent-secondary dark:text-[#b8896a]" />
+                  <Lightbulb className="w-4 h-4 text-accent-secondary dark:text-brand-accent" />
                 )}
                 <span>Suggest tasks for today</span>
               </button>
@@ -425,7 +425,7 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
                 {isLoading && activeAction === 'help_complete_task' ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Target className="w-4 h-4 text-accent-secondary dark:text-[#b8896a]" />
+                  <Target className="w-4 h-4 text-accent-secondary dark:text-brand-accent" />
                 )}
                 <span>Help me complete a task</span>
               </button>
@@ -444,7 +444,7 @@ export function AISupportBar({ onTasksChange }: AISupportBarProps) {
               {isLoading && activeAction === 'track_specific_help' ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <Sparkles className="w-4 h-4 text-accent-secondary dark:text-[#b8896a]" />
+                <Sparkles className="w-4 h-4 text-accent-secondary dark:text-brand-accent" />
               )}
               <span>{programHelpLabel}</span>
             </button>

@@ -164,7 +164,7 @@ export function AdminCoachingClientsTab() {
     return (
       <div className="bg-white/60 dark:bg-[#171b22]/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 dark:border-[#262b35]/50 rounded-2xl p-8">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#a07855] dark:border-[#b8896a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-12 h-12 border-4 border-brand-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2] font-albert">Loading coaching clients...</p>
         </div>
       </div>
@@ -179,7 +179,7 @@ export function AdminCoachingClientsTab() {
           <p className="font-albert text-sm">{error}</p>
           <Button 
             onClick={fetchData} 
-            className="mt-4 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white"
+            className="mt-4 bg-brand-accent hover:bg-brand-accent/90 text-brand-accent-foreground"
           >
             Retry
           </Button>
@@ -209,7 +209,7 @@ export function AdminCoachingClientsTab() {
                 placeholder="Search by name, email, or coach..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-72 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190]"
+                className="w-72 px-3 py-2 pl-9 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190]"
               />
               <svg
                 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#7d8190]"
@@ -278,7 +278,7 @@ export function AdminCoachingClientsTab() {
                         unoptimized
                       />
                     ) : (
-                      <div className="w-9 h-9 rounded-full bg-[#a07855]/10 flex items-center justify-center text-[#a07855] dark:text-[#b8896a] font-albert font-semibold text-sm">
+                      <div className="w-9 h-9 rounded-full bg-brand-accent/10 flex items-center justify-center text-brand-accent font-albert font-semibold text-sm">
                         {client.name.charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -327,7 +327,7 @@ export function AdminCoachingClientsTab() {
                           unoptimized
                         />
                       ) : (
-                        <div className="w-6 h-6 rounded-full bg-[#a07855] flex items-center justify-center text-white text-[10px] font-semibold">
+                        <div className="w-6 h-6 rounded-full bg-brand-accent flex items-center justify-center text-brand-accent-foreground text-[10px] font-semibold">
                           {client.coach.name?.charAt(0) || 'C'}
                         </div>
                       )}
@@ -371,9 +371,9 @@ export function AdminCoachingClientsTab() {
         <div className="p-12 text-center">
           {searchQuery ? (
             <>
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#a07855]/10 flex items-center justify-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-brand-accent/10 flex items-center justify-center">
                 <svg
-                  className="w-8 h-8 text-[#a07855] dark:text-[#b8896a]"
+                  className="w-8 h-8 text-brand-accent"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -400,9 +400,9 @@ export function AdminCoachingClientsTab() {
             </>
           ) : (
             <>
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-[#a07855]/10 to-[#8c6245]/10 flex items-center justify-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-brand-accent/10 flex items-center justify-center">
                 <svg
-                  className="w-8 h-8 text-[#a07855] dark:text-[#b8896a]"
+                  className="w-8 h-8 text-brand-accent"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -447,7 +447,7 @@ export function AdminCoachingClientsTab() {
                     unoptimized
                   />
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-[#a07855]/10 flex items-center justify-center text-[#a07855] dark:text-[#b8896a] font-albert font-semibold">
+                  <div className="w-10 h-10 rounded-full bg-brand-accent/10 flex items-center justify-center text-brand-accent font-albert font-semibold">
                     {selectedClient.name.charAt(0).toUpperCase()}
                   </div>
                 )}
@@ -466,7 +466,7 @@ export function AdminCoachingClientsTab() {
               <select
                 value={selectedCoachId}
                 onChange={(e) => setSelectedCoachId(e.target.value)}
-                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] transition-all appearance-none cursor-pointer"
+                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-brand-accent transition-all appearance-none cursor-pointer"
               >
                 <option value="">Select a coach...</option>
                 {coaches.map((coach) => (
@@ -488,8 +488,8 @@ export function AdminCoachingClientsTab() {
                   onClick={() => setSelectedPlan('monthly')}
                   className={`flex-1 px-4 py-3 rounded-xl font-albert text-[14px] transition-all ${
                     selectedPlan === 'monthly'
-                      ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
-                      : 'bg-[#f3f1ef] dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#1a1f28]'
+                      ? 'bg-brand-accent text-brand-accent-foreground'
+                      : 'bg-[#f3f1ef] dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#1a1f28]'
                   }`}
                 >
                   Monthly
@@ -499,8 +499,8 @@ export function AdminCoachingClientsTab() {
                   onClick={() => setSelectedPlan('quarterly')}
                   className={`flex-1 px-4 py-3 rounded-xl font-albert text-[14px] transition-all ${
                     selectedPlan === 'quarterly'
-                      ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
-                      : 'bg-[#f3f1ef] dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#1a1f28]'
+                      ? 'bg-brand-accent text-brand-accent-foreground'
+                      : 'bg-[#f3f1ef] dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#1a1f28]'
                   }`}
                 >
                   Quarterly
@@ -519,7 +519,7 @@ export function AdminCoachingClientsTab() {
             <AlertDialogAction
               onClick={handleAssignCoach}
               disabled={assigning || !selectedCoachId}
-              className="font-albert rounded-full bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white disabled:opacity-50"
+              className="font-albert rounded-full bg-brand-accent hover:bg-brand-accent/90 text-brand-accent-foreground disabled:opacity-50"
             >
               {assigning ? 'Assigning...' : 'Assign Coach'}
             </AlertDialogAction>

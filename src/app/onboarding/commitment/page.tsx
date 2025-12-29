@@ -107,7 +107,7 @@ export default function CommitmentPage() {
         <div className="w-full max-w-xl lg:max-w-2xl mx-auto text-center">
           
           {/* Success Icon */}
-          <div className="mb-8 inline-flex items-center justify-center w-24 h-24 bg-[#a07855] dark:bg-[#b8896a] rounded-3xl">
+          <div className="mb-8 inline-flex items-center justify-center w-24 h-24 bg-brand-accent rounded-3xl">
             <Check className="w-12 h-12 text-white stroke-[3]" />
           </div>
 

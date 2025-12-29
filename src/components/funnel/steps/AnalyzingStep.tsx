@@ -6,7 +6,7 @@ import Image from 'next/image';
 import type { FunnelStepConfigAnalyzing, FunnelTestimonial } from '@/types';
 
 // CSS variable helper - uses values set by FunnelClient
-const primaryVar = 'var(--funnel-primary, #a07855)';
+const primaryVar = 'var(--funnel-primary, var(--brand-accent-light))';
 
 const DEFAULT_MESSAGES = [
   'Analyzing your responses...',

@@ -114,7 +114,7 @@ export default function PersonalCoachPage() {
                 I&apos;ve achieved more in 3 months than I did in the past year.&quot;
               </p>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e] flex items-center justify-center text-white font-albert font-semibold">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-accent to-[#7d5c3e] flex items-center justify-center text-white font-albert font-semibold">
                   S
                 </div>
                 <div>

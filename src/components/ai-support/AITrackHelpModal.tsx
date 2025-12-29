@@ -40,7 +40,7 @@ export function AITrackHelpModal({
         <div className="p-6 pb-0">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-accent-secondary dark:text-[#b8896a]" />
+              <Sparkles className="w-5 h-5 text-accent-secondary dark:text-brand-accent" />
               <h3 className="font-albert text-[20px] text-text-primary dark:text-[#f5f5f8] font-semibold tracking-[-1px]">
                 One thing to do today
               </h3>
@@ -68,7 +68,7 @@ export function AITrackHelpModal({
             
             {/* Reason */}
             <div className="flex items-start gap-2">
-              <div className="w-1 h-full bg-accent-secondary/40 dark:bg-[#b8896a]/40 rounded-full flex-shrink-0" />
+              <div className="w-1 h-full bg-accent-secondary/40 dark:bg-brand-accent/40 rounded-full flex-shrink-0" />
               <p className="font-sans text-[14px] text-text-secondary dark:text-[#b2b6c2] leading-[1.5] italic">
                 &quot;{response.reason}&quot;
               </p>
@@ -102,7 +102,7 @@ export function AITrackHelpModal({
             className={`flex-1 py-3 rounded-full font-sans text-[14px] font-medium flex items-center justify-center gap-2 transition-all ${
               isFull || isAdding
                 ? 'bg-[#e1ddd8] dark:bg-[#262b35] text-text-muted cursor-not-allowed'
-                : 'bg-accent-secondary dark:bg-[#b8896a] text-white hover:opacity-90'
+                : 'bg-accent-secondary dark:bg-brand-accent text-white hover:opacity-90'
             }`}
           >
             <Plus className="w-4 h-4" />

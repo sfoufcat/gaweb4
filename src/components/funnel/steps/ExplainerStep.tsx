@@ -7,8 +7,8 @@ import { ArrowLeft } from 'lucide-react';
 import type { FunnelStepConfigExplainer, ExplainerLayout } from '@/types';
 
 // CSS variable helper - uses values set by FunnelClient
-const primaryVar = 'var(--funnel-primary, #a07855)';
-const primaryHoverVar = 'var(--funnel-primary-hover, #8c6245)';
+const primaryVar = 'var(--funnel-primary, var(--brand-accent-light))';
+const primaryHoverVar = 'var(--funnel-primary-hover, var(--brand-accent-dark))';
 
 // URL parsing helpers
 function getYouTubeVideoId(url: string): string | null {

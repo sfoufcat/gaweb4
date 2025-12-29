@@ -106,7 +106,7 @@ export default function AccomplishedGoalsPage() {
             <Link 
               href={`/goal/accomplished/${index}`}
               key={`${goal.goal}-${goal.completedAt}-${index}`}
-              className="block bg-white rounded-[20px] border border-[#e1ddd8] p-5 hover:border-[#a07855] dark:border-[#b8896a] hover:shadow-md transition-all cursor-pointer"
+              className="block bg-white rounded-[20px] border border-[#e1ddd8] p-5 hover:border-brand-accent hover:shadow-md transition-all cursor-pointer"
             >
               <div className="flex gap-4 items-start">
                 {/* Trophy Icon */}

@@ -43,7 +43,7 @@ export function ProgramEmptyState() {
         {/* Empty state illustration - simplified icon */}
         <div className="w-20 h-20 rounded-full bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-sm flex items-center justify-center mb-8 shadow-lg">
           <svg
-            className="w-10 h-10 text-[#a07855] dark:text-[#b8896a] dark:text-[#a07855] dark:text-[#b8896a]"
+            className="w-10 h-10 text-brand-accent dark:text-brand-accent"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"

@@ -55,8 +55,8 @@ function ChatLoadingSkeleton() {
         <div className="flex-1 flex items-center justify-center bg-[#faf8f6] dark:bg-[#05070b]">
           <div className="text-center px-4 max-w-md">
             {/* Icon placeholder */}
-            <div className="mx-auto w-16 h-16 rounded-full bg-[#a07855]/10 dark:bg-[#b8896a]/15 flex items-center justify-center mb-4">
-              <div className="w-8 h-8 rounded-full bg-[#a07855]/20 dark:bg-[#b8896a]/25 animate-pulse" />
+            <div className="mx-auto w-16 h-16 rounded-full bg-brand-accent/10 dark:bg-brand-accent/15 flex items-center justify-center mb-4">
+              <div className="w-8 h-8 rounded-full bg-brand-accent/20 dark:bg-brand-accent/25 animate-pulse" />
             </div>
             {/* Title */}
             <div className="h-5 rounded-lg bg-[#e1ddd8] dark:bg-[#262b35] animate-pulse mx-auto mb-3" style={{ width: '220px' }} />

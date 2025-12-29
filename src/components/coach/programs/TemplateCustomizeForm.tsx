@@ -198,24 +198,24 @@ export function TemplateCustomizeForm({
       <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-6">
         <div className="max-w-xl mx-auto space-y-6">
           {/* What You're Getting */}
-          <div className="p-4 rounded-xl bg-gradient-to-r from-[#a07855]/10 to-transparent dark:from-[#b8896a]/10 border border-[#a07855] dark:border-[#b8896a]/20 dark:border-[#b8896a]/20">
+          <div className="p-4 rounded-xl bg-gradient-to-r from-brand-accent/10 to-transparent dark:from-[#b8896a]/10 border border-brand-accent/20 dark:border-brand-accent/20">
             <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+              <Sparkles className="w-5 h-5 text-brand-accent" />
               <span className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                 What's Included
               </span>
             </div>
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
-                <div className="text-2xl font-bold text-[#a07855] dark:text-[#b8896a]">{template.lengthDays}</div>
+                <div className="text-2xl font-bold text-brand-accent">{template.lengthDays}</div>
                 <div className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">Days</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-[#a07855] dark:text-[#b8896a]">{templateStats?.totalTasks || '—'}</div>
+                <div className="text-2xl font-bold text-brand-accent">{templateStats?.totalTasks || '—'}</div>
                 <div className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">Tasks</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-[#a07855] dark:text-[#b8896a]">{template.defaultHabits?.length || 0}</div>
+                <div className="text-2xl font-bold text-brand-accent">{template.defaultHabits?.length || 0}</div>
                 <div className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">Habits</div>
               </div>
             </div>
@@ -224,7 +224,7 @@ export function TemplateCustomizeForm({
           {/* Program Name */}
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-              <FileText className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+              <FileText className="w-4 h-4 text-brand-accent" />
               Program Name *
             </label>
             <input
@@ -232,7 +232,7 @@ export function TemplateCustomizeForm({
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
               placeholder="Enter program name"
-              className="w-full px-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] transition-all"
+              className="w-full px-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-brand-accent dark:focus:border-brand-accent transition-all"
               required
             />
           </div>
@@ -240,7 +240,7 @@ export function TemplateCustomizeForm({
           {/* URL Slug */}
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-              <Link2 className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+              <Link2 className="w-4 h-4 text-brand-accent" />
               URL Slug *
             </label>
             <div className="flex items-center">
@@ -252,7 +252,7 @@ export function TemplateCustomizeForm({
                 value={formData.slug}
                 onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
                 placeholder="program-slug"
-                className="flex-1 px-4 py-3 rounded-r-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] transition-all"
+                className="flex-1 px-4 py-3 rounded-r-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-brand-accent dark:focus:border-brand-accent transition-all"
                 required
               />
             </div>
@@ -261,7 +261,7 @@ export function TemplateCustomizeForm({
           {/* Price */}
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-              <DollarSign className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+              <DollarSign className="w-4 h-4 text-brand-accent" />
               Price
             </label>
             <div className="relative">
@@ -275,7 +275,7 @@ export function TemplateCustomizeForm({
                 placeholder="0.00"
                 min="0"
                 step="1"
-                className="w-full pl-8 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] transition-all"
+                className="w-full pl-8 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-brand-accent dark:focus:border-brand-accent transition-all"
               />
             </div>
             <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1.5 font-albert">
@@ -286,7 +286,7 @@ export function TemplateCustomizeForm({
           {/* Description */}
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-              <FileText className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+              <FileText className="w-4 h-4 text-brand-accent" />
               Description
             </label>
             <textarea
@@ -294,7 +294,7 @@ export function TemplateCustomizeForm({
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Describe your program..."
               rows={3}
-              className="w-full px-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] transition-all resize-none"
+              className="w-full px-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-brand-accent dark:focus:border-brand-accent transition-all resize-none"
             />
           </div>
 
@@ -347,7 +347,7 @@ export function TemplateCustomizeForm({
           <button
             onClick={handleSubmit}
             disabled={loading || !formData.name.trim() || !formData.slug.trim()}
-            className="px-6 py-3 rounded-xl bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-semibold font-albert transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-6 py-3 rounded-xl bg-brand-accent hover:bg-brand-accent/90 text-white font-semibold font-albert transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {loading ? (
               <>
@@ -383,16 +383,16 @@ function ToggleOption({ icon: Icon, label, description, checked, onChange }: Tog
       onClick={() => onChange(!checked)}
       className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all ${
         checked 
-          ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 dark:bg-[#b8896a]/5' 
-          : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] hover:border-[#a07855] dark:border-[#b8896a]/30 dark:hover:border-[#b8896a]/30'
+          ? 'border-brand-accent bg-brand-accent/5 dark:bg-brand-accent/5' 
+          : 'border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] hover:border-brand-accent/30 dark:hover:border-brand-accent/30'
       }`}
     >
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
         checked 
-          ? 'bg-[#a07855]/10 dark:bg-[#b8896a]/10' 
+          ? 'bg-brand-accent/10' 
           : 'bg-[#f3f1ef] dark:bg-[#1d222b]'
       }`}>
-        <Icon className={`w-5 h-5 ${checked ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
+        <Icon className={`w-5 h-5 ${checked ? 'text-brand-accent' : 'text-[#5f5a55] dark:text-[#b2b6c2]'}`} />
       </div>
       <div className="flex-1 text-left">
         <h4 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
@@ -404,7 +404,7 @@ function ToggleOption({ icon: Icon, label, description, checked, onChange }: Tog
       </div>
       <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-colors ${
         checked 
-          ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855] dark:bg-[#b8896a]' 
+          ? 'border-brand-accent bg-brand-accent' 
           : 'border-[#e1ddd8] dark:border-[#262b35]'
       }`}>
         {checked && <Check className="w-4 h-4 text-white" />}

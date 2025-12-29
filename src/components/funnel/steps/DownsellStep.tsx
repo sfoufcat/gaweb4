@@ -7,8 +7,8 @@ import { Check, Loader2, Gift, AlertCircle } from 'lucide-react';
 import type { FunnelStepConfigDownsell } from '@/types';
 
 // CSS variable helper - uses values set by FunnelClient
-const primaryVar = 'var(--funnel-primary, #a07855)';
-const primaryHoverVar = 'var(--funnel-primary-hover, #8c6245)';
+const primaryVar = 'var(--funnel-primary, var(--brand-accent-light))';
+const primaryHoverVar = 'var(--funnel-primary-hover, var(--brand-accent-dark))';
 
 interface DownsellStepProps {
   config: FunnelStepConfigDownsell;

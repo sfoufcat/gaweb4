@@ -148,7 +148,7 @@ export function GlobalPixelsSettings() {
         className="w-full flex items-center justify-between p-4 bg-[#faf8f6] dark:bg-[#1a1f27] hover:bg-[#f5f3f0] dark:hover:bg-[#1e232c] transition-colors"
       >
         <div className="flex items-center gap-3">
-          <Code className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+          <Code className="w-5 h-5 text-brand-accent" />
           <div className="text-left">
             <span className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Global Tracking Pixels</span>
             <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-0.5 font-albert">
@@ -173,12 +173,12 @@ export function GlobalPixelsSettings() {
         <div className="p-4 space-y-4 border-t border-[#e1ddd8] dark:border-[#313746] bg-white dark:bg-[#11141b]">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 text-[#a07855] dark:text-[#b8896a] animate-spin" />
+              <Loader2 className="w-6 h-6 text-brand-accent animate-spin" />
             </div>
           ) : (
             <>
               {/* Info Banner */}
-              <div className="p-3 bg-[#a07855]/10 dark:bg-[#b8896a]/10 rounded-lg">
+              <div className="p-3 bg-brand-accent/10 rounded-lg">
                 <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                   These tracking pixels will be loaded on all funnels. Funnel-specific pixels can still be set and will override these global settings.
                 </p>
@@ -194,7 +194,7 @@ export function GlobalPixelsSettings() {
                   value={tracking.metaPixelId || ''}
                   onChange={(e) => updateTracking('metaPixelId', e.target.value)}
                   placeholder="e.g., 1234567890"
-                  className="w-full px-4 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20 text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] font-albert"
+                  className="w-full px-4 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20 text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] font-albert"
                 />
                 <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1 font-albert">
                   Facebook/Meta Pixel ID for conversion tracking
@@ -211,7 +211,7 @@ export function GlobalPixelsSettings() {
                   value={tracking.googleAnalyticsId || ''}
                   onChange={(e) => updateTracking('googleAnalyticsId', e.target.value)}
                   placeholder="e.g., G-XXXXXXXXXX"
-                  className="w-full px-4 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20 text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] font-albert"
+                  className="w-full px-4 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20 text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] font-albert"
                 />
                 <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1 font-albert">
                   Google Analytics 4 measurement ID
@@ -228,7 +228,7 @@ export function GlobalPixelsSettings() {
                   value={tracking.googleAdsId || ''}
                   onChange={(e) => updateTracking('googleAdsId', e.target.value)}
                   placeholder="e.g., AW-XXXXXXXXXX"
-                  className="w-full px-4 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20 text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] font-albert"
+                  className="w-full px-4 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20 text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] font-albert"
                 />
                 <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1 font-albert">
                   Google Ads conversion tracking ID
@@ -245,7 +245,7 @@ export function GlobalPixelsSettings() {
                   onChange={(e) => updateTracking('customHeadHtml', e.target.value)}
                   placeholder="<!-- TikTok Pixel, Snapchat Pixel, etc. -->"
                   rows={3}
-                  className="w-full px-4 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20 resize-none font-mono text-sm text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190]"
+                  className="w-full px-4 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20 resize-none font-mono text-sm text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190]"
                 />
                 <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1 font-albert">
                   Custom scripts injected in &lt;head&gt; - use for other tracking pixels
@@ -262,7 +262,7 @@ export function GlobalPixelsSettings() {
                   onChange={(e) => updateTracking('customBodyHtml', e.target.value)}
                   placeholder="<!-- Scripts that need to run in body -->"
                   rows={3}
-                  className="w-full px-4 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20 resize-none font-mono text-sm text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190]"
+                  className="w-full px-4 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20 resize-none font-mono text-sm text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190]"
                 />
                 <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1 font-albert">
                   Custom scripts injected in &lt;body&gt;
@@ -284,7 +284,7 @@ export function GlobalPixelsSettings() {
                 <button
                   onClick={handleSave}
                   disabled={isSaving || !hasChanges}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:bg-[#a07855]/50 dark:disabled:bg-[#b8896a]/50 text-white rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-accent hover:bg-brand-accent/90 disabled:bg-brand-accent/50 dark:disabled:bg-brand-accent/50 text-white rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
                 >
                   {isSaving ? (
                     <>

@@ -137,7 +137,7 @@ export const Countdown = ({
               className={`inline-flex items-center justify-center px-8 py-4 text-lg font-semibold rounded-lg transition-colors ${
                 style === 'urgent'
                   ? 'bg-red-600 hover:bg-red-700 text-white'
-                  : 'bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white'
+                  : 'bg-brand-accent hover:bg-brand-accent/90 text-white'
               }`}
             >
               {ctaText}

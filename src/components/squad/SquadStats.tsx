@@ -162,7 +162,7 @@ export function SquadStats({
           </div>
           <div className="flex-1 flex flex-col items-center gap-1">
             <span className="font-sans text-[12px] text-text-secondary dark:text-[#b2b6c2] leading-[1.2]">{`>90%`}</span>
-            <div className="w-full h-3 rounded-sm bg-[#2c2520] dark:bg-[#b8896a]" />
+            <div className="w-full h-3 rounded-sm bg-[#2c2520] dark:bg-brand-accent" />
           </div>
         </div>
 

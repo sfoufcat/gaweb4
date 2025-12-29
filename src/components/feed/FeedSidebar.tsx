@@ -3,8 +3,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import useSWR from 'swr';
-import { useBrandingValues } from '@/contexts/BrandingContext';
-import { useTheme } from '@/contexts/ThemeContext';
 
 interface CompactPostPreview {
   id: string;
@@ -48,8 +46,6 @@ export const SIDEBAR_PINNED_KEY = '/api/feed/pinned?limit=5';
  * - Trending: Only shows if there are trending posts from the past week
  */
 export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
-  const { colors, isDefault } = useBrandingValues();
-  const { theme } = useTheme();
   
   // Use SWR for pinned posts
   const { data: pinnedData, isLoading: isLoadingPinned } = useSWR<{ posts: CompactPostPreview[] }>(
@@ -90,9 +86,6 @@ export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
   const pinnedPosts = pinnedData?.posts || [];
   const bookmarkedPosts = bookmarksData?.posts || [];
   const trendingPosts = trendingData?.posts || [];
-  const accentColor = isDefault 
-    ? (theme === 'dark' ? '#b8896a' : '#a07855')
-    : (theme === 'dark' ? colors.accentDark : colors.accentLight);
   
   // Only show pinned section if there are pinned posts (after loading)
   const showPinnedSection = !isLoadingPinned && pinnedPosts.length > 0;
@@ -107,7 +100,7 @@ export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
         <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden">
           <div className="px-5 py-4 border-b border-[#e8e4df] dark:border-[#262b35]">
             <h3 className="font-semibold text-[16px] text-[#1a1a1a] dark:text-[#faf8f6] flex items-center gap-2.5">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" style={{ color: accentColor }}>
+              <svg className="w-5 h-5 text-brand-accent" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M16 12V4h1V2H7v2h1v8l-3 5v2h6v5l1 1 1-1v-5h6v-2l-3-5z" />
               </svg>
               Pinned
@@ -129,7 +122,7 @@ export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
         <div className="px-5 py-4 border-b border-[#e8e4df] dark:border-[#262b35]">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-[16px] text-[#1a1a1a] dark:text-[#faf8f6] flex items-center gap-2.5">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" style={{ color: accentColor }}>
+              <svg className="w-5 h-5 text-brand-accent" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
               </svg>
               Saved
@@ -137,8 +130,7 @@ export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
             {bookmarkedPosts.length > 0 && (
               <Link 
                 href="/feed/bookmarks" 
-                className="text-[14px] hover:underline"
-                style={{ color: accentColor }}
+                className="text-[14px] text-brand-accent hover:underline"
               >
                 See all
               </Link>
@@ -185,7 +177,7 @@ export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
         <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden">
           <div className="px-5 py-4 border-b border-[#e8e4df] dark:border-[#262b35]">
             <h3 className="font-semibold text-[16px] text-[#1a1a1a] dark:text-[#faf8f6] flex items-center gap-2.5">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} style={{ color: accentColor }}>
+              <svg className="w-5 h-5 text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
               Trending

@@ -308,12 +308,12 @@ export function CustomMessage() {
         <div className="max-w-[85%] bg-gradient-to-r from-[#f9f7f5] to-[#f5f2ef] dark:from-[#1e222a] dark:to-[#1a1e26] border border-[#e8e4df] dark:border-[#262b35] rounded-2xl px-4 py-3 shadow-sm">
           {/* Header with bot icon and label */}
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-6 h-6 rounded-full bg-[#a07855] dark:bg-[#b8896a] flex items-center justify-center flex-shrink-0">
+            <div className="w-6 h-6 rounded-full bg-brand-accent flex items-center justify-center flex-shrink-0">
               <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <span className="text-[11px] font-semibold text-[#a07855] dark:text-[#b8896a] uppercase tracking-wide font-['Albert_Sans']">
+            <span className="text-[11px] font-semibold text-brand-accent uppercase tracking-wide font-['Albert_Sans']">
               Check-in Update
             </span>
           </div>
@@ -350,8 +350,8 @@ export function CustomMessage() {
       <div className="flex w-full py-3 justify-center">
         <div className="flex items-center gap-2 px-4 py-2 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-full">
           {/* Call icon - always brown */}
-          <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 bg-[#a07855]/10 dark:bg-[#b8896a]/20">
-            <svg className="w-3.5 h-3.5 text-[#a07855] dark:text-[#b8896a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 bg-brand-accent/10 dark:bg-brand-accent/20">
+            <svg className="w-3.5 h-3.5 text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
             </svg>
           </div>
@@ -395,7 +395,7 @@ export function CustomMessage() {
             {senderAvatar ? (
               <Image src={senderAvatar} alt={senderName} width={32} height={32} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e] flex items-center justify-center text-white font-albert font-semibold text-xs">
+              <div className="w-full h-full bg-gradient-to-br from-brand-accent to-[#7d5c3e] flex items-center justify-center text-white font-albert font-semibold text-xs">
                 {senderName?.charAt(0)?.toUpperCase() || '?'}
               </div>
             )}
@@ -502,7 +502,7 @@ export function CustomMessage() {
               type="button"
               onClick={() => handleProfileClick(sender?.id)}
               className={`block text-[12px] font-semibold mb-1 font-['Albert_Sans'] tracking-[-0.5px] hover:opacity-70 transition-opacity cursor-pointer ${
-                isMine ? 'text-[#d4cbc3]' : 'text-[#a07855] dark:text-[#b8896a]'
+                isMine ? 'text-[#d4cbc3]' : 'text-brand-accent'
               }`}
             >
               {senderName}
@@ -620,7 +620,7 @@ export function CustomMessage() {
                             ? 'bg-white/20'
                             : 'bg-white/10'
                           : message.own_reactions?.some(r => r.type === type)
-                            ? 'bg-[#a07855]/15 dark:bg-[#b8896a]/20'
+                            ? 'bg-brand-accent/15 dark:bg-brand-accent/20'
                             : 'bg-[#f3f1ef] dark:bg-[#262b35]'
                       } ${animatingReaction === type ? 'reaction-pop' : ''}`}
                     >
@@ -649,7 +649,7 @@ export function CustomMessage() {
               className={`flex items-center gap-2 mt-2 pt-2 w-full ${
                 isMine 
                   ? 'border-t border-white/10 text-[#f1ece6]/80 hover:text-[#f1ece6]' 
-                  : 'border-t border-[#e1ddd8] text-[#a07855] dark:text-[#b8896a] hover:text-[#7d5c3e]'
+                  : 'border-t border-[#e1ddd8] text-brand-accent hover:text-[#7d5c3e]'
               } transition-colors`}
             >
               {/* Thread participant avatars */}
@@ -668,7 +668,7 @@ export function CustomMessage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e] flex items-center justify-center text-white text-[6px] font-semibold">
+                      <div className="w-full h-full bg-gradient-to-br from-brand-accent to-[#7d5c3e] flex items-center justify-center text-white text-[6px] font-semibold">
                         {(user.name || '?').charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -717,7 +717,7 @@ export function CustomMessage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-[#a07855] to-[#7d5c3e] flex items-center justify-center text-white text-[6px] font-semibold">
+                      <div className="w-full h-full bg-gradient-to-br from-brand-accent to-[#7d5c3e] flex items-center justify-center text-white text-[6px] font-semibold">
                         {(user.name || '?').charAt(0).toUpperCase()}
                       </div>
                     )}

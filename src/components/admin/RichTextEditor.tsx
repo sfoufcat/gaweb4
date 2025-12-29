@@ -79,7 +79,7 @@ function MediaInsertDialog({
             type="button"
             onClick={handleInsert}
             disabled={!url}
-            className="px-4 py-2 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white rounded-lg font-albert text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-lg font-albert text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Insert
           </button>
@@ -137,7 +137,7 @@ function LinkInsertDialog({
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Display text"
-              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
             />
           </div>
           <div>
@@ -149,7 +149,7 @@ function LinkInsertDialog({
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://..."
-              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
+              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent font-albert text-[#1a1a1a] dark:text-[#f5f5f8]"
             />
           </div>
         </div>
@@ -165,7 +165,7 @@ function LinkInsertDialog({
             type="button"
             onClick={handleInsert}
             disabled={!url}
-            className="px-4 py-2 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white rounded-lg font-albert text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-lg font-albert text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Insert
           </button>
@@ -198,8 +198,8 @@ function ToolbarButton({
       className={`
         p-1.5 rounded transition-colors
         ${active
-          ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
-          : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#a07855]/10 dark:hover:bg-[#b8896a]/10 hover:text-[#a07855] dark:text-[#b8896a] dark:hover:text-[#b8896a]'
+          ? 'bg-brand-accent text-white'
+          : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-brand-accent/10 hover:text-brand-accent dark:hover:text-brand-accent'
         }
         ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
       `}
@@ -419,7 +419,7 @@ export function RichTextEditor({
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
-          class: 'text-[#a07855] dark:text-[#b8896a] underline hover:text-[#8c6245]',
+          class: 'text-brand-accent underline hover:text-brand-accent/90',
         },
       }),
       Placeholder.configure({
@@ -540,7 +540,7 @@ export function RichTextEditor({
         className={`
           w-full px-4 py-3 border border-[#e1ddd8] dark:border-[#262b35] rounded-b-lg 
           bg-white dark:bg-[#171b22] overflow-auto
-          focus-within:ring-2 focus-within:ring-[#a07855] dark:ring-[#b8896a] dark:focus-within:ring-[#b8896a]
+          focus-within:ring-2 focus-within:ring-brand-accent
           ${isExpanded ? 'flex-1' : ''}
         `}
         style={{ minHeight: isExpanded ? undefined : `${minHeight}px` }}

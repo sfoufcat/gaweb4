@@ -74,7 +74,7 @@ export function ThemeToggle({ className = '', horizontal = false }: ThemeToggleP
           h-[28px] w-[62px] rounded-full p-[3px]
           bg-[#f3f1ef] dark:bg-[#181d28]
           transition-colors duration-300 ease-out
-          focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a07855] dark:ring-[#b8896a] dark:focus-visible:ring-[#b8896a]
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent dark:ring-brand-accent dark:focus-visible:ring-brand-accent
           ${className}
         `}
         aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -130,7 +130,7 @@ export function ThemeToggle({ className = '', horizontal = false }: ThemeToggleP
         w-[28px] h-[62px] rounded-full p-[3px]
         bg-[#f3f1ef] dark:bg-[#181d28]
         transition-colors duration-300 ease-out
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a07855] dark:ring-[#b8896a] dark:focus-visible:ring-[#b8896a]
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent dark:ring-brand-accent dark:focus-visible:ring-brand-accent
         ${className}
       `}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}

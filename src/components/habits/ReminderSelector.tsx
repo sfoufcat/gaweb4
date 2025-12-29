@@ -59,7 +59,7 @@ export function ReminderSelector({ value, onChange }: ReminderSelectorProps) {
             type="time"
             value={value?.time || '09:00'}
             onChange={(e) => handleTimeSelect(e.target.value)}
-            className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl font-sans text-[16px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] focus:border-transparent"
+            className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl font-sans text-[16px] text-text-primary dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent focus:border-transparent"
           />
           
           <div className="flex gap-2">
@@ -73,7 +73,7 @@ export function ReminderSelector({ value, onChange }: ReminderSelectorProps) {
             <button
               type="button"
               onClick={() => value && setShowTimePicker(false)}
-              className="flex-1 py-2.5 px-4 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg font-sans font-medium text-[14px] hover:bg-[#8a6649] dark:hover:bg-[#a07855] transition-colors"
+              className="flex-1 py-2.5 px-4 bg-brand-accent text-white rounded-lg font-sans font-medium text-[14px] hover:bg-[#8a6649] dark:hover:bg-brand-accent/90 transition-colors"
             >
               Confirm
             </button>

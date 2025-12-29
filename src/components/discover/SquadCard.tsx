@@ -45,7 +45,7 @@ export function SquadCard({ squad, variant = 'default' }: SquadCardProps) {
         isCompact ? 'w-[200px]' : 'w-[280px]'
       }`}>
         {/* Cover Image */}
-        <div className={`relative w-full bg-gradient-to-br from-[#a07855]/20 to-[#8c6245]/10 dark:from-[#a07855]/10 dark:to-[#8c6245]/5 ${
+        <div className={`relative w-full bg-gradient-to-br from-brand-accent/20 to-[#8c6245]/10 dark:from-brand-accent/10 dark:to-[#8c6245]/5 ${
           isCompact ? 'h-[100px]' : 'h-[140px]'
         }`}>
           {squad.avatarUrl ? (
@@ -58,7 +58,7 @@ export function SquadCard({ squad, variant = 'default' }: SquadCardProps) {
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Users className="w-10 h-10 text-[#a07855] dark:text-brand-accent/40" />
+              <Users className="w-10 h-10 text-brand-accent/40" />
             </div>
           )}
           
@@ -119,8 +119,8 @@ export function SquadCard({ squad, variant = 'default' }: SquadCardProps) {
                   className="rounded-full"
                 />
               ) : (
-                <div className="w-5 h-5 rounded-full bg-[#a07855]/20 dark:bg-brand-accent/20 flex items-center justify-center">
-                  <User className="w-3 h-3 text-[#a07855] dark:text-brand-accent" />
+                <div className="w-5 h-5 rounded-full bg-brand-accent/20 dark:bg-brand-accent/20 flex items-center justify-center">
+                  <User className="w-3 h-3 text-brand-accent" />
                 </div>
               )}
               <span className="font-sans text-xs text-[#5f5a55] dark:text-[#b2b6c2]">

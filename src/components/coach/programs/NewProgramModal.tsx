@@ -212,21 +212,21 @@ function StartingPointSelector({ onSelectTemplate, onSelectScratch }: StartingPo
       {/* From Template Card */}
       <motion.button
         onClick={onSelectTemplate}
-        className="group relative flex flex-col items-center text-center p-8 rounded-2xl border-2 border-[#e1ddd8] dark:border-[#262b35] bg-gradient-to-b from-white to-[#faf8f6] dark:from-[#1d222b] dark:to-[#171b22] hover:border-[#a07855] dark:border-[#b8896a] dark:hover:border-[#b8896a] transition-all duration-300"
+        className="group relative flex flex-col items-center text-center p-8 rounded-2xl border-2 border-[#e1ddd8] dark:border-[#262b35] bg-gradient-to-b from-white to-[#faf8f6] dark:from-[#1d222b] dark:to-[#171b22] hover:border-brand-accent dark:hover:border-brand-accent transition-all duration-300"
         whileHover={{ y: -4, boxShadow: '0 20px 40px -12px rgba(160, 120, 85, 0.2)' }}
         whileTap={{ scale: 0.98 }}
       >
         {/* Recommended Badge */}
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#a07855] dark:bg-[#b8896a] text-white text-xs font-medium">
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-brand-accent text-white text-xs font-medium">
             <Sparkles className="w-3 h-3" />
             Recommended
           </span>
         </div>
 
         {/* Icon */}
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#a07855]/20 to-[#a07855]/5 dark:from-[#b8896a]/20 dark:to-[#b8896a]/5 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300">
-          <LayoutTemplate className="w-8 h-8 text-[#a07855] dark:text-[#b8896a]" />
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-accent/20 to-brand-accent/5 dark:from-[#b8896a]/20 dark:to-[#b8896a]/5 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300">
+          <LayoutTemplate className="w-8 h-8 text-brand-accent" />
         </div>
 
         {/* Title */}
@@ -254,7 +254,7 @@ function StartingPointSelector({ onSelectTemplate, onSelectScratch }: StartingPo
         </ul>
 
         {/* Arrow */}
-        <div className="absolute bottom-4 right-4 w-8 h-8 rounded-full bg-[#a07855] dark:bg-[#b8896a] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute bottom-4 right-4 w-8 h-8 rounded-full bg-brand-accent flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
           <ArrowRight className="w-4 h-4 text-white" />
         </div>
       </motion.button>

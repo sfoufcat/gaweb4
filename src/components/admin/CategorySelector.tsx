@@ -153,7 +153,7 @@ export function CategorySelector({
                   handleCreateCategory();
                 }
               }}
-              className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a] dark:focus:ring-[#b8896a] text-[#1a1a1a] dark:text-[#f5f5f8]"
+              className="w-full px-3 py-2 text-sm border border-[#e1ddd8] dark:border-[#262b35] dark:bg-[#11141b] rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent dark:focus:ring-brand-accent text-[#1a1a1a] dark:text-[#f5f5f8]"
             />
           </div>
           <div className="max-h-[250px] overflow-y-auto p-1">
@@ -169,7 +169,7 @@ export function CategorySelector({
                     type="button"
                     onClick={handleCreateCategory}
                     disabled={isCreating}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] cursor-pointer text-left text-[#a07855] dark:text-[#b8896a] font-medium"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] cursor-pointer text-left text-brand-accent font-medium"
                   >
                     <Plus className="w-4 h-4" />
                     <span>
@@ -195,7 +195,7 @@ export function CategorySelector({
                     >
                       <div className={`flex h-4 w-4 items-center justify-center rounded border flex-shrink-0 ${
                         value === category
-                          ? 'bg-[#a07855] border-[#a07855] dark:border-[#b8896a]'
+                          ? 'bg-[#a07855] border-brand-accent'
                           : 'border-gray-300 dark:border-gray-600'
                       }`}>
                         {value === category && (

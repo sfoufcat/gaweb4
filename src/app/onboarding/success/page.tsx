@@ -256,7 +256,7 @@ function CheckoutSuccessContent() {
             <>
               {/* Processing Animation */}
               <div className="mb-8 inline-flex items-center justify-center w-24 h-24 bg-[#f3f1ef] rounded-3xl">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#a07855] dark:border-[#b8896a]" />
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-accent" />
               </div>
 
               <h1 className="font-albert text-[36px] lg:text-[42px] text-text-primary tracking-[-2px] leading-[1.2] mb-4">
@@ -272,7 +272,7 @@ function CheckoutSuccessContent() {
                 {[0, 1, 2].map((i) => (
                   <div
                     key={i}
-                    className="w-2 h-2 rounded-full bg-[#a07855] dark:bg-[#b8896a] animate-pulse"
+                    className="w-2 h-2 rounded-full bg-brand-accent animate-pulse"
                     style={{ animationDelay: `${i * 0.2}s` }}
                   />
                 ))}
@@ -284,7 +284,7 @@ function CheckoutSuccessContent() {
             <>
               {/* Joining Squad Animation */}
               <div className="mb-8 inline-flex items-center justify-center w-24 h-24 bg-[#f3f1ef] rounded-3xl">
-                <Users className="w-10 h-10 text-[#a07855] dark:text-[#b8896a] animate-pulse" />
+                <Users className="w-10 h-10 text-brand-accent animate-pulse" />
               </div>
 
               <h1 className="font-albert text-[36px] lg:text-[42px] text-text-primary tracking-[-2px] leading-[1.2] mb-4">
@@ -300,7 +300,7 @@ function CheckoutSuccessContent() {
           {status === 'success' && (
             <>
               {/* Success Icon */}
-              <div className="mb-8 inline-flex items-center justify-center w-24 h-24 bg-[#a07855] dark:bg-[#b8896a] rounded-3xl">
+              <div className="mb-8 inline-flex items-center justify-center w-24 h-24 bg-brand-accent rounded-3xl">
                 <Check className="w-12 h-12 text-white stroke-[3]" />
               </div>
 

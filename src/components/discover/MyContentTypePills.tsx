@@ -48,7 +48,7 @@ export function MyContentTypePills({
           onClick={() => onSelect(filter.key)}
           className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
             selectedFilter === filter.key
-              ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
+              ? 'bg-brand-accent text-white'
               : 'bg-[#f3f1ef] dark:bg-[#171b22] text-text-secondary dark:text-[#b2b6c2] hover:bg-[#e8e4df] dark:hover:bg-[#1d222b]'
           }`}
         >

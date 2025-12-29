@@ -130,7 +130,7 @@ export function VerificationCodeInput({
           onPaste={handlePaste}
           onFocus={handleFocus}
           disabled={disabled}
-          className="w-12 h-14 sm:w-14 sm:h-16 text-center text-2xl sm:text-3xl font-albert font-semibold text-text-primary bg-white border-2 border-[#e1ddd8] rounded-xl outline-none transition-all focus:border-[#a07855] dark:border-[#b8896a] focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-12 h-14 sm:w-14 sm:h-16 text-center text-2xl sm:text-3xl font-albert font-semibold text-text-primary bg-white border-2 border-[#e1ddd8] rounded-xl outline-none transition-all focus:border-brand-accent focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20 disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label={`Digit ${index + 1} of ${length}`}
         />
       ))}

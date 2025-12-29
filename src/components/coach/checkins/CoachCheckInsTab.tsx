@@ -308,7 +308,7 @@ export function CoachCheckInsTab() {
         </div>
         <button
           onClick={() => setShowCreateDialog(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors"
         >
           <Plus className="w-4 h-4" />
           New Flow
@@ -418,7 +418,7 @@ export function CoachCheckInsTab() {
               </p>
               <button
                 onClick={() => setShowCreateDialog(true)}
-                className="px-6 py-2 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors"
+                className="px-6 py-2 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors"
               >
                 Create Flow
               </button>
@@ -554,7 +554,7 @@ function FlowCard({ flow, onToggleEnabled, onEditSteps, onEditDetails, onDuplica
             <div className="flex items-center gap-2">
               <h3 className="font-medium text-text-primary dark:text-[#f5f5f8]">{flow.name}</h3>
               {flow.isSystemDefault && (
-                <span className="px-2 py-0.5 text-xs bg-[#a07855]/10 text-[#a07855] dark:bg-[#b8896a]/20 dark:text-[#b8896a] rounded-full">
+                <span className="px-2 py-0.5 text-xs bg-brand-accent/10 text-[#a07855] dark:bg-brand-accent/20 dark:text-brand-accent rounded-full">
                   Default
                 </span>
               )}
@@ -587,7 +587,7 @@ function FlowCard({ flow, onToggleEnabled, onEditSteps, onEditDetails, onDuplica
           {/* Edit Steps button */}
           <button
             onClick={onEditSteps}
-            className="px-3 py-1.5 text-sm text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/5 dark:hover:bg-[#b8896a]/10 rounded-lg transition-colors"
+            className="px-3 py-1.5 text-sm text-brand-accent hover:bg-brand-accent/5 dark:hover:bg-brand-accent/10 rounded-lg transition-colors"
           >
             Edit Steps
           </button>

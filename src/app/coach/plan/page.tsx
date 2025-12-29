@@ -333,7 +333,7 @@ function CheckoutForm({ planName, price, onSuccess, onCancel }: CheckoutFormProp
       <button
         type="submit"
         disabled={!stripe || isProcessing}
-        className="w-full bg-[#a07855] hover:bg-[#8b6847] text-white font-sans font-bold text-[15px] py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full bg-brand-accent hover:bg-[#8b6847] text-white font-sans font-bold text-[15px] py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {isProcessing ? (
           <>
@@ -593,7 +593,7 @@ export default function CoachPlanPage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleManageSubscription}
-                    className="px-4 py-2 text-[#a07855] font-sans text-[14px] font-medium hover:bg-[#faf8f6] rounded-lg transition-colors"
+                    className="px-4 py-2 text-brand-accent font-sans text-[14px] font-medium hover:bg-[#faf8f6] rounded-lg transition-colors"
                   >
                     Manage membership
                   </button>
@@ -667,7 +667,7 @@ export default function CoachPlanPage() {
                     : isDowngrade
                     ? 'border-[#e1ddd8] opacity-60 cursor-not-allowed'
                     : isSelected
-                    ? 'border-[#a07855] dark:border-[#b8896a] shadow-lg'
+                    ? 'border-brand-accent shadow-lg'
                     : 'border-[#e1ddd8] hover:border-[#d4d0cb] hover:shadow-md'
                 }`}
               >
@@ -676,7 +676,7 @@ export default function CoachPlanPage() {
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <span className={`text-white font-sans text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-md whitespace-nowrap ${
                       plan.highlighted 
-                        ? 'bg-[#a07855]'
+                        ? 'bg-brand-accent'
                         : 'bg-[#6b7280]'
                     }`}>
                       {plan.tag}
@@ -697,7 +697,7 @@ export default function CoachPlanPage() {
                 {!isCurrentPlan && !isDowngrade && (
                   <div className={`absolute top-5 right-5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                     isSelected
-                      ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855] dark:bg-[#b8896a]'
+                      ? 'border-brand-accent bg-brand-accent'
                       : 'border-[#d4d0cb]'
                   }`}>
                     {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
@@ -746,7 +746,7 @@ export default function CoachPlanPage() {
                     <li key={index} className="flex items-start gap-2">
                       {feature.included ? (
                         <Check className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
-                          feature.highlight ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-[#22c55e]'
+                          feature.highlight ? 'text-brand-accent' : 'text-[#22c55e]'
                         }`} strokeWidth={2.5} />
                       ) : (
                         <X className="w-4 h-4 text-[#d4d0cb] flex-shrink-0 mt-0.5" strokeWidth={2} />
@@ -779,7 +779,7 @@ export default function CoachPlanPage() {
             <button
               onClick={handleSelectPlan}
               disabled={isLoading || (currentTier === selectedPlan)}
-              className="w-full bg-[#a07855] hover:bg-[#8b6847] text-white font-sans font-bold text-[16px] py-4 px-6 rounded-[32px] shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+              className="w-full bg-brand-accent hover:bg-[#8b6847] text-white font-sans font-bold text-[16px] py-4 px-6 rounded-[32px] shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
@@ -844,7 +844,7 @@ export default function CoachPlanPage() {
                     className="rounded-2xl p-5 border border-[#e1ddd8] text-center"
                   >
                     <div className="w-12 h-12 bg-[#faf8f6] rounded-xl flex items-center justify-center mx-auto mb-3">
-                      <item.icon className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" />
+                      <item.icon className="w-6 h-6 text-brand-accent" />
                     </div>
                     <h4 className="font-sans text-[14px] font-semibold text-text-primary mb-1">
                       {item.title}
@@ -868,7 +868,7 @@ export default function CoachPlanPage() {
         >
           <p className="font-sans text-[14px] text-text-secondary">
             Questions? Contact us at{' '}
-            <a href="mailto:hello@growthaddicts.com" className="text-[#a07855] dark:text-[#b8896a] underline underline-offset-2">
+            <a href="mailto:hello@growthaddicts.com" className="text-brand-accent underline underline-offset-2">
               hello@growthaddicts.com
             </a>
           </p>
@@ -897,7 +897,7 @@ export default function CoachPlanPage() {
               {/* Modal Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#313746]">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-[#a07855] to-[#c9a07a] rounded-xl flex items-center justify-center">
+                  <div className="w-10 h-10 bg-gradient-to-br from-brand-accent to-[#c9a07a] rounded-xl flex items-center justify-center">
                     <CreditCard className="w-5 h-5 text-white" />
                   </div>
                   <div>
@@ -1036,7 +1036,7 @@ export default function CoachPlanPage() {
                 {/* Contact Support Button */}
                 <a
                   href="mailto:hello@growthaddicts.com"
-                  className="block w-full bg-[#a07855] hover:bg-[#8b6847] text-white font-sans font-semibold text-[14px] py-3 px-6 rounded-xl text-center transition-colors"
+                  className="block w-full bg-brand-accent hover:bg-[#8b6847] text-white font-sans font-semibold text-[14px] py-3 px-6 rounded-xl text-center transition-colors"
                 >
                   Contact Support
                 </a>

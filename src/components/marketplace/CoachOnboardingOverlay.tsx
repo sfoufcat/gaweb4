@@ -68,7 +68,7 @@ export function CoachOnboardingOverlay({ state, onComplete }: CoachOnboardingOve
           {/* Progress bar */}
           <div className="h-1 bg-[#f3f1ef] dark:bg-[#1e222a]">
             <div 
-              className="h-full bg-gradient-to-r from-[#a07855] to-[#b8896a] transition-all duration-500"
+              className="h-full bg-gradient-to-r from-brand-accent to-brand-accent transition-all duration-500"
               style={{ width: `${((currentStepIndex + 1) / steps.length) * 100}%` }}
             />
           </div>
@@ -76,14 +76,14 @@ export function CoachOnboardingOverlay({ state, onComplete }: CoachOnboardingOve
           <div className="p-5">
             <div className="flex items-start gap-4">
               {/* Icon */}
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#a07855]/20 to-[#b8896a]/10 dark:from-[#b8896a]/20 dark:to-[#a07855]/10 flex items-center justify-center flex-shrink-0">
-                <currentStep.icon className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" />
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-accent/20 to-[#b8896a]/10 dark:from-[#b8896a]/20 dark:to-brand-accent/10 flex items-center justify-center flex-shrink-0">
+                <currentStep.icon className="w-6 h-6 text-brand-accent" />
               </div>
               
               {/* Content */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-albert font-medium text-[#a07855] dark:text-[#b8896a] uppercase tracking-wide">
+                  <span className="text-xs font-albert font-medium text-brand-accent uppercase tracking-wide">
                     Step {currentStepIndex + 1} of {steps.length}
                   </span>
                 </div>
@@ -117,7 +117,7 @@ export function CoachOnboardingOverlay({ state, onComplete }: CoachOnboardingOve
                       isCompleted 
                         ? 'bg-emerald-100 dark:bg-emerald-950/50' 
                         : isCurrent
-                          ? 'bg-[#a07855]/20 dark:bg-[#b8896a]/20'
+                          ? 'bg-brand-accent/20 dark:bg-brand-accent/20'
                           : 'bg-[#f3f1ef] dark:bg-[#1e222a]'
                     }`}>
                       {isCompleted ? (
@@ -125,7 +125,7 @@ export function CoachOnboardingOverlay({ state, onComplete }: CoachOnboardingOve
                       ) : (
                         <step.icon className={`w-3.5 h-3.5 ${
                           isCurrent 
-                            ? 'text-[#a07855] dark:text-[#b8896a]' 
+                            ? 'text-brand-accent' 
                             : 'text-[#a7a39e] dark:text-[#7d8190]'
                         }`} />
                       )}

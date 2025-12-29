@@ -111,7 +111,7 @@ export function FeatureVotingBoard() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-[#a07855] dark:text-[#b8896a]" />
+        <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
       </div>
     );
   }
@@ -122,7 +122,7 @@ export function FeatureVotingBoard() {
         <p className="text-red-600 dark:text-red-400 font-albert">{error}</p>
         <button
           onClick={fetchFeatures}
-          className="mt-2 text-sm text-[#a07855] dark:text-[#b8896a] hover:underline font-albert"
+          className="mt-2 text-sm text-brand-accent hover:underline font-albert"
         >
           Try again
         </button>
@@ -136,18 +136,18 @@ export function FeatureVotingBoard() {
       {data?.inProgress && data.inProgress.length > 0 && (
         <div>
           <h4 className="text-sm font-semibold text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wide font-albert mb-3 flex items-center gap-2">
-            <Rocket className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+            <Rocket className="w-4 h-4 text-brand-accent" />
             In Progress
           </h4>
           <div className="space-y-2">
             {data.inProgress.map((feature) => (
               <div
                 key={feature.id}
-                className="flex items-center justify-between p-4 bg-gradient-to-r from-[#a07855]/5 to-transparent dark:from-[#b8896a]/10 border border-[#a07855] dark:border-[#b8896a]/20 dark:border-[#b8896a]/20 rounded-xl"
+                className="flex items-center justify-between p-4 bg-gradient-to-r from-brand-accent/5 to-transparent dark:from-[#b8896a]/10 border border-brand-accent/20 dark:border-brand-accent/20 rounded-xl"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#a07855]/10 dark:bg-[#b8896a]/20 flex items-center justify-center">
-                    <Rocket className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+                  <div className="w-8 h-8 rounded-lg bg-brand-accent/10 dark:bg-brand-accent/20 flex items-center justify-center">
+                    <Rocket className="w-4 h-4 text-brand-accent" />
                   </div>
                   <div>
                     <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
@@ -160,7 +160,7 @@ export function FeatureVotingBoard() {
                     )}
                   </div>
                 </div>
-                <span className="px-3 py-1 bg-[#a07855]/10 dark:bg-[#b8896a]/20 text-[#a07855] dark:text-[#b8896a] text-xs font-medium rounded-full font-albert">
+                <span className="px-3 py-1 bg-brand-accent/10 dark:bg-brand-accent/20 text-brand-accent text-xs font-medium rounded-full font-albert">
                   Building
                 </span>
               </div>
@@ -178,7 +178,7 @@ export function FeatureVotingBoard() {
           </h4>
           <button
             onClick={() => setShowSuggestForm(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-albert font-medium text-[#a07855] dark:text-[#b8896a] hover:bg-[#a07855]/10 dark:hover:bg-[#b8896a]/10 rounded-lg transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-albert font-medium text-brand-accent hover:bg-brand-accent/10 rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
             Suggest Feature
@@ -194,17 +194,17 @@ export function FeatureVotingBoard() {
               return (
                 <div
                   key={feature.id}
-                  className="flex items-center justify-between p-4 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:border-[#a07855] dark:border-[#b8896a]/30 dark:hover:border-[#b8896a]/30 transition-colors"
+                  className="flex items-center justify-between p-4 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:border-brand-accent/30 dark:hover:border-brand-accent/30 transition-colors"
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className={`flex flex-col items-center justify-center min-w-[48px] px-2 py-1 rounded-lg ${
                       hasVoted 
-                        ? 'bg-[#a07855]/10 dark:bg-[#b8896a]/20' 
+                        ? 'bg-brand-accent/10 dark:bg-brand-accent/20' 
                         : 'bg-[#faf8f6] dark:bg-[#262b35]'
                     }`}>
                       <span className={`text-lg font-bold font-albert ${
                         hasVoted 
-                          ? 'text-[#a07855] dark:text-[#b8896a]' 
+                          ? 'text-brand-accent' 
                           : 'text-[#5f5a55] dark:text-[#b2b6c2]'
                       }`}>
                         {feature.voteCount}
@@ -229,8 +229,8 @@ export function FeatureVotingBoard() {
                     disabled={isVoting}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-albert font-medium transition-all ${
                       hasVoted
-                        ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
-                        : 'bg-[#faf8f6] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#a07855]/10 dark:hover:bg-[#b8896a]/10 hover:text-[#a07855] dark:hover:text-[#b8896a]'
+                        ? 'bg-brand-accent text-white'
+                        : 'bg-[#faf8f6] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-brand-accent/10 hover:text-brand-accent'
                     } disabled:opacity-50`}
                   >
                     {isVoting ? (
@@ -375,7 +375,7 @@ function SuggestFeatureModal({ onClose, onSubmit }: SuggestFeatureModalProps) {
                 required
                 minLength={5}
                 maxLength={100}
-                className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8680] dark:placeholder:text-[#6b7280] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] transition-all"
+                className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8680] dark:placeholder:text-[#6b7280] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-brand-accent dark:focus:border-brand-accent transition-all"
               />
             </div>
 
@@ -395,7 +395,7 @@ function SuggestFeatureModal({ onClose, onSubmit }: SuggestFeatureModalProps) {
                 minLength={20}
                 maxLength={1000}
                 rows={4}
-                className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8680] dark:placeholder:text-[#6b7280] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:border-[#b8896a] dark:focus:border-[#b8896a] transition-all resize-none"
+                className="w-full px-4 py-2.5 bg-[#faf8f6] dark:bg-[#262b35] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8680] dark:placeholder:text-[#6b7280] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-brand-accent dark:focus:border-brand-accent transition-all resize-none"
               />
               <p className="mt-1 text-xs text-[#8c8680] dark:text-[#6b7280] font-albert">
                 {description.length}/1000 characters (min 20)

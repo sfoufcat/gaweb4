@@ -200,19 +200,19 @@ export function AdminTemplatesTab() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search templates..."
-          className="w-full pl-12 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30"
+          className="w-full pl-12 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30"
         />
       </div>
 
       {/* Templates List */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 text-[#a07855] dark:text-[#b8896a] animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand-accent animate-spin" />
         </div>
       ) : error ? (
         <div className="text-center py-20">
           <p className="text-red-500">{error}</p>
-          <button onClick={fetchTemplates} className="text-[#a07855] dark:text-[#b8896a] text-sm mt-2 hover:underline">
+          <button onClick={fetchTemplates} className="text-brand-accent text-sm mt-2 hover:underline">
             Try again
           </button>
         </div>
@@ -327,11 +327,11 @@ function StatCard({ label, value, color, onClick, active }: StatCardProps) {
       onClick={onClick}
       className={`p-4 rounded-xl border transition-all text-left ${
         active 
-          ? 'border-[#a07855] dark:border-[#b8896a] ring-2 ring-[#a07855] dark:ring-[#b8896a]/20' 
+          ? 'border-brand-accent ring-2 ring-brand-accent dark:ring-brand-accent/20' 
           : color 
             ? colorStyles[color] 
             : 'bg-white dark:bg-[#171b22] border-[#e1ddd8] dark:border-[#262b35]'
-      } hover:border-[#a07855] dark:border-[#b8896a]/50`}
+      } hover:border-brand-accent/50`}
     >
       <p className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{value}</p>
       <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">{label}</p>

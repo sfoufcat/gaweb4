@@ -212,8 +212,8 @@ export function SubmitAsTemplateModal({
                 <div className="px-6 py-5 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-[#a07855]/10 dark:bg-[#b8896a]/10 flex items-center justify-center">
-                        <Share2 className="w-5 h-5 text-[#a07855] dark:text-[#b8896a]" />
+                      <div className="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center">
+                        <Share2 className="w-5 h-5 text-brand-accent" />
                       </div>
                       <div>
                         <Dialog.Title className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
@@ -253,9 +253,9 @@ export function SubmitAsTemplateModal({
                   ) : (
                     <>
                       {/* Info Banner */}
-                      <div className="p-4 rounded-xl bg-gradient-to-r from-[#a07855]/10 to-transparent dark:from-[#b8896a]/10 border border-[#a07855] dark:border-[#b8896a]/20 dark:border-[#b8896a]/20">
+                      <div className="p-4 rounded-xl bg-gradient-to-r from-brand-accent/10 to-transparent dark:from-[#b8896a]/10 border border-brand-accent/20 dark:border-brand-accent/20">
                         <div className="flex items-start gap-3">
-                          <Sparkles className="w-5 h-5 text-[#a07855] dark:text-[#b8896a] flex-shrink-0 mt-0.5" />
+                          <Sparkles className="w-5 h-5 text-brand-accent flex-shrink-0 mt-0.5" />
                           <div>
                             <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                               Your program will be reviewed and, if approved, made available to all coaches.
@@ -270,7 +270,7 @@ export function SubmitAsTemplateModal({
                       {/* Category */}
                       <div>
                         <label className="flex items-center gap-2 text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
-                          <Tag className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+                          <Tag className="w-4 h-4 text-brand-accent" />
                           Category *
                         </label>
                         <div className="grid grid-cols-2 gap-2">
@@ -285,8 +285,8 @@ export function SubmitAsTemplateModal({
                               }))}
                               className={`p-3 rounded-xl border text-left transition-all ${
                                 formData.category === cat.value
-                                  ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/5 dark:bg-[#b8896a]/5'
-                                  : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a]/30 dark:hover:border-[#b8896a]/30'
+                                  ? 'border-brand-accent bg-brand-accent/5 dark:bg-brand-accent/5'
+                                  : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/30 dark:hover:border-brand-accent/30'
                               }`}
                             >
                               <span className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-sm">
@@ -305,7 +305,7 @@ export function SubmitAsTemplateModal({
                         <div>
                           <label className="flex items-center justify-between text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-3">
                             <span className="flex items-center gap-2">
-                              <Tag className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+                              <Tag className="w-4 h-4 text-brand-accent" />
                               Tags (up to 6)
                             </span>
                             <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
@@ -320,7 +320,7 @@ export function SubmitAsTemplateModal({
                                 onClick={() => handleTagToggle(tag)}
                                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                                   formData.tags.includes(tag)
-                                    ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
+                                    ? 'bg-brand-accent text-white'
                                     : 'bg-[#f3f1ef] dark:bg-[#1d222b] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#e8e4df] dark:hover:bg-[#262b35]'
                                 }`}
                               >
@@ -335,7 +335,7 @@ export function SubmitAsTemplateModal({
                               onChange={(e) => setFormData(prev => ({ ...prev, customTag: e.target.value }))}
                               placeholder="Add custom tag..."
                               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCustomTag())}
-                              className="flex-1 px-3 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] text-sm font-albert placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30"
+                              className="flex-1 px-3 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] text-sm font-albert placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30"
                             />
                             <button
                               type="button"
@@ -352,7 +352,7 @@ export function SubmitAsTemplateModal({
                       {/* Preview Description */}
                       <div>
                         <label className="flex items-center gap-2 text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                          <FileText className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+                          <FileText className="w-4 h-4 text-brand-accent" />
                           Gallery Description *
                         </label>
                         <textarea
@@ -361,7 +361,7 @@ export function SubmitAsTemplateModal({
                           placeholder="A compelling 1-2 sentence description that will appear in the template gallery..."
                           rows={3}
                           maxLength={200}
-                          className="w-full px-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30 resize-none"
+                          className="w-full px-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 resize-none"
                         />
                         <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1 text-right">
                           {formData.previewDescription.length}/200
@@ -371,7 +371,7 @@ export function SubmitAsTemplateModal({
                       {/* Suggested Price */}
                       <div>
                         <label className="flex items-center gap-2 text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2">
-                          <DollarSign className="w-4 h-4 text-[#a07855] dark:text-[#b8896a]" />
+                          <DollarSign className="w-4 h-4 text-brand-accent" />
                           Suggested Price for Others
                         </label>
                         <div className="relative">
@@ -387,7 +387,7 @@ export function SubmitAsTemplateModal({
                             }))}
                             min="0"
                             step="1"
-                            className="w-full pl-8 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/30"
+                            className="w-full pl-8 pr-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30"
                           />
                         </div>
                         <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1">
@@ -416,7 +416,7 @@ export function SubmitAsTemplateModal({
                       <button
                         onClick={handleSubmit}
                         disabled={loading || !formData.category || !formData.previewDescription.trim()}
-                        className="px-5 py-2.5 rounded-xl bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-semibold font-albert transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        className="px-5 py-2.5 rounded-xl bg-brand-accent hover:bg-brand-accent/90 text-white font-semibold font-albert transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                       >
                         {loading ? (
                           <>

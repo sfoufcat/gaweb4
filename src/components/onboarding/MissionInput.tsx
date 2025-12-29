@@ -96,7 +96,7 @@ export function MissionInput({
           className="relative z-10 w-full bg-transparent outline-none resize-none border-none focus:ring-0 font-serif text-3xl md:text-4xl tracking-tight leading-[1.2] text-earth-900 p-0 min-h-[100px] placeholder:text-transparent"
           style={{ 
             textIndent: indentRef.current ? `${indentRef.current}px` : '80px',
-            caretColor: '#a07855'
+            caretColor: 'var(--brand-accent-light)'
           }}
           autoFocus={autoFocus}
           spellCheck={false}

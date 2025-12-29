@@ -207,7 +207,7 @@ export default function PrivacyPage() {
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed mb-4">
                 If you have questions about this Privacy Policy or want to exercise your rights, contact us at{' '}
-                <a href="mailto:privacy@growthaddicts.com" className="text-[#a07855] dark:text-[#b8896a] hover:underline">
+                <a href="mailto:privacy@growthaddicts.com" className="text-brand-accent hover:underline">
                   privacy@growthaddicts.com
                 </a>
               </p>

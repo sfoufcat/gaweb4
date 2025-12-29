@@ -413,7 +413,7 @@ export default function OnboardingPlansPage() {
   if (!isLoaded || !user) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b] flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-[#a07855]/20 border-t-[#a07855] rounded-full animate-spin" />
+        <div className="w-12 h-12 border-4 border-brand-accent/20 border-t-[#a07855] rounded-full animate-spin" />
       </div>
     );
   }
@@ -444,8 +444,8 @@ export default function OnboardingPlansPage() {
             <div className="w-8 h-8 rounded-full bg-[#22c55e]/20 flex items-center justify-center">
               <Check className="w-4 h-4 text-[#22c55e]" />
             </div>
-            <div className="w-8 h-1 bg-[#a07855] dark:bg-[#b8896a] rounded-full" />
-            <div className="w-8 h-8 rounded-full bg-[#a07855] dark:bg-[#b8896a] flex items-center justify-center">
+            <div className="w-8 h-1 bg-brand-accent rounded-full" />
+            <div className="w-8 h-8 rounded-full bg-brand-accent flex items-center justify-center">
               <span className="text-white text-sm font-bold">2</span>
             </div>
           </div>
@@ -492,14 +492,14 @@ export default function OnboardingPlansPage() {
                 onClick={() => setSelectedPlan(plan.id)}
                 className={`relative p-6 rounded-2xl border-2 text-left transition-all duration-200 flex flex-col items-start ${
                   isSelected
-                    ? 'border-[#a07855] dark:border-[#b8896a] bg-white dark:bg-[#171b22] shadow-xl shadow-[#a07855]/10'
+                    ? 'border-brand-accent bg-white dark:bg-[#171b22] shadow-xl shadow-[#a07855]/10'
                     : 'border-[#e1ddd8] dark:border-[#313746] bg-white dark:bg-[#171b22] hover:border-[#d4d0cb] dark:hover:border-[#424958]'
                 }`}
               >
                 {/* Popular badge */}
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-[#a07855] text-white font-albert text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-lg">
+                    <span className="bg-brand-accent text-white font-albert text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-lg">
                       Most Popular
                     </span>
                   </div>
@@ -508,7 +508,7 @@ export default function OnboardingPlansPage() {
                 {/* Selection indicator */}
                 <div className={`absolute top-4 right-4 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                   isSelected
-                    ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855] dark:bg-[#b8896a]'
+                    ? 'border-brand-accent bg-brand-accent'
                     : 'border-[#d4d0cb] dark:border-[#424958]'
                 }`}>
                   {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}

@@ -196,7 +196,7 @@ function CallUI({ onLeave }: { onLeave: () => void }) {
           <p className="font-albert text-white text-lg mb-4">Call ended</p>
           <button
             onClick={onLeave}
-            className="px-6 py-3 bg-[#a07855] text-white rounded-full font-albert font-medium hover:bg-[#8a6847] transition-colors"
+            className="px-6 py-3 bg-brand-accent text-white rounded-full font-albert font-medium hover:bg-[#8a6847] transition-colors"
           >
             Return to chat
           </button>
@@ -209,7 +209,7 @@ function CallUI({ onLeave }: { onLeave: () => void }) {
     return (
       <div className="h-full flex items-center justify-center bg-[#1a1a1a]">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-[#a07855] dark:text-[#b8896a] animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-brand-accent animate-spin mx-auto mb-4" />
           <p className="font-albert text-white text-lg">
             {callingState === CallingState.RECONNECTING ? 'Reconnecting...' : 'Joining call...'}
           </p>
@@ -514,7 +514,7 @@ export default function CallPage() {
     return (
       <div className="bg-[#1a1a1a] flex items-center justify-center" style={fullScreenStyle}>
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-[#a07855] dark:text-[#b8896a] animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-brand-accent animate-spin mx-auto mb-4" />
           <p className="font-albert text-white text-lg">Initializing...</p>
         </div>
       </div>
@@ -532,7 +532,7 @@ export default function CallPage() {
           <p className="font-albert text-gray-400 mb-6">{error}</p>
           <button
             onClick={() => router.push('/chat')}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#a07855] text-white rounded-full font-albert font-medium hover:bg-[#8a6847] transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-brand-accent text-white rounded-full font-albert font-medium hover:bg-[#8a6847] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Return to chat
@@ -546,7 +546,7 @@ export default function CallPage() {
     return (
       <div className="bg-[#1a1a1a] flex items-center justify-center" style={fullScreenStyle}>
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-[#a07855] dark:text-[#b8896a] animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-brand-accent animate-spin mx-auto mb-4" />
           <p className="font-albert text-white text-lg">Joining call...</p>
         </div>
       </div>
@@ -558,7 +558,7 @@ export default function CallPage() {
     return (
       <div className="bg-[#1a1a1a] flex items-center justify-center" style={fullScreenStyle}>
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-[#a07855] dark:text-[#b8896a] animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-brand-accent animate-spin mx-auto mb-4" />
           <p className="font-albert text-white text-lg">Leaving call...</p>
         </div>
       </div>

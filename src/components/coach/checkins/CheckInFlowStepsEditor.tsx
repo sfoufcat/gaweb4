@@ -492,7 +492,7 @@ export function CheckInFlowStepsEditor({ flowId, isSystemDefault = false, onBack
         <div className="p-4">
           <button
             onClick={() => setShowAddStep(true)}
-            className="w-full py-3 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-secondary dark:text-[#b2b6c2] hover:border-[#a07855] dark:border-[#b8896a] hover:text-[#a07855] dark:text-[#b8896a] dark:hover:border-[#b8896a] dark:hover:text-[#b8896a] transition-colors flex items-center justify-center gap-2"
+            className="w-full py-3 border-2 border-dashed border-[#e1ddd8] dark:border-[#262b35] rounded-xl text-text-secondary dark:text-[#b2b6c2] hover:border-brand-accent hover:text-brand-accent dark:hover:border-brand-accent dark:hover:text-brand-accent transition-colors flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Add Step
@@ -539,7 +539,7 @@ export function CheckInFlowStepsEditor({ flowId, isSystemDefault = false, onBack
                         key={type}
                         onClick={() => handleAddStep(type)}
                         disabled={isSaving}
-                        className="p-4 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:border-[#a07855] dark:border-[#b8896a] dark:hover:border-[#b8896a] hover:bg-[#faf8f6] dark:hover:bg-[#1a1f28] transition-colors text-left disabled:opacity-50"
+                        className="p-4 border border-[#e1ddd8] dark:border-[#262b35] rounded-xl hover:border-brand-accent dark:hover:border-brand-accent hover:bg-[#faf8f6] dark:hover:bg-[#1a1f28] transition-colors text-left disabled:opacity-50"
                       >
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${info.color}`}>
                           <Icon className="w-5 h-5" />

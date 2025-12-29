@@ -94,7 +94,7 @@ export function AISuggestionModal({
                   {/* AI Feedback */}
                   <div className="bg-gradient-to-br from-[#f3f1ef] to-white/50 backdrop-blur-sm border border-[#e1ddd8]/50 rounded-2xl p-5">
                     <div className="flex items-start gap-3 mb-3">
-                      <div className="w-8 h-8 rounded-full bg-[#a07855] dark:bg-[#b8896a] flex items-center justify-center flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-brand-accent flex items-center justify-center flex-shrink-0">
                         <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                         </svg>
@@ -114,7 +114,7 @@ export function AISuggestionModal({
                         <p className="font-sans text-xs font-medium text-text-secondary mb-2">
                           Try this instead:
                         </p>
-                        <p className="font-sans text-base font-medium text-[#a07855] dark:text-[#b8896a] leading-[1.4]">
+                        <p className="font-sans text-base font-medium text-brand-accent leading-[1.4]">
                           &quot;I am {aiSuggestion}&quot;
                         </p>
                       </div>
@@ -141,7 +141,7 @@ export function AISuggestionModal({
                   {aiSuggestion && (
                     <button
                       onClick={onUseSuggestion}
-                      className="w-full py-3 text-[#a07855] dark:text-[#b8896a] hover:text-[#8a6649] font-sans font-medium text-sm transition-colors duration-200"
+                      className="w-full py-3 text-brand-accent hover:text-[#8a6649] font-sans font-medium text-sm transition-colors duration-200"
                     >
                       Use AI suggestion instead
                     </button>

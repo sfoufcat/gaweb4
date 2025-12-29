@@ -122,14 +122,14 @@ export default function MarketplacePage() {
               <div className="w-10 h-10 rounded-xl overflow-hidden relative">
                 <Image
                   src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af"
-                  alt="Growth Addicts"
+                  alt="GrowthAddicts"
                   fill
                   className="object-cover"
                   unoptimized
                 />
               </div>
               <span className="font-albert text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-tight">
-                Growth Addicts
+                GrowthAddicts
               </span>
             </Link>
 
@@ -159,14 +159,14 @@ export default function MarketplacePage() {
       <section className="relative py-16 sm:py-24 overflow-hidden">
         {/* Background decoration */}
         <div className="absolute inset-0 -z-10">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-[#a07855]/10 dark:bg-[#b8896a]/10 rounded-full blur-3xl" />
+          <div className="absolute top-20 left-10 w-72 h-72 bg-brand-accent/10 rounded-full blur-3xl" />
           <div className="absolute bottom-10 right-10 w-96 h-96 bg-[#e8b923]/10 dark:bg-[#e8b923]/5 rounded-full blur-3xl" />
         </div>
         
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="font-albert text-[42px] sm:text-[56px] lg:text-[64px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-2px] leading-[1.1] mb-4">
             Discover programs<br />
-            <span className="text-[#a07855] dark:text-[#b8896a]">that transform</span>
+            <span className="text-brand-accent">that transform</span>
           </h1>
           
           <p className="font-sans text-[17px] sm:text-[19px] text-[#5f5a55] dark:text-[#b2b6c2] max-w-2xl mx-auto mb-8">
@@ -184,7 +184,7 @@ export default function MarketplacePage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search programs, coaches..."
-                className="w-full pl-12 pr-4 py-4 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-2xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a] text-[16px]"
+                className="w-full pl-12 pr-4 py-4 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-2xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 dark:focus:ring-brand-accent/30 focus:border-brand-accent dark:focus:border-brand-accent text-[16px]"
               />
             </div>
             
@@ -262,7 +262,7 @@ export default function MarketplacePage() {
               </p>
               <button
                 onClick={handleCreateClick}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-xl font-albert text-sm font-medium hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-brand-accent text-white rounded-xl font-albert text-sm font-medium hover:bg-brand-accent/90 transition-colors"
               >
                 <Sparkles className="w-4 h-4" />
                 Create a program
@@ -292,8 +292,8 @@ export default function MarketplacePage() {
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center p-6">
-              <div className="w-14 h-14 bg-gradient-to-br from-[#a07855]/20 to-[#a07855]/10 dark:from-[#b8896a]/20 dark:to-[#b8896a]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Users className="w-7 h-7 text-[#a07855] dark:text-[#b8896a]" />
+              <div className="w-14 h-14 bg-gradient-to-br from-brand-accent/20 to-brand-accent/10 dark:from-brand-accent/20 dark:to-brand-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Users className="w-7 h-7 text-brand-accent" />
               </div>
               <h3 className="font-albert text-[20px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
                 All-in-One Program Delivery
@@ -411,7 +411,7 @@ function ListingCard({ listing }: { listing: ListingWithFunnel }) {
             unoptimized
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-[#a07855] to-[#8c6245]" />
+          <div className="w-full h-full bg-gradient-to-br from-brand-accent to-[#8c6245]" />
         )}
         
         {/* Category badge */}
@@ -451,7 +451,7 @@ function ListingCard({ listing }: { listing: ListingWithFunnel }) {
         </div>
         
         {/* Title */}
-        <h3 className="font-albert text-[18px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] leading-tight mb-2 group-hover:text-[#a07855] dark:group-hover:text-[#b8896a] transition-colors">
+        <h3 className="font-albert text-[18px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] leading-tight mb-2 group-hover:text-brand-accent transition-colors">
           {listing.title}
         </h3>
         
@@ -461,7 +461,7 @@ function ListingCard({ listing }: { listing: ListingWithFunnel }) {
         </p>
         
         {/* CTA */}
-        <div className="mt-4 flex items-center gap-1 text-[#a07855] dark:text-[#b8896a] font-albert text-sm font-medium group-hover:gap-2 transition-all">
+        <div className="mt-4 flex items-center gap-1 text-brand-accent font-albert text-sm font-medium group-hover:gap-2 transition-all">
           View program
           <ArrowRight className="w-4 h-4" />
         </div>

@@ -181,7 +181,7 @@ export default function SubscriptionPolicyPage() {
               </h2>
               <p className="font-sans text-[15px] text-text-secondary leading-relaxed mb-4">
                 For billing questions or issues, please contact us at{' '}
-                <a href="mailto:billing@growthaddicts.com" className="text-[#a07855] dark:text-[#b8896a] hover:underline">
+                <a href="mailto:billing@growthaddicts.com" className="text-brand-accent hover:underline">
                   billing@growthaddicts.com
                 </a>
               </p>

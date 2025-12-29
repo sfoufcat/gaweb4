@@ -92,15 +92,15 @@ export function ReferralRewardSelector({
             onClick={() => handleRewardTypeChange('none')}
             className={`p-3 rounded-lg border text-left transition-all ${
               rewardType === 'none'
-                ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/10 dark:bg-[#a07855]/20'
-                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a]/50'
+                ? 'border-brand-accent bg-brand-accent/10 dark:bg-brand-accent/20'
+                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
             }`}
           >
             <div className="flex items-center gap-2">
-              <Gift className={`w-4 h-4 ${rewardType === 'none' ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-[#5f5a55]'}`} />
+              <Gift className={`w-4 h-4 ${rewardType === 'none' ? 'text-brand-accent' : 'text-[#5f5a55]'}`} />
               <span className={`text-sm font-medium ${
                 rewardType === 'none' 
-                  ? 'text-[#a07855] dark:text-[#b8896a]' 
+                  ? 'text-brand-accent' 
                   : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
               }`}>
                 No Reward
@@ -116,15 +116,15 @@ export function ReferralRewardSelector({
             onClick={() => handleRewardTypeChange('free_time')}
             className={`p-3 rounded-lg border text-left transition-all ${
               rewardType === 'free_time'
-                ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/10 dark:bg-[#a07855]/20'
-                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a]/50'
+                ? 'border-brand-accent bg-brand-accent/10 dark:bg-brand-accent/20'
+                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
             }`}
           >
             <div className="flex items-center gap-2">
-              <Clock className={`w-4 h-4 ${rewardType === 'free_time' ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-[#5f5a55]'}`} />
+              <Clock className={`w-4 h-4 ${rewardType === 'free_time' ? 'text-brand-accent' : 'text-[#5f5a55]'}`} />
               <span className={`text-sm font-medium ${
                 rewardType === 'free_time' 
-                  ? 'text-[#a07855] dark:text-[#b8896a]' 
+                  ? 'text-brand-accent' 
                   : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
               }`}>
                 Free Time
@@ -140,15 +140,15 @@ export function ReferralRewardSelector({
             onClick={() => handleRewardTypeChange('free_program')}
             className={`p-3 rounded-lg border text-left transition-all ${
               rewardType === 'free_program'
-                ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/10 dark:bg-[#a07855]/20'
-                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a]/50'
+                ? 'border-brand-accent bg-brand-accent/10 dark:bg-brand-accent/20'
+                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
             }`}
           >
             <div className="flex items-center gap-2">
-              <BookOpen className={`w-4 h-4 ${rewardType === 'free_program' ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-[#5f5a55]'}`} />
+              <BookOpen className={`w-4 h-4 ${rewardType === 'free_program' ? 'text-brand-accent' : 'text-[#5f5a55]'}`} />
               <span className={`text-sm font-medium ${
                 rewardType === 'free_program' 
-                  ? 'text-[#a07855] dark:text-[#b8896a]' 
+                  ? 'text-brand-accent' 
                   : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
               }`}>
                 Free Program
@@ -164,15 +164,15 @@ export function ReferralRewardSelector({
             onClick={() => handleRewardTypeChange('discount_code')}
             className={`p-3 rounded-lg border text-left transition-all ${
               rewardType === 'discount_code'
-                ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/10 dark:bg-[#a07855]/20'
-                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-[#a07855] dark:border-[#b8896a]/50'
+                ? 'border-brand-accent bg-brand-accent/10 dark:bg-brand-accent/20'
+                : 'border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
             }`}
           >
             <div className="flex items-center gap-2">
-              <Percent className={`w-4 h-4 ${rewardType === 'discount_code' ? 'text-[#a07855] dark:text-[#b8896a]' : 'text-[#5f5a55]'}`} />
+              <Percent className={`w-4 h-4 ${rewardType === 'discount_code' ? 'text-brand-accent' : 'text-[#5f5a55]'}`} />
               <span className={`text-sm font-medium ${
                 rewardType === 'discount_code' 
-                  ? 'text-[#a07855] dark:text-[#b8896a]' 
+                  ? 'text-brand-accent' 
                   : 'text-[#1a1a1a] dark:text-[#f5f5f8]'
               }`}>
                 Discount Code
@@ -251,7 +251,7 @@ export function ReferralRewardSelector({
                     onClick={() => onChange({ ...value, discountType: 'percentage' })}
                     className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border transition-all ${
                       value.discountType === 'percentage'
-                        ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/10'
+                        ? 'border-brand-accent bg-brand-accent/10'
                         : 'border-[#e1ddd8] dark:border-[#262b35]'
                     }`}
                   >
@@ -263,7 +263,7 @@ export function ReferralRewardSelector({
                     onClick={() => onChange({ ...value, discountType: 'fixed' })}
                     className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border transition-all ${
                       value.discountType === 'fixed'
-                        ? 'border-[#a07855] dark:border-[#b8896a] bg-[#a07855]/10'
+                        ? 'border-brand-accent bg-brand-accent/10'
                         : 'border-[#e1ddd8] dark:border-[#262b35]'
                     }`}
                   >

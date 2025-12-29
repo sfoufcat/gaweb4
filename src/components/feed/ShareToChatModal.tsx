@@ -418,7 +418,7 @@ export function ShareToChatModal({ postId, postUrl, onClose, onSuccess }: ShareT
                     style={isSelected ? { borderColor: accentColor, borderWidth: 2, borderStyle: 'solid' } : undefined}
                   >
                     {/* Avatar */}
-                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-[#a07855] to-[#7d5c3e] flex items-center justify-center flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-brand-accent to-[#7d5c3e] flex items-center justify-center flex-shrink-0">
                       {image ? (
                         <Image
                           src={image}
