@@ -171,7 +171,7 @@ export async function POST(req: Request) {
       };
 
       await docRef.update(updateData);
-      listing = { id: existingSnapshot.docs[0].id, ...existingData, ...updateData };
+      listing = { ...existingData, ...updateData, id: existingSnapshot.docs[0].id };
 
       console.log(`[COACH_MARKETPLACE_LISTING] Updated listing ${listing.id} for org ${organizationId}`);
     }
