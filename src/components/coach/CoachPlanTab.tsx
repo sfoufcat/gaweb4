@@ -339,7 +339,7 @@ export function CoachPlanTab() {
           {tier !== 'scale' && (
             <button
               onClick={() => router.push('/coach/plan')}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#a07855] to-[#c9a07a] text-white font-sans font-medium text-[14px] rounded-xl hover:shadow-lg transition-all"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#a07855] hover:bg-[#8b6847] text-white font-sans font-medium text-[14px] rounded-xl transition-colors"
             >
               <Zap className="w-4 h-4" />
               Upgrade Plan
@@ -361,9 +361,16 @@ export function CoachPlanTab() {
       {/* Features Status */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
         <h3 className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] mb-4">
-          Platform Features
+          Available Features
         </h3>
         <div className="space-y-3">
+          <FeatureStatus 
+            label="Stripe Connect"
+            enabled={hasPermission(tier, 'stripe_connect')}
+            icon={CreditCard}
+            tier={tier}
+            requiredTier="pro"
+          />
           <FeatureStatus 
             label="Custom Domain"
             enabled={hasPermission(tier, 'custom_domain')}
@@ -379,19 +386,15 @@ export function CoachPlanTab() {
             requiredTier="pro"
           />
           <FeatureStatus 
-            label="Stripe Connect"
-            enabled={hasPermission(tier, 'stripe_connect')}
-            icon={CreditCard}
-            tier={tier}
-            requiredTier="pro"
-          />
-          <FeatureStatus 
             label="Advanced Funnel Steps"
             enabled={hasPermission(tier, 'funnel_step_analyzing')}
             icon={Filter}
             tier={tier}
             requiredTier="pro"
           />
+          <p className="font-sans text-[13px] text-text-tertiary dark:text-[#6b7280] pt-2 text-center">
+            ...and more
+          </p>
         </div>
 
         {tier === 'starter' && (

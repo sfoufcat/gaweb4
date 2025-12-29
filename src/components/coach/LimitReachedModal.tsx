@@ -161,7 +161,7 @@ export function LimitReachedModal({
             <>
               <button
                 onClick={handleUpgrade}
-                className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-[#a07855] to-[#c9a07a] text-white font-sans font-semibold text-[15px] rounded-xl hover:shadow-lg transition-all"
+                className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-[#a07855] hover:bg-[#8b6847] text-white font-sans font-semibold text-[15px] rounded-xl transition-colors"
               >
                 <Zap className="w-5 h-5" />
                 Upgrade to {nextTierInfo?.name}

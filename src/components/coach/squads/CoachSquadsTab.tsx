@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
-import type { Squad, SquadMember, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig } from '@/types';
+import type { Squad, SquadMember, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig, CoachTier } from '@/types';
 import { ProgramLandingPageEditor } from '../programs/ProgramLandingPageEditor';
 import { Button } from '@/components/ui/button';
 import { 
@@ -26,6 +26,7 @@ import type { LandingPageDraft, ProgramContentDraft, AIGenerationContext } from 
 import { ReferralConfigForm } from '@/components/coach/referrals';
 import { SquadFormDialog } from '@/components/admin/SquadFormDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { LimitReachedModal, useLimitCheck } from '@/components/coach';
 
 // Squad with computed stats and program info
 interface SquadWithStats extends Squad {
@@ -98,6 +99,10 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
   // AI Helper modal
   const [isAILandingPageModalOpen, setIsAILandingPageModalOpen] = useState(false);
   
+  // Plan tier for limit checking
+  const [currentTier, setCurrentTier] = useState<CoachTier>('starter');
+  const { checkLimit, showLimitModal, modalProps } = useLimitCheck(currentTier);
+  
   // Landing page form
   const [landingPageFormData, setLandingPageFormData] = useState<LandingPageFormData>({
     landingPageCoverImageUrl: '',
@@ -143,6 +148,24 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
   useEffect(() => {
     fetchSquads();
   }, [fetchSquads]);
+
+  // Fetch current tier for limit checking
+  useEffect(() => {
+    const fetchTier = async () => {
+      try {
+        const response = await fetch('/api/coach/subscription');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.tier) {
+            setCurrentTier(data.tier);
+          }
+        }
+      } catch (err) {
+        console.error('[CoachSquadsTab] Error fetching tier:', err);
+      }
+    };
+    fetchTier();
+  }, []);
 
   const fetchSquadMembers = useCallback(async (squadId: string) => {
     try {
@@ -552,6 +575,11 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
           </div>
           <Button
             onClick={() => {
+              // Check squad limit before opening modal
+              if (checkLimit('max_squads', squads.length)) {
+                showLimitModal('max_squads', squads.length);
+                return;
+              }
               setEditingSquad(null);
               setIsSquadModalOpen(true);
             }}
@@ -1200,6 +1228,9 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
         hasExistingContent={!!(landingPageFormData.coachBio || landingPageFormData.keyOutcomes.length > 0)}
         overwriteWarning="This will replace your existing landing page content."
       />
+
+      {/* Limit Reached Modal */}
+      <LimitReachedModal {...modalProps} />
     </div>
   );
 }

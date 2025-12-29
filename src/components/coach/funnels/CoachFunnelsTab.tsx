@@ -24,7 +24,7 @@ import {
   Download,
   Link as LinkIcon
 } from 'lucide-react';
-import type { Funnel, Program, FunnelTargetType, FunnelContentType } from '@/types';
+import type { Funnel, Program, FunnelTargetType, FunnelContentType, CoachTier } from '@/types';
 import { FunnelEditorDialog } from './FunnelEditorDialog';
 import { FunnelStepsEditor } from './FunnelStepsEditor';
 import {
@@ -44,6 +44,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { LimitReachedModal, useLimitCheck } from '@/components/coach';
 
 type ViewMode = 'list' | 'editing';
 
@@ -110,6 +111,10 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   // Delete confirmation state
   const [funnelToDelete, setFunnelToDelete] = useState<Funnel | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Plan tier for limit checking
+  const [currentTier, setCurrentTier] = useState<CoachTier>('starter');
+  const { checkLimit, showLimitModal, modalProps } = useLimitCheck(currentTier);
 
   const fetchFunnels = useCallback(async () => {
     try {
@@ -208,6 +213,24 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
     fetchPrograms();
     fetchSquads();
   }, [fetchFunnels, fetchPrograms, fetchSquads]);
+
+  // Fetch current tier for limit checking
+  useEffect(() => {
+    const fetchTier = async () => {
+      try {
+        const response = await fetch('/api/coach/subscription');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.tier) {
+            setCurrentTier(data.tier);
+          }
+        }
+      } catch (err) {
+        console.error('[CoachFunnelsTab] Error fetching tier:', err);
+      }
+    };
+    fetchTier();
+  }, []);
 
   // Fetch content items when content tab is active
   useEffect(() => {
@@ -432,7 +455,14 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
           </p>
         </div>
         <button
-          onClick={() => setShowCreateDialog(true)}
+          onClick={() => {
+            // Check funnel limit per target before opening modal
+            if (checkLimit('max_funnels_per_target', funnels.length)) {
+              showLimitModal('max_funnels_per_target', funnels.length);
+              return;
+            }
+            setShowCreateDialog(true);
+          }}
           className="flex items-center gap-2 px-4 py-2 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors"
         >
           <Plus className="w-4 h-4" />
@@ -586,7 +616,14 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
             {activeTab === 'content' && `Create a funnel to sell or gate access to your ${selectedContentType}s.`}
           </p>
           <button
-            onClick={() => setShowCreateDialog(true)}
+            onClick={() => {
+              // Check funnel limit per target before opening modal
+              if (checkLimit('max_funnels_per_target', funnels.length)) {
+                showLimitModal('max_funnels_per_target', funnels.length);
+                return;
+              }
+              setShowCreateDialog(true);
+            }}
             className="px-6 py-2 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-lg hover:bg-[#8c6245] dark:hover:bg-[#a07855] transition-colors"
           >
             Create Funnel
@@ -769,6 +806,9 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Limit Reached Modal */}
+      <LimitReachedModal {...modalProps} />
     </div>
   );
 }

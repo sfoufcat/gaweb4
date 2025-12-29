@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig } from '@/types';
+import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig, CoachTier } from '@/types';
 import { ProgramLandingPageEditor } from './ProgramLandingPageEditor';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
@@ -15,6 +15,7 @@ import { MediaUpload } from '@/components/admin/MediaUpload';
 import { NewProgramModal } from './NewProgramModal';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { CoachSelector } from '@/components/coach/CoachSelector';
+import { LimitReachedModal, useLimitCheck } from '@/components/coach';
 
 // Enrollment with user info
 interface EnrollmentWithUser extends ProgramEnrollment {
@@ -80,6 +81,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   // AI Helper modals
   const [isAIProgramContentModalOpen, setIsAIProgramContentModalOpen] = useState(false);
   const [isAILandingPageModalOpen, setIsAILandingPageModalOpen] = useState(false);
+  
+  // Plan tier for limit checking
+  const [currentTier, setCurrentTier] = useState<CoachTier>('starter');
+  const { checkLimit, showLimitModal, modalProps } = useLimitCheck(currentTier);
   
   // Collapsible section state
   const [isCoverImageExpanded, setIsCoverImageExpanded] = useState(false);
@@ -397,6 +402,24 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   useEffect(() => {
     fetchPrograms();
   }, [fetchPrograms]);
+
+  // Fetch current tier for limit checking
+  useEffect(() => {
+    const fetchTier = async () => {
+      try {
+        const response = await fetch('/api/coach/subscription');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.tier) {
+            setCurrentTier(data.tier);
+          }
+        }
+      } catch (err) {
+        console.error('[CoachProgramsTab] Error fetching tier:', err);
+      }
+    };
+    fetchTier();
+  }, []);
 
   useEffect(() => {
     if (selectedProgram) {
@@ -1119,7 +1142,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                 </p>
               </div>
               <Button 
-                onClick={() => setIsNewProgramModalOpen(true)}
+                onClick={() => {
+                  // Check program limit before opening modal
+                  if (checkLimit('max_programs', programs.length)) {
+                    showLimitModal('max_programs', programs.length);
+                    return;
+                  }
+                  setIsNewProgramModalOpen(true);
+                }}
                 className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
@@ -2990,6 +3020,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         hasExistingContent={!!(landingPageFormData.coachBio || landingPageFormData.keyOutcomes.length > 0)}
         overwriteWarning="This will replace your existing landing page content."
       />
+
+      {/* Limit Reached Modal */}
+      <LimitReachedModal {...modalProps} />
     </>
   );
 }

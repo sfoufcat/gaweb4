@@ -25,20 +25,25 @@ const COACH_TIER_PRICE_IDS: Record<CoachTier, string> = {
 /**
  * POST /api/coach/subscription/checkout
  * 
- * Two flows supported:
+ * Three flows supported:
  * 
  * 1. REACTIVATION (reactivate: true):
  *    - Creates Checkout Session for immediate billing
  *    - Used by EmbeddedCheckout on /coach/reactivate page
  *    - Returns Checkout Session clientSecret
  * 
- * 2. ONBOARDING WITH TRIAL (trial: true):
+ * 2. UPGRADE (upgrade: true):
+ *    - Creates Checkout Session for immediate billing (same as reactivation)
+ *    - Used by EmbeddedCheckout on /coach/plan page for tier upgrades
+ *    - Returns Checkout Session clientSecret
+ * 
+ * 3. ONBOARDING WITH TRIAL (trial: true):
  *    - Creates SetupIntent to save payment method
  *    - Frontend uses PaymentElement to collect payment details
  *    - On success, /api/coach/subscription/confirm creates the subscription with trial
  *    - Returns SetupIntent clientSecret
  * 
- * Body: { tier: CoachTier, trial?: boolean, onboarding?: boolean, reactivate?: boolean }
+ * Body: { tier: CoachTier, trial?: boolean, onboarding?: boolean, reactivate?: boolean, upgrade?: boolean }
  */
 export async function POST(req: Request) {
   try {
@@ -62,11 +67,12 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { tier, trial, onboarding, reactivate } = body as { 
+    const { tier, trial, onboarding, reactivate, upgrade } = body as { 
       tier: CoachTier; 
       trial?: boolean;      // Request 7-day trial
       onboarding?: boolean; // Is part of onboarding flow
       reactivate?: boolean; // Reactivating canceled/expired subscription
+      upgrade?: boolean;    // Upgrading to a higher tier
     };
 
     // Validate tier
@@ -131,26 +137,28 @@ export async function POST(req: Request) {
       );
     }
 
-    // REACTIVATION FLOW: Use Checkout Session for immediate billing
+    // REACTIVATION/UPGRADE FLOW: Use Checkout Session for immediate billing
     // This returns a clientSecret compatible with EmbeddedCheckout
-    if (reactivate) {
+    if (reactivate || upgrade) {
       const priceId = COACH_TIER_PRICE_IDS[tier];
       
       // Determine base URL for redirects
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.growthaddicts.com';
+      const flowType = reactivate ? 'reactivated' : 'upgraded';
       
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         mode: 'subscription',
         ui_mode: 'embedded',
         line_items: [{ price: priceId, quantity: 1 }],
-        return_url: `${baseUrl}/coach?reactivated=true`,
+        return_url: `${baseUrl}/coach?${flowType}=true`,
         metadata: {
           userId,
           organizationId,
           tier,
           type: 'coach_subscription',
-          reactivate: 'true',
+          reactivate: reactivate ? 'true' : 'false',
+          upgrade: upgrade ? 'true' : 'false',
         },
         subscription_data: {
           metadata: {
@@ -162,7 +170,7 @@ export async function POST(req: Request) {
         },
       });
 
-      console.log(`[COACH_CHECKOUT] Created Checkout Session ${session.id} for reactivation, org ${organizationId}, tier ${tier}`);
+      console.log(`[COACH_CHECKOUT] Created Checkout Session ${session.id} for ${flowType}, org ${organizationId}, tier ${tier}`);
 
       return NextResponse.json({ 
         clientSecret: session.client_secret,

@@ -14,7 +14,11 @@ import {
   BarChart3, 
   ArrowRight,
   X,
-  Lock
+  Lock,
+  Users,
+  Sparkles,
+  Headphones,
+  Shield
 } from 'lucide-react';
 import Image from 'next/image';
 import { loadStripe } from '@stripe/stripe-js';
@@ -131,7 +135,7 @@ const PLANS: Plan[] = [
   },
 ];
 
-const WHY_UPGRADE = [
+const WHY_UPGRADE_PRO = [
   {
     icon: Globe,
     title: 'Custom Domain',
@@ -151,6 +155,29 @@ const WHY_UPGRADE = [
     icon: BarChart3,
     title: 'Advanced Funnels',
     description: 'Build sophisticated quiz funnels that convert',
+  },
+];
+
+const WHY_UPGRADE_SCALE = [
+  {
+    icon: Users,
+    title: 'Team Roles & Permissions',
+    description: 'Invite team members with role-based access control',
+  },
+  {
+    icon: Shield,
+    title: 'Multi-Coach Support',
+    description: 'Run multiple coaches under one organization',
+  },
+  {
+    icon: Sparkles,
+    title: 'AI Builder & Helper',
+    description: 'Use AI to create funnels, content, and more',
+  },
+  {
+    icon: Headphones,
+    title: 'Priority Support',
+    description: 'Get faster responses and dedicated assistance',
   },
 ];
 
@@ -174,6 +201,11 @@ export default function CoachPlanPage() {
   const [trialEnd, setTrialEnd] = useState<string | null>(null);
   const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
   
+  // Admin-granted subscription tracking
+  const [isManualBilling, setIsManualBilling] = useState(false);
+  const [manualExpiresAt, setManualExpiresAt] = useState<string | null>(null);
+  const [showAdminGrantedPopup, setShowAdminGrantedPopup] = useState(false);
+  
   // Embedded checkout state
   const [showCheckout, setShowCheckout] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -194,6 +226,9 @@ export default function CoachPlanPage() {
             setRenewalDate(data.subscription.currentPeriodEnd);
             setTrialEnd(data.subscription.trialEnd);
             setCancelAtPeriodEnd(data.subscription.cancelAtPeriodEnd || false);
+            // Track admin-granted subscriptions
+            setIsManualBilling(data.subscription.manualBilling || false);
+            setManualExpiresAt(data.subscription.manualExpiresAt || null);
             // Pre-select next tier up if they have a subscription
             const nextTier = getNextTier(data.subscription.tier);
             if (nextTier) {
@@ -235,7 +270,7 @@ export default function CoachPlanPage() {
       const response = await fetch('/api/coach/subscription/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier: selectedPlan }),
+        body: JSON.stringify({ tier: selectedPlan, upgrade: true }),
       });
 
       const data = await response.json();
@@ -267,6 +302,12 @@ export default function CoachPlanPage() {
   }, []);
 
   const handleManageSubscription = async () => {
+    // For admin-granted plans, show the info popup instead of Stripe portal
+    if (isManualBilling) {
+      setShowAdminGrantedPopup(true);
+      return;
+    }
+    
     setIsLoading(true);
     try {
       const response = await fetch('/api/coach/subscription/portal', {
@@ -274,7 +315,12 @@ export default function CoachPlanPage() {
       });
       const data = await response.json();
       if (data.url) {
-        window.location.href = data.url;
+        // Open Stripe portal in new tab for better UX
+        window.open(data.url, '_blank');
+        setIsLoading(false);
+      } else if (data.error) {
+        setError(data.error);
+        setIsLoading(false);
       }
     } catch (err) {
       setError('Failed to open billing portal');
@@ -583,40 +629,52 @@ export default function CoachPlanPage() {
           </motion.div>
         )}
 
-        {/* Why Upgrade Section - only show when Pro is the relevant upgrade target */}
-        {(!currentTier || currentTier === 'starter') && selectedPlan !== 'scale' && (
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mb-12"
-          >
-            <h2 className="font-albert text-[24px] lg:text-[28px] text-text-primary tracking-[-1px] text-center mb-8">
-              Why upgrade to Pro?
-            </h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
-              {WHY_UPGRADE.map((item, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.35 + index * 0.05 }}
-                  className="bg-white rounded-2xl p-5 border border-[#e1ddd8] text-center"
-                >
-                  <div className="w-12 h-12 bg-[#faf8f6] rounded-xl flex items-center justify-center mx-auto mb-3">
-                    <item.icon className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" />
-                  </div>
-                  <h4 className="font-sans text-[14px] font-semibold text-text-primary mb-1">
-                    {item.title}
-                  </h4>
-                  <p className="font-sans text-[12px] text-text-secondary">
-                    {item.description}
-                  </p>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        )}
+        {/* Why Upgrade Section - dynamic based on selected plan */}
+        {(() => {
+          // Determine which features to show based on selected plan and current tier
+          const showProFeatures = selectedPlan === 'pro' && currentTier !== 'pro' && currentTier !== 'scale';
+          const showScaleFeatures = selectedPlan === 'scale' && currentTier !== 'scale';
+          
+          if (!showProFeatures && !showScaleFeatures) return null;
+          
+          const features = showScaleFeatures ? WHY_UPGRADE_SCALE : WHY_UPGRADE_PRO;
+          const title = showScaleFeatures ? 'Why upgrade to Scale?' : 'Why upgrade to Pro?';
+          
+          return (
+            <motion.div
+              key={selectedPlan} // Re-animate when plan changes
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="mb-12"
+            >
+              <h2 className="font-albert text-[24px] lg:text-[28px] text-text-primary tracking-[-1px] text-center mb-8">
+                {title}
+              </h2>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
+                {features.map((item, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.35 + index * 0.05 }}
+                    className="bg-white rounded-2xl p-5 border border-[#e1ddd8] text-center"
+                  >
+                    <div className="w-12 h-12 bg-[#faf8f6] rounded-xl flex items-center justify-center mx-auto mb-3">
+                      <item.icon className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" />
+                    </div>
+                    <h4 className="font-sans text-[14px] font-semibold text-text-primary mb-1">
+                      {item.title}
+                    </h4>
+                    <p className="font-sans text-[12px] text-text-secondary">
+                      {item.description}
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          );
+        })()}
 
         {/* FAQ or Contact */}
         <motion.div
@@ -694,6 +752,109 @@ export default function CoachPlanPage() {
                     Secured by Stripe. Your payment info is encrypted.
                   </span>
                 </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Admin-Granted Plan Info Popup */}
+      <AnimatePresence>
+        {showAdminGrantedPopup && currentTier && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowAdminGrantedPopup(false);
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-md bg-white dark:bg-[#1a1e26] rounded-[24px] shadow-2xl overflow-hidden"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#313746]">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-[#22c55e] to-[#16a34a] rounded-xl flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="font-albert text-[18px] font-semibold text-text-primary tracking-[-0.5px]">
+                      Your Plan
+                    </h2>
+                    <p className="font-sans text-[13px] text-text-secondary">
+                      Granted by administrator
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowAdminGrantedPopup(false)}
+                  className="p-2 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
+                >
+                  <X className="w-5 h-5 text-text-secondary" />
+                </button>
+              </div>
+
+              {/* Plan Info Content */}
+              <div className="p-6 space-y-4">
+                {/* Current Plan */}
+                <div className="bg-[#f0fdf4] dark:bg-[#22c55e]/10 rounded-xl p-4 border border-[#22c55e]/20">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full bg-[#22c55e]" />
+                    <div>
+                      <p className="font-sans text-[14px] font-semibold text-text-primary">
+                        {TIER_PRICING[currentTier].name} Plan
+                      </p>
+                      <p className="font-sans text-[12px] text-text-secondary">
+                        Active
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Access Duration */}
+                <div className="bg-[#f9f8f7] dark:bg-[#262b35] rounded-xl p-4">
+                  <p className="font-sans text-[12px] text-text-tertiary uppercase tracking-wide mb-1">
+                    Access Duration
+                  </p>
+                  <p className="font-sans text-[16px] font-semibold text-text-primary">
+                    {manualExpiresAt 
+                      ? `Until ${new Date(manualExpiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                      : 'Unlimited access'
+                    }
+                  </p>
+                  {manualExpiresAt && (
+                    <p className="font-sans text-[13px] text-text-secondary mt-1">
+                      {(() => {
+                        const daysLeft = Math.ceil((new Date(manualExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                        if (daysLeft < 0) return 'Expired';
+                        if (daysLeft === 0) return 'Expires today';
+                        if (daysLeft === 1) return '1 day remaining';
+                        return `${daysLeft} days remaining`;
+                      })()}
+                    </p>
+                  )}
+                </div>
+
+                {/* Info Note */}
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800/50">
+                  <p className="font-sans text-[13px] text-blue-700 dark:text-blue-300">
+                    Your plan was granted by an administrator. To make changes or extend your access, please contact support.
+                  </p>
+                </div>
+
+                {/* Contact Support Button */}
+                <a
+                  href="mailto:hello@growthaddicts.com"
+                  className="block w-full bg-[#a07855] hover:bg-[#8b6847] text-white font-sans font-semibold text-[14px] py-3 px-6 rounded-xl text-center transition-colors"
+                >
+                  Contact Support
+                </a>
               </div>
             </motion.div>
           </motion.div>

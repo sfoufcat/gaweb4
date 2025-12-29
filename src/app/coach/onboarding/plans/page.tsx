@@ -419,8 +419,8 @@ export default function OnboardingPlansPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f2ed] dark:bg-[#11141b]">
-      <div className="bg-gradient-to-b from-[#faf8f6] to-transparent dark:from-[#0a0c10] dark:to-transparent min-h-screen">
+    <div className="min-h-screen bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b]">
+      <div className="min-h-screen">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#faf8f6]/95 dark:bg-[#0a0c10]/95 backdrop-blur-sm border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -490,7 +490,7 @@ export default function OnboardingPlansPage() {
               <button
                 key={plan.id}
                 onClick={() => setSelectedPlan(plan.id)}
-                className={`relative p-6 rounded-2xl border-2 text-left transition-all duration-200 ${
+                className={`relative p-6 rounded-2xl border-2 text-left transition-all duration-200 flex flex-col items-start ${
                   isSelected
                     ? 'border-[#a07855] dark:border-[#b8896a] bg-white dark:bg-[#171b22] shadow-xl shadow-[#a07855]/10'
                     : 'border-[#e1ddd8] dark:border-[#313746] bg-white dark:bg-[#171b22] hover:border-[#d4d0cb] dark:hover:border-[#424958]'
