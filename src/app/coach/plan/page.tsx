@@ -23,8 +23,10 @@ import {
 import Image from 'next/image';
 import { loadStripe } from '@stripe/stripe-js';
 import {
-  EmbeddedCheckout,
-  EmbeddedCheckoutProvider,
+  Elements,
+  PaymentElement,
+  useStripe,
+  useElements,
 } from '@stripe/react-stripe-js';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 import type { CoachTier } from '@/types';
@@ -181,8 +183,189 @@ const WHY_UPGRADE_SCALE = [
   },
 ];
 
+// Stripe appearance configuration for PaymentElement
+const stripeAppearance: import('@stripe/stripe-js').Appearance = {
+  theme: 'stripe',
+  variables: {
+    colorPrimary: '#a07855',
+    colorBackground: '#ffffff',
+    colorText: '#1a1a1a',
+    colorTextSecondary: '#5f5a55',
+    colorDanger: '#ef4444',
+    fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    fontSizeBase: '15px',
+    borderRadius: '12px',
+    spacingUnit: '4px',
+  },
+  rules: {
+    '.Input': {
+      borderColor: '#e1ddd8',
+      boxShadow: 'none',
+      padding: '12px 14px',
+    },
+    '.Input:focus': {
+      borderColor: '#a07855',
+      boxShadow: '0 0 0 1px #a07855',
+    },
+    '.Label': {
+      fontWeight: '500',
+      marginBottom: '6px',
+      color: '#1a1a1a',
+    },
+    '.Tab': {
+      borderColor: '#e1ddd8',
+    },
+    '.Tab--selected': {
+      borderColor: '#a07855',
+      backgroundColor: '#faf8f6',
+    },
+  },
+};
+
 // =============================================================================
-// COMPONENT
+// CHECKOUT FORM COMPONENT (with PaymentElement)
+// =============================================================================
+
+interface CheckoutFormProps {
+  planName: string;
+  price: string;
+  onSuccess: () => void;
+  onCancel: () => void;
+}
+
+function CheckoutForm({ planName, price, onSuccess, onCancel }: CheckoutFormProps) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      const { error: submitError, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/coach?upgraded=true`,
+        },
+        redirect: 'if_required',
+      });
+
+      if (submitError) {
+        setError(submitError.message || 'Payment failed. Please try again.');
+        setIsProcessing(false);
+        return;
+      }
+
+      // Payment succeeded
+      if (paymentIntent && paymentIntent.status === 'succeeded') {
+        onSuccess();
+      }
+    } catch (err) {
+      console.error('Payment error:', err);
+      setError('An unexpected error occurred. Please try again.');
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Plan Summary */}
+      <div className="bg-[#faf8f6] dark:bg-[#262b35] rounded-xl p-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <p className="font-sans text-[14px] font-medium text-text-primary">{planName} Plan</p>
+            <p className="font-sans text-[12px] text-text-secondary">Monthly subscription</p>
+          </div>
+          <p className="font-albert text-[20px] font-bold text-text-primary">{price}/mo</p>
+        </div>
+      </div>
+
+      {/* Payment Element */}
+      <div className="bg-white dark:bg-[#1a1e26] rounded-xl border border-[#e1ddd8] dark:border-[#313746] p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <CreditCard className="w-4 h-4 text-text-secondary" />
+          <span className="font-sans text-[14px] font-medium text-text-primary">
+            Payment details
+          </span>
+        </div>
+        <PaymentElement
+          options={{
+            layout: 'tabs',
+            wallets: {
+              applePay: 'auto',
+              googlePay: 'auto',
+            },
+          }}
+        />
+      </div>
+
+      {/* Error Message */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl"
+          >
+            <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Security Badge */}
+      <div className="flex items-center justify-center gap-2 text-text-secondary">
+        <Lock className="w-4 h-4" />
+        <span className="font-sans text-[12px]">
+          Secured by Stripe. Your payment info is encrypted.
+        </span>
+      </div>
+
+      {/* Submit Button */}
+      <button
+        type="submit"
+        disabled={!stripe || isProcessing}
+        className="w-full bg-[#a07855] hover:bg-[#8b6847] text-white font-sans font-bold text-[15px] py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      >
+        {isProcessing ? (
+          <>
+            <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            Processing payment...
+          </>
+        ) : (
+          <>
+            <Lock className="w-4 h-4" />
+            Subscribe to {planName}
+          </>
+        )}
+      </button>
+
+      {/* Cancel Link */}
+      <button
+        type="button"
+        onClick={onCancel}
+        disabled={isProcessing}
+        className="w-full text-center font-sans text-[14px] text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
+      >
+        Cancel
+      </button>
+    </form>
+  );
+}
+
+// =============================================================================
+// MAIN COMPONENT
 // =============================================================================
 
 export default function CoachPlanPage() {
@@ -480,12 +663,12 @@ export default function CoachPlanPage() {
                 disabled={isDowngrade && !isCurrentPlan}
                 className={`relative p-6 rounded-[24px] border-2 text-left transition-all duration-300 ${
                   isCurrentPlan
-                    ? 'border-[#22c55e] bg-[#f0fdf4]/50 cursor-default'
+                    ? 'border-[#22c55e] cursor-default'
                     : isDowngrade
-                    ? 'border-[#e1ddd8] bg-[#f9f8f7] opacity-60 cursor-not-allowed'
+                    ? 'border-[#e1ddd8] opacity-60 cursor-not-allowed'
                     : isSelected
-                    ? 'border-[#a07855] dark:border-[#b8896a] bg-[#faf8f6] shadow-lg'
-                    : 'border-[#e1ddd8] bg-white hover:border-[#d4d0cb] hover:shadow-md'
+                    ? 'border-[#a07855] dark:border-[#b8896a] shadow-lg'
+                    : 'border-[#e1ddd8] hover:border-[#d4d0cb] hover:shadow-md'
                 }`}
               >
                 {/* Tag */}
@@ -544,7 +727,7 @@ export default function CoachPlanPage() {
                 </div>
 
                 {/* Limits */}
-                <div className="grid grid-cols-2 gap-2 mb-5 p-3 bg-[#f9f8f7] rounded-xl">
+                <div className="grid grid-cols-2 gap-2 mb-5 p-3 rounded-xl">
                   {plan.limits.map((limit) => (
                     <div key={limit.label} className="text-center">
                       <div className="font-albert text-[18px] font-bold text-text-primary">
@@ -658,7 +841,7 @@ export default function CoachPlanPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.35 + index * 0.05 }}
-                    className="bg-white rounded-2xl p-5 border border-[#e1ddd8] text-center"
+                    className="rounded-2xl p-5 border border-[#e1ddd8] text-center"
                   >
                     <div className="w-12 h-12 bg-[#faf8f6] rounded-xl flex items-center justify-center mx-auto mb-3">
                       <item.icon className="w-6 h-6 text-[#a07855] dark:text-[#b8896a]" />
@@ -692,9 +875,9 @@ export default function CoachPlanPage() {
         </motion.div>
       </div>
 
-      {/* Embedded Checkout Modal */}
+      {/* Payment Checkout Modal */}
       <AnimatePresence>
-        {showCheckout && clientSecret && (
+        {showCheckout && clientSecret && checkoutPlan && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -709,7 +892,7 @@ export default function CoachPlanPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="relative w-full max-w-lg bg-white dark:bg-[#1a1e26] rounded-[24px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+              className="relative w-full max-w-md bg-white dark:bg-[#1a1e26] rounded-[24px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
             >
               {/* Modal Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#313746]">
@@ -719,10 +902,10 @@ export default function CoachPlanPage() {
                   </div>
                   <div>
                     <h2 className="font-albert text-[18px] font-semibold text-text-primary tracking-[-0.5px]">
-                      Subscribe to {checkoutPlan ? TIER_PRICING[checkoutPlan].name : 'Plan'}
+                      Upgrade to {TIER_PRICING[checkoutPlan].name}
                     </h2>
                     <p className="font-sans text-[13px] text-text-secondary">
-                      {checkoutPlan && `$${(TIER_PRICING[checkoutPlan].monthly / 100).toFixed(0)}/month`}
+                      Complete your payment
                     </p>
                   </div>
                 </div>
@@ -734,24 +917,26 @@ export default function CoachPlanPage() {
                 </button>
               </div>
 
-              {/* Checkout Content */}
+              {/* Checkout Content with PaymentElement */}
               <div className="flex-1 overflow-y-auto p-6">
-                <EmbeddedCheckoutProvider
+                <Elements
                   stripe={stripePromise}
-                  options={{ clientSecret }}
+                  options={{
+                    clientSecret,
+                    appearance: stripeAppearance,
+                  }}
                 >
-                  <EmbeddedCheckout />
-                </EmbeddedCheckoutProvider>
-              </div>
-
-              {/* Security Badge */}
-              <div className="px-6 py-4 border-t border-[#e1ddd8] dark:border-[#313746] bg-[#f9f8f7] dark:bg-[#171b22]">
-                <div className="flex items-center justify-center gap-2 text-text-secondary">
-                  <Lock className="w-4 h-4" />
-                  <span className="font-sans text-[12px]">
-                    Secured by Stripe. Your payment info is encrypted.
-                  </span>
-                </div>
+                  <CheckoutForm
+                    planName={TIER_PRICING[checkoutPlan].name}
+                    price={`$${(TIER_PRICING[checkoutPlan].monthly / 100).toFixed(0)}`}
+                    onSuccess={() => {
+                      handleCloseCheckout();
+                      // Refresh page to show updated subscription
+                      window.location.href = '/coach?upgraded=true';
+                    }}
+                    onCancel={handleCloseCheckout}
+                  />
+                </Elements>
               </div>
             </motion.div>
           </motion.div>

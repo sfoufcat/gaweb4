@@ -124,8 +124,8 @@ export function SquadDiscovery() {
 
         {/* Empty state */}
         <div className="text-center py-12 px-4">
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#a07855]/20 to-[#8c6245]/10 dark:from-[#a07855]/10 dark:to-[#8c6245]/5 flex items-center justify-center">
-            <Users className="w-10 h-10 text-[#a07855] dark:text-[#b8896a]/60" />
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-brand-accent-subtle flex items-center justify-center">
+            <Users className="w-10 h-10 text-brand-accent opacity-60" />
           </div>
           <h3 className="font-albert text-[20px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px] mb-2">
             No {squadLower}s available yet
@@ -139,10 +139,10 @@ export function SquadDiscovery() {
         <div className="mt-4">
           <Link
             href="/discover"
-            className="group flex items-center justify-between p-5 bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#1a1512] dark:to-[#181310] border border-[#FFE4CC] dark:border-[#3d3530] rounded-[20px] hover:shadow-lg hover:border-[#a07855] dark:border-[#b8896a]/40 dark:hover:border-[#b8896a]/40 transition-all duration-300"
+            className="group flex items-center justify-between p-5 bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#1a1512] dark:to-[#181310] border border-[#FFE4CC] dark:border-[#3d3530] rounded-[20px] hover:shadow-lg hover:border-brand-accent dark:hover:border-brand-accent/40 transition-all duration-300"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] dark:from-[#b8896a] dark:to-[#a07855] flex items-center justify-center flex-shrink-0">
+              <div className="w-12 h-12 rounded-full bg-brand-accent flex items-center justify-center flex-shrink-0">
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <div>
@@ -154,7 +154,7 @@ export function SquadDiscovery() {
                 </p>
               </div>
             </div>
-            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#a07855] dark:bg-[#b8896a] flex items-center justify-center group-hover:bg-[#8c6245] dark:group-hover:bg-[#a07855] group-hover:scale-105 transition-all">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-brand-accent flex items-center justify-center group-hover:opacity-90 group-hover:scale-105 transition-all">
               <ArrowRight className="w-5 h-5 text-white" />
             </div>
           </Link>
@@ -225,10 +225,10 @@ export function SquadDiscovery() {
       <div className="mt-8 pt-8 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
         <Link
           href="/discover"
-          className="group flex items-center justify-between p-5 bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#1a1512] dark:to-[#181310] border border-[#FFE4CC] dark:border-[#3d3530] rounded-[20px] hover:shadow-lg hover:border-[#a07855] dark:border-[#b8896a]/40 dark:hover:border-[#b8896a]/40 transition-all duration-300"
+          className="group flex items-center justify-between p-5 bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#1a1512] dark:to-[#181310] border border-[#FFE4CC] dark:border-[#3d3530] rounded-[20px] hover:shadow-lg hover:border-brand-accent dark:hover:border-brand-accent/40 transition-all duration-300"
         >
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#a07855] to-[#8c6245] dark:from-[#b8896a] dark:to-[#a07855] flex items-center justify-center flex-shrink-0">
+            <div className="w-12 h-12 rounded-full bg-brand-accent flex items-center justify-center flex-shrink-0">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -240,7 +240,7 @@ export function SquadDiscovery() {
               </p>
             </div>
           </div>
-          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#a07855] dark:bg-[#b8896a] flex items-center justify-center group-hover:bg-[#8c6245] dark:group-hover:bg-[#a07855] group-hover:scale-105 transition-all">
+          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-brand-accent flex items-center justify-center group-hover:opacity-90 group-hover:scale-105 transition-all">
             <ArrowRight className="w-5 h-5 text-white" />
           </div>
         </Link>

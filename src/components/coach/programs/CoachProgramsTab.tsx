@@ -98,6 +98,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     lengthDays: number;
     priceInCents: number;
     currency: string;
+    subscriptionEnabled: boolean;
+    billingInterval: 'monthly' | 'quarterly' | 'yearly';
     squadCapacity: number;
     coachInSquads: boolean;
     assignedCoachIds: string[];
@@ -118,6 +120,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     lengthDays: 30,
     priceInCents: 0,
     currency: 'usd',
+    subscriptionEnabled: false,
+    billingInterval: 'monthly',
     squadCapacity: 10,
     coachInSquads: true,
     assignedCoachIds: [],
@@ -490,6 +494,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         lengthDays: program.lengthDays,
         priceInCents: program.priceInCents,
         currency: program.currency,
+        subscriptionEnabled: program.subscriptionEnabled || false,
+        billingInterval: program.billingInterval || 'monthly',
         squadCapacity: program.squadCapacity || 10,
         coachInSquads: program.coachInSquads !== false,
         assignedCoachIds: program.assignedCoachIds || [],
@@ -513,6 +519,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         lengthDays: 30,
         priceInCents: 0,
         currency: 'usd',
+        subscriptionEnabled: false,
+        billingInterval: 'monthly',
         squadCapacity: 10,
         coachInSquads: true,
         assignedCoachIds: [],
@@ -638,6 +646,34 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to save program');
+      }
+
+      const savedProgramId = data.program?.id || editingProgram?.id;
+
+      // If subscription is enabled, create the Stripe price via the subscription endpoint
+      if (programFormData.subscriptionEnabled && programFormData.priceInCents > 0 && savedProgramId) {
+        try {
+          const subscriptionResponse = await fetch(`/api/coach/org-programs/${savedProgramId}/subscription`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              priceInCents: programFormData.priceInCents,
+              billingInterval: programFormData.billingInterval,
+            }),
+          });
+
+          if (!subscriptionResponse.ok) {
+            const subscriptionError = await subscriptionResponse.json();
+            console.error('[CoachProgramsTab] Subscription setup error:', subscriptionError);
+            // Don't fail the whole save - program was created, just subscription config failed
+            setSaveError(`Program saved, but subscription pricing failed: ${subscriptionError.error || 'Unknown error'}. You can retry from program settings.`);
+          } else {
+            console.log(`[CoachProgramsTab] Subscription pricing configured for program ${savedProgramId}`);
+          }
+        } catch (subErr) {
+          console.error('Error configuring subscription:', subErr);
+          setSaveError(`Program saved, but subscription pricing failed: ${subErr instanceof Error ? subErr.message : 'Unknown error'}. You can retry from program settings.`);
+        }
       }
 
       await fetchPrograms();
@@ -2346,6 +2382,56 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                         />
                       </div>
                     </div>
+
+                    {/* Subscription Settings */}
+                    {programFormData.priceInCents > 0 && (
+                      <div className="space-y-3 p-4 bg-[#faf8f6] dark:bg-[#1d222b] rounded-lg border border-[#e1ddd8] dark:border-[#262b35]">
+                        <div className="flex items-center gap-2">
+                          <BrandedCheckbox
+                            checked={programFormData.subscriptionEnabled}
+                            onChange={(checked) => setProgramFormData({ ...programFormData, subscriptionEnabled: checked })}
+                          />
+                          <div 
+                            className="cursor-pointer" 
+                            onClick={() => setProgramFormData({ ...programFormData, subscriptionEnabled: !programFormData.subscriptionEnabled })}
+                          >
+                            <span className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                              Enable recurring subscription
+                            </span>
+                            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-0.5">
+                              Users will be charged automatically each billing period
+                            </p>
+                          </div>
+                        </div>
+
+                        {programFormData.subscriptionEnabled && (
+                          <div className="mt-3">
+                            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-2">
+                              Billing Interval
+                            </label>
+                            <div className="flex gap-2">
+                              {(['monthly', 'quarterly', 'yearly'] as const).map((interval) => (
+                                <button
+                                  key={interval}
+                                  type="button"
+                                  onClick={() => setProgramFormData({ ...programFormData, billingInterval: interval })}
+                                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-albert transition-colors ${
+                                    programFormData.billingInterval === interval
+                                      ? 'bg-[#a07855] dark:bg-[#b8896a] text-white'
+                                      : 'bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] hover:border-[#a07855] dark:hover:border-[#b8896a]'
+                                  }`}
+                                >
+                                  {interval.charAt(0).toUpperCase() + interval.slice(1)}
+                                </button>
+                              ))}
+                            </div>
+                            <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-2">
+                              ${(programFormData.priceInCents / 100).toFixed(2)}/{programFormData.billingInterval === 'monthly' ? 'month' : programFormData.billingInterval === 'quarterly' ? 'quarter' : 'year'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Daily Focus Settings */}
                     <div>

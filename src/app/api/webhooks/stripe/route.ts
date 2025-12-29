@@ -6,7 +6,9 @@ import { sendWelcomeEmail } from '@/lib/email';
 import { updateUserBillingInClerk, updateUserCoachingInClerk, type BillingStatus } from '@/lib/admin-utils-clerk';
 import { archiveOldSquadMemberships } from '@/lib/program-engine';
 import { syncSubscriptionToEdgeConfig, type TenantSubscriptionData } from '@/lib/tenant-edge-config';
-import type { CoachingStatus, CoachingPlan, FlowSession, Program, ProgramEnrollment, ProgramInvite, NewProgramEnrollmentStatus, CoachTier, CoachSubscriptionStatus } from '@/types';
+import { getStreamServerClient } from '@/lib/stream-server';
+import { addUserToOrganization } from '@/lib/clerk-organizations';
+import type { CoachingStatus, CoachingPlan, FlowSession, Program, ProgramEnrollment, ProgramInvite, NewProgramEnrollmentStatus, CoachTier, CoachSubscriptionStatus, Squad, SquadMember } from '@/types';
 
 // =============================================================================
 // CLERK ORG METADATA SYNC
@@ -287,6 +289,18 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   // Handle coach subscription checkout
   if (checkoutType === 'coach_subscription') {
     await handleCoachCheckoutCompleted(session);
+    return;
+  }
+
+  // Handle squad subscription checkout (recurring squad membership)
+  if (checkoutType === 'squad_subscription') {
+    await handleSquadSubscriptionCheckoutCompleted(session);
+    return;
+  }
+
+  // Handle program subscription checkout (recurring program enrollment)
+  if (checkoutType === 'program_subscription') {
+    await handleProgramSubscriptionCheckoutCompleted(session);
     return;
   }
 
@@ -652,15 +666,43 @@ async function handleGuestCheckoutCompleted(
  * Handle subscription updates
  * Routes to appropriate handler based on subscription type:
  * - coach_subscription: Platform subscription for coaches (Starter/Pro/Scale)
+ * - squad_subscription: Recurring squad membership (via Connect)
+ * - program_subscription: Recurring program enrollment (via Connect)
  * - coaching: 1:1 coaching product
  * - other: User membership subscription
  */
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  // Check if this is a coach platform subscription (Starter/Pro/Scale)
-  const isCoachPlatformSubscription = subscription.metadata?.type === 'coach_subscription';
+  const subscriptionType = subscription.metadata?.type;
   
-  if (isCoachPlatformSubscription) {
+  // Check if this is a coach platform subscription (Starter/Pro/Scale)
+  if (subscriptionType === 'coach_subscription') {
     await updateCoachPlatformSubscriptionStatus(subscription);
+    return;
+  }
+
+  // Check if this is a squad subscription (recurring squad membership)
+  if (subscriptionType === 'squad_subscription') {
+    const status = mapStripeStatusToSubscriptionStatus(subscription.status);
+    const currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+    await updateSquadMemberSubscriptionStatus(
+      subscription.id,
+      status,
+      currentPeriodEnd,
+      subscription.cancel_at_period_end
+    );
+    return;
+  }
+
+  // Check if this is a program subscription (recurring program enrollment)
+  if (subscriptionType === 'program_subscription') {
+    const status = mapStripeStatusToSubscriptionStatus(subscription.status);
+    const currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+    await updateProgramEnrollmentSubscriptionStatus(
+      subscription.id,
+      status,
+      currentPeriodEnd,
+      subscription.cancel_at_period_end
+    );
     return;
   }
   
@@ -844,6 +886,27 @@ async function handleCoachPlatformSubscriptionDeleted(subscription: Stripe.Subsc
 }
 
 /**
+ * Map Stripe subscription status to our internal status
+ */
+function mapStripeStatusToSubscriptionStatus(
+  stripeStatus: string
+): 'active' | 'past_due' | 'canceled' | 'expired' {
+  switch (stripeStatus) {
+    case 'active':
+    case 'trialing':
+      return 'active';
+    case 'past_due':
+      return 'past_due';
+    case 'canceled':
+    case 'unpaid':
+    case 'incomplete_expired':
+      return 'canceled';
+    default:
+      return 'active';
+  }
+}
+
+/**
  * Handle subscription deletion (final cancellation)
  * 
  * This fires when the subscription is actually deleted (not just scheduled to cancel).
@@ -851,11 +914,23 @@ async function handleCoachPlatformSubscriptionDeleted(subscription: Stripe.Subsc
  * or immediately if the subscription was canceled without waiting for period end.
  */
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  // Check if this is a coach platform subscription (Starter/Pro/Scale)
-  const isCoachPlatformSubscription = subscription.metadata?.type === 'coach_subscription';
+  const subscriptionType = subscription.metadata?.type;
   
-  if (isCoachPlatformSubscription) {
+  // Check if this is a coach platform subscription (Starter/Pro/Scale)
+  if (subscriptionType === 'coach_subscription') {
     await handleCoachPlatformSubscriptionDeleted(subscription);
+    return;
+  }
+
+  // Check if this is a squad subscription
+  if (subscriptionType === 'squad_subscription') {
+    await handleSquadSubscriptionDeleted(subscription);
+    return;
+  }
+
+  // Check if this is a program subscription
+  if (subscriptionType === 'program_subscription') {
+    await handleProgramSubscriptionDeleted(subscription);
     return;
   }
   
@@ -963,8 +1038,61 @@ async function handleCoachingSubscriptionDeleted(userId: string, periodEnd: stri
 
 /**
  * Handle failed payments
+ * Supports both platform subscriptions and Connect account subscriptions (squads/programs)
  */
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
+  const now = new Date().toISOString();
+  
+  // Check if this is a Connect subscription payment failure (squad/program)
+  const subscriptionId = typeof invoice.subscription === 'string' 
+    ? invoice.subscription 
+    : invoice.subscription?.id;
+
+  if (subscriptionId) {
+    // Check squadMembers for this subscription
+    const squadMemberQuery = await adminDb
+      .collection('squadMembers')
+      .where('subscriptionId', '==', subscriptionId)
+      .limit(1)
+      .get();
+
+    if (!squadMemberQuery.empty) {
+      const memberDoc = squadMemberQuery.docs[0];
+      const graceEnd = new Date();
+      graceEnd.setDate(graceEnd.getDate() + 3); // 3-day grace period
+      
+      await memberDoc.ref.update({
+        subscriptionStatus: 'past_due',
+        accessEndsAt: graceEnd.toISOString(),
+        updatedAt: now,
+      });
+      console.log(`[STRIPE_WEBHOOK] Squad subscription payment failed: subscriptionId=${subscriptionId}, memberId=${memberDoc.id}, graceEnds=${graceEnd.toISOString()}`);
+      return;
+    }
+
+    // Check program_enrollments for this subscription
+    const enrollmentQuery = await adminDb
+      .collection('program_enrollments')
+      .where('subscriptionId', '==', subscriptionId)
+      .limit(1)
+      .get();
+
+    if (!enrollmentQuery.empty) {
+      const enrollmentDoc = enrollmentQuery.docs[0];
+      const graceEnd = new Date();
+      graceEnd.setDate(graceEnd.getDate() + 3); // 3-day grace period
+      
+      await enrollmentDoc.ref.update({
+        subscriptionStatus: 'past_due',
+        accessEndsAt: graceEnd.toISOString(),
+        updatedAt: now,
+      });
+      console.log(`[STRIPE_WEBHOOK] Program subscription payment failed: subscriptionId=${subscriptionId}, enrollmentId=${enrollmentDoc.id}, graceEnds=${graceEnd.toISOString()}`);
+      return;
+    }
+  }
+
+  // Handle platform subscription payment failures (user memberships)
   const customerId = typeof invoice.customer === 'string'
     ? invoice.customer
     : invoice.customer?.id;
@@ -992,7 +1120,7 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
     },
     // Downgrade tier on payment failure
     tier: 'free',
-    updatedAt: new Date().toISOString(),
+    updatedAt: now,
   }, { merge: true });
 
   // Update org_memberships with tier downgrade (multi-org support)
@@ -1006,7 +1134,6 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
     
     if (!membershipsSnapshot.empty) {
       const batch = adminDb.batch();
-      const now = new Date().toISOString();
       
       for (const doc of membershipsSnapshot.docs) {
         batch.update(doc.ref, {
@@ -1514,5 +1641,486 @@ async function updateUserBillingStatus(userId: string, subscription: Stripe.Subs
       currentPeriodEnd,
     });
   }
+}
+
+// =============================================================================
+// SQUAD SUBSCRIPTION HANDLERS
+// =============================================================================
+
+/**
+ * Handle squad subscription checkout completion
+ * 
+ * Called when a user completes checkout to join a recurring subscription squad.
+ * Adds user to squad with subscription tracking.
+ */
+async function handleSquadSubscriptionCheckoutCompleted(session: Stripe.Checkout.Session) {
+  const userId = session.metadata?.userId;
+  const squadId = session.metadata?.squadId;
+  const organizationId = session.metadata?.organizationId;
+  
+  if (!userId || !squadId) {
+    console.error('[STRIPE_WEBHOOK] Squad subscription checkout missing required metadata:', { userId, squadId });
+    return;
+  }
+
+  console.log(`[STRIPE_WEBHOOK] Squad subscription checkout completed - userId: ${userId}, squadId: ${squadId}`);
+
+  const stripe = getStripe();
+  const now = new Date().toISOString();
+
+  // Get subscription details
+  let subscriptionId: string | undefined;
+  let currentPeriodEnd: string | undefined;
+
+  if (session.subscription) {
+    subscriptionId = typeof session.subscription === 'string' 
+      ? session.subscription 
+      : session.subscription.id;
+    
+    // We need to fetch from the connected account
+    try {
+      // Get the Connect account ID from org_settings
+      const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId!).get();
+      const orgSettings = orgSettingsDoc.data();
+      const stripeConnectAccountId = orgSettings?.stripeConnectAccountId;
+
+      if (stripeConnectAccountId) {
+        const subscription = await stripe.subscriptions.retrieve(
+          subscriptionId,
+          { stripeAccount: stripeConnectAccountId }
+        );
+        currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      }
+    } catch (error) {
+      console.error('[STRIPE_WEBHOOK] Error fetching squad subscription:', error);
+    }
+  }
+
+  // Get squad
+  const squadDoc = await adminDb.collection('squads').doc(squadId).get();
+  if (!squadDoc.exists) {
+    console.error(`[STRIPE_WEBHOOK] Squad ${squadId} not found for subscription checkout`);
+    return;
+  }
+
+  const squad = { id: squadDoc.id, ...squadDoc.data() } as Squad;
+  const memberIds = squad.memberIds || [];
+
+  // Check if user is already a member
+  if (memberIds.includes(userId)) {
+    console.log(`[STRIPE_WEBHOOK] User ${userId} is already a member of squad ${squadId}`);
+    return;
+  }
+
+  // Get user info from Clerk
+  const { clerkClient } = await import('@clerk/nextjs/server');
+  const clerk = await clerkClient();
+  const clerkUser = await clerk.users.getUser(userId);
+
+  // Add user to squad memberIds
+  await squadDoc.ref.update({
+    memberIds: [...memberIds, userId],
+    updatedAt: now,
+  });
+
+  // Create squadMember document with subscription tracking
+  await adminDb.collection('squadMembers').add({
+    squadId,
+    userId,
+    roleInSquad: 'member',
+    firstName: clerkUser.firstName || '',
+    lastName: clerkUser.lastName || '',
+    imageUrl: clerkUser.imageUrl || '',
+    // Subscription tracking
+    subscriptionId: subscriptionId || null,
+    subscriptionStatus: 'active',
+    currentPeriodEnd: currentPeriodEnd || null,
+    cancelAtPeriodEnd: false,
+    accessEndsAt: null,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  // Update user's squad membership
+  const userDoc = await adminDb.collection('users').doc(userId).get();
+  const userData = userDoc.exists ? userDoc.data() : null;
+  const currentSquadIds: string[] = userData?.squadIds || [];
+  
+  if (!currentSquadIds.includes(squadId)) {
+    await adminDb.collection('users').doc(userId).set({
+      squadIds: [...currentSquadIds, squadId],
+      squadId: squadId, // Legacy field
+      updatedAt: now,
+    }, { merge: true });
+  }
+
+  // Add user to Stream Chat channel
+  if (squad.chatChannelId) {
+    try {
+      const streamClient = await getStreamServerClient();
+      
+      // Upsert user in Stream
+      await streamClient.upsertUser({
+        id: userId,
+        name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 'User',
+        image: clerkUser.imageUrl,
+      });
+
+      // Add to channel
+      const channel = streamClient.channel('messaging', squad.chatChannelId);
+      await channel.addMembers([userId]);
+
+      // Send join message
+      await channel.sendMessage({
+        text: `${clerkUser.firstName || 'Someone'} has joined the squad!`,
+        user_id: userId,
+        type: 'system',
+      });
+    } catch (streamError) {
+      console.error('[STRIPE_WEBHOOK] Error adding user to squad chat:', streamError);
+    }
+  }
+
+  // Auto-assign user to squad's organization
+  if (organizationId) {
+    try {
+      await addUserToOrganization(userId, organizationId, 'org:member');
+      console.log(`[STRIPE_WEBHOOK] Added user ${userId} to organization ${organizationId}`);
+    } catch (orgError) {
+      console.error('[STRIPE_WEBHOOK] Error adding user to organization:', orgError);
+    }
+  }
+
+  console.log(`[STRIPE_WEBHOOK] User ${userId} successfully joined squad ${squadId} with subscription ${subscriptionId}`);
+}
+
+/**
+ * Handle program subscription checkout completion
+ * 
+ * Called when a user completes checkout for a recurring program enrollment.
+ * Creates enrollment with subscription tracking.
+ */
+async function handleProgramSubscriptionCheckoutCompleted(session: Stripe.Checkout.Session) {
+  const userId = session.metadata?.userId;
+  const programId = session.metadata?.programId;
+  const cohortId = session.metadata?.cohortId;
+  const organizationId = session.metadata?.organizationId;
+  
+  if (!userId || !programId) {
+    console.error('[STRIPE_WEBHOOK] Program subscription checkout missing required metadata:', { userId, programId });
+    return;
+  }
+
+  console.log(`[STRIPE_WEBHOOK] Program subscription checkout completed - userId: ${userId}, programId: ${programId}`);
+
+  const stripe = getStripe();
+  const now = new Date().toISOString();
+
+  // Get subscription details
+  let subscriptionId: string | undefined;
+  let currentPeriodEnd: string | undefined;
+
+  if (session.subscription) {
+    subscriptionId = typeof session.subscription === 'string' 
+      ? session.subscription 
+      : session.subscription.id;
+    
+    try {
+      // Get the Connect account ID from org_settings
+      const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId!).get();
+      const orgSettings = orgSettingsDoc.data();
+      const stripeConnectAccountId = orgSettings?.stripeConnectAccountId;
+
+      if (stripeConnectAccountId) {
+        const subscription = await stripe.subscriptions.retrieve(
+          subscriptionId,
+          { stripeAccount: stripeConnectAccountId }
+        );
+        currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      }
+    } catch (error) {
+      console.error('[STRIPE_WEBHOOK] Error fetching program subscription:', error);
+    }
+  }
+
+  // Check if enrollment already exists
+  const existingEnrollment = await adminDb
+    .collection('program_enrollments')
+    .where('userId', '==', userId)
+    .where('programId', '==', programId)
+    .where('status', 'in', ['active', 'upcoming'])
+    .limit(1)
+    .get();
+
+  if (!existingEnrollment.empty) {
+    console.log(`[STRIPE_WEBHOOK] User ${userId} already enrolled in program ${programId}`);
+    // Update subscription info on existing enrollment
+    await existingEnrollment.docs[0].ref.update({
+      subscriptionId: subscriptionId || null,
+      subscriptionStatus: 'active',
+      currentPeriodEnd: currentPeriodEnd || null,
+      updatedAt: now,
+    });
+    return;
+  }
+
+  // Get program details
+  const programDoc = await adminDb.collection('programs').doc(programId).get();
+  if (!programDoc.exists) {
+    console.error(`[STRIPE_WEBHOOK] Program ${programId} not found`);
+    return;
+  }
+
+  const program = programDoc.data() as Program;
+
+  // Determine start date and status
+  let startedAt = now.split('T')[0];
+  let status: 'active' | 'upcoming' = 'active';
+
+  if (cohortId) {
+    const cohortDoc = await adminDb.collection('program_cohorts').doc(cohortId).get();
+    if (cohortDoc.exists) {
+      const cohort = cohortDoc.data();
+      if (cohort?.startDate && new Date(cohort.startDate) > new Date()) {
+        startedAt = cohort.startDate;
+        status = 'upcoming';
+      }
+    }
+  }
+
+  // Create enrollment with subscription tracking
+  const enrollmentData: Omit<ProgramEnrollment, 'id'> = {
+    userId,
+    programId,
+    organizationId: organizationId || program.organizationId,
+    cohortId: cohortId || null,
+    squadId: null,
+    stripeCheckoutSessionId: session.id,
+    amountPaid: session.amount_total || program.priceInCents,
+    paidAt: now,
+    status,
+    startedAt,
+    lastAssignedDayIndex: 0,
+    // Subscription tracking
+    subscriptionId: subscriptionId || undefined,
+    subscriptionStatus: 'active',
+    currentPeriodEnd: currentPeriodEnd || undefined,
+    cancelAtPeriodEnd: false,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const enrollmentRef = await adminDb.collection('program_enrollments').add(enrollmentData);
+
+  // Update user document
+  await adminDb.collection('users').doc(userId).set({
+    currentProgramEnrollmentId: enrollmentRef.id,
+    currentProgramId: programId,
+    organizationId: organizationId || program.organizationId,
+    updatedAt: now,
+  }, { merge: true });
+
+  console.log(`[STRIPE_WEBHOOK] User ${userId} enrolled in program ${programId} with subscription ${subscriptionId}, enrollment: ${enrollmentRef.id}`);
+}
+
+/**
+ * Update squad member subscription status
+ * Called when a squad subscription is updated (payment success, failure, cancellation)
+ */
+async function updateSquadMemberSubscriptionStatus(
+  subscriptionId: string,
+  status: 'active' | 'past_due' | 'canceled' | 'expired',
+  currentPeriodEnd: string,
+  cancelAtPeriodEnd: boolean
+) {
+  const now = new Date().toISOString();
+  
+  // Find squad member by subscription ID
+  const memberQuery = await adminDb
+    .collection('squadMembers')
+    .where('subscriptionId', '==', subscriptionId)
+    .limit(1)
+    .get();
+
+  if (memberQuery.empty) {
+    console.log(`[STRIPE_WEBHOOK] No squad member found for subscription ${subscriptionId}`);
+    return;
+  }
+
+  const memberDoc = memberQuery.docs[0];
+  const memberData = memberDoc.data() as SquadMember;
+
+  // Calculate access end date
+  let accessEndsAt: string | null = null;
+  if (status === 'canceled' || status === 'expired') {
+    accessEndsAt = currentPeriodEnd;
+  } else if (status === 'past_due') {
+    // 3-day grace period for failed payments
+    const graceEnd = new Date();
+    graceEnd.setDate(graceEnd.getDate() + 3);
+    accessEndsAt = graceEnd.toISOString();
+  }
+
+  await memberDoc.ref.update({
+    subscriptionStatus: status,
+    currentPeriodEnd,
+    cancelAtPeriodEnd,
+    accessEndsAt,
+    updatedAt: now,
+  });
+
+  console.log(`[STRIPE_WEBHOOK] Updated squad member subscription: memberId=${memberDoc.id}, status=${status}, accessEndsAt=${accessEndsAt}`);
+}
+
+/**
+ * Update program enrollment subscription status
+ * Called when a program subscription is updated (payment success, failure, cancellation)
+ */
+async function updateProgramEnrollmentSubscriptionStatus(
+  subscriptionId: string,
+  status: 'active' | 'past_due' | 'canceled' | 'expired',
+  currentPeriodEnd: string,
+  cancelAtPeriodEnd: boolean
+) {
+  const now = new Date().toISOString();
+  
+  // Find enrollment by subscription ID
+  const enrollmentQuery = await adminDb
+    .collection('program_enrollments')
+    .where('subscriptionId', '==', subscriptionId)
+    .limit(1)
+    .get();
+
+  if (enrollmentQuery.empty) {
+    console.log(`[STRIPE_WEBHOOK] No program enrollment found for subscription ${subscriptionId}`);
+    return;
+  }
+
+  const enrollmentDoc = enrollmentQuery.docs[0];
+
+  // Calculate access end date
+  let accessEndsAt: string | null = null;
+  if (status === 'canceled' || status === 'expired') {
+    accessEndsAt = currentPeriodEnd;
+  } else if (status === 'past_due') {
+    // 3-day grace period for failed payments
+    const graceEnd = new Date();
+    graceEnd.setDate(graceEnd.getDate() + 3);
+    accessEndsAt = graceEnd.toISOString();
+  }
+
+  await enrollmentDoc.ref.update({
+    subscriptionStatus: status,
+    currentPeriodEnd,
+    cancelAtPeriodEnd,
+    accessEndsAt,
+    updatedAt: now,
+  });
+
+  console.log(`[STRIPE_WEBHOOK] Updated program enrollment subscription: enrollmentId=${enrollmentDoc.id}, status=${status}, accessEndsAt=${accessEndsAt}`);
+}
+
+/**
+ * Handle squad/program subscription updates from Connect accounts
+ * This handles subscription lifecycle events for coach-created subscriptions
+ */
+async function handleConnectSubscriptionUpdate(subscription: Stripe.Subscription, connectedAccountId: string) {
+  const subscriptionType = subscription.metadata?.type;
+  
+  if (subscriptionType !== 'squad_subscription' && subscriptionType !== 'program_subscription') {
+    return; // Not a squad/program subscription
+  }
+
+  // Map Stripe status to our status
+  let status: 'active' | 'past_due' | 'canceled' | 'expired' = 'active';
+  switch (subscription.status) {
+    case 'active':
+      status = 'active';
+      break;
+    case 'past_due':
+      status = 'past_due';
+      break;
+    case 'canceled':
+    case 'unpaid':
+    case 'incomplete_expired':
+      status = subscription.ended_at ? 'expired' : 'canceled';
+      break;
+  }
+
+  const currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+  const cancelAtPeriodEnd = subscription.cancel_at_period_end;
+
+  if (subscriptionType === 'squad_subscription') {
+    await updateSquadMemberSubscriptionStatus(subscription.id, status, currentPeriodEnd, cancelAtPeriodEnd);
+  } else if (subscriptionType === 'program_subscription') {
+    await updateProgramEnrollmentSubscriptionStatus(subscription.id, status, currentPeriodEnd, cancelAtPeriodEnd);
+  }
+}
+
+/**
+ * Handle squad subscription deletion - remove user from squad
+ */
+async function handleSquadSubscriptionDeleted(subscription: Stripe.Subscription) {
+  const now = new Date().toISOString();
+  
+  // Find squad member by subscription ID
+  const memberQuery = await adminDb
+    .collection('squadMembers')
+    .where('subscriptionId', '==', subscription.id)
+    .limit(1)
+    .get();
+
+  if (memberQuery.empty) {
+    console.log(`[STRIPE_WEBHOOK] No squad member found for deleted subscription ${subscription.id}`);
+    return;
+  }
+
+  const memberDoc = memberQuery.docs[0];
+  const memberData = memberDoc.data() as SquadMember;
+  const { squadId, userId } = memberData;
+
+  // Mark as expired with access end date
+  const currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+  await memberDoc.ref.update({
+    subscriptionStatus: 'expired',
+    currentPeriodEnd,
+    accessEndsAt: currentPeriodEnd,
+    updatedAt: now,
+  });
+
+  console.log(`[STRIPE_WEBHOOK] Squad subscription deleted: userId=${userId}, squadId=${squadId}, accessEnds=${currentPeriodEnd}`);
+}
+
+/**
+ * Handle program subscription deletion - expire enrollment
+ */
+async function handleProgramSubscriptionDeleted(subscription: Stripe.Subscription) {
+  const now = new Date().toISOString();
+  
+  // Find enrollment by subscription ID
+  const enrollmentQuery = await adminDb
+    .collection('program_enrollments')
+    .where('subscriptionId', '==', subscription.id)
+    .limit(1)
+    .get();
+
+  if (enrollmentQuery.empty) {
+    console.log(`[STRIPE_WEBHOOK] No program enrollment found for deleted subscription ${subscription.id}`);
+    return;
+  }
+
+  const enrollmentDoc = enrollmentQuery.docs[0];
+  const enrollmentData = enrollmentDoc.data() as ProgramEnrollment;
+
+  // Mark as expired with access end date
+  const currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+  await enrollmentDoc.ref.update({
+    subscriptionStatus: 'expired',
+    currentPeriodEnd,
+    accessEndsAt: currentPeriodEnd,
+    updatedAt: now,
+  });
+
+  console.log(`[STRIPE_WEBHOOK] Program subscription deleted: userId=${enrollmentData.userId}, programId=${enrollmentData.programId}, accessEnds=${currentPeriodEnd}`);
 }
 

@@ -393,6 +393,7 @@ export function SquadFormDialog({
 
     try {
       setLoading(true);
+      setSubscriptionError(null);
 
       const url = squad ? `${apiBasePath}/${squad.id}` : apiBasePath;
       const method = squad ? 'PATCH' : 'POST';
@@ -428,6 +429,39 @@ export function SquadFormDialog({
           errorMessage = response.statusText || errorMessage;
         }
         throw new Error(errorMessage);
+      }
+
+      const responseData = await response.json();
+      const savedSquadId = squad?.id || responseData.squad?.id;
+
+      // If subscription is enabled, create the Stripe price via the subscription endpoint
+      // This ensures the stripePriceId is created on the coach's Stripe Connect account
+      if (subscriptionEnabled && priceInCents && priceInCents > 0 && savedSquadId && stripeConnected) {
+        setSavingSubscription(true);
+        try {
+          const subscriptionResponse = await fetch(`/api/coach/squads/${savedSquadId}/subscription`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              priceInCents: Number(priceInCents),
+              billingInterval,
+            }),
+          });
+
+          if (!subscriptionResponse.ok) {
+            const subscriptionError = await subscriptionResponse.json();
+            throw new Error(subscriptionError.error || 'Failed to configure subscription pricing');
+          }
+
+          console.log(`[SquadFormDialog] Subscription pricing configured for squad ${savedSquadId}`);
+        } catch (subErr) {
+          console.error('Error configuring subscription:', subErr);
+          setSubscriptionError(subErr instanceof Error ? subErr.message : 'Failed to configure subscription');
+          // Don't fail the whole save - squad was created, just subscription config failed
+          alert(`Squad saved, but subscription pricing failed: ${subErr instanceof Error ? subErr.message : 'Unknown error'}. You can retry from the squad settings.`);
+        } finally {
+          setSavingSubscription(false);
+        }
       }
 
       onSave();

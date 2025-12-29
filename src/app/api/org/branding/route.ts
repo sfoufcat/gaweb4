@@ -3,7 +3,7 @@ import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg, TenantRequiredError } from '@/lib/admin-utils-clerk';
-import { syncTenantToEdgeConfig, setTenantByCustomDomain, buildTenantConfigData, type TenantBrandingData } from '@/lib/tenant-edge-config';
+import { syncTenantToEdgeConfig, setTenantByCustomDomain, buildTenantConfigData, type TenantBrandingData, type TenantSubscriptionData } from '@/lib/tenant-edge-config';
 import type { OrgCustomDomain } from '@/types';
 import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgDefaultTheme, UserRole } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_THEME } from '@/types';
@@ -234,6 +234,26 @@ export async function POST(request: Request) {
       const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
       const feedEnabled = orgSettingsDoc.exists ? (orgSettingsDoc.data()?.feedEnabled === true) : false;
       
+      // Fetch subscription from Firestore to preserve it in Edge Config
+      // This prevents subscription status from being reset when only branding changes
+      let subscription: TenantSubscriptionData | undefined;
+      try {
+        const subscriptionDoc = await adminDb.collection('coach_subscriptions').doc(organizationId).get();
+        if (subscriptionDoc.exists) {
+          const subData = subscriptionDoc.data();
+          subscription = {
+            plan: subData?.tier || 'starter',
+            subscriptionStatus: subData?.status || 'none',
+            currentPeriodEnd: subData?.currentPeriodEnd || subData?.manualExpiresAt,
+            cancelAtPeriodEnd: subData?.cancelAtPeriodEnd || false,
+          };
+          console.log(`[ORG_BRANDING_POST] Fetched subscription from Firestore: plan=${subscription.plan}, status=${subscription.subscriptionStatus}`);
+        }
+      } catch (subError) {
+        console.warn(`[ORG_BRANDING_POST] Could not fetch subscription from Firestore:`, subError);
+        // Continue without subscription - Edge Config may have existing data
+      }
+      
       if (subdomain) {
         // Has subdomain - sync with both subdomain and custom domain keys
         await syncTenantToEdgeConfig(
@@ -242,7 +262,10 @@ export async function POST(request: Request) {
           edgeBranding,
           verifiedCustomDomain || undefined,
           undefined, // coachingPromo
-          feedEnabled
+          feedEnabled,
+          undefined, // programEmptyStateBehavior
+          undefined, // squadEmptyStateBehavior
+          subscription  // Preserve subscription data
         );
         console.log(`[ORG_BRANDING_POST] Synced branding to Edge Config for subdomain: ${subdomain}${verifiedCustomDomain ? ` and custom domain: ${verifiedCustomDomain}` : ''} (feedEnabled: ${feedEnabled})`);
       } else if (verifiedCustomDomain) {
@@ -255,7 +278,10 @@ export async function POST(request: Request) {
           edgeBranding,
           verifiedCustomDomain,
           undefined, // coachingPromo
-          feedEnabled
+          feedEnabled,
+          undefined, // programEmptyStateBehavior
+          undefined, // squadEmptyStateBehavior
+          subscription  // Preserve subscription data
         );
         await setTenantByCustomDomain(verifiedCustomDomain, configData);
         console.log(`[ORG_BRANDING_POST] Synced branding to Edge Config for custom domain: ${verifiedCustomDomain} (feedEnabled: ${feedEnabled})`);

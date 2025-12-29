@@ -191,12 +191,12 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
             href="/discover"
             className="flex-shrink-0 w-[260px] sm:w-[280px] snap-start"
           >
-            <div className="bg-[#ECFFF2] dark:bg-[#1a2e1f] border border-dashed border-[#D3F0D8] dark:border-[#2E5435] rounded-[20px] h-full min-h-[200px] flex items-center justify-center hover:border-[#4CAF51]/60 dark:hover:border-[#4CAF50]/60 transition-all group">
+            <div className="bg-brand-accent-subtle border border-dashed border-brand-accent/30 rounded-[20px] h-full min-h-[200px] flex items-center justify-center hover:border-brand-accent/60 transition-all group">
               <div className="text-center p-4">
-                <div className="w-12 h-12 mx-auto rounded-full bg-[#D3F0D8] dark:bg-[#2E5435] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <BookOpen className="w-6 h-6 text-[#2E7D6B] dark:text-[#4CAF50]" />
+                <div className="w-12 h-12 mx-auto rounded-full bg-brand-accent/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <BookOpen className="w-6 h-6 text-brand-accent" />
                 </div>
-                <p className="font-albert font-semibold text-[14px] text-[#2E7D6B] dark:text-[#4CAF50]">
+                <p className="font-albert font-semibold text-[14px] text-brand-accent">
                   Discover more
                 </p>
               </div>

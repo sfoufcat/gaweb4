@@ -28,14 +28,14 @@ const COACH_TIER_PRICE_IDS: Record<CoachTier, string> = {
  * Three flows supported:
  * 
  * 1. REACTIVATION (reactivate: true):
- *    - Creates Checkout Session for immediate billing
- *    - Used by EmbeddedCheckout on /coach/reactivate page
- *    - Returns Checkout Session clientSecret
+ *    - Creates Subscription with payment_behavior: 'default_incomplete'
+ *    - Frontend uses PaymentElement to collect payment details
+ *    - Returns PaymentIntent clientSecret and subscriptionId
  * 
  * 2. UPGRADE (upgrade: true):
- *    - Creates Checkout Session for immediate billing (same as reactivation)
- *    - Used by EmbeddedCheckout on /coach/plan page for tier upgrades
- *    - Returns Checkout Session clientSecret
+ *    - Creates Subscription with payment_behavior: 'default_incomplete'
+ *    - Frontend uses PaymentElement to collect payment details
+ *    - Returns PaymentIntent clientSecret and subscriptionId
  * 
  * 3. ONBOARDING WITH TRIAL (trial: true):
  *    - Creates SetupIntent to save payment method
@@ -137,21 +137,23 @@ export async function POST(req: Request) {
       );
     }
 
-    // REACTIVATION/UPGRADE FLOW: Use Checkout Session for immediate billing
-    // This returns a clientSecret compatible with EmbeddedCheckout
+    // REACTIVATION/UPGRADE FLOW: Create subscription with incomplete payment
+    // This returns a PaymentIntent clientSecret compatible with PaymentElement
     if (reactivate || upgrade) {
       const priceId = COACH_TIER_PRICE_IDS[tier];
+      const flowType = reactivate ? 'reactivate' : 'upgrade';
       
-      // Determine base URL for redirects
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.growthaddicts.com';
-      const flowType = reactivate ? 'reactivated' : 'upgraded';
-      
-      const session = await stripe.checkout.sessions.create({
+      // Create subscription with payment_behavior: 'default_incomplete'
+      // This creates the subscription in 'incomplete' status with a PaymentIntent
+      const subscription = await stripe.subscriptions.create({
         customer: customerId,
-        mode: 'subscription',
-        ui_mode: 'embedded',
-        line_items: [{ price: priceId, quantity: 1 }],
-        return_url: `${baseUrl}/coach?${flowType}=true`,
+        items: [{ price: priceId }],
+        payment_behavior: 'default_incomplete',
+        payment_settings: { 
+          save_default_payment_method: 'on_subscription',
+          payment_method_types: ['card'],
+        },
+        expand: ['latest_invoice.payment_intent'],
         metadata: {
           userId,
           organizationId,
@@ -160,20 +162,26 @@ export async function POST(req: Request) {
           reactivate: reactivate ? 'true' : 'false',
           upgrade: upgrade ? 'true' : 'false',
         },
-        subscription_data: {
-          metadata: {
-            userId,
-            organizationId,
-            tier,
-            type: 'coach_subscription',
-          },
-        },
       });
 
-      console.log(`[COACH_CHECKOUT] Created Checkout Session ${session.id} for ${flowType}, org ${organizationId}, tier ${tier}`);
+      // Get the PaymentIntent from the latest invoice
+      const invoice = subscription.latest_invoice as Stripe.Invoice;
+      const paymentIntent = invoice.payment_intent as Stripe.PaymentIntent;
+
+      if (!paymentIntent?.client_secret) {
+        // Cleanup the incomplete subscription if we can't get the PaymentIntent
+        await stripe.subscriptions.cancel(subscription.id);
+        return NextResponse.json(
+          { error: 'Failed to create payment. Please try again.' },
+          { status: 500 }
+        );
+      }
+
+      console.log(`[COACH_CHECKOUT] Created Subscription ${subscription.id} with PaymentIntent for ${flowType}, org ${organizationId}, tier ${tier}`);
 
       return NextResponse.json({ 
-        clientSecret: session.client_secret,
+        clientSecret: paymentIntent.client_secret,
+        subscriptionId: subscription.id,
         customerId,
       });
     }

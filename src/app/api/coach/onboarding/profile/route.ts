@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { ClerkPublicMetadataWithOrg } from '@/lib/clerk-organizations';
+import { ClerkPublicMetadataWithOrg, updateSubdomainFromBusinessName } from '@/lib/clerk-organizations';
+import { syncTenantToEdgeConfig, DEFAULT_TENANT_BRANDING } from '@/lib/tenant-edge-config';
 
 /**
  * POST /api/coach/onboarding/profile
  * 
  * Save coach profile data during onboarding step 1.
- * Updates organization name, branding settings, and advances onboarding state.
+ * Updates organization name, branding settings, subdomain, and advances onboarding state.
+ * 
+ * The subdomain is generated from the business name:
+ * - "Omir Delil" -> tries: omirdelil, omir-delil, coachomirdelil, coachomirdelil1, etc.
  */
 export async function POST(req: Request) {
   try {
@@ -43,6 +47,29 @@ export async function POST(req: Request) {
     
     const organizationId = metadata.organizationId;
     const now = new Date().toISOString();
+    
+    // Generate and update subdomain from business name
+    let subdomain: string | null = null;
+    try {
+      subdomain = await updateSubdomainFromBusinessName(organizationId, businessName.trim());
+      console.log(`[ONBOARDING_PROFILE] Set subdomain for ${organizationId}: ${subdomain}`);
+      
+      // Sync to Edge Config for fast tenant resolution
+      await syncTenantToEdgeConfig(
+        organizationId,
+        subdomain,
+        {
+          ...DEFAULT_TENANT_BRANDING,
+          appTitle: businessName.trim(),
+          logoUrl: avatarUrl || null,
+        },
+        undefined // No custom domain initially
+      );
+      console.log(`[ONBOARDING_PROFILE] Synced subdomain ${subdomain} to Edge Config`);
+    } catch (subdomainError) {
+      console.error(`[ONBOARDING_PROFILE] Failed to update subdomain:`, subdomainError);
+      // Continue - subdomain can be updated later from dashboard
+    }
     
     // Update organization name in Clerk
     try {
@@ -102,6 +129,8 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       nextStep: 'needs_plan',
+      subdomain: subdomain || undefined,
+      tenantUrl: subdomain ? `https://${subdomain}.growthaddicts.com` : undefined,
     });
     
   } catch (error) {

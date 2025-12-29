@@ -540,65 +540,114 @@ export async function POST(request: NextRequest) {
       description += ` (Originally $${originalFormatted}, -$${discountFormatted} discount)`;
     }
 
-    // Create Stripe checkout session
-    const sessionParams: Stripe.Checkout.SessionCreateParams = {
-      mode: 'payment',
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: program.currency || 'usd',
-            product_data: {
-              name: program.name,
-              description,
-              images: program.coverImageUrl ? [program.coverImageUrl] : undefined,
-            },
-            unit_amount: finalPrice, // Use discounted price
+    // Check if program has subscription enabled (recurring billing)
+    const isSubscription = program.subscriptionEnabled && program.stripePriceId;
+
+    // Create Stripe checkout session - different mode for subscriptions
+    let sessionParams: Stripe.Checkout.SessionCreateParams;
+
+    if (isSubscription) {
+      // Subscription mode - recurring billing
+      sessionParams = {
+        mode: 'subscription',
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price: program.stripePriceId!, // Use existing recurring price
+            quantity: 1,
           },
-          quantity: 1,
+        ],
+        subscription_data: {
+          application_fee_percent: platformFeePercent,
+          metadata: {
+            userId,
+            programId,
+            cohortId: cohortId || '',
+            programType: program.type,
+            organizationId: program.organizationId,
+            type: 'program_subscription',
+            joinCommunity: joinCommunity !== false ? 'true' : 'false',
+            startDate: validatedStartDate || '',
+          },
         },
-      ],
-      payment_intent_data: {
-        application_fee_amount: applicationFeeAmount,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        customer_email: clerkUser.emailAddresses[0]?.emailAddress,
         metadata: {
           userId,
           programId,
           cohortId: cohortId || '',
           programType: program.type,
           organizationId: program.organizationId,
-          discountCodeId: appliedDiscountCode?.id || '',
-          originalAmountCents: String(program.priceInCents),
-          discountAmountCents: String(discountAmountCents),
+          type: 'program_subscription',
           joinCommunity: joinCommunity !== false ? 'true' : 'false',
           startDate: validatedStartDate || '',
         },
-      },
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      customer_email: clerkUser.emailAddresses[0]?.emailAddress,
-      metadata: {
-        userId,
-        programId,
-        cohortId: cohortId || '',
-        programType: program.type,
-        organizationId: program.organizationId,
-        type: 'program_enrollment',
-        discountCodeId: appliedDiscountCode?.id || '',
-        joinCommunity: joinCommunity !== false ? 'true' : 'false',
-        startDate: validatedStartDate || '',
-      },
-    };
+      };
+
+      console.log(`[PROGRAM_ENROLL] Creating subscription checkout for user ${userId}, program ${programId}, interval: ${program.billingInterval}`);
+    } else {
+      // One-time payment mode
+      sessionParams = {
+        mode: 'payment',
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency: program.currency || 'usd',
+              product_data: {
+                name: program.name,
+                description,
+                images: program.coverImageUrl ? [program.coverImageUrl] : undefined,
+              },
+              unit_amount: finalPrice, // Use discounted price
+            },
+            quantity: 1,
+          },
+        ],
+        payment_intent_data: {
+          application_fee_amount: applicationFeeAmount,
+          metadata: {
+            userId,
+            programId,
+            cohortId: cohortId || '',
+            programType: program.type,
+            organizationId: program.organizationId,
+            discountCodeId: appliedDiscountCode?.id || '',
+            originalAmountCents: String(program.priceInCents),
+            discountAmountCents: String(discountAmountCents),
+            joinCommunity: joinCommunity !== false ? 'true' : 'false',
+            startDate: validatedStartDate || '',
+          },
+        },
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        customer_email: clerkUser.emailAddresses[0]?.emailAddress,
+        metadata: {
+          userId,
+          programId,
+          cohortId: cohortId || '',
+          programType: program.type,
+          organizationId: program.organizationId,
+          type: 'program_enrollment',
+          discountCodeId: appliedDiscountCode?.id || '',
+          joinCommunity: joinCommunity !== false ? 'true' : 'false',
+          startDate: validatedStartDate || '',
+        },
+      };
+    }
 
     const session = await stripe.checkout.sessions.create(
       sessionParams,
       { stripeAccount: stripeConnectAccountId }
     );
 
-    console.log(`[PROGRAM_ENROLL] Created Stripe checkout session ${session.id} for user ${userId}, program ${programId}`);
+    console.log(`[PROGRAM_ENROLL] Created Stripe checkout session ${session.id} for user ${userId}, program ${programId}, mode: ${isSubscription ? 'subscription' : 'payment'}`);
 
     return NextResponse.json({ 
       checkoutUrl: session.url,
       sessionId: session.id,
+      isSubscription,
     });
   } catch (error) {
     console.error('[PROGRAM_ENROLL] Error:', error);

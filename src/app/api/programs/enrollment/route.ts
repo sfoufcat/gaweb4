@@ -72,7 +72,15 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       hasEnrollment: true,
-      enrollment,
+      enrollment: {
+        ...enrollment,
+        // Explicitly include subscription fields
+        subscriptionId: enrollment.subscriptionId || null,
+        subscriptionStatus: enrollment.subscriptionStatus || 'none',
+        currentPeriodEnd: enrollment.currentPeriodEnd || null,
+        accessEndsAt: enrollment.accessEndsAt || null,
+        cancelAtPeriodEnd: enrollment.cancelAtPeriodEnd || false,
+      },
       program: {
         id: program.id,
         name: program.name,

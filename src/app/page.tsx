@@ -1528,10 +1528,10 @@ export default function Dashboard() {
             Habits
           </h2>
           <div className="flex items-center gap-3">
-            <Link href="/habits" className="font-sans text-[12px] text-[#a07855] dark:text-[#b8896a] hover:opacity-80 transition-opacity leading-[1.2]">
+            <Link href="/habits" className="font-sans text-[12px] text-brand-accent hover:opacity-80 transition-opacity leading-[1.2]">
               All
             </Link>
-            <Link href="/habits/new" className="font-sans text-[12px] text-[#a07855] dark:text-[#b8896a] hover:opacity-80 transition-opacity leading-[1.2]">
+            <Link href="/habits/new" className="font-sans text-[12px] text-brand-accent hover:opacity-80 transition-opacity leading-[1.2]">
               Add
             </Link>
           </div>

@@ -1015,12 +1015,17 @@ export default clerkMiddleware(async (auth, request) => {
       if (isStaffRole(role)) {
         if (isCoachPlanPage(request) || isCoachReactivatePage(request)) {
           // Allow access to plan/reactivate pages without subscription check
-        } else if (isCoachDashboardRoute(request)) {
-          // Redirect to reactivate page for coach dashboard
+        } else {
+          // Block ALL routes for coach when subscription is inactive
           console.log(`[MIDDLEWARE] Coach ${userId} blocked: org subscription not active (status=${orgStatus}), redirecting to /coach/reactivate`);
+          if (pathname.startsWith('/api/')) {
+            return NextResponse.json(
+              { error: 'Subscription inactive', code: 'SUBSCRIPTION_INACTIVE' },
+              { status: 503 }
+            );
+          }
           return NextResponse.redirect(new URL('/coach/reactivate', request.url));
         }
-        // Note: Staff can still access non-dashboard routes like profile
       }
       
       // MEMBERS: Block ALL routes except always-allowed and platform-deactivated

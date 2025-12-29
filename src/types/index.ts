@@ -703,6 +703,11 @@ export interface Program {
   currency: string; // 'usd', 'eur', etc.
   stripePriceId?: string; // Stripe Price ID for checkout
   
+  // Subscription settings (for recurring pricing)
+  subscriptionEnabled?: boolean; // If true, enrollment requires recurring subscription
+  billingInterval?: 'monthly' | 'quarterly' | 'yearly'; // Subscription billing interval
+  stripeProductId?: string; // Stripe Product ID for subscription
+  
   // Group program settings (only applicable when type = 'group')
   squadCapacity?: number; // Max members per squad (e.g., 10)
   coachInSquads?: boolean; // Whether coach joins each squad
@@ -817,11 +822,18 @@ export interface ProgramEnrollment {
   cohortId?: string | null; // FK to program_cohorts
   squadId?: string | null; // FK to squads (auto-assigned)
   
-  // Payment
+  // Payment (one-time)
   stripePaymentIntentId?: string;
   stripeCheckoutSessionId?: string;
   paidAt?: string; // ISO timestamp when payment completed
   amountPaid: number; // Amount in cents
+  
+  // Subscription info (for recurring programs)
+  subscriptionId?: string; // Stripe subscription ID
+  subscriptionStatus?: 'active' | 'past_due' | 'canceled' | 'expired';
+  currentPeriodEnd?: string; // ISO timestamp - when subscription renews/ends
+  cancelAtPeriodEnd?: boolean; // If true, subscription will end at currentPeriodEnd
+  accessEndsAt?: string; // ISO timestamp - when user loses access (for grace periods)
   
   // Progress
   status: NewProgramEnrollmentStatus;
@@ -1090,14 +1102,19 @@ export interface SquadMember {
   firstName: string;
   lastName: string;
   imageUrl: string;
-  // Subscription info (for paid squads)
+  // Subscription info (for paid squads with recurring billing)
+  subscriptionId?: string | null; // Stripe subscription ID
+  subscriptionStatus?: 'active' | 'past_due' | 'canceled' | 'expired' | 'none';
+  currentPeriodEnd?: string | null; // ISO timestamp - when subscription renews/ends
+  cancelAtPeriodEnd?: boolean; // If true, subscription will end at currentPeriodEnd
+  accessEndsAt?: string | null; // ISO timestamp - when user loses access (for grace periods)
+  // Legacy fields (kept for backward compatibility)
   stripeSubscriptionId?: string; // User's subscription to this squad
-  subscriptionStatus?: 'active' | 'past_due' | 'canceled' | 'none';
   subscriptionCurrentPeriodEnd?: string; // ISO timestamp
-  // TODO: Real calculations will be implemented later
-  alignmentScore?: number | null; // Placeholder
-  streak?: number | null; // Placeholder
-  moodState?: MoodState | null; // Placeholder
+  // Stats (real calculations will be implemented later)
+  alignmentScore?: number | null;
+  streak?: number | null;
+  moodState?: MoodState | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,14 +1,15 @@
 import { clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { requireAdmin, canModifyUserRole } from '@/lib/admin-utils-clerk';
-import { createOrganizationForCoach, createManualCoachSubscription } from '@/lib/clerk-organizations';
+import { createOrganizationForCoach, createManualCoachSubscription, generateSubdomainFromBusinessName } from '@/lib/clerk-organizations';
 import { createOrgDomain, isSubdomainAvailable, getOrgDomain, updateOrgSubdomain } from '@/lib/tenant/resolveTenant';
 import type { UserRole, CoachTier } from '@/types';
 import { validateSubdomain } from '@/types';
 
 interface RoleUpdateBody {
   role: UserRole;
-  subdomain?: string; // Required when assigning coach role (unless re-promoting with existing subdomain)
+  subdomain?: string; // Optional: explicit subdomain override
+  businessName?: string; // Optional: generates subdomain from business name if no explicit subdomain
   // Manual tier assignment (admin override)
   tier?: CoachTier; // 'starter' | 'pro' | 'scale' - defaults to 'starter'
   manualBilling?: boolean; // If true, creates subscription without Stripe payment
@@ -19,7 +20,11 @@ interface RoleUpdateBody {
  * PATCH /api/admin/users/[userId]/role
  * Updates a user's role in Clerk publicMetadata (admin/super_admin only, with restrictions)
  * 
- * For coach role assignments, a subdomain is required and will be set up for the organization.
+ * For coach role assignments, subdomain can be set via:
+ * 1. Explicit `subdomain` parameter (takes priority)
+ * 2. Generated from `businessName` parameter (e.g., "Omir Delil" -> omirdelil)
+ * 3. Re-using existing subdomain (for re-promotions)
+ * 4. Falls back to user ID-based subdomain if neither provided
  */
 export async function PATCH(
   req: Request,
@@ -31,7 +36,7 @@ export async function PATCH(
 
     const { userId: targetUserId } = await context.params;
     const body = await req.json() as RoleUpdateBody;
-    const { role: newRole, subdomain, tier, manualBilling, manualExpiresAt } = body;
+    const { role: newRole, subdomain, businessName, tier, manualBilling, manualExpiresAt } = body;
 
     if (!newRole) {
       return NextResponse.json({ error: 'Role is required' }, { status: 400 });
@@ -62,20 +67,13 @@ export async function PATCH(
       existingSubdomain = existingOrgDomain?.subdomain || null;
     }
 
-    // If assigning coach role, validate subdomain requirements
+    // Resolve final subdomain for coach role
+    // Priority: explicit subdomain > generated from businessName > existing > auto-generated
+    let finalSubdomain: string | null = null;
+    
     if (newRole === 'coach') {
-      // Re-promotion case: user has existing org with subdomain and no new subdomain provided
-      if (existingOrgId && existingSubdomain && !subdomain) {
-        console.log(`[ADMIN_USER_ROLE] Re-promoting coach ${targetUserId} - reusing existing subdomain: ${existingSubdomain}`);
-        // Will reuse existing org and subdomain below
-      } else if (!subdomain) {
-        // New coach without subdomain
-        return NextResponse.json({ 
-          error: 'Subdomain is required when assigning coach role',
-          requiresSubdomain: true,
-        }, { status: 400 });
-      } else {
-        // Subdomain provided - validate format
+      if (subdomain) {
+        // Explicit subdomain provided - validate format
         const validation = validateSubdomain(subdomain);
         if (!validation.valid) {
           return NextResponse.json({ error: validation.error }, { status: 400 });
@@ -90,8 +88,26 @@ export async function PATCH(
             return NextResponse.json({ error: 'This subdomain is already taken' }, { status: 400 });
           }
         }
-        // If same as existing, skip availability check (reclaiming own subdomain)
+        finalSubdomain = normalizedSubdomain;
+        console.log(`[ADMIN_USER_ROLE] Using explicit subdomain: ${finalSubdomain}`);
+      } else if (businessName) {
+        // Generate subdomain from business name
+        try {
+          finalSubdomain = await generateSubdomainFromBusinessName(businessName);
+          console.log(`[ADMIN_USER_ROLE] Generated subdomain "${finalSubdomain}" from business name "${businessName}"`);
+        } catch (genError) {
+          console.error(`[ADMIN_USER_ROLE] Failed to generate subdomain from business name:`, genError);
+          return NextResponse.json({ 
+            error: 'Failed to generate subdomain from business name. Please provide an explicit subdomain.',
+            requiresSubdomain: true,
+          }, { status: 400 });
+        }
+      } else if (existingOrgId && existingSubdomain) {
+        // Re-promotion case: user has existing org with subdomain
+        finalSubdomain = existingSubdomain;
+        console.log(`[ADMIN_USER_ROLE] Re-promoting coach ${targetUserId} - reusing existing subdomain: ${existingSubdomain}`);
       }
+      // If no subdomain resolved, the org creation will generate one from user ID (fallback)
     }
 
     // Check if current user can modify target user's role
@@ -116,32 +132,34 @@ export async function PATCH(
     // If assigning coach role, handle organization, subdomain, and subscription
     if (newRole === 'coach') {
       try {
-        const coachName = targetUser.firstName 
+        const coachName = businessName?.trim() || (targetUser.firstName 
           ? `${targetUser.firstName}${targetUser.lastName ? ' ' + targetUser.lastName : ''}`
-          : targetUser.emailAddresses[0]?.emailAddress?.split('@')[0] || 'Coach';
+          : targetUser.emailAddresses[0]?.emailAddress?.split('@')[0] || 'Coach');
         
         // createOrganizationForCoach already handles existing org detection
         organizationId = await createOrganizationForCoach(targetUserId, coachName);
         
-        if (existingOrgId && existingSubdomain && !subdomain) {
-          // Re-promotion: reuse existing subdomain
-          tenantUrl = `https://${existingSubdomain}.growthaddicts.com`;
-          console.log(`[ADMIN_USER_ROLE] Re-promoted coach ${targetUserId} with existing subdomain ${existingSubdomain}`);
-        } else if (subdomain) {
-          const normalizedSubdomain = subdomain.toLowerCase();
-          
-          if (existingSubdomain && normalizedSubdomain !== existingSubdomain) {
+        if (finalSubdomain) {
+          // We have a resolved subdomain (explicit, generated from businessName, or existing)
+          if (existingSubdomain && finalSubdomain !== existingSubdomain) {
             // Update to new subdomain
-            await updateOrgSubdomain(organizationId, subdomain);
-            console.log(`[ADMIN_USER_ROLE] Updated subdomain from ${existingSubdomain} to ${subdomain} for org:${organizationId}`);
+            await updateOrgSubdomain(organizationId, finalSubdomain);
+            console.log(`[ADMIN_USER_ROLE] Updated subdomain from ${existingSubdomain} to ${finalSubdomain} for org:${organizationId}`);
           } else if (!existingSubdomain) {
             // Create new subdomain mapping
-            await createOrgDomain(organizationId, subdomain);
-            console.log(`[ADMIN_USER_ROLE] Created subdomain ${subdomain} -> org:${organizationId}`);
+            await createOrgDomain(organizationId, finalSubdomain);
+            console.log(`[ADMIN_USER_ROLE] Created subdomain ${finalSubdomain} -> org:${organizationId}`);
           }
           // If same subdomain, nothing to do
           
-          tenantUrl = `https://${normalizedSubdomain}.growthaddicts.com`;
+          tenantUrl = `https://${finalSubdomain}.growthaddicts.com`;
+        } else {
+          // No subdomain resolved - org will have auto-generated one from createOrganizationForCoach
+          const orgDomain = await getOrgDomain(organizationId);
+          if (orgDomain?.subdomain) {
+            finalSubdomain = orgDomain.subdomain;
+            tenantUrl = `https://${orgDomain.subdomain}.growthaddicts.com`;
+          }
         }
         
         // Create manual subscription if tier is specified or manualBilling is true
@@ -170,6 +188,7 @@ export async function PATCH(
       success: true,
       organizationId,
       tenantUrl,
+      subdomain: finalSubdomain || undefined,
       existingSubdomain: existingSubdomain || undefined, // Included for re-promotions
       tier: newRole === 'coach' ? (tier || 'starter') : undefined,
       manualBilling: newRole === 'coach' ? (manualBilling ?? true) : undefined,

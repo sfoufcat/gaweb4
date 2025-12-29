@@ -187,7 +187,7 @@ export function NextSquadCallCard({ squad, isCoach = false, onCallUpdated, coach
         {isCoach && (
           <button
             onClick={() => setShowEditModal(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-[#a07855] dark:text-[#b8896a] hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] rounded-full transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-brand-accent hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] rounded-full transition-colors"
           >
             <Pencil className="w-3.5 h-3.5" />
             {hasScheduledCall ? 'Edit' : 'Schedule'}

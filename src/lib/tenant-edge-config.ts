@@ -317,23 +317,26 @@ export async function syncTenantToEdgeConfig(
  * @param subdomain - The subdomain for key lookup
  * @param subscription - The subscription data to update
  * @param verifiedCustomDomain - Optional custom domain to also update
+ * @param fallbackBranding - Optional branding to use if no existing config (prevents reset to defaults)
  */
 export async function syncSubscriptionToEdgeConfig(
   organizationId: string,
   subdomain: string,
   subscription: TenantSubscriptionData,
-  verifiedCustomDomain?: string
+  verifiedCustomDomain?: string,
+  fallbackBranding?: TenantBrandingData
 ): Promise<void> {
   // First get existing tenant config
   const existingConfig = await getTenantBySubdomain(subdomain);
   
   if (!existingConfig) {
     // No existing config - create minimal config with subscription
+    // Use fallbackBranding if provided (fetched from Firestore) to preserve actual branding
     console.log(`[TENANT_EDGE_CONFIG] No existing config for ${subdomain}, creating with subscription data`);
     const data: TenantConfigData = {
       organizationId,
       subdomain,
-      branding: DEFAULT_TENANT_BRANDING,
+      branding: fallbackBranding || DEFAULT_TENANT_BRANDING,
       subscription,
       updatedAt: new Date().toISOString(),
     };

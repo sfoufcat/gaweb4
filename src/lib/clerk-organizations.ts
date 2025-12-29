@@ -3,7 +3,9 @@ import type { UserRole, OrgRole, OrgSettings, DEFAULT_ORG_SETTINGS, CoachTier, C
 import { setupDefaultOrgChannels } from '@/lib/org-channels';
 import { adminDb } from '@/lib/firebase-admin';
 import { syncTenantToEdgeConfig, syncSubscriptionToEdgeConfig, DEFAULT_TENANT_BRANDING } from '@/lib/tenant-edge-config';
-import type { TenantSubscriptionData } from '@/lib/tenant-edge-config';
+import type { TenantSubscriptionData, TenantBrandingData } from '@/lib/tenant-edge-config';
+import { DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_APP_TITLE, DEFAULT_BRANDING_COLORS } from '@/types';
+import { isSubdomainAvailable, updateOrgSubdomain, getOrgDomain } from '@/lib/tenant/resolveTenant';
 
 /**
  * Clerk Organizations Utilities
@@ -648,7 +650,29 @@ export async function createManualCoachSubscription(
         cancelAtPeriodEnd: false,
       };
       
-      await syncSubscriptionToEdgeConfig(organizationId, subdomain, subscriptionData, customDomain);
+      // Fetch branding from Firestore to prevent reset to defaults when Edge Config is empty
+      let fallbackBranding: TenantBrandingData | undefined;
+      try {
+        const brandingDoc = await adminDb.collection('org_branding').doc(organizationId).get();
+        if (brandingDoc.exists) {
+          const brandingData = brandingDoc.data();
+          fallbackBranding = {
+            logoUrl: brandingData?.logoUrl ?? null,
+            horizontalLogoUrl: brandingData?.horizontalLogoUrl ?? null,
+            appTitle: brandingData?.appTitle ?? DEFAULT_APP_TITLE,
+            colors: brandingData?.colors ?? DEFAULT_BRANDING_COLORS,
+            menuTitles: brandingData?.menuTitles ?? DEFAULT_MENU_TITLES,
+            menuIcons: brandingData?.menuIcons ?? DEFAULT_MENU_ICONS,
+            menuOrder: brandingData?.menuOrder ?? DEFAULT_MENU_ORDER,
+          };
+          console.log(`[CLERK_ORGS] Fetched branding from Firestore for org ${organizationId}`);
+        }
+      } catch (brandingError) {
+        console.warn(`[CLERK_ORGS] Could not fetch branding from Firestore:`, brandingError);
+        // Continue without fallback - Edge Config may have existing data
+      }
+      
+      await syncSubscriptionToEdgeConfig(organizationId, subdomain, subscriptionData, customDomain, fallbackBranding);
       console.log(`[CLERK_ORGS] Synced manual subscription to Edge Config for subdomain ${subdomain}`);
     } else {
       console.warn(`[CLERK_ORGS] No subdomain found for org ${organizationId} - Edge Config not updated`);
@@ -713,4 +737,101 @@ async function syncBillingToClerkOrg(
     console.error(`[CLERK_ORGS] Failed to sync billing to Clerk org ${organizationId}:`, error);
     throw error;
   }
+}
+
+// ============================================================================
+// SUBDOMAIN GENERATION FROM BUSINESS NAME
+// ============================================================================
+
+/**
+ * Generate an available subdomain from a business name.
+ * 
+ * Tries variants in order:
+ * 1. "omirdelil" (lowercase, spaces removed)
+ * 2. "omir-delil" (lowercase, spaces to hyphens)
+ * 3. "coachomirdelil" (prefixed with "coach")
+ * 4. "coachomirdelil1", "coachomirdelil2", etc. (numbered fallback)
+ * 
+ * @param businessName - The business/coaching name (e.g., "Omir Delil")
+ * @returns An available subdomain string
+ * @throws Error if unable to generate an available subdomain after 100 attempts
+ */
+export async function generateSubdomainFromBusinessName(businessName: string): Promise<string> {
+  // Normalize: lowercase, remove special chars except spaces and hyphens
+  const base = businessName
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim();
+  
+  if (!base) {
+    throw new Error('Business name must contain at least one alphanumeric character');
+  }
+  
+  // Generate variant candidates
+  const spacesRemoved = base.replace(/\s+/g, '');           // omirdelil
+  const spacesToHyphens = base.replace(/\s+/g, '-');        // omir-delil
+  const prefixedNoSpaces = 'coach' + spacesRemoved;         // coachomirdelil
+  
+  // Ensure valid subdomain format (no leading/trailing hyphens, no double hyphens)
+  const cleanSubdomain = (s: string) => s
+    .replace(/-+/g, '-')      // Replace multiple hyphens with single
+    .replace(/^-|-$/g, '');   // Remove leading/trailing hyphens
+  
+  const variants = [
+    cleanSubdomain(spacesRemoved),
+    cleanSubdomain(spacesToHyphens),
+    cleanSubdomain(prefixedNoSpaces),
+  ].filter(v => v.length >= 3); // Subdomains must be at least 3 chars
+  
+  // Try each variant
+  for (const variant of variants) {
+    if (await isSubdomainAvailable(variant)) {
+      console.log(`[SUBDOMAIN_GEN] Generated subdomain "${variant}" from business name "${businessName}"`);
+      return variant;
+    }
+    console.log(`[SUBDOMAIN_GEN] Subdomain "${variant}" is taken, trying next variant...`);
+  }
+  
+  // Numbered fallback: coachomirdelil1, coachomirdelil2, etc.
+  const prefixed = cleanSubdomain(prefixedNoSpaces) || 'coach';
+  for (let i = 1; i <= 100; i++) {
+    const numbered = `${prefixed}${i}`;
+    if (await isSubdomainAvailable(numbered)) {
+      console.log(`[SUBDOMAIN_GEN] Generated numbered subdomain "${numbered}" from business name "${businessName}"`);
+      return numbered;
+    }
+  }
+  
+  // Last resort: throw error (extremely unlikely to hit with 100 numbered attempts)
+  throw new Error(`Unable to generate available subdomain from business name "${businessName}"`);
+}
+
+/**
+ * Update organization subdomain based on business name.
+ * Called when coach completes their profile during onboarding.
+ * 
+ * @param organizationId - The Clerk Organization ID
+ * @param businessName - The business/coaching name to derive subdomain from
+ * @returns The new subdomain
+ */
+export async function updateSubdomainFromBusinessName(
+  organizationId: string,
+  businessName: string
+): Promise<string> {
+  // Generate new subdomain from business name
+  const newSubdomain = await generateSubdomainFromBusinessName(businessName);
+  
+  // Get current subdomain (if any)
+  const currentDomain = await getOrgDomain(organizationId);
+  const currentSubdomain = currentDomain?.subdomain;
+  
+  // If different, update
+  if (currentSubdomain !== newSubdomain) {
+    await updateOrgSubdomain(organizationId, newSubdomain);
+    console.log(`[SUBDOMAIN_GEN] Updated org ${organizationId} subdomain: "${currentSubdomain}" -> "${newSubdomain}"`);
+  } else {
+    console.log(`[SUBDOMAIN_GEN] Org ${organizationId} subdomain unchanged: "${newSubdomain}"`);
+  }
+  
+  return newSubdomain;
 }

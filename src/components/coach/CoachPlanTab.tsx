@@ -14,7 +14,9 @@ import {
   Globe,
   Mail,
   CreditCard,
-  ExternalLink
+  ExternalLink,
+  X,
+  Shield
 } from 'lucide-react';
 import type { CoachTier, CoachSubscription } from '@/types';
 import { 
@@ -194,6 +196,7 @@ export function CoachPlanTab() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPortalLoading, setIsPortalLoading] = useState(false);
+  const [showManualBillingModal, setShowManualBillingModal] = useState(false);
 
   useEffect(() => {
     const fetchSubscription = async () => {
@@ -215,6 +218,13 @@ export function CoachPlanTab() {
   }, []);
 
   const handleManageSubscription = async () => {
+    // If manual billing (admin-assigned tier), show info modal instead of Stripe portal
+    if (data?.subscription?.manualBilling) {
+      setShowManualBillingModal(true);
+      return;
+    }
+    
+    // Otherwise, open Stripe portal in new tab
     setIsPortalLoading(true);
     try {
       const response = await fetch('/api/coach/subscription/portal', {
@@ -222,12 +232,13 @@ export function CoachPlanTab() {
       });
       const result = await response.json();
       if (result.url) {
-        window.location.href = result.url;
+        window.open(result.url, '_blank');
       } else {
         throw new Error(result.error || 'Failed to open billing portal');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to open billing portal');
+    } finally {
       setIsPortalLoading(false);
     }
   };
@@ -454,6 +465,90 @@ export function CoachPlanTab() {
                 </span>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Manual Billing Info Modal */}
+      {showManualBillingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowManualBillingModal(false)}
+          />
+
+          {/* Modal */}
+          <div className="relative bg-white dark:bg-[#171b22] rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Close Button */}
+            <button
+              onClick={() => setShowManualBillingModal(false)}
+              className="absolute top-4 right-4 p-1.5 text-text-secondary hover:text-text-primary dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Header */}
+            <div className="p-6 pb-4">
+              <div className="w-14 h-14 bg-purple-100 dark:bg-purple-900/20 rounded-2xl flex items-center justify-center mb-4">
+                <Shield className="w-7 h-7 text-purple-600 dark:text-purple-400" />
+              </div>
+
+              <h2 className="font-albert text-[22px] font-bold text-text-primary dark:text-[#f5f5f8] mb-2">
+                {tierInfo.name} Plan
+              </h2>
+
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 rounded-full text-[12px] font-medium mb-3">
+                <Shield className="w-3.5 h-3.5" />
+                Managed by Administrator
+              </div>
+
+              <p className="font-sans text-[14px] text-text-secondary dark:text-[#b2b6c2]">
+                Your subscription is managed by a Growth Addicts administrator. You don&apos;t need to manage billing directly.
+              </p>
+            </div>
+
+            {/* Details */}
+            <div className="px-6 pb-4">
+              <div className="bg-[#faf8f6] dark:bg-[#0a0c10] rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-sans text-[13px] text-text-secondary dark:text-[#b2b6c2]">
+                    Current Plan
+                  </span>
+                  <span className="font-albert text-[16px] font-semibold text-text-primary dark:text-[#f5f5f8]">
+                    {tierInfo.name}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                  <span className="font-sans text-[13px] text-text-secondary dark:text-[#b2b6c2]">
+                    Access Expires
+                  </span>
+                  <span className="font-albert text-[16px] font-semibold text-text-primary dark:text-[#f5f5f8]">
+                    {subscription?.manualExpiresAt 
+                      ? new Date(subscription.manualExpiresAt).toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric', 
+                          year: 'numeric' 
+                        })
+                      : 'No expiration'
+                    }
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 pt-2">
+              <button
+                onClick={() => setShowManualBillingModal(false)}
+                className="w-full px-5 py-3 bg-[#f5f2ed] dark:bg-[#262b35] text-text-primary dark:text-[#f5f5f8] font-sans font-medium text-[15px] rounded-xl hover:bg-[#e9e5df] dark:hover:bg-[#2d333d] transition-colors"
+              >
+                Got it
+              </button>
+              <p className="font-sans text-[12px] text-text-tertiary dark:text-[#6b7280] text-center mt-3">
+                Contact support if you have questions about your plan
+              </p>
+            </div>
           </div>
         </div>
       )}
