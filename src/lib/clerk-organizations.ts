@@ -1,5 +1,5 @@
 import { auth, clerkClient } from '@clerk/nextjs/server';
-import type { UserRole, OrgRole, OrgSettings, DEFAULT_ORG_SETTINGS } from '@/types';
+import type { UserRole, OrgRole, OrgSettings, DEFAULT_ORG_SETTINGS, CoachTier, CoachSubscriptionStatus, CoachSubscription } from '@/types';
 import { setupDefaultOrgChannels } from '@/lib/org-channels';
 import { adminDb } from '@/lib/firebase-admin';
 import { syncTenantToEdgeConfig, DEFAULT_TENANT_BRANDING } from '@/lib/tenant-edge-config';
@@ -529,4 +529,156 @@ async function createDefaultOrgSettings(organizationId: string): Promise<void> {
   };
   
   await adminDb.collection('org_settings').doc(organizationId).set(defaultSettings);
+}
+
+// ============================================================================
+// MANUAL COACH SUBSCRIPTION MANAGEMENT (ADMIN ONLY)
+// ============================================================================
+
+export interface ManualSubscriptionOptions {
+  tier: CoachTier;
+  manualBilling?: boolean;
+  manualExpiresAt?: string | null; // ISO date string - null means unlimited
+  userId?: string; // User who owns this subscription
+}
+
+/**
+ * Create or update a manual coach subscription for an organization
+ * Used by admins to grant plan access without requiring Stripe payment
+ * 
+ * This function:
+ * 1. Creates/updates the coach_subscriptions document in Firestore
+ * 2. Syncs billing state to Clerk Organization publicMetadata
+ * 
+ * @param organizationId - The Clerk Organization ID
+ * @param options - Subscription options (tier, manualBilling, expiration)
+ */
+export async function createManualCoachSubscription(
+  organizationId: string,
+  options: ManualSubscriptionOptions
+): Promise<void> {
+  const { tier, manualBilling = true, manualExpiresAt = null, userId } = options;
+  const now = new Date().toISOString();
+  
+  console.log(`[CLERK_ORGS] Creating manual subscription for org ${organizationId}:`, {
+    tier,
+    manualBilling,
+    manualExpiresAt,
+  });
+  
+  // Check if subscription already exists
+  const existingDoc = await adminDb.collection('coach_subscriptions').doc(organizationId).get();
+  
+  // Determine status based on manual billing and expiration
+  let status: CoachSubscriptionStatus = 'none';
+  if (manualBilling) {
+    if (manualExpiresAt) {
+      // Check if expiration date has passed
+      const expirationDate = new Date(manualExpiresAt);
+      status = expirationDate > new Date() ? 'active' : 'canceled';
+    } else {
+      // No expiration = permanently active (until manually changed)
+      status = 'active';
+    }
+  }
+  
+  const subscriptionData: Partial<CoachSubscription> = {
+    id: organizationId,
+    organizationId,
+    tier,
+    status,
+    stripeSubscriptionId: null, // No Stripe subscription for manual billing
+    stripeCustomerId: null,
+    stripePriceId: null,
+    currentPeriodStart: now,
+    currentPeriodEnd: manualExpiresAt || null, // Use expiration as period end
+    trialEnd: null,
+    cancelAtPeriodEnd: false,
+    manualBilling: manualBilling,
+    manualExpiresAt: manualExpiresAt || null,
+    updatedAt: now,
+  };
+  
+  if (userId) {
+    subscriptionData.userId = userId;
+  }
+  
+  if (existingDoc.exists) {
+    // Update existing subscription
+    await adminDb.collection('coach_subscriptions').doc(organizationId).update(subscriptionData);
+    console.log(`[CLERK_ORGS] Updated manual subscription for org ${organizationId}`);
+  } else {
+    // Create new subscription
+    await adminDb.collection('coach_subscriptions').doc(organizationId).set({
+      ...subscriptionData,
+      createdAt: now,
+    });
+    console.log(`[CLERK_ORGS] Created manual subscription for org ${organizationId}`);
+  }
+  
+  // Sync to Clerk Organization publicMetadata
+  await syncBillingToClerkOrg(organizationId, {
+    plan: tier,
+    subscriptionStatus: status,
+    currentPeriodEnd: manualExpiresAt || undefined,
+    onboardingState: status === 'active' ? 'active' : 'needs_plan',
+  });
+  
+  console.log(`[CLERK_ORGS] Synced manual subscription to Clerk for org ${organizationId}`);
+}
+
+/**
+ * Update an existing organization's tier (admin only)
+ * 
+ * @param organizationId - The Clerk Organization ID
+ * @param options - New subscription options
+ */
+export async function updateOrgTier(
+  organizationId: string,
+  options: ManualSubscriptionOptions
+): Promise<void> {
+  // Reuse createManualCoachSubscription which handles both create and update
+  return createManualCoachSubscription(organizationId, options);
+}
+
+/**
+ * Sync billing state to Clerk Organization publicMetadata
+ * This mirrors the function in the Stripe webhook but is exported for reuse
+ */
+async function syncBillingToClerkOrg(
+  organizationId: string,
+  billingState: {
+    plan: CoachTier;
+    subscriptionStatus: CoachSubscriptionStatus;
+    currentPeriodEnd?: string;
+    trialEnd?: string;
+    cancelAtPeriodEnd?: boolean;
+    onboardingState?: 'needs_profile' | 'needs_plan' | 'active';
+  }
+): Promise<void> {
+  try {
+    const client = await clerkClient();
+    
+    // Get existing org metadata to preserve other fields
+    const org = await client.organizations.getOrganization({ organizationId });
+    const existingMetadata = org.publicMetadata || {};
+    
+    // Update with billing state
+    await client.organizations.updateOrganization(organizationId, {
+      publicMetadata: {
+        ...existingMetadata,
+        plan: billingState.plan,
+        subscriptionStatus: billingState.subscriptionStatus,
+        currentPeriodEnd: billingState.currentPeriodEnd,
+        trialEnd: billingState.trialEnd,
+        cancelAtPeriodEnd: billingState.cancelAtPeriodEnd,
+        onboardingState: billingState.onboardingState,
+      },
+    });
+    
+    console.log(`[CLERK_ORGS] Synced billing to Clerk org ${organizationId}:`, billingState);
+  } catch (error) {
+    console.error(`[CLERK_ORGS] Failed to sync billing to Clerk org ${organizationId}:`, error);
+    throw error;
+  }
 }

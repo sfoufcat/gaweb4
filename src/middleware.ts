@@ -325,6 +325,12 @@ const isCoachPlanPage = createRouteMatcher([
   '/coach/plan/(.*)',
 ]);
 
+// Coach reactivate page (accessible without active subscription)
+const isCoachReactivatePage = createRouteMatcher([
+  '/coach/reactivate',
+  '/coach/reactivate/(.*)',
+]);
+
 // =============================================================================
 // TENANT RESOLUTION (via Vercel Edge Config)
 // =============================================================================
@@ -965,9 +971,9 @@ export default clerkMiddleware(async (auth, request) => {
   
   // For coach dashboard routes, check organization billing and plan tier
   if (isTenantMode && userId && isCoachDashboardRoute(request)) {
-    // Skip plan page - always accessible for upgrades
-    if (isCoachPlanPage(request)) {
-      // Allow access to plan page
+    // Skip plan page and reactivate page - always accessible
+    if (isCoachPlanPage(request) || isCoachReactivatePage(request)) {
+      // Allow access to plan/reactivate pages without subscription check
     }
     // Check if coach role
     else if (isStaffRole(role)) {
@@ -986,10 +992,11 @@ export default clerkMiddleware(async (auth, request) => {
       // Check subscription is active
       const isActive = hasActiveOrgSubscription(orgStatus, orgPeriodEnd, orgCancelAtPeriodEnd);
       
-      if (!isActive && !isCoachPlanPage(request)) {
-        // Redirect to plan page if subscription not active
-        console.log(`[MIDDLEWARE] Coach ${userId} blocked: org subscription not active (status=${orgStatus}), redirecting to /coach/plan`);
-        return NextResponse.redirect(new URL('/coach/plan', request.url));
+      if (!isActive) {
+        // Redirect to reactivate page if subscription not active
+        // This shows a dedicated page with plan selection and payment options
+        console.log(`[MIDDLEWARE] Coach ${userId} blocked: org subscription not active (status=${orgStatus}), redirecting to /coach/reactivate`);
+        return NextResponse.redirect(new URL('/coach/reactivate', request.url));
       }
       
       // Check Pro+ routes

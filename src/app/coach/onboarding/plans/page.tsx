@@ -40,14 +40,14 @@ const PLANS = [
       { label: 'Squads', value: '3' },
     ],
     features: [
-      'Accountability + check-ins (morning/evening/weekly)',
-      'Programs + Masterminds + Squads',
-      'Tasks + habits (incl. program-assigned)',
-      'Social feed + chat + voice/video calls',
-      'Courses + events + articles',
-      'Custom funnels (basic steps)',
+      'Check-ins + accountability',
+      'Programs + Masterminds',
+      'Tasks + habits',
+      'Chat + video calls',
+      'Courses + events',
+      'Custom funnels',
       'Basic analytics',
-      'Stripe Connect payments',
+      'Stripe payments',
     ],
   },
   {
@@ -84,7 +84,6 @@ const PLANS = [
       'Everything in Pro, plus:',
       'Team roles + permissions',
       'Multi-coach support',
-      'Higher limits (members/programs/funnels)',
       'AI Builder / AI Helper',
       'Priority support',
     ],
@@ -259,7 +258,7 @@ function PaymentForm({ selectedPlan, onSuccess, onCancel, setupIntentId }: Payme
         <button
           type="submit"
           disabled={!stripe || isProcessing}
-          className="w-full flex items-center justify-center gap-2 py-4 bg-[#a07855] hover:bg-[#8b6847] text-white rounded-xl font-albert text-[16px] font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-[#f7c948] to-[#f5b820] text-[#2c2520] rounded-[32px] font-sans font-bold text-[16px] shadow-[0px_8px_24px_0px_rgba(247,201,72,0.35)] hover:shadow-[0px_12px_32px_0px_rgba(247,201,72,0.45)] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isProcessing ? (
             <>
@@ -424,7 +423,7 @@ export default function OnboardingPlansPage() {
               />
             </div>
             <span className="font-albert text-[18px] font-bold tracking-[-0.5px] text-[#1a1a1a] dark:text-[#f5f5f8]">
-              Growth<span className="text-[#a07855] dark:text-[#b8896a]">Addicts</span>
+              GrowthAddicts
             </span>
           </div>
           
@@ -441,15 +440,15 @@ export default function OnboardingPlansPage() {
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-4 py-12">
+      <div className="max-w-5xl mx-auto px-4 py-6">
         {/* Hero */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
+          className="text-center mb-6"
         >
           {/* Trial Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#e8b923]/20 to-[#d4a61d]/10 border border-[#e8b923]/30 rounded-full mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#e8b923]/20 to-[#d4a61d]/10 border border-[#e8b923]/30 rounded-full mb-4">
             <Gift className="w-4 h-4 text-[#e8b923]" />
             <span className="font-albert text-[14px] font-semibold text-[#9a7f13] dark:text-[#e8b923]">
               7-day free trial • No credit card charged today
@@ -470,7 +469,7 @@ export default function OnboardingPlansPage() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="grid md:grid-cols-3 gap-5 mb-10"
+          className="grid md:grid-cols-3 gap-4 mb-6"
         >
           {PLANS.map((plan) => {
             const isSelected = selectedPlan === plan.id;
@@ -488,7 +487,7 @@ export default function OnboardingPlansPage() {
                 {/* Popular badge */}
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-gradient-to-r from-[#a07855] to-[#b8896a] text-white font-albert text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-lg">
+                    <span className="bg-[#a07855] text-white font-albert text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-lg">
                       Most Popular
                     </span>
                   </div>
@@ -568,7 +567,7 @@ export default function OnboardingPlansPage() {
           <button
             onClick={handleStartTrial}
             disabled={isLoading}
-            className="w-full flex items-center justify-center gap-2 py-4 bg-[#a07855] hover:bg-[#8b6847] text-white rounded-xl font-albert text-[16px] font-semibold transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+            className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-[#f7c948] to-[#f5b820] text-[#2c2520] rounded-[32px] font-sans font-bold text-[16px] shadow-[0px_8px_24px_0px_rgba(247,201,72,0.35)] hover:shadow-[0px_12px_32px_0px_rgba(247,201,72,0.45)] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />

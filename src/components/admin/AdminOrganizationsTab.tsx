@@ -2,10 +2,28 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Building2, Users, Globe, ArrowLeft, ExternalLink, Trash2, Loader2 } from 'lucide-react';
-import type { UserRole } from '@/types';
+import { Building2, Users, Globe, ArrowLeft, ExternalLink, Trash2, Loader2, Settings } from 'lucide-react';
+import type { UserRole, CoachTier } from '@/types';
 import { AdminUsersTab } from './AdminUsersTab';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { BrandedCheckbox } from '@/components/ui/checkbox';
 
 interface CustomDomain {
   id: string;
@@ -23,6 +41,10 @@ interface Organization {
   subdomain: string | null;
   customDomains: CustomDomain[];
   tenantUrl: string | null;
+  // Tier information (fetched separately)
+  tier?: CoachTier;
+  subscriptionStatus?: string;
+  manualBilling?: boolean;
 }
 
 interface AdminOrganizationsTabProps {
@@ -41,6 +63,14 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
   const [error, setError] = useState<string | null>(null);
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
   const [deletingDomain, setDeletingDomain] = useState<string | null>(null);
+  
+  // Tier management state
+  const [tierDialogOpen, setTierDialogOpen] = useState(false);
+  const [editingTier, setEditingTier] = useState<CoachTier>('starter');
+  const [editingManualBilling, setEditingManualBilling] = useState(true);
+  const [editingManualExpiresAt, setEditingManualExpiresAt] = useState('');
+  const [savingTier, setSavingTier] = useState(false);
+  const [loadingTier, setLoadingTier] = useState(false);
 
   const handleDeleteDomain = async (orgId: string, domainId: string, domainName: string) => {
     if (!confirm(`Are you sure you want to delete the domain "${domainName}"?\n\nThis will remove it from:\n- Clerk (authentication)\n- Vercel (hosting)\n- Stripe (Apple Pay)\n- Edge Config (caching)\n\nThis action cannot be undone.`)) {
@@ -89,6 +119,91 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
     }
   };
 
+  // Fetch tier info for a specific organization
+  const fetchOrgTier = async (orgId: string) => {
+    try {
+      setLoadingTier(true);
+      const response = await fetch(`/api/admin/organizations/${orgId}/tier`);
+      if (response.ok) {
+        const data = await response.json();
+        setEditingTier(data.tier || 'starter');
+        setEditingManualBilling(data.manualBilling ?? true);
+        setEditingManualExpiresAt(data.manualExpiresAt ? data.manualExpiresAt.split('T')[0] : '');
+        
+        // Update the selected org with tier info
+        if (selectedOrg && selectedOrg.id === orgId) {
+          setSelectedOrg({
+            ...selectedOrg,
+            tier: data.tier,
+            subscriptionStatus: data.status,
+            manualBilling: data.manualBilling,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching org tier:', err);
+    } finally {
+      setLoadingTier(false);
+    }
+  };
+
+  // Open tier edit dialog
+  const openTierDialog = async () => {
+    if (!selectedOrg) return;
+    setTierDialogOpen(true);
+    await fetchOrgTier(selectedOrg.id);
+  };
+
+  // Save tier changes
+  const handleSaveTier = async () => {
+    if (!selectedOrg) return;
+    
+    setSavingTier(true);
+    try {
+      const response = await fetch(`/api/admin/organizations/${selectedOrg.id}/tier`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tier: editingTier,
+          manualBilling: editingManualBilling,
+          manualExpiresAt: editingManualExpiresAt || null,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to update tier');
+      }
+
+      // Update local state
+      setSelectedOrg({
+        ...selectedOrg,
+        tier: editingTier,
+        manualBilling: editingManualBilling,
+      });
+      
+      setTierDialogOpen(false);
+      alert(`Successfully updated ${selectedOrg.name} to ${editingTier.charAt(0).toUpperCase() + editingTier.slice(1)} tier!`);
+    } catch (err) {
+      console.error('Error updating tier:', err);
+      alert(err instanceof Error ? err.message : 'Failed to update tier');
+    } finally {
+      setSavingTier(false);
+    }
+  };
+
+  // Get tier badge color
+  const getTierBadgeColor = (tier: CoachTier | undefined) => {
+    switch (tier) {
+      case 'scale':
+        return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+      case 'pro':
+        return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+      default:
+        return 'bg-slate-100 text-slate-600 dark:bg-slate-800/30 dark:text-slate-400';
+    }
+  };
+
   useEffect(() => {
     fetchOrganizations();
   }, []);
@@ -123,9 +238,20 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
                 </div>
               )}
               <div className="flex-1">
-                <h2 className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  {selectedOrg.name}
-                </h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                    {selectedOrg.name}
+                  </h2>
+                  {/* Tier Badge */}
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium font-albert ${getTierBadgeColor(selectedOrg.tier)}`}>
+                    {selectedOrg.tier ? selectedOrg.tier.charAt(0).toUpperCase() + selectedOrg.tier.slice(1) : 'Starter'}
+                  </span>
+                  {selectedOrg.manualBilling && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium font-albert bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                      Manual
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-4 mt-1">
                   <span className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-sm flex items-center gap-1">
                     <Users className="w-4 h-4" />
@@ -145,6 +271,16 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
                   )}
                 </div>
               </div>
+              
+              {/* Edit Tier Button */}
+              <Button
+                onClick={openTierDialog}
+                variant="outline"
+                className="border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#faf8f6] dark:hover:bg-white/5"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Manage Tier
+              </Button>
             </div>
           </div>
         </div>
@@ -156,6 +292,121 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
           headerTitle={`Users in ${selectedOrg.name}`}
           showOrgRole={true}
         />
+        
+        {/* Tier Edit Dialog */}
+        <AlertDialog open={tierDialogOpen} onOpenChange={setTierDialogOpen}>
+          <AlertDialogContent className="sm:max-w-lg">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-albert">Manage Plan Tier</AlertDialogTitle>
+              <AlertDialogDescription className="font-albert" asChild>
+                <div>
+                  <p className="mb-4">
+                    Edit the plan tier for <strong>{selectedOrg.name}</strong>.
+                  </p>
+                  
+                  {loadingTier ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-[#a07855] dark:text-[#b8896a]" />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Tier Selector */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                          Plan Tier
+                        </label>
+                        <Select
+                          value={editingTier}
+                          onValueChange={(value: string) => setEditingTier(value as CoachTier)}
+                          disabled={savingTier}
+                        >
+                          <SelectTrigger className="w-full font-albert">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="starter" className="font-albert">
+                              <span className="inline-flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                                Starter - 15 clients, 2 programs
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="pro" className="font-albert">
+                              <span className="inline-flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                Pro - 150 clients, custom domain
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="scale" className="font-albert">
+                              <span className="inline-flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                                Scale - 500 clients, team features
+                              </span>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      {/* Manual Billing Toggle */}
+                      <div className="flex items-center gap-3 p-3 bg-[#faf8f6] dark:bg-[#11141b] rounded-lg border border-[#e1ddd8] dark:border-[#262b35]">
+                        <BrandedCheckbox
+                          checked={editingManualBilling}
+                          onChange={(checked) => setEditingManualBilling(checked)}
+                          disabled={savingTier}
+                        />
+                        <div>
+                          <label className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                            Manual billing (no Stripe required)
+                          </label>
+                          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                            Grant access without payment
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Expiration Date */}
+                      {editingManualBilling && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                            Expiration Date (optional)
+                          </label>
+                          <input
+                            type="date"
+                            value={editingManualExpiresAt}
+                            onChange={(e) => setEditingManualExpiresAt(e.target.value)}
+                            min={new Date().toISOString().split('T')[0]}
+                            className="w-full h-10 px-3 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#313746] bg-white dark:bg-[#1e222a] text-sm text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20 focus:border-[#a07855] dark:border-[#b8896a] font-albert disabled:opacity-50"
+                            disabled={savingTier}
+                          />
+                          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                            Leave empty for unlimited access
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                disabled={savingTier}
+                className="font-albert"
+              >
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e: React.MouseEvent) => {
+                  e.preventDefault();
+                  handleSaveTier();
+                }}
+                disabled={savingTier || loadingTier}
+                className="bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white font-albert"
+              >
+                {savingTier ? 'Saving...' : 'Save Changes'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
@@ -231,7 +482,11 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
             {organizations.map((org) => (
               <button
                 key={org.id}
-                onClick={() => setSelectedOrg(org)}
+                onClick={() => {
+                  setSelectedOrg(org);
+                  // Fetch tier info when selecting org
+                  fetchOrgTier(org.id);
+                }}
                 className="p-4 rounded-xl border border-[#e1ddd8] dark:border-[#262b35]/50 bg-white/40 dark:bg-white/5 hover:bg-[#faf8f6] dark:hover:bg-white/10 transition-colors text-left group"
               >
                 <div className="flex items-start gap-3">

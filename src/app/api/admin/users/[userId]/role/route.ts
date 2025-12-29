@@ -1,14 +1,18 @@
 import { clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { requireAdmin, canModifyUserRole } from '@/lib/admin-utils-clerk';
-import { createOrganizationForCoach } from '@/lib/clerk-organizations';
+import { createOrganizationForCoach, createManualCoachSubscription } from '@/lib/clerk-organizations';
 import { createOrgDomain, isSubdomainAvailable, getOrgDomain, updateOrgSubdomain } from '@/lib/tenant/resolveTenant';
-import type { UserRole } from '@/types';
+import type { UserRole, CoachTier } from '@/types';
 import { validateSubdomain } from '@/types';
 
 interface RoleUpdateBody {
   role: UserRole;
   subdomain?: string; // Required when assigning coach role (unless re-promoting with existing subdomain)
+  // Manual tier assignment (admin override)
+  tier?: CoachTier; // 'starter' | 'pro' | 'scale' - defaults to 'starter'
+  manualBilling?: boolean; // If true, creates subscription without Stripe payment
+  manualExpiresAt?: string | null; // ISO date string - null means unlimited
 }
 
 /**
@@ -27,7 +31,7 @@ export async function PATCH(
 
     const { userId: targetUserId } = await context.params;
     const body = await req.json() as RoleUpdateBody;
-    const { role: newRole, subdomain } = body;
+    const { role: newRole, subdomain, tier, manualBilling, manualExpiresAt } = body;
 
     if (!newRole) {
       return NextResponse.json({ error: 'Role is required' }, { status: 400 });
@@ -109,7 +113,7 @@ export async function PATCH(
     let organizationId: string | null = null;
     let tenantUrl: string | null = null;
 
-    // If assigning coach role, handle organization and subdomain
+    // If assigning coach role, handle organization, subdomain, and subscription
     if (newRole === 'coach') {
       try {
         const coachName = targetUser.firstName 
@@ -139,6 +143,23 @@ export async function PATCH(
           
           tenantUrl = `https://${normalizedSubdomain}.growthaddicts.com`;
         }
+        
+        // Create manual subscription if tier is specified or manualBilling is true
+        // This allows admins to set a coach's plan tier without requiring Stripe payment
+        if (organizationId && (tier || manualBilling)) {
+          try {
+            await createManualCoachSubscription(organizationId, {
+              tier: tier || 'starter',
+              manualBilling: manualBilling ?? true, // Default to manual billing when creating from admin
+              manualExpiresAt: manualExpiresAt ?? null,
+              userId: targetUserId,
+            });
+            console.log(`[ADMIN_USER_ROLE] Created manual subscription for coach ${targetUserId} org:${organizationId} tier:${tier || 'starter'}`);
+          } catch (subError) {
+            // Log but don't fail - subscription can be fixed later
+            console.error(`[ADMIN_USER_ROLE] Failed to create subscription for org ${organizationId}:`, subError);
+          }
+        }
       } catch (orgError) {
         // Log but don't fail the role update - org can be created later
         console.error(`[ADMIN_USER_ROLE] Failed to create/update organization for coach ${targetUserId}:`, orgError);
@@ -150,6 +171,8 @@ export async function PATCH(
       organizationId,
       tenantUrl,
       existingSubdomain: existingSubdomain || undefined, // Included for re-promotions
+      tier: newRole === 'coach' ? (tier || 'starter') : undefined,
+      manualBilling: newRole === 'coach' ? (manualBilling ?? true) : undefined,
     });
   } catch (error) {
     console.error('[ADMIN_USER_ROLE_UPDATE_ERROR]', error);

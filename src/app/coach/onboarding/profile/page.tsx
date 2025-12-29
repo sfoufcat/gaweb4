@@ -206,7 +206,7 @@ export default function OnboardingProfilePage() {
               />
             </div>
             <span className="font-albert text-[18px] font-bold tracking-[-0.5px] text-[#1a1a1a] dark:text-[#f5f5f8]">
-              Growth<span className="text-[#a07855] dark:text-[#b8896a]">Addicts</span>
+              GrowthAddicts
             </span>
           </div>
           

@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
 import { UserPlus, RefreshCw } from 'lucide-react';
 import { SquadManagerPopover } from './SquadManagerPopover';
-import type { UserRole, UserTier, CoachingStatus, OrgRole, Squad, ProgramType } from '@/types';
+import type { UserRole, UserTier, CoachingStatus, OrgRole, Squad, ProgramType, CoachTier } from '@/types';
 import { validateSubdomain } from '@/types';
 import { 
   canModifyUserRole, 
@@ -176,6 +176,11 @@ export function AdminUsersTab({
   const [subdomainError, setSubdomainError] = useState<string | null>(null);
   const [subdomainLoading, setSubdomainLoading] = useState(false);
   
+  // Manual tier assignment state (for admin coach creation)
+  const [coachTier, setCoachTier] = useState<CoachTier>('starter');
+  const [manualBilling, setManualBilling] = useState(true);
+  const [manualExpiresAt, setManualExpiresAt] = useState<string>(''); // ISO date string
+  
   // Squad state for org-scoped mode
   const [squads, setSquads] = useState<SquadOption[]>([]);
   const [updatingSquadUserId, setUpdatingSquadUserId] = useState<string | null>(null);
@@ -314,7 +319,14 @@ export function AdminUsersTab({
       const response = await fetch(`/api/admin/users/${subdomainPrompt.userId}/role`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: 'coach', subdomain: subdomain.toLowerCase().trim() }),
+        body: JSON.stringify({ 
+          role: 'coach', 
+          subdomain: subdomain.toLowerCase().trim(),
+          // Manual tier assignment fields
+          tier: coachTier,
+          manualBilling,
+          manualExpiresAt: manualExpiresAt || null,
+        }),
       });
 
       const data = await response.json();
@@ -323,14 +335,19 @@ export function AdminUsersTab({
         throw new Error(data.error || 'Failed to update role');
       }
 
-      // Success! Show the tenant URL
+      // Success! Show the tenant URL and tier info
       if (data.tenantUrl) {
-        alert(`Coach role assigned! Their tenant URL is:\n${data.tenantUrl}`);
+        const tierInfo = coachTier ? ` with ${coachTier.charAt(0).toUpperCase() + coachTier.slice(1)} tier` : '';
+        const billingInfo = manualBilling ? ' (manual billing)' : '';
+        alert(`Coach role assigned${tierInfo}${billingInfo}!\n\nTheir tenant URL is:\n${data.tenantUrl}`);
       }
 
-      // Close dialog and refresh
+      // Close dialog and reset all fields
       setSubdomainPrompt(null);
       setSubdomain('');
+      setCoachTier('starter');
+      setManualBilling(true);
+      setManualExpiresAt('');
       await fetchUsers();
     } catch (err) {
       console.error('Error updating role:', err);
@@ -1173,18 +1190,25 @@ export function AdminUsersTab({
       </AlertDialog>
 
       {/* Subdomain prompt dialog for coach role assignment */}
-      <AlertDialog open={!!subdomainPrompt} onOpenChange={(open: boolean) => !open && setSubdomainPrompt(null)}>
-        <AlertDialogContent className="sm:max-w-md">
+      <AlertDialog open={!!subdomainPrompt} onOpenChange={(open: boolean) => {
+        if (!open) {
+          setSubdomainPrompt(null);
+          setCoachTier('starter');
+          setManualBilling(true);
+          setManualExpiresAt('');
+        }
+      }}>
+        <AlertDialogContent className="sm:max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle className="font-albert">Assign Coach Role</AlertDialogTitle>
             <AlertDialogDescription className="font-albert" asChild>
               <div>
                 <p className="mb-4">
-                  Choose a subdomain for <strong>{subdomainPrompt?.userName}</strong>&apos;s organization.
-                  This will be their unique URL for their coaching platform.
+                  Choose a subdomain and plan tier for <strong>{subdomainPrompt?.userName}</strong>&apos;s organization.
                 </p>
                 
                 <div className="space-y-4">
+                  {/* Subdomain */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
                       Subdomain
@@ -1212,13 +1236,91 @@ export function AdminUsersTab({
                     </p>
                   </div>
                   
+                  {/* Plan Tier Selector */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                      Plan Tier
+                    </label>
+                    <Select
+                      value={coachTier}
+                      onValueChange={(value: string) => setCoachTier(value as CoachTier)}
+                      disabled={subdomainLoading}
+                    >
+                      <SelectTrigger className="w-full font-albert">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="starter" className="font-albert">
+                          <span className="inline-flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                            Starter ($49/mo) - 15 clients, 2 programs
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="pro" className="font-albert">
+                          <span className="inline-flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                            Pro ($129/mo) - 150 clients, custom domain
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="scale" className="font-albert">
+                          <span className="inline-flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                            Scale ($299/mo) - 500 clients, team features
+                          </span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Manual Billing Toggle */}
+                  <div className="flex items-center gap-3 p-3 bg-[#faf8f6] dark:bg-[#11141b] rounded-lg border border-[#e1ddd8] dark:border-[#262b35]">
+                    <BrandedCheckbox
+                      checked={manualBilling}
+                      onChange={(checked) => setManualBilling(checked)}
+                      disabled={subdomainLoading}
+                    />
+                    <div>
+                      <label className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                        Manual billing (no Stripe payment required)
+                      </label>
+                      <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                        Grant plan access without going through payment flow
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Expiration Date (only if manual billing) */}
+                  {manualBilling && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                        Expiration Date (optional)
+                      </label>
+                      <input
+                        type="date"
+                        value={manualExpiresAt}
+                        onChange={(e) => setManualExpiresAt(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                        className="w-full h-10 px-3 py-2 rounded-lg border border-[#e1ddd8] dark:border-[#313746] bg-white dark:bg-[#1e222a] text-sm text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-[#a07855] dark:ring-[#b8896a]/20 focus:border-[#a07855] dark:border-[#b8896a] font-albert disabled:opacity-50"
+                        disabled={subdomainLoading}
+                      />
+                      <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                        Leave empty for unlimited access. Subscription will expire at end of this date.
+                      </p>
+                    </div>
+                  )}
+                  
                   {subdomain && !subdomainError && (
                     <div className="p-3 bg-[#a07855]/10 dark:bg-[#b8896a]/10 rounded-lg">
                       <p className="text-sm font-medium text-[#a07855] dark:text-[#b8896a] font-albert">
-                        Tenant URL Preview:
+                        Preview:
                       </p>
                       <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert font-mono">
                         https://{subdomain.toLowerCase()}.growthaddicts.com
+                      </p>
+                      <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
+                        {coachTier.charAt(0).toUpperCase() + coachTier.slice(1)} tier
+                        {manualBilling ? ' (manual billing)' : ''}
+                        {manualExpiresAt ? ` until ${new Date(manualExpiresAt).toLocaleDateString()}` : ''}
                       </p>
                     </div>
                   )}
