@@ -7,7 +7,7 @@ import { ProgramLandingPageEditor } from './ProgramLandingPageEditor';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2 } from 'lucide-react';
 import { AIHelperModal } from '@/components/ai';
 import type { ProgramContentDraft, LandingPageDraft, AIGenerationContext } from '@/lib/ai/types';
 import { ReferralConfigForm } from '@/components/coach/referrals';
