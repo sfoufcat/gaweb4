@@ -61,19 +61,22 @@ export type CoachSubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'canc
 export interface CoachSubscription {
   id: string;
   organizationId: string;           // Clerk Organization ID
+  userId?: string;                  // Clerk User ID of subscription owner
   tier: CoachTier;
   status: CoachSubscriptionStatus;
   
   // Stripe subscription info
   stripeSubscriptionId: string | null;
   stripeCustomerId: string | null;
+  stripePriceId?: string | null;    // Stripe Price ID
   currentPeriodStart: string | null;  // ISO timestamp
   currentPeriodEnd: string | null;    // ISO timestamp
+  trialEnd?: string | null;           // Trial end date (ISO timestamp)
   cancelAtPeriodEnd: boolean;
   
   // Manual billing support (for enterprise/special deals)
-  manualBilling: boolean;
-  manualExpiresAt: string | null;     // ISO date when manual access expires
+  manualBilling?: boolean;
+  manualExpiresAt?: string | null;    // ISO date when manual access expires
   
   createdAt: string;
   updatedAt: string;
@@ -87,8 +90,10 @@ export const DEFAULT_COACH_SUBSCRIPTION: Omit<CoachSubscription, 'id' | 'organiz
   status: 'none',
   stripeSubscriptionId: null,
   stripeCustomerId: null,
+  stripePriceId: null,
   currentPeriodStart: null,
   currentPeriodEnd: null,
+  trialEnd: null,
   cancelAtPeriodEnd: false,
   manualBilling: false,
   manualExpiresAt: null,

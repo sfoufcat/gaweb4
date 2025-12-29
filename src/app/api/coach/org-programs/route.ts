@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Get current program count for limit check
-    const { orgId: organizationId } = await requireCoachWithOrg();
+    const { organizationId } = await requireCoachWithOrg();
     const currentProgramCount = await getOrgProgramCount(organizationId);
     
     // Verify entitlements with limit check
