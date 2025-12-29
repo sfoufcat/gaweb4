@@ -129,14 +129,14 @@ export async function POST(request: NextRequest) {
     const connectedCustomerIds = userData?.stripeConnectedCustomerIds || {};
 
     if (connectedCustomerIds[stripeConnectAccountId]) {
-      customerId = connectedCustomerIds[stripeConnectAccountId];
+      const existingCustomerId = connectedCustomerIds[stripeConnectAccountId] as string;
       
       // Verify the customer still exists
       try {
-        await stripe.customers.retrieve(customerId, { stripeAccount: stripeConnectAccountId });
+        await stripe.customers.retrieve(existingCustomerId, { stripeAccount: stripeConnectAccountId });
+        customerId = existingCustomerId;
       } catch {
-        // Customer doesn't exist, create new one
-        customerId = undefined;
+        // Customer doesn't exist, will create new one below
       }
     }
 
