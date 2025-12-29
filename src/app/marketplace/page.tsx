@@ -112,9 +112,9 @@ export default function MarketplacePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b]">
+    <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#faf8f6]/95 dark:bg-[#0a0c10]/95 backdrop-blur-sm border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+      <header className="sticky top-0 z-40 bg-[#faf8f6]/95 dark:bg-[#05070b]/95 backdrop-blur-sm border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             {/* Logo */}
