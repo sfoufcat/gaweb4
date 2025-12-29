@@ -302,6 +302,9 @@ function StripePaymentForm({
   contentTitle,
   accentColor,
   organizationId,
+  contentType,
+  contentId,
+  connectedAccountId,
 }: {
   onSuccess: () => void;
   onBack: () => void;
@@ -310,6 +313,9 @@ function StripePaymentForm({
   contentTitle: string;
   accentColor: string;
   organizationId?: string | null;
+  contentType: string;
+  contentId: string;
+  connectedAccountId: string | null;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -339,6 +345,29 @@ function StripePaymentForm({
       setError(submitError.message || 'Payment failed. Please try again.');
       setIsProcessing(false);
     } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+      // Immediately confirm the purchase to create the record (don't rely on webhooks)
+      try {
+        const confirmRes = await fetch('/api/content/confirm-purchase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            paymentIntentId: paymentIntent.id,
+            contentType,
+            contentId,
+            connectedAccountId,
+          }),
+        });
+
+        if (!confirmRes.ok) {
+          const confirmError = await confirmRes.json();
+          console.error('Failed to confirm purchase:', confirmError);
+          // Don't fail - the webhook will eventually create the record
+        }
+      } catch (err) {
+        console.error('Error confirming purchase:', err);
+        // Don't fail - the webhook will eventually create the record
+      }
+
       // If user chose not to save card, delete it after successful payment
       if (!saveCard && organizationId && paymentIntent.payment_method) {
         try {
@@ -501,27 +530,27 @@ function PreviewContent({
   return (
     <div className="flex flex-col">
       {/* Content Preview */}
-      <div className="px-5 sm:px-6 pb-5">
-        <div className="flex gap-4">
+      <div className="px-5 sm:px-6 pb-6">
+        <div className="flex gap-5">
           {/* Cover Image or Icon */}
           <div className="flex-shrink-0">
             {content.coverImageUrl ? (
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
                 <Image
                   src={content.coverImageUrl}
                   alt={content.title}
-                  width={96}
-                  height={96}
+                  width={112}
+                  height={112}
                   className="w-full h-full object-cover"
                 />
               </div>
             ) : (
               <div 
-                className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl flex items-center justify-center shadow-sm ring-1 ring-black/5 dark:ring-white/10"
+                className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl flex items-center justify-center shadow-sm ring-1 ring-black/5 dark:ring-white/10"
                 style={{ backgroundColor: hexToRgba(colors.accentLight, 0.08) }}
               >
                 <ContentIcon 
-                  className="w-8 h-8 sm:w-9 sm:h-9" 
+                  className="w-9 h-9 sm:w-10 sm:h-10" 
                   style={{ color: colors.accentLight }} 
                 />
               </div>
@@ -531,7 +560,7 @@ function PreviewContent({
           {/* Content Info */}
           <div className="flex-1 min-w-0 flex flex-col justify-center">
             <div 
-              className="text-[11px] font-semibold px-2 py-0.5 rounded-md w-fit mb-1.5"
+              className="text-xs font-semibold px-2.5 py-1 rounded-md w-fit mb-2"
               style={{ 
                 backgroundColor: hexToRgba(colors.accentLight, 0.1),
                 color: colors.accentLight 
@@ -539,11 +568,11 @@ function PreviewContent({
             >
               {content.type.charAt(0).toUpperCase() + content.type.slice(1)}
             </div>
-            <h3 className="font-albert font-semibold text-[17px] sm:text-lg text-text-primary dark:text-[#f5f5f8] line-clamp-2 leading-snug tracking-[-0.3px]">
+            <h3 className="font-albert font-semibold text-lg sm:text-xl text-text-primary dark:text-[#f5f5f8] line-clamp-2 leading-snug tracking-[-0.3px]">
               {content.title}
             </h3>
             {content.coachName && (
-              <p className="text-[13px] text-text-secondary dark:text-[#b2b6c2] mt-1">
+              <p className="text-sm text-text-secondary dark:text-[#b2b6c2] mt-1.5">
                 by {content.coachName}
               </p>
             )}
@@ -553,25 +582,25 @@ function PreviewContent({
         {/* Description */}
         {content.description && (
           <div 
-            className="text-[13px] text-text-secondary dark:text-[#b2b6c2] mt-4 line-clamp-3 leading-relaxed prose prose-sm dark:prose-invert max-w-none [&>p]:m-0 [&>ul]:m-0 [&>ol]:m-0"
+            className="text-sm text-text-secondary dark:text-[#b2b6c2] mt-5 line-clamp-4 leading-relaxed prose prose-sm dark:prose-invert max-w-none [&>p]:m-0 [&>ul]:m-0 [&>ol]:m-0"
             dangerouslySetInnerHTML={{ __html: content.description }}
           />
         )}
         
         {/* Key Outcomes */}
         {content.keyOutcomes && content.keyOutcomes.length > 0 && (
-          <div className="mt-4 space-y-1.5">
-            <p className="text-[13px] font-medium text-text-primary dark:text-[#f5f5f8]">
+          <div className="mt-5 space-y-2">
+            <p className="text-sm font-medium text-text-primary dark:text-[#f5f5f8]">
               What you&apos;ll get:
             </p>
-            <ul className="space-y-1">
+            <ul className="space-y-1.5">
               {content.keyOutcomes.slice(0, 3).map((outcome, index) => (
-                <li key={index} className="flex items-start gap-2">
+                <li key={index} className="flex items-start gap-2.5">
                   <Check 
-                    className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" 
+                    className="w-4 h-4 mt-0.5 flex-shrink-0" 
                     style={{ color: colors.accentLight }}
                   />
-                  <span className="text-[13px] text-text-secondary dark:text-[#b2b6c2] leading-snug">
+                  <span className="text-sm text-text-secondary dark:text-[#b2b6c2] leading-snug">
                     {outcome}
                   </span>
                 </li>
@@ -582,21 +611,21 @@ function PreviewContent({
       </div>
       
       {/* Price & CTA */}
-      <div className="border-t border-[#e8e4df] dark:border-[#262b35] bg-[#faf9f7] dark:bg-[#11141b] px-5 sm:px-6 py-4">
-        <div className="flex items-center justify-between mb-3">
+      <div className="border-t border-[#e8e4df] dark:border-[#262b35] bg-[#faf9f7] dark:bg-[#11141b] px-5 sm:px-6 py-5">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-baseline gap-1.5">
-            <span className="text-[22px] font-bold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px]">
+            <span className="text-2xl font-bold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px]">
               {formatPrice(content.priceInCents, content.currency)}
             </span>
             {content.priceInCents > 0 && (
-              <span className="text-[13px] text-text-muted dark:text-[#7d8190]">
+              <span className="text-sm text-text-muted dark:text-[#7d8190]">
                 one-time
               </span>
             )}
           </div>
           <div className="flex items-center gap-1.5 text-text-muted dark:text-[#7d8190]">
-            <Shield className="w-3.5 h-3.5" />
-            <span className="text-[11px] font-medium">Secure checkout</span>
+            <Shield className="w-4 h-4" />
+            <span className="text-xs font-medium">Secure checkout</span>
           </div>
         </div>
         
@@ -1010,6 +1039,9 @@ function SheetContent({
                 contentTitle={content.title}
                 accentColor={colors.accentLight}
                 organizationId={organizationId}
+                contentType={content.type}
+                contentId={content.id}
+                connectedAccountId={connectedAccountId}
               />
             </Elements>
           </motion.div>
@@ -1186,13 +1218,13 @@ export function ContentPurchaseSheet({
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md max-h-[85vh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl" hideCloseButton>
+        <DialogContent className="max-w-lg max-h-[85vh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl" hideCloseButton>
           <DialogHeader className="sr-only">
             <DialogTitle>{content.title}</DialogTitle>
             <DialogDescription>Purchase this content</DialogDescription>
           </DialogHeader>
           
-          <div className="pt-6 flex-1 overflow-y-auto">
+          <div className="pt-6 pb-2 flex-1 overflow-y-auto">
             {sheetContent}
           </div>
         </DialogContent>
@@ -1203,12 +1235,12 @@ export function ContentPurchaseSheet({
   // Mobile: Drawer
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[85vh]">
+      <DrawerContent className="max-h-[90vh]">
         <DrawerHeader className="sr-only">
           <DrawerTitle>{content.title}</DrawerTitle>
           <DrawerDescription>Purchase this content</DrawerDescription>
         </DrawerHeader>
-        <div className="pt-2">
+        <div className="pt-2 pb-6">
           {sheetContent}
         </div>
       </DrawerContent>
