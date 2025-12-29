@@ -19,6 +19,11 @@ import type {
   Task,
   UserTrack,
   Squad,
+  // Programs v2 types
+  Program, 
+  ProgramDay, 
+  ProgramEnrollment,
+  ProgramCohort,
 } from '@/types';
 
 // ============================================================================
@@ -1011,5 +1016,475 @@ export async function removeUserFromSquadEntirely(
     console.error('[SQUAD_REMOVE] Error removing user from squad:', error);
     throw error;
   }
+}
+
+// ============================================================================
+// PROGRAMS V2 SYNC (program_enrollments + program_days collections)
+// ============================================================================
+
+/**
+ * Get user's active enrollment from Programs v2 (program_enrollments collection)
+ * 
+ * Also handles "upcoming" enrollments that should be active based on cohort start date.
+ * If the cohort's start date has arrived but status is still 'upcoming', this function
+ * will update the status to 'active' and return the enrollment.
+ */
+export async function getActiveEnrollmentV2(userId: string): Promise<ProgramEnrollment | null> {
+  // First try to find an active enrollment
+  const activeSnapshot = await adminDb
+    .collection('program_enrollments')
+    .where('userId', '==', userId)
+    .where('status', '==', 'active')
+    .limit(1)
+    .get();
+  
+  if (!activeSnapshot.empty) {
+    const doc = activeSnapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as ProgramEnrollment;
+  }
+  
+  // If no active enrollment, check for "upcoming" that should be active
+  const upcomingSnapshot = await adminDb
+    .collection('program_enrollments')
+    .where('userId', '==', userId)
+    .where('status', '==', 'upcoming')
+    .limit(1)
+    .get();
+  
+  if (upcomingSnapshot.empty) return null;
+  
+  const doc = upcomingSnapshot.docs[0];
+  const enrollment = { id: doc.id, ...doc.data() } as ProgramEnrollment;
+  
+  // Check if this upcoming enrollment should actually be active
+  const today = new Date().toISOString().split('T')[0];
+  let actualStartDate = enrollment.startedAt;
+  
+  // For group programs, use cohort start date
+  if (enrollment.cohortId) {
+    const cohortDoc = await adminDb.collection('program_cohorts').doc(enrollment.cohortId).get();
+    if (cohortDoc.exists) {
+      const cohortData = cohortDoc.data() as ProgramCohort;
+      actualStartDate = cohortData.startDate;
+    }
+  }
+  
+  // If start date has arrived, activate the enrollment
+  if (actualStartDate <= today) {
+    const now = new Date().toISOString();
+    await adminDb.collection('program_enrollments').doc(enrollment.id).update({
+      status: 'active',
+      startedAt: actualStartDate, // Fix startedAt to match actual start
+      updatedAt: now,
+    });
+    
+    console.log(`[PROGRAM_ENGINE_V2] Auto-activated enrollment ${enrollment.id} (start: ${actualStartDate})`);
+    
+    // Return the updated enrollment
+    return {
+      ...enrollment,
+      status: 'active',
+      startedAt: actualStartDate,
+    };
+  }
+  
+  // Enrollment is still upcoming (start date in future)
+  return null;
+}
+
+/**
+ * Get program day template from Programs v2 (program_days collection)
+ */
+export async function getProgramDayV2(
+  programId: string, 
+  dayIndex: number
+): Promise<ProgramDay | null> {
+  const snapshot = await adminDb
+    .collection('program_days')
+    .where('programId', '==', programId)
+    .where('dayIndex', '==', dayIndex)
+    .limit(1)
+    .get();
+  
+  if (snapshot.empty) return null;
+  const doc = snapshot.docs[0];
+  return { id: doc.id, ...doc.data() } as ProgramDay;
+}
+
+/**
+ * Get program from Programs v2 (programs collection)
+ */
+export async function getProgramV2(programId: string): Promise<Program | null> {
+  const doc = await adminDb.collection('programs').doc(programId).get();
+  if (!doc.exists) return null;
+  return { id: doc.id, ...doc.data() } as Program;
+}
+
+/**
+ * Update enrollment's lastAssignedDayIndex for Programs v2
+ */
+async function updateEnrollmentDayIndexV2(
+  enrollmentId: string, 
+  dayIndex: number
+): Promise<void> {
+  const now = new Date().toISOString();
+  await adminDb.collection('program_enrollments').doc(enrollmentId).update({
+    lastAssignedDayIndex: dayIndex,
+    updatedAt: now,
+  });
+}
+
+/**
+ * Check if a program task already exists for the user on a given day (Programs v2)
+ * (Prevents duplicates when syncing)
+ */
+async function programTaskExistsV2(
+  userId: string,
+  enrollmentId: string,
+  dayIndex: number,
+  taskLabel: string,
+  date: string
+): Promise<boolean> {
+  const snapshot = await adminDb
+    .collection('tasks')
+    .where('userId', '==', userId)
+    .where('programEnrollmentId', '==', enrollmentId)
+    .where('programDayIndex', '==', dayIndex)
+    .where('title', '==', taskLabel)
+    .where('date', '==', date)
+    .limit(1)
+    .get();
+  
+  return !snapshot.empty;
+}
+
+/**
+ * Create a task from a program template (Programs v2)
+ */
+async function createProgramTaskV2(
+  userId: string,
+  enrollmentId: string,
+  organizationId: string,
+  dayIndex: number,
+  template: ProgramTaskTemplate,
+  listType: 'focus' | 'backlog',
+  order: number,
+  date: string
+): Promise<Task> {
+  const now = new Date().toISOString();
+  
+  const taskData = {
+    userId,
+    organizationId,
+    title: template.label,
+    status: 'pending',
+    listType,
+    order,
+    date,
+    isPrivate: false,
+    sourceType: 'program',
+    programEnrollmentId: enrollmentId,
+    programDayIndex: dayIndex,
+    createdAt: now,
+    updatedAt: now,
+  } as Omit<Task, 'id'>;
+  
+  const docRef = await adminDb.collection('tasks').add(taskData);
+  console.log(`[PROGRAM_ENGINE_V2] Created program task: "${template.label}" (${listType}) for day ${dayIndex}`);
+  
+  return { id: docRef.id, ...taskData };
+}
+
+/**
+ * Calculate program day index considering cohort start date for group programs
+ */
+function calculateCurrentDayIndexV2(
+  enrollment: ProgramEnrollment,
+  program: Program,
+  cohort: ProgramCohort | null,
+  todayDate?: string
+): number {
+  const today = todayDate || new Date().toISOString().split('T')[0];
+  
+  // For group programs with cohort, use cohort start date
+  // For individual programs, use enrollment.startedAt
+  const startDateStr = cohort?.startDate || enrollment.startedAt;
+  
+  const startDate = new Date(startDateStr + 'T00:00:00');
+  const todayDateObj = new Date(today + 'T00:00:00');
+  
+  // Calculate elapsed days
+  const elapsedMs = todayDateObj.getTime() - startDate.getTime();
+  const elapsedDays = Math.floor(elapsedMs / (1000 * 60 * 60 * 24));
+  
+  // Day index is 1-based: day 1 = first day, etc.
+  const dayIndex = elapsedDays + 1;
+  
+  // If day index is <= 0, program hasn't started yet
+  if (dayIndex <= 0) return 0;
+  
+  // Cap at program length
+  return Math.min(dayIndex, program.lengthDays);
+}
+
+/**
+ * Main function: Sync program tasks for today (Programs v2)
+ * 
+ * This is the v2 engine function that:
+ * 1. Finds the user's active enrollment from program_enrollments
+ * 2. Calculates what program day they're on (using cohort date for groups)
+ * 3. Creates tasks from the program_days template if needed
+ * 4. Places tasks in Daily Focus or Backlog
+ */
+export async function syncProgramV2TasksForToday(
+  userId: string,
+  todayDate?: string
+): Promise<SyncProgramTasksResult> {
+  const today = todayDate || new Date().toISOString().split('T')[0];
+  
+  // 1. Find active enrollment from program_enrollments
+  const enrollment = await getActiveEnrollmentV2(userId);
+  
+  if (!enrollment) {
+    return {
+      success: true,
+      tasksCreated: 0,
+      focusTasksCreated: 0,
+      backlogTasksCreated: 0,
+      currentDayIndex: 0,
+      enrollmentId: null,
+      programId: null,
+      programName: null,
+      programCompleted: false,
+      message: 'No active V2 program enrollment',
+    };
+  }
+  
+  // 2. Get the program
+  const program = await getProgramV2(enrollment.programId);
+  
+  if (!program) {
+    console.error(`[PROGRAM_ENGINE_V2] Program ${enrollment.programId} not found for enrollment ${enrollment.id}`);
+    return {
+      success: false,
+      tasksCreated: 0,
+      focusTasksCreated: 0,
+      backlogTasksCreated: 0,
+      currentDayIndex: 0,
+      enrollmentId: enrollment.id,
+      programId: enrollment.programId,
+      programName: null,
+      programCompleted: false,
+      message: 'Program not found',
+    };
+  }
+  
+  // 3. Get cohort for group programs
+  let cohort: ProgramCohort | null = null;
+  if (enrollment.cohortId) {
+    const cohortDoc = await adminDb.collection('program_cohorts').doc(enrollment.cohortId).get();
+    if (cohortDoc.exists) {
+      cohort = { id: cohortDoc.id, ...cohortDoc.data() } as ProgramCohort;
+    }
+  }
+  
+  // 4. Calculate current day index
+  const dayIndex = calculateCurrentDayIndexV2(enrollment, program, cohort, today);
+  
+  // If dayIndex is 0, program hasn't started yet
+  if (dayIndex === 0) {
+    return {
+      success: true,
+      tasksCreated: 0,
+      focusTasksCreated: 0,
+      backlogTasksCreated: 0,
+      currentDayIndex: 0,
+      enrollmentId: enrollment.id,
+      programId: program.id,
+      programName: program.name,
+      programCompleted: false,
+      message: 'Program has not started yet',
+    };
+  }
+  
+  // 5. Check if we need to generate tasks for this day
+  if (dayIndex <= enrollment.lastAssignedDayIndex) {
+    // Tasks already generated for this day
+    return {
+      success: true,
+      tasksCreated: 0,
+      focusTasksCreated: 0,
+      backlogTasksCreated: 0,
+      currentDayIndex: dayIndex,
+      enrollmentId: enrollment.id,
+      programId: program.id,
+      programName: program.name,
+      programCompleted: false,
+      message: `Tasks already generated for day ${dayIndex}`,
+    };
+  }
+  
+  // 6. Get the program day template from program_days
+  const programDay = await getProgramDayV2(enrollment.programId, dayIndex);
+  
+  if (!programDay || !programDay.tasks || programDay.tasks.length === 0) {
+    console.log(`[PROGRAM_ENGINE_V2] No tasks defined for day ${dayIndex} of program ${program.name}`);
+    // Still update the lastAssignedDayIndex to prevent repeated checks
+    await updateEnrollmentDayIndexV2(enrollment.id, dayIndex);
+    return {
+      success: true,
+      tasksCreated: 0,
+      focusTasksCreated: 0,
+      backlogTasksCreated: 0,
+      currentDayIndex: dayIndex,
+      enrollmentId: enrollment.id,
+      programId: program.id,
+      programName: program.name,
+      programCompleted: false,
+      message: `No tasks defined for day ${dayIndex}`,
+    };
+  }
+  
+  // 7. Get existing tasks for today to determine placement
+  const existingFocusTasks = await getExistingFocusTasks(userId, today);
+  const existingBacklogTasks = await getExistingBacklogTasks(userId, today);
+  
+  // Get focus limit from org settings or program settings
+  let focusLimit = program.dailyFocusSlots || 3;
+  try {
+    const orgSettingsDoc = await adminDb.collection('org_settings').doc(enrollment.organizationId).get();
+    const orgSettings = orgSettingsDoc.data();
+    if (orgSettings?.defaultDailyFocusSlots) {
+      focusLimit = orgSettings.defaultDailyFocusSlots;
+    }
+  } catch {
+    // Fallback to program setting or default
+  }
+  
+  let availableFocusSlots = focusLimit - existingFocusTasks.length;
+  let nextFocusOrder = existingFocusTasks.length > 0 
+    ? Math.max(...existingFocusTasks.map(t => t.order)) + 1 
+    : 0;
+  let nextBacklogOrder = existingBacklogTasks.length > 0 
+    ? Math.max(...existingBacklogTasks.map(t => t.order)) + 1 
+    : 0;
+  
+  let tasksCreated = 0;
+  let focusTasksCreated = 0;
+  let backlogTasksCreated = 0;
+  
+  // 8. Create tasks from templates
+  // First, handle primary tasks (try to put in Focus)
+  const primaryTasks = programDay.tasks.filter(t => t.isPrimary);
+  const nonPrimaryTasks = programDay.tasks.filter(t => !t.isPrimary);
+  
+  for (const template of primaryTasks) {
+    // Check if task already exists (avoid duplicates)
+    const exists = await programTaskExistsV2(
+      userId, 
+      enrollment.id, 
+      dayIndex, 
+      template.label, 
+      today
+    );
+    
+    if (exists) {
+      console.log(`[PROGRAM_ENGINE_V2] Task "${template.label}" already exists, skipping`);
+      continue;
+    }
+    
+    // Determine placement
+    let listType: 'focus' | 'backlog';
+    let order: number;
+    
+    if (availableFocusSlots > 0) {
+      listType = 'focus';
+      order = nextFocusOrder++;
+      availableFocusSlots--;
+      focusTasksCreated++;
+    } else {
+      listType = 'backlog';
+      order = nextBacklogOrder++;
+      backlogTasksCreated++;
+    }
+    
+    await createProgramTaskV2(
+      userId,
+      enrollment.id,
+      enrollment.organizationId,
+      dayIndex,
+      template,
+      listType,
+      order,
+      today
+    );
+    
+    tasksCreated++;
+  }
+  
+  // Then, handle non-primary tasks (always go to Backlog)
+  for (const template of nonPrimaryTasks) {
+    // Check if task already exists
+    const exists = await programTaskExistsV2(
+      userId, 
+      enrollment.id, 
+      dayIndex, 
+      template.label, 
+      today
+    );
+    
+    if (exists) {
+      console.log(`[PROGRAM_ENGINE_V2] Task "${template.label}" already exists, skipping`);
+      continue;
+    }
+    
+    await createProgramTaskV2(
+      userId,
+      enrollment.id,
+      enrollment.organizationId,
+      dayIndex,
+      template,
+      'backlog',
+      nextBacklogOrder++,
+      today
+    );
+    
+    tasksCreated++;
+    backlogTasksCreated++;
+  }
+  
+  // 9. Update enrollment lastAssignedDayIndex
+  await updateEnrollmentDayIndexV2(enrollment.id, dayIndex);
+  
+  // 10. Check if program is completed (today is the last day)
+  let programCompleted = false;
+  if (dayIndex >= program.lengthDays) {
+    // Mark enrollment as completed
+    const now = new Date().toISOString();
+    await adminDb.collection('program_enrollments').doc(enrollment.id).update({
+      status: 'completed',
+      completedAt: now,
+      updatedAt: now,
+    });
+    programCompleted = true;
+    console.log(`[PROGRAM_ENGINE_V2] User ${userId} completed program ${program.name}!`);
+  }
+  
+  console.log(`[PROGRAM_ENGINE_V2] Synced day ${dayIndex} for user ${userId}: ${tasksCreated} tasks created (${focusTasksCreated} focus, ${backlogTasksCreated} backlog)`);
+  
+  return {
+    success: true,
+    tasksCreated,
+    focusTasksCreated,
+    backlogTasksCreated,
+    currentDayIndex: dayIndex,
+    enrollmentId: enrollment.id,
+    programId: program.id,
+    programName: program.name,
+    programCompleted,
+    message: programCompleted 
+      ? `Program completed! Created ${tasksCreated} tasks for final day ${dayIndex}`
+      : `Created ${tasksCreated} tasks for day ${dayIndex}`,
+  };
 }
 

@@ -647,7 +647,11 @@ export default function ProgramDetailPage() {
                     </div>
                     {enrollment.status === 'upcoming' && (
                       <p className="text-[12px] text-green-600 dark:text-green-400 mt-1 ml-7">
-                        Starts {formatDate(enrollment.startedAt)}
+                        Starts {(() => {
+                          // For group programs, use cohort start date if available
+                          const enrolledCohort = cohorts?.find(c => c.id === enrollment.cohortId);
+                          return formatDate(enrolledCohort?.startDate || enrollment.startedAt);
+                        })()}
                       </p>
                     )}
                   </div>

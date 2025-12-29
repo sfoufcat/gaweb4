@@ -523,6 +523,7 @@ async function createDefaultOrgSettings(organizationId: string): Promise<void> {
     requireApproval: false,
     autoJoinSquadId: null,
     welcomeMessage: null,
+    publicSignupEnabled: true,
     createdAt: now,
     updatedAt: now,
   };

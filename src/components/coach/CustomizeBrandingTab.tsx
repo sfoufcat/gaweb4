@@ -5,11 +5,13 @@ import Image from 'next/image';
 import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock, Mail, Send, Bell, Settings, Moon, GripVertical, Menu, Sparkles } from 'lucide-react';
 import { useBranding } from '@/contexts/BrandingContext';
 import { FeedSettingsToggle } from './FeedSettingsToggle';
+import { PublicSignupToggle } from './PublicSignupToggle';
 import { CommunitySettingsToggle } from './CommunitySettingsToggle';
 import { AlumniDiscountToggle } from './AlumniDiscountToggle';
 import { MenuEmptyStateSettings } from './MenuEmptyStateSettings';
 import { DailyFocusSettings } from './DailyFocusSettings';
 import { AlignmentActivitiesSettings } from './AlignmentActivitiesSettings';
+import { GlobalPixelsSettings } from './GlobalPixelsSettings';
 import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus, OrgEmailDefaults, OrgSystemNotifications, MenuItemKey } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_EMAIL_SETTINGS, DEFAULT_EMAIL_DEFAULTS, DEFAULT_SYSTEM_NOTIFICATIONS, validateSubdomain } from '@/types';
 import { IconPicker } from './IconPicker';
@@ -1749,8 +1751,13 @@ export function CustomizeBrandingTab() {
           Configure features and settings for your organization.
         </p>
 
+        {/* Public Signup Toggle */}
+        <PublicSignupToggle />
+        
         {/* Enable Social Feed */}
-        <FeedSettingsToggle />
+        <div className="mt-4">
+          <FeedSettingsToggle />
+        </div>
         
         {/* Auto-Convert to Community */}
         <div className="mt-4">
@@ -1775,6 +1782,11 @@ export function CustomizeBrandingTab() {
         {/* Alignment Score Activities */}
         <div className="mt-4">
           <AlignmentActivitiesSettings />
+        </div>
+        
+        {/* Global Tracking Pixels */}
+        <div className="mt-4">
+          <GlobalPixelsSettings />
         </div>
       </div>
         </>

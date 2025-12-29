@@ -30,7 +30,7 @@ export const TRACK_TO_PROGRAM_MAP: Record<UserTrack, string> = {
   ecom: 'ecom-90',
   agency: 'agency-90',
   community_builder: 'community-builder-90',
-  general: 'starter-90',
+  general: 'default', // Falls back to /signup if no program exists
 };
 
 /**
@@ -69,9 +69,9 @@ export function getStartRedirect(
 export function getBeginRedirect(
   organizationId?: string | null
 ): string | null {
-  // For /begin, we want the default signup-first funnel
-  // This would typically be configured per-organization
-  return `/join/starter-90/signup-first`;
+  // For /begin, redirect to the new default signup page
+  // which doesn't require any program/funnel configuration
+  return `/signup`;
 }
 
 /**

@@ -13,7 +13,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import { resolveTenant } from '@/lib/tenant/resolveTenant';
 import { getBrandingForDomain, getBestLogoUrl } from '@/lib/server/branding';
 import SquadFunnelClient from './SquadFunnelClient';
-import type { Funnel, FunnelStep } from '@/types';
+import type { Funnel, FunnelStep, OrgSettings } from '@/types';
+import { mergeTrackingConfig } from '@/lib/tracking-utils';
 
 interface Squad {
   id: string;
@@ -93,7 +94,20 @@ export default async function SquadFunnelPage({ params, searchParams }: SquadFun
   }
 
   const funnelDoc = funnelsSnapshot.docs[0];
-  const funnel = { id: funnelDoc.id, ...funnelDoc.data() } as Funnel;
+  const funnelData = { id: funnelDoc.id, ...funnelDoc.data() } as Funnel;
+
+  // Fetch org settings to get global tracking pixels
+  const orgSettingsDoc = await adminDb.collection('org_settings').doc(squad.organizationId).get();
+  const orgSettings = orgSettingsDoc.exists ? (orgSettingsDoc.data() as OrgSettings) : null;
+  
+  // Merge global tracking with funnel-specific tracking
+  const mergedTracking = mergeTrackingConfig(orgSettings?.globalTracking, funnelData.tracking);
+  
+  // Create funnel object with merged tracking
+  const funnel: Funnel = {
+    ...funnelData,
+    tracking: mergedTracking,
+  };
 
   // Get funnel steps - try with orderBy first, fallback to getting all steps if query fails
   let steps: FunnelStep[] = [];

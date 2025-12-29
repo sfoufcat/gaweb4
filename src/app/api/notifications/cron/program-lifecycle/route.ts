@@ -273,19 +273,43 @@ async function handleCronRequest(request: NextRequest) {
     }
 
     // 5. Activate upcoming enrollments whose start date has arrived
+    // For individual programs: use enrollment.startedAt
+    // For group programs: use cohort.startDate (more accurate)
     const upcomingEnrollmentsSnapshot = await adminDb
       .collection('program_enrollments')
       .where('status', '==', 'upcoming')
-      .where('startedAt', '<=', todayStr)
       .get();
 
     for (const enrollmentDoc of upcomingEnrollmentsSnapshot.docs) {
+      const enrollment = enrollmentDoc.data() as ProgramEnrollment;
+      
       try {
-        await enrollmentDoc.ref.update({
-          status: 'active',
-          updatedAt: new Date().toISOString(),
-        });
-        console.log(`[PROGRAM_LIFECYCLE] Activated enrollment ${enrollmentDoc.id}`);
+        let shouldActivate = false;
+        let actualStartDate = enrollment.startedAt;
+        
+        // For group programs with cohort, use cohort start date
+        if (enrollment.cohortId) {
+          const cohortDoc = await adminDb.collection('program_cohorts').doc(enrollment.cohortId).get();
+          if (cohortDoc.exists) {
+            const cohort = cohortDoc.data() as ProgramCohort;
+            actualStartDate = cohort.startDate;
+          }
+        }
+        
+        // Check if start date has arrived
+        if (actualStartDate <= todayStr) {
+          shouldActivate = true;
+        }
+        
+        if (shouldActivate) {
+          await enrollmentDoc.ref.update({
+            status: 'active',
+            // Also fix startedAt if it was different from cohort date
+            startedAt: actualStartDate,
+            updatedAt: new Date().toISOString(),
+          });
+          console.log(`[PROGRAM_LIFECYCLE] Activated enrollment ${enrollmentDoc.id} (start: ${actualStartDate})`);
+        }
       } catch (error) {
         console.error(`[PROGRAM_LIFECYCLE] Error activating enrollment ${enrollmentDoc.id}:`, error);
         stats.errors++;

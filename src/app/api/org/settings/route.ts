@@ -4,7 +4,7 @@ import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { syncTenantToEdgeConfig, buildTenantConfigData, setTenantByCustomDomain, type TenantBrandingData } from '@/lib/tenant-edge-config';
-import type { OrgSettings, OrgBranding, OrgCustomDomain, EmptyStateBehavior, AlignmentActivityKey, CompletionThreshold, AlignmentActivityConfig } from '@/types';
+import type { OrgSettings, OrgBranding, OrgCustomDomain, EmptyStateBehavior, AlignmentActivityKey, CompletionThreshold, AlignmentActivityConfig, FunnelTrackingConfig } from '@/types';
 import { DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_ORDER } from '@/types';
 
 // Valid alignment activity keys
@@ -159,6 +159,38 @@ export async function PATCH(request: NextRequest) {
         habitCompletionThreshold: config.habitCompletionThreshold || 'at_least_one',
         weekendStreakEnabled: config.weekendStreakEnabled === true, // Default to false
       };
+    }
+
+    // Global tracking pixels settings
+    if (body.globalTracking !== undefined) {
+      // Allow null to clear global tracking
+      if (body.globalTracking === null) {
+        updateData.globalTracking = null;
+      } else {
+        const tracking = body.globalTracking as FunnelTrackingConfig;
+        
+        // Build clean tracking config (only include non-empty values)
+        const cleanTracking: FunnelTrackingConfig = {};
+        
+        if (tracking.metaPixelId?.trim()) {
+          cleanTracking.metaPixelId = tracking.metaPixelId.trim();
+        }
+        if (tracking.googleAnalyticsId?.trim()) {
+          cleanTracking.googleAnalyticsId = tracking.googleAnalyticsId.trim();
+        }
+        if (tracking.googleAdsId?.trim()) {
+          cleanTracking.googleAdsId = tracking.googleAdsId.trim();
+        }
+        if (tracking.customHeadHtml?.trim()) {
+          cleanTracking.customHeadHtml = tracking.customHeadHtml.trim();
+        }
+        if (tracking.customBodyHtml?.trim()) {
+          cleanTracking.customBodyHtml = tracking.customBodyHtml.trim();
+        }
+        
+        // Only store if there are any values, otherwise set to null to clear
+        updateData.globalTracking = Object.keys(cleanTracking).length > 0 ? cleanTracking : null;
+      }
     }
 
     // Check if settings doc exists

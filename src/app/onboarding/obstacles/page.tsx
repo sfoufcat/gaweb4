@@ -103,7 +103,7 @@ export default function ObstaclesPage() {
         </div>
       );
     }
-    router.push('/join/starter-90');
+    router.push('/signup');
     return null;
   }
 

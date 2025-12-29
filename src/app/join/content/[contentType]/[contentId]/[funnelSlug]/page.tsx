@@ -14,7 +14,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import { resolveTenant } from '@/lib/tenant/resolveTenant';
 import { getBrandingForDomain, getBestLogoUrl } from '@/lib/server/branding';
 import ContentFunnelClient from './ContentFunnelClient';
-import type { Funnel, FunnelStep, FunnelContentType } from '@/types';
+import type { Funnel, FunnelStep, FunnelContentType, OrgSettings } from '@/types';
+import { mergeTrackingConfig } from '@/lib/tracking-utils';
 
 interface ContentFunnelPageProps {
   params: Promise<{ contentType: string; contentId: string; funnelSlug: string }>;
@@ -86,7 +87,21 @@ export default async function ContentFunnelPage({ params, searchParams }: Conten
   }
 
   const funnelDoc = funnelsSnapshot.docs[0];
-  const funnel = { id: funnelDoc.id, ...funnelDoc.data() } as Funnel;
+  const funnelData = { id: funnelDoc.id, ...funnelDoc.data() } as Funnel;
+
+  // Fetch org settings to get global tracking pixels
+  const contentOrgId = contentData?.organizationId || funnelData.organizationId;
+  const orgSettingsDoc = await adminDb.collection('org_settings').doc(contentOrgId).get();
+  const orgSettings = orgSettingsDoc.exists ? (orgSettingsDoc.data() as OrgSettings) : null;
+  
+  // Merge global tracking with funnel-specific tracking
+  const mergedTracking = mergeTrackingConfig(orgSettings?.globalTracking, funnelData.tracking);
+  
+  // Create funnel object with merged tracking
+  const funnel: Funnel = {
+    ...funnelData,
+    tracking: mergedTracking,
+  };
 
   // Get funnel steps
   let steps: FunnelStep[] = [];

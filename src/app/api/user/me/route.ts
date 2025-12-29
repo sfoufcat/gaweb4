@@ -54,11 +54,11 @@ export async function GET() {
     let activeGoal = null;
     
     // First check org_memberships for org-scoped goal
-    if (orgMembershipData?.goal && orgMembershipData?.targetDate) {
+    if (orgMembershipData?.goal && orgMembershipData?.goalTargetDate) {
       const progressPercentage = (orgMembershipData.goalProgress as number) ?? 0;
       activeGoal = {
         goal: orgMembershipData.goal,
-        targetDate: orgMembershipData.targetDate,
+        targetDate: orgMembershipData.goalTargetDate,
         progress: {
           percentage: progressPercentage,
         },
@@ -84,7 +84,7 @@ export async function GET() {
         bio: orgMembershipData.bio || userData.bio,
         identity: orgMembershipData.identity || userData.identity,
         goal: orgMembershipData.goal || userData.goal,
-        goalTargetDate: orgMembershipData.targetDate || userData.goalTargetDate,
+        goalTargetDate: orgMembershipData.goalTargetDate || userData.goalTargetDate,
         goalProgress: orgMembershipData.goalProgress ?? userData.goalProgress,
         weeklyFocus: orgMembershipData.weeklyFocus,
         onboardingStatus: orgMembershipData.onboardingStatus || userData.onboardingStatus,

@@ -336,6 +336,74 @@
     animation: aiShimmer 1.5s ease-in-out infinite;
   }
 
+  /* AI Sparkle Loading Animation */
+  @keyframes sparkle-pulse-ring {
+    0%, 100% { transform: scale(1); opacity: 0.3; }
+    50% { transform: scale(1.15); opacity: 0.15; }
+  }
+
+  @keyframes sparkle-pulse-glow {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+
+  @keyframes sparkle-twinkle {
+    0%, 100% { opacity: 0.3; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.2); }
+  }
+
+  @keyframes sparkle-float-0 {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(calc(-50% - 30px), calc(-50% - 40px)) scale(0.3); }
+  }
+
+  @keyframes sparkle-float-1 {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(calc(-50% + 35px), calc(-50% - 35px)) scale(0.3); }
+  }
+
+  @keyframes sparkle-float-2 {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(calc(-50% + 40px), calc(-50% + 30px)) scale(0.3); }
+  }
+
+  @keyframes sparkle-float-3 {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(calc(-50% - 35px), calc(-50% + 35px)) scale(0.3); }
+  }
+
+  .animate-sparkle-pulse-ring {
+    animation: sparkle-pulse-ring 2s ease-in-out infinite;
+  }
+
+  .animate-sparkle-pulse-glow {
+    animation: sparkle-pulse-glow 2s ease-in-out infinite;
+  }
+
+  .animate-sparkle-twinkle {
+    animation: sparkle-twinkle 1.5s ease-in-out infinite;
+  }
+
+  .animate-sparkle-float-0 {
+    animation: sparkle-float-0 3s ease-in-out infinite;
+  }
+
+  .animate-sparkle-float-1 {
+    animation: sparkle-float-1 3s ease-in-out infinite;
+  }
+
+  .animate-sparkle-float-2 {
+    animation: sparkle-float-2 3s ease-in-out infinite;
+  }
+
+  .animate-sparkle-float-3 {
+    animation: sparkle-float-3 3s ease-in-out infinite;
+  }
+
   /* Comment section slide-down */
   @keyframes slideDown {
     0% {

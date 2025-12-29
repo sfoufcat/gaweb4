@@ -142,14 +142,25 @@ export async function PATCH(
           updatedAt: new Date().toISOString(),
         });
 
-        // Also update the user's squadId field
+        // Update coach's user document with squadIds array
         const userRef = adminDb.collection('users').doc(coachId);
         const userDoc = await userRef.get();
-        if (userDoc.exists) {
-          await userRef.update({
-            squadId,
-            updatedAt: new Date().toISOString(),
-          });
+        const userData = userDoc.exists ? userDoc.data() : null;
+        const existingSquadIds: string[] = userData?.squadIds || [];
+
+        if (!existingSquadIds.includes(squadId)) {
+          if (userDoc.exists) {
+            await userRef.update({
+              squadIds: [...existingSquadIds, squadId],
+              updatedAt: new Date().toISOString(),
+            });
+          } else {
+            await userRef.set({
+              squadIds: [squadId],
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            });
+          }
         }
       } else {
         // Coach is already a member, update their roleInSquad to 'coach'

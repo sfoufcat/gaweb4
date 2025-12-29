@@ -155,7 +155,7 @@ export async function GET(request: Request) {
       ...(orgMembershipData && {
         goal: orgMembershipData.goal,
         goalStartDate: orgMembershipData.goalStartDate,
-        targetDate: orgMembershipData.targetDate,
+        goalTargetDate: orgMembershipData.goalTargetDate,
         identity: orgMembershipData.identity,
         bio: orgMembershipData.bio,
         onboardingStatus: orgMembershipData.onboardingStatus,

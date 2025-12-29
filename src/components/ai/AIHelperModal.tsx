@@ -475,8 +475,47 @@ export function AIHelperModal({
             
             {step === 'generating' && (
               <div className="flex flex-col items-center justify-center py-12">
-                <div className="w-16 h-16 rounded-full border-4 border-[#a07855] dark:border-[#b8896a]/20 border-t-[#a07855] animate-spin" />
-                <p className="mt-4 text-[#5f5a55] dark:text-[#b2b6c2]">
+                {/* Sparkle Animation Container */}
+                <div className="relative w-24 h-24">
+                  {/* Outer glow ring */}
+                  <div className="absolute inset-0 rounded-full bg-[#a07855]/20 dark:bg-[#b8896a]/20 animate-sparkle-pulse-ring" />
+                  
+                  {/* Central icon container */}
+                  <div className="absolute inset-0 flex items-center justify-center animate-sparkle-pulse-glow">
+                    <Sparkles 
+                      className="w-10 h-10 text-[#a07855] dark:text-[#b8896a]"
+                      style={{ filter: 'drop-shadow(0 0 8px rgba(160, 120, 85, 0.6))' }}
+                    />
+                  </div>
+                  
+                  {/* Floating particles */}
+                  {[...Array(8)].map((_, i) => (
+                    <div
+                      key={i}
+                      className={`absolute w-2 h-2 rounded-full bg-[#a07855] dark:bg-[#b8896a] left-1/2 top-1/2 opacity-0 animate-sparkle-float-${i % 4}`}
+                      style={{ animationDelay: `${i * 0.375}s` }}
+                    />
+                  ))}
+                  
+                  {/* Small twinkling stars */}
+                  {[...Array(6)].map((_, i) => (
+                    <div
+                      key={`star-${i}`}
+                      className="absolute animate-sparkle-twinkle"
+                      style={{
+                        left: `${20 + (i * 12)}%`,
+                        top: `${15 + ((i * 17) % 70)}%`,
+                        animationDelay: `${i * 0.25}s`,
+                      }}
+                    >
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" className="text-[#a07855]/70 dark:text-[#b8896a]/70">
+                        <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
+                      </svg>
+                    </div>
+                  ))}
+                </div>
+                
+                <p className="mt-6 text-[#5f5a55] dark:text-[#b2b6c2]">
                   Generating your content...
                 </p>
                 <p className="mt-1 text-sm text-[#5f5a55]/70 dark:text-[#b2b6c2]/70">

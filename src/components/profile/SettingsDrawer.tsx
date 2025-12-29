@@ -98,8 +98,9 @@ export function SettingsDrawer({
 
       const { url } = await response.json();
       
-      // Redirect to coach's Stripe billing portal
-      window.location.href = url;
+      // Open coach's Stripe billing portal in a new tab
+      window.open(url, '_blank');
+      setIsLoadingPortal(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to open payment portal');
       console.error('Error opening payment portal:', err);

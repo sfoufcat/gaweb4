@@ -2070,6 +2070,12 @@ export interface OrgSettings {
   // Alignment score customization (which activities count toward alignment)
   alignmentConfig?: AlignmentActivityConfig;
   
+  // Public signup settings
+  publicSignupEnabled?: boolean;       // default: true - whether public signup is allowed (if false, shows "contact coach" page)
+  
+  // Global tracking pixels (applied to all funnels in this org)
+  globalTracking?: FunnelTrackingConfig; // Organization-wide tracking pixels
+  
   createdAt: string;                   // ISO timestamp
   updatedAt: string;                   // ISO timestamp
 }
@@ -2099,6 +2105,7 @@ export const DEFAULT_ORG_SETTINGS: Omit<OrgSettings, 'id' | 'organizationId' | '
   squadEmptyStateBehavior: 'discover',   // Show find squad page by default
   defaultDailyFocusSlots: 3,             // Default: 3 daily focus tasks (matches current behavior)
   alignmentConfig: DEFAULT_ALIGNMENT_CONFIG, // Default alignment activities
+  publicSignupEnabled: true,             // Public signup enabled by default
 };
 
 /**
