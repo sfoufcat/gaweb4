@@ -912,7 +912,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .accent-branded {
-  color: var(--brand-accent-dark, #b8896a);
+  color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 .bg-accent-branded {
@@ -922,7 +922,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .bg-accent-branded {
-  background-color: var(--brand-accent-dark, #b8896a);
+  background-color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 /* ===========================================
@@ -936,7 +936,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .text-brand-accent {
-  color: var(--brand-accent-dark, #b8896a);
+  color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 /* Background color - solid */
@@ -945,7 +945,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .bg-brand-accent {
-  background-color: var(--brand-accent-dark, #b8896a);
+  background-color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 /* Background color - subtle/transparent */
@@ -954,7 +954,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .bg-brand-accent-subtle {
-  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 15%, transparent);
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 15%, transparent) !important;
 }
 
 /* Foreground text on accent background */
@@ -963,7 +963,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .text-brand-accent-foreground {
-  color: var(--brand-accent-dark-foreground, #ffffff);
+  color: var(--brand-accent-dark-foreground, #ffffff) !important;
 }
 
 /* Border colors */
@@ -972,7 +972,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .border-brand-accent {
-  border-color: var(--brand-accent-dark, #b8896a);
+  border-color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 .border-brand-accent-subtle {
@@ -980,7 +980,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .border-brand-accent-subtle {
-  border-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent);
+  border-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent) !important;
 }
 
 /* Hover states */
@@ -989,9 +989,9 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .hover\:border-brand-accent:hover {
-  border-color: var(--brand-accent-dark, #b8896a);
+  border-color: var(--brand-accent-dark, #b8896a) !important;
   /* Auto-contrast text color on accent background */
-  color: var(--brand-accent-dark-foreground, #ffffff);
+  color: var(--brand-accent-dark-foreground, #ffffff) !important;
 }
 
 /* Text color utility for text ON accent backgrounds (auto-contrasted) */
@@ -1000,7 +1000,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .text-on-accent {
-  color: var(--brand-accent-dark-foreground, #ffffff);
+  color: var(--brand-accent-dark-foreground, #ffffff) !important;
 }
 
 /* ===========================================
@@ -1015,7 +1015,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .sidebar-active-item {
-  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 18%, transparent);
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 18%, transparent) !important;
 }
 
 /* Sidebar active icon color - uses brand accent */
@@ -1024,7 +1024,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .sidebar-active-icon {
-  color: var(--brand-accent-dark, #b8896a);
+  color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 /* Mobile nav active background */
@@ -1033,7 +1033,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .mobile-nav-active {
-  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 20%, transparent);
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 20%, transparent) !important;
 }
 
 /* ===========================================
@@ -1059,7 +1059,7 @@ div[class*="LoadingIndicator"],
 
 /* Text colors - Dark mode */
 .dark .dark\:text-\[\#b8896a\] {
-  color: var(--brand-accent-dark, #b8896a);
+  color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 /* Hover background states - Light mode */
@@ -1088,7 +1088,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .dark\:hover\:text-\[\#b8896a\]:hover {
-  color: var(--brand-accent-dark, #b8896a);
+  color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 /* Border colors - Light mode */
@@ -1098,7 +1098,7 @@ div[class*="LoadingIndicator"],
 
 /* Border colors - Dark mode */
 .dark .dark\:border-\[\#b8896a\] {
-  border-color: var(--brand-accent-dark, #b8896a);
+  border-color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 /* Border with opacity */
@@ -1111,11 +1111,11 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .dark\:border-\[\#b8896a\]\/20 {
-  border-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 20%, transparent);
+  border-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 20%, transparent) !important;
 }
 
 .dark .dark\:border-\[\#b8896a\]\/30 {
-  border-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent);
+  border-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent) !important;
 }
 
 /* Ring/outline colors */
@@ -1128,7 +1128,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .dark\:ring-\[\#b8896a\] {
-  --tw-ring-color: var(--brand-accent-dark, #b8896a);
+  --tw-ring-color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 /* Focus ring states */
@@ -1137,7 +1137,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .dark\:focus\:ring-\[\#b8896a\]:focus {
-  --tw-ring-color: var(--brand-accent-dark, #b8896a);
+  --tw-ring-color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 /* Border-t/b/l colors for accents */
@@ -1154,15 +1154,15 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .dark\:border-t-\[\#b8896a\] {
-  border-top-color: var(--brand-accent-dark, #b8896a);
+  border-top-color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 .dark .dark\:border-b-\[\#b8896a\] {
-  border-bottom-color: var(--brand-accent-dark, #b8896a);
+  border-bottom-color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 .dark .dark\:border-l-\[\#b8896a\] {
-  border-left-color: var(--brand-accent-dark, #b8896a);
+  border-left-color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 /* ===========================================
@@ -1176,7 +1176,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .chat-message-own {
-  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 75%, #3a2a1a);
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 75%, #3a2a1a) !important;
 }
 
 /* Override for hardcoded brown chat message background */
@@ -1185,7 +1185,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .bg-\[\#7e6c5b\] {
-  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 75%, #3a2a1a);
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 75%, #3a2a1a) !important;
 }
 
 /* ===========================================
@@ -1234,7 +1234,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .text-earth-500 {
-  color: var(--brand-accent-dark, #b8896a);
+  color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 .text-earth-600 {
@@ -1242,7 +1242,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .text-earth-600 {
-  color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 85%, black);
+  color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 85%, black) !important;
 }
 
 .hover\:text-earth-600:hover {
@@ -1415,7 +1415,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .dark\:focus-visible\:ring-\[\#b8896a\]:focus-visible {
-  --tw-ring-color: var(--brand-accent-dark, #b8896a);
+  --tw-ring-color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 /* ===========================================
@@ -1429,7 +1429,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .dark\:ring-\[\#b8896a\]\/30 {
-  --tw-ring-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent);
+  --tw-ring-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent) !important;
 }
 
 /* Focus ring with 30% opacity */
@@ -1438,7 +1438,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .dark\:focus\:ring-\[\#b8896a\]\/30:focus {
-  --tw-ring-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent);
+  --tw-ring-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent) !important;
 }
 
 /* Focus-visible ring with 30% opacity */
@@ -1447,7 +1447,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .dark\:focus-visible\:ring-\[\#b8896a\]\/30:focus-visible {
-  --tw-ring-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent);
+  --tw-ring-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent) !important;
 }
 
 /* ===========================================
@@ -1460,7 +1460,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .group:hover .dark\:group-hover\:text-\[\#b8896a\] {
-  color: var(--brand-accent-dark, #b8896a);
+  color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 /* ===========================================
@@ -1474,7 +1474,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .dark\:bg-\[\#b8896a\]\/10 {
-  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 10%, transparent);
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 10%, transparent) !important;
 }
 
 /* Background with 15% opacity */
@@ -1483,7 +1483,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .dark\:bg-\[\#b8896a\]\/15 {
-  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 15%, transparent);
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 15%, transparent) !important;
 }
 
 /* Background with 5% opacity */
@@ -1492,7 +1492,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .dark\:bg-\[\#b8896a\]\/5 {
-  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 5%, transparent);
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 5%, transparent) !important;
 }
 
 /* ===========================================
@@ -1504,7 +1504,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .dark\:hover\:bg-\[\#b8896a\]\/10:hover {
-  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 10%, transparent);
+  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 10%, transparent) !important;
 }
 
 /* ===========================================
@@ -1517,7 +1517,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .dark\:focus\:border-\[\#b8896a\]:focus {
-  border-color: var(--brand-accent-dark, #b8896a);
+  border-color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 /* ===========================================
@@ -1530,7 +1530,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .dark\:hover\:border-\[\#b8896a\]:hover {
-  border-color: var(--brand-accent-dark, #b8896a);
+  border-color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 /* Hover border with 50% opacity */
@@ -1539,7 +1539,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .dark\:hover\:border-\[\#b8896a\]\/50:hover {
-  border-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 50%, transparent);
+  border-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 50%, transparent) !important;
 }
 
 /* ===========================================
@@ -1552,7 +1552,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .dark\:hover\:text-\[\#a07855\]:hover {
-  color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 85%, black);
+  color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 85%, black) !important;
 }
 
 /* ===========================================
@@ -1572,7 +1572,7 @@ div[class*="LoadingIndicator"],
 }
 
 .dark .dark\:border-l-\[\#b8896a\]\/20 {
-  border-left-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 20%, transparent);
+  border-left-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 20%, transparent) !important;
 }
 
 /* ===========================================
@@ -1583,10 +1583,10 @@ div[class*="LoadingIndicator"],
 
 /* Override the malformed dark:ring- pattern to only apply on focus */
 .dark .dark\:ring-\[\#b8896a\] {
-  --tw-ring-color: var(--brand-accent-dark, #b8896a);
+  --tw-ring-color: var(--brand-accent-dark, #b8896a) !important;
 }
 
 .dark .dark\:ring-\[\#b8896a\]\/30 {
-  --tw-ring-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent);
+  --tw-ring-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent) !important;
 }
 

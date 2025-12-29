@@ -117,7 +117,7 @@ export function Sidebar() {
   const { sessionClaims, isLoaded, isSignedIn, userId } = useAuth();
   const { totalUnread } = useChatUnreadCounts();
   const { scrollDirection, isAtTop } = useScrollDirection();
-  const { logoUrl, horizontalLogoUrl, appTitle, colors, menuTitles, menuIcons, menuOrder, isDefault, accentLightIsDark, accentDarkIsDark } = useBrandingValues();
+  const { logoUrl, horizontalLogoUrl, logoUrlDark, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, menuOrder, isDefault, accentLightIsDark, accentDarkIsDark } = useBrandingValues();
   const { theme } = useTheme();
   
   // Get the appropriate accent color and foreground based on theme
@@ -330,7 +330,9 @@ export function Sidebar() {
                   alt={`${appTitle} Logo`}
                   width={200}
                   height={40}
-                  className="object-contain h-full w-auto"
+                  className={`object-contain h-full w-auto ${
+                    theme === 'dark' && !horizontalLogoUrlDark ? 'invert' : ''
+                  }`}
                 />
               </div>
             ) : (
@@ -341,7 +343,9 @@ export function Sidebar() {
                     src={logoUrl}
                     alt={`${appTitle} Logo`}
                     fill
-                    className="object-cover rounded-2xl"
+                    className={`object-cover rounded-2xl ${
+                      theme === 'dark' && !logoUrlDark ? 'invert' : ''
+                    }`}
                   />
                 </div>
                 <span className="font-albert font-semibold text-xl text-[#1a1a1a] dark:text-[#faf8f6]">{appTitle}</span>
