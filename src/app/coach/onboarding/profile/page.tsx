@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
@@ -10,12 +10,9 @@ import {
   ArrowRight,
   Camera,
   Loader2,
-  Check,
   AlertCircle
 } from 'lucide-react';
-import { useDropzone } from '@uploadthing/react';
-import { generateClientDropzoneAccept } from 'uploadthing/client';
-import { useUploadThing } from '@/lib/uploadthing';
+import { compressImage } from '@/lib/uploadProfilePicture';
 
 /**
  * Coach Onboarding - Profile Setup Page
@@ -28,6 +25,7 @@ import { useUploadThing } from '@/lib/uploadthing';
 export default function OnboardingProfilePage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [businessName, setBusinessName] = useState('');
   const [description, setDescription] = useState('');
@@ -35,32 +33,8 @@ export default function OnboardingProfilePage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Upload handler
-  const { startUpload, isUploading } = useUploadThing('imageUploader', {
-    onClientUploadComplete: (res) => {
-      if (res?.[0]?.url) {
-        setAvatarUrl(res[0].url);
-        setAvatarPreview(res[0].url);
-      }
-    },
-    onUploadError: (err) => {
-      setError(err.message);
-    },
-  });
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: async (acceptedFiles) => {
-      const file = acceptedFiles[0];
-      if (file) {
-        setAvatarFile(file);
-        setAvatarPreview(URL.createObjectURL(file));
-      }
-    },
-    accept: generateClientDropzoneAccept(['image/jpeg', 'image/png', 'image/gif', 'image/webp']),
-    maxFiles: 1,
-  });
 
   // Prefill from user data
   useEffect(() => {
@@ -114,6 +88,41 @@ export default function OnboardingProfilePage() {
     checkState();
   }, [isLoaded, user, router]);
 
+  // Handle avatar file selection
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select a valid image file (JPG, PNG, etc.)');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be less than 5MB');
+      return;
+    }
+
+    try {
+      setError(null);
+      // Compress image before preview
+      const compressedFile = await compressImage(file, 800, 800, 0.85);
+      setAvatarFile(compressedFile);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(compressedFile);
+    } catch (err) {
+      console.error('[AVATAR_COMPRESS_ERROR]', err);
+      setError('Failed to process image. Please try another file.');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -128,11 +137,21 @@ export default function OnboardingProfilePage() {
     try {
       let finalAvatarUrl = avatarUrl;
       
-      // Upload new avatar if selected
-      if (avatarFile && !avatarUrl.startsWith('http')) {
-        const uploadRes = await startUpload([avatarFile]);
-        if (uploadRes?.[0]?.url) {
-          finalAvatarUrl = uploadRes[0].url;
+      // Upload new avatar to Clerk if selected
+      if (avatarFile && user) {
+        setIsUploadingAvatar(true);
+        try {
+          console.log('[ONBOARDING] Uploading avatar to Clerk...');
+          await user.setProfileImage({ file: avatarFile });
+          // Get the updated image URL after upload
+          await user.reload();
+          finalAvatarUrl = user.imageUrl || avatarUrl;
+          console.log('[ONBOARDING] Clerk avatar upload successful');
+        } catch (uploadErr) {
+          console.error('[ONBOARDING] Avatar upload failed:', uploadErr);
+          // Continue without avatar update - not critical
+        } finally {
+          setIsUploadingAvatar(false);
         }
       }
       
@@ -234,12 +253,16 @@ export default function OnboardingProfilePage() {
           {/* Avatar Upload */}
           <div className="flex flex-col items-center mb-8">
             <div
-              {...getRootProps()}
-              className={`relative w-28 h-28 rounded-full overflow-hidden cursor-pointer group ${
-                isDragActive ? 'ring-2 ring-[#a07855] dark:ring-[#b8896a]' : ''
-              }`}
+              onClick={() => fileInputRef.current?.click()}
+              className="relative w-28 h-28 rounded-full overflow-hidden cursor-pointer group"
             >
-              <input {...getInputProps()} />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                onChange={handleAvatarChange}
+                className="hidden"
+              />
               
               {avatarPreview ? (
                 <Image
@@ -260,14 +283,14 @@ export default function OnboardingProfilePage() {
                 <Camera className="w-6 h-6 text-white" />
               </div>
               
-              {isUploading && (
+              {isUploadingAvatar && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                   <Loader2 className="w-6 h-6 text-white animate-spin" />
                 </div>
               )}
             </div>
             <p className="mt-2 font-sans text-[12px] text-[#a7a39e] dark:text-[#7d8190]">
-              Click or drag to upload
+              Click to upload
             </p>
           </div>
 
@@ -337,4 +360,3 @@ export default function OnboardingProfilePage() {
     </div>
   );
 }
-
