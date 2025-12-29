@@ -3036,6 +3036,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             lengthDays: 30,
             priceInCents: 0,
             currency: 'usd',
+            subscriptionEnabled: false,
+            billingInterval: 'monthly',
             squadCapacity: 10,
             coachInSquads: true,
             assignedCoachIds: [],

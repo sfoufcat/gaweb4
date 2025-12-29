@@ -7,7 +7,7 @@ import {
   stopAllEnrollmentsForUser,
   calculateCurrentDayIndex,
 } from '@/lib/program-engine';
-import type { UserTrack } from '@/types';
+import type { UserTrack, ProgramEnrollment } from '@/types';
 
 // Valid tracks for legacy enrollment (deprecated)
 const VALID_TRACKS: UserTrack[] = [
@@ -69,17 +69,20 @@ export async function GET() {
     const currentDayIndex = calculateCurrentDayIndex(enrollment.startedAt, program.lengthDays, today);
     const progressPercentage = Math.round((currentDayIndex / program.lengthDays) * 100);
 
+    // Cast to ProgramEnrollment to access subscription fields if they exist
+    const enrollmentWithSubscription = enrollment as unknown as Partial<ProgramEnrollment>;
+    
     return NextResponse.json({
       success: true,
       hasEnrollment: true,
       enrollment: {
         ...enrollment,
-        // Explicitly include subscription fields
-        subscriptionId: enrollment.subscriptionId || null,
-        subscriptionStatus: enrollment.subscriptionStatus || 'none',
-        currentPeriodEnd: enrollment.currentPeriodEnd || null,
-        accessEndsAt: enrollment.accessEndsAt || null,
-        cancelAtPeriodEnd: enrollment.cancelAtPeriodEnd || false,
+        // Include subscription fields (may not exist on legacy StarterProgramEnrollment)
+        subscriptionId: enrollmentWithSubscription.subscriptionId || null,
+        subscriptionStatus: enrollmentWithSubscription.subscriptionStatus || 'none',
+        currentPeriodEnd: enrollmentWithSubscription.currentPeriodEnd || null,
+        accessEndsAt: enrollmentWithSubscription.accessEndsAt || null,
+        cancelAtPeriodEnd: enrollmentWithSubscription.cancelAtPeriodEnd || false,
       },
       program: {
         id: program.id,
@@ -87,7 +90,6 @@ export async function GET() {
         slug: program.slug,
         description: program.description,
         lengthDays: program.lengthDays,
-        track: program.track,
       },
       progress: {
         currentDay: currentDayIndex,

@@ -843,14 +843,7 @@ async function updateCoachPlatformSubscriptionStatus(subscription: Stripe.Subscr
       graceEnd.setDate(graceEnd.getDate() + 3); // 3-day grace period
       graceEndsAt = graceEnd.toISOString();
       console.log(`[STRIPE_WEBHOOK] Setting 3-day grace period for org ${organizationId}, ends: ${graceEndsAt}`);
-      
-      // Send payment failed email to coach
-      try {
-        const { sendPaymentFailedEmail } = await import('@/lib/email');
-        await sendPaymentFailedEmail({ organizationId, graceEndsAt });
-      } catch (emailError) {
-        console.error(`[STRIPE_WEBHOOK] Failed to send payment failed email for org ${organizationId}:`, emailError);
-      }
+      // TODO: Add payment failed email notification when email function is implemented
     } else {
       // Keep existing grace period (don't extend it)
       graceEndsAt = existingData.graceEndsAt;

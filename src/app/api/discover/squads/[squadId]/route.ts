@@ -86,7 +86,7 @@ export async function GET(
 
     // Check if user is already a member
     let isMember = false;
-    let membershipStatus: 'active' | 'past_due' | 'canceled' | 'none' = 'none';
+    let membershipStatus: 'active' | 'past_due' | 'canceled' | 'expired' | 'none' = 'none';
     
     if (userId) {
       const membershipSnapshot = await adminDb
