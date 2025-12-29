@@ -330,7 +330,7 @@ export function formatOrgRoleName(orgRole?: OrgRole): string {
   if (!orgRole) return 'Member';
   
   const roleMap: Record<OrgRole, string> = {
-    super_coach: 'Super Coach',
+    super_coach: 'Superadmin',
     coach: 'Coach',
     member: 'Member',
   };

@@ -5,7 +5,54 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { sendWelcomeEmail } from '@/lib/email';
 import { updateUserBillingInClerk, updateUserCoachingInClerk, type BillingStatus } from '@/lib/admin-utils-clerk';
 import { archiveOldSquadMemberships } from '@/lib/program-engine';
-import type { CoachingStatus, CoachingPlan, FlowSession, Program, ProgramEnrollment, ProgramInvite, NewProgramEnrollmentStatus } from '@/types';
+import type { CoachingStatus, CoachingPlan, FlowSession, Program, ProgramEnrollment, ProgramInvite, NewProgramEnrollmentStatus, CoachTier, CoachSubscriptionStatus } from '@/types';
+
+// =============================================================================
+// CLERK ORG METADATA SYNC
+// =============================================================================
+
+/**
+ * Update Clerk Organization publicMetadata with billing state
+ * This enables instant middleware-level tier gating without DB lookups
+ */
+async function syncBillingToClerkOrg(
+  organizationId: string,
+  billingState: {
+    plan: CoachTier;
+    subscriptionStatus: CoachSubscriptionStatus;
+    currentPeriodEnd?: string;
+    trialEnd?: string;
+    cancelAtPeriodEnd?: boolean;
+    onboardingState?: 'needs_profile' | 'needs_plan' | 'active';
+  }
+): Promise<void> {
+  try {
+    const { clerkClient } = await import('@clerk/nextjs/server');
+    const clerk = await clerkClient();
+    
+    // Get existing org metadata to preserve other fields
+    const org = await clerk.organizations.getOrganization({ organizationId });
+    const existingMetadata = org.publicMetadata || {};
+    
+    // Update with billing state
+    await clerk.organizations.updateOrganization(organizationId, {
+      publicMetadata: {
+        ...existingMetadata,
+        plan: billingState.plan,
+        subscriptionStatus: billingState.subscriptionStatus,
+        currentPeriodEnd: billingState.currentPeriodEnd,
+        trialEnd: billingState.trialEnd,
+        cancelAtPeriodEnd: billingState.cancelAtPeriodEnd,
+        onboardingState: billingState.onboardingState,
+      },
+    });
+    
+    console.log(`[STRIPE_WEBHOOK] Synced billing to Clerk org ${organizationId}: plan=${billingState.plan}, status=${billingState.subscriptionStatus}`);
+  } catch (error) {
+    // Log but don't fail - DB is canonical, Clerk is cache
+    console.error(`[STRIPE_WEBHOOK] Failed to sync billing to Clerk org ${organizationId}:`, error);
+  }
+}
 
 // Coaching product ID - used to identify coaching subscriptions vs membership subscriptions
 const COACHING_PRODUCT_ID = 'prod_TV2dhbvP1vJ69e';
@@ -438,7 +485,7 @@ async function handleCoachCheckoutCompleted(session: Stripe.Checkout.Session) {
   
   console.log(`[STRIPE_WEBHOOK] Updated coach_onboarding for ${organizationId} to active`);
   
-  // Also update the user's publicMetadata via Clerk to reflect active billing
+  // Update the user's publicMetadata via Clerk to reflect active billing
   try {
     const { clerkClient } = await import('@clerk/nextjs/server');
     const clerk = await clerkClient();
@@ -452,6 +499,16 @@ async function handleCoachCheckoutCompleted(session: Stripe.Checkout.Session) {
   } catch (clerkError) {
     console.error('[STRIPE_WEBHOOK] Error updating Clerk metadata for coach:', clerkError);
   }
+  
+  // CRITICAL: Sync billing state to Clerk org publicMetadata for middleware gating
+  await syncBillingToClerkOrg(organizationId, {
+    plan: (tier as CoachTier) || 'starter',
+    subscriptionStatus: subscriptionStatus as CoachSubscriptionStatus,
+    currentPeriodEnd,
+    trialEnd: undefined,
+    cancelAtPeriodEnd: false,
+    onboardingState: 'active',
+  });
 }
 
 /**
@@ -560,10 +617,21 @@ async function handleGuestCheckoutCompleted(
 
 /**
  * Handle subscription updates
- * Routes to appropriate handler based on whether it's coaching or membership
+ * Routes to appropriate handler based on subscription type:
+ * - coach_subscription: Platform subscription for coaches (Starter/Pro/Scale)
+ * - coaching: 1:1 coaching product
+ * - other: User membership subscription
  */
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  // Check if this is a coaching subscription
+  // Check if this is a coach platform subscription (Starter/Pro/Scale)
+  const isCoachPlatformSubscription = subscription.metadata?.type === 'coach_subscription';
+  
+  if (isCoachPlatformSubscription) {
+    await updateCoachPlatformSubscriptionStatus(subscription);
+    return;
+  }
+  
+  // Check if this is a coaching subscription (1:1 coaching product)
   const coachingPlan = getCoachingPlanFromSubscription(subscription);
   const isCoachingSubscription = coachingPlan !== null;
   
@@ -612,6 +680,137 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 }
 
 /**
+ * Update coach platform subscription status (Starter/Pro/Scale)
+ * This is for coaches subscribing to the platform, not user memberships
+ */
+async function updateCoachPlatformSubscriptionStatus(subscription: Stripe.Subscription) {
+  const organizationId = subscription.metadata?.organizationId;
+  const tier = subscription.metadata?.tier as CoachTier | undefined;
+  
+  if (!organizationId) {
+    console.error('[STRIPE_WEBHOOK] Coach platform subscription missing organizationId:', subscription.id);
+    return;
+  }
+  
+  // Map Stripe status to our status
+  let status: CoachSubscriptionStatus = 'active';
+  switch (subscription.status) {
+    case 'active':
+      status = 'active';
+      break;
+    case 'trialing':
+      status = 'trialing';
+      break;
+    case 'past_due':
+      status = 'past_due';
+      break;
+    case 'canceled':
+    case 'unpaid':
+    case 'incomplete_expired':
+      status = 'canceled';
+      break;
+    default:
+      status = 'none';
+  }
+  
+  const currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+  const trialEnd = subscription.trial_end 
+    ? new Date(subscription.trial_end * 1000).toISOString() 
+    : undefined;
+  const cancelAtPeriodEnd = subscription.cancel_at_period_end;
+  const now = new Date().toISOString();
+  
+  // Find and update the coach_subscriptions document
+  const subscriptionQuery = await adminDb
+    .collection('coach_subscriptions')
+    .where('stripeSubscriptionId', '==', subscription.id)
+    .limit(1)
+    .get();
+  
+  if (!subscriptionQuery.empty) {
+    const subDoc = subscriptionQuery.docs[0];
+    await subDoc.ref.update({
+      status,
+      tier: tier || subDoc.data().tier,
+      currentPeriodEnd,
+      trialEnd,
+      cancelAtPeriodEnd,
+      updatedAt: now,
+    });
+  }
+  
+  // Update org_settings
+  await adminDb.collection('org_settings').doc(organizationId).set({
+    coachTier: tier,
+    subscriptionStatus: status,
+    updatedAt: now,
+  }, { merge: true });
+  
+  console.log(`[STRIPE_WEBHOOK] Updated coach platform subscription for org ${organizationId}: tier=${tier}, status=${status}`);
+  
+  // CRITICAL: Sync to Clerk org publicMetadata for instant middleware gating
+  await syncBillingToClerkOrg(organizationId, {
+    plan: tier || 'starter',
+    subscriptionStatus: status,
+    currentPeriodEnd,
+    trialEnd,
+    cancelAtPeriodEnd,
+    onboardingState: status === 'active' || status === 'trialing' ? 'active' : 'needs_plan',
+  });
+}
+
+/**
+ * Handle coach platform subscription deletion (Starter/Pro/Scale)
+ * Downgrades the organization to no active subscription
+ */
+async function handleCoachPlatformSubscriptionDeleted(subscription: Stripe.Subscription) {
+  const organizationId = subscription.metadata?.organizationId;
+  
+  if (!organizationId) {
+    console.error('[STRIPE_WEBHOOK] Coach platform subscription deletion missing organizationId:', subscription.id);
+    return;
+  }
+  
+  const periodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+  const now = new Date().toISOString();
+  
+  // Find and update the coach_subscriptions document
+  const subscriptionQuery = await adminDb
+    .collection('coach_subscriptions')
+    .where('stripeSubscriptionId', '==', subscription.id)
+    .limit(1)
+    .get();
+  
+  if (!subscriptionQuery.empty) {
+    const subDoc = subscriptionQuery.docs[0];
+    await subDoc.ref.update({
+      status: 'canceled',
+      cancelAtPeriodEnd: false,
+      currentPeriodEnd: periodEnd,
+      updatedAt: now,
+    });
+  }
+  
+  // Update org_settings
+  await adminDb.collection('org_settings').doc(organizationId).set({
+    subscriptionStatus: 'canceled',
+    updatedAt: now,
+  }, { merge: true });
+  
+  console.log(`[STRIPE_WEBHOOK] Coach platform subscription deleted for org ${organizationId}`);
+  
+  // Sync to Clerk org publicMetadata
+  const tier = subscription.metadata?.tier as CoachTier | undefined;
+  await syncBillingToClerkOrg(organizationId, {
+    plan: tier || 'starter',
+    subscriptionStatus: 'canceled',
+    currentPeriodEnd: periodEnd,
+    cancelAtPeriodEnd: false,
+    onboardingState: 'needs_plan',
+  });
+}
+
+/**
  * Handle subscription deletion (final cancellation)
  * 
  * This fires when the subscription is actually deleted (not just scheduled to cancel).
@@ -619,7 +818,15 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
  * or immediately if the subscription was canceled without waiting for period end.
  */
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  // Check if this is a coaching subscription
+  // Check if this is a coach platform subscription (Starter/Pro/Scale)
+  const isCoachPlatformSubscription = subscription.metadata?.type === 'coach_subscription';
+  
+  if (isCoachPlatformSubscription) {
+    await handleCoachPlatformSubscriptionDeleted(subscription);
+    return;
+  }
+  
+  // Check if this is a coaching subscription (1:1 coaching product)
   const coachingPlan = getCoachingPlanFromSubscription(subscription);
   const isCoachingSubscription = coachingPlan !== null;
   

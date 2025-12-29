@@ -184,8 +184,14 @@ export function AdminUsersTab({
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
   const [bulkUpdating, setBulkUpdating] = useState(false);
   
+  // Detected org role from API response (used as fallback when prop isn't provided)
+  const [detectedOrgRole, setDetectedOrgRole] = useState<OrgRole | undefined>(undefined);
+  
   // Detect if using org-scoped API (coach dashboard)
   const isOrgScopedApi = apiEndpointProp?.includes('/api/coach/org-users');
+  
+  // Effective org role: use prop if provided, fallback to detected from API
+  const effectiveOrgRole = currentUserOrgRole || detectedOrgRole;
 
   const fetchUsers = async () => {
     try {
@@ -200,6 +206,11 @@ export function AdminUsersTab({
 
       const data = await response.json();
       setUsers(data.users || []);
+      
+      // Store detected org role from API response (helps with org:admin detection)
+      if (data.currentUserOrgRole) {
+        setDetectedOrgRole(data.currentUserOrgRole as OrgRole);
+      }
     } catch (err) {
       console.error('Error fetching users:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch users');
@@ -362,8 +373,9 @@ export function AdminUsersTab({
 
   const handleOrgRoleChange = async (userId: string, newOrgRole: OrgRole) => {
     // Check permissions: super_admin can change any org role, super_coach can change coach/member
+    // Use effectiveOrgRole which includes detection from API response for org:admin users
     const isPlatformAdmin = isSuperAdmin(currentUserRole);
-    const isOrgSuperCoach = isSuperCoach(currentUserOrgRole);
+    const isOrgSuperCoach = isSuperCoach(effectiveOrgRole);
     
     if (!isPlatformAdmin && !isOrgSuperCoach) {
       alert('Only Super Admin or Super Coach can change organization roles.');
@@ -819,7 +831,8 @@ export function AdminUsersTab({
                 const isUpdatingTier = updatingTierUserId === user.id;
                 const isUpdatingOrgRole = updatingOrgRoleUserId === user.id;
                 // Super admin can modify any org role; super_coach can modify coach/member (but not super_coach)
-                const canModifyOrgRole = isSuperAdmin(currentUserRole) || (isSuperCoach(currentUserOrgRole) && userOrgRole !== 'super_coach');
+                // Use effectiveOrgRole which includes detection from API response for org:admin users
+                const canModifyOrgRole = isSuperAdmin(currentUserRole) || (isSuperCoach(effectiveOrgRole) && userOrgRole !== 'super_coach');
 
                 return (
                   <TableRow 

@@ -3,7 +3,6 @@ import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import type { CoachTier, CoachSubscription, OrgSettings, ClerkPublicMetadata } from '@/types';
-import { TIER_PRICING } from '@/lib/coach-permissions';
 
 // Lazy initialization of Stripe
 function getStripeClient(): Stripe {
@@ -16,19 +15,16 @@ function getStripeClient(): Stripe {
   });
 }
 
-// Coach tier Stripe price IDs
-// Environment variables set in Doppler, with fallback values
-const COACH_TIER_PRICE_IDS: Record<CoachTier, string> = {
-  starter: process.env.STRIPE_COACH_STARTER_PRICE_ID || 'price_1ShVoxGZhrOwy75wozPPoU4f',
-  pro: process.env.STRIPE_COACH_PRO_PRICE_ID || 'price_1ShVpGGZhrOwy75wcFJQasPA',
-  scale: process.env.STRIPE_COACH_SCALE_PRICE_ID || 'price_1ShVqFGZhrOwy75w0FPwa1Z9',
-};
-
 /**
  * POST /api/coach/subscription/checkout
- * Create a Stripe Checkout session for coach subscription
+ * Create a Stripe SetupIntent for collecting payment method
  * 
- * Body: { tier: CoachTier }
+ * Uses SetupIntent flow for subscriptions with trials:
+ * 1. This endpoint creates SetupIntent to save payment method
+ * 2. Frontend uses PaymentElement to collect payment details
+ * 3. On success, /api/coach/subscription/confirm creates the subscription
+ * 
+ * Body: { tier: CoachTier, trial?: boolean, onboarding?: boolean }
  */
 export async function POST(req: Request) {
   try {
@@ -61,19 +57,6 @@ export async function POST(req: Request) {
     // Validate tier
     if (!tier || !['starter', 'pro', 'scale'].includes(tier)) {
       return NextResponse.json({ error: 'Invalid tier selected' }, { status: 400 });
-    }
-
-    const priceId = COACH_TIER_PRICE_IDS[tier];
-    
-    // If price ID is not configured, fall back to a placeholder checkout flow
-    // In production, you'd want to ensure these are always configured
-    if (!priceId) {
-      console.warn(`[COACH_CHECKOUT] No price ID configured for tier: ${tier}. Using placeholder.`);
-      // For now, return an error - in production, set up the prices
-      return NextResponse.json(
-        { error: `Checkout not yet configured for ${tier} tier. Please contact support.` },
-        { status: 400 }
-      );
     }
 
     const stripe = getStripeClient();
@@ -126,56 +109,37 @@ export async function POST(req: Request) {
       }
     }
 
-    // Build checkout session params for embedded checkout
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://growthaddicts.app';
-    
-    // Determine return URL based on context
-    const returnUrl = onboarding
-      ? `${baseUrl}/coach/welcome?session_id={CHECKOUT_SESSION_ID}`
-      : `${baseUrl}/coach?tab=plan&success=true&session_id={CHECKOUT_SESSION_ID}`;
-    
-    // Use embedded checkout mode for in-page payment experience
-    const sessionParams: Stripe.Checkout.SessionCreateParams = {
-      mode: 'subscription',
-      ui_mode: 'embedded',
-      customer: customerId || undefined,
-      customer_email: customerId ? undefined : email,
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      return_url: returnUrl,
+    if (!customerId) {
+      return NextResponse.json(
+        { error: 'Could not create customer. Please try again.' },
+        { status: 500 }
+      );
+    }
+
+    // Create SetupIntent to save payment method for future subscription billing
+    const setupIntent = await stripe.setupIntents.create({
+      customer: customerId,
+      payment_method_types: ['card'],
       metadata: {
         userId,
         organizationId,
         tier,
         type: 'coach_subscription',
+        trial: trial ? 'true' : 'false',
         onboarding: onboarding ? 'true' : 'false',
       },
-      subscription_data: {
-        metadata: {
-          userId,
-          organizationId,
-          tier,
-          type: 'coach_subscription',
-        },
-        // Add 7-day trial if requested (typically during onboarding)
-        ...(trial ? { trial_period_days: 7 } : {}),
-      },
-      allow_promotion_codes: true,
-    };
+      usage: 'off_session', // For recurring subscription billing
+    });
 
-    const session = await stripe.checkout.sessions.create(sessionParams);
+    console.log(`[COACH_CHECKOUT] Created SetupIntent ${setupIntent.id} for org ${organizationId}, tier ${tier}`);
 
-    console.log(`[COACH_CHECKOUT] Created embedded checkout session ${session.id} for org ${organizationId}, tier ${tier}`);
-
-    return NextResponse.json({ clientSecret: session.client_secret });
+    return NextResponse.json({ 
+      clientSecret: setupIntent.client_secret,
+      customerId,
+    });
   } catch (error) {
     console.error('[COACH_CHECKOUT]', error);
     const message = error instanceof Error ? error.message : 'Failed to create checkout session';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

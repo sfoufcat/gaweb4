@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '@clerk/nextjs';
+import { useAuth, useOrganization } from '@clerk/nextjs';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { ClientDetailView, CustomizeBrandingTab, ChannelManagementTab } from '@/components/coach';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -48,6 +48,7 @@ export default function CoachPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { sessionClaims, isLoaded } = useAuth();
+  const { membership } = useOrganization();
   const [mounted, setMounted] = useState(false);
   
   // Clients tab state - selected client ID for viewing details
@@ -72,7 +73,13 @@ export default function CoachPage() {
   // Get role and orgRole from Clerk session
   const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata;
   const role = publicMetadata?.role;
-  const orgRole = publicMetadata?.orgRole as OrgRole | undefined;
+  const metadataOrgRole = publicMetadata?.orgRole as OrgRole | undefined;
+  
+  // Detect org:admin from Clerk's native organization membership
+  // If user is org:admin, they should be treated as super_coach regardless of metadata
+  const isOrgAdmin = membership?.role === 'org:admin';
+  const orgRole: OrgRole | undefined = isOrgAdmin ? 'super_coach' : metadataOrgRole;
+  
   const hasAccess = canAccessCoachDashboard(role, orgRole);
   
   // Determine access level:

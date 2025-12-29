@@ -1,37 +1,33 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { loadStripe } from '@stripe/stripe-js';
 import {
-  EmbeddedCheckout,
-  EmbeddedCheckoutProvider,
+  Elements,
+  PaymentElement,
+  useStripe,
+  useElements,
 } from '@stripe/react-stripe-js';
 import { 
   Check, 
   X,
   ArrowRight,
-  CreditCard,
   Lock,
-  Sparkles,
-  Users,
   Zap,
-  Target,
   Shield,
-  Rocket,
   Gift,
   Loader2
 } from 'lucide-react';
 import type { CoachTier } from '@/types';
-import { TIER_PRICING } from '@/lib/coach-permissions';
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-// Plan definitions with trial emphasis
+// Plan definitions with trial emphasis - matches exact spec
 const PLANS = [
   {
     id: 'starter' as CoachTier,
@@ -44,8 +40,12 @@ const PLANS = [
       { label: 'Squads', value: '3' },
     ],
     features: [
-      'Courses, Events & Articles',
-      'Custom funnel branding',
+      'Accountability + check-ins (morning/evening/weekly)',
+      'Programs + Masterminds + Squads',
+      'Tasks + habits (incl. program-assigned)',
+      'Social feed + chat + voice/video calls',
+      'Courses + events + articles',
+      'Custom funnels (basic steps)',
       'Basic analytics',
       'Stripe Connect payments',
     ],
@@ -62,12 +62,13 @@ const PLANS = [
       { label: 'Squads', value: '25' },
     ],
     features: [
-      'Everything in Starter',
+      'Everything in Starter, plus:',
       'Custom domain',
-      'Email whitelabeling',
+      'Email white labeling',
       'Advanced funnel steps',
-      'Advanced analytics',
+      'Upsells + downsells',
     ],
+    highlight: true,
   },
   {
     id: 'scale' as CoachTier,
@@ -80,33 +81,236 @@ const PLANS = [
       { label: 'Squads', value: '100' },
     ],
     features: [
-      'Everything in Pro',
-      'A/B testing',
-      'API access',
+      'Everything in Pro, plus:',
+      'Team roles + permissions',
+      'Multi-coach support',
+      'Higher limits (members/programs/funnels)',
+      'AI Builder / AI Helper',
       'Priority support',
-      'Dedicated success manager',
     ],
   },
 ];
+
+// Stripe appearance configuration
+const stripeAppearance: import('@stripe/stripe-js').Appearance = {
+  theme: 'stripe',
+  variables: {
+    colorPrimary: '#a07855',
+    colorBackground: '#ffffff',
+    colorText: '#1a1a1a',
+    colorTextSecondary: '#5f5a55',
+    colorDanger: '#ef4444',
+    fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    fontSizeBase: '15px',
+    borderRadius: '12px',
+    spacingUnit: '4px',
+  },
+  rules: {
+    '.Input': {
+      borderColor: '#e1ddd8',
+      boxShadow: 'none',
+      padding: '12px 14px',
+    },
+    '.Input:focus': {
+      borderColor: '#a07855',
+      boxShadow: '0 0 0 1px #a07855',
+    },
+    '.Label': {
+      fontWeight: '500',
+      marginBottom: '6px',
+      color: '#1a1a1a',
+    },
+    '.Tab': {
+      borderColor: '#e1ddd8',
+    },
+    '.Tab--selected': {
+      borderColor: '#a07855',
+      backgroundColor: '#faf8f6',
+    },
+  },
+};
+
+// Payment Form Component (inside Elements provider)
+interface PaymentFormProps {
+  selectedPlan: CoachTier;
+  onSuccess: () => void;
+  onCancel: () => void;
+  setupIntentId: string;
+}
+
+function PaymentForm({ selectedPlan, onSuccess, onCancel, setupIntentId }: PaymentFormProps) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const plan = PLANS.find(p => p.id === selectedPlan);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      // Confirm the SetupIntent
+      const { error: submitError, setupIntent } = await stripe.confirmSetup({
+        elements,
+        confirmParams: {
+          return_url: window.location.href, // Not used for redirect: 'if_required'
+        },
+        redirect: 'if_required',
+      });
+
+      if (submitError) {
+        setError(submitError.message || 'Payment failed. Please try again.');
+        setIsProcessing(false);
+        return;
+      }
+
+      if (setupIntent?.status === 'succeeded') {
+        // Create the subscription on the backend
+        const confirmResponse = await fetch('/api/coach/subscription/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            setupIntentId: setupIntent.id,
+            tier: selectedPlan,
+            trial: true,
+            onboarding: true,
+          }),
+        });
+
+        const confirmData = await confirmResponse.json();
+
+        if (!confirmResponse.ok) {
+          throw new Error(confirmData.error || 'Failed to activate subscription');
+        }
+
+        onSuccess();
+      } else {
+        setError('Payment setup incomplete. Please try again.');
+      }
+    } catch (err) {
+      console.error('Payment error:', err);
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Plan Summary */}
+      <div className="bg-gradient-to-r from-[#fef9e7] to-[#fef3c7] dark:from-[#422006]/30 dark:to-[#451a03]/30 rounded-xl p-4 border border-[#fde047]/30">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-sans text-sm text-[#92400e] dark:text-[#fbbf24]">
+              {plan?.name} plan
+            </p>
+            <p className="font-albert text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8]">
+              7 days free
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="font-sans text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+              then
+            </p>
+            <p className="font-albert text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+              ${plan?.price}/mo
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Payment Element - Native Stripe with Apple Pay, Google Pay, Cards */}
+      <div className="bg-white dark:bg-[#1e222a] rounded-xl p-4 border border-[#e1ddd8] dark:border-[#313746]">
+        <PaymentElement
+          options={{
+            layout: 'tabs',
+            wallets: {
+              applePay: 'auto',
+              googlePay: 'auto',
+            },
+          }}
+        />
+      </div>
+
+      {/* Error */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-xl"
+          >
+            <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Actions */}
+      <div className="flex flex-col gap-3">
+        <button
+          type="submit"
+          disabled={!stripe || isProcessing}
+          className="w-full flex items-center justify-center gap-2 py-4 bg-[#a07855] hover:bg-[#8b6847] text-white rounded-xl font-albert text-[16px] font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isProcessing ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <Lock className="w-4 h-4" />
+              Start 7-day free trial
+            </>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={isProcessing}
+          className="w-full py-3 text-[#5f5a55] dark:text-[#b2b6c2] font-sans text-sm hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors disabled:opacity-50"
+        >
+          Cancel
+        </button>
+      </div>
+
+      {/* Security note */}
+      <p className="text-center font-sans text-xs text-[#a7a39e] dark:text-[#7d8190]">
+        <Lock className="w-3 h-3 inline mr-1" />
+        Secured by Stripe. You won't be charged until after the trial.
+      </p>
+    </form>
+  );
+}
 
 /**
  * Coach Onboarding - Plans Page
  * 
  * Step 2 of coach onboarding: Select a plan and start 7-day free trial.
- * Uses embedded Stripe Checkout with trial period.
+ * Uses native Stripe PaymentElement with Apple Pay, Google Pay, and card support.
  */
 export default function OnboardingPlansPage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
   
-  const [selectedPlan, setSelectedPlan] = useState<CoachTier>('pro');
+  const [selectedPlan, setSelectedPlan] = useState<CoachTier>('starter');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Checkout state
   const [showCheckout, setShowCheckout] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [checkoutPlan, setCheckoutPlan] = useState<CoachTier | null>(null);
+  const [setupIntentId, setSetupIntentId] = useState<string | null>(null);
 
   // Check onboarding state on mount
   useEffect(() => {
@@ -156,23 +360,25 @@ export default function OnboardingPlansPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           tier: selectedPlan,
-          trial: true, // Request 7-day trial
-          onboarding: true, // Mark as part of onboarding flow
+          trial: true,
+          onboarding: true,
         }),
       });
       
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create checkout session');
+        throw new Error(data.error || 'Failed to start checkout');
       }
       
       if (data.clientSecret) {
         setClientSecret(data.clientSecret);
-        setCheckoutPlan(selectedPlan);
+        // Extract setupIntent ID from client secret
+        const intentId = data.clientSecret.split('_secret_')[0];
+        setSetupIntentId(intentId);
         setShowCheckout(true);
       } else {
-        throw new Error('No checkout session received');
+        throw new Error('No payment session received');
       }
     } catch (err) {
       console.error('Checkout error:', err);
@@ -182,11 +388,16 @@ export default function OnboardingPlansPage() {
     }
   };
 
-  const handleCloseCheckout = useCallback(() => {
+  const handlePaymentSuccess = () => {
+    // Redirect to welcome page
+    router.push('/coach/welcome');
+  };
+
+  const handleCloseCheckout = () => {
     setShowCheckout(false);
     setClientSecret(null);
-    setCheckoutPlan(null);
-  }, []);
+    setSetupIntentId(null);
+  };
 
   if (!isLoaded || !user) {
     return (
@@ -197,7 +408,8 @@ export default function OnboardingPlansPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b]">
+    <div className="min-h-screen bg-[#f5f2ed] dark:bg-[#11141b]">
+      <div className="bg-gradient-to-b from-[#faf8f6] to-transparent dark:from-[#0a0c10] dark:to-transparent min-h-screen">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#faf8f6]/95 dark:bg-[#0a0c10]/95 backdrop-blur-sm border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -356,7 +568,7 @@ export default function OnboardingPlansPage() {
           <button
             onClick={handleStartTrial}
             disabled={isLoading}
-            className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#d4a61d] hover:to-[#c09819] text-[#2c2520] rounded-xl font-albert text-[16px] font-semibold transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#e8b923]/20"
+            className="w-full flex items-center justify-center gap-2 py-4 bg-[#a07855] hover:bg-[#8b6847] text-white rounded-xl font-albert text-[16px] font-semibold transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
           >
             {isLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -401,10 +613,11 @@ export default function OnboardingPlansPage() {
           </div>
         </motion.div>
       </div>
+      </div>
 
-      {/* Embedded Checkout Modal */}
+      {/* Payment Modal with Native Stripe Elements */}
       <AnimatePresence>
-        {showCheckout && clientSecret && (
+        {showCheckout && clientSecret && setupIntentId && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -419,7 +632,7 @@ export default function OnboardingPlansPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="relative w-full max-w-lg bg-white dark:bg-[#171b22] rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+              className="relative w-full max-w-md bg-white dark:bg-[#171b22] rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
             >
               {/* Modal Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#313746]">
@@ -432,7 +645,7 @@ export default function OnboardingPlansPage() {
                       Start your free trial
                     </h2>
                     <p className="font-sans text-[13px] text-[#5f5a55] dark:text-[#b2b6c2]">
-                      {checkoutPlan && PLANS.find(p => p.id === checkoutPlan)?.name} plan • 7 days free
+                      {PLANS.find(p => p.id === selectedPlan)?.name} plan • 7 days free
                     </p>
                   </div>
                 </div>
@@ -444,24 +657,22 @@ export default function OnboardingPlansPage() {
                 </button>
               </div>
 
-              {/* Checkout Content */}
+              {/* Payment Form with Stripe Elements */}
               <div className="flex-1 overflow-y-auto p-6">
-                <EmbeddedCheckoutProvider
+                <Elements
                   stripe={stripePromise}
-                  options={{ clientSecret }}
+                  options={{
+                    clientSecret,
+                    appearance: stripeAppearance,
+                  }}
                 >
-                  <EmbeddedCheckout />
-                </EmbeddedCheckoutProvider>
-              </div>
-
-              {/* Security Badge */}
-              <div className="px-6 py-4 border-t border-[#e1ddd8] dark:border-[#313746] bg-[#f9f8f7] dark:bg-[#1e222a]">
-                <div className="flex items-center justify-center gap-2 text-[#5f5a55] dark:text-[#b2b6c2]">
-                  <Lock className="w-4 h-4" />
-                  <span className="font-sans text-[12px]">
-                    Secured by Stripe. You won't be charged until after the trial.
-                  </span>
-                </div>
+                  <PaymentForm
+                    selectedPlan={selectedPlan}
+                    onSuccess={handlePaymentSuccess}
+                    onCancel={handleCloseCheckout}
+                    setupIntentId={setupIntentId}
+                  />
+                </Elements>
               </div>
             </motion.div>
           </motion.div>
@@ -470,4 +681,3 @@ export default function OnboardingPlansPage() {
     </div>
   );
 }
-

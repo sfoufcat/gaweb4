@@ -76,15 +76,18 @@ const PLANS: Plan[] = [
       { label: 'Funnels per target', value: '1' },
     ],
     features: [
-      { text: 'Courses, Events & Articles', included: true },
-      { text: 'Basic funnel steps', included: true },
-      { text: 'Custom funnel branding', included: true },
-      { text: 'Stripe Connect (accept payments)', included: true },
-      { text: 'Advanced funnel steps (Identity, Analyzing)', included: false },
+      { text: 'Accountability + check-ins', included: true },
+      { text: 'Programs + Masterminds + Squads', included: true },
+      { text: 'Tasks + habits', included: true },
+      { text: 'Social feed + chat + calls', included: true },
+      { text: 'Courses + events + articles', included: true },
+      { text: 'Custom funnels (basic steps)', included: true },
+      { text: 'Basic analytics', included: true },
+      { text: 'Stripe Connect payments', included: true },
       { text: 'Custom domain', included: false },
-      { text: 'Email whitelabeling', included: false },
+      { text: 'Email white labeling', included: false },
     ],
-    tag: 'START HERE',
+    tag: '7-DAY FREE TRIAL',
   },
   {
     id: 'pro',
@@ -99,12 +102,13 @@ const PLANS: Plan[] = [
       { label: 'Funnels per target', value: '5' },
     ],
     features: [
-      { text: 'Everything in Starter', included: true },
-      { text: 'Advanced funnel steps', included: true, highlight: true },
+      { text: 'Everything in Starter, plus:', included: true },
       { text: 'Custom domain', included: true, highlight: true },
-      { text: 'Email whitelabeling', included: true, highlight: true },
-      { text: 'Advanced analytics', included: false },
-      { text: 'A/B testing', included: false },
+      { text: 'Email white labeling', included: true, highlight: true },
+      { text: 'Advanced funnel steps', included: true, highlight: true },
+      { text: 'Upsells + downsells', included: true, highlight: true },
+      { text: 'Team roles + permissions', included: false },
+      { text: 'AI Builder / AI Helper', included: false },
     ],
     highlighted: true,
     tag: 'MOST POPULAR',
@@ -122,13 +126,12 @@ const PLANS: Plan[] = [
       { label: 'Funnels per target', value: 'Unlimited' },
     ],
     features: [
-      { text: 'Everything in Pro', included: true },
-      { text: 'Advanced analytics', included: true, highlight: true },
-      { text: 'A/B testing', included: true, highlight: true },
-      { text: 'API access', included: true, highlight: true },
+      { text: 'Everything in Pro, plus:', included: true },
+      { text: 'Team roles + permissions', included: true, highlight: true },
+      { text: 'Multi-coach support', included: true, highlight: true },
+      { text: 'Higher limits (all categories)', included: true, highlight: true },
+      { text: 'AI Builder / AI Helper', included: true, highlight: true },
       { text: 'Priority support', included: true, highlight: true },
-      { text: 'Custom integrations', included: true },
-      { text: 'Dedicated success manager', included: true },
     ],
   },
 ];
@@ -170,6 +173,12 @@ export default function CoachPlanPage() {
   const [currentTier, setCurrentTier] = useState<CoachTier | null>(null);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
   
+  // Subscription details for display
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
+  const [renewalDate, setRenewalDate] = useState<string | null>(null);
+  const [trialEnd, setTrialEnd] = useState<string | null>(null);
+  const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
+  
   // Embedded checkout state
   const [showCheckout, setShowCheckout] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -186,11 +195,18 @@ export default function CoachPlanPage() {
           const data = await response.json();
           if (data.subscription) {
             setCurrentTier(data.subscription.tier);
+            setSubscriptionStatus(data.subscription.status);
+            setRenewalDate(data.subscription.currentPeriodEnd);
+            setTrialEnd(data.subscription.trialEnd);
+            setCancelAtPeriodEnd(data.subscription.cancelAtPeriodEnd || false);
             // Pre-select next tier up if they have a subscription
             const nextTier = getNextTier(data.subscription.tier);
             if (nextTier) {
               setSelectedPlan(nextTier);
             }
+          } else if (data.tier) {
+            // Legacy: tier from org_settings but no subscription doc
+            setCurrentTier(data.tier);
           }
         }
       } catch (err) {
@@ -323,24 +339,82 @@ export default function CoachPlanPage() {
           </p>
         </motion.div>
 
-        {/* Current Plan Badge */}
+        {/* Current Plan Status */}
         {currentTier && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex justify-center mb-8"
+            className="max-w-2xl mx-auto mb-8"
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#f0fdf4] border border-[#bbf7d0] rounded-full">
-              <Check className="w-4 h-4 text-[#22c55e]" />
-              <span className="font-sans text-[14px] text-[#166534] font-medium">
-                Current plan: {TIER_PRICING[currentTier].name}
-              </span>
-              <button
-                onClick={handleManageSubscription}
-                className="text-[#15803d] underline underline-offset-2 hover:text-[#166534]"
-              >
-                Manage
-              </button>
+            <div className="bg-white rounded-2xl border border-[#e1ddd8] p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full ${
+                    subscriptionStatus === 'active' || subscriptionStatus === 'trialing' 
+                      ? 'bg-[#22c55e]' 
+                      : subscriptionStatus === 'past_due' 
+                      ? 'bg-[#f59e0b]' 
+                      : 'bg-[#ef4444]'
+                  }`} />
+                  <div>
+                    <h3 className="font-albert text-[18px] font-semibold text-text-primary">
+                      {TIER_PRICING[currentTier].name} Plan
+                    </h3>
+                    <p className="font-sans text-[13px] text-text-secondary capitalize">
+                      {subscriptionStatus === 'trialing' ? 'Trial' : subscriptionStatus || 'Active'}
+                      {cancelAtPeriodEnd && ' • Cancels at period end'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleManageSubscription}
+                    className="px-4 py-2 text-[#a07855] font-sans text-[14px] font-medium hover:bg-[#faf8f6] rounded-lg transition-colors"
+                  >
+                    Manage membership
+                  </button>
+                </div>
+              </div>
+              
+              {/* Status Details */}
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[#e1ddd8]">
+                {trialEnd && subscriptionStatus === 'trialing' && (
+                  <div>
+                    <p className="font-sans text-[12px] text-text-tertiary uppercase tracking-wide mb-1">Trial ends</p>
+                    <p className="font-sans text-[14px] text-text-primary font-medium">
+                      {new Date(trialEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
+                )}
+                {renewalDate && (
+                  <div>
+                    <p className="font-sans text-[12px] text-text-tertiary uppercase tracking-wide mb-1">
+                      {cancelAtPeriodEnd ? 'Access until' : 'Renews on'}
+                    </p>
+                    <p className="font-sans text-[14px] text-text-primary font-medium">
+                      {new Date(renewalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <p className="font-sans text-[12px] text-text-tertiary uppercase tracking-wide mb-1">Monthly price</p>
+                  <p className="font-sans text-[14px] text-text-primary font-medium">
+                    ${(TIER_PRICING[currentTier].monthly / 100).toFixed(0)}/month
+                  </p>
+                </div>
+              </div>
+              
+              {/* Cancel Link */}
+              {subscriptionStatus && !cancelAtPeriodEnd && (
+                <div className="mt-4 pt-4 border-t border-[#e1ddd8]">
+                  <button
+                    onClick={handleManageSubscription}
+                    className="font-sans text-[13px] text-text-tertiary hover:text-red-600 transition-colors"
+                  >
+                    Cancel subscription
+                  </button>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -481,7 +555,7 @@ export default function CoachPlanPage() {
             <button
               onClick={handleSelectPlan}
               disabled={isLoading || (currentTier === selectedPlan)}
-              className="w-full bg-gradient-to-r from-[#a07855] to-[#c9a07a] text-white font-sans font-bold text-[16px] py-4 px-6 rounded-[32px] shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+              className="w-full bg-[#a07855] hover:bg-[#8b6847] text-white font-sans font-bold text-[16px] py-4 px-6 rounded-[32px] shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>

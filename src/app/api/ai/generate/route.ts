@@ -39,7 +39,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
+import { requireAIHelperAccess, isEntitlementError, getEntitlementErrorStatus } from '@/lib/billing/server-enforcement';
 import { generate } from '@/lib/ai/generate';
 import type { AIUseCase, AIGenerationContext } from '@/lib/ai/types';
 
@@ -52,8 +52,8 @@ const VALID_USE_CASES: AIUseCase[] = [
 
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate and get organization context
-    const { userId, organizationId } = await requireCoachWithOrg();
+    // Authenticate and verify AI helper access (Scale plan only)
+    const { userId, orgId: organizationId } = await requireAIHelperAccess();
     
     // Parse request body
     const body = await request.json();
@@ -107,11 +107,30 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[AI_GENERATE] Error:', error);
     
+    // Handle entitlement errors (plan limits/features)
+    if (isEntitlementError(error)) {
+      return NextResponse.json(
+        { 
+          error: error.message, 
+          code: error.code,
+          requiredPlan: error.requiredPlan,
+        },
+        { status: getEntitlementErrorStatus(error) }
+      );
+    }
+    
     const message = error instanceof Error ? error.message : 'Internal Error';
     
     // Handle specific error types
     if (message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    if (message.includes('No organization context')) {
+      return NextResponse.json(
+        { error: 'Organization context required' },
+        { status: 400 }
+      );
     }
     
     if (message.includes('Forbidden') || message.includes('Coach access')) {

@@ -17,6 +17,7 @@ import { addDomainToClerk } from '@/lib/clerk-domains';
 import { registerDomainForApplePay, isStripeDomainConfigured } from '@/lib/stripe-domains';
 import { adminDb } from '@/lib/firebase-admin';
 import { isSuperCoach } from '@/lib/admin-utils-shared';
+import { requireCustomDomain, isEntitlementError, getEntitlementErrorStatus } from '@/lib/billing/server-enforcement';
 
 /**
  * GET /api/coach/org-domain/custom
@@ -62,6 +63,23 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const { userId, organizationId, orgRole } = await requireCoachWithOrg();
+    
+    // Enforce custom domain feature (Pro+ only)
+    try {
+      await requireCustomDomain(organizationId);
+    } catch (accessError) {
+      if (isEntitlementError(accessError)) {
+        return NextResponse.json(
+          { 
+            error: 'Custom domains require the Pro plan or higher',
+            code: accessError.code,
+            requiredPlan: 'pro',
+          },
+          { status: getEntitlementErrorStatus(accessError) }
+        );
+      }
+      throw accessError;
+    }
     
     // Check if user is authorized (super_coach)
     // First check metadata (fast), then fall back to Clerk API lookup (handles tenant subdomain routing)

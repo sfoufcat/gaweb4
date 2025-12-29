@@ -1,7 +1,7 @@
-import { clerkClient } from '@clerk/nextjs/server';
+import { clerkClient, auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
+import { requireCoachWithOrg, ClerkPublicMetadata } from '@/lib/admin-utils-clerk';
 import type { UserRole, UserTier, UserTrack, CoachingStatus, OrgRole, OrgMembership, ProgramType } from '@/types';
 
 interface FirebaseUserData {
@@ -66,6 +66,16 @@ export async function GET() {
     const memberships = await client.organizations.getOrganizationMembershipList({
       organizationId,
       limit: 500,
+    });
+
+    // Build a map of user ID -> native Clerk org role (org:admin, org:member)
+    // This is used to detect super_coach users who may not have orgRole in metadata
+    const nativeOrgRoles = new Map<string, string>();
+    memberships.data.forEach(m => {
+      const userId = m.publicUserData?.userId;
+      if (userId && m.role) {
+        nativeOrgRoles.set(userId, m.role);
+      }
     });
 
     // Get user IDs from memberships
@@ -268,9 +278,20 @@ export async function GET() {
         }
       }
       
-      // Org role resolution: Clerk metadata is source of truth (synced from session)
-      // Falls back to org_memberships collection, then 'member' as default
-      const resolvedOrgRole = (clerkMetadata?.orgRole as OrgRole) || membershipData?.orgRole || 'member';
+      // Org role resolution with native Clerk role detection:
+      // 1. If user is org:admin in Clerk, they are super_coach
+      // 2. Fall back to Clerk metadata orgRole
+      // 3. Fall back to org_memberships collection
+      // 4. Default to 'member'
+      const nativeRole = nativeOrgRoles.get(user.id);
+      let resolvedOrgRole: OrgRole;
+      
+      if (nativeRole === 'org:admin') {
+        // User is org admin in Clerk = super_coach
+        resolvedOrgRole = 'super_coach';
+      } else {
+        resolvedOrgRole = (clerkMetadata?.orgRole as OrgRole) || membershipData?.orgRole || 'member';
+      }
       
       // Get program enrollments for this user
       const programs = userProgramEnrollments.get(user.id) || [];
@@ -305,10 +326,59 @@ export async function GET() {
       };
     });
 
+    // Auto-sync: Fix orgRole metadata for org:admin users who are missing it
+    // This ensures super_coaches have correct metadata for frontend detection
+    const usersToSync: string[] = [];
+    for (const user of combinedUsers) {
+      const nativeRole = nativeOrgRoles.get(user.id);
+      const clerkMetadata = user.publicMetadata as ClerkUserMetadata;
+      
+      // If user is org:admin but doesn't have orgRole: super_coach in metadata, sync it
+      if (nativeRole === 'org:admin' && clerkMetadata?.orgRole !== 'super_coach') {
+        usersToSync.push(user.id);
+      }
+    }
+    
+    // Perform auto-sync in background (don't block response)
+    if (usersToSync.length > 0) {
+      console.log(`[COACH_ORG_USERS] Auto-syncing orgRole for ${usersToSync.length} org:admin users`);
+      
+      // Run sync asynchronously - don't await
+      Promise.all(usersToSync.map(async (userId) => {
+        try {
+          const user = combinedUsers.find(u => u.id === userId);
+          if (user) {
+            await client.users.updateUserMetadata(userId, {
+              publicMetadata: {
+                ...user.publicMetadata,
+                orgRole: 'super_coach',
+                organizationId,
+              },
+            });
+            console.log(`[COACH_ORG_USERS] Synced orgRole=super_coach for user ${userId}`);
+          }
+        } catch (syncError) {
+          console.error(`[COACH_ORG_USERS] Failed to sync orgRole for user ${userId}:`, syncError);
+        }
+      })).catch(err => console.error('[COACH_ORG_USERS] Sync batch error:', err));
+    }
+
+    // Also return current user's effective orgRole for frontend permission checks
+    // Get current user from auth session
+    const { userId: currentUserId } = await auth();
+    let currentUserOrgRole: OrgRole | undefined;
+    if (currentUserId) {
+      const currentNativeRole = nativeOrgRoles.get(currentUserId);
+      if (currentNativeRole === 'org:admin') {
+        currentUserOrgRole = 'super_coach';
+      }
+    }
+
     return NextResponse.json({ 
       users: transformedUsers,
       totalCount: transformedUsers.length,
       organizationId,
+      currentUserOrgRole, // Help frontend know current user's effective org role
     });
   } catch (error) {
     console.error('[COACH_ORG_USERS_ERROR]', error);

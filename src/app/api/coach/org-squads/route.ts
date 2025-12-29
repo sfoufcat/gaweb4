@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { getStreamServerClient } from '@/lib/stream-server';
+import { requireOrgAuthAndEntitlements, getOrgSquadCount, isEntitlementError, getEntitlementErrorStatus } from '@/lib/billing/server-enforcement';
 import type { Squad, SquadVisibility } from '@/types';
 
 interface SquadWithDetails extends Squad {
@@ -243,6 +244,17 @@ export async function POST(req: Request) {
   try {
     // Check authorization and get organizationId
     const { userId, organizationId } = await requireCoachWithOrg();
+    
+    // Get current squad count for limit check
+    const currentSquadCount = await getOrgSquadCount(organizationId);
+    
+    // Verify entitlements with limit check
+    await requireOrgAuthAndEntitlements({
+      requireLimitNotExceeded: {
+        limitKey: 'maxSquads',
+        currentCount: currentSquadCount,
+      },
+    });
 
     console.log(`[COACH_ORG_SQUADS] Creating squad for organization: ${organizationId}`);
 
@@ -446,6 +458,19 @@ export async function POST(req: Request) {
       squad: { id: squadRef.id, ...squadData } 
     });
   } catch (error) {
+    // Handle entitlement errors (plan limits)
+    if (isEntitlementError(error)) {
+      return NextResponse.json(
+        { 
+          error: error.message, 
+          code: error.code,
+          limit: error.limit,
+          currentUsage: error.currentUsage,
+        },
+        { status: getEntitlementErrorStatus(error) }
+      );
+    }
+    
     console.error('[COACH_ORG_SQUADS_CREATE_ERROR]', error);
     const message = error instanceof Error ? error.message : 'Internal Error';
     

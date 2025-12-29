@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
+import { requireAdvancedFunnels, isEntitlementError, getEntitlementErrorStatus } from '@/lib/billing/server-enforcement';
+import { ADVANCED_FUNNEL_STEPS } from '@/lib/billing/entitlements';
 import type { Funnel, FunnelStep, FunnelStepConfig } from '@/types';
 
 /**
@@ -78,6 +80,25 @@ export async function POST(
 
     if (!type) {
       return NextResponse.json({ error: 'Step type is required' }, { status: 400 });
+    }
+    
+    // Check if this is an advanced step type that requires Pro+ plan
+    if (ADVANCED_FUNNEL_STEPS.includes(type as typeof ADVANCED_FUNNEL_STEPS[number])) {
+      try {
+        await requireAdvancedFunnels(organizationId);
+      } catch (accessError) {
+        if (isEntitlementError(accessError)) {
+          return NextResponse.json(
+            { 
+              error: `${type} steps require the Pro plan or higher`,
+              code: accessError.code,
+              requiredPlan: 'pro',
+            },
+            { status: getEntitlementErrorStatus(accessError) }
+          );
+        }
+        throw accessError;
+      }
     }
 
     // Get current steps

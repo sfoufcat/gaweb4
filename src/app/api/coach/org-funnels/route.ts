@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg, TenantRequiredError } from '@/lib/admin-utils-clerk';
+import { requirePlanLimit, isEntitlementError, getEntitlementErrorStatus } from '@/lib/billing/server-enforcement';
 import type { Funnel, FunnelTargetType, FunnelContentType, FunnelTrackingConfig } from '@/types';
 
 /**
@@ -88,6 +89,24 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const { organizationId } = await requireCoachWithOrg();
+    
+    // Enforce funnel limit based on plan
+    try {
+      await requirePlanLimit(organizationId, 'maxFunnelsPerTarget');
+    } catch (limitError) {
+      if (isEntitlementError(limitError)) {
+        return NextResponse.json(
+          { 
+            error: 'Funnel limit reached for your current plan',
+            code: limitError.code,
+            ...('currentCount' in limitError ? { currentCount: limitError.currentCount } : {}),
+            ...('maxLimit' in limitError ? { maxLimit: limitError.maxLimit } : {}),
+          },
+          { status: getEntitlementErrorStatus(limitError) }
+        );
+      }
+      throw limitError;
+    }
 
     const body = await req.json();
     const { 

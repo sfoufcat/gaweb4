@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg, TenantRequiredError } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
+import { requireOrgAuthAndEntitlements, getOrgProgramCount, isEntitlementError, getEntitlementErrorStatus } from '@/lib/billing/server-enforcement';
 import type { Program, ProgramType, ProgramHabitTemplate, ProgramWithStats, ProgramFeature, ProgramTestimonial, ProgramFAQ } from '@/types';
 
 export async function GET(request: NextRequest) {
@@ -115,7 +116,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { organizationId } = await requireCoachWithOrg();
+    // Get current program count for limit check
+    const { orgId: organizationId } = await requireCoachWithOrg();
+    const currentProgramCount = await getOrgProgramCount(organizationId);
+    
+    // Verify entitlements with limit check
+    await requireOrgAuthAndEntitlements({
+      requireLimitNotExceeded: {
+        limitKey: 'maxPrograms',
+        currentCount: currentProgramCount,
+      },
+    });
 
     const body = await request.json();
     
@@ -306,6 +317,19 @@ export async function POST(request: NextRequest) {
       message: 'Program created successfully',
     }, { status: 201 });
   } catch (error) {
+    // Handle entitlement errors (plan limits)
+    if (isEntitlementError(error)) {
+      return NextResponse.json(
+        { 
+          error: error.message, 
+          code: error.code,
+          limit: error.limit,
+          currentUsage: error.currentUsage,
+        },
+        { status: getEntitlementErrorStatus(error) }
+      );
+    }
+    
     // Handle tenant required error
     if (error instanceof TenantRequiredError) {
       return NextResponse.json({

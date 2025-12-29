@@ -11,6 +11,9 @@ type UserTier = 'free' | 'standard' | 'premium';
 type UserRole = 'user' | 'editor' | 'coach' | 'admin' | 'super_admin';
 // Coaching status - separate from membership
 type CoachingStatus = 'none' | 'active' | 'canceled' | 'past_due';
+// Coach platform tier
+type CoachTier = 'starter' | 'pro' | 'scale';
+type CoachSubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | 'none';
 
 interface ClerkPublicMetadata {
   role?: UserRole;
@@ -26,6 +29,42 @@ interface ClerkPublicMetadata {
   coaching?: boolean; // Legacy flag - true if has active coaching
   coachingStatus?: CoachingStatus; // New: detailed coaching status
   coachingPlan?: 'monthly' | 'quarterly'; // New: coaching plan type
+}
+
+/**
+ * Clerk Organization publicMetadata for coach billing
+ * Synced from Stripe webhooks for fast middleware access
+ */
+interface ClerkOrgPublicMetadata {
+  plan?: CoachTier;
+  subscriptionStatus?: CoachSubscriptionStatus;
+  currentPeriodEnd?: string;
+  trialEnd?: string;
+  cancelAtPeriodEnd?: boolean;
+  onboardingState?: 'needs_profile' | 'needs_plan' | 'active';
+}
+
+/**
+ * Check if org subscription is active for coach dashboard access
+ */
+function hasActiveOrgSubscription(
+  status?: CoachSubscriptionStatus,
+  currentPeriodEnd?: string,
+  cancelAtPeriodEnd?: boolean
+): boolean {
+  // Active or trialing = full access
+  if (status === 'active' || status === 'trialing') {
+    return true;
+  }
+  
+  // Canceled but still in paid period
+  if ((status === 'canceled' || cancelAtPeriodEnd) && currentPeriodEnd) {
+    const endDate = new Date(currentPeriodEnd);
+    const now = new Date();
+    return endDate > now;
+  }
+  
+  return false;
 }
 
 // =============================================================================
@@ -255,6 +294,35 @@ const isPlatformOnlyRoute = createRouteMatcher([
   '/admin(.*)',
   '/api/admin(.*)',
   '/editor(.*)',
+]);
+
+// =============================================================================
+// PLAN-GATED ROUTES (Coach Dashboard)
+// =============================================================================
+
+// Routes that require Pro+ plan
+const requiresProPlan = createRouteMatcher([
+  '/coach/domain(.*)',        // Custom domain settings
+  '/coach/email-settings(.*)', // Email whitelabel settings
+]);
+
+// Routes that require Scale plan
+const requiresScalePlan = createRouteMatcher([
+  '/coach/team(.*)',          // Team management
+  '/coach/roles(.*)',         // Role/permission settings
+  '/coach/ai(.*)',            // AI helper routes
+]);
+
+// Coach dashboard routes that require active subscription
+const isCoachDashboardRoute = createRouteMatcher([
+  '/coach',
+  '/coach/(.*)',
+]);
+
+// Coach plan page (always accessible for upgrade)
+const isCoachPlanPage = createRouteMatcher([
+  '/coach/plan',
+  '/coach/plan/(.*)',
 ]);
 
 // =============================================================================
@@ -888,6 +956,65 @@ export default clerkMiddleware(async (auth, request) => {
 
     if (!canAccessAdminSection(role)) {
       return NextResponse.redirect(new URL('/', request.url));
+    }
+  }
+  
+  // ==========================================================================
+  // COACH DASHBOARD PLAN GATING
+  // ==========================================================================
+  
+  // For coach dashboard routes, check organization billing and plan tier
+  if (isTenantMode && userId && isCoachDashboardRoute(request)) {
+    // Skip plan page - always accessible for upgrades
+    if (isCoachPlanPage(request)) {
+      // Allow access to plan page
+    }
+    // Check if coach role
+    else if (isStaffRole(role)) {
+      // Get org billing state from Clerk org public metadata (primary source - synced by Stripe webhooks)
+      // Falls back to tenantConfigData (Edge Config) if Clerk metadata not available
+      // Note: Clerk org metadata is updated directly by webhooks, so it's more up-to-date
+      const orgMetadata = sessionClaims?.orgPublicMetadata as ClerkOrgPublicMetadata | undefined;
+      const edgeConfigBilling = tenantConfigData as unknown as ClerkOrgPublicMetadata | undefined;
+      
+      // Priority: Clerk org metadata > Edge Config > defaults
+      const orgPlan: CoachTier = orgMetadata?.plan || edgeConfigBilling?.plan || 'starter';
+      const orgStatus: CoachSubscriptionStatus = orgMetadata?.subscriptionStatus || edgeConfigBilling?.subscriptionStatus || 'none';
+      const orgPeriodEnd = orgMetadata?.currentPeriodEnd || edgeConfigBilling?.currentPeriodEnd;
+      const orgCancelAtPeriodEnd = orgMetadata?.cancelAtPeriodEnd || edgeConfigBilling?.cancelAtPeriodEnd;
+      
+      // Check subscription is active
+      const isActive = hasActiveOrgSubscription(orgStatus, orgPeriodEnd, orgCancelAtPeriodEnd);
+      
+      if (!isActive && !isCoachPlanPage(request)) {
+        // Redirect to plan page if subscription not active
+        console.log(`[MIDDLEWARE] Coach ${userId} blocked: org subscription not active (status=${orgStatus}), redirecting to /coach/plan`);
+        return NextResponse.redirect(new URL('/coach/plan', request.url));
+      }
+      
+      // Check Pro+ routes
+      if (requiresProPlan(request) && orgPlan === 'starter') {
+        console.log(`[MIDDLEWARE] Coach ${userId} blocked: Pro+ feature on starter plan`);
+        if (pathname.startsWith('/api/')) {
+          return NextResponse.json(
+            { error: 'This feature requires the Pro plan or higher', code: 'PLAN_FEATURE_LOCKED' },
+            { status: 403 }
+          );
+        }
+        return NextResponse.redirect(new URL('/coach/plan?upgrade=pro', request.url));
+      }
+      
+      // Check Scale routes
+      if (requiresScalePlan(request) && (orgPlan === 'starter' || orgPlan === 'pro')) {
+        console.log(`[MIDDLEWARE] Coach ${userId} blocked: Scale feature on ${orgPlan} plan`);
+        if (pathname.startsWith('/api/')) {
+          return NextResponse.json(
+            { error: 'This feature requires the Scale plan', code: 'PLAN_FEATURE_LOCKED' },
+            { status: 403 }
+          );
+        }
+        return NextResponse.redirect(new URL('/coach/plan?upgrade=scale', request.url));
+      }
     }
   }
 

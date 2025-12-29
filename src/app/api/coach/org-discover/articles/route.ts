@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
+import { requirePlanLimit, isEntitlementError, getEntitlementErrorStatus } from '@/lib/billing/server-enforcement';
 import { FieldValue } from 'firebase-admin/firestore';
 
 export async function GET() {
@@ -56,6 +57,24 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const { organizationId } = await requireCoachWithOrg();
+    
+    // Enforce content item limit based on plan
+    try {
+      await requirePlanLimit(organizationId, 'maxContentItems');
+    } catch (limitError) {
+      if (isEntitlementError(limitError)) {
+        return NextResponse.json(
+          { 
+            error: 'Content item limit reached for your current plan',
+            code: limitError.code,
+            ...('currentCount' in limitError ? { currentCount: limitError.currentCount } : {}),
+            ...('maxLimit' in limitError ? { maxLimit: limitError.maxLimit } : {}),
+          },
+          { status: getEntitlementErrorStatus(limitError) }
+        );
+      }
+      throw limitError;
+    }
 
     const body = await request.json();
     

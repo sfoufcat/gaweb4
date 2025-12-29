@@ -15,8 +15,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
-import { createSupportTicket, createFeedbackTicket, isFreshdeskConfigured } from '@/lib/freshdesk';
+import { createSupportTicket, createFeedbackTicket, isFreshdeskConfigured, createTicket } from '@/lib/freshdesk';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { getOrgEntitlementsById } from '@/lib/billing/server-enforcement';
 
 // =============================================================================
 // REQUEST TYPES
@@ -113,21 +114,55 @@ export async function POST(request: NextRequest) {
     const referer = request.headers.get('referer');
     const page = referer ? new URL(referer).pathname : undefined;
 
+    // Check if org has priority support (Scale plan)
+    let hasPrioritySupport = false;
+    if (organizationId) {
+      try {
+        const entitlements = await getOrgEntitlementsById(organizationId);
+        hasPrioritySupport = entitlements.hasPrioritySupport;
+      } catch (entitlementError) {
+        console.warn('[SUPPORT_TICKET] Failed to check entitlements:', entitlementError);
+        // Continue without priority - better than failing
+      }
+    }
+    
+    // Build metadata for ticket description
+    let description = body.message;
+    description += '\n\n---\nMetadata:';
+    description += `\nUser ID: ${userId}`;
+    if (organizationId) description += `\nOrg ID: ${organizationId}`;
+    if (page) description += `\nPage: ${page}`;
+    if (hasPrioritySupport) description += `\nPlan: Scale (Priority Support)`;
+
     // Create ticket based on type
     let result;
     
     if (body.type === 'support') {
-      result = await createSupportTicket(
-        email,
-        name,
-        body.subject,
-        body.message,
-        {
-          userId,
-          organizationId: organizationId || undefined,
-          page,
-        }
-      );
+      // For priority support (Scale plan), use higher priority and add tag
+      if (hasPrioritySupport) {
+        result = await createTicket({
+          subject: body.subject,
+          description,
+          email,
+          name,
+          priority: 3, // High priority for Scale customers
+          type: 'Support',
+          tags: ['coach-dashboard', 'support-form', 'priority', 'scale-plan'],
+        });
+        console.log(`[SUPPORT_TICKET] Created PRIORITY support ticket for Scale org ${organizationId}`);
+      } else {
+        result = await createSupportTicket(
+          email,
+          name,
+          body.subject,
+          body.message,
+          {
+            userId,
+            organizationId: organizationId || undefined,
+            page,
+          }
+        );
+      }
     } else {
       result = await createFeedbackTicket(
         email,

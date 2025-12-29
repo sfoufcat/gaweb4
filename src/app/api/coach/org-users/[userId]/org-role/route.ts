@@ -2,6 +2,7 @@ import { clerkClient, auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { requireCoachWithOrg, ClerkPublicMetadata } from '@/lib/admin-utils-clerk';
 import { isSuperCoach, canAssignOrgRole } from '@/lib/admin-utils-shared';
+import { requireTeamAccess, isEntitlementError, getEntitlementErrorStatus } from '@/lib/billing/server-enforcement';
 import type { OrgRole } from '@/types';
 
 /**
@@ -64,6 +65,25 @@ export async function PATCH(
         { error: 'Invalid org role. Must be "coach" or "member"' },
         { status: 400 }
       );
+    }
+    
+    // If assigning coach role, require Scale plan (multi-coach support)
+    if (newOrgRole === 'coach') {
+      try {
+        await requireTeamAccess();
+      } catch (accessError) {
+        if (isEntitlementError(accessError)) {
+          return NextResponse.json(
+            { 
+              error: 'Multi-coach support requires the Scale plan',
+              code: accessError.code,
+              requiredPlan: 'scale',
+            },
+            { status: getEntitlementErrorStatus(accessError) }
+          );
+        }
+        throw accessError;
+      }
     }
 
     // Check if the role can be assigned
