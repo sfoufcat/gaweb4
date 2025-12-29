@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { useBrandingValues } from '@/contexts/BrandingContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface CompactPostPreview {
   id: string;
@@ -48,6 +49,7 @@ export const SIDEBAR_PINNED_KEY = '/api/feed/pinned?limit=5';
  */
 export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
   const { colors, isDefault } = useBrandingValues();
+  const { theme } = useTheme();
   
   // Use SWR for pinned posts
   const { data: pinnedData, isLoading: isLoadingPinned } = useSWR<{ posts: CompactPostPreview[] }>(
@@ -88,7 +90,9 @@ export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
   const pinnedPosts = pinnedData?.posts || [];
   const bookmarkedPosts = bookmarksData?.posts || [];
   const trendingPosts = trendingData?.posts || [];
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
+  const accentColor = isDefault 
+    ? (theme === 'dark' ? '#b8896a' : '#a07855')
+    : (theme === 'dark' ? colors.accentDark : colors.accentLight);
   
   // Only show pinned section if there are pinned posts (after loading)
   const showPinnedSection = !isLoadingPinned && pinnedPosts.length > 0;

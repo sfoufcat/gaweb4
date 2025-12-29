@@ -72,7 +72,7 @@ export function MyJourneyTab({ user, goal, habits = [], isOwnProfile = true }: M
             {isOwnProfile && (
               <Link
                 href="/identity"
-                className="inline-block px-6 py-3 bg-button-primary text-white rounded-full font-sans font-semibold text-sm hover:scale-105 transition-transform"
+                className="inline-block px-6 py-3 bg-brand-accent hover:opacity-90 text-white rounded-full font-sans font-semibold text-sm hover:scale-105 transition-transform"
               >
                 Define Your Identity
               </Link>
@@ -219,7 +219,7 @@ export function MyJourneyTab({ user, goal, habits = [], isOwnProfile = true }: M
             {isOwnProfile && (
               <Link
                 href="/goal"
-                className="inline-block px-6 py-3 bg-button-primary text-white rounded-full font-sans font-semibold text-sm hover:scale-105 transition-transform"
+                className="inline-block px-6 py-3 bg-brand-accent hover:opacity-90 text-white rounded-full font-sans font-semibold text-sm hover:scale-105 transition-transform"
               >
                 Define Your Goal
               </Link>
@@ -314,7 +314,7 @@ export function MyJourneyTab({ user, goal, habits = [], isOwnProfile = true }: M
             {isOwnProfile && (
               <Link
                 href="/habits/new"
-                className="inline-block px-6 py-3 bg-button-primary text-white rounded-full font-sans font-semibold text-sm hover:scale-105 transition-transform"
+                className="inline-block px-6 py-3 bg-brand-accent hover:opacity-90 text-white rounded-full font-sans font-semibold text-sm hover:scale-105 transition-transform"
               >
                 Create First Habit
               </Link>

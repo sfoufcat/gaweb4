@@ -124,9 +124,9 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     {enrollment.program.type === 'group' ? (
-                      <Users className="w-12 h-12 text-[#a07855] dark:text-brand-accent/40" />
+                      <Users className="w-12 h-12 text-brand-accent/70 dark:text-brand-accent/40" />
                     ) : (
-                      <User className="w-12 h-12 text-[#a07855] dark:text-brand-accent/40" />
+                      <User className="w-12 h-12 text-brand-accent/70 dark:text-brand-accent/40" />
                     )}
                   </div>
                 )}
@@ -137,7 +137,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
                     Active
                   </div>
                 ) : (
-                  <div className="absolute top-3 left-3 px-2 py-1 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-full text-[11px] font-medium">
+                  <div className="absolute top-3 left-3 px-2 py-1 bg-brand-accent text-white rounded-full text-[11px] font-medium">
                     Upcoming
                   </div>
                 )}
@@ -177,7 +177,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
                     </div>
                     <div className="h-1.5 bg-[#e1ddd8] dark:bg-[#272d38] rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-[#a07855] rounded-full transition-all"
+                        className="h-full bg-brand-accent rounded-full transition-all"
                         style={{ width: `${enrollment.progress.percentComplete}%` }}
                       />
                     </div>
@@ -187,7 +187,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
                     Active
                   </p>
                 ) : (
-                  <p className="font-sans text-[12px] text-[#a07855] dark:text-[#b8896a]">
+                  <p className="font-sans text-[12px] text-brand-accent">
                     Starts {enrollment.cohort ? new Date(enrollment.cohort.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'soon'}
                   </p>
                 )}

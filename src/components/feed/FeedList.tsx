@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { PostCard } from './PostCard';
 import { useBrandingValues } from '@/contexts/BrandingContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import type { FeedPost } from '@/hooks/useFeed';
 
 interface FeedListProps {
@@ -133,7 +134,10 @@ export function FeedList({
 }: FeedListProps) {
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const { colors, isDefault } = useBrandingValues();
-  const accentColor = isDefault ? '#a07855' : colors.accentLight;
+  const { theme } = useTheme();
+  const accentColor = isDefault 
+    ? (theme === 'dark' ? '#b8896a' : '#a07855')
+    : (theme === 'dark' ? colors.accentDark : colors.accentLight);
 
   // Intersection observer for infinite scroll
   useEffect(() => {
