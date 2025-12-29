@@ -2848,36 +2848,38 @@ export function CustomizeBrandingTab() {
         </>
       )}
 
-      {/* Action Buttons */}
-      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-4">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-          <button
-            onClick={handleResetToDefaults}
-            className="flex items-center justify-center gap-2 px-4 py-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] font-albert text-sm transition-colors"
-          >
-            <RotateCcw className="w-4 h-4" />
-            Reset to Defaults
-          </button>
-          
-          {hasChanges && (
+      {/* Action Buttons - Hidden on marketplace tab which has its own save button */}
+      {activeSubtab !== 'marketplace' && (
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
             <button
-              onClick={handleRevertChanges}
+              onClick={handleResetToDefaults}
               className="flex items-center justify-center gap-2 px-4 py-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] font-albert text-sm transition-colors"
             >
-              Revert Changes
+              <RotateCcw className="w-4 h-4" />
+              Reset to Defaults
             </button>
-          )}
+            
+            {hasChanges && (
+              <button
+                onClick={handleRevertChanges}
+                className="flex items-center justify-center gap-2 px-4 py-2 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] font-albert text-sm transition-colors"
+              >
+                Revert Changes
+              </button>
+            )}
+          </div>
+          
+          <button
+            onClick={handleSave}
+            disabled={saving || !hasChanges}
+            className="flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-2.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:bg-[#a07855]/50 text-white rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
+          >
+            <Save className="w-4 h-4" />
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
         </div>
-        
-        <button
-          onClick={handleSave}
-          disabled={saving || !hasChanges}
-          className="flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-2.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] disabled:bg-[#a07855]/50 text-white rounded-xl font-albert text-sm transition-colors disabled:cursor-not-allowed"
-        >
-          <Save className="w-4 h-4" />
-          {saving ? 'Saving...' : 'Save Changes'}
-        </button>
-      </div>
+      )}
     </div>
   );
 }

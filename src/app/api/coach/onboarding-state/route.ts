@@ -45,22 +45,12 @@ export async function GET() {
     const onboardingDoc = await adminDb.collection('coach_onboarding').doc(organizationId).get();
     
     if (!onboardingDoc.exists) {
-      // No onboarding record - check if they have an active subscription
-      const orgSettings = await adminDb.collection('org_settings').doc(organizationId).get();
-      const settings = orgSettings.data();
-      
-      // If they have billing set up and subscription status is active, they're done
-      if (settings?.subscriptionStatus === 'active' || settings?.subscriptionStatus === 'trialing') {
-        return NextResponse.json({
-          state: 'active' as CoachOnboardingState,
-          isCoach: true,
-          organizationId,
-        });
-      }
-      
-      // Otherwise, assume they need to complete profile first
+      // No onboarding document means this is an existing coach who was set up
+      // before the self-signup flow was implemented. Grandfather them as "active".
+      // The coach_onboarding document is only created for NEW coaches who go
+      // through the self-signup flow via /api/coach/create-organization.
       return NextResponse.json({
-        state: 'needs_profile' as CoachOnboardingState,
+        state: 'active' as CoachOnboardingState,
         isCoach: true,
         organizationId,
       });

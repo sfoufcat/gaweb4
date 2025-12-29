@@ -18,6 +18,7 @@ import {
   Lock,
   User
 } from 'lucide-react';
+import { OAuthButton } from '@/components/auth';
 
 interface CreateProgramModalProps {
   isOpen: boolean;
@@ -25,6 +26,8 @@ interface CreateProgramModalProps {
 }
 
 type ModalStep = 'persuasion' | 'signup' | 'creating';
+
+const LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af';
 
 /**
  * Create Program Modal
@@ -42,6 +45,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
   const [step, setStep] = useState<ModalStep>('persuasion');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(false);
   
   // Signup form state
   const [firstName, setFirstName] = useState('');
@@ -79,6 +83,26 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
     }
   };
   
+  // Handle Google OAuth signup
+  const handleGoogleSignUp = async () => {
+    if (!signUpLoaded || !signUp) return;
+    setOauthLoading(true);
+    setError(null);
+
+    try {
+      await signUp.authenticateWithRedirect({
+        strategy: 'oauth_google',
+        redirectUrl: '/sso-callback',
+        redirectUrlComplete: '/coach?onboarding=profile',
+        unsafeMetadata: { coachSignup: true },
+      });
+    } catch (err: any) {
+      console.error('OAuth error:', err);
+      setError(err.errors?.[0]?.message || 'Failed to sign up with Google');
+      setOauthLoading(false);
+    }
+  };
+  
   // Handle signup form submission
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,6 +118,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
         lastName,
         emailAddress: email,
         password,
+        unsafeMetadata: { coachSignup: true },
       });
       
       // Prepare email verification
@@ -176,8 +201,8 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
   const valueProps = [
     {
       icon: Users,
-      title: 'Build engaged communities',
-      description: 'Squads, check-ins, and accountability tools that keep members coming back',
+      title: 'Build profitable coaching and info businesses',
+      description: 'Masterminds, check-ins, accountability and programs that keep members coming back',
     },
     {
       icon: Zap,
@@ -211,11 +236,11 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
           >
-            <div className="w-full max-w-lg bg-white dark:bg-[#171b22] rounded-3xl shadow-2xl overflow-hidden pointer-events-auto">
+            <div className="w-full max-w-lg bg-white dark:bg-[#171b22] rounded-3xl shadow-2xl overflow-hidden pointer-events-auto max-h-[90vh] overflow-y-auto">
               {/* Close button */}
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"
+                className="absolute top-4 right-4 p-2 rounded-full bg-[#f3f1ef] dark:bg-[#1e222a] hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] transition-colors z-10"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -230,25 +255,26 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.2 }}
                   >
-                    {/* Hero header with gradient */}
-                    <div className="relative h-48 bg-gradient-to-br from-[#a07855] via-[#b8896a] to-[#e8b923] flex items-center justify-center overflow-hidden">
-                      {/* Decorative elements */}
-                      <div className="absolute top-6 left-6 w-20 h-20 bg-white/10 rounded-full blur-2xl" />
-                      <div className="absolute bottom-4 right-8 w-32 h-32 bg-[#e8b923]/30 rounded-full blur-3xl" />
-                      
-                      <div className="relative text-center text-white z-10">
-                        <Sparkles className="w-10 h-10 mx-auto mb-3" />
-                        <h2 className="font-albert text-[28px] font-bold tracking-[-1px]">
-                          Create your program
-                        </h2>
-                        <p className="font-sans text-white/90 text-[15px] mt-1">
-                          Join coaches building thriving communities
-                        </p>
-                      </div>
+                    {/* Header with logo */}
+                    <div className="pt-8 pb-6 px-6 text-center">
+                      <Image 
+                        src={LOGO_URL}
+                        alt="Growth Addicts"
+                        width={64}
+                        height={64}
+                        className="w-16 h-16 rounded-2xl mx-auto mb-5 shadow-lg"
+                        unoptimized
+                      />
+                      <h2 className="font-albert text-[28px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1px]">
+                        Create your program
+                      </h2>
+                      <p className="font-sans text-[15px] text-[#5f5a55] dark:text-[#b2b6c2] mt-2">
+                        Join coaches building thriving communities
+                      </p>
                     </div>
                     
                     {/* Value props */}
-                    <div className="p-6 space-y-4">
+                    <div className="px-6 pb-2 space-y-4">
                       {valueProps.map((prop, i) => (
                         <div key={i} className="flex gap-4 items-start">
                           <div className="w-10 h-10 rounded-xl bg-[#f3f1ef] dark:bg-[#1e222a] flex items-center justify-center flex-shrink-0">
@@ -267,11 +293,11 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                     </div>
                     
                     {/* CTA */}
-                    <div className="px-6 pb-6">
+                    <div className="px-6 py-6">
                       <button
                         onClick={handleGetStarted}
                         disabled={!userLoaded}
-                        className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#d4a61d] hover:to-[#c09819] text-[#2c2520] rounded-xl font-albert text-[16px] font-semibold transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center gap-2 py-4 bg-[#2c2520] hover:bg-[#1a1512] text-white rounded-full font-sans font-bold text-[16px] transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                       >
                         {!userLoaded ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
@@ -283,7 +309,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                         )}
                       </button>
                       <p className="text-center font-sans text-[12px] text-[#a7a39e] dark:text-[#7d8190] mt-3">
-                        7-day free trial • No credit card required
+                        7-day free trial • Credit card required
                       </p>
                     </div>
                   </motion.div>
@@ -298,8 +324,8 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.2 }}
                   >
-                    {/* Header */}
-                    <div className="p-6 pb-0">
+                    {/* Header with logo */}
+                    <div className="pt-6 px-6">
                       <button
                         onClick={() => setStep('persuasion')}
                         className="flex items-center gap-1 text-[#5f5a55] dark:text-[#b2b6c2] font-sans text-sm hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors mb-4"
@@ -308,6 +334,14 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                       </button>
                       
                       <div className="text-center mb-6">
+                        <Image 
+                          src={LOGO_URL}
+                          alt="Growth Addicts"
+                          width={56}
+                          height={56}
+                          className="w-14 h-14 rounded-xl mx-auto mb-4 shadow-md"
+                          unoptimized
+                        />
                         <h2 className="font-albert text-[24px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
                           {pendingVerification ? 'Check your email' : 'Create your account'}
                         </h2>
@@ -328,89 +362,106 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                       )}
                       
                       {!pendingVerification ? (
-                        <form onSubmit={handleSignup} className="space-y-4">
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="font-sans text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] mb-1.5 block">
-                                First name
-                              </label>
-                              <div className="relative">
-                                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
+                        <>
+                          {/* Google OAuth */}
+                          <OAuthButton
+                            provider="google"
+                            onClick={handleGoogleSignUp}
+                            disabled={isLoading}
+                            loading={oauthLoading}
+                          />
+                          
+                          {/* Divider */}
+                          <div className="flex items-center gap-4 my-6">
+                            <div className="flex-1 h-px bg-[#e1ddd8] dark:bg-[#313746]" />
+                            <span className="font-sans text-sm text-[#a7a39e] dark:text-[#7d8190]">or</span>
+                            <div className="flex-1 h-px bg-[#e1ddd8] dark:bg-[#313746]" />
+                          </div>
+                          
+                          <form onSubmit={handleSignup} className="space-y-4">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="font-sans text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] mb-1.5 block">
+                                  First name
+                                </label>
+                                <div className="relative">
+                                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
+                                  <input
+                                    type="text"
+                                    value={firstName}
+                                    onChange={(e) => setFirstName(e.target.value)}
+                                    required
+                                    placeholder="Alex"
+                                    className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="font-sans text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] mb-1.5 block">
+                                  Last name
+                                </label>
                                 <input
                                   type="text"
-                                  value={firstName}
-                                  onChange={(e) => setFirstName(e.target.value)}
+                                  value={lastName}
+                                  onChange={(e) => setLastName(e.target.value)}
                                   required
-                                  placeholder="Alex"
+                                  placeholder="Smith"
+                                  className="w-full px-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                                />
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <label className="font-sans text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] mb-1.5 block">
+                                Email
+                              </label>
+                              <div className="relative">
+                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
+                                <input
+                                  type="email"
+                                  value={email}
+                                  onChange={(e) => setEmail(e.target.value)}
+                                  required
+                                  placeholder="alex@example.com"
                                   className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a]"
                                 />
                               </div>
                             </div>
+                            
                             <div>
                               <label className="font-sans text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] mb-1.5 block">
-                                Last name
+                                Password
                               </label>
-                              <input
-                                type="text"
-                                value={lastName}
-                                onChange={(e) => setLastName(e.target.value)}
-                                required
-                                placeholder="Smith"
-                                className="w-full px-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a]"
-                              />
+                              <div className="relative">
+                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
+                                <input
+                                  type="password"
+                                  value={password}
+                                  onChange={(e) => setPassword(e.target.value)}
+                                  required
+                                  minLength={8}
+                                  placeholder="••••••••"
+                                  className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a]"
+                                />
+                              </div>
                             </div>
-                          </div>
-                          
-                          <div>
-                            <label className="font-sans text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] mb-1.5 block">
-                              Email
-                            </label>
-                            <div className="relative">
-                              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
-                              <input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                                placeholder="alex@example.com"
-                                className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a]"
-                              />
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <label className="font-sans text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] mb-1.5 block">
-                              Password
-                            </label>
-                            <div className="relative">
-                              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
-                              <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                minLength={8}
-                                placeholder="••••••••"
-                                className="w-full pl-10 pr-3 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a]"
-                              />
-                            </div>
-                          </div>
-                          
-                          <button
-                            type="submit"
-                            disabled={isLoading}
-                            className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white rounded-xl font-albert text-[15px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isLoading ? (
-                              <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                              <>
-                                Continue
-                                <ArrowRight className="w-4 h-4" />
-                              </>
-                            )}
-                          </button>
-                        </form>
+                            
+                            <button
+                              type="submit"
+                              disabled={isLoading}
+                              className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#2c2520] hover:bg-[#1a1512] text-white rounded-full font-sans font-bold text-[15px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                            >
+                              {isLoading ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                              ) : (
+                                <>
+                                  Continue
+                                  <ArrowRight className="w-4 h-4" />
+                                </>
+                              )}
+                            </button>
+                          </form>
+                        </>
                       ) : (
                         <form onSubmit={handleVerification} className="space-y-4">
                           <div>
@@ -430,7 +481,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                           <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#a07855] dark:bg-[#b8896a] hover:bg-[#8c6245] dark:hover:bg-[#a07855] text-white rounded-xl font-albert text-[15px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#2c2520] hover:bg-[#1a1512] text-white rounded-full font-sans font-bold text-[15px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                           >
                             {isLoading ? (
                               <Loader2 className="w-5 h-5 animate-spin" />
@@ -518,4 +569,3 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
     </AnimatePresence>
   );
 }
-
