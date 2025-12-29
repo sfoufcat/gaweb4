@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
-import { clerkClient } from '@clerk/nextjs/server';
-import type { CoachTier, CoachSubscription, OrgSettings } from '@/types';
+import { auth, clerkClient } from '@clerk/nextjs/server';
+import type { CoachTier, CoachSubscription, OrgSettings, ClerkPublicMetadata } from '@/types';
 import { TIER_PRICING } from '@/lib/coach-permissions';
 
 // Lazy initialization of Stripe
@@ -33,7 +32,24 @@ const COACH_TIER_PRICE_IDS: Record<CoachTier, string> = {
  */
 export async function POST(req: Request) {
   try {
-    const { userId, organizationId } = await requireCoachWithOrg();
+    // Use direct auth - this is platform billing (GA charging coaches)
+    // Works on both main domain (onboarding) and tenant subdomains
+    const { userId, sessionClaims } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get organization from user metadata (works on main domain during onboarding)
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    const organizationId = publicMetadata?.organizationId || publicMetadata?.primaryOrganizationId;
+
+    if (!organizationId) {
+      return NextResponse.json(
+        { error: 'No organization found. Please complete coach signup first.' },
+        { status: 400 }
+      );
+    }
 
     const body = await req.json();
     const { tier, trial, onboarding } = body as { 

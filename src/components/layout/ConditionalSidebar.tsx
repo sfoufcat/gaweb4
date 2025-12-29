@@ -48,7 +48,13 @@ export function ConditionalSidebar() {
   // Hide sidebar on marketplace page (fullscreen public experience)
   const isMarketplacePage = pathname?.startsWith('/marketplace');
   
-  const shouldHideSidebar = isOnboardingPage || isStartPage || isCheckInPage || isJoinPage || isSignInPage || isProfileEditOnboarding || isPremiumUpgradeForm || isCoachingForm || isInvitePage || isMarketplacePage;
+  // Hide sidebar on coach onboarding pages (fullscreen experience)
+  const isCoachOnboarding = pathname?.startsWith('/coach/onboarding');
+  
+  // Hide sidebar on coach welcome page (fullscreen experience)
+  const isCoachWelcome = pathname?.startsWith('/coach/welcome');
+  
+  const shouldHideSidebar = isOnboardingPage || isStartPage || isCheckInPage || isJoinPage || isSignInPage || isProfileEditOnboarding || isPremiumUpgradeForm || isCoachingForm || isInvitePage || isMarketplacePage || isCoachOnboarding || isCoachWelcome;
   
   if (shouldHideSidebar) {
     return null;
