@@ -111,7 +111,7 @@ export function ThemeToggle({ className = '', horizontal = false }: ThemeToggleP
             relative z-10 w-[28px] h-[22px] flex items-center justify-center
             transition-all duration-300
             ${isDark 
-              ? 'text-blue-300' 
+              ? 'text-[#b8896a]' 
               : 'text-[#a7a39e]'
             }
           `}
@@ -167,7 +167,7 @@ export function ThemeToggle({ className = '', horizontal = false }: ThemeToggleP
           relative z-10 w-[22px] h-[28px] flex items-center justify-center
           transition-all duration-300
           ${isDark 
-            ? 'text-blue-300' 
+            ? 'text-[#b8896a]' 
             : 'text-[#a7a39e]'
           }
         `}

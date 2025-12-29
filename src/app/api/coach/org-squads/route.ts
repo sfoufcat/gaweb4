@@ -161,6 +161,11 @@ export async function GET() {
         capacity: data.capacity,
         priceInCents: data.priceInCents || 0,
         currency: data.currency || 'usd',
+        // Subscription fields
+        subscriptionEnabled: data.subscriptionEnabled || false,
+        billingInterval: data.billingInterval || 'monthly',
+        stripePriceId: data.stripePriceId,
+        stripeProductId: data.stripeProductId,
         createdAt: data.createdAt || new Date().toISOString(),
         updatedAt: data.updatedAt || new Date().toISOString(),
         streak: data.streak,

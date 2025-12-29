@@ -23,6 +23,7 @@ import {
   ChevronDown, Shield, Calendar
 } from 'lucide-react';
 import type { SquadFeature, SquadTestimonial, SquadFaq } from '@/types';
+import { SquadPaymentModal } from '@/components/squad/SquadPaymentModal';
 
 interface SquadDetailData {
   squad: {
@@ -224,6 +225,12 @@ export default function SquadDetailPage() {
   const [successModal, setSuccessModal] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
   const [errorModal, setErrorModal] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+  const [paymentModal, setPaymentModal] = useState<{
+    open: boolean;
+    priceInCents: number;
+    currency: string;
+    billingInterval: string;
+  }>({ open: false, priceInCents: 0, currency: 'usd', billingInterval: 'monthly' });
 
   useEffect(() => {
     const fetchSquad = async () => {
@@ -269,6 +276,18 @@ export default function SquadDetailPage() {
       return;
     }
 
+    // If squad requires subscription, open payment modal directly
+    if (data?.squad.subscriptionEnabled && data.squad.priceInCents > 0) {
+      setPaymentModal({
+        open: true,
+        priceInCents: data.squad.priceInCents,
+        currency: data.squad.currency || 'usd',
+        billingInterval: data.squad.billingInterval || 'monthly',
+      });
+      return;
+    }
+
+    // Free squad - join directly
     try {
       setJoining(true);
       
@@ -284,11 +303,6 @@ export default function SquadDetailPage() {
         throw new Error(result.error || 'Failed to join');
       }
 
-      if (result.checkoutUrl) {
-        window.location.href = result.checkoutUrl;
-        return;
-      }
-
       setSuccessModal({ open: true, message: result.message || 'Successfully joined the squad!' });
     } catch (err) {
       console.error('Join error:', err);
@@ -296,6 +310,11 @@ export default function SquadDetailPage() {
     } finally {
       setJoining(false);
     }
+  };
+
+  const handlePaymentSuccess = () => {
+    setPaymentModal({ open: false, priceInCents: 0, currency: 'usd', billingInterval: 'monthly' });
+    setSuccessModal({ open: true, message: 'Welcome to the squad! Your membership is now active.' });
   };
 
   if (loading) {
@@ -833,6 +852,18 @@ export default function SquadDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Payment Modal */}
+      <SquadPaymentModal
+        isOpen={paymentModal.open}
+        onClose={() => setPaymentModal({ open: false, priceInCents: 0, currency: 'usd', billingInterval: 'monthly' })}
+        onSuccess={handlePaymentSuccess}
+        squadId={squadId}
+        squadName={squad.name}
+        priceInCents={paymentModal.priceInCents}
+        currency={paymentModal.currency}
+        billingInterval={paymentModal.billingInterval}
+      />
 
       {/* Success Modal */}
       <AlertDialog open={successModal.open} onOpenChange={(open) => {

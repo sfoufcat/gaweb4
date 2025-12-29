@@ -98,7 +98,14 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
         className="flex gap-4 overflow-x-auto pb-3 scrollbar-hide snap-x snap-mandatory touch-pan-x"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        {enrollments.map((enrollment) => (
+        {enrollments.map((enrollment) => {
+          // Check if the program has already started (start date is in the past)
+          const hasStarted = enrollment.cohort 
+            ? new Date(enrollment.cohort.startDate) <= new Date() 
+            : false;
+          const isActive = enrollment.status === 'active' || hasStarted;
+          
+          return (
           <Link
             key={enrollment.id}
             href={`/discover/programs/${enrollment.programId}`}
@@ -125,13 +132,13 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
                 )}
                 
                 {/* Status Badge */}
-                {enrollment.status === 'upcoming' ? (
-                  <div className="absolute top-3 left-3 px-2 py-1 bg-amber-500 text-white rounded-full text-[11px] font-medium">
-                    Upcoming
-                  </div>
-                ) : (
+                {isActive ? (
                   <div className="absolute top-3 left-3 px-2 py-1 bg-green-500 text-white rounded-full text-[11px] font-medium">
                     Active
+                  </div>
+                ) : (
+                  <div className="absolute top-3 left-3 px-2 py-1 bg-[#a07855] dark:bg-[#b8896a] text-white rounded-full text-[11px] font-medium">
+                    Upcoming
                   </div>
                 )}
                 
@@ -157,7 +164,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
                   </p>
                 )}
                 
-                {/* Progress */}
+                {/* Progress or Status */}
                 {enrollment.status === 'active' ? (
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
@@ -175,15 +182,19 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
                       />
                     </div>
                   </div>
+                ) : hasStarted ? (
+                  <p className="font-sans text-[12px] text-green-600 dark:text-green-400">
+                    Active
+                  </p>
                 ) : (
-                  <p className="font-sans text-[12px] text-amber-600 dark:text-amber-400">
+                  <p className="font-sans text-[12px] text-[#a07855] dark:text-[#b8896a]">
                     Starts {enrollment.cohort ? new Date(enrollment.cohort.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'soon'}
                   </p>
                 )}
               </div>
             </div>
           </Link>
-        ))}
+        );})}
         
         {/* Discover More Card - Only show if there are available programs */}
         {hasAvailablePrograms && (

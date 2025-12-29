@@ -80,7 +80,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
         className="block bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#1a1512] dark:to-[#181310] border border-[#FFE4CC] dark:border-[#3d3530] rounded-[20px] p-5 hover:shadow-lg hover:border-[#a07855] dark:border-brand-accent/40 dark:hover:border-brand-accent/40 transition-all duration-300 group"
       >
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#F5E6A8] to-[#EDD96C] dark:from-[#8c6245] dark:to-[#a07855] flex items-center justify-center flex-shrink-0">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#F5E6A8] to-[#EDD96C] dark:from-[#a07855] dark:to-[#b8896a] flex items-center justify-center flex-shrink-0">
             <Users className="w-7 h-7 text-[#4A5D54] dark:text-white" />
           </div>
           <div className="flex-1 min-w-0">
@@ -91,7 +91,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
               Join a {squadTermLower} of growth-minded people and stay accountable together.
             </p>
           </div>
-          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#E07A3A] dark:bg-[#D4692E] flex items-center justify-center group-hover:bg-[#C96830] dark:group-hover:bg-[#C55E26] group-hover:scale-105 transition-all">
+          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#a07855] dark:bg-[#b8896a] flex items-center justify-center group-hover:bg-[#8c6245] dark:group-hover:bg-[#a07855] group-hover:scale-105 transition-all">
             <ChevronRight className="w-5 h-5 text-white" />
           </div>
         </div>

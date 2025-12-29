@@ -371,7 +371,7 @@ export function DailyFocusSection({
           {!isDayClosed && (
             <button
               onClick={() => handleAddTask(false)}
-              className="font-sans text-[12px] text-[#a07855] dark:text-brand-accent leading-[1.2] hover:opacity-80 transition-opacity"
+              className="font-sans text-[12px] text-[#a07855] dark:text-[#b8896a] leading-[1.2] hover:opacity-80 transition-opacity"
             >
               Add
             </button>

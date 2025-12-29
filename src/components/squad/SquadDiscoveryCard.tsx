@@ -31,9 +31,13 @@ interface SquadDiscoveryCardProps {
 }
 
 export function SquadDiscoveryCard({ squad }: SquadDiscoveryCardProps) {
-  const formatPrice = (cents: number) => {
+  const formatPrice = (cents: number, interval?: string) => {
     if (!cents || cents === 0) return 'Free';
-    return `$${(cents / 100).toFixed(0)}`;
+    const amount = `$${(cents / 100).toFixed(0)}`;
+    if (interval === 'monthly') return `${amount}/mo`;
+    if (interval === 'quarterly') return `${amount}/qtr`;
+    if (interval === 'yearly') return `${amount}/yr`;
+    return amount;
   };
 
   const isCoached = !!squad.coachId;
@@ -81,7 +85,7 @@ export function SquadDiscoveryCard({ squad }: SquadDiscoveryCardProps) {
           {/* Price badge */}
           <div className="absolute bottom-2 right-2">
             <span className="px-2 py-1 bg-white/90 dark:bg-[#171b22]/90 text-[#1a1a1a] dark:text-[#f5f5f8] text-sm font-semibold rounded-full backdrop-blur-sm">
-              {formatPrice(squad.priceInCents || 0)}
+              {formatPrice(squad.priceInCents || 0, squad.subscriptionEnabled ? squad.billingInterval : undefined)}
             </span>
           </div>
         </div>
