@@ -379,6 +379,11 @@ export async function PUT(
       }
     }
 
+    // Handle weekend settings
+    if (body.includeWeekends !== undefined) {
+      updateData.includeWeekends = body.includeWeekends === true;
+    }
+
     // Handle landing page hero section fields
     if (body.heroHeadline !== undefined) {
       updateData.heroHeadline = body.heroHeadline?.trim() || null;

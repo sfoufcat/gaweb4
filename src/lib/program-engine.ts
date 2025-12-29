@@ -27,6 +27,65 @@ import type {
 } from '@/types';
 
 // ============================================================================
+// WEEKEND HELPERS
+// ============================================================================
+
+/**
+ * Check if a date is a weekend (Saturday = 6, Sunday = 0)
+ */
+function isWeekend(date: Date): boolean {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+}
+
+/**
+ * Get the next Monday from a given date
+ * If the date is already a weekday, returns the same date
+ */
+function getNextWeekday(date: Date): Date {
+  const result = new Date(date);
+  while (isWeekend(result)) {
+    result.setDate(result.getDate() + 1);
+  }
+  return result;
+}
+
+/**
+ * Count weekdays between two dates (inclusive of start, exclusive of end for elapsed calculation)
+ */
+function countWeekdaysBetween(startDate: Date, endDate: Date): number {
+  let count = 0;
+  const current = new Date(startDate);
+  
+  while (current <= endDate) {
+    if (!isWeekend(current)) {
+      count++;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return count;
+}
+
+/**
+ * Calculate the number of working days in a program based on total days
+ * Assumes a 5-day work week
+ */
+export function calculateWorkingDays(totalDays: number): number {
+  const fullWeeks = Math.floor(totalDays / 7);
+  const remainingDays = totalDays % 7;
+  
+  // 5 working days per full week
+  let workingDays = fullWeeks * 5;
+  
+  // Add working days from remaining days (assuming start on Monday)
+  // This is an approximation - actual count depends on start day
+  workingDays += Math.min(remainingDays, 5);
+  
+  return workingDays;
+}
+
+// ============================================================================
 // PROGRAM QUERIES
 // ============================================================================
 
@@ -1197,6 +1256,7 @@ async function createProgramTaskV2(
 
 /**
  * Calculate program day index considering cohort start date for group programs
+ * and weekend exclusion settings
  */
 function calculateCurrentDayIndexV2(
   enrollment: ProgramEnrollment,
@@ -1205,14 +1265,43 @@ function calculateCurrentDayIndexV2(
   todayDate?: string
 ): number {
   const today = todayDate || new Date().toISOString().split('T')[0];
+  const todayDateObj = new Date(today + 'T00:00:00');
   
   // For group programs with cohort, use cohort start date
   // For individual programs, use enrollment.startedAt
   const startDateStr = cohort?.startDate || enrollment.startedAt;
+  let startDate = new Date(startDateStr + 'T00:00:00');
   
-  const startDate = new Date(startDateStr + 'T00:00:00');
-  const todayDateObj = new Date(today + 'T00:00:00');
+  // Handle weekend exclusion
+  const includeWeekends = program.includeWeekends !== false; // Default true
   
+  if (!includeWeekends) {
+    // If today is a weekend, skip task feeding entirely
+    if (isWeekend(todayDateObj)) {
+      return 0;
+    }
+    
+    // If program starts on weekend, adjust to next Monday
+    if (isWeekend(startDate)) {
+      startDate = getNextWeekday(startDate);
+    }
+    
+    // If today is before the effective start date, program hasn't started
+    if (todayDateObj < startDate) {
+      return 0;
+    }
+    
+    // Count only weekdays between start and today
+    const workingDayIndex = countWeekdaysBetween(startDate, todayDateObj);
+    
+    // Calculate max working days for this program
+    const maxWorkingDays = calculateWorkingDays(program.lengthDays);
+    
+    // Cap at max working days
+    return Math.min(workingDayIndex, maxWorkingDays);
+  }
+  
+  // Original logic for programs that include weekends
   // Calculate elapsed days
   const elapsedMs = todayDateObj.getTime() - startDate.getTime();
   const elapsedDays = Math.floor(elapsedMs / (1000 * 60 * 60 * 24));

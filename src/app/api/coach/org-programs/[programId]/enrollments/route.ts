@@ -103,14 +103,26 @@ export async function GET(
       })
     );
 
+    // Deduplicate by userId - keep the most recent enrollment per user
+    const enrollmentsByUser = new Map<string, EnrollmentWithUser>();
+    
+    for (const enrollment of enrollments) {
+      const existing = enrollmentsByUser.get(enrollment.userId);
+      if (!existing || new Date(enrollment.createdAt) > new Date(existing.createdAt)) {
+        enrollmentsByUser.set(enrollment.userId, enrollment);
+      }
+    }
+    
+    const uniqueEnrollments = Array.from(enrollmentsByUser.values());
+
     // Sort by createdAt descending
-    enrollments.sort((a, b) => 
+    uniqueEnrollments.sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
     return NextResponse.json({
-      enrollments,
-      total: enrollments.length,
+      enrollments: uniqueEnrollments,
+      total: uniqueEnrollments.length, // Unique users count
     });
   } catch (error) {
     console.error('[COACH_PROGRAM_ENROLLMENTS_GET] Error:', error);

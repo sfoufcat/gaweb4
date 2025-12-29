@@ -275,6 +275,7 @@ export async function POST(request: NextRequest) {
       dailyFocusSlots: typeof body.dailyFocusSlots === 'number' && body.dailyFocusSlots >= 1 && body.dailyFocusSlots <= 4
         ? body.dailyFocusSlots
         : undefined,
+      includeWeekends: body.includeWeekends !== false, // Default true
       isActive: body.isActive !== false,
       isPublished: body.isPublished === true,
       // Landing page content

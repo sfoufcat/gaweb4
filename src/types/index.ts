@@ -715,6 +715,9 @@ export interface Program {
   // Daily Focus settings
   dailyFocusSlots?: number;            // 1-4, default 2 - how many focus tasks this program contributes per day
   
+  // Weekend settings
+  includeWeekends?: boolean; // Default true. If false, tasks only feed on weekdays (Mon-Fri)
+  
   // Status
   isActive: boolean; // Whether program can accept enrollments
   isPublished: boolean; // Whether visible in Discover

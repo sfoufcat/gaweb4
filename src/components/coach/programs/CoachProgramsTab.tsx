@@ -7,7 +7,7 @@ import { ProgramLandingPageEditor } from './ProgramLandingPageEditor';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Edit2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Edit2, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle } from 'lucide-react';
 import { AIHelperModal } from '@/components/ai';
 import type { ProgramContentDraft, LandingPageDraft, AIGenerationContext } from '@/lib/ai/types';
 import { ReferralConfigForm } from '@/components/coach/referrals';
@@ -49,6 +49,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [programDays, setProgramDays] = useState<ProgramDay[]>([]);
   const [programCohorts, setProgramCohorts] = useState<ProgramCohort[]>([]);
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(1);
+  const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set([1])); // Week 1 expanded by default
   const [loading, setLoading] = useState(true);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -101,6 +102,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     applyCoachesToExistingSquads: boolean;
     clientCommunityEnabled: boolean;
     dailyFocusSlots: number;
+    includeWeekends: boolean;
     defaultStartDate: string;
     allowCustomStartDate: boolean;
   }>({
@@ -120,6 +122,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     applyCoachesToExistingSquads: false,
     clientCommunityEnabled: false,
     dailyFocusSlots: 2,
+    includeWeekends: true,
     defaultStartDate: '',
     allowCustomStartDate: true,
   });
@@ -193,6 +196,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [saveError, setSaveError] = useState<string | null>(null);
   const [landingPageSaved, setLandingPageSaved] = useState(true);
   const [deleteConfirmProgram, setDeleteConfirmProgram] = useState<Program | null>(null);
+  
+  // Habit sync state
+  const [syncingHabits, setSyncingHabits] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ success: boolean; message: string } | null>(null);
   
   // Track previous program ID to detect actual selection changes vs updates
   const prevProgramId = useRef<string | null>(null);
@@ -430,9 +437,25 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     }
   }, [selectedDayIndex, programDays, selectedProgram]);
 
+  // Auto-expand the week containing the selected day
+  useEffect(() => {
+    if (!selectedProgram) return;
+    const includeWeekends = selectedProgram.includeWeekends !== false;
+    const daysPerWeek = includeWeekends ? 7 : 5;
+    const weekNum = Math.ceil(selectedDayIndex / daysPerWeek);
+    setExpandedWeeks(prev => {
+      if (prev.has(weekNum)) return prev;
+      const next = new Set(prev);
+      next.add(weekNum);
+      return next;
+    });
+  }, [selectedDayIndex, selectedProgram]);
+
   const handleOpenProgramModal = (program?: Program) => {
     // Fetch coaches when modal opens
     fetchCoaches();
+    // Clear any previous sync result
+    setSyncResult(null);
     
     if (program) {
       setEditingProgram(program);
@@ -453,6 +476,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         applyCoachesToExistingSquads: false, // Reset on each edit
         clientCommunityEnabled: program.clientCommunityEnabled || false,
         dailyFocusSlots: program.dailyFocusSlots ?? 2,
+        includeWeekends: program.includeWeekends !== false,
         defaultStartDate: program.defaultStartDate || '',
         allowCustomStartDate: program.allowCustomStartDate !== false,
       });
@@ -475,6 +499,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         applyCoachesToExistingSquads: false,
         clientCommunityEnabled: false,
         dailyFocusSlots: 2,
+        includeWeekends: true,
         defaultStartDate: '',
         allowCustomStartDate: true,
       });
@@ -969,6 +994,39 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     }));
   };
 
+  // Sync program habits to enrolled users
+  const syncHabitsToUsers = async () => {
+    if (!editingProgram) return;
+    
+    setSyncingHabits(true);
+    setSyncResult(null);
+    
+    try {
+      const response = await fetch(`${apiBasePath}/${editingProgram.id}/sync-habits`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        setSyncResult({ success: false, message: data.error || 'Failed to sync habits' });
+        return;
+      }
+      
+      const { summary } = data;
+      setSyncResult({
+        success: true,
+        message: `Synced to ${summary.usersProcessed} users: ${summary.habitsCreated} created, ${summary.habitsUpdated} updated`,
+      });
+    } catch (err) {
+      console.error('Failed to sync habits:', err);
+      setSyncResult({ success: false, message: 'Failed to sync habits' });
+    } finally {
+      setSyncingHabits(false);
+    }
+  };
+
   const formatPrice = (cents: number) => {
     if (cents === 0) return 'Free';
     return `$${(cents / 100).toFixed(2)}`;
@@ -1297,22 +1355,84 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               </button>
               
               <div className="space-y-1 max-h-[500px] overflow-y-auto">
-                {Array.from({ length: selectedProgram?.lengthDays || 30 }, (_, i) => i + 1).map((day) => {
-                  const hasContent = programDays.some(d => d.dayIndex === day && (d.tasks?.length > 0 || d.title));
-                  return (
-                    <button
-                      key={day}
-                      onClick={() => setSelectedDayIndex(day)}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm font-albert transition-colors ${
-                        selectedDayIndex === day
-                          ? 'bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a]'
-                          : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
-                      }`}
-                    >
-                      Day {day} {hasContent && <span className="text-green-500">✓</span>}
-                    </button>
-                  );
-                })}
+                {(() => {
+                  const totalDays = selectedProgram?.lengthDays || 30;
+                  const includeWeekends = selectedProgram?.includeWeekends !== false;
+                  const daysPerWeek = includeWeekends ? 7 : 5;
+                  const numWeeks = Math.ceil(totalDays / daysPerWeek);
+                  
+                  return Array.from({ length: numWeeks }, (_, weekIdx) => {
+                    const weekNum = weekIdx + 1;
+                    const startDay = weekIdx * daysPerWeek + 1;
+                    const endDay = Math.min(startDay + daysPerWeek - 1, totalDays);
+                    const isExpanded = expandedWeeks.has(weekNum);
+                    
+                    // Check if any day in this week has content
+                    const weekHasContent = programDays.some(d => 
+                      d.dayIndex >= startDay && d.dayIndex <= endDay && (d.tasks?.length > 0 || d.title)
+                    );
+                    // Count days with content in this week
+                    const daysWithContent = Array.from({ length: endDay - startDay + 1 }, (_, i) => startDay + i)
+                      .filter(day => programDays.some(d => d.dayIndex === day && (d.tasks?.length > 0 || d.title)))
+                      .length;
+                    const totalDaysInWeek = endDay - startDay + 1;
+                    
+                    return (
+                      <div key={weekNum} className="mb-1">
+                        {/* Week Header */}
+                        <button
+                          onClick={() => {
+                            setExpandedWeeks(prev => {
+                              const next = new Set(prev);
+                              if (next.has(weekNum)) {
+                                next.delete(weekNum);
+                              } else {
+                                next.add(weekNum);
+                              }
+                              return next;
+                            });
+                          }}
+                          className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium font-albert bg-[#faf8f6] dark:bg-[#1e222a] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            {isExpanded ? (
+                              <ChevronDown className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                            )}
+                            <span className="text-[#1a1a1a] dark:text-[#f5f5f8]">Week {weekNum}</span>
+                          </div>
+                          <span className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
+                            {daysWithContent}/{totalDaysInWeek}
+                            {weekHasContent && <span className="text-green-500 ml-1">✓</span>}
+                          </span>
+                        </button>
+                        
+                        {/* Days in Week */}
+                        {isExpanded && (
+                          <div className="ml-3 mt-1 space-y-0.5 border-l-2 border-[#e1ddd8] dark:border-[#262b35] pl-2">
+                            {Array.from({ length: endDay - startDay + 1 }, (_, i) => startDay + i).map((day) => {
+                              const hasContent = programDays.some(d => d.dayIndex === day && (d.tasks?.length > 0 || d.title));
+                              return (
+                                <button
+                                  key={day}
+                                  onClick={() => setSelectedDayIndex(day)}
+                                  className={`w-full text-left px-3 py-1.5 rounded-lg text-sm font-albert transition-colors ${
+                                    selectedDayIndex === day
+                                      ? 'bg-[#a07855]/10 text-[#a07855] dark:text-[#b8896a]'
+                                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
+                                  }`}
+                                >
+                                  Day {day} {hasContent && <span className="text-green-500">✓</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </div>
 
@@ -2172,6 +2292,34 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       </p>
                     </div>
 
+                    {/* Weekend Settings */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                        <BrandedCheckbox
+                          checked={programFormData.includeWeekends}
+                          onChange={(checked) => setProgramFormData({ ...programFormData, includeWeekends: checked })}
+                        />
+                        <span 
+                          className="cursor-pointer" 
+                          onClick={() => setProgramFormData({ ...programFormData, includeWeekends: !programFormData.includeWeekends })}
+                        >
+                          Include weekends
+                        </span>
+                      </div>
+                      {!programFormData.includeWeekends && (
+                        <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                          <div className="text-sm text-amber-800 dark:text-amber-300 font-albert">
+                            <p className="font-medium">Weekends excluded</p>
+                            <p className="text-xs mt-1">
+                              Tasks will only be assigned on weekdays (Mon-Fri). If a cohort starts on a weekend, Day 1 will begin on Monday.
+                              A {programFormData.lengthDays}-day program will have approximately {Math.ceil(programFormData.lengthDays * 5 / 7)} task days.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Group-specific settings */}
                     {programFormData.type === 'group' && (
                       <div className="space-y-4">
@@ -2326,14 +2474,27 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                         <label className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                           Default Habits
                         </label>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={addProgramHabit}
-                          className="text-[#a07855] dark:text-[#b8896a] hover:text-[#8c6245]"
-                        >
-                          + Add
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          {editingProgram && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={syncHabitsToUsers}
+                              disabled={syncingHabits || programFormData.defaultHabits.length === 0}
+                              className="text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] text-xs"
+                            >
+                              {syncingHabits ? 'Syncing...' : 'Sync to Users'}
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={addProgramHabit}
+                            className="text-[#a07855] dark:text-[#b8896a] hover:text-[#8c6245]"
+                          >
+                            + Add
+                          </Button>
+                        </div>
                       </div>
                       <div className="space-y-2">
                         {programFormData.defaultHabits.map((habit, index) => (
@@ -2354,6 +2515,15 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                           </div>
                         ))}
                       </div>
+                      {syncResult && (
+                        <div className={`mt-2 p-2 rounded text-xs font-albert ${
+                          syncResult.success 
+                            ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' 
+                            : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+                        }`}>
+                          {syncResult.message}
+                        </div>
+                      )}
                     </div>
 
                     {/* Status checkboxes */}
@@ -2716,6 +2886,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             applyCoachesToExistingSquads: false,
             clientCommunityEnabled: false,
             dailyFocusSlots: 2,
+            includeWeekends: true,
             defaultStartDate: '',
             allowCustomStartDate: true,
           });
