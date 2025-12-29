@@ -23,6 +23,7 @@ import {
   Loader2
 } from 'lucide-react';
 import type { CoachTier } from '@/types';
+import { BrandingSetupModal } from '@/components/coach/onboarding';
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -310,6 +311,9 @@ export default function OnboardingPlansPage() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [setupIntentId, setSetupIntentId] = useState<string | null>(null);
+  
+  // Branding modal state - shown after payment success
+  const [showBrandingModal, setShowBrandingModal] = useState(false);
 
   // Check onboarding state on mount
   useEffect(() => {
@@ -388,8 +392,16 @@ export default function OnboardingPlansPage() {
   };
 
   const handlePaymentSuccess = () => {
-    // Redirect to welcome page
-    router.push('/coach/welcome');
+    // Close checkout modal and show branding setup modal
+    setShowCheckout(false);
+    setClientSecret(null);
+    setSetupIntentId(null);
+    setShowBrandingModal(true);
+  };
+  
+  const handleBrandingComplete = () => {
+    // Branding modal handles navigation to /coach?tour=true
+    setShowBrandingModal(false);
   };
 
   const handleCloseCheckout = () => {
@@ -677,6 +689,12 @@ export default function OnboardingPlansPage() {
           </motion.div>
         )}
       </AnimatePresence>
+      
+      {/* Branding Setup Modal - shown after payment success */}
+      <BrandingSetupModal
+        isOpen={showBrandingModal}
+        onComplete={handleBrandingComplete}
+      />
     </div>
   );
 }

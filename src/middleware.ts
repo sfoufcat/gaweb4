@@ -331,6 +331,27 @@ const isCoachReactivatePage = createRouteMatcher([
   '/coach/reactivate/(.*)',
 ]);
 
+// Platform deactivated page (shown to members when subscription is inactive)
+const isPlatformDeactivatedPage = createRouteMatcher([
+  '/platform-deactivated',
+]);
+
+// Routes that should NEVER be blocked by subscription status
+// These are essential for auth flow and lockout pages
+const isAlwaysAllowedRoute = createRouteMatcher([
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/signup(.*)',
+  '/sso-callback(.*)',
+  '/platform-deactivated',
+  '/access-denied',
+  '/tenant-not-found',
+  '/api/auth(.*)',
+  '/api/webhooks(.*)',
+  '/api/tenant/resolve',
+  '/api/org/branding',
+]);
+
 // =============================================================================
 // TENANT RESOLUTION (via Vercel Edge Config)
 // =============================================================================
@@ -966,39 +987,66 @@ export default clerkMiddleware(async (auth, request) => {
   }
   
   // ==========================================================================
-  // COACH DASHBOARD PLAN GATING
+  // TENANT SUBSCRIPTION LOCKOUT (Coach + Members)
   // ==========================================================================
   
-  // For coach dashboard routes, check organization billing and plan tier
-  if (isTenantMode && userId && isCoachDashboardRoute(request)) {
-    // Skip plan page and reactivate page - always accessible
-    if (isCoachPlanPage(request) || isCoachReactivatePage(request)) {
-      // Allow access to plan/reactivate pages without subscription check
-    }
-    // Check if coach role
-    else if (isStaffRole(role)) {
-      // Get org billing state from Clerk org public metadata (primary source - synced by Stripe webhooks)
-      // Falls back to tenantConfigData (Edge Config) if Clerk metadata not available
-      // Note: Clerk org metadata is updated directly by webhooks, so it's more up-to-date
-      const orgMetadata = sessionClaims?.orgPublicMetadata as ClerkOrgPublicMetadata | undefined;
-      const edgeConfigBilling = tenantConfigData as unknown as ClerkOrgPublicMetadata | undefined;
-      
-      // Priority: Clerk org metadata > Edge Config > defaults
-      const orgPlan: CoachTier = orgMetadata?.plan || edgeConfigBilling?.plan || 'starter';
-      const orgStatus: CoachSubscriptionStatus = orgMetadata?.subscriptionStatus || edgeConfigBilling?.subscriptionStatus || 'none';
-      const orgPeriodEnd = orgMetadata?.currentPeriodEnd || edgeConfigBilling?.currentPeriodEnd;
-      const orgCancelAtPeriodEnd = orgMetadata?.cancelAtPeriodEnd || edgeConfigBilling?.cancelAtPeriodEnd;
-      
-      // Check subscription is active
-      const isActive = hasActiveOrgSubscription(orgStatus, orgPeriodEnd, orgCancelAtPeriodEnd);
-      
-      if (!isActive) {
-        // Redirect to reactivate page if subscription not active
-        // This shows a dedicated page with plan selection and payment options
-        console.log(`[MIDDLEWARE] Coach ${userId} blocked: org subscription not active (status=${orgStatus}), redirecting to /coach/reactivate`);
-        return NextResponse.redirect(new URL('/coach/reactivate', request.url));
+  // When coach's subscription is inactive, lock the entire platform:
+  // - Coach: redirect to /coach/reactivate (existing behavior)
+  // - Members: redirect to /platform-deactivated
+  // - Data is preserved, only access is restricted
+  
+  if (isTenantMode && userId && !isAlwaysAllowedRoute(request)) {
+    // Get org billing state from Clerk org public metadata (primary source - synced by Stripe webhooks)
+    // Falls back to tenantConfigData.subscription (Edge Config) if Clerk metadata not available
+    const orgMetadata = sessionClaims?.orgPublicMetadata as ClerkOrgPublicMetadata | undefined;
+    const edgeConfigSubscription = tenantConfigData?.subscription;
+    
+    // Priority: Clerk org metadata > Edge Config subscription > defaults
+    const orgPlan: CoachTier = orgMetadata?.plan || edgeConfigSubscription?.plan || 'starter';
+    const orgStatus: CoachSubscriptionStatus = orgMetadata?.subscriptionStatus || edgeConfigSubscription?.subscriptionStatus || 'none';
+    const orgPeriodEnd = orgMetadata?.currentPeriodEnd || edgeConfigSubscription?.currentPeriodEnd;
+    const orgCancelAtPeriodEnd = orgMetadata?.cancelAtPeriodEnd || edgeConfigSubscription?.cancelAtPeriodEnd;
+    
+    // Check subscription is active
+    const isSubscriptionActive = hasActiveOrgSubscription(orgStatus, orgPeriodEnd, orgCancelAtPeriodEnd);
+    
+    if (!isSubscriptionActive) {
+      // COACH: Allow access to plan/reactivate pages, block everything else
+      if (isStaffRole(role)) {
+        if (isCoachPlanPage(request) || isCoachReactivatePage(request)) {
+          // Allow access to plan/reactivate pages without subscription check
+        } else if (isCoachDashboardRoute(request)) {
+          // Redirect to reactivate page for coach dashboard
+          console.log(`[MIDDLEWARE] Coach ${userId} blocked: org subscription not active (status=${orgStatus}), redirecting to /coach/reactivate`);
+          return NextResponse.redirect(new URL('/coach/reactivate', request.url));
+        }
+        // Note: Staff can still access non-dashboard routes like profile
       }
       
+      // MEMBERS: Block ALL routes except always-allowed and platform-deactivated
+      if (!isStaffRole(role)) {
+        // Already on platform-deactivated page - allow
+        if (isPlatformDeactivatedPage(request)) {
+          // Allow - they're already seeing the lockout page
+        } else {
+          // Block and redirect to platform-deactivated
+          console.log(`[MIDDLEWARE] Member ${userId} blocked: org subscription not active (status=${orgStatus}), redirecting to /platform-deactivated`);
+          if (pathname.startsWith('/api/')) {
+            return NextResponse.json(
+              { error: 'Platform temporarily unavailable', code: 'SUBSCRIPTION_INACTIVE' },
+              { status: 503 }
+            );
+          }
+          return NextResponse.redirect(new URL('/platform-deactivated', request.url));
+        }
+      }
+    }
+    
+    // ==========================================================================
+    // COACH DASHBOARD PLAN TIER GATING (only when subscription IS active)
+    // ==========================================================================
+    
+    if (isSubscriptionActive && isStaffRole(role) && isCoachDashboardRoute(request)) {
       // Check Pro+ routes
       if (requiresProPlan(request) && orgPlan === 'starter') {
         console.log(`[MIDDLEWARE] Coach ${userId} blocked: Pro+ feature on starter plan`);

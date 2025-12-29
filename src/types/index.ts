@@ -4109,6 +4109,7 @@ export interface MarketplaceListing {
   coachName?: string;               // Coach/org display name
   coachAvatarUrl?: string;          // Coach/org avatar
   subdomain?: string;               // For building funnel URLs
+  customDomain?: string;            // Verified custom domain (preferred over subdomain)
   
   // Searchable text (lowercased concat of title, description, coachName)
   searchableText: string;

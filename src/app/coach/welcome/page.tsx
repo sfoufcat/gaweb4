@@ -83,13 +83,8 @@ export default function CoachWelcomePage() {
     router.push('/coach');
   };
   
+  // First steps - branding is now done in the post-payment modal
   const firstSteps = [
-    {
-      icon: Palette,
-      title: 'Customize your branding',
-      description: 'Upload your logo, set colors, and make it yours',
-      action: '/coach?tab=branding',
-    },
     {
       icon: Rocket,
       title: 'Create your first program',
@@ -101,6 +96,12 @@ export default function CoachWelcomePage() {
       title: 'Set up a funnel',
       description: 'Create a landing page to attract new members',
       action: '/coach?tab=funnels',
+    },
+    {
+      icon: Palette,
+      title: 'Customize more branding',
+      description: 'Add dark mode colors, horizontal logo, and more',
+      action: '/coach?tab=customize',
     },
   ];
   

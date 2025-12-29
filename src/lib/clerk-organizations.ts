@@ -2,7 +2,8 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import type { UserRole, OrgRole, OrgSettings, DEFAULT_ORG_SETTINGS, CoachTier, CoachSubscriptionStatus, CoachSubscription } from '@/types';
 import { setupDefaultOrgChannels } from '@/lib/org-channels';
 import { adminDb } from '@/lib/firebase-admin';
-import { syncTenantToEdgeConfig, DEFAULT_TENANT_BRANDING } from '@/lib/tenant-edge-config';
+import { syncTenantToEdgeConfig, syncSubscriptionToEdgeConfig, DEFAULT_TENANT_BRANDING } from '@/lib/tenant-edge-config';
+import type { TenantSubscriptionData } from '@/lib/tenant-edge-config';
 
 /**
  * Clerk Organizations Utilities
@@ -625,6 +626,37 @@ export async function createManualCoachSubscription(
   });
   
   console.log(`[CLERK_ORGS] Synced manual subscription to Clerk for org ${organizationId}`);
+  
+  // Sync to Edge Config for middleware access checks
+  try {
+    // Get the organization's subdomain from org_domains
+    const domainSnapshot = await adminDb
+      .collection('org_domains')
+      .where('organizationId', '==', organizationId)
+      .limit(1)
+      .get();
+    
+    if (!domainSnapshot.empty) {
+      const domainData = domainSnapshot.docs[0].data();
+      const subdomain = domainData.subdomain;
+      const customDomain = domainData.verifiedCustomDomain || undefined;
+      
+      const subscriptionData: TenantSubscriptionData = {
+        plan: tier,
+        subscriptionStatus: status,
+        currentPeriodEnd: manualExpiresAt || undefined,
+        cancelAtPeriodEnd: false,
+      };
+      
+      await syncSubscriptionToEdgeConfig(organizationId, subdomain, subscriptionData, customDomain);
+      console.log(`[CLERK_ORGS] Synced manual subscription to Edge Config for subdomain ${subdomain}`);
+    } else {
+      console.warn(`[CLERK_ORGS] No subdomain found for org ${organizationId} - Edge Config not updated`);
+    }
+  } catch (edgeError) {
+    // Log but don't fail - Edge Config is an optimization, not critical path
+    console.error(`[CLERK_ORGS] Failed to sync subscription to Edge Config:`, edgeError);
+  }
 }
 
 /**

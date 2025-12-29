@@ -5,6 +5,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { sendWelcomeEmail } from '@/lib/email';
 import { updateUserBillingInClerk, updateUserCoachingInClerk, type BillingStatus } from '@/lib/admin-utils-clerk';
 import { archiveOldSquadMemberships } from '@/lib/program-engine';
+import { syncSubscriptionToEdgeConfig, type TenantSubscriptionData } from '@/lib/tenant-edge-config';
 import type { CoachingStatus, CoachingPlan, FlowSession, Program, ProgramEnrollment, ProgramInvite, NewProgramEnrollmentStatus, CoachTier, CoachSubscriptionStatus } from '@/types';
 
 // =============================================================================
@@ -13,6 +14,7 @@ import type { CoachingStatus, CoachingPlan, FlowSession, Program, ProgramEnrollm
 
 /**
  * Update Clerk Organization publicMetadata with billing state
+ * Also syncs to Edge Config for middleware-level access checks
  * This enables instant middleware-level tier gating without DB lookups
  */
 async function syncBillingToClerkOrg(
@@ -51,6 +53,37 @@ async function syncBillingToClerkOrg(
   } catch (error) {
     // Log but don't fail - DB is canonical, Clerk is cache
     console.error(`[STRIPE_WEBHOOK] Failed to sync billing to Clerk org ${organizationId}:`, error);
+  }
+  
+  // Also sync to Edge Config for middleware access checks
+  try {
+    // Get the organization's subdomain from org_domains
+    const domainSnapshot = await adminDb
+      .collection('org_domains')
+      .where('organizationId', '==', organizationId)
+      .limit(1)
+      .get();
+    
+    if (!domainSnapshot.empty) {
+      const domainData = domainSnapshot.docs[0].data();
+      const subdomain = domainData.subdomain;
+      const customDomain = domainData.verifiedCustomDomain || undefined;
+      
+      const subscriptionData: TenantSubscriptionData = {
+        plan: billingState.plan,
+        subscriptionStatus: billingState.subscriptionStatus,
+        currentPeriodEnd: billingState.currentPeriodEnd,
+        cancelAtPeriodEnd: billingState.cancelAtPeriodEnd,
+      };
+      
+      await syncSubscriptionToEdgeConfig(organizationId, subdomain, subscriptionData, customDomain);
+      console.log(`[STRIPE_WEBHOOK] Synced billing to Edge Config for subdomain ${subdomain}`);
+    } else {
+      console.warn(`[STRIPE_WEBHOOK] No subdomain found for org ${organizationId} - Edge Config not updated`);
+    }
+  } catch (edgeError) {
+    // Log but don't fail - Edge Config is an optimization, not critical path
+    console.error(`[STRIPE_WEBHOOK] Failed to sync billing to Edge Config for org ${organizationId}:`, edgeError);
   }
 }
 

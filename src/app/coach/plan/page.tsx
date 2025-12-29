@@ -8,16 +8,11 @@ import { useUser } from '@clerk/nextjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Check, 
-  Users, 
-  Layers, 
   Globe, 
   Mail, 
   CreditCard, 
   BarChart3, 
-  Zap,
   ArrowRight,
-  Sparkles,
-  Shield,
   X,
   Lock
 } from 'lucide-react';
@@ -452,7 +447,7 @@ export default function CoachPlanPage() {
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <span className={`text-white font-sans text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-md whitespace-nowrap ${
                       plan.highlighted 
-                        ? 'bg-gradient-to-r from-[#a07855] to-[#c9a07a]'
+                        ? 'bg-[#a07855]'
                         : 'bg-[#6b7280]'
                     }`}>
                       {plan.tag}
@@ -588,8 +583,8 @@ export default function CoachPlanPage() {
           </motion.div>
         )}
 
-        {/* Why Upgrade Section */}
-        {(!currentTier || currentTier === 'starter') && (
+        {/* Why Upgrade Section - only show when Pro is the relevant upgrade target */}
+        {(!currentTier || currentTier === 'starter') && selectedPlan !== 'scale' && (
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -622,31 +617,6 @@ export default function CoachPlanPage() {
             </div>
           </motion.div>
         )}
-
-        {/* Money Back Guarantee */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="max-w-2xl mx-auto mb-12"
-        >
-          <div className="bg-gradient-to-br from-[#f0fdf4] to-[#dcfce7] rounded-[24px] p-6 lg:p-8 border border-[#bbf7d0]">
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm">
-                <Shield className="w-6 h-6 text-[#22c55e]" />
-              </div>
-              <div>
-                <h3 className="font-albert text-[20px] font-bold text-[#166534] tracking-[-0.5px] mb-2">
-                  14-day money-back guarantee
-                </h3>
-                <p className="font-sans text-[14px] text-[#15803d] leading-relaxed">
-                  Not satisfied? Get a full refund within 14 days, no questions asked.
-                  We're confident you'll love the platform.
-                </p>
-              </div>
-            </div>
-          </div>
-        </motion.div>
 
         {/* FAQ or Contact */}
         <motion.div

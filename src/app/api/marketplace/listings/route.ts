@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import type { MarketplaceListing, Funnel } from '@/types';
+import type { MarketplaceListing, Funnel, OrgCustomDomain } from '@/types';
 
 /**
  * GET /api/marketplace/listings
@@ -35,10 +35,36 @@ export async function GET(req: Request) {
       .limit(limit)
       .get();
 
-    let listings = snapshot.docs.map(doc => ({
+    const listings = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
     })) as MarketplaceListing[];
+
+    // Collect unique organization IDs to batch-fetch custom domains
+    const orgIds = [...new Set(listings.map(l => l.organizationId).filter(Boolean))];
+    
+    // Fetch all verified custom domains for these organizations in one query
+    const customDomainsMap = new Map<string, string>();
+    if (orgIds.length > 0) {
+      // Firestore 'in' queries support up to 30 items, so batch if needed
+      const batchSize = 30;
+      for (let i = 0; i < orgIds.length; i += batchSize) {
+        const batchOrgIds = orgIds.slice(i, i + batchSize);
+        const customDomainsSnapshot = await adminDb
+          .collection('org_custom_domains')
+          .where('organizationId', 'in', batchOrgIds)
+          .where('status', '==', 'verified')
+          .get();
+        
+        customDomainsSnapshot.docs.forEach(doc => {
+          const domainData = doc.data() as OrgCustomDomain;
+          // Only set if not already set (first verified domain wins)
+          if (!customDomainsMap.has(domainData.organizationId)) {
+            customDomainsMap.set(domainData.organizationId, domainData.domain);
+          }
+        });
+      }
+    }
 
     // Fetch funnel slugs for each listing to build proper URLs
     const listingsWithFunnelUrls = await Promise.all(
@@ -66,10 +92,14 @@ export async function GET(req: Request) {
           }
         }
         
+        // Get verified custom domain for this organization (preferred over subdomain)
+        const customDomain = customDomainsMap.get(listing.organizationId) || null;
+        
         return {
           ...listing,
           funnelSlug,
           programSlug,
+          customDomain,
         };
       })
     );

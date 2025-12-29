@@ -117,21 +117,40 @@ export default function SquadFunnelClient({
   useEffect(() => {
     async function initSession() {
       try {
+        // Check for existing session in localStorage
         const storedSessionId = localStorage.getItem(`funnel_session_${funnel.id}`);
         
-        if (storedSessionId) {
-          const response = await fetch(`/api/funnel/session?sessionId=${storedSessionId}`);
-          const result = await response.json();
-          
-          if (result.session && !result.expired) {
-            setSessionId(storedSessionId);
-            setCurrentStepIndex(result.session.currentStepIndex || 0);
-            setData(result.session.data || {});
-            setIsLoading(false);
-            return;
-          } else {
+        // Validate stored session ID format before attempting to restore
+        // Must be a non-empty string starting with 'flow_'
+        if (storedSessionId && typeof storedSessionId === 'string' && storedSessionId.startsWith('flow_')) {
+          try {
+            // Try to restore session
+            const response = await fetch(`/api/funnel/session?sessionId=${storedSessionId}`);
+            
+            // Check if response is OK before parsing
+            if (response.ok) {
+              const result = await response.json();
+              
+              if (result.session && !result.expired) {
+                setSessionId(storedSessionId);
+                setCurrentStepIndex(result.session.currentStepIndex || 0);
+                setData(result.session.data || {});
+                setIsLoading(false);
+                return;
+              }
+            }
+            
+            // Session restore failed (expired, not found, or API error) - clear it
+            localStorage.removeItem(`funnel_session_${funnel.id}`);
+          } catch (restoreErr) {
+            // Network error during restore - clear corrupted/stale session and continue
+            console.warn('Failed to restore session, creating new one:', restoreErr);
             localStorage.removeItem(`funnel_session_${funnel.id}`);
           }
+        } else if (storedSessionId) {
+          // Invalid session ID format stored (corrupted) - clear it
+          console.warn('Invalid session ID format in localStorage, clearing:', storedSessionId);
+          localStorage.removeItem(`funnel_session_${funnel.id}`);
         }
 
         // Create new session
@@ -162,7 +181,7 @@ export default function SquadFunnelClient({
     }
 
     initSession();
-  }, [funnel.id, inviteCode]);
+  }, [funnel.id, inviteCode, referrerId]);
 
   // Link session to user when they sign in
   useEffect(() => {

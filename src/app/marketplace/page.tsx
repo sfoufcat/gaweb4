@@ -296,7 +296,7 @@ export default function MarketplacePage() {
                 <Users className="w-7 h-7 text-[#a07855] dark:text-[#b8896a]" />
               </div>
               <h3 className="font-albert text-[20px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                Engaged community
+                All-in-One Program Delivery
               </h3>
               <p className="font-sans text-[14px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed">
                 Built-in tools for squads, check-ins, and accountability that keep members coming back.
@@ -365,16 +365,22 @@ export default function MarketplacePage() {
 interface ListingWithFunnel extends MarketplaceListing {
   funnelSlug?: string | null;
   programSlug?: string | null;
+  customDomain?: string | null;
 }
 
 // Listing Card Component
 function ListingCard({ listing }: { listing: ListingWithFunnel }) {
-  // Build funnel URL based on listing's subdomain and funnel/program slugs
+  // Build funnel URL - prefer custom domain over subdomain
   let funnelUrl = '/join';
   
-  if (listing.subdomain) {
-    const baseUrl = `https://${listing.subdomain}.growthaddicts.com`;
-    
+  // Determine base URL: prefer custom domain if available, otherwise use subdomain
+  const baseUrl = listing.customDomain 
+    ? `https://${listing.customDomain}`
+    : listing.subdomain 
+      ? `https://${listing.subdomain}.growthaddicts.com`
+      : null;
+  
+  if (baseUrl) {
     if (listing.programSlug && listing.funnelSlug) {
       // Full funnel URL with program and funnel slug
       funnelUrl = `${baseUrl}/join/${listing.programSlug}/${listing.funnelSlug}`;

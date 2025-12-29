@@ -23,6 +23,7 @@ import { CoachPlanTab } from '@/components/coach/CoachPlanTab';
 import { DiscountCodesTab } from '@/components/coach/DiscountCodesTab';
 import { AnalyticsDashboard } from '@/components/coach/analytics';
 import { CoachSupportTab } from '@/components/coach/support';
+import { FeatureTour } from '@/components/coach/onboarding';
 
 /**
  * Coach Dashboard Page
@@ -69,6 +70,10 @@ export default function CoachPage() {
   const tabFromUrl = searchParams.get('tab') as CoachTab | null;
   const initialTab = tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'clients';
   const [activeTab, setActiveTab] = useState<CoachTab>(initialTab);
+  
+  // Feature tour state - triggered by ?tour=true from onboarding
+  const shouldStartTour = searchParams.get('tour') === 'true';
+  const [isTourActive, setIsTourActive] = useState(false);
 
   // Get role and orgRole from Clerk session
   const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata;
@@ -91,6 +96,21 @@ export default function CoachPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Start feature tour if URL has tour=true
+  useEffect(() => {
+    if (mounted && shouldStartTour && !isTourActive) {
+      // Small delay to let the dashboard render first
+      const timer = setTimeout(() => {
+        setIsTourActive(true);
+        // Remove the tour param from URL to prevent restart on refresh
+        const url = new URL(window.location.href);
+        url.searchParams.delete('tour');
+        window.history.replaceState({}, '', url.toString());
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [mounted, shouldStartTour, isTourActive]);
 
   // Update active tab when URL query param changes
   useEffect(() => {
@@ -191,8 +211,20 @@ export default function CoachPage() {
     return null;
   }
 
+  // Handle tour completion/skip
+  const handleTourComplete = () => {
+    setIsTourActive(false);
+  };
+
   return (
     <div className="min-h-screen">
+      {/* Feature Tour Overlay */}
+      <FeatureTour
+        isActive={isTourActive}
+        onComplete={handleTourComplete}
+        onSkip={handleTourComplete}
+      />
+
       <div className="px-4 sm:px-8 lg:px-16 py-6 pb-32">
         {/* Header */}
         <div className="mb-8">

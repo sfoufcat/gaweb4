@@ -15,16 +15,30 @@ function getStripeClient(): Stripe {
   });
 }
 
+// Coach tier Stripe price IDs
+const COACH_TIER_PRICE_IDS: Record<CoachTier, string> = {
+  starter: process.env.STRIPE_COACH_STARTER_PRICE_ID || 'price_1ShVoxGZhrOwy75wozPPoU4f',
+  pro: process.env.STRIPE_COACH_PRO_PRICE_ID || 'price_1ShVpGGZhrOwy75wcFJQasPA',
+  scale: process.env.STRIPE_COACH_SCALE_PRICE_ID || 'price_1ShVqFGZhrOwy75w0FPwa1Z9',
+};
+
 /**
  * POST /api/coach/subscription/checkout
- * Create a Stripe SetupIntent for collecting payment method
  * 
- * Uses SetupIntent flow for subscriptions with trials:
- * 1. This endpoint creates SetupIntent to save payment method
- * 2. Frontend uses PaymentElement to collect payment details
- * 3. On success, /api/coach/subscription/confirm creates the subscription
+ * Two flows supported:
  * 
- * Body: { tier: CoachTier, trial?: boolean, onboarding?: boolean }
+ * 1. REACTIVATION (reactivate: true):
+ *    - Creates Checkout Session for immediate billing
+ *    - Used by EmbeddedCheckout on /coach/reactivate page
+ *    - Returns Checkout Session clientSecret
+ * 
+ * 2. ONBOARDING WITH TRIAL (trial: true):
+ *    - Creates SetupIntent to save payment method
+ *    - Frontend uses PaymentElement to collect payment details
+ *    - On success, /api/coach/subscription/confirm creates the subscription with trial
+ *    - Returns SetupIntent clientSecret
+ * 
+ * Body: { tier: CoachTier, trial?: boolean, onboarding?: boolean, reactivate?: boolean }
  */
 export async function POST(req: Request) {
   try {
@@ -48,10 +62,11 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { tier, trial, onboarding } = body as { 
+    const { tier, trial, onboarding, reactivate } = body as { 
       tier: CoachTier; 
       trial?: boolean;      // Request 7-day trial
       onboarding?: boolean; // Is part of onboarding flow
+      reactivate?: boolean; // Reactivating canceled/expired subscription
     };
 
     // Validate tier
@@ -116,7 +131,47 @@ export async function POST(req: Request) {
       );
     }
 
-    // Create SetupIntent to save payment method for future subscription billing
+    // REACTIVATION FLOW: Use Checkout Session for immediate billing
+    // This returns a clientSecret compatible with EmbeddedCheckout
+    if (reactivate) {
+      const priceId = COACH_TIER_PRICE_IDS[tier];
+      
+      // Determine base URL for redirects
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.growthaddicts.com';
+      
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        mode: 'subscription',
+        ui_mode: 'embedded',
+        line_items: [{ price: priceId, quantity: 1 }],
+        return_url: `${baseUrl}/coach?reactivated=true`,
+        metadata: {
+          userId,
+          organizationId,
+          tier,
+          type: 'coach_subscription',
+          reactivate: 'true',
+        },
+        subscription_data: {
+          metadata: {
+            userId,
+            organizationId,
+            tier,
+            type: 'coach_subscription',
+          },
+        },
+      });
+
+      console.log(`[COACH_CHECKOUT] Created Checkout Session ${session.id} for reactivation, org ${organizationId}, tier ${tier}`);
+
+      return NextResponse.json({ 
+        clientSecret: session.client_secret,
+        customerId,
+      });
+    }
+
+    // ONBOARDING/TRIAL FLOW: Use SetupIntent to save payment method
+    // Frontend uses PaymentElement, then calls /confirm to create subscription with trial
     const setupIntent = await stripe.setupIntents.create({
       customer: customerId,
       payment_method_types: ['card'],

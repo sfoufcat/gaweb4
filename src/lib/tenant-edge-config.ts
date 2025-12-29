@@ -13,7 +13,7 @@
  */
 
 import { get } from '@vercel/edge-config';
-import type { OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, MenuItemKey, EmptyStateBehavior } from '@/types';
+import type { OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, MenuItemKey, EmptyStateBehavior, CoachTier, CoachSubscriptionStatus } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER } from '@/types';
 
 // =============================================================================
@@ -45,6 +45,17 @@ export interface TenantCoachingPromoData {
 }
 
 /**
+ * Subscription data stored in Edge Config for middleware access checks
+ * This mirrors the billing state in Clerk Organization publicMetadata
+ */
+export interface TenantSubscriptionData {
+  plan: CoachTier;
+  subscriptionStatus: CoachSubscriptionStatus;
+  currentPeriodEnd?: string;
+  cancelAtPeriodEnd?: boolean;
+}
+
+/**
  * Complete tenant data stored in Edge Config
  */
 export interface TenantConfigData {
@@ -57,6 +68,8 @@ export interface TenantConfigData {
   // Menu empty state behavior (what to show when user has no program/squad)
   programEmptyStateBehavior?: EmptyStateBehavior; // 'hide' | 'discover'
   squadEmptyStateBehavior?: EmptyStateBehavior;   // 'hide' | 'discover'
+  // Subscription status for middleware access checks (synced from Clerk org metadata)
+  subscription?: TenantSubscriptionData;
   updatedAt: string;
 }
 
@@ -238,7 +251,8 @@ export function buildTenantConfigData(
   coachingPromo?: Partial<TenantCoachingPromoData>,
   feedEnabled?: boolean,
   programEmptyStateBehavior?: EmptyStateBehavior,
-  squadEmptyStateBehavior?: EmptyStateBehavior
+  squadEmptyStateBehavior?: EmptyStateBehavior,
+  subscription?: TenantSubscriptionData
 ): TenantConfigData {
   return {
     organizationId,
@@ -262,6 +276,7 @@ export function buildTenantConfigData(
     verifiedCustomDomain,
     programEmptyStateBehavior: programEmptyStateBehavior ?? 'discover',
     squadEmptyStateBehavior: squadEmptyStateBehavior ?? 'discover',
+    subscription,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -277,9 +292,10 @@ export async function syncTenantToEdgeConfig(
   coachingPromo?: Partial<TenantCoachingPromoData>,
   feedEnabled?: boolean,
   programEmptyStateBehavior?: EmptyStateBehavior,
-  squadEmptyStateBehavior?: EmptyStateBehavior
+  squadEmptyStateBehavior?: EmptyStateBehavior,
+  subscription?: TenantSubscriptionData
 ): Promise<void> {
-  const data = buildTenantConfigData(organizationId, subdomain, branding, verifiedCustomDomain, coachingPromo, feedEnabled, programEmptyStateBehavior, squadEmptyStateBehavior);
+  const data = buildTenantConfigData(organizationId, subdomain, branding, verifiedCustomDomain, coachingPromo, feedEnabled, programEmptyStateBehavior, squadEmptyStateBehavior, subscription);
   
   const items: EdgeConfigItem[] = [
     { operation: 'upsert', key: getSubdomainKey(subdomain), value: data },
@@ -291,5 +307,67 @@ export async function syncTenantToEdgeConfig(
   }
   
   await updateEdgeConfig(items);
+}
+
+/**
+ * Update ONLY the subscription data in Edge Config for a tenant
+ * This is more efficient than syncing the entire config when only subscription changes
+ * 
+ * @param organizationId - The organization ID
+ * @param subdomain - The subdomain for key lookup
+ * @param subscription - The subscription data to update
+ * @param verifiedCustomDomain - Optional custom domain to also update
+ */
+export async function syncSubscriptionToEdgeConfig(
+  organizationId: string,
+  subdomain: string,
+  subscription: TenantSubscriptionData,
+  verifiedCustomDomain?: string
+): Promise<void> {
+  // First get existing tenant config
+  const existingConfig = await getTenantBySubdomain(subdomain);
+  
+  if (!existingConfig) {
+    // No existing config - create minimal config with subscription
+    console.log(`[TENANT_EDGE_CONFIG] No existing config for ${subdomain}, creating with subscription data`);
+    const data: TenantConfigData = {
+      organizationId,
+      subdomain,
+      branding: DEFAULT_TENANT_BRANDING,
+      subscription,
+      updatedAt: new Date().toISOString(),
+    };
+    
+    const items: EdgeConfigItem[] = [
+      { operation: 'upsert', key: getSubdomainKey(subdomain), value: data },
+    ];
+    
+    if (verifiedCustomDomain) {
+      items.push({ operation: 'upsert', key: getCustomDomainKey(verifiedCustomDomain), value: data });
+    }
+    
+    await updateEdgeConfig(items);
+    return;
+  }
+  
+  // Merge subscription into existing config
+  const updatedConfig: TenantConfigData = {
+    ...existingConfig,
+    subscription,
+    updatedAt: new Date().toISOString(),
+  };
+  
+  const items: EdgeConfigItem[] = [
+    { operation: 'upsert', key: getSubdomainKey(subdomain), value: updatedConfig },
+  ];
+  
+  // Update custom domain key too if present
+  const customDomain = verifiedCustomDomain || existingConfig.verifiedCustomDomain;
+  if (customDomain) {
+    items.push({ operation: 'upsert', key: getCustomDomainKey(customDomain), value: updatedConfig });
+  }
+  
+  await updateEdgeConfig(items);
+  console.log(`[TENANT_EDGE_CONFIG] Updated subscription in Edge Config for ${subdomain}: status=${subscription.subscriptionStatus}`);
 }
 

@@ -13,8 +13,32 @@ import { adminDb } from '@/lib/firebase-admin';
 import { resolveTenant } from '@/lib/tenant/resolveTenant';
 import { getBrandingForDomain, getBestLogoUrl } from '@/lib/server/branding';
 import FunnelClient from './FunnelClient';
-import type { Program, Funnel, FunnelStep, OrgSettings } from '@/types';
+import FunnelDeactivated from '@/components/FunnelDeactivated';
+import type { Program, Funnel, FunnelStep, OrgSettings, CoachSubscriptionStatus } from '@/types';
 import { mergeTrackingConfig } from '@/lib/tracking-utils';
+
+/**
+ * Check if organization subscription is active
+ */
+function isSubscriptionActive(
+  status?: CoachSubscriptionStatus,
+  currentPeriodEnd?: string,
+  cancelAtPeriodEnd?: boolean
+): boolean {
+  // Active or trialing = full access
+  if (status === 'active' || status === 'trialing') {
+    return true;
+  }
+  
+  // Canceled but still in paid period
+  if ((status === 'canceled' || cancelAtPeriodEnd) && currentPeriodEnd) {
+    const endDate = new Date(currentPeriodEnd);
+    const now = new Date();
+    return endDate > now;
+  }
+  
+  return false;
+}
 
 interface FunnelPageProps {
   params: Promise<{ programSlug: string; funnelSlug: string }>;
@@ -73,9 +97,62 @@ export default async function FunnelPage({ params, searchParams }: FunnelPagePro
   const funnelDoc = funnelsSnapshot.docs[0];
   const funnelData = { id: funnelDoc.id, ...funnelDoc.data() } as Funnel;
 
-  // Fetch org settings to get global tracking pixels
+  // Fetch org settings to get global tracking pixels AND subscription status
   const orgSettingsDoc = await adminDb.collection('org_settings').doc(program.organizationId).get();
   const orgSettings = orgSettingsDoc.exists ? (orgSettingsDoc.data() as OrgSettings) : null;
+  
+  // Check if coach's subscription is active
+  // If not, show the deactivated page instead of the funnel
+  let subscriptionActive = true;
+  
+  try {
+    // Try to get subscription status from Clerk org metadata (fastest)
+    const { clerkClient } = await import('@clerk/nextjs/server');
+    const clerk = await clerkClient();
+    const org = await clerk.organizations.getOrganization({ organizationId: program.organizationId });
+    const orgMetadata = org.publicMetadata as { 
+      subscriptionStatus?: CoachSubscriptionStatus; 
+      currentPeriodEnd?: string;
+      cancelAtPeriodEnd?: boolean;
+    } | undefined;
+    
+    if (orgMetadata?.subscriptionStatus) {
+      subscriptionActive = isSubscriptionActive(
+        orgMetadata.subscriptionStatus,
+        orgMetadata.currentPeriodEnd,
+        orgMetadata.cancelAtPeriodEnd
+      );
+    } else {
+      // Fallback: Check coach_subscriptions collection
+      const subSnapshot = await adminDb
+        .collection('coach_subscriptions')
+        .where('organizationId', '==', program.organizationId)
+        .limit(1)
+        .get();
+      
+      if (!subSnapshot.empty) {
+        const subData = subSnapshot.docs[0].data();
+        subscriptionActive = isSubscriptionActive(
+          subData.status as CoachSubscriptionStatus,
+          subData.currentPeriodEnd,
+          subData.cancelAtPeriodEnd
+        );
+      }
+      // If no subscription record found, assume inactive (none status)
+      else {
+        subscriptionActive = false;
+      }
+    }
+  } catch (subErr) {
+    console.error('[FUNNEL_PAGE] Error checking subscription:', subErr);
+    // On error, allow access (don't block due to subscription check failure)
+    subscriptionActive = true;
+  }
+  
+  // If subscription is not active, show deactivated page
+  if (!subscriptionActive) {
+    return <FunnelDeactivated coachName={branding.appTitle} platformName={branding.appTitle} />;
+  }
   
   // Merge global tracking with funnel-specific tracking
   const mergedTracking = mergeTrackingConfig(orgSettings?.globalTracking, funnelData.tracking);

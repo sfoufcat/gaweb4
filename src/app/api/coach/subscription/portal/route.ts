@@ -23,31 +23,40 @@ export async function POST() {
   try {
     const { organizationId } = await requireCoachWithOrg();
 
-    // Get org settings to find subscription
-    const settingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
-    const settings = settingsDoc.data() as OrgSettings | undefined;
+    // Get subscription directly by organizationId (primary lookup)
+    // coach_subscriptions are keyed by organizationId
+    const subscriptionDoc = await adminDb
+      .collection('coach_subscriptions')
+      .doc(organizationId)
+      .get();
 
-    if (!settings?.coachSubscriptionId) {
+    let subscription: CoachSubscription | undefined;
+
+    if (subscriptionDoc.exists) {
+      subscription = subscriptionDoc.data() as CoachSubscription;
+    } else {
+      // Fallback: check org_settings for legacy coachSubscriptionId
+      const settingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
+      const settings = settingsDoc.data() as OrgSettings | undefined;
+
+      if (settings?.coachSubscriptionId) {
+        const legacyDoc = await adminDb
+          .collection('coach_subscriptions')
+          .doc(settings.coachSubscriptionId)
+          .get();
+        
+        if (legacyDoc.exists) {
+          subscription = legacyDoc.data() as CoachSubscription;
+        }
+      }
+    }
+
+    if (!subscription) {
       return NextResponse.json(
-        { error: 'No active subscription found' },
+        { error: 'No subscription found. If you were manually added as a coach, please contact support.' },
         { status: 400 }
       );
     }
-
-    // Get subscription to get customer ID
-    const subscriptionDoc = await adminDb
-      .collection('coach_subscriptions')
-      .doc(settings.coachSubscriptionId)
-      .get();
-
-    if (!subscriptionDoc.exists) {
-      return NextResponse.json(
-        { error: 'Subscription not found' },
-        { status: 404 }
-      );
-    }
-
-    const subscription = subscriptionDoc.data() as CoachSubscription;
 
     if (!subscription.stripeCustomerId) {
       return NextResponse.json(
