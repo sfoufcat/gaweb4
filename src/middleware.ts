@@ -823,6 +823,30 @@ export default clerkMiddleware(async (auth, request) => {
   } else if (userId && requiresBilling(request)) {
     // PLATFORM MODE BILLING CHECK: For authenticated users on protected app routes
     if (!isStaffRole(role)) {
+      // Skip billing check for coaches in coach onboarding flow
+      // Coaches with an organizationId but no billing yet need to complete their onboarding
+      const isCoachOnboarding = pathname?.startsWith('/coach/onboarding');
+      const isCoachWelcome = pathname?.startsWith('/coach/welcome');
+      const hasOrganization = !!publicMetadata?.organizationId || !!publicMetadata?.primaryOrganizationId;
+      
+      if (hasOrganization && (isCoachOnboarding || isCoachWelcome)) {
+        // Coach in onboarding - let them through to complete their setup
+        console.log(`[MIDDLEWARE] Coach ${userId} on onboarding route, allowing access`);
+        return response;
+      }
+      
+      // For coaches without billing, redirect to coach onboarding instead of user onboarding
+      if (hasOrganization) {
+        const billingStatus = publicMetadata?.billingStatus;
+        const billingPeriodEnd = publicMetadata?.billingPeriodEnd;
+        
+        if (!hasActiveBilling(billingStatus, billingPeriodEnd)) {
+          console.log(`[MIDDLEWARE] Coach ${userId} blocked: no billing, redirecting to coach onboarding`);
+          return NextResponse.redirect(new URL('/coach/onboarding/plans', request.url));
+        }
+      }
+      
+      // Non-coach users need active billing
       const billingStatus = publicMetadata?.billingStatus;
       const billingPeriodEnd = publicMetadata?.billingPeriodEnd;
       

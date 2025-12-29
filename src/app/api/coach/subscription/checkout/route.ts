@@ -115,7 +115,7 @@ export async function POST(req: Request) {
     
     // Determine return URL based on context
     const returnUrl = onboarding
-      ? `${baseUrl}/coach?onboarding=complete&session_id={CHECKOUT_SESSION_ID}`
+      ? `${baseUrl}/coach/welcome?session_id={CHECKOUT_SESSION_ID}`
       : `${baseUrl}/coach?tab=plan&success=true&session_id={CHECKOUT_SESSION_ID}`;
     
     // Use embedded checkout mode for in-page payment experience

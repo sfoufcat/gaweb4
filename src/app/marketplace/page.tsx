@@ -18,8 +18,8 @@ import { CoachOnboardingOverlay } from '@/components/marketplace/CoachOnboarding
 export default function MarketplacePage() {
   const { user, isLoaded } = useUser();
   
-  // State
-  const [listings, setListings] = useState<MarketplaceListing[]>([]);
+  // State - using extended type with funnel info
+  const [listings, setListings] = useState<(MarketplaceListing & { funnelSlug?: string | null; programSlug?: string | null })[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<MarketplaceCategory | 'all'>('all');
@@ -59,24 +59,13 @@ export default function MarketplacePage() {
     
     const checkOnboardingState = async () => {
       try {
-        // Check if user is a coach
-        const publicMetadata = user.publicMetadata as {
-          role?: string;
-          orgRole?: string;
-          organizationId?: string;
-        };
-        
-        const isCoach = publicMetadata?.role === 'coach' || 
-                        publicMetadata?.orgRole === 'super_coach' ||
-                        publicMetadata?.organizationId;
-        
-        if (!isCoach) return;
-        
-        // Check coach onboarding state
+        // Always check via API - don't rely on potentially stale client metadata
+        // The API returns isCoach: false quickly for non-coaches without extra DB queries
         const response = await fetch('/api/coach/onboarding-state');
         if (response.ok) {
           const data = await response.json();
-          if (data.state === 'needs_profile' || data.state === 'needs_plan') {
+          // Only show overlay if user IS a coach and needs to complete onboarding
+          if (data.isCoach && (data.state === 'needs_profile' || data.state === 'needs_plan')) {
             setOnboardingState(data.state);
             setShowOnboardingOverlay(true);
           }
@@ -329,12 +318,31 @@ export default function MarketplacePage() {
   );
 }
 
+// Extended listing type with funnel info from API
+interface ListingWithFunnel extends MarketplaceListing {
+  funnelSlug?: string | null;
+  programSlug?: string | null;
+}
+
 // Listing Card Component
-function ListingCard({ listing }: { listing: MarketplaceListing }) {
-  // Build funnel URL based on listing's subdomain
-  const funnelUrl = listing.subdomain 
-    ? `https://${listing.subdomain}.growthaddicts.com/join`
-    : '/join';
+function ListingCard({ listing }: { listing: ListingWithFunnel }) {
+  // Build funnel URL based on listing's subdomain and funnel/program slugs
+  let funnelUrl = '/join';
+  
+  if (listing.subdomain) {
+    const baseUrl = `https://${listing.subdomain}.growthaddicts.com`;
+    
+    if (listing.programSlug && listing.funnelSlug) {
+      // Full funnel URL with program and funnel slug
+      funnelUrl = `${baseUrl}/join/${listing.programSlug}/${listing.funnelSlug}`;
+    } else if (listing.funnelSlug) {
+      // Funnel slug only (for non-program funnels)
+      funnelUrl = `${baseUrl}/join/${listing.funnelSlug}`;
+    } else {
+      // Fallback to generic join page
+      funnelUrl = `${baseUrl}/join`;
+    }
+  }
   
   return (
     <a

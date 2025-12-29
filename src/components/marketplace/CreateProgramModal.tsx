@@ -18,7 +18,7 @@ import {
   Lock,
   User
 } from 'lucide-react';
-import { OAuthButton } from '@/components/auth';
+import { OAuthButton, VerificationCodeInput } from '@/components/auth';
 
 interface CreateProgramModalProps {
   isOpen: boolean;
@@ -201,7 +201,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
   const valueProps = [
     {
       icon: Users,
-      title: 'Build profitable coaching and info businesses',
+      title: 'Build a profitable info business',
       description: 'Masterminds, check-ins, accountability and programs that keep members coming back',
     },
     {
@@ -297,7 +297,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                       <button
                         onClick={handleGetStarted}
                         disabled={!userLoaded}
-                        className="w-full flex items-center justify-center gap-2 py-4 bg-[#2c2520] hover:bg-[#1a1512] text-white rounded-full font-sans font-bold text-[16px] transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                        className="w-full flex items-center justify-center gap-2 py-4 bg-[#a07855] hover:bg-[#8c6245] text-white rounded-full font-sans font-bold text-[16px] transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                       >
                         {!userLoaded ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
@@ -449,7 +449,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                             <button
                               type="submit"
                               disabled={isLoading}
-                              className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#2c2520] hover:bg-[#1a1512] text-white rounded-full font-sans font-bold text-[15px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                              className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#a07855] hover:bg-[#8c6245] text-white rounded-full font-sans font-bold text-[15px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                             >
                               {isLoading ? (
                                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -464,24 +464,17 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                         </>
                       ) : (
                         <form onSubmit={handleVerification} className="space-y-4">
-                          <div>
-                            <label className="font-sans text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] mb-1.5 block">
-                              Verification code
-                            </label>
-                            <input
-                              type="text"
-                              value={verificationCode}
-                              onChange={(e) => setVerificationCode(e.target.value)}
-                              required
-                              placeholder="Enter 6-digit code"
-                              className="w-full px-4 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-sans text-[14px] text-center tracking-[0.5em] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-[#a07855]/30 dark:focus:ring-[#b8896a]/30 focus:border-[#a07855] dark:focus:border-[#b8896a]"
-                            />
-                          </div>
+                          <VerificationCodeInput
+                            value={verificationCode}
+                            onChange={setVerificationCode}
+                            autoFocus
+                            disabled={isLoading}
+                          />
                           
                           <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#2c2520] hover:bg-[#1a1512] text-white rounded-full font-sans font-bold text-[15px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                            className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#a07855] hover:bg-[#8c6245] text-white rounded-full font-sans font-bold text-[15px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                           >
                             {isLoading ? (
                               <Loader2 className="w-5 h-5 animate-spin" />

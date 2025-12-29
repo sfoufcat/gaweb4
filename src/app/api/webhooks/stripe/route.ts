@@ -202,6 +202,13 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const plan = session.metadata?.plan as 'trial' | 'standard' | 'premium' | undefined;
   const isTrial = session.metadata?.isTrial === 'true';
   const effectiveTier = session.metadata?.effectiveTier as 'standard' | 'premium' | undefined;
+  const checkoutType = session.metadata?.type;
+
+  // Handle coach subscription checkout
+  if (checkoutType === 'coach_subscription') {
+    await handleCoachCheckoutCompleted(session);
+    return;
+  }
 
   // Handle guest checkout (no userId)
   if (!userId && (guestSessionId || isGuestCheckout)) {
@@ -347,6 +354,102 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     }
   } else if (alreadyWelcomed) {
     console.log(`[STRIPE_WEBHOOK] Skipping welcome email for user ${userId} - already sent`);
+  }
+}
+
+/**
+ * Handle coach subscription checkout completion
+ * 
+ * Called when a coach completes their subscription checkout from the marketplace flow.
+ * Updates the coach_onboarding status to 'active' and sets up billing in org_settings.
+ */
+async function handleCoachCheckoutCompleted(session: Stripe.Checkout.Session) {
+  const userId = session.metadata?.userId;
+  const organizationId = session.metadata?.organizationId;
+  const tier = session.metadata?.tier as 'starter' | 'growth' | 'scale' | undefined;
+  
+  if (!userId || !organizationId) {
+    console.error('[STRIPE_WEBHOOK] Coach checkout missing required metadata:', { userId, organizationId });
+    return;
+  }
+  
+  console.log(`[STRIPE_WEBHOOK] Coach checkout completed for user ${userId}, org ${organizationId}, tier ${tier}`);
+  
+  const stripe = getStripe();
+  const now = new Date().toISOString();
+  
+  // Get subscription details
+  let subscriptionId: string | undefined;
+  let customerId: string | undefined;
+  let currentPeriodEnd: string | undefined;
+  let subscriptionStatus: string = 'active';
+  
+  if (session.subscription) {
+    subscriptionId = typeof session.subscription === 'string' 
+      ? session.subscription 
+      : session.subscription.id;
+    
+    // Fetch full subscription to get period end and status
+    try {
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      subscriptionStatus = subscription.status;
+      
+      // Determine if this is a trial
+      if (subscription.status === 'trialing') {
+        subscriptionStatus = 'trialing';
+      }
+    } catch (error) {
+      console.error('[STRIPE_WEBHOOK] Error fetching coach subscription:', error);
+    }
+  }
+  
+  if (session.customer) {
+    customerId = typeof session.customer === 'string'
+      ? session.customer
+      : session.customer.id;
+  }
+  
+  // Update org_settings with billing info
+  const orgSettingsRef = adminDb.collection('org_settings').doc(organizationId);
+  await orgSettingsRef.set({
+    billing: {
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscriptionId,
+      tier: tier || 'starter',
+      status: subscriptionStatus,
+      currentPeriodEnd,
+    },
+    subscriptionStatus,
+    updatedAt: now,
+  }, { merge: true });
+  
+  console.log(`[STRIPE_WEBHOOK] Updated org_settings for ${organizationId} with billing info`);
+  
+  // Update coach_onboarding status to 'active'
+  const onboardingRef = adminDb.collection('coach_onboarding').doc(organizationId);
+  await onboardingRef.set({
+    status: 'active',
+    tier: tier || 'starter',
+    subscriptionId,
+    billingActivatedAt: now,
+    updatedAt: now,
+  }, { merge: true });
+  
+  console.log(`[STRIPE_WEBHOOK] Updated coach_onboarding for ${organizationId} to active`);
+  
+  // Also update the user's publicMetadata via Clerk to reflect active billing
+  try {
+    const clerk = await import('@clerk/backend').then(m => m.clerkClient());
+    await clerk.users.updateUserMetadata(userId, {
+      publicMetadata: {
+        billingStatus: subscriptionStatus,
+        billingPeriodEnd: currentPeriodEnd,
+      },
+    });
+    console.log(`[STRIPE_WEBHOOK] Updated Clerk metadata for coach user ${userId}`);
+  } catch (clerkError) {
+    console.error('[STRIPE_WEBHOOK] Error updating Clerk metadata for coach:', clerkError);
   }
 }
 

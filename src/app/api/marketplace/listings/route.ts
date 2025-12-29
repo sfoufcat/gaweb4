@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import type { MarketplaceListing } from '@/types';
+import type { MarketplaceListing, Funnel } from '@/types';
 
 /**
  * GET /api/marketplace/listings
@@ -40,9 +40,44 @@ export async function GET(req: Request) {
       ...doc.data(),
     })) as MarketplaceListing[];
 
+    // Fetch funnel slugs for each listing to build proper URLs
+    const listingsWithFunnelUrls = await Promise.all(
+      listings.map(async (listing) => {
+        let funnelSlug: string | null = null;
+        let programSlug: string | null = null;
+        
+        if (listing.funnelId) {
+          try {
+            const funnelDoc = await adminDb.collection('funnels').doc(listing.funnelId).get();
+            if (funnelDoc.exists) {
+              const funnelData = funnelDoc.data() as Funnel;
+              funnelSlug = funnelData.slug || null;
+              
+              // If funnel has a programId, get the program slug too
+              if (funnelData.programId) {
+                const programDoc = await adminDb.collection('programs').doc(funnelData.programId).get();
+                if (programDoc.exists) {
+                  programSlug = programDoc.data()?.slug || null;
+                }
+              }
+            }
+          } catch (err) {
+            console.error(`[MARKETPLACE_LISTINGS] Failed to fetch funnel ${listing.funnelId}:`, err);
+          }
+        }
+        
+        return {
+          ...listing,
+          funnelSlug,
+          programSlug,
+        };
+      })
+    );
+
     // Client-side search filter (Firestore doesn't support full-text search)
+    let filteredListings = listingsWithFunnelUrls;
     if (search) {
-      listings = listings.filter(listing => 
+      filteredListings = listingsWithFunnelUrls.filter(listing => 
         listing.searchableText?.includes(search) ||
         listing.title?.toLowerCase().includes(search) ||
         listing.description?.toLowerCase().includes(search) ||
@@ -51,8 +86,8 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json({ 
-      listings,
-      totalCount: listings.length,
+      listings: filteredListings,
+      totalCount: filteredListings.length,
     });
   } catch (error) {
     console.error('[MARKETPLACE_LISTINGS_GET]', error);

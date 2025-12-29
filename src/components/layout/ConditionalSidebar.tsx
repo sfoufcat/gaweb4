@@ -45,7 +45,10 @@ export function ConditionalSidebar() {
   // Hide sidebar on invite pages (fullscreen experience)
   const isInvitePage = pathname?.startsWith('/invite');
   
-  const shouldHideSidebar = isOnboardingPage || isStartPage || isCheckInPage || isJoinPage || isSignInPage || isProfileEditOnboarding || isPremiumUpgradeForm || isCoachingForm || isInvitePage;
+  // Hide sidebar on marketplace page (fullscreen public experience)
+  const isMarketplacePage = pathname?.startsWith('/marketplace');
+  
+  const shouldHideSidebar = isOnboardingPage || isStartPage || isCheckInPage || isJoinPage || isSignInPage || isProfileEditOnboarding || isPremiumUpgradeForm || isCoachingForm || isInvitePage || isMarketplacePage;
   
   if (shouldHideSidebar) {
     return null;
