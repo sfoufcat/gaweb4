@@ -77,3 +77,4 @@ export function FunnelDeactivated({ coachName, platformName }: FunnelDeactivated
 
 export default FunnelDeactivated;
 
+

@@ -48,7 +48,8 @@ export function OrderBumpCard({
   onToggle,
   disabled = false,
 }: OrderBumpCardProps) {
-  const { accentLight } = useBrandingValues();
+  const { colors } = useBrandingValues();
+  const accentLight = colors.accentLight;
   const [isHovered, setIsHovered] = useState(false);
   
   const hasDiscount = bump.discountPercent && bump.discountPercent > 0;
@@ -239,4 +240,5 @@ export function calculateBumpTotal(bumps: OrderBump[], selectedBumpIds: string[]
       return total + price;
     }, 0);
 }
+
 
