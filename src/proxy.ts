@@ -677,10 +677,12 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     if (pathname === '/') {
       const url = request.nextUrl.clone();
       url.pathname = '/marketplace';
-      const response = NextResponse.rewrite(url);
-      // Set fullscreen layout mode to hide sidebar (rewrite returns early before normal header setting)
-      response.headers.set('x-layout-mode', 'fullscreen');
-      return response;
+      // Set fullscreen layout mode on REQUEST headers so server components can read it
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set('x-layout-mode', 'fullscreen');
+      return NextResponse.rewrite(url, {
+        request: { headers: requestHeaders }
+      });
     }
     
     // Only allow public/marketing routes on marketing domain
@@ -1162,10 +1164,10 @@ export const proxy = clerkMiddleware(async (auth, request) => {
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Always run for API routes
-    '/(api|trpc)(.*)',
+    // Skip Next.js internals, static files, AND webhooks (webhooks verify via Svix signature, not middleware)
+    '/((?!_next|api/webhooks|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Run for API routes EXCEPT webhooks (which are excluded above and handle their own auth via Svix)
+    '/(api(?!/webhooks)|trpc)(.*)',
   ],
 };
 
