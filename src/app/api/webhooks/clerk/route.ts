@@ -9,6 +9,7 @@
  * - Creates org_memberships entries for multi-org support
  * - Syncs user data on user.updated
  * - Cleans up on user.deleted
+ * - Sends verification emails via Resend (when "Delivered by Clerk" is disabled)
  */
 
 import { Webhook } from 'svix';
@@ -16,8 +17,13 @@ import { headers } from 'next/headers';
 import { WebhookEvent, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getStreamServerClient } from '@/lib/stream-server';
+import { resend, isResendConfigured } from '@/lib/resend';
 import type { OrgMembership, OrgSettings, DEFAULT_ORG_SETTINGS } from '@/types';
 import { parseHost } from '@/lib/tenant/parseHost';
+
+// Email senders for verification emails
+const PLATFORM_DEFAULT_SENDER = 'Growth Addicts <notifications@growthaddicts.com>';
+const PLATFORM_FALLBACK_SENDER = 'Growth Addicts <hi@updates.growthaddicts.com>';
 
 // =============================================================================
 // HELPER FUNCTIONS
@@ -232,6 +238,69 @@ export async function POST(req: Request) {
 
   // Handle the webhook
   const eventType = evt.type;
+
+  // ==========================================================================
+  // EMAIL CREATED - Send via Resend (when "Delivered by Clerk" is disabled)
+  // ==========================================================================
+  if (eventType === 'email.created') {
+    // Type assertion for email payload (not in WebhookEvent types)
+    const emailData = (evt as unknown as { data: {
+      id: string;
+      to_email_address: string;
+      subject: string;
+      body: string;
+      body_plain: string | null;
+      slug: string;
+      delivered_by_clerk: boolean;
+    }}).data;
+
+    // Skip if Clerk already delivered this email
+    if (emailData.delivered_by_clerk) {
+      console.log(`[CLERK_WEBHOOK] Email ${emailData.id} already delivered by Clerk, skipping`);
+      return new Response('OK', { status: 200 });
+    }
+
+    // Check if Resend is configured
+    if (!isResendConfigured() || !resend) {
+      console.error('[CLERK_WEBHOOK] Resend not configured for email delivery');
+      return new Response('Email service not configured', { status: 503 });
+    }
+
+    console.log(`[CLERK_WEBHOOK] Sending ${emailData.slug} email to ${emailData.to_email_address}`);
+
+    try {
+      const { error } = await resend.emails.send({
+        from: PLATFORM_DEFAULT_SENDER,
+        to: emailData.to_email_address,
+        subject: emailData.subject,
+        html: emailData.body,
+        text: emailData.body_plain || undefined,
+      });
+
+      if (error) {
+        console.error(`[CLERK_WEBHOOK] Failed to send email:`, error);
+        // Try fallback sender
+        const { error: fallbackError } = await resend.emails.send({
+          from: PLATFORM_FALLBACK_SENDER,
+          to: emailData.to_email_address,
+          subject: emailData.subject,
+          html: emailData.body,
+          text: emailData.body_plain || undefined,
+        });
+        
+        if (fallbackError) {
+          console.error('[CLERK_WEBHOOK] Fallback email also failed:', fallbackError);
+          return new Response('Email sending failed', { status: 500 });
+        }
+      }
+
+      console.log(`[CLERK_WEBHOOK] Sent ${emailData.slug} email to ${emailData.to_email_address}`);
+      return new Response('OK', { status: 200 });
+    } catch (error) {
+      console.error('[CLERK_WEBHOOK] Email error:', error);
+      return new Response('Internal error', { status: 500 });
+    }
+  }
 
   // ==========================================================================
   // USER CREATED - Auto-enrollment based on signup domain
