@@ -37,6 +37,7 @@ export default function MarketplacePage() {
     tenantUrl: string | null;
     organizationId: string;
   } | null>(null);
+  const [orgLoading, setOrgLoading] = useState(true);
   
   // Pagination - show 9 items (3 rows) initially
   const ITEMS_PER_PAGE = 9;
@@ -97,7 +98,13 @@ export default function MarketplacePage() {
   
   // Fetch user's organization data for dashboard redirect
   useEffect(() => {
-    if (!isLoaded || !user) return;
+    if (!isLoaded) return;
+    
+    // If no user, no org to fetch
+    if (!user) {
+      setOrgLoading(false);
+      return;
+    }
     
     const fetchUserOrg = async () => {
       try {
@@ -116,6 +123,8 @@ export default function MarketplacePage() {
         }
       } catch (error) {
         console.error('Error fetching user org:', error);
+      } finally {
+        setOrgLoading(false);
       }
     };
     
@@ -205,8 +214,8 @@ export default function MarketplacePage() {
     setShowCreateModal(true);
   };
 
-  // Dashboard URL from fetched org data
-  const dashboardUrl = userOrg?.tenantUrl || 'https://app.growthaddicts.com';
+  // Dashboard URL from fetched org data (no fallback - always use tenant subdomain)
+  const dashboardUrl = userOrg?.tenantUrl;
   
   // Check if user is a coach (has orgRole of super_coach or coach)
   const userPublicMetadata = user?.publicMetadata as {
@@ -243,13 +252,31 @@ export default function MarketplacePage() {
 
             {/* Auth Button */}
             {user ? (
-              <a
-                href={dashboardUrl}
-                className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] rounded-full font-albert text-sm font-medium hover:opacity-90 transition-opacity"
-              >
-                {isCoach ? 'Dashboard' : (userOrg?.name || 'Dashboard')}
-                <ArrowRight className="w-4 h-4" />
-              </a>
+              orgLoading ? (
+                // Loading state while fetching org data
+                <div className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] rounded-full font-albert text-sm font-medium opacity-70">
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Loading...
+                </div>
+              ) : dashboardUrl ? (
+                // User has a tenant - show dashboard link
+                <a
+                  href={dashboardUrl}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] rounded-full font-albert text-sm font-medium hover:opacity-90 transition-opacity"
+                >
+                  {isCoach ? 'Dashboard' : (userOrg?.name || 'Dashboard')}
+                  <ArrowRight className="w-4 h-4" />
+                </a>
+              ) : (
+                // User logged in but no tenant - show create CTA
+                <button
+                  onClick={handleCreateClick}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] text-[#2c2520] rounded-full font-albert text-sm font-medium hover:opacity-90 transition-opacity"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Get started
+                </button>
+              )
             ) : (
               <Link
                 href="/sign-in"
@@ -642,7 +669,7 @@ export default function MarketplacePage() {
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                 {/* Primary CTA */}
-                {user ? (
+                {user && dashboardUrl ? (
                   <a
                     href={dashboardUrl}
                     className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#f0c940] hover:to-[#e8b923] text-[#2c2520] rounded-2xl font-albert text-[17px] font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-[#e8b923]/30"
