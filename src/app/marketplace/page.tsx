@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
-import { Search, Sparkles, ArrowRight, Users, Zap, Target, Compass, UserPlus, Rocket, ChevronDown, Heart } from 'lucide-react';
+import { Search, Sparkles, ArrowRight, Users, Zap, Target, Palette, Rocket, ChevronDown, Heart, PlusCircle } from 'lucide-react';
 import type { MarketplaceListing, MarketplaceCategory } from '@/types';
 import { MARKETPLACE_CATEGORIES } from '@/types';
 import { CreateProgramModal } from '@/components/marketplace/CreateProgramModal';
@@ -45,7 +45,7 @@ export default function MarketplacePage() {
   
   // Timeline animation ref
   const timelineRef = useRef<HTMLDivElement>(null);
-  const [timelineProgress, setTimelineProgress] = useState(0);
+  const [isTimelineVisible, setIsTimelineVisible] = useState(false);
   
   // Fetch listings
   const fetchListings = useCallback(async () => {
@@ -151,7 +151,7 @@ export default function MarketplacePage() {
 
   const hasMoreListings = filteredListings.length > ITEMS_PER_PAGE;
 
-  // Timeline scroll animation
+  // Timeline fade-in animation (one-time trigger)
   useEffect(() => {
     const timeline = timelineRef.current;
     if (!timeline) return;
@@ -160,38 +160,17 @@ export default function MarketplacePage() {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            // Calculate progress based on how much of the element is visible
-            const rect = entry.boundingClientRect;
-            const windowHeight = window.innerHeight;
-            const elementTop = rect.top;
-            const elementHeight = rect.height;
-            
-            // Progress from 0 to 1 as element scrolls through viewport
-            const progress = Math.min(1, Math.max(0, (windowHeight - elementTop) / (windowHeight + elementHeight)));
-            setTimelineProgress(progress);
+            setIsTimelineVisible(true);
+            observer.disconnect(); // Only trigger once
           }
         });
       },
-      { threshold: Array.from({ length: 20 }, (_, i) => i / 20) }
+      { threshold: 0.2 }
     );
 
     observer.observe(timeline);
     
-    // Also update on scroll for smoother animation
-    const handleScroll = () => {
-      if (!timeline) return;
-      const rect = timeline.getBoundingClientRect();
-      const windowHeight = window.innerHeight;
-      const progress = Math.min(1, Math.max(0, (windowHeight - rect.top) / (windowHeight + rect.height)));
-      setTimelineProgress(progress);
-    };
-    
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('scroll', handleScroll);
-    };
+    return () => observer.disconnect();
   }, []);
 
   // Handle "Create your own" click
@@ -497,13 +476,7 @@ export default function MarketplacePage() {
       </section>
 
       {/* How to Get Started - Vertical Timeline */}
-      <section className="py-20 sm:py-28 relative overflow-hidden">
-        {/* Subtle background gradient */}
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute top-1/2 left-1/4 w-[500px] h-[500px] bg-brand-accent/5 rounded-full blur-3xl -translate-y-1/2" />
-          <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-[#e8b923]/5 rounded-full blur-3xl" />
-        </div>
-        
+      <section className="py-20 sm:py-28">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Section header */}
           <div className="text-center mb-16">
@@ -511,111 +484,81 @@ export default function MarketplacePage() {
               How to get started
             </h2>
             <p className="font-sans text-[17px] text-[#5f5a55] dark:text-[#b2b6c2] max-w-xl mx-auto">
-              Three simple steps to begin your transformation journey
+              Launch your coaching business in minutes
             </p>
           </div>
           
           {/* Vertical Timeline */}
           <div ref={timelineRef} className="relative max-w-2xl mx-auto">
-            {/* Animated vertical line */}
-            <div className="absolute left-[27px] sm:left-[35px] top-0 bottom-0 w-[2px] bg-[#e1ddd8] dark:bg-[#262b35]">
-              <div 
-                className="absolute top-0 left-0 w-full bg-gradient-to-b from-brand-accent via-[#e8b923] to-emerald-500 transition-all duration-300 ease-out"
-                style={{ height: `${timelineProgress * 100}%` }}
-              />
-            </div>
+            {/* Static vertical line */}
+            <div className="absolute left-[27px] sm:left-[35px] top-0 bottom-0 w-[2px] bg-[#e1ddd8] dark:bg-[#262b35]" />
             
             {/* Step 1 */}
             <div 
-              className="relative flex gap-6 sm:gap-8 pb-12 sm:pb-16"
-              style={{ 
-                opacity: timelineProgress > 0.1 ? 1 : 0.3,
-                transform: `translateY(${timelineProgress > 0.1 ? 0 : 20}px)`,
-                transition: 'opacity 0.5s ease-out, transform 0.5s ease-out'
-              }}
+              className={`relative flex gap-6 sm:gap-8 pb-12 sm:pb-16 transition-all duration-500 ease-out ${
+                isTimelineVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+              }`}
             >
               {/* Number circle */}
               <div className="relative z-10 flex-shrink-0">
-                <div className={`w-14 h-14 sm:w-[72px] sm:h-[72px] rounded-2xl flex items-center justify-center shadow-lg transition-all duration-500 ${
-                  timelineProgress > 0.1 
-                    ? 'bg-gradient-to-br from-brand-accent to-[#8c6245] shadow-brand-accent/25' 
-                    : 'bg-[#f3f1ef] dark:bg-[#1e222a]'
-                }`}>
-                  <span className={`font-albert text-[24px] sm:text-[28px] font-bold transition-colors duration-500 ${
-                    timelineProgress > 0.1 ? 'text-white' : 'text-[#a7a39e] dark:text-[#7d8190]'
-                  }`}>1</span>
+                <div className="w-14 h-14 sm:w-[72px] sm:h-[72px] rounded-2xl flex items-center justify-center bg-gradient-to-br from-brand-accent to-[#8c6245]">
+                  <span className="font-albert text-[24px] sm:text-[28px] font-bold text-white">1</span>
                 </div>
               </div>
               
               {/* Content */}
               <div className="pt-2 sm:pt-4">
                 <div className="flex items-center gap-3 mb-2">
-                  <Compass className="w-5 h-5 text-brand-accent" />
+                  <PlusCircle className="w-5 h-5 text-brand-accent" />
                   <h3 className="font-albert text-[22px] sm:text-[26px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    Discover
+                    Create
                   </h3>
                 </div>
                 <p className="font-sans text-[15px] sm:text-[16px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed max-w-md">
-                  Browse our curated collection of programs and find the perfect coach or community that resonates with your goals.
+                  Set up your program with your branding, pricing, and structure. No technical skills required.
                 </p>
               </div>
             </div>
             
             {/* Step 2 */}
             <div 
-              className="relative flex gap-6 sm:gap-8 pb-12 sm:pb-16"
-              style={{ 
-                opacity: timelineProgress > 0.4 ? 1 : 0.3,
-                transform: `translateY(${timelineProgress > 0.4 ? 0 : 20}px)`,
-                transition: 'opacity 0.5s ease-out 0.1s, transform 0.5s ease-out 0.1s'
-              }}
+              className={`relative flex gap-6 sm:gap-8 pb-12 sm:pb-16 transition-all duration-500 ease-out ${
+                isTimelineVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+              }`}
+              style={{ transitionDelay: isTimelineVisible ? '100ms' : '0ms' }}
             >
               {/* Number circle */}
               <div className="relative z-10 flex-shrink-0">
-                <div className={`w-14 h-14 sm:w-[72px] sm:h-[72px] rounded-2xl flex items-center justify-center shadow-lg transition-all duration-500 ${
-                  timelineProgress > 0.4 
-                    ? 'bg-gradient-to-br from-[#e8b923] to-[#c09819] shadow-[#e8b923]/25' 
-                    : 'bg-[#f3f1ef] dark:bg-[#1e222a]'
-                }`}>
-                  <span className={`font-albert text-[24px] sm:text-[28px] font-bold transition-colors duration-500 ${
-                    timelineProgress > 0.4 ? 'text-[#2c2520]' : 'text-[#a7a39e] dark:text-[#7d8190]'
-                  }`}>2</span>
+                <div className="w-14 h-14 sm:w-[72px] sm:h-[72px] rounded-2xl flex items-center justify-center bg-gradient-to-br from-[#e8b923] to-[#c09819]">
+                  <span className="font-albert text-[24px] sm:text-[28px] font-bold text-[#2c2520]">2</span>
                 </div>
               </div>
               
               {/* Content */}
               <div className="pt-2 sm:pt-4">
                 <div className="flex items-center gap-3 mb-2">
-                  <UserPlus className="w-5 h-5 text-[#e8b923]" />
+                  <Palette className="w-5 h-5 text-[#e8b923]" />
                   <h3 className="font-albert text-[22px] sm:text-[26px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    Join
+                    Customize
                   </h3>
                 </div>
                 <p className="font-sans text-[15px] sm:text-[16px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed max-w-md">
-                  Sign up and connect with your coach or community. Get access to exclusive content, accountability tools, and support.
+                  Build your onboarding funnel, add content, and configure the tools your members will use.
                 </p>
               </div>
             </div>
             
             {/* Step 3 */}
             <div 
-              className="relative flex gap-6 sm:gap-8"
-              style={{ 
-                opacity: timelineProgress > 0.7 ? 1 : 0.3,
-                transform: `translateY(${timelineProgress > 0.7 ? 0 : 20}px)`,
-                transition: 'opacity 0.5s ease-out 0.2s, transform 0.5s ease-out 0.2s'
-              }}
+              className={`relative flex gap-6 sm:gap-8 transition-all duration-500 ease-out ${
+                isTimelineVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+              }`}
+              style={{ transitionDelay: isTimelineVisible ? '200ms' : '0ms' }}
             >
               {/* Number circle */}
               <div className="relative z-10 flex-shrink-0">
-                <div className={`w-14 h-14 sm:w-[72px] sm:h-[72px] rounded-2xl flex items-center justify-center shadow-lg transition-all duration-500 ${
-                  timelineProgress > 0.7 
-                    ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-emerald-500/25' 
-                    : 'bg-[#f3f1ef] dark:bg-[#1e222a]'
-                }`}>
-                  <span className={`font-albert text-[24px] sm:text-[28px] font-bold transition-colors duration-500 ${
-                    timelineProgress > 0.7 ? 'text-white' : 'text-[#a7a39e] dark:text-[#7d8190]'
-                  }`}>3</span>
+                <div className="w-14 h-14 sm:w-[72px] sm:h-[72px] rounded-2xl flex items-center justify-center bg-gradient-to-br from-emerald-500 to-emerald-600">
+                  <span className="font-albert text-[24px] sm:text-[28px] font-bold text-white">3</span>
                 </div>
               </div>
               
@@ -624,11 +567,11 @@ export default function MarketplacePage() {
                 <div className="flex items-center gap-3 mb-2">
                   <Rocket className="w-5 h-5 text-emerald-500" />
                   <h3 className="font-albert text-[22px] sm:text-[26px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    Transform
+                    Launch
                   </h3>
                 </div>
                 <p className="font-sans text-[15px] sm:text-[16px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed max-w-md">
-                  Start your journey, track your progress, and watch yourself grow. Celebrate wins with your squad and stay accountable.
+                  Share your link and start enrolling members. Track their progress and grow your community.
                 </p>
               </div>
             </div>
