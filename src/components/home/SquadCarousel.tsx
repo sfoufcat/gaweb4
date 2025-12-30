@@ -80,7 +80,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
         className="block bg-gradient-to-br from-[#FFF8F0] to-[#FFF3E8] dark:from-[#1a1512] dark:to-[#181310] border border-[#FFE4CC] dark:border-[#3d3530] rounded-[20px] p-5 hover:shadow-lg hover:border-brand-accent dark:border-brand-accent/40 dark:hover:border-brand-accent/40 transition-all duration-300 group"
       >
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#F5E6A8] to-[#EDD96C] dark:bg-brand-accent dark:from-transparent dark:to-transparent flex items-center justify-center flex-shrink-0">
+          <div className="w-14 h-14 rounded-full bg-brand-accent bg-gradient-to-br from-[#F5E6A8] to-[#EDD96C] dark:bg-none flex items-center justify-center flex-shrink-0">
             <Users className="w-7 h-7 text-[#4A5D54] dark:text-white" />
           </div>
           <div className="flex-1 min-w-0">

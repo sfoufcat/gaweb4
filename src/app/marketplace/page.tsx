@@ -9,6 +9,7 @@ import type { MarketplaceListing, MarketplaceCategory } from '@/types';
 import { MARKETPLACE_CATEGORIES } from '@/types';
 import { CreateProgramModal } from '@/components/marketplace/CreateProgramModal';
 import { CoachOnboardingOverlay } from '@/components/marketplace/CoachOnboardingOverlay';
+import { LinedGradientBackground } from '@/components/ui/lined-gradient-background';
 
 /**
  * Public Marketplace Page
@@ -112,7 +113,10 @@ export default function MarketplacePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b]">
+    <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b] relative">
+      {/* Subtle lined gradient background */}
+      <LinedGradientBackground />
+      
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#faf8f6]/95 dark:bg-[#05070b]/95 backdrop-blur-sm border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
