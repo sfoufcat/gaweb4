@@ -405,10 +405,16 @@ export default function FunnelClient({
     if (!currentStep) return null;
 
     const stepConfig = currentStep.config as FunnelStepConfig;
+    // Include flowSessionId and programId in data for API calls
+    const dataWithSession = {
+      ...data,
+      flowSessionId: sessionId,
+      programId: program.id,
+    };
     const commonProps = {
       onComplete: handleStepComplete,
       onBack: currentStepIndex > 0 ? handleBack : undefined,
-      data,
+      data: dataWithSession,
       program,
       branding,
       isFirstStep: currentStepIndex === 0,

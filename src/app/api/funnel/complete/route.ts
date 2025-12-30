@@ -7,6 +7,7 @@ import { addUserToOrganization } from '@/lib/clerk-organizations';
 import { assignUserToSquad, updateUserSquadReference } from '@/lib/squad-assignment';
 import { archiveOldSquadMemberships } from '@/lib/program-engine';
 import { grantReferralReward, linkReferredUser, completeReferral } from '@/lib/referral-rewards';
+import { enrollUserInProduct } from '@/lib/enrollments';
 
 /**
  * POST /api/funnel/complete
@@ -347,6 +348,114 @@ export async function POST(req: Request) {
       }
     }
 
+    // Process pending upsell/downsell enrollments from guest checkout
+    // These purchases were made before signup, so enrollment was deferred
+    const pendingEnrollments: { type: string; productId: string; productType: string; enrollmentId?: string }[] = [];
+    
+    const sessionData = session.data || {};
+    const purchasedUpsells = (sessionData.purchasedUpsells || []) as Array<{
+      stepId: string;
+      productId: string;
+      productType: string;
+      productName: string;
+      amountPaid: number;
+      paymentIntentId: string;
+      enrollmentId?: string;
+      purchasedAt: string;
+      enrolledAt?: string;
+    }>;
+    const purchasedDownsells = (sessionData.purchasedDownsells || []) as typeof purchasedUpsells;
+    
+    // Process upsells that weren't enrolled yet (guest checkout)
+    for (const upsell of purchasedUpsells) {
+      if (!upsell.enrollmentId) {
+        try {
+          const enrollmentResult = await enrollUserInProduct(
+            userId,
+            upsell.productType as 'program' | 'squad' | 'content',
+            upsell.productId,
+            {
+              firstName: clerkUser.firstName,
+              lastName: clerkUser.lastName,
+              imageUrl: clerkUser.imageUrl,
+              email: clerkUser.emailAddresses[0]?.emailAddress,
+            },
+            {
+              stripePaymentIntentId: upsell.paymentIntentId,
+              amountPaid: upsell.amountPaid,
+            }
+          );
+          
+          if (enrollmentResult.success) {
+            upsell.enrollmentId = enrollmentResult.enrollmentId;
+            upsell.enrolledAt = now;
+            pendingEnrollments.push({
+              type: 'upsell',
+              productId: upsell.productId,
+              productType: upsell.productType,
+              enrollmentId: enrollmentResult.enrollmentId,
+            });
+            console.log(`[FUNNEL_COMPLETE] Enrolled user ${userId} in upsell ${upsell.productType} ${upsell.productId}`);
+          } else {
+            console.error(`[FUNNEL_COMPLETE] Failed to enroll in upsell:`, enrollmentResult.error);
+          }
+        } catch (upsellErr) {
+          console.error(`[FUNNEL_COMPLETE] Error enrolling in upsell (non-fatal):`, upsellErr);
+        }
+      }
+    }
+    
+    // Process downsells that weren't enrolled yet (guest checkout)
+    for (const downsell of purchasedDownsells) {
+      if (!downsell.enrollmentId) {
+        try {
+          const enrollmentResult = await enrollUserInProduct(
+            userId,
+            downsell.productType as 'program' | 'squad' | 'content',
+            downsell.productId,
+            {
+              firstName: clerkUser.firstName,
+              lastName: clerkUser.lastName,
+              imageUrl: clerkUser.imageUrl,
+              email: clerkUser.emailAddresses[0]?.emailAddress,
+            },
+            {
+              stripePaymentIntentId: downsell.paymentIntentId,
+              amountPaid: downsell.amountPaid,
+            }
+          );
+          
+          if (enrollmentResult.success) {
+            downsell.enrollmentId = enrollmentResult.enrollmentId;
+            downsell.enrolledAt = now;
+            pendingEnrollments.push({
+              type: 'downsell',
+              productId: downsell.productId,
+              productType: downsell.productType,
+              enrollmentId: enrollmentResult.enrollmentId,
+            });
+            console.log(`[FUNNEL_COMPLETE] Enrolled user ${userId} in downsell ${downsell.productType} ${downsell.productId}`);
+          } else {
+            console.error(`[FUNNEL_COMPLETE] Failed to enroll in downsell:`, enrollmentResult.error);
+          }
+        } catch (downsellErr) {
+          console.error(`[FUNNEL_COMPLETE] Error enrolling in downsell (non-fatal):`, downsellErr);
+        }
+      }
+    }
+    
+    // Update flow session with enrollment IDs if any were processed
+    if (pendingEnrollments.length > 0) {
+      await sessionRef.update({
+        data: {
+          ...sessionData,
+          purchasedUpsells,
+          purchasedDownsells,
+        },
+        updatedAt: now,
+      });
+    }
+
     // Process referral if this enrollment came from a referral
     let referralReward = null;
     if (session.referralId) {
@@ -398,6 +507,8 @@ export async function POST(req: Request) {
       assignedSquadId,
       assignedCohortId,
       referralReward,
+      // Include any upsell/downsell enrollments that were processed (from guest checkout)
+      ...(pendingEnrollments.length > 0 && { processedUpsellEnrollments: pendingEnrollments }),
     });
   } catch (error) {
     console.error('[FUNNEL_COMPLETE]', error);

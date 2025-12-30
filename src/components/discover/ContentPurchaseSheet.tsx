@@ -1027,7 +1027,7 @@ function SheetContent({
                     colorPrimary: isDark ? colors.accentDark : colors.accentLight,
                     colorBackground: isDark ? '#1a1e26' : '#ffffff',
                     colorText: isDark ? '#e8e6e3' : '#1a1816',
-                    colorTextSecondary: isDark ? '#9ca3af' : undefined,
+                    ...(isDark && { colorTextSecondary: '#9ca3af' }),
                     colorDanger: '#ef4444',
                     fontFamily: 'Albert Sans, system-ui, -apple-system, sans-serif',
                     borderRadius: '12px',

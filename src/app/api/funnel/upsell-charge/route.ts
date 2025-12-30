@@ -29,20 +29,18 @@ function getStripe(): Stripe {
  * POST /api/funnel/upsell-charge
  * One-click charge for upsell/downsell using the stored payment method from initial purchase
  * 
+ * Supports both authenticated users and guest checkout:
+ * - Authenticated: Enrolls user immediately after payment
+ * - Guest: Records purchase in session, enrollment happens after signup via /api/funnel/complete
+ * 
  * Body:
  * - flowSessionId: string (required) - The flow session from initial purchase
  * - stepId: string (required) - The upsell/downsell step ID
  */
 export async function POST(req: Request) {
   try {
+    // Auth is optional - supports guest checkout
     const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
 
     const body = await req.json();
     const { flowSessionId, stepId } = body;
@@ -65,15 +63,19 @@ export async function POST(req: Request) {
 
     const session = sessionDoc.data() as FlowSession;
     
-    // Verify session belongs to this user
-    if (session.userId !== userId) {
+    // For authenticated users, verify session belongs to them (if session is linked)
+    // For guests, session.userId will be null - that's OK
+    if (userId && session.userId && session.userId !== userId) {
       return NextResponse.json(
         { error: 'Unauthorized - session does not belong to this user' },
         { status: 403 }
       );
     }
 
-    // Get payment method from session data
+    // Determine if this is a guest checkout
+    const isGuestCheckout = !userId && !session.userId;
+
+    // Get payment method and customer ID from session data
     const sessionData = session.data || {};
     const paymentMethodId = sessionData.stripePaymentMethodId as string | undefined;
     const stripeConnectAccountId = sessionData.stripeConnectAccountId as string | undefined;
@@ -123,17 +125,45 @@ export async function POST(req: Request) {
       );
     }
 
-    // Get customer ID for this connected account
-    const userDoc = await adminDb.collection('users').doc(userId).get();
-    const userData = userDoc.data() as { stripeConnectedCustomerIds?: Record<string, string> } | undefined;
-    const connectedCustomerIds: Record<string, string> = userData?.stripeConnectedCustomerIds || {};
-    const customerId = connectedCustomerIds[connectedAccountId];
+    // Get customer ID - different paths for authenticated vs guest
+    let customerId: string | undefined;
 
-    if (!customerId) {
-      return NextResponse.json(
-        { error: 'Customer not found - user must complete initial purchase first' },
-        { status: 400 }
-      );
+    if (isGuestCheckout) {
+      // Guest checkout - get customer ID from session data
+      customerId = sessionData[`stripeCustomerId_${connectedAccountId}`] as string | undefined;
+      
+      if (!customerId) {
+        return NextResponse.json(
+          { error: 'Customer not found - initial payment must be completed first' },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Authenticated user - get customer ID from users collection
+      const targetUserId = userId || session.userId;
+      if (!targetUserId) {
+        return NextResponse.json(
+          { error: 'No user ID available' },
+          { status: 400 }
+        );
+      }
+      
+      const userDoc = await adminDb.collection('users').doc(targetUserId).get();
+      const userData = userDoc.data() as { stripeConnectedCustomerIds?: Record<string, string> } | undefined;
+      const connectedCustomerIds: Record<string, string> = userData?.stripeConnectedCustomerIds || {};
+      customerId = connectedCustomerIds[connectedAccountId];
+
+      if (!customerId) {
+        // Fallback: check session data for customer ID (in case user was a guest initially)
+        customerId = sessionData[`stripeCustomerId_${connectedAccountId}`] as string | undefined;
+      }
+
+      if (!customerId) {
+        return NextResponse.json(
+          { error: 'Customer not found - user must complete initial purchase first' },
+          { status: 400 }
+        );
+      }
     }
 
     // Calculate platform fee
@@ -143,7 +173,6 @@ export async function POST(req: Request) {
 
     // Build metadata
     const metadata: Record<string, string> = {
-      userId,
       type: step.type === 'upsell' ? 'funnel_upsell' : 'funnel_downsell',
       flowSessionId,
       funnelId: session.funnelId,
@@ -152,6 +181,12 @@ export async function POST(req: Request) {
       productType: stepConfig.productType,
       productId: stepConfig.productId,
     };
+    
+    // Add userId if available
+    const effectiveUserId = userId || session.userId;
+    if (effectiveUserId) {
+      metadata.userId = effectiveUserId;
+    }
 
     // Create one-click payment intent and confirm immediately
     const stripe = getStripe();
@@ -242,63 +277,81 @@ export async function POST(req: Request) {
       );
     }
 
-    // Payment succeeded - enroll user in the product
-    const clerk = await clerkClient();
-    const clerkUser = await clerk.users.getUser(userId);
-    
-    const enrollmentResult = await enrollUserInProduct(
-      userId,
-      stepConfig.productType,
-      stepConfig.productId,
-      {
-        firstName: clerkUser.firstName,
-        lastName: clerkUser.lastName,
-        imageUrl: clerkUser.imageUrl,
-        email: clerkUser.emailAddresses[0]?.emailAddress,
-      },
-      {
-        stripePaymentIntentId: paymentIntent.id,
-        amountPaid: priceInCents,
-      }
-    );
-
-    if (!enrollmentResult.success) {
-      console.error('[UPSELL_CHARGE] Enrollment failed:', enrollmentResult.error);
-      // Payment succeeded but enrollment failed - log for manual review
-      // We don't refund automatically to avoid complexity
-      return NextResponse.json(
-        { 
-          error: 'Payment succeeded but enrollment failed. Please contact support.',
-          paymentIntentId: paymentIntent.id,
-        },
-        { status: 500 }
-      );
-    }
-
-    // Update flow session with upsell/downsell purchase info
+    // Build purchase record
     interface UpsellPurchase {
       stepId: string;
       productId: string;
       productType: string;
+      productName: string;
       amountPaid: number;
       paymentIntentId: string;
       enrollmentId?: string;
       purchasedAt: string;
+      enrolledAt?: string; // For guest checkout, enrollment happens later
     }
-    
-    const existingData = session.data || {};
-    const purchasedUpsells: UpsellPurchase[] = (existingData.purchasedUpsells as UpsellPurchase[] | undefined) || [];
-    const purchasedDownsells: UpsellPurchase[] = (existingData.purchasedDownsells as UpsellPurchase[] | undefined) || [];
     
     const purchaseRecord: UpsellPurchase = {
       stepId,
       productId: stepConfig.productId,
       productType: stepConfig.productType,
+      productName: stepConfig.productName,
       amountPaid: priceInCents,
       paymentIntentId: paymentIntent.id,
-      enrollmentId: enrollmentResult.enrollmentId,
       purchasedAt: new Date().toISOString(),
     };
+
+    // For authenticated users, enroll immediately
+    // For guests, store purchase record - enrollment happens in /api/funnel/complete
+    let enrollmentId: string | undefined;
+
+    if (!isGuestCheckout && effectiveUserId) {
+      // Authenticated user - enroll immediately
+      const clerk = await clerkClient();
+      const clerkUser = await clerk.users.getUser(effectiveUserId);
+      
+      const enrollmentResult = await enrollUserInProduct(
+        effectiveUserId,
+        stepConfig.productType,
+        stepConfig.productId,
+        {
+          firstName: clerkUser.firstName,
+          lastName: clerkUser.lastName,
+          imageUrl: clerkUser.imageUrl,
+          email: clerkUser.emailAddresses[0]?.emailAddress,
+        },
+        {
+          stripePaymentIntentId: paymentIntent.id,
+          amountPaid: priceInCents,
+        }
+      );
+
+      if (!enrollmentResult.success) {
+        console.error('[UPSELL_CHARGE] Enrollment failed:', enrollmentResult.error);
+        // Payment succeeded but enrollment failed - log for manual review
+        // We don't refund automatically to avoid complexity
+        return NextResponse.json(
+          { 
+            error: 'Payment succeeded but enrollment failed. Please contact support.',
+            paymentIntentId: paymentIntent.id,
+          },
+          { status: 500 }
+        );
+      }
+
+      enrollmentId = enrollmentResult.enrollmentId;
+      purchaseRecord.enrollmentId = enrollmentId;
+      purchaseRecord.enrolledAt = new Date().toISOString();
+      
+      console.log(`[UPSELL_CHARGE] Enrolled user ${effectiveUserId} in ${stepConfig.productType} ${stepConfig.productId}`);
+    } else {
+      // Guest checkout - enrollment will happen in /api/funnel/complete
+      console.log(`[UPSELL_CHARGE] Guest checkout - purchase recorded, enrollment pending signup`);
+    }
+
+    // Update flow session with upsell/downsell purchase info
+    const existingData = session.data || {};
+    const purchasedUpsells: UpsellPurchase[] = (existingData.purchasedUpsells as UpsellPurchase[] | undefined) || [];
+    const purchasedDownsells: UpsellPurchase[] = (existingData.purchasedDownsells as UpsellPurchase[] | undefined) || [];
     
     if (step.type === 'upsell') {
       purchasedUpsells.push(purchaseRecord);
@@ -315,14 +368,16 @@ export async function POST(req: Request) {
       updatedAt: new Date().toISOString(),
     });
 
-    console.log(`[UPSELL_CHARGE] Successfully charged ${priceInCents} cents for ${step.type} and enrolled user ${userId} in ${stepConfig.productType} ${stepConfig.productId}`);
+    const logUser = effectiveUserId ? `user ${effectiveUserId}` : `guest session ${flowSessionId}`;
+    console.log(`[UPSELL_CHARGE] Successfully charged ${priceInCents} cents for ${step.type} from ${logUser}`);
 
     return NextResponse.json({
       success: true,
       paymentIntentId: paymentIntent.id,
-      enrollmentId: enrollmentResult.enrollmentId,
+      enrollmentId, // Will be undefined for guest checkout
       productType: stepConfig.productType,
       productId: stepConfig.productId,
+      pendingEnrollment: isGuestCheckout, // Indicates enrollment will happen after signup
     });
 
   } catch (error) {
@@ -333,4 +388,3 @@ export async function POST(req: Request) {
     );
   }
 }
-

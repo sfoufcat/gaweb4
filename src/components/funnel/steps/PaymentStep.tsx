@@ -11,6 +11,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, CreditCard, Check, ArrowLeft, Plus, CircleCheck, Shield, Loader2 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@clerk/nextjs';
 import type { FunnelStepConfigPayment } from '@/types';
 
 // CSS variable helper - uses values set by FunnelClient
@@ -401,17 +402,21 @@ export function PaymentStep({
 }: PaymentStepProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const { isSignedIn, isLoaded: authLoaded } = useAuth();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [connectedAccountId, setConnectedAccountId] = useState<string | null>(null);
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Saved cards state
+  // Saved cards state - only available for authenticated users
   const [savedMethods, setSavedMethods] = useState<SavedPaymentMethod[]>([]);
   const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
   const [showSavedCards, setShowSavedCards] = useState(true);
   const [isProcessingSaved, setIsProcessingSaved] = useState(false);
+  
+  // Guest checkout: saved cards are not available
+  const canShowSavedCards = authLoaded && isSignedIn && organizationId;
 
   // Determine price
   const priceInCents = config.useProgramPricing 
@@ -421,9 +426,13 @@ export function PaymentStep({
   const currency = program.currency || 'usd';
   const stripePriceId = config.stripePriceId || program.stripePriceId;
 
-  // Fetch saved payment methods
+  // Fetch saved payment methods - only for authenticated users
   const fetchSavedMethods = useCallback(async () => {
-    if (!organizationId) return;
+    // Skip for guest checkout - saved cards require authentication
+    if (!canShowSavedCards) {
+      setSavedMethods([]);
+      return;
+    }
 
     try {
       const response = await fetch(`/api/payment-methods?organizationId=${organizationId}`);
@@ -441,7 +450,7 @@ export function PaymentStep({
     } catch (err) {
       console.error('Error fetching saved payment methods:', err);
     }
-  }, [organizationId]);
+  }, [canShowSavedCards, organizationId]);
 
   // Skip payment if marked as pre-paid
   useEffect(() => {
@@ -456,14 +465,24 @@ export function PaymentStep({
       return;
     }
 
-    // Fetch saved methods first
+    // Wait for auth state to be loaded before deciding flow
+    if (!authLoaded) return;
+
+    // For guest checkout, skip to payment form directly (no saved cards)
+    if (!canShowSavedCards) {
+      setShowSavedCards(false);
+      createPaymentIntent();
+      return;
+    }
+
+    // For authenticated users, fetch saved methods first
     fetchSavedMethods();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [skipPayment, priceInCents]);
+  }, [skipPayment, priceInCents, authLoaded, canShowSavedCards]);
 
-  // After fetching saved methods, decide what to show
+  // After fetching saved methods (authenticated users only), decide what to show
   useEffect(() => {
-    if (skipPayment || priceInCents === 0) return;
+    if (skipPayment || priceInCents === 0 || !authLoaded || !canShowSavedCards) return;
     
     // If we have saved methods, wait for user choice
     if (savedMethods.length > 0) {
@@ -475,7 +494,7 @@ export function PaymentStep({
       createPaymentIntent();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps  
-  }, [savedMethods, priceInCents, skipPayment]);
+  }, [savedMethods, priceInCents, skipPayment, authLoaded, canShowSavedCards]);
 
   const createPaymentIntent = async () => {
     setIsLoading(true);
@@ -721,7 +740,7 @@ export function PaymentStep({
                   colorPrimary: isDark ? 'var(--brand-accent-dark)' : 'var(--brand-accent-light)',
                   colorBackground: isDark ? '#1a1e26' : '#ffffff',
                   colorText: isDark ? '#e8e6e3' : '#1a1816',
-                  colorTextSecondary: isDark ? '#9ca3af' : undefined,
+                  ...(isDark && { colorTextSecondary: '#9ca3af' }),
                   colorDanger: '#ef4444',
                   fontFamily: 'system-ui, -apple-system, sans-serif',
                   borderRadius: '12px',

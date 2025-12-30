@@ -329,7 +329,7 @@ export function SquadPaymentModal({
       '.Label': {
         fontWeight: '500',
         marginBottom: '6px',
-        color: isDark ? '#e8e6e3' : undefined,
+        ...(isDark && { color: '#e8e6e3' }),
       },
       '.Tab': {
         borderColor: isDark ? '#313746' : '#e1ddd8',
