@@ -321,7 +321,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                       <button
                         onClick={handleGetStarted}
                         disabled={!userLoaded}
-                        className="w-full flex items-center justify-center gap-2 py-4 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-full font-sans font-bold text-[16px] transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                        className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#d4a61d] hover:to-[#c09819] text-[#2c2520] dark:bg-none dark:bg-[#b8896a] dark:hover:bg-[#a07855] dark:text-white rounded-full font-sans font-bold text-[16px] transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#e8b923]/20 dark:shadow-[#b8896a]/20"
                       >
                         {!userLoaded ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
@@ -473,7 +473,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                             <button
                               type="submit"
                               disabled={isLoading}
-                              className="w-full flex items-center justify-center gap-2 py-3.5 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-full font-sans font-bold text-[15px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                              className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#d4a61d] hover:to-[#c09819] text-[#2c2520] dark:bg-none dark:bg-[#b8896a] dark:hover:bg-[#a07855] dark:text-white rounded-full font-sans font-bold text-[15px] transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#e8b923]/20 dark:shadow-[#b8896a]/20"
                             >
                               {isLoading ? (
                                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -487,18 +487,44 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                           </form>
                         </>
                       ) : (
-                        <form onSubmit={handleVerification} className="space-y-4">
-                          <VerificationCodeInput
-                            value={verificationCode}
-                            onChange={setVerificationCode}
-                            autoFocus
-                            disabled={isLoading}
-                          />
+                        <motion.form 
+                          onSubmit={handleVerification} 
+                          className="space-y-4"
+                          initial="hidden"
+                          animate="visible"
+                          variants={{
+                            hidden: { opacity: 0 },
+                            visible: {
+                              opacity: 1,
+                              transition: {
+                                staggerChildren: 0.08,
+                                delayChildren: 0.1,
+                              },
+                            },
+                          }}
+                        >
+                          <motion.div
+                            variants={{
+                              hidden: { opacity: 0, y: 12 },
+                              visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] as const } },
+                            }}
+                          >
+                            <VerificationCodeInput
+                              value={verificationCode}
+                              onChange={setVerificationCode}
+                              autoFocus
+                              disabled={isLoading}
+                            />
+                          </motion.div>
                           
-                          <button
+                          <motion.button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full flex items-center justify-center gap-2 py-3.5 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-full font-sans font-bold text-[15px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                            className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#d4a61d] hover:to-[#c09819] text-[#2c2520] dark:bg-none dark:bg-[#b8896a] dark:hover:bg-[#a07855] dark:text-white rounded-full font-sans font-bold text-[15px] transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#e8b923]/20 dark:shadow-[#b8896a]/20"
+                            variants={{
+                              hidden: { opacity: 0, y: 12 },
+                              visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] as const } },
+                            }}
                           >
                             {isLoading ? (
                               <Loader2 className="w-5 h-5 animate-spin" />
@@ -508,16 +534,20 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                                 <ArrowRight className="w-4 h-4" />
                               </>
                             )}
-                          </button>
+                          </motion.button>
                           
-                          <button
+                          <motion.button
                             type="button"
                             onClick={() => setPendingVerification(false)}
                             className="w-full text-center font-sans text-[13px] text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors"
+                            variants={{
+                              hidden: { opacity: 0 },
+                              visible: { opacity: 1, transition: { duration: 0.3, delay: 0.1 } },
+                            }}
                           >
                             Use a different email
-                          </button>
-                        </form>
+                          </motion.button>
+                        </motion.form>
                       )}
                       
                       <div className="mt-6 pt-4 border-t border-[#e1ddd8]/50 dark:border-[#313746]/50 text-center">
@@ -621,7 +651,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                           router.push('/coach/onboarding/profile');
                           onClose();
                         }}
-                        className="w-full flex items-center justify-center gap-2 py-4 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-full font-sans font-bold text-[16px] transition-all hover:scale-[1.01] active:scale-[0.99] shadow-lg"
+                        className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#d4a61d] hover:to-[#c09819] text-[#2c2520] dark:bg-none dark:bg-[#b8896a] dark:hover:bg-[#a07855] dark:text-white rounded-full font-sans font-bold text-[16px] transition-all hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-[#e8b923]/20 dark:shadow-[#b8896a]/20"
                       >
                         Continue as {user?.firstName}
                         <ArrowRight className="w-5 h-5" />
