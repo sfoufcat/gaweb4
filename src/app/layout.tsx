@@ -150,7 +150,7 @@ export default async function RootLayout({
             <StreamChatProvider>
               <StreamVideoProvider>
                 <Suspense fallback={null}>
-                  <ConditionalSidebar />
+                  <ConditionalSidebar layoutMode={layoutMode} />
                 </Suspense>
                 
                 {/* Main Content Wrapper - Adjusted for narrower sidebar */}

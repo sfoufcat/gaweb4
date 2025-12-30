@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
+
+interface ConditionalSidebarProps {
+  layoutMode?: string;
+}
 
 /**
  * ConditionalSidebar
@@ -12,21 +15,19 @@ import { Sidebar } from '@/components/layout/Sidebar';
  * Note: The main content padding is now handled via data-layout attribute
  * set during SSR by middleware, which prevents layout shift issues.
  * This component only controls sidebar visibility.
+ * 
+ * The layoutMode prop is passed from RootLayout (set by proxy middleware)
+ * to prevent flash of sidebar on fullscreen pages like marketing domain.
  */
-export function ConditionalSidebar() {
+export function ConditionalSidebar({ layoutMode }: ConditionalSidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
-  // Hide sidebar on marketing domain (growthaddicts.com / www.growthaddicts.com)
-  const [isMarketingDomain, setIsMarketingDomain] = useState(false);
-  
-  useEffect(() => {
-    const hostname = window.location.hostname;
-    setIsMarketingDomain(
-      hostname === 'growthaddicts.com' || 
-      hostname === 'www.growthaddicts.com'
-    );
-  }, []);
+  // SSR-based check: If middleware determined this is fullscreen mode, don't render sidebar
+  // This prevents flash on marketing domain and other fullscreen pages
+  if (layoutMode === 'fullscreen') {
+    return null;
+  }
   
   // Hide sidebar on onboarding pages
   const isOnboardingPage = pathname?.startsWith('/onboarding');
@@ -66,7 +67,7 @@ export function ConditionalSidebar() {
   // Hide sidebar on coach welcome page (fullscreen experience)
   const isCoachWelcome = pathname?.startsWith('/coach/welcome');
   
-  const shouldHideSidebar = isMarketingDomain || isOnboardingPage || isStartPage || isCheckInPage || isJoinPage || isSignInPage || isProfileEditOnboarding || isPremiumUpgradeForm || isCoachingForm || isInvitePage || isMarketplacePage || isCoachOnboarding || isCoachWelcome;
+  const shouldHideSidebar = isOnboardingPage || isStartPage || isCheckInPage || isJoinPage || isSignInPage || isProfileEditOnboarding || isPremiumUpgradeForm || isCoachingForm || isInvitePage || isMarketplacePage || isCoachOnboarding || isCoachWelcome;
   
   if (shouldHideSidebar) {
     return null;
