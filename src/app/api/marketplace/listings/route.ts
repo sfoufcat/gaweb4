@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import type { MarketplaceListing, Funnel, OrgCustomDomain } from '@/types';
+import type { MarketplaceListing, Funnel, OrgCustomDomain, PlatformSettings, DecoyListing } from '@/types';
+import { getAllDecoys } from '@/lib/config/decoy-listings';
 
 /**
  * GET /api/marketplace/listings
@@ -10,6 +11,8 @@ import type { MarketplaceListing, Funnel, OrgCustomDomain } from '@/types';
  * - search?: string (search query)
  * - category?: string (filter by category)
  * - limit?: number (default 50)
+ * 
+ * Also includes decoy listings if enabled in platform settings.
  */
 export async function GET(req: Request) {
   try {
@@ -18,6 +21,23 @@ export async function GET(req: Request) {
     const category = searchParams.get('category');
     const limitParam = searchParams.get('limit');
     const limit = Math.min(parseInt(limitParam || '50', 10), 100);
+
+    // Check if decoys are enabled via platform settings
+    let decoysEnabled = false;
+    try {
+      const settingsDoc = await adminDb
+        .collection('platform_settings')
+        .doc('global')
+        .get();
+      
+      if (settingsDoc.exists) {
+        const settings = settingsDoc.data() as PlatformSettings;
+        decoysEnabled = settings.marketplaceDecoysEnabled ?? false;
+      }
+    } catch (err) {
+      console.error('[MARKETPLACE_LISTINGS] Failed to fetch platform settings:', err);
+      // Continue without decoys if settings fetch fails
+    }
 
     // Build query - only enabled listings
     let query = adminDb
@@ -115,9 +135,61 @@ export async function GET(req: Request) {
       );
     }
 
+    // Add decoy listings if enabled
+    let allListings: Array<typeof filteredListings[number] | (DecoyListing & { funnelSlug: null; programSlug: null; customDomain: null })> = [...filteredListings];
+    
+    if (decoysEnabled) {
+      let decoys = getAllDecoys();
+      
+      // Filter decoys by category if category filter is applied
+      if (category && category !== 'all') {
+        decoys = decoys.filter(d => d.categories.includes(category as never));
+      }
+      
+      // Filter decoys by search if search is applied
+      if (search) {
+        decoys = decoys.filter(d => 
+          d.title?.toLowerCase().includes(search) ||
+          d.description?.toLowerCase().includes(search) ||
+          d.coachName?.toLowerCase().includes(search)
+        );
+      }
+      
+      // Convert decoys to match listing format (add null fields for URLs)
+      const decoyListings = decoys.map(d => ({
+        ...d,
+        funnelSlug: null as null,
+        programSlug: null as null,
+        customDomain: null as null,
+      }));
+      
+      // Mix decoys with real listings (insert at various positions for natural feel)
+      // Strategy: Insert a decoy after every 2-3 real listings
+      const mixed: typeof allListings = [];
+      let decoyIndex = 0;
+      
+      for (let i = 0; i < filteredListings.length; i++) {
+        mixed.push(filteredListings[i]);
+        
+        // Insert a decoy after every 2 real listings (if we have decoys left)
+        if ((i + 1) % 2 === 0 && decoyIndex < decoyListings.length) {
+          mixed.push(decoyListings[decoyIndex]);
+          decoyIndex++;
+        }
+      }
+      
+      // Add any remaining decoys at the end
+      while (decoyIndex < decoyListings.length) {
+        mixed.push(decoyListings[decoyIndex]);
+        decoyIndex++;
+      }
+      
+      allListings = mixed;
+    }
+
     return NextResponse.json({ 
-      listings: filteredListings,
-      totalCount: filteredListings.length,
+      listings: allListings,
+      totalCount: allListings.length,
     });
   } catch (error) {
     console.error('[MARKETPLACE_LISTINGS_GET]', error);

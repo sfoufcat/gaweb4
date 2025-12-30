@@ -17,6 +17,7 @@ import { AdminTracksAndProgramsTab } from '@/components/admin/tracks-programs';
 import { AdminOrganizationsTab } from '@/components/admin/AdminOrganizationsTab';
 import { AdminTemplatesTab } from '@/components/admin/AdminTemplatesTab';
 import { AdminFeaturesTab } from '@/components/admin/AdminFeaturesTab';
+import { AdminPlatformSettingsTab } from '@/components/admin/AdminPlatformSettingsTab';
 import type { ClerkPublicMetadata } from '@/types';
 
 export default function AdminPage() {
@@ -148,6 +149,12 @@ export default function AdminPage() {
                 >
                   Features
                 </TabsTrigger>
+                <TabsTrigger 
+                  value="platform-settings"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Platform Settings
+                </TabsTrigger>
               </>
             )}
           </TabsList>
@@ -197,6 +204,9 @@ export default function AdminPage() {
               </TabsContent>
               <TabsContent value="features">
                 <AdminFeaturesTab />
+              </TabsContent>
+              <TabsContent value="platform-settings">
+                <AdminPlatformSettingsTab />
               </TabsContent>
             </>
           )}

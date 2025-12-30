@@ -39,8 +39,8 @@ export default function MarketplacePage() {
   } | null>(null);
   const [orgLoading, setOrgLoading] = useState(true);
   
-  // Pagination - show 9 items (3 rows) initially
-  const ITEMS_PER_PAGE = 9;
+  // Pagination - show 6 items (2 rows) initially
+  const ITEMS_PER_PAGE = 6;
   const [showAllListings, setShowAllListings] = useState(false);
   
   // Timeline animation ref
@@ -672,43 +672,58 @@ export default function MarketplacePage() {
   );
 }
 
-// Extended listing type with funnel info from API
+// Extended listing type with funnel info from API (includes decoy fields)
 type ListingWithFunnel = Omit<MarketplaceListing, 'customDomain'> & {
   funnelSlug?: string | null;
   programSlug?: string | null;
   customDomain?: string | null;
+  // Decoy listing fields
+  isDecoy?: boolean;
+  slug?: string;
 };
 
 // Listing Card Component
 function ListingCard({ listing }: { listing: ListingWithFunnel }) {
-  // Build funnel URL - prefer custom domain over subdomain
-  let funnelUrl = '/join';
+  // Check if this is a decoy listing
+  const isDecoy = listing.isDecoy === true;
   
-  // Determine base URL: prefer custom domain if available, otherwise use subdomain
-  const baseUrl = listing.customDomain 
-    ? `https://${listing.customDomain}`
-    : listing.subdomain 
-      ? `https://${listing.subdomain}.growthaddicts.com`
-      : null;
+  // Build URL - decoys go to the "full" page, real listings go to funnel
+  let targetUrl = '/join';
   
-  if (baseUrl) {
-    if (listing.programSlug && listing.funnelSlug) {
-      // Full funnel URL with program and funnel slug
-      funnelUrl = `${baseUrl}/join/${listing.programSlug}/${listing.funnelSlug}`;
-    } else if (listing.funnelSlug) {
-      // Funnel slug only (for non-program funnels)
-      funnelUrl = `${baseUrl}/join/${listing.funnelSlug}`;
-    } else {
-      // Fallback to generic join page
-      funnelUrl = `${baseUrl}/join`;
+  if (isDecoy && listing.slug) {
+    // Decoy listings link to the "Program Full" page
+    targetUrl = `/program/full/${listing.slug}`;
+  } else {
+    // Real listings - build funnel URL
+    const baseUrl = listing.customDomain 
+      ? `https://${listing.customDomain}`
+      : listing.subdomain 
+        ? `https://${listing.subdomain}.growthaddicts.com`
+        : null;
+    
+    if (baseUrl) {
+      if (listing.programSlug && listing.funnelSlug) {
+        // Full funnel URL with program and funnel slug
+        targetUrl = `${baseUrl}/join/${listing.programSlug}/${listing.funnelSlug}`;
+      } else if (listing.funnelSlug) {
+        // Funnel slug only (for non-program funnels)
+        targetUrl = `${baseUrl}/join/${listing.funnelSlug}`;
+      } else {
+        // Fallback to generic join page
+        targetUrl = `${baseUrl}/join`;
+      }
     }
   }
   
+  // Decoys use Link (same-origin), real listings use external link
+  const CardWrapper = isDecoy ? Link : 'a';
+  const linkProps = isDecoy 
+    ? { href: targetUrl }
+    : { href: targetUrl, target: '_blank', rel: 'noopener noreferrer' };
+  
   return (
-    <a
-      href={funnelUrl}
-      target="_blank"
-      rel="noopener noreferrer"
+    <CardWrapper
+      {...linkProps}
       className="group bg-white dark:bg-[#171b22] rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
     >
       {/* Cover Image */}
@@ -730,6 +745,15 @@ function ListingCard({ listing }: { listing: ListingWithFunnel }) {
           <div className="absolute top-3 left-3">
             <span className="px-2.5 py-1 bg-white/90 dark:bg-[#1a1a1a]/90 backdrop-blur-sm rounded-full text-xs font-albert font-medium text-[#5f5a55] dark:text-[#b2b6c2]">
               {MARKETPLACE_CATEGORIES.find(c => c.value === listing.categories?.[0])?.label || listing.categories[0]}
+            </span>
+          </div>
+        )}
+        
+        {/* "Full" badge for decoy listings */}
+        {isDecoy && (
+          <div className="absolute top-3 right-3">
+            <span className="px-2.5 py-1 bg-red-500/90 backdrop-blur-sm rounded-full text-xs font-albert font-semibold text-white">
+              Full
             </span>
           </div>
         )}
@@ -773,11 +797,11 @@ function ListingCard({ listing }: { listing: ListingWithFunnel }) {
         
         {/* CTA */}
         <div className="mt-4 flex items-center gap-1 text-brand-accent font-albert text-sm font-medium group-hover:gap-2 transition-all">
-          View program
+          {isDecoy ? 'View details' : 'View program'}
           <ArrowRight className="w-4 h-4" />
         </div>
       </div>
-    </a>
+    </CardWrapper>
   );
 }
 

@@ -7,10 +7,35 @@
  */
 
 import { adminDb } from './firebase-admin';
-import { sendTenantEmail, APP_BASE_URL, getLogoUrlForEmail, getAppTitleForEmail } from './email-sender';
-import type { FirebaseUser } from '@/types';
+import { sendTenantEmail, APP_BASE_URL, getLogoUrlForEmail, getAppTitleForEmail, isEmailTypeEnabled } from './email-sender';
+import { renderEmailTemplate, type TemplateVariables } from './email-templates';
+import type { FirebaseUser, OrgBranding, OrgEmailTemplates } from '@/types';
 
 const APP_URL = APP_BASE_URL;
+
+/**
+ * Get custom email templates for an organization (if they have verified email domain)
+ */
+async function getOrgEmailTemplates(organizationId: string | null): Promise<OrgEmailTemplates | null> {
+  if (!organizationId) return null;
+  
+  try {
+    const doc = await adminDb.collection('org_branding').doc(organizationId).get();
+    if (!doc.exists) return null;
+    
+    const branding = doc.data() as OrgBranding;
+    
+    // Only return templates if email domain is verified
+    if (branding.emailSettings?.status !== 'verified') {
+      return null;
+    }
+    
+    return branding.emailTemplates || null;
+  } catch (error) {
+    console.error('[EMAIL] Error getting org email templates:', error);
+    return null;
+  }
+}
 
 /**
  * Send welcome email when a user successfully pays and becomes a member
@@ -31,75 +56,35 @@ export async function sendWelcomeEmail({
     return { success: false, error: 'No email provided' };
   }
 
+  // Check if welcome emails are enabled for this organization
+  const isEnabled = await isEmailTypeEnabled(organizationId || null, 'welcome');
+  if (!isEnabled) {
+    console.log('[WELCOME_EMAIL] Skipping - Welcome emails disabled for org:', organizationId);
+    return { success: false, error: 'Welcome emails disabled for this organization' };
+  }
+
   // Get tenant branding for customization
   const appTitle = await getAppTitleForEmail(organizationId || null);
   const logoUrl = await getLogoUrlForEmail(organizationId || null);
   const teamName = appTitle === 'GrowthAddicts' ? 'Growth Addicts' : appTitle;
-
-  const name = firstName || 'there';
   const dashboardUrl = `${APP_URL}/`;
+  const name = firstName || 'there';
 
-  const subject = `Welcome to ${teamName}: Your Transformation Starts Today 🚀`;
+  // Check for custom template
+  const customTemplates = await getOrgEmailTemplates(organizationId || null);
+  
+  // Build template variables
+  const templateVars: TemplateVariables = {
+    firstName: name,
+    appTitle,
+    teamName,
+    logoUrl,
+    ctaUrl: dashboardUrl,
+    year: new Date().getFullYear().toString(),
+  };
 
-  const htmlBody = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${subject}</title>
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #2c2520; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="text-align: center; margin-bottom: 30px;">
-    <img src="${logoUrl}" alt="${teamName}" style="width: 60px; height: 60px; border-radius: 12px;">
-  </div>
-  
-  <p style="font-size: 18px; margin-bottom: 20px;">Hey ${name},</p>
-  
-  <p style="margin-bottom: 20px;"><strong>Welcome to ${teamName}</strong>. We're genuinely excited you're here.</p>
-  
-  <p style="margin-bottom: 20px;">You've just taken the first step into a system built to help you grow consistently, without burning out or losing momentum.</p>
-  
-  <p style="margin-bottom: 15px;"><strong>Here's what's waiting for you inside:</strong></p>
-  
-  <ul style="margin-bottom: 25px; padding-left: 20px;">
-    <li style="margin-bottom: 8px;">🔥 Daily structure that keeps you moving forward</li>
-    <li style="margin-bottom: 8px;">🤝 Your accountability squad (no more doing this alone)</li>
-    <li style="margin-bottom: 8px;">📅 Weekly reviews to lock in your progress</li>
-    <li style="margin-bottom: 8px;">🧠 Expert strategies that protect your long-term results</li>
-    <li style="margin-bottom: 8px;">📚 A full resource hub with templates, prompts & tools</li>
-  </ul>
-  
-  <p style="margin-bottom: 20px;"><strong>This isn't just another program.</strong></p>
-  
-  <p style="margin-bottom: 25px;">It's a commitment. A commitment from us to guide you, and a commitment from you to show up.</p>
-  
-  <p style="margin-bottom: 15px;">Your login details are the same as the ones you used to sign up.</p>
-  
-  <p style="margin-bottom: 20px;">You can jump into your dashboard here:</p>
-  
-  <div style="text-align: center; margin: 30px 0;">
-    <a href="${dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #2c2520 0%, #3d342d 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 32px; font-weight: bold; font-size: 16px;">
-      👉 Start your ${teamName} journey
-    </a>
-  </div>
-  
-  <p style="margin-bottom: 20px;">If you ever need support, we're always here for you.</p>
-  
-  <p style="margin-bottom: 20px;"><strong>Let's make the next 12 months the most transformative of your life.</strong></p>
-  
-  <p style="margin-bottom: 30px;">Welcome to the family. ❤️</p>
-  
-  <p style="color: #666;">The ${teamName} Team</p>
-  
-  <hr style="border: none; border-top: 1px solid #e1ddd8; margin: 30px 0;">
-  
-  <p style="font-size: 12px; color: #999; text-align: center;">
-    © ${new Date().getFullYear()} ${teamName}. All rights reserved.
-  </p>
-</body>
-</html>
-  `.trim();
+  // Render template (custom or default)
+  const { subject, html: htmlBody } = renderEmailTemplate('welcome', templateVars, customTemplates);
 
   const textBody = `
 Hey ${name},
@@ -184,70 +169,35 @@ export async function sendAbandonedEmail({
     return { success: false, error: 'No email provided' };
   }
 
+  // Check if abandoned cart emails are enabled for this organization
+  const isEnabled = await isEmailTypeEnabled(organizationId || null, 'abandoned_cart');
+  if (!isEnabled) {
+    console.log('[ABANDONED_EMAIL] Skipping - Abandoned cart emails disabled for org:', organizationId);
+    return { success: false, error: 'Abandoned cart emails disabled for this organization' };
+  }
+
   // Get tenant branding for customization
   const appTitle = await getAppTitleForEmail(organizationId || null);
   const logoUrl = await getLogoUrlForEmail(organizationId || null);
   const teamName = appTitle === 'GrowthAddicts' ? 'Growth Addicts' : appTitle;
-
-  const name = firstName || 'there';
   const planUrl = resumeUrl || `${APP_URL}/onboarding/plan`;
+  const name = firstName || 'there';
 
-  const subject = `Your ${teamName} plan is ready: complete your signup ⚡`;
-  const htmlBody = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${subject}</title>
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #2c2520; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="text-align: center; margin-bottom: 30px;">
-    <img src="${logoUrl}" alt="${teamName}" style="width: 60px; height: 60px; border-radius: 12px;">
-  </div>
+  // Check for custom template
+  const customTemplates = await getOrgEmailTemplates(organizationId || null);
   
-  <p style="font-size: 18px; margin-bottom: 20px;">Hey ${name},</p>
-  
-  <p style="margin-bottom: 20px;">You started building your plan inside ${teamName}, and you were so close to unlocking everything.</p>
-  
-  <p style="margin-bottom: 20px;"><strong>Your personalized setup is saved and ready.</strong></p>
-  
-  <p style="margin-bottom: 25px;">All that's left is to complete your membership.</p>
-  
-  <p style="margin-bottom: 20px;">Here's the link to finish your signup:</p>
-  
-  <div style="text-align: center; margin: 30px 0;">
-    <a href="${planUrl}" style="display: inline-block; background: linear-gradient(135deg, #2c2520 0%, #3d342d 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 32px; font-weight: bold; font-size: 16px;">
-      👉 Resume your ${teamName} plan
-    </a>
-  </div>
-  
-  <p style="margin-bottom: 15px;"><strong>Why it's worth coming back (right now):</strong></p>
-  
-  <ul style="margin-bottom: 25px; padding-left: 20px;">
-    <li style="margin-bottom: 8px;">• Your daily structure is already prepared</li>
-    <li style="margin-bottom: 8px;">• Your accountability squad activates once you join</li>
-    <li style="margin-bottom: 8px;">• Your first weekly review begins the moment you're inside</li>
-    <li style="margin-bottom: 8px;">• Your long-term success system is waiting for you</li>
-  </ul>
-  
-  <p style="margin-bottom: 20px;"><strong>You already did the hard part: you showed up.</strong></p>
-  
-  <p style="margin-bottom: 25px;">Now take the final step so we can guide you through the rest.</p>
-  
-  <p style="margin-bottom: 30px;">If you run into anything while joining, reply directly to this email. We're here to help.</p>
-  
-  <p style="margin-bottom: 10px;">See you inside,</p>
-  <p style="color: #666;">The ${teamName} Team</p>
-  
-  <hr style="border: none; border-top: 1px solid #e1ddd8; margin: 30px 0;">
-  
-  <p style="font-size: 12px; color: #999; text-align: center;">
-    © ${new Date().getFullYear()} ${teamName}. All rights reserved.
-  </p>
-</body>
-</html>
-  `.trim();
+  // Build template variables
+  const templateVars: TemplateVariables = {
+    firstName: name,
+    appTitle,
+    teamName,
+    logoUrl,
+    ctaUrl: planUrl,
+    year: new Date().getFullYear().toString(),
+  };
+
+  // Render template (custom or default)
+  const { subject, html: htmlBody } = renderEmailTemplate('abandonedCart', templateVars, customTemplates);
 
   const textBody = `
 Hey ${name},
@@ -399,10 +349,12 @@ export async function processAbandonedEmails(): Promise<{
 
       try {
         // Send the abandoned email (uses default /onboarding/plan URL)
+        // Pass organizationId for preference checking and branding
         const result = await sendAbandonedEmail({
           email: userData.email,
           firstName: userData.firstName || userData.name?.split(' ')[0],
           userId,
+          organizationId: userData.primaryOrganizationId,
         });
 
         if (result.success) {
@@ -475,6 +427,7 @@ export async function processAbandonedEmails(): Promise<{
       // Get user email from users collection
       let userEmail: string | undefined;
       let firstName: string | undefined;
+      let userOrganizationId: string | null = null;
       
       try {
         const userDoc = await adminDb.collection('users').doc(sessionData.userId).get();
@@ -482,6 +435,7 @@ export async function processAbandonedEmails(): Promise<{
           const userData = userDoc.data() as FirebaseUser;
           userEmail = userData.email?.toLowerCase().trim();
           firstName = userData.firstName || userData.name?.split(' ')[0];
+          userOrganizationId = userData.primaryOrganizationId || null;
           
           // Skip if user has active subscription
           if (hasActiveSubscription(userData.billing?.status)) {
@@ -520,12 +474,15 @@ export async function processAbandonedEmails(): Promise<{
           ? `${APP_URL}/join/${sessionData.programSlug}/${sessionData.funnelSlug}`
           : `${APP_URL}/join`;
 
-        // Send the abandoned email
+        // Send the abandoned email with organizationId for preference checking and branding
+        // Use session's organizationId if available, fall back to user's org
+        const orgId = sessionData.organizationId || userOrganizationId;
         const result = await sendAbandonedEmail({
           email: userEmail,
           firstName,
           userId: sessionData.userId,
           resumeUrl,
+          organizationId: orgId,
         });
 
         if (result.success) {

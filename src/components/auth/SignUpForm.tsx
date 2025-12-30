@@ -129,6 +129,21 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
     }
 
     try {
+      // Store signup intent for tenant-branded verification emails
+      // This allows the email webhook to know which org to brand for
+      if (signupDomain) {
+        try {
+          await fetch('/api/auth/signup-intent', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, domain: signupDomain }),
+          });
+        } catch (intentError) {
+          // Non-blocking - continue with signup even if intent storage fails
+          console.warn('Failed to store signup intent:', intentError);
+        }
+      }
+
       await signUp.create({
         firstName: firstName.trim(),
         lastName: lastName.trim(),

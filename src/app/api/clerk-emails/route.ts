@@ -48,6 +48,37 @@ interface ClerkWebhookEvent {
 // HELPERS
 // =============================================================================
 
+/**
+ * Look up signup intent by email to get organization
+ * Used when user_id is null (verification emails before user creation)
+ */
+async function getOrganizationFromSignupIntent(email: string): Promise<string | null> {
+  try {
+    const normalizedEmail = email.toLowerCase().trim();
+    const doc = await adminDb.collection('signup_intents').doc(normalizedEmail).get();
+    
+    if (!doc.exists) {
+      console.log(`[CLERK_EMAILS] No signup intent found for ${normalizedEmail}`);
+      return null;
+    }
+    
+    const data = doc.data();
+    
+    // Check if expired
+    if (data?.expiresAt && new Date(data.expiresAt) < new Date()) {
+      console.log(`[CLERK_EMAILS] Signup intent expired for ${normalizedEmail}`);
+      await doc.ref.delete();
+      return null;
+    }
+    
+    console.log(`[CLERK_EMAILS] Found signup intent for ${normalizedEmail}, org: ${data?.organizationId}`);
+    return data?.organizationId || null;
+  } catch (error) {
+    console.error('[CLERK_EMAILS] Error getting signup intent:', error);
+    return null;
+  }
+}
+
 async function getUserOrganization(userId: string | null): Promise<string | null> {
   if (!userId) return null;
   
@@ -169,9 +200,19 @@ export async function POST(req: Request) {
   console.log(`[CLERK_EMAILS] Processing ${emailData.slug} email for ${emailData.to_email_address}`);
 
   try {
-    const organizationId = await getUserOrganization(emailData.user_id);
+    // Try to get organization from user_id first, then fall back to signup intent
+    let organizationId = await getUserOrganization(emailData.user_id);
+    
+    // If no org found and user_id is null (new signup), check signup intent
+    if (!organizationId && !emailData.user_id) {
+      organizationId = await getOrganizationFromSignupIntent(emailData.to_email_address);
+    }
+    
     const branding = organizationId ? await getOrgBranding(organizationId) : null;
     const fromAddress = await getTenantSender(organizationId);
+    
+    console.log(`[CLERK_EMAILS] Organization: ${organizationId || 'none'}, Branding: ${branding?.appTitle || 'default'}`);
+
     const { subject, html } = customizeEmailContent(
       emailData.subject,
       emailData.body,

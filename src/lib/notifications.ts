@@ -8,10 +8,55 @@
  */
 
 import { adminDb } from './firebase-admin';
-import type { NotificationType, Notification, FirebaseUser, OrgSystemNotifications } from '@/types';
+import type { NotificationType, Notification, FirebaseUser, OrgSystemNotifications, OrgBranding, OrgEmailTemplates, EmailTemplateType } from '@/types';
 import { DEFAULT_SYSTEM_NOTIFICATIONS } from '@/types';
-import { sendTenantEmail, APP_BASE_URL, getAppTitleForEmail } from './email-sender';
+import { sendTenantEmail, APP_BASE_URL, getAppTitleForEmail, isEmailTypeEnabled, type EmailNotificationType, getLogoUrlForEmail } from './email-sender';
 import { getTodayInTimezone, DEFAULT_TIMEZONE } from './timezone';
+import { renderEmailTemplate, type TemplateVariables } from './email-templates';
+
+/**
+ * Map notification type to EmailNotificationType for org-level preference checking
+ */
+const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Partial<Record<NotificationType, EmailNotificationType>> = {
+  morning_checkin: 'morning_reminder',
+  evening_checkin_complete_tasks: 'evening_reminder',
+  evening_checkin_incomplete_tasks: 'evening_reminder',
+  weekly_reflection: 'weekly_reminder',
+};
+
+/**
+ * Map notification types to email template types for custom templates
+ */
+const NOTIFICATION_TYPE_TO_TEMPLATE_TYPE: Partial<Record<NotificationType, EmailTemplateType>> = {
+  morning_checkin: 'morningReminder',
+  evening_checkin_complete_tasks: 'eveningReminder',
+  evening_checkin_incomplete_tasks: 'eveningReminder',
+  weekly_reflection: 'weeklyReminder',
+};
+
+/**
+ * Get custom email templates for an organization (if they have verified email domain)
+ */
+async function getOrgEmailTemplates(organizationId: string | null): Promise<OrgEmailTemplates | null> {
+  if (!organizationId) return null;
+  
+  try {
+    const doc = await adminDb.collection('org_branding').doc(organizationId).get();
+    if (!doc.exists) return null;
+    
+    const branding = doc.data() as OrgBranding;
+    
+    // Only return templates if email domain is verified
+    if (branding.emailSettings?.status !== 'verified') {
+      return null;
+    }
+    
+    return branding.emailTemplates || null;
+  } catch (error) {
+    console.error('[NOTIFICATIONS] Error getting org email templates:', error);
+    return null;
+  }
+}
 
 /**
  * Map notification types to their corresponding key in OrgSystemNotifications
@@ -124,6 +169,16 @@ async function sendNotificationEmail({
     return;
   }
 
+  // Check organization-level email preferences
+  const emailNotificationType = NOTIFICATION_TYPE_TO_EMAIL_TYPE[type];
+  if (emailNotificationType) {
+    const orgEnabled = await isEmailTypeEnabled(user.primaryOrganizationId || null, emailNotificationType);
+    if (!orgEnabled) {
+      console.log(`[NOTIFICATION_EMAIL] Skipping ${type} - org ${user.primaryOrganizationId} has disabled this email type`);
+      return;
+    }
+  }
+
   // Check user's email preferences
   const emailPrefs = user.emailPreferences;
   if (emailPrefs) {
@@ -156,15 +211,38 @@ async function sendNotificationEmail({
   // Get tenant branding for customization
   const organizationId = user.primaryOrganizationId || null;
   const appTitle = await getAppTitleForEmail(organizationId);
+  const logoUrl = await getLogoUrlForEmail(organizationId);
   const teamName = appTitle === 'GrowthAddicts' ? 'Growth Addicts' : appTitle;
+
+  // Check for custom template
+  const templateType = NOTIFICATION_TYPE_TO_TEMPLATE_TYPE[type];
+  const customTemplates = templateType ? await getOrgEmailTemplates(organizationId) : null;
 
   let subject: string;
   let textBody: string;
+  let htmlBody: string | undefined;
 
-  switch (type) {
-    case 'morning_checkin':
-      subject = 'Your morning check-in is ready 🌅';
-      textBody = `Hi ${name},
+  // If there's a custom template, use it
+  if (templateType && customTemplates) {
+    const templateVars: TemplateVariables = {
+      firstName: name,
+      appTitle,
+      teamName,
+      logoUrl,
+      ctaUrl: url,
+      year: new Date().getFullYear().toString(),
+    };
+    
+    const rendered = renderEmailTemplate(templateType, templateVars, customTemplates);
+    subject = rendered.subject;
+    htmlBody = rendered.html;
+    textBody = `Hi ${name}, ${body} Visit: ${url}`;
+  } else {
+    // Use default inline templates
+    switch (type) {
+      case 'morning_checkin':
+        subject = 'Your morning check-in is ready 🌅';
+        textBody = `Hi ${name},
 
 Your ${teamName} morning check-in is ready.
 
@@ -175,11 +253,11 @@ ${url}
 
 Keep going,
 The ${teamName} Team`.trim();
-      break;
+        break;
 
-    case 'evening_checkin_complete_tasks':
-      subject = 'Nice work! Close your day with a quick check-in ✨';
-      textBody = `Hi ${name},
+      case 'evening_checkin_complete_tasks':
+        subject = 'Nice work! Close your day with a quick check-in ✨';
+        textBody = `Hi ${name},
 
 Great job! You've completed today's focus tasks.
 
@@ -190,11 +268,11 @@ ${url}
 
 Proud of your consistency,
 The ${teamName} Team`.trim();
-      break;
+        break;
 
-    case 'evening_checkin_incomplete_tasks':
-      subject = 'Close your day with a quick reflection 🌙';
-      textBody = `Hi ${name},
+      case 'evening_checkin_incomplete_tasks':
+        subject = 'Close your day with a quick reflection 🌙';
+        textBody = `Hi ${name},
 
 Not every day is a hit, and that's okay.
 
@@ -241,13 +319,14 @@ Open ${teamName}:
 ${url}
 
 The ${teamName} Team`.trim();
+    }
   }
 
   // Send via tenant-aware email sender
   const result = await sendTenantEmail({
     to: user.email,
     subject,
-    html: `<pre style="font-family: system-ui, sans-serif; white-space: pre-wrap;">${textBody}</pre>`,
+    html: htmlBody || `<pre style="font-family: system-ui, sans-serif; white-space: pre-wrap;">${textBody}</pre>`,
     text: textBody,
     organizationId,
     userId: user.id,

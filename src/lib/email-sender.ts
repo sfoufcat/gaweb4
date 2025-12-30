@@ -18,7 +18,8 @@
 
 import { resend, isResendConfigured } from './resend';
 import { adminDb } from './firebase-admin';
-import type { OrgBranding, FirebaseUser } from '@/types';
+import type { OrgBranding, FirebaseUser, EmailPreferences, OrgSettings } from '@/types';
+import { DEFAULT_EMAIL_PREFERENCES } from '@/types';
 
 // Platform default senders
 export const PLATFORM_DEFAULT_SENDER = 'Growth Addicts <hi@updates.growthaddicts.com>';
@@ -30,6 +31,31 @@ export const APP_BASE_URL = process.env.APP_BASE_URL || 'https://pro.growthaddic
 // =============================================================================
 // TYPES
 // =============================================================================
+
+/**
+ * Email notification types that can be enabled/disabled by coaches
+ */
+export type EmailNotificationType = 
+  | 'verification'      // Always enabled
+  | 'welcome'           // After successful payment
+  | 'abandoned_cart'    // Quiz started but not completed
+  | 'morning_reminder'  // Daily morning check-in
+  | 'evening_reminder'  // Daily evening reflection
+  | 'weekly_reminder'   // Weekend weekly reflection
+  | 'payment_failed';   // Always enabled
+
+/**
+ * Map from EmailNotificationType to EmailPreferences key
+ */
+const EMAIL_TYPE_TO_PREFERENCE_KEY: Record<EmailNotificationType, keyof EmailPreferences> = {
+  verification: 'verificationEnabled',
+  welcome: 'welcomeEnabled',
+  abandoned_cart: 'abandonedCartEnabled',
+  morning_reminder: 'morningReminderEnabled',
+  evening_reminder: 'eveningReminderEnabled',
+  weekly_reminder: 'weeklyReminderEnabled',
+  payment_failed: 'paymentFailedEnabled',
+};
 
 export interface SendTenantEmailOptions {
   to: string;
@@ -89,6 +115,67 @@ async function getOrgBranding(organizationId: string): Promise<OrgBranding | nul
     console.error('[EMAIL_SENDER] Error getting org branding:', error);
     return null;
   }
+}
+
+/**
+ * Get organization settings (including email preferences)
+ */
+async function getOrgSettings(organizationId: string): Promise<OrgSettings | null> {
+  try {
+    const doc = await adminDb.collection('org_settings').doc(organizationId).get();
+    if (!doc.exists) return null;
+    return doc.data() as OrgSettings;
+  } catch (error) {
+    console.error('[EMAIL_SENDER] Error getting org settings:', error);
+    return null;
+  }
+}
+
+/**
+ * Get email preferences for an organization
+ * Returns default preferences if not set
+ */
+export async function getEmailPreferences(organizationId: string | null): Promise<EmailPreferences> {
+  if (!organizationId) {
+    return DEFAULT_EMAIL_PREFERENCES;
+  }
+  
+  const settings = await getOrgSettings(organizationId);
+  
+  return {
+    ...DEFAULT_EMAIL_PREFERENCES,
+    ...settings?.emailPreferences,
+    // Always force these to true
+    verificationEnabled: true,
+    paymentFailedEnabled: true,
+  };
+}
+
+/**
+ * Check if a specific email type is enabled for an organization
+ * 
+ * @param organizationId - The organization ID (null = platform emails, always enabled)
+ * @param emailNotificationType - The type of email notification
+ * @returns True if the email type is enabled
+ */
+export async function isEmailTypeEnabled(
+  organizationId: string | null,
+  emailNotificationType: EmailNotificationType
+): Promise<boolean> {
+  // Verification and payment_failed emails are always enabled
+  if (emailNotificationType === 'verification' || emailNotificationType === 'payment_failed') {
+    return true;
+  }
+  
+  // Platform emails (no org) are always enabled
+  if (!organizationId) {
+    return true;
+  }
+  
+  const preferences = await getEmailPreferences(organizationId);
+  const preferenceKey = EMAIL_TYPE_TO_PREFERENCE_KEY[emailNotificationType];
+  
+  return preferences[preferenceKey] === true;
 }
 
 /**

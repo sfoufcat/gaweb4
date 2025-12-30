@@ -6,6 +6,8 @@ import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, 
 import { useBranding } from '@/contexts/BrandingContext';
 import { FeedSettingsToggle } from './FeedSettingsToggle';
 import { PublicSignupToggle } from './PublicSignupToggle';
+import { EmailPreferencesSection } from './EmailPreferencesSection';
+import { EmailTemplateEditor } from './EmailTemplateEditor';
 import { CommunitySettingsToggle } from './CommunitySettingsToggle';
 import { AlumniDiscountToggle } from './AlumniDiscountToggle';
 import { MenuEmptyStateSettings } from './MenuEmptyStateSettings';
@@ -1766,6 +1768,11 @@ export function CustomizeBrandingTab() {
           <CommunitySettingsToggle />
         </div>
         
+        {/* Email Notification Preferences */}
+        <div className="mt-4">
+          <EmailPreferencesSection />
+        </div>
+        
         {/* Alumni Discount */}
         <div className="mt-4">
           <AlumniDiscountToggle />
@@ -2426,6 +2433,15 @@ export function CustomizeBrandingTab() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Email Template Editor - Only shown when email domain is verified */}
+      <div className="mt-6">
+        <EmailTemplateEditor
+          isVerified={emailSettings?.status === 'verified'}
+          appTitle={appTitle}
+          logoUrl={logoUrl || '/logo.jpg'}
+        />
       </div>
 
       {/* Stripe Connect Section */}

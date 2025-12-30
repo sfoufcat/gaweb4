@@ -2148,9 +2148,52 @@ export interface OrgSettings {
   // Global tracking pixels (applied to all funnels in this org)
   globalTracking?: FunnelTrackingConfig; // Organization-wide tracking pixels
   
+  // Email notification preferences (which email types are enabled)
+  emailPreferences?: EmailPreferences;
+  
   createdAt: string;                   // ISO timestamp
   updatedAt: string;                   // ISO timestamp
 }
+
+/**
+ * Email notification preferences for an organization
+ * Controls which types of emails are sent to members
+ */
+export interface EmailPreferences {
+  // Verification emails - always enabled, cannot be disabled
+  verificationEnabled: true;
+  
+  // Welcome email after successful payment
+  welcomeEnabled: boolean;
+  
+  // Abandoned cart email (15min after quiz start without payment)
+  abandonedCartEnabled: boolean;
+  
+  // Morning check-in reminder
+  morningReminderEnabled: boolean;
+  
+  // Evening reflection reminder
+  eveningReminderEnabled: boolean;
+  
+  // Weekly reflection reminder
+  weeklyReminderEnabled: boolean;
+  
+  // Payment failed notification (for coaches) - always enabled
+  paymentFailedEnabled: true;
+}
+
+/**
+ * Default email preferences
+ */
+export const DEFAULT_EMAIL_PREFERENCES: EmailPreferences = {
+  verificationEnabled: true,
+  welcomeEnabled: true,
+  abandonedCartEnabled: true,
+  morningReminderEnabled: true,
+  eveningReminderEnabled: true,
+  weeklyReminderEnabled: true,
+  paymentFailedEnabled: true,
+};
 
 /**
  * Default organization settings
@@ -2178,6 +2221,7 @@ export const DEFAULT_ORG_SETTINGS: Omit<OrgSettings, 'id' | 'organizationId' | '
   defaultDailyFocusSlots: 3,             // Default: 3 daily focus tasks (matches current behavior)
   alignmentConfig: DEFAULT_ALIGNMENT_CONFIG, // Default alignment activities
   publicSignupEnabled: true,             // Public signup enabled by default
+  emailPreferences: DEFAULT_EMAIL_PREFERENCES, // Email notifications enabled by default
 };
 
 /**
@@ -2261,6 +2305,40 @@ export interface OrgEmailSettings {
 }
 
 /**
+ * Custom email template
+ * Supports variables: {{firstName}}, {{appTitle}}, {{teamName}}, {{logoUrl}}, {{ctaUrl}}, {{year}}
+ */
+export interface EmailTemplate {
+  subject: string;
+  html: string;
+  updatedAt: string;
+}
+
+/**
+ * Email template types that can be customized by coaches
+ */
+export type EmailTemplateType = 
+  | 'welcome'
+  | 'abandonedCart'
+  | 'morningReminder'
+  | 'eveningReminder'
+  | 'weeklyReminder'
+  | 'paymentFailed';
+
+/**
+ * Organization email templates (custom email content)
+ * Only available when emailSettings.status === 'verified'
+ */
+export interface OrgEmailTemplates {
+  welcome?: EmailTemplate;
+  abandonedCart?: EmailTemplate;
+  morningReminder?: EmailTemplate;
+  eveningReminder?: EmailTemplate;
+  weeklyReminder?: EmailTemplate;
+  paymentFailed?: EmailTemplate;
+}
+
+/**
  * Organization branding settings
  * Stored in Firestore: org_branding/{organizationId}
  * 
@@ -2286,6 +2364,7 @@ export interface OrgBranding {
   menuIcons?: OrgMenuIcons;      // Customizable menu icons/emojis (optional, uses defaults if not set)
   menuOrder?: MenuItemKey[];     // Custom menu order (optional, uses DEFAULT_MENU_ORDER if not set)
   emailSettings?: OrgEmailSettings; // Whitelabel email settings (optional)
+  emailTemplates?: OrgEmailTemplates; // Custom email templates (optional, requires verified email domain)
   defaultTheme?: OrgDefaultTheme; // Default theme for the organization (default: 'light')
   createdAt: string;             // ISO timestamp
   updatedAt: string;             // ISO timestamp
@@ -4226,4 +4305,40 @@ export const MARKETPLACE_CATEGORIES = [
 ] as const;
 
 export type MarketplaceCategory = typeof MARKETPLACE_CATEGORIES[number]['value'];
+
+// =============================================================================
+// DECOY LISTINGS (Social Proof)
+// =============================================================================
+
+/**
+ * DecoyListing - Fake marketplace listing for social proof
+ * These are hardcoded in config and shown when enabled via platform settings.
+ * They link to a "Program Full" landing page instead of a real funnel.
+ */
+export interface DecoyListing {
+  id: string;                       // Unique decoy ID (e.g., 'decoy-jazz-piano')
+  slug: string;                     // URL slug for the full page
+  title: string;                    // Program title
+  description: string;              // Program description
+  coverImageUrl: string;            // Hero/cover image (Unsplash URL)
+  coachName: string;                // Fake coach name
+  coachAvatarUrl: string;           // Coach avatar (Unsplash URL)
+  categories: MarketplaceCategory[];// Program categories
+  isDecoy: true;                    // Always true for decoys
+}
+
+// =============================================================================
+// PLATFORM SETTINGS
+// =============================================================================
+
+/**
+ * PlatformSettings - Global platform configuration
+ * Stored in Firebase 'platform_settings' collection with id='global'
+ */
+export interface PlatformSettings {
+  id: 'global';
+  marketplaceDecoysEnabled: boolean; // Show decoy listings on marketplace
+  updatedAt: string;                 // ISO timestamp
+  updatedBy: string;                 // Clerk user ID who last updated
+}
 

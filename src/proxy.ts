@@ -241,6 +241,7 @@ const isPublicRoute = createRouteMatcher([
   '/coach/onboarding(.*)',   // Coach onboarding - pages verify auth via API
   '/api/webhooks(.*)',
   '/api/clerk-emails',  // Clerk email webhook - auth via Svix signature
+  '/api/auth/signup-intent',  // Signup intent for tenant-branded verification emails
   '/api/notifications/cron(.*)',  // Cron jobs - auth via CRON_SECRET header
   '/api/squad/validate-invite',  // Allow validating invite tokens without auth
   '/api/funnel(.*)',  // Funnel data for funnel flow - no auth required
