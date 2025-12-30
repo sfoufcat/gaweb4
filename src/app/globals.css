@@ -966,6 +966,15 @@ div[class*="LoadingIndicator"],
   color: var(--brand-accent-dark-foreground, #ffffff) !important;
 }
 
+/* Fill color for SVG icons */
+.fill-brand-accent {
+  fill: var(--brand-accent-light, #a07855);
+}
+
+.dark .fill-brand-accent {
+  fill: var(--brand-accent-dark, #b8896a) !important;
+}
+
 /* Border colors */
 .border-brand-accent {
   border-color: var(--brand-accent-light, #a07855);

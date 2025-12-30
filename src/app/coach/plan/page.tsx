@@ -551,95 +551,95 @@ export default function CoachPlanPage() {
         {currentTier ? (
           <div className="lg:flex lg:items-start lg:justify-between lg:gap-12 mb-10">
             {/* Left: Title and Subtitle */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
               className="text-center lg:text-left lg:flex-1 mb-8 lg:mb-0"
-            >
-              <h1 className="font-albert text-[32px] lg:text-[44px] text-text-primary tracking-[-2px] leading-[1.15] mb-3">
+        >
+          <h1 className="font-albert text-[32px] lg:text-[44px] text-text-primary tracking-[-2px] leading-[1.15] mb-3">
                 Upgrade Your Plan
-              </h1>
+          </h1>
               <p className="font-sans text-[16px] lg:text-[18px] text-text-secondary max-w-xl lg:max-w-none">
                 You&apos;re currently on the {TIER_PRICING[currentTier].name} plan. Upgrade to unlock more features.
-              </p>
-            </motion.div>
-            
+          </p>
+        </motion.div>
+
             {/* Right: Current Plan Card */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
               className="lg:w-[420px] lg:flex-shrink-0"
-            >
+          >
               <div className="bg-white dark:bg-[#1a1e26] rounded-2xl border border-[#e1ddd8] dark:border-[#313746] p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-3 h-3 rounded-full ${
-                      subscriptionStatus === 'active' || subscriptionStatus === 'trialing' 
-                        ? 'bg-[#22c55e]' 
-                        : subscriptionStatus === 'past_due' 
-                        ? 'bg-[#f59e0b]' 
-                        : 'bg-[#ef4444]'
-                    }`} />
-                    <div>
-                      <h3 className="font-albert text-[18px] font-semibold text-text-primary">
-                        {TIER_PRICING[currentTier].name} Plan
-                      </h3>
-                      <p className="font-sans text-[13px] text-text-secondary capitalize">
-                        {subscriptionStatus === 'trialing' ? 'Trial' : subscriptionStatus || 'Active'}
-                        {cancelAtPeriodEnd && ' • Cancels at period end'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleManageSubscription}
-                      className="px-4 py-2 text-brand-accent font-sans text-[14px] font-medium hover:bg-[#faf8f6] dark:hover:bg-[#262b35] rounded-lg transition-colors"
-                    >
-                      Manage membership
-                    </button>
-                  </div>
-                </div>
-                
-                {/* Status Details */}
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[#e1ddd8] dark:border-[#313746]">
-                  {trialEnd && subscriptionStatus === 'trialing' && (
-                    <div>
-                      <p className="font-sans text-[12px] text-text-tertiary uppercase tracking-wide mb-1">Trial ends</p>
-                      <p className="font-sans text-[14px] text-text-primary font-medium">
-                        {new Date(trialEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </p>
-                    </div>
-                  )}
-                  {renewalDate && (
-                    <div>
-                      <p className="font-sans text-[12px] text-text-tertiary uppercase tracking-wide mb-1">
-                        {cancelAtPeriodEnd ? 'Access until' : 'Renews on'}
-                      </p>
-                      <p className="font-sans text-[14px] text-text-primary font-medium">
-                        {new Date(renewalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </p>
-                    </div>
-                  )}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full ${
+                    subscriptionStatus === 'active' || subscriptionStatus === 'trialing' 
+                      ? 'bg-[#22c55e]' 
+                      : subscriptionStatus === 'past_due' 
+                      ? 'bg-[#f59e0b]' 
+                      : 'bg-[#ef4444]'
+                  }`} />
                   <div>
-                    <p className="font-sans text-[12px] text-text-tertiary uppercase tracking-wide mb-1">Monthly price</p>
-                    <p className="font-sans text-[14px] text-text-primary font-medium">
-                      ${(TIER_PRICING[currentTier].monthly / 100).toFixed(0)}/month
+                    <h3 className="font-albert text-[18px] font-semibold text-text-primary">
+                      {TIER_PRICING[currentTier].name} Plan
+                    </h3>
+                    <p className="font-sans text-[13px] text-text-secondary capitalize">
+                      {subscriptionStatus === 'trialing' ? 'Trial' : subscriptionStatus || 'Active'}
+                      {cancelAtPeriodEnd && ' • Cancels at period end'}
                     </p>
                   </div>
                 </div>
-                
-                {/* Cancel Link */}
-                {subscriptionStatus && !cancelAtPeriodEnd && (
-                  <div className="mt-4 pt-4 border-t border-[#e1ddd8] dark:border-[#313746]">
-                    <button
-                      onClick={handleManageSubscription}
-                      className="font-sans text-[13px] text-text-tertiary hover:text-red-600 transition-colors"
-                    >
-                      Cancel subscription
-                    </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleManageSubscription}
+                      className="px-4 py-2 text-brand-accent font-sans text-[14px] font-medium hover:bg-[#faf8f6] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                  >
+                    Manage membership
+                  </button>
+                </div>
+              </div>
+              
+              {/* Status Details */}
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[#e1ddd8] dark:border-[#313746]">
+                {trialEnd && subscriptionStatus === 'trialing' && (
+                  <div>
+                    <p className="font-sans text-[12px] text-text-tertiary uppercase tracking-wide mb-1">Trial ends</p>
+                    <p className="font-sans text-[14px] text-text-primary font-medium">
+                      {new Date(trialEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
                   </div>
                 )}
+                {renewalDate && (
+                  <div>
+                    <p className="font-sans text-[12px] text-text-tertiary uppercase tracking-wide mb-1">
+                      {cancelAtPeriodEnd ? 'Access until' : 'Renews on'}
+                    </p>
+                    <p className="font-sans text-[14px] text-text-primary font-medium">
+                      {new Date(renewalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <p className="font-sans text-[12px] text-text-tertiary uppercase tracking-wide mb-1">Monthly price</p>
+                  <p className="font-sans text-[14px] text-text-primary font-medium">
+                    ${(TIER_PRICING[currentTier].monthly / 100).toFixed(0)}/month
+                  </p>
+                </div>
               </div>
+              
+              {/* Cancel Link */}
+              {subscriptionStatus && !cancelAtPeriodEnd && (
+                  <div className="mt-4 pt-4 border-t border-[#e1ddd8] dark:border-[#313746]">
+                  <button
+                    onClick={handleManageSubscription}
+                    className="font-sans text-[13px] text-text-tertiary hover:text-red-600 transition-colors"
+                  >
+                    Cancel subscription
+                  </button>
+                </div>
+              )}
+            </div>
             </motion.div>
           </div>
         ) : (
