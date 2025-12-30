@@ -356,6 +356,72 @@ export default function MarketplacePage() {
         </div>
       </section>
 
+      {/* Value Props Section */}
+      <section className="py-16 bg-white dark:bg-[#0f1218] border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="font-albert text-[32px] sm:text-[40px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-3">
+              Why create on Growth Addicts?
+            </h2>
+            <p className="font-sans text-[16px] text-[#5f5a55] dark:text-[#b2b6c2]">
+              Everything you need to build and scale your coaching business
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="text-center p-6">
+              <div className="w-14 h-14 bg-gradient-to-br from-brand-accent/20 to-brand-accent/10 dark:from-brand-accent/20 dark:to-brand-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Users className="w-7 h-7 text-brand-accent" />
+              </div>
+              <h3 className="font-albert text-[20px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                All-in-One Program Delivery
+              </h3>
+              <p className="font-sans text-[14px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed">
+                Built-in tools for squads, check-ins, and accountability that keep members coming back.
+              </p>
+            </div>
+            
+            <div className="text-center p-6">
+              <div className="w-14 h-14 bg-gradient-to-br from-[#e8b923]/20 to-[#e8b923]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Zap className="w-7 h-7 text-[#e8b923]" />
+              </div>
+              <h3 className="font-albert text-[20px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                Simple setup
+              </h3>
+              <p className="font-sans text-[14px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed">
+                Launch your program in minutes. Custom funnels, branding, and payments—all in one place.
+              </p>
+            </div>
+            
+            <div className="text-center p-6">
+              <div className="w-14 h-14 bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Target className="w-7 h-7 text-emerald-500" />
+              </div>
+              <h3 className="font-albert text-[20px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                Focus on coaching
+              </h3>
+              <p className="font-sans text-[14px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed">
+                We handle the tech so you can focus on what matters—transforming lives.
+              </p>
+            </div>
+          </div>
+          
+          {/* Bottom CTA */}
+          <div className="text-center mt-12">
+            <button
+              onClick={handleCreateClick}
+              className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#d4a61d] hover:to-[#c09819] text-[#2c2520] rounded-2xl font-albert text-[16px] font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-[#e8b923]/20"
+            >
+              Start building today
+              <ArrowRight className="w-5 h-5" />
+            </button>
+            <p className="font-sans text-[13px] text-[#a7a39e] dark:text-[#7d8190] mt-3">
+              7-day free trial • Credit card required
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* How to Get Started - Vertical Timeline */}
       <section className="py-20 sm:py-28 relative overflow-hidden">
         {/* Subtle background gradient */}
@@ -549,72 +615,6 @@ export default function MarketplacePage() {
           <p className="font-sans text-[13px] text-[#7d8190] mt-8">
             Join coaches and communities helping thousands transform their lives
           </p>
-        </div>
-      </section>
-
-      {/* Value Props Section */}
-      <section className="py-16 bg-white dark:bg-[#0f1218] border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="font-albert text-[32px] sm:text-[40px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-3">
-              Why create on Growth Addicts?
-            </h2>
-            <p className="font-sans text-[16px] text-[#5f5a55] dark:text-[#b2b6c2]">
-              Everything you need to build and scale your coaching business
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center p-6">
-              <div className="w-14 h-14 bg-gradient-to-br from-brand-accent/20 to-brand-accent/10 dark:from-brand-accent/20 dark:to-brand-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Users className="w-7 h-7 text-brand-accent" />
-              </div>
-              <h3 className="font-albert text-[20px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                All-in-One Program Delivery
-              </h3>
-              <p className="font-sans text-[14px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed">
-                Built-in tools for squads, check-ins, and accountability that keep members coming back.
-              </p>
-            </div>
-            
-            <div className="text-center p-6">
-              <div className="w-14 h-14 bg-gradient-to-br from-[#e8b923]/20 to-[#e8b923]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Zap className="w-7 h-7 text-[#e8b923]" />
-              </div>
-              <h3 className="font-albert text-[20px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                Simple setup
-              </h3>
-              <p className="font-sans text-[14px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed">
-                Launch your program in minutes. Custom funnels, branding, and payments—all in one place.
-              </p>
-            </div>
-            
-            <div className="text-center p-6">
-              <div className="w-14 h-14 bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Target className="w-7 h-7 text-emerald-500" />
-              </div>
-              <h3 className="font-albert text-[20px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                Focus on coaching
-              </h3>
-              <p className="font-sans text-[14px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed">
-                We handle the tech so you can focus on what matters—transforming lives.
-              </p>
-            </div>
-          </div>
-          
-          {/* Bottom CTA */}
-          <div className="text-center mt-12">
-            <button
-              onClick={handleCreateClick}
-              className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#d4a61d] hover:to-[#c09819] text-[#2c2520] rounded-2xl font-albert text-[16px] font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-[#e8b923]/20"
-            >
-              Start building today
-              <ArrowRight className="w-5 h-5" />
-            </button>
-            <p className="font-sans text-[13px] text-[#a7a39e] dark:text-[#7d8190] mt-3">
-              7-day free trial • Credit card required
-            </p>
-          </div>
         </div>
       </section>
 

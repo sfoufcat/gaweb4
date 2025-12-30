@@ -676,7 +676,10 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     if (pathname === '/') {
       const url = request.nextUrl.clone();
       url.pathname = '/marketplace';
-      return NextResponse.rewrite(url);
+      const response = NextResponse.rewrite(url);
+      // Set fullscreen layout mode to hide sidebar (rewrite returns early before normal header setting)
+      response.headers.set('x-layout-mode', 'fullscreen');
+      return response;
     }
     
     // Allow other marketing-related routes
