@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useSignUp, useClerk } from '@clerk/nextjs';
+import { useUser, useSignUp } from '@clerk/nextjs';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -41,7 +41,6 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
   const router = useRouter();
   const { user, isLoaded: userLoaded } = useUser();
   const { signUp, isLoaded: signUpLoaded, setActive } = useSignUp();
-  const { signOut } = useClerk();
   
   const [step, setStep] = useState<ModalStep>('persuasion');
   const [error, setError] = useState<string | null>(null);
@@ -611,9 +610,14 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                     <div className="px-6 pb-8 space-y-3">
                       {/* Continue to existing program - always stay on marketing domain for onboarding */}
                       <button
-                        onClick={() => {
-                          // Always use router.push to stay on marketing domain for onboarding
-                          // After onboarding is complete, user will be redirected to their subdomain
+                        onClick={async () => {
+                          // Ensure onboarding doc exists for existing coaches (who were grandfathered as 'active')
+                          // This creates the doc with 'needs_profile' so they can go through the flow
+                          await fetch('/api/coach/onboarding-state', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ status: 'needs_profile', force: true }),
+                          });
                           router.push('/coach/onboarding/profile');
                           onClose();
                         }}
@@ -621,17 +625,6 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                       >
                         Continue as {user?.firstName}
                         <ArrowRight className="w-5 h-5" />
-                      </button>
-                      
-                      {/* Use different email - sign out option */}
-                      <button
-                        onClick={async () => {
-                          await signOut();
-                          onClose();
-                        }}
-                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#f3f1ef] dark:bg-[#1e222a] hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-full font-sans font-medium text-[15px] transition-colors"
-                      >
-                        Use different email
                       </button>
                       
                       <p className="text-center font-sans text-[12px] text-[#a7a39e] dark:text-[#7d8190] pt-2">

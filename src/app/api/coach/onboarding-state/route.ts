@@ -93,7 +93,7 @@ export async function PATCH(req: Request) {
     }
     
     const body = await req.json();
-    const { status } = body;
+    const { status, force } = body;
     
     if (!status || !['needs_profile', 'needs_plan', 'active'].includes(status)) {
       return NextResponse.json(
@@ -116,10 +116,19 @@ export async function PATCH(req: Request) {
     const organizationId = metadata.organizationId;
     const now = new Date().toISOString();
     
+    // Check if doc exists (for force-create scenario)
+    const existingDoc = await adminDb.collection('coach_onboarding').doc(organizationId).get();
+    const isNewDoc = !existingDoc.exists;
+    
     const updateData: Record<string, unknown> = {
       status,
       updatedAt: now,
     };
+    
+    // Add createdAt for new documents
+    if (isNewDoc || force) {
+      updateData.createdAt = now;
+    }
     
     // Add completion timestamps based on status transitions
     if (status === 'needs_plan') {
