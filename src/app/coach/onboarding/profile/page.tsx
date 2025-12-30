@@ -76,6 +76,21 @@ export default function OnboardingProfilePage() {
           }
           
           if (data.state === 'active') {
+            // Fetch tenant URL to redirect to subdomain (needed on marketing domain)
+            try {
+              const tenantRes = await fetch('/api/user/tenant-domains');
+              if (tenantRes.ok) {
+                const tenantData = await tenantRes.json();
+                const ownerDomain = tenantData.tenantDomains?.find((d: { isOwner?: boolean }) => d.isOwner);
+                if (ownerDomain?.tenantUrl) {
+                  window.location.href = `${ownerDomain.tenantUrl}/coach`;
+                  return;
+                }
+              }
+            } catch (e) {
+              console.error('Error fetching tenant URL:', e);
+            }
+            // Fallback to relative path (works if already on subdomain)
             router.push('/coach');
             return;
           }

@@ -408,7 +408,7 @@ export default function MarketplacePage() {
       </section>
 
       {/* Value Props Section */}
-      <section className="py-16 sm:py-20">
+      <section className="py-10 sm:py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white dark:bg-[#0f1218] rounded-3xl p-8 sm:p-12 lg:p-16">
             <div className="text-center mb-12">
@@ -507,7 +507,7 @@ export default function MarketplacePage() {
               </div>
               
               {/* Content */}
-              <div className="pt-2 sm:pt-4">
+              <div>
                 <div className="flex items-center gap-3 mb-2">
                   <PlusCircle className="w-5 h-5 text-brand-accent" />
                   <h3 className="font-albert text-[22px] sm:text-[26px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
@@ -535,7 +535,7 @@ export default function MarketplacePage() {
               </div>
               
               {/* Content */}
-              <div className="pt-2 sm:pt-4">
+              <div>
                 <div className="flex items-center gap-3 mb-2">
                   <Palette className="w-5 h-5 text-[#e8b923]" />
                   <h3 className="font-albert text-[22px] sm:text-[26px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
@@ -563,7 +563,7 @@ export default function MarketplacePage() {
               </div>
               
               {/* Content */}
-              <div className="pt-2 sm:pt-4">
+              <div>
                 <div className="flex items-center gap-3 mb-2">
                   <Rocket className="w-5 h-5 text-emerald-500" />
                   <h3 className="font-albert text-[22px] sm:text-[26px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">

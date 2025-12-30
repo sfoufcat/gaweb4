@@ -143,6 +143,25 @@ export function BrandingSetupModal({ isOpen, onComplete, businessName }: Brandin
     }
   };
 
+  // Helper to redirect to coach dashboard on the correct domain
+  const redirectToCoachDashboard = async () => {
+    try {
+      const tenantRes = await fetch('/api/user/tenant-domains');
+      if (tenantRes.ok) {
+        const tenantData = await tenantRes.json();
+        const ownerDomain = tenantData.tenantDomains?.find((d: { isOwner?: boolean }) => d.isOwner);
+        if (ownerDomain?.tenantUrl) {
+          window.location.href = `${ownerDomain.tenantUrl}/coach?tour=true`;
+          return;
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching tenant URL:', e);
+    }
+    // Fallback to relative path (works if already on subdomain)
+    router.push('/coach?tour=true');
+  };
+
   // Handle saving branding and continuing
   const handleContinue = async () => {
     setIsSaving(true);
@@ -169,7 +188,7 @@ export function BrandingSetupModal({ isOpen, onComplete, businessName }: Brandin
 
       // Navigate to dashboard with tour
       onComplete();
-      router.push('/coach?tour=true');
+      await redirectToCoachDashboard();
     } catch (err) {
       console.error('Error saving branding:', err);
       setError(err instanceof Error ? err.message : 'Failed to save branding');
@@ -179,9 +198,9 @@ export function BrandingSetupModal({ isOpen, onComplete, businessName }: Brandin
   };
 
   // Handle skip (use defaults)
-  const handleSkip = () => {
+  const handleSkip = async () => {
     onComplete();
-    router.push('/coach?tour=true');
+    await redirectToCoachDashboard();
   };
 
   if (!isOpen) return null;
