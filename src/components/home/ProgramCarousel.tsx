@@ -103,7 +103,6 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
           const hasStarted = enrollment.cohort 
             ? new Date(enrollment.cohort.startDate) <= new Date() 
             : false;
-          const isActive = enrollment.status === 'active' || hasStarted;
           
           return (
           <Link
@@ -131,18 +130,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
                   </div>
                 )}
                 
-                {/* Status Badge */}
-                {isActive ? (
-                  <div className="absolute top-3 left-3 px-2 py-1 bg-green-500 text-white rounded-full text-[11px] font-medium">
-                    Active
-                  </div>
-                ) : (
-                  <div className="absolute top-3 left-3 px-2 py-1 bg-brand-accent text-white rounded-full text-[11px] font-medium">
-                    Upcoming
-                  </div>
-                )}
-                
-                {/* Type Badge */}
+{/* Type Badge */}
                 <div className={`absolute top-3 right-3 px-2 py-1 rounded-full text-[11px] font-medium ${
                   enrollment.program.type === 'group'
                     ? 'bg-blue-500 text-white'

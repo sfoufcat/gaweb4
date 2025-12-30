@@ -22,10 +22,12 @@ import {
 import type { ProgramType, DiscoverViewMode, MyContentFilter } from '@/components/discover';
 import { FileText, BookOpen, Calendar, Download, Link as LinkIcon, Users, Layers } from 'lucide-react';
 import { LinedGradientBackground } from '@/components/ui/lined-gradient-background';
+import { useMenuTitles } from '@/contexts/BrandingContext';
 
 export default function DiscoverPage() {
   const { upcomingEvents, pastEvents, courses, articles, categories, trending, recommended, groupPrograms, individualPrograms, enrollmentConstraints, publicSquads, loading } = useDiscover();
   const { myContent, totalCount: myContentCount, counts: myContentCounts, loading: myContentLoading } = useMyContent();
+  const { program: programTitle, squad: squadTitle } = useMenuTitles();
   const [viewMode, setViewMode] = useState<DiscoverViewMode>('browse');
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -419,10 +421,10 @@ export default function DiscoverPage() {
           <div className="flex flex-col gap-4">
             {/* Section Header */}
             <div className="flex items-center justify-between">
-              <SectionHeader title="Programs" />
+              <SectionHeader title={`${programTitle}s`} />
               {selectedProgramType === 'group' && !enrollmentConstraints.canEnrollInGroup && (
                 <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-full">
-                  Active program in progress
+                  Active {programTitle.toLowerCase()} in progress
                 </span>
               )}
               {selectedProgramType === 'individual' && !enrollmentConstraints.canEnrollInIndividual && (
@@ -449,7 +451,7 @@ export default function DiscoverPage() {
                   ))
                 ) : (
                   <p className="text-text-muted text-sm font-sans py-4">
-                    No group programs available at this time.
+                    No group {programTitle.toLowerCase()}s available at this time.
                   </p>
                 )
               ) : (
@@ -459,7 +461,7 @@ export default function DiscoverPage() {
                   ))
                 ) : (
                   <p className="text-text-muted text-sm font-sans py-4">
-                    No 1:1 coaching programs available at this time.
+                    No 1:1 coaching {programTitle.toLowerCase()}s available at this time.
                   </p>
                 )
               )}
@@ -472,7 +474,7 @@ export default function DiscoverPage() {
       {!selectedCategory && publicSquads.length > 0 && (
         <section className="px-4 py-5 overflow-hidden">
           <div className="flex flex-col gap-4">
-            <SectionHeader title="Public Squads" />
+            <SectionHeader title={`Public ${squadTitle}s`} />
             
             {/* Horizontal scrollable list */}
             <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
