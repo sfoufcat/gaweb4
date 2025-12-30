@@ -319,11 +319,70 @@ export default function SquadDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#faf8f6] dark:bg-[#05070b]">
-        <div className="text-center">
-          <div className="w-10 h-10 border-3 border-brand-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-text-secondary font-albert text-[14px]">Loading squad...</p>
-        </div>
+      <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b] pb-24 lg:pb-8">
+        {/* Hero Section Skeleton */}
+        <section className="relative">
+          {/* Background gradient placeholder */}
+          <div className="absolute inset-0 h-[300px] bg-gradient-to-b from-[#e1ddd8]/30 to-transparent dark:from-[#262b35]/30" />
+          
+          <div className="relative px-4 pt-5 pb-8">
+            {/* Back Button */}
+            <div className="w-9 h-9 rounded-full bg-[#e1ddd8]/50 dark:bg-[#262b35] animate-pulse mb-6" />
+            
+            {/* Squad Avatar */}
+            <div className="flex flex-col items-center gap-4 mb-6">
+              <div className="w-24 h-24 rounded-2xl bg-[#e1ddd8]/50 dark:bg-[#262b35] animate-pulse" />
+              <div className="h-8 w-48 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded-lg animate-pulse" />
+              <div className="h-4 w-64 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded-lg animate-pulse" />
+            </div>
+
+            {/* Stats Row */}
+            <div className="flex items-center justify-center gap-6 mb-6">
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full bg-[#e1ddd8]/40 dark:bg-[#222631] animate-pulse" />
+                <div className="h-4 w-20 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded-lg animate-pulse" />
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-24 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded-lg animate-pulse" />
+              </div>
+            </div>
+
+            {/* CTA Button */}
+            <div className="h-14 w-full rounded-full bg-[#e1ddd8]/50 dark:bg-[#262b35] animate-pulse" />
+          </div>
+        </section>
+
+        {/* Content Sections Skeleton */}
+        <section className="px-4 py-6">
+          <div className="flex flex-col gap-6">
+            {/* What You'll Get */}
+            <div className="flex flex-col gap-3">
+              <div className="h-6 w-32 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded-lg animate-pulse" />
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-full bg-[#e1ddd8]/40 dark:bg-[#222631] animate-pulse" />
+                    <div className="h-4 w-3/4 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded-lg animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Features */}
+            <div className="flex flex-col gap-3">
+              <div className="h-6 w-24 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded-lg animate-pulse" />
+              <div className="grid grid-cols-2 gap-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="bg-white/60 dark:bg-[#171b22] rounded-2xl p-4">
+                    <div className="w-10 h-10 rounded-xl bg-[#e1ddd8]/40 dark:bg-[#222631] animate-pulse mb-3" />
+                    <div className="h-4 w-20 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded-lg animate-pulse mb-2" />
+                    <div className="h-3 w-full bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded-lg animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     );
   }

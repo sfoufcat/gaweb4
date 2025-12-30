@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useDiscover } from '@/hooks/useDiscover';
@@ -31,6 +31,13 @@ export default function DiscoverPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedProgramType, setSelectedProgramType] = useState<ProgramType>('group');
   const [myContentFilter, setMyContentFilter] = useState<MyContentFilter>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [myContentFilter]);
 
   // Filter out programs where user is already enrolled
   const availableGroupPrograms = useMemo(() => {
@@ -41,20 +48,23 @@ export default function DiscoverPage() {
     return individualPrograms.filter(p => !p.userEnrollment);
   }, [individualPrograms]);
 
-  // Build sets of owned article and course IDs for filtering
+  // Build sets of owned article, course, and event IDs for filtering
   const ownedContentIds = useMemo(() => {
     const articleIds = new Set<string>();
     const courseIds = new Set<string>();
+    const eventIds = new Set<string>();
     
     myContent.forEach((item) => {
       if (item.contentType === 'article') {
         articleIds.add(item.contentId);
       } else if (item.contentType === 'course') {
         courseIds.add(item.contentId);
+      } else if (item.contentType === 'event') {
+        eventIds.add(item.contentId);
       }
     });
     
-    return { articleIds, courseIds };
+    return { articleIds, courseIds, eventIds };
   }, [myContent]);
 
   // Filter out owned articles from browse view
@@ -67,16 +77,25 @@ export default function DiscoverPage() {
     return courses.filter(c => !ownedContentIds.courseIds.has(c.id));
   }, [courses, ownedContentIds.courseIds]);
 
+  // Filter out owned events from browse view
+  const availableUpcomingEvents = useMemo(() => {
+    return upcomingEvents.filter(e => !ownedContentIds.eventIds.has(e.id));
+  }, [upcomingEvents, ownedContentIds.eventIds]);
+
+  const availablePastEvents = useMemo(() => {
+    return pastEvents.filter(e => !ownedContentIds.eventIds.has(e.id));
+  }, [pastEvents, ownedContentIds.eventIds]);
+
   // Get selected category name for filtering
   const selectedCategoryName = useMemo(() => {
     if (!selectedCategory) return null;
     return categories.find(c => c.id === selectedCategory)?.name || null;
   }, [selectedCategory, categories]);
 
-  // Filter events based on showing past/upcoming
+  // Filter events based on showing past/upcoming (using available/non-owned events)
   const filteredEvents = useMemo(() => {
-    return showPastEvents ? pastEvents : upcomingEvents;
-  }, [upcomingEvents, pastEvents, showPastEvents]);
+    return showPastEvents ? availablePastEvents : availableUpcomingEvents;
+  }, [availableUpcomingEvents, availablePastEvents, showPastEvents]);
 
   // Filter courses based on selected category (using available/non-owned courses)
   const filteredCourses = useMemo(() => {
@@ -94,6 +113,22 @@ export default function DiscoverPage() {
   const articlesDisplay = useMemo(() => {
     return filteredArticles.slice(0, 10);
   }, [filteredArticles]);
+
+  // Paginated My Content
+  const filteredMyContent = useMemo(() => {
+    return myContent.filter(item => 
+      myContentFilter === 'all' || item.contentType === myContentFilter
+    );
+  }, [myContent, myContentFilter]);
+
+  const totalPages = Math.ceil(filteredMyContent.length / ITEMS_PER_PAGE);
+  
+  const paginatedContent = useMemo(() => {
+    return filteredMyContent.slice(
+      (currentPage - 1) * ITEMS_PER_PAGE,
+      currentPage * ITEMS_PER_PAGE
+    );
+  }, [filteredMyContent, currentPage, ITEMS_PER_PAGE]);
 
   if (loading) {
     return (
@@ -215,6 +250,9 @@ export default function DiscoverPage() {
     }
   };
 
+  // Strip HTML tags from description
+  const stripHtml = (html: string | undefined) => html?.replace(/<[^>]*>/g, '') || '';
+
   return (
     <div className="min-h-screen bg-app-bg pb-24 lg:pb-8 relative">
       {/* Subtle lined gradient background */}
@@ -283,14 +321,15 @@ export default function DiscoverPage() {
                 Browse Content
               </button>
             </div>
+          ) : filteredMyContent.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-text-muted font-sans text-sm">
+                No {myContentFilter}s in your content library yet.
+              </p>
+            </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {myContent
-                .filter((item) => {
-                  if (myContentFilter === 'all') return true;
-                  return item.contentType === myContentFilter;
-                })
-                .map((item) => {
+              {paginatedContent.map((item) => {
                 const Icon = getContentIcon(item.contentType);
                 return (
                   <Link
@@ -334,7 +373,7 @@ export default function DiscoverPage() {
                           </h3>
                           {item.description && (
                             <p className="font-sans text-sm text-text-muted line-clamp-1 mt-0.5">
-                              {item.description}
+                              {stripHtml(item.description)}
                             </p>
                           )}
                         </div>
@@ -344,12 +383,26 @@ export default function DiscoverPage() {
                 );
               })}
 
-              {/* Empty state for filtered content */}
-              {myContentFilter !== 'all' && myContent.filter(item => item.contentType === myContentFilter).length === 0 && (
-                <div className="text-center py-8">
-                  <p className="text-text-muted font-sans text-sm">
-                    No {myContentFilter}s in your content library yet.
-                  </p>
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-4 pt-4 border-t border-[#e1ddd8]/30 dark:border-[#262b35]/50">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 rounded-full bg-earth-100 dark:bg-[#222631] text-text-primary dark:text-[#f5f5f8] font-sans text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-earth-200 dark:hover:bg-[#2a303d] transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-text-secondary dark:text-[#b2b6c2] font-sans px-3">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 rounded-full bg-earth-100 dark:bg-[#222631] text-text-primary dark:text-[#f5f5f8] font-sans text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-earth-200 dark:hover:bg-[#2a303d] transition-colors"
+                  >
+                    Next
+                  </button>
                 </div>
               )}
             </div>
@@ -450,7 +503,7 @@ export default function DiscoverPage() {
             {/* Header with toggle */}
             <div className="flex items-center gap-2">
               <SectionHeader title={showPastEvents ? "Past events" : "Upcoming events"} />
-              {pastEvents.length > 0 && (
+              {availablePastEvents.length > 0 && (
                 <button
                   onClick={() => setShowPastEvents(!showPastEvents)}
                   className="text-xs text-earth-500 hover:text-earth-600 font-normal font-sans transition-colors whitespace-nowrap"

@@ -228,11 +228,42 @@ export default function EventDetailPage({ params }: EventPageProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#faf8f6] dark:bg-[#05070b]">
-        <div className="text-center">
-          <div className="w-10 h-10 border-3 border-brand-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-text-secondary font-albert text-[14px]">Loading event...</p>
-        </div>
+      <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b] pb-24 lg:pb-8">
+        {/* Header Section Skeleton */}
+        <section className="px-4 py-5">
+          <div className="flex flex-col gap-3">
+            {/* Navigation Row */}
+            <div className="flex items-center justify-between">
+              <div className="w-9 h-9 rounded-full bg-[#e1ddd8]/50 dark:bg-[#262b35] animate-pulse" />
+              <div className="w-9 h-9 rounded-full bg-[#e1ddd8]/50 dark:bg-[#262b35] animate-pulse" />
+            </div>
+
+            {/* Cover Image Skeleton */}
+            <div className="h-[220px] rounded-[20px] bg-[#e1ddd8]/50 dark:bg-[#262b35] animate-pulse" />
+
+            {/* Event Info Skeleton */}
+            <div className="flex flex-col gap-2">
+              <div className="h-8 w-3/4 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded-lg animate-pulse" />
+              <div className="h-5 w-1/2 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded-lg animate-pulse" />
+              <div className="h-5 w-1/3 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded-lg animate-pulse" />
+            </div>
+
+            {/* Action Button Skeleton */}
+            <div className="h-14 w-full rounded-[32px] bg-[#e1ddd8]/50 dark:bg-[#262b35] animate-pulse" />
+          </div>
+        </section>
+
+        {/* Content Section Skeleton */}
+        <section className="px-4 pt-3 pb-6">
+          <div className="flex flex-col gap-4">
+            <div className="h-7 w-32 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded-lg animate-pulse" />
+            <div className="space-y-2">
+              <div className="h-4 w-full bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded-lg animate-pulse" />
+              <div className="h-4 w-5/6 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded-lg animate-pulse" />
+              <div className="h-4 w-4/6 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded-lg animate-pulse" />
+            </div>
+          </div>
+        </section>
       </div>
     );
   }

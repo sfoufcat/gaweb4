@@ -59,11 +59,76 @@ export default function CourseDetailPage({ params }: CoursePageProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#faf8f6] dark:bg-[#05070b]">
-        <div className="text-center">
-          <div className="w-10 h-10 border-3 border-brand-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-text-secondary font-albert text-[14px]">Loading course...</p>
-        </div>
+      <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b] pb-24 lg:pb-8">
+        {/* Header Section Skeleton */}
+        <section className="px-4 py-5">
+          <div className="flex flex-col gap-3">
+            {/* Navigation Row */}
+            <div className="flex items-center justify-between">
+              <div className="w-9 h-9 rounded-full bg-[#e1ddd8]/50 dark:bg-[#262b35] animate-pulse" />
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-full bg-[#e1ddd8]/50 dark:bg-[#262b35] animate-pulse" />
+                <div className="w-9 h-9 rounded-full bg-[#e1ddd8]/50 dark:bg-[#262b35] animate-pulse" />
+              </div>
+            </div>
+
+            {/* Cover Image Skeleton */}
+            <div className="h-[220px] rounded-[20px] bg-[#e1ddd8]/50 dark:bg-[#262b35] animate-pulse" />
+
+            {/* Course Info Skeleton */}
+            <div className="flex flex-col gap-2">
+              {/* Tags */}
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-20 rounded-full bg-[#e1ddd8]/40 dark:bg-[#222631] animate-pulse" />
+                <div className="h-6 w-16 rounded-full bg-[#e1ddd8]/40 dark:bg-[#222631] animate-pulse" />
+              </div>
+              {/* Title */}
+              <div className="h-8 w-3/4 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded-lg animate-pulse" />
+              {/* Description */}
+              <div className="h-4 w-full bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded-lg animate-pulse" />
+              <div className="h-4 w-5/6 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded-lg animate-pulse" />
+            </div>
+          </div>
+        </section>
+
+        {/* Overview Section Skeleton */}
+        <section className="px-4 py-3">
+          <div className="flex items-center gap-4">
+            <div className="h-4 w-24 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded-lg animate-pulse" />
+            <div className="h-4 w-20 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded-lg animate-pulse" />
+            <div className="h-4 w-16 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded-lg animate-pulse" />
+          </div>
+        </section>
+
+        {/* Modules Section Skeleton */}
+        <section className="px-4 pt-3 pb-6">
+          <div className="flex flex-col gap-4">
+            <div className="h-7 w-36 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded-lg animate-pulse" />
+            
+            {/* Module Cards Skeleton */}
+            {[1, 2].map((i) => (
+              <div key={i} className="bg-white/60 dark:bg-[#171b22] rounded-[20px] overflow-hidden">
+                <div className="p-4 border-b border-earth-100 dark:border-[#262b35]">
+                  <div className="flex items-start gap-3">
+                    <div className="h-4 w-6 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded animate-pulse" />
+                    <div className="h-5 w-40 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded-lg animate-pulse" />
+                  </div>
+                </div>
+                <div className="divide-y divide-earth-50 dark:divide-[#262b35]">
+                  {[1, 2, 3].map((j) => (
+                    <div key={j} className="px-4 py-3 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-[#e1ddd8]/50 dark:bg-[#262b35] animate-pulse" />
+                        <div className="h-4 w-32 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded-lg animate-pulse" />
+                      </div>
+                      <div className="h-4 w-12 bg-[#e1ddd8]/30 dark:bg-[#1d222b] rounded-lg animate-pulse" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     );
   }
