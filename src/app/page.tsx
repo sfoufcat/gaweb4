@@ -684,7 +684,7 @@ export default function Dashboard() {
 
   if (!user) {
     return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center text-center space-y-8 px-4">
+      <div className="min-h-screen bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b] flex flex-col items-center justify-center text-center space-y-8 px-4">
         <div className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-xl overflow-hidden relative">
           <Image 
             src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af"
@@ -695,21 +695,21 @@ export default function Dashboard() {
           />
         </div>
         <div>
-          <h1 className="text-5xl sm:text-7xl font-serif font-bold text-earth-900 tracking-tight mb-4">
+          <h1 className="text-5xl sm:text-7xl font-serif font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-tight mb-4">
             Growth Addicts
           </h1>
-          <p className="text-earth-600 text-lg max-w-md mx-auto">
+          <p className="text-[#5f5a55] dark:text-[#b2b6c2] text-lg max-w-md mx-auto">
             Define your mission. Align your life. Find your tribe.
           </p>
         </div>
         <div className="flex gap-4">
           <SignInButton mode="modal">
-            <button className="px-8 py-4 bg-earth-900 text-white rounded-full font-medium hover:scale-105 transition-all cursor-pointer">
+            <button className="px-8 py-4 bg-[#1a1a1a] dark:bg-brand-accent text-white rounded-full font-medium hover:scale-105 transition-all cursor-pointer">
               Sign In
             </button>
           </SignInButton>
           <SignUpButton mode="modal">
-            <button className="px-8 py-4 border border-earth-200 rounded-full font-medium hover:bg-earth-50 transition-all cursor-pointer">
+            <button className="px-8 py-4 border border-[#e1ddd8] dark:border-[#313746] rounded-full font-medium hover:bg-[#f3f1ef] dark:hover:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] transition-all cursor-pointer">
               Join
             </button>
           </SignUpButton>

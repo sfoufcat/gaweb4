@@ -432,15 +432,15 @@ export default function OnboardingPlansPage() {
 
   if (!isLoaded || !user) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b] flex items-center justify-center">
+      <div className="fixed inset-0 bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b] flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-brand-accent/20 border-t-[#a07855] rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b]">
-      <div className="min-h-screen">
+    <div className="fixed inset-0 bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b] overflow-y-auto">
+      <div className="min-h-full">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#faf8f6]/95 dark:bg-[#0a0c10]/95 backdrop-blur-sm border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -559,14 +559,14 @@ export default function OnboardingPlansPage() {
                   </p>
                 </div>
                 
-                {/* Limits */}
-                <div className="grid grid-cols-3 gap-2 mb-4 p-3 bg-[#f9f8f7] dark:bg-[#1e222a] rounded-xl">
+                {/* Limits - Full Width */}
+                <div className="w-full grid grid-cols-3 gap-4 mb-4 py-4 border-y border-[#e1ddd8] dark:border-[#313746]">
                   {plan.limits.map((limit) => (
                     <div key={limit.label} className="text-center">
-                      <div className="font-albert text-[16px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                      <div className="font-albert text-[20px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8]">
                         {limit.value}
                       </div>
-                      <div className="font-sans text-[10px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                      <div className="font-sans text-[11px] text-[#5f5a55] dark:text-[#b2b6c2]">
                         {limit.label}
                       </div>
                     </div>
@@ -619,6 +619,71 @@ export default function OnboardingPlansPage() {
             You'll be charged ${PLANS.find(p => p.id === selectedPlan)?.price}/month after the trial ends.
             <br />Cancel anytime during the trial to avoid charges.
           </p>
+        </motion.div>
+
+        {/* Value Comparison Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="max-w-2xl mx-auto mt-10"
+        >
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#2d2d2d] dark:from-[#171b22] dark:to-[#1e222a] p-6 sm:p-8">
+            {/* Decorative gradient orbs */}
+            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-emerald-500/20 to-transparent rounded-full blur-3xl" />
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-amber-500/15 to-transparent rounded-full blur-2xl" />
+            
+            <div className="relative z-10">
+              <h3 className="font-albert text-[20px] sm:text-[24px] font-bold text-white tracking-[-1px] mb-2">
+                Why coaches choose us over piecing tools together
+              </h3>
+              <p className="font-sans text-[14px] text-white/60 mb-6">
+                Everything you need in one platform — no more juggling subscriptions
+              </p>
+              
+              {/* Competitor pricing breakdown */}
+              <div className="grid sm:grid-cols-2 gap-3 mb-6">
+                {[
+                  { tool: 'Funnel builder', price: '$99', competitor: 'ClickFunnels' },
+                  { tool: 'Community platform', price: '$99', competitor: 'Circle' },
+                  { tool: 'Course hosting', price: '$49', competitor: 'Teachable' },
+                  { tool: 'Scheduling + CRM', price: '$50', competitor: 'Calendly + tools' },
+                  { tool: 'Video calls', price: '$20', competitor: 'Zoom Pro' },
+                  { tool: 'Check-ins & tasks', price: '$30', competitor: 'CoachAccountable' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center justify-between py-2 px-3 bg-white/5 rounded-lg">
+                    <div>
+                      <span className="font-sans text-[13px] text-white/90">{item.tool}</span>
+                      <span className="font-sans text-[11px] text-white/40 ml-2">({item.competitor})</span>
+                    </div>
+                    <span className="font-albert text-[14px] font-semibold text-white/70">{item.price}/mo</span>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Total comparison */}
+              <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                <div>
+                  <p className="font-sans text-[12px] text-white/50 uppercase tracking-wide">Elsewhere you'd pay</p>
+                  <p className="font-albert text-[28px] font-bold text-white/40 line-through tracking-[-1px]">$347+/mo</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-sans text-[12px] text-emerald-400 uppercase tracking-wide">Your price</p>
+                  <p className="font-albert text-[32px] font-bold text-emerald-400 tracking-[-1px]">
+                    ${PLANS.find(p => p.id === selectedPlan)?.price}/mo
+                  </p>
+                </div>
+              </div>
+              
+              {/* Savings badge */}
+              <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-full">
+                <Zap className="w-4 h-4 text-emerald-400" />
+                <span className="font-sans text-[13px] font-medium text-emerald-400">
+                  Save ${347 - (PLANS.find(p => p.id === selectedPlan)?.price || 49)}+ every month
+                </span>
+              </div>
+            </div>
+          </div>
         </motion.div>
 
         {/* Trust Signals */}

@@ -412,10 +412,10 @@ export default function MarketplacePage() {
                   <Users className="w-7 h-7 text-brand-accent" />
                 </div>
                 <h3 className="font-albert text-[20px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                  All-in-One Program Delivery
+                  Program Delivery
                 </h3>
                 <p className="font-sans text-[14px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed">
-                  Built-in tools for squads, check-ins, and accountability that keep members coming back.
+                  Built-in tools for squads, check-ins, and accountability.
                 </p>
               </div>
               

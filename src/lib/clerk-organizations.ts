@@ -30,7 +30,10 @@ export interface ClerkPublicMetadataWithOrg {
 
 /**
  * Create a Clerk Organization for a coach
- * Called when a user is assigned the 'coach' role
+ * Called when a user is assigned the 'coach' role or creates additional organizations
+ * 
+ * Supports multi-org: coaches can create multiple organizations.
+ * The new organization becomes the primaryOrganizationId (active org).
  * 
  * @param coachUserId - The Clerk user ID of the coach
  * @param coachName - Display name for the organization
@@ -41,26 +44,23 @@ export async function createOrganizationForCoach(
   coachName: string
 ): Promise<string> {
   const client = await clerkClient();
-  
-  // Check if user already has an organization
   const user = await client.users.getUser(coachUserId);
-  const existingOrgId = (user.publicMetadata as ClerkPublicMetadataWithOrg)?.organizationId;
+  const metadata = user.publicMetadata as ClerkPublicMetadataWithOrg & { primaryOrganizationId?: string };
   
-  if (existingOrgId) {
-    console.log(`[CLERK_ORGS] Coach ${coachUserId} already has organization ${existingOrgId}`);
-    return existingOrgId;
-  }
+  // Check if this is their first organization (for backward compat field)
+  const isFirstOrg = !metadata?.organizationId;
   
   // Create new organization
   const orgName = `${coachName}'s Organization`;
-  // Generate a valid slug: alphanumeric and hyphens only
-  // Remove 'user_' prefix and any non-alphanumeric characters
+  // Generate a unique slug: use timestamp suffix to ensure uniqueness for multi-org
   const slugBase = coachUserId.replace(/[^a-zA-Z0-9]/g, '').substring(0, 12).toLowerCase();
-  const orgSlug = `coach-${slugBase}`;
+  const timestamp = Date.now().toString(36); // Base36 timestamp for shorter slug
+  const orgSlug = isFirstOrg ? `coach-${slugBase}` : `coach-${slugBase}-${timestamp}`;
   
   console.log(`[CLERK_ORGS] Creating organization for coach ${coachUserId}:`);
   console.log(`[CLERK_ORGS]   - Name: ${orgName}`);
   console.log(`[CLERK_ORGS]   - Slug: ${orgSlug}`);
+  console.log(`[CLERK_ORGS]   - Is first org: ${isFirstOrg}`);
   
   try {
     const organization = await client.organizations.createOrganization({
@@ -71,16 +71,25 @@ export async function createOrganizationForCoach(
     
     console.log(`[CLERK_ORGS] Created organization ${organization.id} for coach ${coachUserId}`);
     
-    // Store organization ID and set orgRole to super_coach in user's publicMetadata
+    // Update user's publicMetadata
+    // - primaryOrganizationId: always set to new org (makes it active)
+    // - organizationId: only set if this is their first org (backward compat)
+    const updatedMetadata: Record<string, unknown> = {
+      ...user.publicMetadata,
+      primaryOrganizationId: organization.id, // New org becomes active
+      orgRole: 'super_coach', // Organization creator is always the super coach
+    };
+    
+    // Only set legacy organizationId field for first org (backward compat)
+    if (isFirstOrg) {
+      updatedMetadata.organizationId = organization.id;
+    }
+    
     await client.users.updateUserMetadata(coachUserId, {
-      publicMetadata: {
-        ...user.publicMetadata,
-        organizationId: organization.id,
-        orgRole: 'super_coach', // Organization creator is always the super coach
-      },
+      publicMetadata: updatedMetadata,
     });
     
-    console.log(`[CLERK_ORGS] Updated coach ${coachUserId} metadata with organizationId ${organization.id} and orgRole: super_coach`);
+    console.log(`[CLERK_ORGS] Updated coach ${coachUserId} metadata with primaryOrganizationId ${organization.id} and orgRole: super_coach`);
     
     // Setup default org channels (Announcements, Social Corner, Share Wins)
     try {
