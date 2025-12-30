@@ -55,13 +55,18 @@ export async function POST(req: Request) {
 
     // MULTI-TENANCY: Also update org_memberships if user is in an org
     // This ensures identity changes appear immediately on profile (org data takes priority)
+    // Note: org_memberships are created with auto-generated IDs, so we must query by fields
     const organizationId = await getEffectiveOrgId();
     if (organizationId) {
-      const membershipRef = adminDb.collection('org_memberships').doc(`${organizationId}_${userId}`);
-      const membershipDoc = await membershipRef.get();
+      const membershipSnapshot = await adminDb
+        .collection('org_memberships')
+        .where('userId', '==', userId)
+        .where('organizationId', '==', organizationId)
+        .limit(1)
+        .get();
       
-      if (membershipDoc.exists) {
-        await membershipRef.update({
+      if (!membershipSnapshot.empty) {
+        await membershipSnapshot.docs[0].ref.update({
           identity: trimmedStatement,
           updatedAt: now,
         });

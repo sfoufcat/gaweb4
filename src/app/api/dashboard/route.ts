@@ -118,8 +118,12 @@ export async function GET(request: Request) {
     // Org-specific data fetches
     if (organizationId) {
       fetchPromises.push(
-        // 5. Org membership
-        adminDb.collection('org_memberships').doc(`${organizationId}_${userId}`).get(),
+        // 5. Org membership (query-based since docs are created with auto-generated IDs)
+        adminDb.collection('org_memberships')
+          .where('userId', '==', userId)
+          .where('organizationId', '==', organizationId)
+          .limit(1)
+          .get(),
         
         // 6. Morning check-in
         adminDb.collection('morning_checkins').doc(getMorningCheckInDocId(organizationId, userId, date)).get(),
@@ -139,7 +143,7 @@ export async function GET(request: Request) {
     const tasksSnapshot = results[2] as FirebaseFirestore.QuerySnapshot;
     const enrollmentsSnapshot = results[3] as FirebaseFirestore.QuerySnapshot;
     
-    const orgMembershipDoc = organizationId ? results[4] as FirebaseFirestore.DocumentSnapshot : undefined;
+    const orgMembershipSnapshot = organizationId ? results[4] as FirebaseFirestore.QuerySnapshot : undefined;
     const morningCheckInDoc = organizationId ? results[5] as FirebaseFirestore.DocumentSnapshot : undefined;
     const eveningCheckInDoc = organizationId ? results[6] as FirebaseFirestore.DocumentSnapshot : undefined;
     const weeklyReflectionDoc = organizationId ? results[7] as FirebaseFirestore.DocumentSnapshot : undefined;
@@ -148,7 +152,9 @@ export async function GET(request: Request) {
     // PROCESS USER DATA
     // =========================================================================
     const baseUserData = userDoc.exists ? userDoc.data() : null;
-    const orgMembershipData = orgMembershipDoc?.exists ? orgMembershipDoc.data() : null;
+    const orgMembershipData = orgMembershipSnapshot && !orgMembershipSnapshot.empty 
+      ? orgMembershipSnapshot.docs[0].data() 
+      : null;
     
     const userData = baseUserData ? {
       ...baseUserData,

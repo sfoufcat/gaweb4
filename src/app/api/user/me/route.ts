@@ -38,15 +38,18 @@ export async function GET() {
     const userData = userDoc.data() as FirebaseUser;
 
     // Try to get org-specific data if we have an organizationId
+    // Note: org_memberships are created with auto-generated IDs, so we must query by fields
     let orgMembershipData: Record<string, unknown> | null = null;
     if (organizationId) {
-      const membershipDoc = await adminDb
+      const membershipSnapshot = await adminDb
         .collection('org_memberships')
-        .doc(`${organizationId}_${userId}`)
+        .where('userId', '==', userId)
+        .where('organizationId', '==', organizationId)
+        .limit(1)
         .get();
       
-      if (membershipDoc.exists) {
-        orgMembershipData = membershipDoc.data() || null;
+      if (!membershipSnapshot.empty) {
+        orgMembershipData = membershipSnapshot.docs[0].data() || null;
       }
     }
 

@@ -74,7 +74,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
       >
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-xl bg-[#D3F0D8] dark:bg-[#2E5435] flex items-center justify-center flex-shrink-0">
-            <BookOpen className="w-7 h-7 text-[#2E7D6B] dark:text-[#4CAF50]" />
+            <MenuIcon iconKey={menuIcons.program} className="w-7 h-7 text-[#2E7D6B] dark:text-[#4CAF50]" />
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px] mb-1">
