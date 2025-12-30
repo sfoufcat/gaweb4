@@ -317,7 +317,8 @@ export async function requireSuperAdmin(): Promise<void> {
  * Priority for organizationId:
  * 1. Tenant context from headers (x-tenant-org-id) - for domain-based routing
  * 2. Clerk's native org session (auth().orgId) - preferred for full Clerk Orgs
- * 3. publicMetadata.organizationId - backward compatibility
+ * 3. publicMetadata.primaryOrganizationId - active organization (preferred)
+ * 4. publicMetadata.organizationId - backward compatibility (legacy/deprecated)
  * 
  * @param options.allowPlatformMode - If true, allows access from platform domain (default: false)
  * @returns { userId, role, organizationId, isTenantMode }
@@ -368,7 +369,7 @@ export async function requireCoachWithOrg(options?: {
   if (!isTenantMode && !options?.allowPlatformMode) {
     // Super admins always have full access on platform domain (for support/debugging)
     if (role === 'super_admin') {
-      const organizationId = orgId || publicMetadata?.organizationId;
+      const organizationId = orgId || publicMetadata?.primaryOrganizationId || publicMetadata?.organizationId;
       if (organizationId) {
         console.log(`[requireCoachWithOrg] Super admin ${userId} accessing org ${organizationId} from platform domain`);
         return { userId, role, orgRole, organizationId, isTenantMode: false };
@@ -377,7 +378,7 @@ export async function requireCoachWithOrg(options?: {
     
     // Regular coaches must use their tenant domain
     // Look up their subdomain to provide a helpful redirect URL
-    const userOrgId = orgId || publicMetadata?.organizationId;
+    const userOrgId = orgId || publicMetadata?.primaryOrganizationId || publicMetadata?.organizationId;
     let tenantUrl: string | null = null;
     let subdomain: string | null = null;
     
@@ -398,8 +399,8 @@ export async function requireCoachWithOrg(options?: {
     throw new TenantRequiredError(tenantUrl, subdomain);
   }
   
-  // Get organizationId - priority: tenant context > Clerk org session > metadata
-  const organizationId = tenantOrgId || orgId || publicMetadata?.organizationId;
+  // Get organizationId - priority: tenant context > Clerk org session > primaryOrganizationId > organizationId (legacy)
+  const organizationId = tenantOrgId || orgId || publicMetadata?.primaryOrganizationId || publicMetadata?.organizationId;
   
   if (!organizationId) {
     throw new Error('Organization not found: Coach must have an organization');
