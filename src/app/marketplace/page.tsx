@@ -408,8 +408,8 @@ export default function MarketplacePage() {
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="text-center p-6">
-                <div className="w-14 h-14 bg-gradient-to-br from-brand-accent/20 to-brand-accent/10 dark:from-brand-accent/20 dark:to-brand-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Users className="w-7 h-7 text-brand-accent" />
+                <div className="w-14 h-14 bg-gradient-to-br from-rose-400/20 to-rose-400/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Users className="w-7 h-7 text-rose-500" />
                 </div>
                 <h3 className="font-albert text-[20px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
                   Program Delivery

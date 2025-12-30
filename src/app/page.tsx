@@ -684,7 +684,7 @@ export default function Dashboard() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b] flex flex-col items-center justify-center text-center space-y-8 px-4">
+      <div className="fixed inset-0 bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b] flex flex-col items-center justify-center text-center space-y-8 px-4">
         <div className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-xl overflow-hidden relative">
           <Image 
             src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af"

@@ -37,59 +37,8 @@ export default function CompleteSignupPage() {
     
     const completeSignup = async () => {
       try {
-        // Check if user already has an organization
-        const publicMetadata = user.publicMetadata as {
-          organizationId?: string;
-          primaryOrganizationId?: string;
-        };
-        
-        const existingOrgId = publicMetadata?.organizationId || publicMetadata?.primaryOrganizationId;
-        
-        if (existingOrgId) {
-          // User already has an org - check their onboarding state
-          setStatus('redirecting');
-          
-          try {
-            const stateResponse = await fetch('/api/coach/onboarding-state');
-            if (stateResponse.ok) {
-              const stateData = await stateResponse.json();
-              
-              if (stateData.state === 'needs_profile') {
-                router.push('/coach/onboarding/profile');
-                return;
-              } else if (stateData.state === 'needs_plan') {
-                router.push('/coach/onboarding/plans');
-                return;
-              } else if (stateData.state === 'active') {
-                // Redirect to subdomain coach dashboard
-                try {
-                  const tenantRes = await fetch('/api/user/tenant-domains');
-                  if (tenantRes.ok) {
-                    const tenantData = await tenantRes.json();
-                    const ownerDomain = tenantData.tenantDomains?.find((d: { isOwner?: boolean }) => d.isOwner);
-                    if (ownerDomain?.tenantUrl) {
-                      window.location.href = `${ownerDomain.tenantUrl}/coach`;
-                      return;
-                    }
-                  }
-                } catch (e) {
-                  console.error('Error fetching tenant URL:', e);
-                }
-                // Fallback: go to profile to re-verify
-                router.push('/coach/onboarding/profile');
-                return;
-              }
-            }
-          } catch (err) {
-            console.error('Error checking onboarding state:', err);
-          }
-          
-          // Fallback: go to profile to check/continue onboarding
-          router.push('/coach/onboarding/profile');
-          return;
-        }
-        
-        // No org yet - create one
+        // Always create a new organization (supports multi-org for coaches)
+        // The API handles setting primaryOrganizationId to the new org
         setStatus('creating');
         
         const response = await fetch('/api/coach/create-organization', {
@@ -101,18 +50,12 @@ export default function CompleteSignupPage() {
         const data = await response.json();
         
         if (!response.ok) {
-          // Check if org already exists (race condition or retry)
-          if (response.status === 409) {
-            // Org exists - redirect to profile
-            setStatus('redirecting');
-            router.push('/coach/onboarding/profile');
-            return;
-          }
-          
           throw new Error(data.error || 'Failed to create organization');
         }
         
-        // Success! Redirect to profile setup
+        console.log(`[COMPLETE_SIGNUP] Created organization ${data.organizationId} (isFirstOrg: ${data.isFirstOrg})`);
+        
+        // Success! Redirect to profile setup for the new organization
         setStatus('redirecting');
         router.push('/coach/onboarding/profile');
         
