@@ -4,11 +4,12 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
-import { Search, Sparkles, ArrowRight, Users, Zap, Target, Palette, Rocket, ChevronDown, Heart, PlusCircle } from 'lucide-react';
-import type { MarketplaceListing, MarketplaceCategory } from '@/types';
+import { Search, Sparkles, ArrowRight, Users, Zap, Target, Palette, Rocket, ChevronDown, ChevronLeft, ChevronRight, Heart, PlusCircle } from 'lucide-react';
+import type { MarketplaceListing, MarketplaceCategory, DecoyListing } from '@/types';
 import { MARKETPLACE_CATEGORIES } from '@/types';
 import { CreateProgramModal } from '@/components/marketplace/CreateProgramModal';
 import { CoachOnboardingOverlay } from '@/components/marketplace/CoachOnboardingOverlay';
+import { DecoyProgramModal } from '@/components/marketplace/DecoyProgramModal';
 import { LinedGradientBackground } from '@/components/ui/lined-gradient-background';
 
 /**
@@ -27,6 +28,9 @@ export default function MarketplacePage() {
   const [selectedCategory, setSelectedCategory] = useState<MarketplaceCategory | 'all'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   
+  // Decoy modal state
+  const [selectedDecoy, setSelectedDecoy] = useState<DecoyListing | null>(null);
+  
   // Check if user is a coach with incomplete onboarding
   const [showOnboardingOverlay, setShowOnboardingOverlay] = useState(false);
   const [onboardingState, setOnboardingState] = useState<'needs_profile' | 'needs_plan' | null>(null);
@@ -39,9 +43,9 @@ export default function MarketplacePage() {
   } | null>(null);
   const [orgLoading, setOrgLoading] = useState(true);
   
-  // Pagination - show 6 items (2 rows) initially
+  // Pagination - 6 items per page with page navigation
   const ITEMS_PER_PAGE = 6;
-  const [showAllListings, setShowAllListings] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   
   // Timeline animation ref
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -154,13 +158,19 @@ export default function MarketplacePage() {
     );
   }, [listings, searchQuery]);
 
-  // Paginated listings - show only first 9 unless "show all" is clicked
+  // Page-based pagination
+  const totalPages = Math.ceil(filteredListings.length / ITEMS_PER_PAGE);
+  
   const displayedListings = useMemo(() => {
-    if (showAllListings) return filteredListings;
-    return filteredListings.slice(0, ITEMS_PER_PAGE);
-  }, [filteredListings, showAllListings, ITEMS_PER_PAGE]);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredListings.slice(startIndex, endIndex);
+  }, [filteredListings, currentPage, ITEMS_PER_PAGE]);
 
-  const hasMoreListings = filteredListings.length > ITEMS_PER_PAGE;
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory]);
 
   // Timeline fade-in animation (one-time trigger)
   useEffect(() => {
@@ -206,7 +216,10 @@ export default function MarketplacePage() {
       {/* Force main padding to 0 - overrides global layout rules regardless of data-layout attribute */}
       <style dangerouslySetInnerHTML={{__html: `
         main { padding-left: 0 !important; transition: none !important; }
-        body[data-layout="with-sidebar"] main { padding-left: 0 !important; }
+        body[data-layout="with-sidebar"] main { padding-left: 0 !important; transition: none !important; }
+        body main { padding-left: 0 !important; }
+        .dark main { padding-left: 0 !important; }
+        html main { padding-left: 0 !important; }
       `}} />
       
       {/* Fixed full-viewport background - ensures complete coverage regardless of parent padding */}
@@ -278,7 +291,7 @@ export default function MarketplacePage() {
       <section className="relative py-16 sm:py-24 overflow-hidden">
         {/* Background decoration - centered glow behind text */}
         <div className="absolute inset-0 -z-10 flex items-center justify-center">
-          <div className="w-[800px] h-[600px] bg-brand-accent/15 dark:bg-brand-accent/10 rounded-full blur-[120px] opacity-80" />
+          <div className="w-[800px] h-[600px] bg-[#e8b923]/20 dark:bg-[#e8b923]/15 rounded-full blur-[100px]" />
         </div>
         
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -390,19 +403,40 @@ export default function MarketplacePage() {
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {displayedListings.map((listing) => (
-                  <ListingCard key={listing.id} listing={listing} />
+                  <ListingCard 
+                    key={listing.id} 
+                    listing={listing}
+                    onDecoyClick={(decoy) => setSelectedDecoy(decoy)}
+                  />
                 ))}
               </div>
               
-              {/* Show more button */}
-              {hasMoreListings && !showAllListings && (
-                <div className="text-center mt-10">
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-4 mt-10">
+                  {/* Previous Button */}
                   <button
-                    onClick={() => setShowAllListings(true)}
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl font-albert text-[15px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors group"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl font-albert text-[14px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    View all {filteredListings.length} programs
-                    <ChevronDown className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
+                    <ChevronLeft className="w-4 h-4" />
+                    Previous
+                  </button>
+                  
+                  {/* Page Indicator */}
+                  <span className="font-albert text-[14px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  
+                  {/* Next Button */}
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl font-albert text-[14px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
               )}
@@ -666,6 +700,14 @@ export default function MarketplacePage() {
           onComplete={() => setShowOnboardingOverlay(false)}
         />
       )}
+
+      {/* Decoy Program Modal */}
+      <DecoyProgramModal
+        listing={selectedDecoy}
+        isOpen={!!selectedDecoy}
+        onClose={() => setSelectedDecoy(null)}
+        onCreateOwn={() => setShowCreateModal(true)}
+      />
       </div>
     </>
   );
@@ -681,18 +723,20 @@ type ListingWithFunnel = Omit<MarketplaceListing, 'customDomain'> & {
   slug?: string;
 };
 
+interface ListingCardProps {
+  listing: ListingWithFunnel;
+  onDecoyClick?: (listing: DecoyListing) => void;
+}
+
 // Listing Card Component
-function ListingCard({ listing }: { listing: ListingWithFunnel }) {
+function ListingCard({ listing, onDecoyClick }: ListingCardProps) {
   // Check if this is a decoy listing
   const isDecoy = listing.isDecoy === true;
   
-  // Build URL - decoys go to the "full" page, real listings go to funnel
+  // Build URL for real listings only
   let targetUrl = '/join';
   
-  if (isDecoy && listing.slug) {
-    // Decoy listings link to the "Program Full" page
-    targetUrl = `/program/full/${listing.slug}`;
-  } else {
+  if (!isDecoy) {
     // Real listings - build funnel URL
     const baseUrl = listing.customDomain 
       ? `https://${listing.customDomain}`
@@ -714,17 +758,17 @@ function ListingCard({ listing }: { listing: ListingWithFunnel }) {
     }
   }
   
-  // Decoys use Link (same-origin), real listings use external link
-  const CardWrapper = isDecoy ? Link : 'a';
-  const linkProps = isDecoy 
-    ? { href: targetUrl }
-    : { href: targetUrl, target: '_blank', rel: 'noopener noreferrer' };
+  // Handle click for decoy cards
+  const handleDecoyClick = () => {
+    if (isDecoy && onDecoyClick) {
+      // Cast to DecoyListing since we know isDecoy is true
+      onDecoyClick(listing as unknown as DecoyListing);
+    }
+  };
   
-  return (
-    <CardWrapper
-      {...linkProps}
-      className="group bg-white dark:bg-[#171b22] rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-    >
+  // Card content (shared between decoy and real listings)
+  const cardContent = (
+    <>
       {/* Cover Image */}
       <div className="relative h-48 overflow-hidden">
         {listing.coverImageUrl ? (
@@ -800,7 +844,31 @@ function ListingCard({ listing }: { listing: ListingWithFunnel }) {
           <ArrowRight className="w-4 h-4" />
         </div>
       </div>
-    </CardWrapper>
+    </>
+  );
+  
+  // Decoys use button (opens modal), real listings use external link
+  if (isDecoy) {
+    return (
+      <button
+        onClick={handleDecoyClick}
+        className="group bg-white dark:bg-[#171b22] rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 text-left w-full"
+      >
+        {cardContent}
+      </button>
+    );
+  }
+  
+  // Real listings - external link
+  return (
+    <a
+      href={targetUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group bg-white dark:bg-[#171b22] rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+    >
+      {cardContent}
+    </a>
   );
 }
 
