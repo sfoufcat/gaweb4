@@ -2149,7 +2149,7 @@ export interface OrgSettings {
   globalTracking?: FunnelTrackingConfig; // Organization-wide tracking pixels
   
   // Email notification preferences (which email types are enabled)
-  emailPreferences?: EmailPreferences;
+  emailPreferences?: CoachEmailPreferences;
   
   createdAt: string;                   // ISO timestamp
   updatedAt: string;                   // ISO timestamp
@@ -2221,7 +2221,7 @@ export const DEFAULT_ORG_SETTINGS: Omit<OrgSettings, 'id' | 'organizationId' | '
   defaultDailyFocusSlots: 3,             // Default: 3 daily focus tasks (matches current behavior)
   alignmentConfig: DEFAULT_ALIGNMENT_CONFIG, // Default alignment activities
   publicSignupEnabled: true,             // Public signup enabled by default
-  emailPreferences: DEFAULT_EMAIL_PREFERENCES, // Email notifications enabled by default
+  emailPreferences: DEFAULT_COACH_EMAIL_PREFERENCES, // Email notifications enabled by default
 };
 
 /**
