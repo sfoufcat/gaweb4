@@ -10,6 +10,7 @@ import {
 } from '@stripe/react-stripe-js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, X, Loader2, CheckCircle, AlertCircle, Repeat } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // Initialize Stripe promise outside component
 let stripePromise: Promise<Stripe | null> | null = null;
@@ -208,6 +209,8 @@ export function SquadPaymentModal({
   currency,
   billingInterval,
 }: SquadPaymentModalProps) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [connectedAccountId, setConnectedAccountId] = useState<string | null>(null);
   const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
@@ -301,12 +304,12 @@ export function SquadPaymentModal({
   const stripeInstance = connectedAccountId ? getStripePromise(connectedAccountId) : null;
 
   const appearance: import('@stripe/stripe-js').Appearance = {
-    theme: 'stripe',
+    theme: isDark ? 'night' : 'stripe',
     variables: {
-      colorPrimary: 'var(--brand-accent-light)',
-      colorBackground: '#ffffff',
-      colorText: '#2c2520',
-      colorTextSecondary: '#6b6560',
+      colorPrimary: isDark ? 'var(--brand-accent-dark)' : 'var(--brand-accent-light)',
+      colorBackground: isDark ? '#1a1e26' : '#ffffff',
+      colorText: isDark ? '#e8e6e3' : '#2c2520',
+      colorTextSecondary: isDark ? '#9ca3af' : '#6b6560',
       colorDanger: '#ef4444',
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       fontSizeBase: '15px',
@@ -315,24 +318,25 @@ export function SquadPaymentModal({
     },
     rules: {
       '.Input': {
-        borderColor: '#e1ddd8',
+        borderColor: isDark ? '#313746' : '#e1ddd8',
         boxShadow: 'none',
         padding: '12px 14px',
       },
       '.Input:focus': {
-        borderColor: 'var(--brand-accent-light)',
-        boxShadow: '0 0 0 1px var(--brand-accent-light)',
+        borderColor: isDark ? 'var(--brand-accent-dark)' : 'var(--brand-accent-light)',
+        boxShadow: isDark ? '0 0 0 1px var(--brand-accent-dark)' : '0 0 0 1px var(--brand-accent-light)',
       },
       '.Label': {
         fontWeight: '500',
         marginBottom: '6px',
+        color: isDark ? '#e8e6e3' : undefined,
       },
       '.Tab': {
-        borderColor: '#e1ddd8',
+        borderColor: isDark ? '#313746' : '#e1ddd8',
       },
       '.Tab--selected': {
-        borderColor: 'var(--brand-accent-light)',
-        backgroundColor: '#faf8f6',
+        borderColor: isDark ? 'var(--brand-accent-dark)' : 'var(--brand-accent-light)',
+        backgroundColor: isDark ? '#262b35' : '#faf8f6',
       },
     },
   };

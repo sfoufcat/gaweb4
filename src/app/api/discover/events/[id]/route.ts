@@ -76,7 +76,7 @@ export async function GET(
               userId: attendeeId,
               firstName: userData?.firstName || 'User',
               lastName: userData?.lastName || '',
-              avatarUrl: userData?.profileImageUrl || userData?.avatarUrl || null,
+              avatarUrl: userData?.profileImageUrl || userData?.avatarUrl || userData?.imageUrl || null,
             });
           }
         } catch (err) {

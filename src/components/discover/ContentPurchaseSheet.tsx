@@ -29,6 +29,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useTheme } from '@/contexts/ThemeContext';
 import { 
   Loader2, 
   Check, 
@@ -757,6 +758,8 @@ function SheetContent({
   const router = useRouter();
   const { isSignedIn } = useAuth();
   const { colors } = useBrandingValues();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -1019,14 +1022,31 @@ function SheetContent({
               options={{
                 clientSecret,
                 appearance: {
-                  theme: 'stripe',
+                  theme: isDark ? 'night' : 'stripe',
                   variables: {
-                    colorPrimary: colors.accentLight,
-                    colorBackground: '#ffffff',
-                    colorText: '#1a1816',
+                    colorPrimary: isDark ? colors.accentDark : colors.accentLight,
+                    colorBackground: isDark ? '#1a1e26' : '#ffffff',
+                    colorText: isDark ? '#e8e6e3' : '#1a1816',
+                    colorTextSecondary: isDark ? '#9ca3af' : undefined,
                     colorDanger: '#ef4444',
                     fontFamily: 'Albert Sans, system-ui, -apple-system, sans-serif',
                     borderRadius: '12px',
+                  },
+                  rules: {
+                    '.Input': {
+                      borderColor: isDark ? '#313746' : '#e1ddd8',
+                    },
+                    '.Input:focus': {
+                      borderColor: isDark ? colors.accentDark : colors.accentLight,
+                      boxShadow: isDark ? `0 0 0 1px ${colors.accentDark}` : `0 0 0 1px ${colors.accentLight}`,
+                    },
+                    '.Tab': {
+                      borderColor: isDark ? '#313746' : '#e1ddd8',
+                    },
+                    '.Tab--selected': {
+                      borderColor: isDark ? colors.accentDark : colors.accentLight,
+                      backgroundColor: isDark ? '#262b35' : '#faf8f6',
+                    },
                   },
                 },
               }}

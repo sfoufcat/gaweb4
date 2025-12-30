@@ -21,6 +21,7 @@ import {
 } from '@/components/discover';
 import type { ProgramType, DiscoverViewMode, MyContentFilter } from '@/components/discover';
 import { FileText, BookOpen, Calendar, Download, Link as LinkIcon, Users, Layers } from 'lucide-react';
+import { LinedGradientBackground } from '@/components/ui/lined-gradient-background';
 
 export default function DiscoverPage() {
   const { upcomingEvents, pastEvents, courses, articles, categories, trending, recommended, groupPrograms, individualPrograms, enrollmentConstraints, publicSquads, loading } = useDiscover();
@@ -96,7 +97,10 @@ export default function DiscoverPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-app-bg pb-24 lg:pb-8">
+      <div className="min-h-screen bg-app-bg pb-24 lg:pb-8 relative">
+        {/* Subtle lined gradient background */}
+        <LinedGradientBackground />
+        
         {/* Header Skeleton */}
         <section className="px-4 pt-5 pb-8">
           <div className="h-10 w-32 bg-[#e1ddd8]/50 dark:bg-[#262b35] rounded-lg animate-pulse" />
@@ -212,7 +216,10 @@ export default function DiscoverPage() {
   };
 
   return (
-    <div className="min-h-screen bg-app-bg pb-24 lg:pb-8">
+    <div className="min-h-screen bg-app-bg pb-24 lg:pb-8 relative">
+      {/* Subtle lined gradient background */}
+      <LinedGradientBackground />
+      
       {/* Header */}
       <section className="px-4 pt-5 pb-2">
         <h1 className="font-albert font-normal text-4xl text-text-primary tracking-[-2px] leading-[1.2]">

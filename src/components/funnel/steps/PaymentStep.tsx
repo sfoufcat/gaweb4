@@ -10,6 +10,7 @@ import {
 } from '@stripe/react-stripe-js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, CreditCard, Check, ArrowLeft, Plus, CircleCheck, Shield, Loader2 } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
 import type { FunnelStepConfigPayment } from '@/types';
 
 // CSS variable helper - uses values set by FunnelClient
@@ -398,6 +399,8 @@ export function PaymentStep({
   isFirstStep,
   organizationId,
 }: PaymentStepProps) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [connectedAccountId, setConnectedAccountId] = useState<string | null>(null);
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
@@ -713,14 +716,31 @@ export function PaymentStep({
             options={{
               clientSecret,
               appearance: {
-                theme: 'stripe',
+                theme: isDark ? 'night' : 'stripe',
                 variables: {
-                  colorPrimary: 'var(--brand-accent-light)',
-                  colorBackground: '#ffffff',
-                  colorText: '#1a1816',
+                  colorPrimary: isDark ? 'var(--brand-accent-dark)' : 'var(--brand-accent-light)',
+                  colorBackground: isDark ? '#1a1e26' : '#ffffff',
+                  colorText: isDark ? '#e8e6e3' : '#1a1816',
+                  colorTextSecondary: isDark ? '#9ca3af' : undefined,
                   colorDanger: '#ef4444',
                   fontFamily: 'system-ui, -apple-system, sans-serif',
                   borderRadius: '12px',
+                },
+                rules: {
+                  '.Input': {
+                    borderColor: isDark ? '#313746' : '#e1ddd8',
+                  },
+                  '.Input:focus': {
+                    borderColor: isDark ? 'var(--brand-accent-dark)' : 'var(--brand-accent-light)',
+                    boxShadow: isDark ? '0 0 0 1px var(--brand-accent-dark)' : '0 0 0 1px var(--brand-accent-light)',
+                  },
+                  '.Tab': {
+                    borderColor: isDark ? '#313746' : '#e1ddd8',
+                  },
+                  '.Tab--selected': {
+                    borderColor: isDark ? 'var(--brand-accent-dark)' : 'var(--brand-accent-light)',
+                    backgroundColor: isDark ? '#262b35' : '#faf8f6',
+                  },
                 },
               },
             }}

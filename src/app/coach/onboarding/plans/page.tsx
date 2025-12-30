@@ -22,6 +22,7 @@ import {
   Gift,
   Loader2
 } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
 import type { CoachTier } from '@/types';
 import { BrandingSetupModal } from '@/components/coach/onboarding';
 
@@ -91,44 +92,46 @@ const PLANS = [
   },
 ];
 
-// Stripe appearance configuration
-const stripeAppearance: import('@stripe/stripe-js').Appearance = {
-  theme: 'stripe',
-  variables: {
-    colorPrimary: 'var(--brand-accent-light)',
-    colorBackground: '#ffffff',
-    colorText: '#1a1a1a',
-    colorTextSecondary: '#5f5a55',
-    colorDanger: '#ef4444',
-    fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    fontSizeBase: '15px',
-    borderRadius: '12px',
-    spacingUnit: '4px',
-  },
-  rules: {
-    '.Input': {
-      borderColor: '#e1ddd8',
-      boxShadow: 'none',
-      padding: '12px 14px',
+// Stripe appearance configuration helper - returns theme-aware appearance
+function getStripeAppearance(isDark: boolean): import('@stripe/stripe-js').Appearance {
+  return {
+    theme: isDark ? 'night' : 'stripe',
+    variables: {
+      colorPrimary: isDark ? 'var(--brand-accent-dark)' : 'var(--brand-accent-light)',
+      colorBackground: isDark ? '#1a1e26' : '#ffffff',
+      colorText: isDark ? '#e8e6e3' : '#1a1a1a',
+      colorTextSecondary: isDark ? '#9ca3af' : '#5f5a55',
+      colorDanger: '#ef4444',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontSizeBase: '15px',
+      borderRadius: '12px',
+      spacingUnit: '4px',
     },
-    '.Input:focus': {
-      borderColor: 'var(--brand-accent-light)',
-      boxShadow: '0 0 0 1px var(--brand-accent-light)',
+    rules: {
+      '.Input': {
+        borderColor: isDark ? '#313746' : '#e1ddd8',
+        boxShadow: 'none',
+        padding: '12px 14px',
+      },
+      '.Input:focus': {
+        borderColor: isDark ? 'var(--brand-accent-dark)' : 'var(--brand-accent-light)',
+        boxShadow: isDark ? '0 0 0 1px var(--brand-accent-dark)' : '0 0 0 1px var(--brand-accent-light)',
+      },
+      '.Label': {
+        fontWeight: '500',
+        marginBottom: '6px',
+        color: isDark ? '#e8e6e3' : '#1a1a1a',
+      },
+      '.Tab': {
+        borderColor: isDark ? '#313746' : '#e1ddd8',
+      },
+      '.Tab--selected': {
+        borderColor: isDark ? 'var(--brand-accent-dark)' : 'var(--brand-accent-light)',
+        backgroundColor: isDark ? '#262b35' : '#faf8f6',
+      },
     },
-    '.Label': {
-      fontWeight: '500',
-      marginBottom: '6px',
-      color: '#1a1a1a',
-    },
-    '.Tab': {
-      borderColor: '#e1ddd8',
-    },
-    '.Tab--selected': {
-      borderColor: 'var(--brand-accent-light)',
-      backgroundColor: '#faf8f6',
-    },
-  },
-};
+  };
+}
 
 // Payment Form Component (inside Elements provider)
 interface PaymentFormProps {
@@ -302,6 +305,8 @@ function PaymentForm({ selectedPlan, onSuccess, onCancel, setupIntentId }: Payme
 export default function OnboardingPlansPage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   
   const [selectedPlan, setSelectedPlan] = useState<CoachTier>('starter');
   const [isLoading, setIsLoading] = useState(false);
@@ -674,7 +679,7 @@ export default function OnboardingPlansPage() {
                   stripe={stripePromise}
                   options={{
                     clientSecret,
-                    appearance: stripeAppearance,
+                    appearance: getStripeAppearance(isDark),
                   }}
                 >
                   <PaymentForm
