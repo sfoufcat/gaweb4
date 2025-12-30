@@ -176,9 +176,10 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
         // Set the session
         await setActive({ session: completeSignUp.createdSessionId });
         
-        // Now create the organization
-        setStep('creating');
-        await createCoachOrganization();
+        // Immediately redirect to complete-signup page which handles org creation
+        // This mirrors the OAuth flow and prevents any Clerk-triggered redirects
+        onClose();
+        router.push('/coach/complete-signup');
       } else {
         setError('Verification incomplete. Please try again.');
       }

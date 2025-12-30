@@ -215,7 +215,7 @@ export default function MarketplacePage() {
       
       <div className="marketplace-root min-h-screen relative">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#faf8f6]/95 dark:bg-[#05070b]/95 backdrop-blur-sm border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+      <header className="sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             {/* Logo */}
@@ -278,8 +278,8 @@ export default function MarketplacePage() {
       <section className="relative py-16 sm:py-24 overflow-hidden">
         {/* Background decoration */}
         <div className="absolute inset-0 -z-10">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-brand-accent/10 rounded-full blur-3xl" />
-          <div className="absolute bottom-10 right-10 w-96 h-96 bg-[#e8b923]/10 dark:bg-[#e8b923]/5 rounded-full blur-3xl" />
+          <div className="absolute -top-20 -left-20 w-[500px] h-[500px] bg-brand-accent/8 rounded-full blur-[120px]" />
+          <div className="absolute -bottom-20 -right-20 w-[600px] h-[600px] bg-[#e8b923]/8 dark:bg-[#e8b923]/4 rounded-full blur-[150px]" />
         </div>
         
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -442,6 +442,9 @@ export default function MarketplacePage() {
                 <div className="w-14 h-14 bg-gradient-to-br from-[#e8b923]/20 to-[#e8b923]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Zap className="w-7 h-7 text-[#e8b923]" />
                 </div>
+                <h3 className="font-albert text-[20px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                  Simple setup
+                </h3>
                 <p className="font-sans text-[14px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed">
                   Launch your program in minutes with custom funnels, branding, and payments.
                 </p>
