@@ -102,7 +102,7 @@ export async function POST(request: Request) {
       'squadCall1h',
     ];
 
-    const updates: Partial<OrgSystemNotifications> = {};
+    const updates: Partial<Record<string, boolean>> = {};
     for (const key of validKeys) {
       if (typeof body[key] === 'boolean') {
         updates[key] = body[key];

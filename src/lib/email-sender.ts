@@ -18,8 +18,8 @@
 
 import { resend, isResendConfigured } from './resend';
 import { adminDb } from './firebase-admin';
-import type { OrgBranding, FirebaseUser, EmailPreferences, OrgSettings } from '@/types';
-import { DEFAULT_EMAIL_PREFERENCES } from '@/types';
+import type { OrgBranding, FirebaseUser, CoachEmailPreferences, OrgSettings } from '@/types';
+import { DEFAULT_COACH_EMAIL_PREFERENCES } from '@/types';
 
 // Platform default senders
 export const PLATFORM_DEFAULT_SENDER = 'Growth Addicts <hi@updates.growthaddicts.com>';
@@ -45,9 +45,9 @@ export type EmailNotificationType =
   | 'payment_failed';   // Always enabled
 
 /**
- * Map from EmailNotificationType to EmailPreferences key
+ * Map from EmailNotificationType to CoachEmailPreferences key
  */
-const EMAIL_TYPE_TO_PREFERENCE_KEY: Record<EmailNotificationType, keyof EmailPreferences> = {
+const EMAIL_TYPE_TO_PREFERENCE_KEY: Record<EmailNotificationType, keyof CoachEmailPreferences> = {
   verification: 'verificationEnabled',
   welcome: 'welcomeEnabled',
   abandoned_cart: 'abandonedCartEnabled',
@@ -135,15 +135,15 @@ async function getOrgSettings(organizationId: string): Promise<OrgSettings | nul
  * Get email preferences for an organization
  * Returns default preferences if not set
  */
-export async function getEmailPreferences(organizationId: string | null): Promise<EmailPreferences> {
+export async function getEmailPreferences(organizationId: string | null): Promise<CoachEmailPreferences> {
   if (!organizationId) {
-    return DEFAULT_EMAIL_PREFERENCES;
+    return DEFAULT_COACH_EMAIL_PREFERENCES;
   }
   
   const settings = await getOrgSettings(organizationId);
   
   return {
-    ...DEFAULT_EMAIL_PREFERENCES,
+    ...DEFAULT_COACH_EMAIL_PREFERENCES,
     ...settings?.emailPreferences,
     // Always force these to true
     verificationEnabled: true,

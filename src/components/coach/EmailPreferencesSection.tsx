@@ -3,10 +3,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 import { Mail, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import type { EmailPreferences } from '@/types';
+import type { CoachEmailPreferences } from '@/types';
 
 interface EmailTypeConfig {
-  key: keyof EmailPreferences;
+  key: keyof CoachEmailPreferences;
   label: string;
   description: string;
   canDisable: boolean;
@@ -57,7 +57,7 @@ const EMAIL_TYPES: EmailTypeConfig[] = [
   },
 ];
 
-const DEFAULT_PREFERENCES: EmailPreferences = {
+const DEFAULT_PREFERENCES: CoachEmailPreferences = {
   verificationEnabled: true,
   welcomeEnabled: true,
   abandonedCartEnabled: true,
@@ -77,11 +77,11 @@ export function EmailPreferencesSection() {
   const { colors } = useBrandingValues();
   const accentColor = colors.accentLight || 'var(--brand-accent-light)';
 
-  const [preferences, setPreferences] = useState<EmailPreferences>(DEFAULT_PREFERENCES);
+  const [preferences, setPreferences] = useState<CoachEmailPreferences>(DEFAULT_PREFERENCES);
   const [isLoading, setIsLoading] = useState(true);
-  const [savingKey, setSavingKey] = useState<keyof EmailPreferences | null>(null);
+  const [savingKey, setSavingKey] = useState<keyof CoachEmailPreferences | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [successKey, setSuccessKey] = useState<keyof EmailPreferences | null>(null);
+  const [successKey, setSuccessKey] = useState<keyof CoachEmailPreferences | null>(null);
 
   // Fetch current preferences
   useEffect(() => {
@@ -103,7 +103,7 @@ export function EmailPreferencesSection() {
   }, []);
 
   // Handle toggle
-  const handleToggle = useCallback(async (key: keyof EmailPreferences) => {
+  const handleToggle = useCallback(async (key: keyof CoachEmailPreferences) => {
     const emailType = EMAIL_TYPES.find(t => t.key === key);
     if (!emailType?.canDisable) return;
 

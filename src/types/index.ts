@@ -2156,12 +2156,12 @@ export interface OrgSettings {
 }
 
 /**
- * Email notification preferences for an organization
- * Controls which types of emails are sent to members
+ * Coach/Organization-level email type preferences
+ * Controls which types of emails are sent from the coach's organization
  */
-export interface EmailPreferences {
+export interface CoachEmailPreferences {
   // Verification emails - always enabled, cannot be disabled
-  verificationEnabled: true;
+  verificationEnabled: boolean;
   
   // Welcome email after successful payment
   welcomeEnabled: boolean;
@@ -2179,13 +2179,13 @@ export interface EmailPreferences {
   weeklyReminderEnabled: boolean;
   
   // Payment failed notification (for coaches) - always enabled
-  paymentFailedEnabled: true;
+  paymentFailedEnabled: boolean;
 }
 
 /**
- * Default email preferences
+ * Default coach email preferences
  */
-export const DEFAULT_EMAIL_PREFERENCES: EmailPreferences = {
+export const DEFAULT_COACH_EMAIL_PREFERENCES: CoachEmailPreferences = {
   verificationEnabled: true,
   welcomeEnabled: true,
   abandonedCartEnabled: true,

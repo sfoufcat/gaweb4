@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { adminDb } from '@/lib/firebase-admin';
-import type { EmailPreferences } from '@/types';
-import { DEFAULT_EMAIL_PREFERENCES } from '@/types';
+import type { CoachEmailPreferences } from '@/types';
+import { DEFAULT_COACH_EMAIL_PREFERENCES } from '@/types';
 
 /**
  * GET /api/coach/email-preferences
@@ -15,14 +15,14 @@ export async function GET() {
     const settingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
     
     if (!settingsDoc.exists) {
-      return NextResponse.json({ emailPreferences: DEFAULT_EMAIL_PREFERENCES });
+      return NextResponse.json({ emailPreferences: DEFAULT_COACH_EMAIL_PREFERENCES });
     }
 
     const settings = settingsDoc.data();
     
     // Merge with defaults to ensure all fields exist
-    const emailPreferences: EmailPreferences = {
-      ...DEFAULT_EMAIL_PREFERENCES,
+    const emailPreferences: CoachEmailPreferences = {
+      ...DEFAULT_COACH_EMAIL_PREFERENCES,
       ...settings?.emailPreferences,
       // Always force these to true - they cannot be disabled
       verificationEnabled: true,
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Validate that only allowed preferences are being updated
-    const allowedKeys: (keyof EmailPreferences)[] = [
+    const allowedKeys: (keyof CoachEmailPreferences)[] = [
       'welcomeEnabled',
       'abandonedCartEnabled',
       'morningReminderEnabled',
@@ -82,8 +82,8 @@ export async function POST(request: NextRequest) {
     const existingSettings = settingsDoc.data() || {};
     
     // Merge with existing preferences
-    const newPreferences: EmailPreferences = {
-      ...DEFAULT_EMAIL_PREFERENCES,
+    const newPreferences: CoachEmailPreferences = {
+      ...DEFAULT_COACH_EMAIL_PREFERENCES,
       ...existingSettings.emailPreferences,
       ...updates,
       // Always force these to true - they cannot be disabled
