@@ -19,6 +19,14 @@ export function LayoutModeSync() {
   const searchParams = useSearchParams();
   
   useEffect(() => {
+    // Check if marketplace content is present (handles URL rewrites like / -> /marketplace)
+    // This marker class is set by MarketplacePage and takes precedence over pathname detection
+    const isMarketplaceContent = document.querySelector('.marketplace-root');
+    if (isMarketplaceContent) {
+      document.body.setAttribute('data-layout', 'fullscreen');
+      return;
+    }
+    
     // Check if we're on the marketing domain (growthaddicts.com / www.growthaddicts.com)
     const hostname = window.location.hostname;
     const isMarketingDomain = 

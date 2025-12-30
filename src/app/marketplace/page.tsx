@@ -203,6 +203,12 @@ export default function MarketplacePage() {
 
   return (
     <>
+      {/* Force main padding to 0 - overrides global layout rules regardless of data-layout attribute */}
+      <style dangerouslySetInnerHTML={{__html: `
+        main { padding-left: 0 !important; transition: none !important; }
+        body[data-layout="with-sidebar"] main { padding-left: 0 !important; }
+      `}} />
+      
       {/* Fixed full-viewport background - ensures complete coverage regardless of parent padding */}
       <div className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] -z-10" />
       <LinedGradientBackground fixed />
