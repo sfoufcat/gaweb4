@@ -1413,6 +1413,18 @@ async function handleFunnelPaymentSucceeded(paymentIntent: Stripe.PaymentIntent)
   }
 
   console.log(`[STRIPE_WEBHOOK] Funnel payment processed: User ${userId} enrolled in program ${flowSession.programId}, enrollment ${enrollmentRef.id}`);
+
+  // Process order bumps if any
+  const orderBumpsJson = paymentIntent.metadata?.orderBumps;
+  if (orderBumpsJson) {
+    await processOrderBumps(
+      userId,
+      flowSession.organizationId || organizationId || '',
+      paymentIntent.id,
+      orderBumpsJson,
+      now
+    );
+  }
 }
 
 /**
@@ -1506,12 +1518,14 @@ async function updateUserCoachingStatus(userId: string, subscription: Stripe.Sub
 /**
  * Handle successful content purchase (one-time payment via Stripe Connect)
  * Creates a user_content_purchases record
+ * Also processes any order bumps included in the purchase
  */
 async function handleContentPurchaseSucceeded(paymentIntent: Stripe.PaymentIntent) {
   const userId = paymentIntent.metadata?.userId;
   const contentType = paymentIntent.metadata?.contentType as 'event' | 'article' | 'course' | 'download' | 'link';
   const contentId = paymentIntent.metadata?.contentId;
   const organizationId = paymentIntent.metadata?.organizationId;
+  const orderBumpsJson = paymentIntent.metadata?.orderBumps;
 
   if (!userId || !contentType || !contentId) {
     console.error(`[STRIPE_WEBHOOK] Content purchase ${paymentIntent.id} missing required metadata:`, {
@@ -1551,6 +1565,118 @@ async function handleContentPurchaseSucceeded(paymentIntent: Stripe.PaymentInten
   const purchaseRef = await adminDb.collection('user_content_purchases').add(purchaseData);
 
   console.log(`[STRIPE_WEBHOOK] Content purchase created: User ${userId} purchased ${contentType}/${contentId}, purchaseId: ${purchaseRef.id}`);
+
+  // Process order bumps if any
+  if (orderBumpsJson) {
+    await processOrderBumps(userId, organizationId || '', paymentIntent.id, orderBumpsJson, now);
+  }
+}
+
+/**
+ * Process order bumps from a payment
+ * Creates appropriate records for each bump product type
+ */
+async function processOrderBumps(
+  userId: string,
+  organizationId: string,
+  paymentIntentId: string,
+  orderBumpsJson: string,
+  now: string
+) {
+  try {
+    const orderBumps = JSON.parse(orderBumpsJson) as Array<{
+      productType: string;
+      productId: string;
+      contentType?: string;
+      name: string;
+      priceInCents: number;
+      discountPercent?: number;
+      finalPriceCents: number;
+    }>;
+
+    console.log(`[STRIPE_WEBHOOK] Processing ${orderBumps.length} order bumps for payment ${paymentIntentId}`);
+
+    for (const bump of orderBumps) {
+      if (bump.productType === 'program') {
+        // Create a pending enrollment record for the program bump
+        // Note: For programs, full enrollment might need additional processing
+        console.log(`[STRIPE_WEBHOOK] Order bump: Program ${bump.productId} purchased, amount: $${(bump.finalPriceCents / 100).toFixed(2)}`);
+        
+        // Check if enrollment already exists
+        const existingEnrollment = await adminDb
+          .collection('program_enrollments')
+          .where('userId', '==', userId)
+          .where('programId', '==', bump.productId)
+          .limit(1)
+          .get();
+
+        if (existingEnrollment.empty) {
+          // Create pending enrollment - will need activation
+          await adminDb.collection('program_enrollments').add({
+            userId,
+            programId: bump.productId,
+            organizationId,
+            status: 'pending_activation', // Needs separate activation flow
+            amountPaid: bump.finalPriceCents,
+            stripePaymentIntentId: paymentIntentId,
+            isOrderBump: true,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+        
+      } else if (bump.productType === 'squad') {
+        // For squad bumps, we just note the purchase - squad joining may need user action
+        console.log(`[STRIPE_WEBHOOK] Order bump: Squad ${bump.productId} purchased, amount: $${(bump.finalPriceCents / 100).toFixed(2)}`);
+        
+        // Create a squad purchase record
+        await adminDb.collection('squad_purchases').add({
+          userId,
+          squadId: bump.productId,
+          organizationId,
+          amountPaid: bump.finalPriceCents,
+          stripePaymentIntentId: paymentIntentId,
+          isOrderBump: true,
+          status: 'pending_activation',
+          createdAt: now,
+          updatedAt: now,
+        });
+        
+      } else if (bump.productType === 'content') {
+        // Create content purchase record
+        console.log(`[STRIPE_WEBHOOK] Order bump: Content ${bump.contentType}/${bump.productId} purchased, amount: $${(bump.finalPriceCents / 100).toFixed(2)}`);
+        
+        // Check if already purchased
+        const existingPurchase = await adminDb
+          .collection('user_content_purchases')
+          .where('userId', '==', userId)
+          .where('contentType', '==', bump.contentType)
+          .where('contentId', '==', bump.productId)
+          .limit(1)
+          .get();
+
+        if (existingPurchase.empty) {
+          await adminDb.collection('user_content_purchases').add({
+            userId,
+            contentType: bump.contentType,
+            contentId: bump.productId,
+            organizationId,
+            amountPaid: bump.finalPriceCents,
+            currency: 'usd',
+            stripePaymentIntentId: paymentIntentId,
+            isOrderBump: true,
+            purchasedAt: now,
+            createdAt: now,
+          });
+        }
+      }
+    }
+
+    console.log(`[STRIPE_WEBHOOK] Processed ${orderBumps.length} order bumps successfully`);
+  } catch (error) {
+    console.error(`[STRIPE_WEBHOOK] Error processing order bumps:`, error);
+    // Don't throw - the main purchase succeeded
+  }
 }
 
 /**
@@ -1979,6 +2105,18 @@ async function handleProgramSubscriptionCheckoutCompleted(session: Stripe.Checko
   }, { merge: true });
 
   console.log(`[STRIPE_WEBHOOK] User ${userId} enrolled in program ${programId} with subscription ${subscriptionId}, enrollment: ${enrollmentRef.id}`);
+
+  // Process order bumps if any
+  const orderBumpsJson = session.metadata?.orderBumps;
+  if (orderBumpsJson) {
+    await processOrderBumps(
+      userId,
+      organizationId || program.organizationId,
+      session.id,
+      orderBumpsJson,
+      now
+    );
+  }
 }
 
 /**

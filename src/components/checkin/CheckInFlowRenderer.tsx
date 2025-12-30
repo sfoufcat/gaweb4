@@ -867,41 +867,144 @@ function TaskReviewStep({ config, onComplete }: { config: Record<string, unknown
 
 function VisualizationStep({ config, onComplete }: { config: Record<string, unknown>; onComplete: () => void }) {
   const [isComplete, setIsComplete] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [userData, setUserData] = useState<{ identity?: string; goal?: string; goalTargetDate?: string } | null>(null);
+  const [progress, setProgress] = useState(0);
   const duration = (config.durationSeconds as number) || 60;
+  const showGoal = (config.showGoal as boolean) ?? true;
+  const showIdentity = (config.showIdentity as boolean) ?? true;
 
+  // Fetch user data
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsComplete(true);
-    }, duration * 1000);
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch('/api/user/me');
+        const data = await response.json();
+        setUserData({
+          identity: data.user?.identity,
+          goal: data.goal?.goal || data.user?.goal,
+          goalTargetDate: data.goal?.targetDate || data.user?.goalTargetDate,
+        });
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchUserData();
+  }, []);
 
-    return () => clearTimeout(timer);
-  }, [duration]);
+  // Progress timer
+  useEffect(() => {
+    if (isLoading) return;
+
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const newProgress = Math.min(100, (elapsed / (duration * 1000)) * 100);
+      setProgress(newProgress);
+
+      if (elapsed >= duration * 1000) {
+        setIsComplete(true);
+        clearInterval(interval);
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [duration, isLoading]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a1a1a] dark:border-[#f5f5f8]" />
+      </div>
+    );
+  }
+
+  const hasIdentity = showIdentity && userData?.identity;
+  const hasGoal = showGoal && userData?.goal;
 
   return (
-    <div className="flex flex-col items-center justify-center h-full px-6 py-8">
-      <div className="text-center max-w-md">
-        <h1 className="font-albert text-[26px] md:text-[36px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-2px] leading-[1.2] mb-8">
-          {config.heading as string || 'Visualize your success'}
-        </h1>
+    <div className="flex flex-col h-full">
+      {/* Progress bar */}
+      <div className="px-6 pt-4">
+        <div className="w-full h-[2px] bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-brand-accent"
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.1 }}
+          />
+        </div>
+      </div>
 
-        <motion.div
-          animate={{ scale: [1, 1.1, 1] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          className="w-48 h-48 mx-auto mb-8 rounded-full bg-gradient-to-br from-brand-accent to-[#8c6245] dark:from-[#b8896a] dark:to-brand-accent flex items-center justify-center"
-        >
-          <span className="text-5xl">✨</span>
-        </motion.div>
+      {/* Main content */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
+        <div className="text-center max-w-md">
+          <h1 className="font-albert text-[26px] md:text-[36px] text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-2px] leading-[1.2] mb-8">
+            {config.heading as string || 'Visualize your success'}
+          </h1>
 
-        <p className="text-[#5f5a55] dark:text-[#b2b6c2] mb-8">
-          Close your eyes and imagine achieving your goal...
-        </p>
+          {/* Identity Section */}
+          {hasIdentity && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="mb-8 p-6 rounded-2xl"
+              style={{ background: 'linear-gradient(180deg, #B8D4D4 0%, #D4B8C8 50%, #E8C8B8 100%)' }}
+            >
+              <p className="text-sm text-[#5f5a55] mb-2">I am</p>
+              <p className="font-albert text-[24px] md:text-[28px] text-[#1a1a1a] tracking-[-1px] leading-[1.2]">
+                {userData.identity}
+              </p>
+            </motion.div>
+          )}
 
-        <button
-          onClick={onComplete}
-          className="px-8 py-4 bg-[#2c2520] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] rounded-full font-sans text-[16px] font-bold"
-        >
-          {isComplete ? 'Continue' : 'Skip'}
-        </button>
+          {/* Goal Section */}
+          {hasGoal && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: hasIdentity ? 0.6 : 0.3 }}
+              className="mb-8 p-6 rounded-2xl"
+              style={{ background: 'linear-gradient(180deg, #E066FF 0%, #9933FF 50%, #6600CC 100%)' }}
+            >
+              <p className="text-sm text-white/70 mb-2">I want to</p>
+              <p className="font-albert text-[24px] md:text-[28px] text-white tracking-[-1px] leading-[1.2]">
+                {userData.goal}
+              </p>
+              {userData.goalTargetDate && (
+                <p className="mt-2 text-sm text-white/60">
+                  by {new Date(userData.goalTargetDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                </p>
+              )}
+            </motion.div>
+          )}
+
+          {/* Fallback if neither is shown */}
+          {!hasIdentity && !hasGoal && (
+            <>
+              <motion.div
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                className="w-48 h-48 mx-auto mb-8 rounded-full bg-gradient-to-br from-brand-accent to-[#8c6245] dark:from-[#b8896a] dark:to-brand-accent flex items-center justify-center"
+              >
+                <span className="text-5xl">✨</span>
+              </motion.div>
+              <p className="text-[#5f5a55] dark:text-[#b2b6c2] mb-8">
+                Close your eyes and visualize your success...
+              </p>
+            </>
+          )}
+
+          <button
+            onClick={onComplete}
+            className="px-8 py-4 bg-[#2c2520] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] rounded-full font-sans text-[16px] font-bold"
+          >
+            {isComplete ? 'Continue' : 'Skip'}
+          </button>
+        </div>
       </div>
     </div>
   );

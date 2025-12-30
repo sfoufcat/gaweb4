@@ -289,7 +289,7 @@ function OpenTextConfig({ config, updateConfig }: { config: Record<string, unkno
           id="isRequired"
           checked={(config.isRequired as boolean) || false}
           onChange={(e) => updateConfig('isRequired', e.target.checked)}
-          className="w-4 h-4 text-brand-accent rounded"
+          className="accent-brand-accent"
         />
         <label htmlFor="isRequired" className="text-sm text-text-primary dark:text-[#f5f5f8]">
           Required field
@@ -321,7 +321,7 @@ function TaskPlannerConfig({ config, updateConfig }: { config: Record<string, un
             id="showProgramTasks"
             checked={(config.showProgramTasks as boolean) ?? true}
             onChange={(e) => updateConfig('showProgramTasks', e.target.checked)}
-            className="w-4 h-4 text-brand-accent rounded"
+            className="accent-brand-accent"
           />
           <label htmlFor="showProgramTasks" className="text-sm text-text-primary dark:text-[#f5f5f8]">
             Show program tasks
@@ -333,7 +333,7 @@ function TaskPlannerConfig({ config, updateConfig }: { config: Record<string, un
             id="allowAddTasks"
             checked={(config.allowAddTasks as boolean) ?? true}
             onChange={(e) => updateConfig('allowAddTasks', e.target.checked)}
-            className="w-4 h-4 text-brand-accent rounded"
+            className="accent-brand-accent"
           />
           <label htmlFor="allowAddTasks" className="text-sm text-text-primary dark:text-[#f5f5f8]">
             Allow adding custom tasks
@@ -345,7 +345,7 @@ function TaskPlannerConfig({ config, updateConfig }: { config: Record<string, un
             id="showBacklog"
             checked={(config.showBacklog as boolean) ?? true}
             onChange={(e) => updateConfig('showBacklog', e.target.checked)}
-            className="w-4 h-4 text-brand-accent rounded"
+            className="accent-brand-accent"
           />
           <label htmlFor="showBacklog" className="text-sm text-text-primary dark:text-[#f5f5f8]">
             Show backlog
@@ -542,7 +542,7 @@ function VisualizationConfig({ config, updateConfig }: { config: Record<string, 
             id="showGoal"
             checked={(config.showGoal as boolean) ?? true}
             onChange={(e) => updateConfig('showGoal', e.target.checked)}
-            className="w-4 h-4 text-brand-accent rounded"
+            className="accent-brand-accent"
           />
           <label htmlFor="showGoal" className="text-sm text-text-primary dark:text-[#f5f5f8]">
             Show user&apos;s goal
@@ -554,7 +554,7 @@ function VisualizationConfig({ config, updateConfig }: { config: Record<string, 
             id="showIdentity"
             checked={(config.showIdentity as boolean) ?? true}
             onChange={(e) => updateConfig('showIdentity', e.target.checked)}
-            className="w-4 h-4 text-brand-accent rounded"
+            className="accent-brand-accent"
           />
           <label htmlFor="showIdentity" className="text-sm text-text-primary dark:text-[#f5f5f8]">
             Show user&apos;s identity statement
@@ -599,7 +599,7 @@ function ProgressScaleConfig({ config, updateConfig }: { config: Record<string, 
           id="showGoalProgress"
           checked={(config.showGoal as boolean) ?? true}
           onChange={(e) => updateConfig('showGoal', e.target.checked)}
-          className="w-4 h-4 text-brand-accent rounded"
+          className="accent-brand-accent"
         />
         <label htmlFor="showGoalProgress" className="text-sm text-text-primary dark:text-[#f5f5f8]">
           Display user&apos;s goal
@@ -669,7 +669,7 @@ function CompletionConfig({ config, updateConfig }: { config: Record<string, unk
           id="showConfetti"
           checked={(config.showConfetti as boolean) ?? true}
           onChange={(e) => updateConfig('showConfetti', e.target.checked)}
-          className="w-4 h-4 text-brand-accent rounded"
+          className="accent-brand-accent"
         />
         <label htmlFor="showConfetti" className="text-sm text-text-primary dark:text-[#f5f5f8]">
           Show confetti animation
@@ -712,7 +712,7 @@ function GoalAchievedConfig({ config, updateConfig }: { config: Record<string, u
             id="showCreateNewGoal"
             checked={(config.showCreateNewGoal as boolean) ?? true}
             onChange={(e) => updateConfig('showCreateNewGoal', e.target.checked)}
-            className="w-4 h-4 text-brand-accent rounded"
+            className="accent-brand-accent"
           />
           <label htmlFor="showCreateNewGoal" className="text-sm text-text-primary dark:text-[#f5f5f8]">
             Show &quot;Create new goal&quot; button
@@ -724,7 +724,7 @@ function GoalAchievedConfig({ config, updateConfig }: { config: Record<string, u
             id="showSkipOption"
             checked={(config.showSkipOption as boolean) ?? true}
             onChange={(e) => updateConfig('showSkipOption', e.target.checked)}
-            className="w-4 h-4 text-brand-accent rounded"
+            className="accent-brand-accent"
           />
           <label htmlFor="showSkipOption" className="text-sm text-text-primary dark:text-[#f5f5f8]">
             Show &quot;Skip for now&quot; option

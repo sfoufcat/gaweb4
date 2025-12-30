@@ -23,7 +23,17 @@ import type {
   OrgSettings,
   ClientCoachingData,
   DiscountCode,
+  OrderBumpProductType,
+  OrderBumpContentType,
 } from '@/types';
+
+/** Order bump selection from client */
+interface OrderBumpSelection {
+  productType: OrderBumpProductType;
+  productId: string;
+  contentType?: OrderBumpContentType;
+  discountPercent?: number;
+}
 
 // Initialize Stripe
 function getStripe(): Stripe {
@@ -323,12 +333,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { programId, cohortId, discountCode, joinCommunity, startDate } = body as { 
+    const { programId, cohortId, discountCode, joinCommunity, startDate, orderBumps } = body as { 
       programId: string; 
       cohortId?: string;
       discountCode?: string;
       joinCommunity?: boolean;
       startDate?: string; // ISO date string (YYYY-MM-DD) for individual programs
+      orderBumps?: OrderBumpSelection[]; // Order bump products to add
     };
 
     if (!programId) {
@@ -540,8 +551,70 @@ export async function POST(request: NextRequest) {
       description += ` (Originally $${originalFormatted}, -$${discountFormatted} discount)`;
     }
 
+    // Fetch and validate order bumps if provided
+    let orderBumpLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
+    let orderBumpTotalCents = 0;
+    const validatedOrderBumps: Array<{
+      productType: string;
+      productId: string;
+      contentType?: string;
+      name: string;
+      priceInCents: number;
+      discountPercent?: number;
+      finalPriceCents: number;
+    }> = [];
+
+    if (orderBumps && orderBumps.length > 0) {
+      for (const bump of orderBumps) {
+        const bumpProduct = await fetchOrderBumpProduct(bump, program.organizationId);
+        if (bumpProduct) {
+          // Apply discount if specified
+          const finalPrice = bump.discountPercent 
+            ? Math.round(bumpProduct.priceInCents * (1 - bump.discountPercent / 100))
+            : bumpProduct.priceInCents;
+          
+          orderBumpTotalCents += finalPrice;
+          
+          validatedOrderBumps.push({
+            productType: bump.productType,
+            productId: bump.productId,
+            contentType: bump.contentType,
+            name: bumpProduct.name,
+            priceInCents: bumpProduct.priceInCents,
+            discountPercent: bump.discountPercent,
+            finalPriceCents: finalPrice,
+          });
+          
+          // Add as line item (only for one-time payments, subscriptions can't mix)
+          orderBumpLineItems.push({
+            price_data: {
+              currency: program.currency || 'usd',
+              product_data: {
+                name: bumpProduct.name,
+                description: bump.discountPercent 
+                  ? `Add-on (${bump.discountPercent}% off)`
+                  : 'Add-on',
+                images: bumpProduct.imageUrl ? [bumpProduct.imageUrl] : undefined,
+              },
+              unit_amount: finalPrice,
+            },
+            quantity: 1,
+          });
+        }
+      }
+      
+      console.log(`[PROGRAM_ENROLL] Order bumps: ${validatedOrderBumps.length} items, total: $${(orderBumpTotalCents / 100).toFixed(2)}`);
+    }
+
     // Check if program has subscription enabled (recurring billing)
+    // Note: Order bumps are only supported for one-time payments
     const isSubscription = program.subscriptionEnabled && program.stripePriceId;
+    
+    if (isSubscription && orderBumpLineItems.length > 0) {
+      console.log('[PROGRAM_ENROLL] Order bumps not supported for subscription programs, ignoring');
+      orderBumpLineItems = [];
+      orderBumpTotalCents = 0;
+    }
 
     // Create Stripe checkout session - different mode for subscriptions
     let sessionParams: Stripe.Checkout.SessionCreateParams;
@@ -588,25 +661,33 @@ export async function POST(request: NextRequest) {
       console.log(`[PROGRAM_ENROLL] Creating subscription checkout for user ${userId}, program ${programId}, interval: ${program.billingInterval}`);
     } else {
       // One-time payment mode
+      // Combine main program with order bumps
+      const allLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+        {
+          price_data: {
+            currency: program.currency || 'usd',
+            product_data: {
+              name: program.name,
+              description,
+              images: program.coverImageUrl ? [program.coverImageUrl] : undefined,
+            },
+            unit_amount: finalPrice, // Use discounted price
+          },
+          quantity: 1,
+        },
+        ...orderBumpLineItems,
+      ];
+
+      // Calculate combined application fee (on program + bumps total)
+      const totalAmount = finalPrice + orderBumpTotalCents;
+      const combinedApplicationFee = Math.round(totalAmount * (platformFeePercent / 100));
+
       sessionParams = {
         mode: 'payment',
         payment_method_types: ['card'],
-        line_items: [
-          {
-            price_data: {
-              currency: program.currency || 'usd',
-              product_data: {
-                name: program.name,
-                description,
-                images: program.coverImageUrl ? [program.coverImageUrl] : undefined,
-              },
-              unit_amount: finalPrice, // Use discounted price
-            },
-            quantity: 1,
-          },
-        ],
+        line_items: allLineItems,
         payment_intent_data: {
-          application_fee_amount: applicationFeeAmount,
+          application_fee_amount: combinedApplicationFee,
           metadata: {
             userId,
             programId,
@@ -618,6 +699,8 @@ export async function POST(request: NextRequest) {
             discountAmountCents: String(discountAmountCents),
             joinCommunity: joinCommunity !== false ? 'true' : 'false',
             startDate: validatedStartDate || '',
+            // Order bumps metadata (JSON stringified)
+            orderBumps: validatedOrderBumps.length > 0 ? JSON.stringify(validatedOrderBumps) : '',
           },
         },
         success_url: successUrl,
@@ -633,6 +716,8 @@ export async function POST(request: NextRequest) {
           discountCodeId: appliedDiscountCode?.id || '',
           joinCommunity: joinCommunity !== false ? 'true' : 'false',
           startDate: validatedStartDate || '',
+          // Order bumps metadata (JSON stringified)
+          orderBumps: validatedOrderBumps.length > 0 ? JSON.stringify(validatedOrderBumps) : '',
         },
       };
     }
@@ -865,6 +950,73 @@ async function autoGrantProgramContent(
 
   if (grantedCount > 0) {
     console.log(`[PROGRAM_ENROLL] Auto-granted ${grantedCount} content items to user ${userId} from program ${programId}`);
+  }
+}
+
+/**
+ * Fetch order bump product details for validation and pricing
+ */
+async function fetchOrderBumpProduct(
+  bump: OrderBumpSelection,
+  organizationId: string
+): Promise<{ name: string; priceInCents: number; imageUrl?: string } | null> {
+  try {
+    let collection: string;
+    
+    if (bump.productType === 'program') {
+      collection = 'programs';
+    } else if (bump.productType === 'squad') {
+      collection = 'squads';
+    } else if (bump.productType === 'content') {
+      // Map content type to collection
+      switch (bump.contentType) {
+        case 'article':
+          collection = 'discover_articles';
+          break;
+        case 'course':
+          collection = 'discover_courses';
+          break;
+        case 'event':
+          collection = 'discover_events';
+          break;
+        case 'download':
+          collection = 'discover_downloads';
+          break;
+        case 'link':
+          collection = 'discover_links';
+          break;
+        default:
+          console.warn(`[PROGRAM_ENROLL] Unknown content type for order bump: ${bump.contentType}`);
+          return null;
+      }
+    } else {
+      console.warn(`[PROGRAM_ENROLL] Unknown product type for order bump: ${bump.productType}`);
+      return null;
+    }
+
+    const doc = await adminDb.collection(collection).doc(bump.productId).get();
+    if (!doc.exists) {
+      console.warn(`[PROGRAM_ENROLL] Order bump product not found: ${collection}/${bump.productId}`);
+      return null;
+    }
+
+    const data = doc.data();
+    if (!data) return null;
+
+    // Verify organization match
+    if (data.organizationId !== organizationId) {
+      console.warn(`[PROGRAM_ENROLL] Order bump product org mismatch: ${data.organizationId} !== ${organizationId}`);
+      return null;
+    }
+
+    return {
+      name: data.name || data.title || 'Add-on',
+      priceInCents: data.priceInCents || 0,
+      imageUrl: data.coverImageUrl || data.thumbnailUrl || data.avatarUrl,
+    };
+  } catch (error) {
+    console.error(`[PROGRAM_ENROLL] Error fetching order bump product:`, error);
+    return null;
   }
 }
 

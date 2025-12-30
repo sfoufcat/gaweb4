@@ -1,17 +1,21 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { X, Plus, Trash2, GripVertical, ImageIcon, Video, Youtube, PlayCircle, Monitor, Code } from 'lucide-react';
+import { X, Plus, Trash2, GripVertical, ImageIcon, Video, Youtube, PlayCircle, Monitor, Code, Sparkles, Lock } from 'lucide-react';
 import Image from 'next/image';
-import type { FunnelStep, FunnelStepType, FunnelQuestionOption, InfluencePromptConfig, FunnelStepTrackingConfig, MetaPixelEvent } from '@/types';
+import type { FunnelStep, FunnelStepType, FunnelQuestionOption, InfluencePromptConfig, FunnelStepTrackingConfig, MetaPixelEvent, CoachTier } from '@/types';
 import { nanoid } from 'nanoid';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LandingPageEditor, type LandingPageFormData } from '@/components/shared/LandingPageEditor';
 import { InfluencePromptEditor } from './InfluencePromptEditor';
+import { AIHelperModal } from '@/components/ai';
+import type { LandingPageDraft, ProgramContentDraft, AIGenerationContext } from '@/lib/ai/types';
+import { hasPermission } from '@/lib/coach-permissions';
+import { Button } from '@/components/ui/button';
 
 interface StepConfigEditorProps {
   step: FunnelStep;
@@ -1588,6 +1592,34 @@ interface LandingPageConfigEditorProps {
 }
 
 function LandingPageConfigEditor({ config, onChange }: LandingPageConfigEditorProps) {
+  // AI Helper state
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+  const [currentTier, setCurrentTier] = useState<CoachTier>('starter');
+  const [isLoadingTier, setIsLoadingTier] = useState(true);
+  
+  // Fetch current tier for AI feature gating
+  useEffect(() => {
+    const fetchTier = async () => {
+      try {
+        const response = await fetch('/api/coach/subscription');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.tier) {
+            setCurrentTier(data.tier);
+          }
+        }
+      } catch (err) {
+        console.error('[LandingPageConfigEditor] Error fetching tier:', err);
+      } finally {
+        setIsLoadingTier(false);
+      }
+    };
+    fetchTier();
+  }, []);
+  
+  // Check if AI generation is allowed for this tier
+  const canUseAI = hasPermission(currentTier, 'ai_landing_page_generation');
+  
   // Map config to form data format
   const formData: LandingPageFormData = {
     template: (config.template as LandingPageFormData['template']) || 'classic',
@@ -1610,14 +1642,113 @@ function LandingPageConfigEditor({ config, onChange }: LandingPageConfigEditorPr
       ...newData,
     });
   };
+  
+  // Apply AI-generated landing page content
+  const handleApplyAIContent = async (draft: ProgramContentDraft | LandingPageDraft) => {
+    const lpDraft = draft as LandingPageDraft;
+    
+    // Map AI-generated content to landing page config
+    onChange({
+      ...config,
+      headline: lpDraft.hero.title,
+      subheadline: lpDraft.hero.subtitle,
+      ctaText: lpDraft.hero.primaryCta,
+      coachBio: lpDraft.aboutCoach.bio,
+      keyOutcomes: lpDraft.whatYoullLearn.items.map(item => `${item.title}: ${item.description}`),
+      features: lpDraft.whatsIncluded.items.map((item) => ({
+        title: item.title,
+        description: item.description,
+        icon: '',
+      })),
+      testimonials: lpDraft.testimonials.map((t) => ({
+        text: t.quote,
+        author: t.name,
+        role: t.role || '',
+        rating: 5,
+      })),
+      faqs: lpDraft.faq.map((f) => ({
+        question: f.question,
+        answer: f.answer,
+      })),
+      showTestimonials: true,
+      showFAQ: true,
+    });
+    
+    setIsAIModalOpen(false);
+  };
+  
+  // Check if there's existing content
+  const hasExistingContent = !!(formData.coachBio || (formData.keyOutcomes && formData.keyOutcomes.length > 0));
 
   return (
-    <LandingPageEditor 
-      formData={formData} 
-      onChange={handleFormChange}
-      showHeadline={true}
-      isFunnel={true}
-    />
+    <div className="space-y-4">
+      {/* AI Generation Button */}
+      <div className="flex items-center justify-between bg-gradient-to-r from-brand-accent/5 to-brand-accent/10 dark:from-brand-accent/10 dark:to-brand-accent/20 rounded-xl p-4 border border-brand-accent/20">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-brand-accent/20 flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-brand-accent" />
+          </div>
+          <div>
+            <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+              AI Landing Page Generator
+            </h4>
+            <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+              Generate compelling landing page copy with AI
+            </p>
+          </div>
+        </div>
+        
+        {canUseAI ? (
+          <Button
+            variant="outline"
+            onClick={() => setIsAIModalOpen(true)}
+            disabled={isLoadingTier}
+            className="border-brand-accent text-brand-accent hover:bg-brand-accent/10 flex items-center gap-2"
+          >
+            <Sparkles className="w-4 h-4" />
+            Generate with AI
+          </Button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-xs bg-brand-accent/20 text-brand-accent px-2 py-1 rounded-full font-medium">
+              Pro
+            </span>
+            <Button
+              variant="outline"
+              onClick={() => window.location.href = '/coach/plan'}
+              className="border-[#e1ddd8] dark:border-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2] flex items-center gap-2"
+            >
+              <Lock className="w-4 h-4" />
+              Upgrade to Unlock
+            </Button>
+          </div>
+        )}
+      </div>
+      
+      {/* Landing Page Editor */}
+      <LandingPageEditor 
+        formData={formData} 
+        onChange={handleFormChange}
+        showHeadline={true}
+        isFunnel={true}
+      />
+      
+      {/* AI Helper Modal */}
+      <AIHelperModal
+        isOpen={isAIModalOpen}
+        onClose={() => setIsAIModalOpen(false)}
+        title="Generate Landing Page"
+        description="Create compelling landing page copy for your funnel"
+        useCase="LANDING_PAGE_PROGRAM"
+        context={{
+          programName: formData.headline || 'Your Program',
+          niche: formData.subheadline?.slice(0, 100),
+        } as AIGenerationContext}
+        onApply={handleApplyAIContent}
+        hasExistingContent={hasExistingContent}
+        overwriteWarning="This will replace your existing landing page content."
+      />
+    </div>
   );
 }
 

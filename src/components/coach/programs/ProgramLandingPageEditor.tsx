@@ -6,7 +6,8 @@ import { Plus, Trash2, Star, GripVertical, ImageIcon, X, User } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { MediaUpload } from '@/components/admin/MediaUpload';
-import type { ProgramFeature, ProgramTestimonial, ProgramFAQ } from '@/types';
+import { OrderBumpEditor } from './OrderBumpEditor';
+import type { ProgramFeature, ProgramTestimonial, ProgramFAQ, OrderBumpConfig, CoachTier } from '@/types';
 
 interface LandingPageFormData {
   landingPageCoverImageUrl?: string;
@@ -25,6 +26,8 @@ interface LandingPageFormData {
   faqs: ProgramFAQ[];
   showEnrollmentCount: boolean;
   showCurriculum: boolean;
+  // Order bumps
+  orderBumps?: OrderBumpConfig;
 }
 
 interface ProgramLandingPageEditorProps {
@@ -38,6 +41,12 @@ interface ProgramLandingPageEditorProps {
   uploadEndpoint?: string;
   /** Folder for uploads */
   uploadFolder?: 'programs' | 'squads';
+  /** Coach tier for order bump limits (if not provided, order bumps section is hidden) */
+  coachTier?: CoachTier;
+  /** Current product ID (for excluding from order bump selection) */
+  currentProductId?: string;
+  /** Current product type (for excluding from order bump selection) */
+  currentProductType?: 'program' | 'squad' | 'content';
 }
 
 export function ProgramLandingPageEditor({ 
@@ -47,6 +56,9 @@ export function ProgramLandingPageEditor({
   countLabel = 'enrollment count',
   uploadEndpoint = '/api/coach/org-upload-media',
   uploadFolder = 'programs',
+  coachTier,
+  currentProductId,
+  currentProductType,
 }: ProgramLandingPageEditorProps) {
   // Coach Bullets management
   const addCoachBullet = () => {
@@ -694,6 +706,17 @@ export function ProgramLandingPageEditor({
           )}
         </div>
       </div>
+
+      {/* Order Bumps - only show if tier is provided */}
+      {coachTier && (
+        <OrderBumpEditor
+          orderBumps={formData.orderBumps}
+          onChange={(orderBumps) => onChange({ ...formData, orderBumps })}
+          currentTier={coachTier}
+          excludeProductId={currentProductId}
+          excludeProductType={currentProductType}
+        />
+      )}
     </div>
   );
 }

@@ -22,8 +22,9 @@ import {
   Star, Video, MessageCircle, Book, Target, Zap, Heart,
   ChevronDown, Shield
 } from 'lucide-react';
-import type { Program, ProgramCohort, ProgramDay, ProgramFeature, ProgramTestimonial, ProgramFAQ } from '@/types';
+import type { Program, ProgramCohort, ProgramDay, ProgramFeature, ProgramTestimonial, ProgramFAQ, OrderBumpConfig } from '@/types';
 import { ProgramLandingSkeleton } from '@/components/program/ProgramLandingSkeleton';
+import { OrderBumpList, calculateBumpTotal } from '@/components/checkout';
 
 interface CohortWithAvailability extends ProgramCohort {
   spotsRemaining: number;
@@ -35,6 +36,7 @@ interface ProgramDetailData {
   program: Program & {
     coachName: string;
     coachImageUrl?: string;
+    orderBumps?: OrderBumpConfig;
   };
   cohorts?: CohortWithAvailability[];
   days?: ProgramDay[];
@@ -223,6 +225,7 @@ export default function ProgramDetailPage() {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [joinCommunity, setJoinCommunity] = useState(true); // Default to opt-in for client community
   const [selectedStartDate, setSelectedStartDate] = useState<string>('');
+  const [selectedBumpIds, setSelectedBumpIds] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchProgram = async () => {
@@ -279,6 +282,18 @@ export default function ProgramDetailPage() {
     try {
       setEnrolling(true);
       
+      // Prepare order bumps for the request
+      const orderBumpsToSend = data?.program.orderBumps?.enabled && selectedBumpIds.length > 0
+        ? data.program.orderBumps.bumps
+            .filter(bump => selectedBumpIds.includes(bump.id))
+            .map(bump => ({
+              productType: bump.productType,
+              productId: bump.productId,
+              contentType: bump.contentType,
+              discountPercent: bump.discountPercent,
+            }))
+        : undefined;
+
       const response = await fetch('/api/programs/enroll', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -287,6 +302,7 @@ export default function ProgramDetailPage() {
           cohortId: selectedCohortId,
           joinCommunity: joinCommunity, // For individual programs with client community
           startDate: selectedStartDate || undefined, // For individual programs with custom start date
+          orderBumps: orderBumpsToSend, // Order bump products to add
         }),
       });
 
@@ -793,6 +809,47 @@ export default function ProgramDetailPage() {
                       </p>
                     </div>
                   </label>
+                )}
+
+                {/* Order Bumps */}
+                {!enrollment && program.orderBumps?.enabled && program.orderBumps.bumps.length > 0 && (
+                  <div className="mb-6">
+                    <OrderBumpList
+                      bumps={program.orderBumps.bumps}
+                      selectedBumpIds={selectedBumpIds}
+                      onSelectionChange={setSelectedBumpIds}
+                      disabled={enrolling}
+                    />
+                    {/* Show total if bumps are selected */}
+                    {selectedBumpIds.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                        <div className="flex items-center justify-between">
+                          <span className="font-albert text-[14px] text-text-secondary">
+                            Program
+                          </span>
+                          <span className="font-albert text-[14px] text-text-primary">
+                            {formatPrice(program.priceInCents)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="font-albert text-[14px] text-text-secondary">
+                            Add-ons ({selectedBumpIds.length})
+                          </span>
+                          <span className="font-albert text-[14px] text-text-primary">
+                            +{formatPrice(calculateBumpTotal(program.orderBumps.bumps, selectedBumpIds))}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
+                          <span className="font-albert text-[15px] font-semibold text-text-primary">
+                            Total
+                          </span>
+                          <span className="font-albert text-[18px] font-bold" style={{ color: accentLight }}>
+                            {formatPrice(program.priceInCents + calculateBumpTotal(program.orderBumps.bumps, selectedBumpIds))}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {/* Cannot Enroll Reason */}

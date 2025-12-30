@@ -3,11 +3,20 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getStreamServerClient, ensureSystemBotUser, SYSTEM_BOT_USER_ID } from '@/lib/stream-server';
 
+interface SquadNotificationResult {
+  squadId: string;
+  squadName: string;
+  sent: boolean;
+  alreadySent?: boolean;
+  noChannel?: boolean;
+  error?: string;
+}
+
 /**
  * POST /api/checkin/morning/squad-notification
  * 
- * Sends a notification to the user's squad chat when they complete
- * their morning check-in. Only sends once per day per user.
+ * Sends a notification to ALL of the user's squad chats when they complete
+ * their morning check-in. Sends once per day per squad per user.
  */
 export async function POST(_request: Request) {
   try {
@@ -19,61 +28,19 @@ export async function POST(_request: Request) {
 
     // Get today's date in YYYY-MM-DD format
     const today = new Date().toISOString().split('T')[0];
-    const notificationDocId = `${userId}_${today}`;
 
-    // Check if notification already sent today
-    const existingNotification = await adminDb
-      .collection('squadCheckinNotifications')
-      .doc(notificationDocId)
-      .get();
-
-    if (existingNotification.exists) {
-      // Already sent today - this is fine, just return success
-      return NextResponse.json({ 
-        success: true, 
-        alreadySent: true,
-        message: 'Notification already sent for today' 
-      });
-    }
-
-    // Get user's squad membership
+    // Get ALL of the user's squad memberships (no limit)
     const membershipSnapshot = await adminDb
       .collection('squadMembers')
       .where('userId', '==', userId)
-      .limit(1)
       .get();
 
     if (membershipSnapshot.empty) {
-      // User is not in a squad - this is fine, just return
+      // User is not in any squad - this is fine, just return
       return NextResponse.json({ 
         success: true, 
         noSquad: true,
-        message: 'User is not in a squad' 
-      });
-    }
-
-    const squadId = membershipSnapshot.docs[0].data().squadId;
-
-    // Get the squad document to check for chatChannelId
-    const squadDoc = await adminDb.collection('squads').doc(squadId).get();
-    
-    if (!squadDoc.exists) {
-      return NextResponse.json({ 
-        success: true, 
-        noSquad: true,
-        message: 'Squad not found' 
-      });
-    }
-
-    const squadData = squadDoc.data();
-    const chatChannelId = squadData?.chatChannelId;
-
-    if (!chatChannelId) {
-      // Squad has no chat channel - this is fine, just return
-      return NextResponse.json({ 
-        success: true, 
-        noChannel: true,
-        message: 'Squad has no chat channel' 
+        message: 'User is not in any squad' 
       });
     }
 
@@ -97,8 +64,7 @@ export async function POST(_request: Request) {
       }
     }
 
-    // Get today's focus tasks
-    // Use a simpler query and filter/sort in memory to avoid compound index requirement
+    // Get today's focus tasks (once, reuse for all squads)
     const tasksSnapshot = await adminDb
       .collection('tasks')
       .where('userId', '==', userId)
@@ -111,7 +77,7 @@ export async function POST(_request: Request) {
       .sort((a, b) => (a.order || 0) - (b.order || 0)) // Sort by order
       .slice(0, 3); // Limit to 3
 
-    // Build the message
+    // Build the message (same for all squads)
     let messageText = `${userName} just completed their morning check-in`;
     
     if (focusTasks.length > 0) {
@@ -123,39 +89,115 @@ export async function POST(_request: Request) {
       messageText += '.';
     }
 
-    // Ensure the system bot user exists
+    // Ensure the system bot user exists (once)
     const streamClient = await getStreamServerClient();
     await ensureSystemBotUser(streamClient);
 
-    // Get the channel and send the message
-    const channel = streamClient.channel('messaging', chatChannelId);
+    // Process each squad membership
+    const results: SquadNotificationResult[] = [];
     
-    // Use type assertion for custom message fields
-    await channel.sendMessage({
-      text: messageText.trim(),
-      user_id: SYSTEM_BOT_USER_ID,
-      // Custom fields for styling and identification
-      checkin_notification: true,
-      checkin_date: today,
-      checkin_user_id: userId,
-      checkin_user_name: userName,
-    } as Parameters<typeof channel.sendMessage>[0]);
+    for (const memberDoc of membershipSnapshot.docs) {
+      const squadId = memberDoc.data().squadId;
+      const notificationDocId = `${userId}_${squadId}_${today}`;
+      
+      try {
+        // Check if notification already sent to this squad today
+        const existingNotification = await adminDb
+          .collection('squadCheckinNotifications')
+          .doc(notificationDocId)
+          .get();
 
-    // Record that we've sent the notification for today
-    await adminDb.collection('squadCheckinNotifications').doc(notificationDocId).set({
-      userId,
-      date: today,
-      squadId,
-      chatChannelId,
-      userName,
-      taskCount: focusTasks.length,
-      createdAt: new Date().toISOString(),
-    });
+        // Get the squad document
+        const squadDoc = await adminDb.collection('squads').doc(squadId).get();
+        const squadName = squadDoc.exists ? squadDoc.data()?.name || 'Unknown Squad' : 'Unknown Squad';
+
+        if (existingNotification.exists) {
+          results.push({
+            squadId,
+            squadName,
+            sent: false,
+            alreadySent: true,
+          });
+          continue;
+        }
+
+        if (!squadDoc.exists) {
+          results.push({
+            squadId,
+            squadName,
+            sent: false,
+            error: 'Squad not found',
+          });
+          continue;
+        }
+
+        const chatChannelId = squadDoc.data()?.chatChannelId;
+
+        if (!chatChannelId) {
+          results.push({
+            squadId,
+            squadName,
+            sent: false,
+            noChannel: true,
+          });
+          continue;
+        }
+
+        // Get the channel and send the message
+        const channel = streamClient.channel('messaging', chatChannelId);
+        
+        await channel.sendMessage({
+          text: messageText.trim(),
+          user_id: SYSTEM_BOT_USER_ID,
+          checkin_notification: true,
+          checkin_date: today,
+          checkin_user_id: userId,
+          checkin_user_name: userName,
+        } as Parameters<typeof channel.sendMessage>[0]);
+
+        // Record that we've sent the notification to this squad for today
+        await adminDb.collection('squadCheckinNotifications').doc(notificationDocId).set({
+          userId,
+          date: today,
+          squadId,
+          chatChannelId,
+          userName,
+          taskCount: focusTasks.length,
+          createdAt: new Date().toISOString(),
+        });
+
+        results.push({
+          squadId,
+          squadName,
+          sent: true,
+        });
+
+        console.log(`[SQUAD_NOTIFICATION] Sent to squad ${squadName} (${squadId}) for user ${userId}`);
+
+      } catch (squadError) {
+        console.error(`[SQUAD_NOTIFICATION] Error sending to squad ${squadId}:`, squadError);
+        const squadDoc = await adminDb.collection('squads').doc(squadId).get();
+        results.push({
+          squadId,
+          squadName: squadDoc.exists ? squadDoc.data()?.name || 'Unknown Squad' : 'Unknown Squad',
+          sent: false,
+          error: squadError instanceof Error ? squadError.message : 'Unknown error',
+        });
+      }
+    }
+
+    const sentCount = results.filter(r => r.sent).length;
+    const alreadySentCount = results.filter(r => r.alreadySent).length;
+    const errorCount = results.filter(r => r.error || r.noChannel).length;
 
     return NextResponse.json({ 
-      success: true, 
-      sent: true,
-      message: 'Squad notification sent successfully' 
+      success: true,
+      message: `Notifications processed for ${results.length} squad(s): ${sentCount} sent, ${alreadySentCount} already sent, ${errorCount} skipped`,
+      squadCount: results.length,
+      sentCount,
+      alreadySentCount,
+      errorCount,
+      results,
     });
 
   } catch (error) {

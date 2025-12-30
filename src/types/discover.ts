@@ -1,5 +1,5 @@
 // Discover Types
-import type { UserTrack } from './index';
+import type { UserTrack, OrderBumpConfig } from './index';
 
 // =============================================================================
 // CONTENT PRICING & GATING
@@ -46,6 +46,9 @@ export type ContentPricingFields = {
   features?: ContentFeature[];     // Feature cards with icons
   testimonials?: ContentTestimonial[];
   faqs?: ContentFaq[];
+  
+  // Order bumps - additional products offered during checkout
+  orderBumps?: OrderBumpConfig;
 };
 
 // =============================================================================
@@ -102,6 +105,7 @@ export type DiscoverEvent = {
   features?: ContentFeature[];
   testimonials?: ContentTestimonial[];
   faqs?: ContentFaq[];
+  orderBumps?: OrderBumpConfig;
 };
 
 export type EventUpdate = {
@@ -156,6 +160,7 @@ export type DiscoverArticle = {
   features?: ContentFeature[];
   testimonials?: ContentTestimonial[];
   faqs?: ContentFaq[];
+  orderBumps?: OrderBumpConfig;
 };
 
 export type CourseLesson = {
@@ -209,6 +214,7 @@ export type DiscoverCourse = {
   features?: ContentFeature[];
   testimonials?: ContentTestimonial[];
   faqs?: ContentFaq[];
+  orderBumps?: OrderBumpConfig;
 };
 
 export type DiscoverCategory = {
@@ -328,6 +334,7 @@ export type DiscoverDownload = {
   features?: ContentFeature[];
   testimonials?: ContentTestimonial[];
   faqs?: ContentFaq[];
+  orderBumps?: OrderBumpConfig;
   
   // Coach/Author info for display
   coachName?: string;
@@ -356,6 +363,7 @@ export type DiscoverLink = {
   features?: ContentFeature[];
   testimonials?: ContentTestimonial[];
   faqs?: ContentFaq[];
+  orderBumps?: OrderBumpConfig;
   
   // Coach/Author info for display
   coachName?: string;

@@ -664,12 +664,23 @@ export default clerkMiddleware(async (auth, request) => {
   // DOMAIN-SPECIFIC ROUTING
   // ==========================================================================
   
-  // Marketing domain: Only allow public/marketing routes
-  // The main domain is reserved for marketing, users should go to tenant domains
+  // Marketing domain: Show marketplace as landing page
+  // The main domain is reserved for marketing, users should go to tenant domains for app
   if (isMarketingDomain(hostname)) {
-    // Allow marketing-related routes
+    // Redirect /marketplace to / (canonical URL - avoid duplicate content)
+    if (pathname === '/marketplace') {
+      return NextResponse.redirect(new URL('/', request.url), 301);
+    }
+    
+    // Rewrite / to /marketplace (show marketplace content at root URL)
+    if (pathname === '/') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/marketplace';
+      return NextResponse.rewrite(url);
+    }
+    
+    // Allow other marketing-related routes
     const isMarketingRoute = 
-      pathname === '/' || 
       pathname.startsWith('/join') ||    // New unified funnel system
       pathname.startsWith('/sign-in') ||
       pathname.startsWith('/sign-up') ||

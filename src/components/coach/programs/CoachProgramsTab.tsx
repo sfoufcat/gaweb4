@@ -186,6 +186,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     faqs: ProgramFAQ[];
     showEnrollmentCount: boolean;
     showCurriculum: boolean;
+    orderBumps?: import('@/types').OrderBumpConfig;
   }>({
     heroHeadline: '',
     heroSubheadline: '',
@@ -199,6 +200,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     faqs: [],
     showEnrollmentCount: false,
     showCurriculum: false,
+    orderBumps: undefined,
   });
   
   const [saving, setSaving] = useState(false);
@@ -312,6 +314,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           faqs: program.faqs || [],
           showEnrollmentCount: program.showEnrollmentCount || false,
           showCurriculum: program.showCurriculum || false,
+          // Order bumps
+          orderBumps: program.orderBumps,
         });
         setLandingPageSaved(true);
       }
@@ -943,6 +947,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           faqs: data.program.faqs || [],
           showEnrollmentCount: data.program.showEnrollmentCount || false,
           showCurriculum: data.program.showCurriculum || false,
+          // Order bumps - preserve existing config
+          orderBumps: data.program.orderBumps,
         });
         setLandingPageSaved(true);
       }
@@ -2092,6 +2098,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   setLandingPageFormData(data);
                   setLandingPageSaved(false);
                 }}
+                coachTier={currentTier}
+                currentProductId={selectedProgram?.id}
+                currentProductType="program"
               />
             )}
           </div>

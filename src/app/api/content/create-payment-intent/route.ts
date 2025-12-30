@@ -11,7 +11,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import Stripe from 'stripe';
-import type { OrgSettings, ContentPurchaseType } from '@/types';
+import type { OrgSettings, ContentPurchaseType, OrderBumpProductType, OrderBumpContentType } from '@/types';
+
+/** Order bump selection from client */
+interface OrderBumpSelection {
+  productType: OrderBumpProductType;
+  productId: string;
+  contentType?: OrderBumpContentType;
+  discountPercent?: number;
+}
 
 // Lazy initialization of Stripe
 let _stripe: Stripe | null = null;
@@ -73,6 +81,72 @@ async function getContentData(
 }
 
 /**
+ * Fetch order bump product details for validation and pricing
+ */
+async function fetchOrderBumpProduct(
+  bump: OrderBumpSelection,
+  organizationId: string
+): Promise<{ name: string; priceInCents: number; imageUrl?: string } | null> {
+  try {
+    let collection: string;
+    
+    if (bump.productType === 'program') {
+      collection = 'programs';
+    } else if (bump.productType === 'squad') {
+      collection = 'squads';
+    } else if (bump.productType === 'content') {
+      switch (bump.contentType) {
+        case 'article':
+          collection = 'discover_articles';
+          break;
+        case 'course':
+          collection = 'discover_courses';
+          break;
+        case 'event':
+          collection = 'discover_events';
+          break;
+        case 'download':
+          collection = 'discover_downloads';
+          break;
+        case 'link':
+          collection = 'discover_links';
+          break;
+        default:
+          console.warn(`[CONTENT_PAYMENT_INTENT] Unknown content type for order bump: ${bump.contentType}`);
+          return null;
+      }
+    } else {
+      console.warn(`[CONTENT_PAYMENT_INTENT] Unknown product type for order bump: ${bump.productType}`);
+      return null;
+    }
+
+    const doc = await adminDb.collection(collection).doc(bump.productId).get();
+    if (!doc.exists) {
+      console.warn(`[CONTENT_PAYMENT_INTENT] Order bump product not found: ${collection}/${bump.productId}`);
+      return null;
+    }
+
+    const data = doc.data();
+    if (!data) return null;
+
+    // Verify organization match
+    if (data.organizationId !== organizationId) {
+      console.warn(`[CONTENT_PAYMENT_INTENT] Order bump product org mismatch: ${data.organizationId} !== ${organizationId}`);
+      return null;
+    }
+
+    return {
+      name: data.name || data.title || 'Add-on',
+      priceInCents: data.priceInCents || 0,
+      imageUrl: data.coverImageUrl || data.thumbnailUrl || data.avatarUrl,
+    };
+  } catch (error) {
+    console.error(`[CONTENT_PAYMENT_INTENT] Error fetching order bump product:`, error);
+    return null;
+  }
+}
+
+/**
  * Check if user has already purchased this content
  */
 async function hasExistingPurchase(
@@ -97,6 +171,8 @@ async function hasExistingPurchase(
  * Body:
  * - contentType: 'event' | 'article' | 'course' | 'download' | 'link'
  * - contentId: string
+ * - orderBumps?: Array of order bump selections
+ * - checkOnly?: boolean - If true, only return org info without creating intent
  */
 export async function POST(request: NextRequest) {
   try {
@@ -107,9 +183,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { contentType, contentId } = body as {
+    const { contentType, contentId, orderBumps, checkOnly } = body as {
       contentType: ContentPurchaseType;
       contentId: string;
+      orderBumps?: OrderBumpSelection[];
+      checkOnly?: boolean;
     };
 
     // Validate input
@@ -160,6 +238,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // If checkOnly, just return org info
+    if (checkOnly) {
+      return NextResponse.json({ organizationId: content.organizationId });
+    }
+
     // Get organization settings for Stripe Connect
     const orgSettingsDoc = await adminDb
       .collection('org_settings')
@@ -199,9 +282,48 @@ export async function POST(request: NextRequest) {
     const clerkUser = await clerk.users.getUser(userId);
     const email = clerkUser.emailAddresses[0]?.emailAddress;
 
-    // Calculate platform fee
+    // Process order bumps if provided
+    let orderBumpTotalCents = 0;
+    const validatedOrderBumps: Array<{
+      productType: string;
+      productId: string;
+      contentType?: string;
+      name: string;
+      priceInCents: number;
+      discountPercent?: number;
+      finalPriceCents: number;
+    }> = [];
+
+    if (orderBumps && orderBumps.length > 0) {
+      for (const bump of orderBumps) {
+        const bumpProduct = await fetchOrderBumpProduct(bump, content.organizationId);
+        if (bumpProduct) {
+          const finalPrice = bump.discountPercent 
+            ? Math.round(bumpProduct.priceInCents * (1 - bump.discountPercent / 100))
+            : bumpProduct.priceInCents;
+          
+          orderBumpTotalCents += finalPrice;
+          validatedOrderBumps.push({
+            productType: bump.productType,
+            productId: bump.productId,
+            contentType: bump.contentType,
+            name: bumpProduct.name,
+            priceInCents: bumpProduct.priceInCents,
+            discountPercent: bump.discountPercent,
+            finalPriceCents: finalPrice,
+          });
+        }
+      }
+      
+      console.log(`[CONTENT_PAYMENT_INTENT] Order bumps: ${validatedOrderBumps.length} items, total: $${(orderBumpTotalCents / 100).toFixed(2)}`);
+    }
+
+    // Calculate total amount including order bumps
+    const totalAmount = content.priceInCents + orderBumpTotalCents;
+
+    // Calculate platform fee on total
     const platformFeePercent = orgSettings?.platformFeePercent ?? 1;
-    const applicationFeeAmount = Math.round(content.priceInCents * (platformFeePercent / 100));
+    const applicationFeeAmount = Math.round(totalAmount * (platformFeePercent / 100));
 
     // Get or create Stripe customer on the Connected account
     let customerId: string | undefined;
@@ -244,16 +366,21 @@ export async function POST(request: NextRequest) {
       userId,
       organizationId: content.organizationId,
       type: 'content_purchase',
+      // Include order bumps in metadata
+      orderBumps: validatedOrderBumps.length > 0 ? JSON.stringify(validatedOrderBumps) : '',
     };
 
     // Build description
-    const description = `${content.title} - ${contentType.charAt(0).toUpperCase() + contentType.slice(1)} purchase`;
+    const bumpSuffix = validatedOrderBumps.length > 0 
+      ? ` + ${validatedOrderBumps.length} add-on${validatedOrderBumps.length > 1 ? 's' : ''}`
+      : '';
+    const description = `${content.title} - ${contentType.charAt(0).toUpperCase() + contentType.slice(1)} purchase${bumpSuffix}`;
 
     // Create payment intent on the Connected account with application fee
     // Using setup_future_usage: 'off_session' to save the payment method for future use
     const paymentIntent = await stripe.paymentIntents.create(
       {
-        amount: content.priceInCents,
+        amount: totalAmount, // Include order bumps in total
         currency: (content.currency || 'usd').toLowerCase(),
         customer: customerId,
         description,
@@ -268,7 +395,7 @@ export async function POST(request: NextRequest) {
     );
 
     console.log(
-      `[CONTENT_PAYMENT_INTENT] Created payment intent ${paymentIntent.id} for ${contentType}/${contentId} user ${userId}`
+      `[CONTENT_PAYMENT_INTENT] Created payment intent ${paymentIntent.id} for ${contentType}/${contentId} user ${userId}, total: $${(totalAmount / 100).toFixed(2)} (content: $${(content.priceInCents / 100).toFixed(2)}, bumps: $${(orderBumpTotalCents / 100).toFixed(2)})`
     );
 
     return NextResponse.json({
@@ -276,6 +403,8 @@ export async function POST(request: NextRequest) {
       paymentIntentId: paymentIntent.id,
       connectedAccountId: stripeConnectAccountId,
       priceInCents: content.priceInCents,
+      totalAmount,
+      orderBumpTotalCents,
       currency: content.currency || 'usd',
     });
   } catch (error) {

@@ -21,6 +21,7 @@ export type PermissionKey =
   | 'max_programs'
   | 'max_squads'
   | 'max_funnels_per_target'
+  | 'max_order_bumps'
   // Platform features (boolean)
   | 'custom_domain'
   | 'email_whitelabel'
@@ -31,6 +32,8 @@ export type PermissionKey =
   | 'funnel_step_plan_reveal'
   | 'funnel_step_transformation'
   | 'funnel_custom_branding'
+  // AI features (boolean)
+  | 'ai_landing_page_generation'
   // Future features (boolean)
   | 'analytics_advanced'
   | 'ab_testing'
@@ -90,6 +93,7 @@ export const TIER_PERMISSIONS: Record<CoachTier, Record<PermissionKey, Permissio
     max_programs: 2,
     max_squads: 3,
     max_funnels_per_target: 1,
+    max_order_bumps: 1, // Starter gets 1 order bump per product
     // Platform features
     custom_domain: false,
     email_whitelabel: false,
@@ -100,6 +104,8 @@ export const TIER_PERMISSIONS: Record<CoachTier, Record<PermissionKey, Permissio
     funnel_step_plan_reveal: false,
     funnel_step_transformation: false,
     funnel_custom_branding: true, // Starter CAN customize funnel branding
+    // AI features
+    ai_landing_page_generation: false, // Pro/Scale only
     // Future features
     analytics_advanced: false,
     ab_testing: false,
@@ -111,6 +117,7 @@ export const TIER_PERMISSIONS: Record<CoachTier, Record<PermissionKey, Permissio
     max_programs: 10,
     max_squads: 25,
     max_funnels_per_target: 5,
+    max_order_bumps: 2, // Pro gets 2 order bumps per product
     // Platform features
     custom_domain: true,
     email_whitelabel: true,
@@ -121,6 +128,8 @@ export const TIER_PERMISSIONS: Record<CoachTier, Record<PermissionKey, Permissio
     funnel_step_plan_reveal: true,
     funnel_step_transformation: true,
     funnel_custom_branding: true,
+    // AI features
+    ai_landing_page_generation: true,
     // Future features
     analytics_advanced: false,
     ab_testing: false,
@@ -132,6 +141,7 @@ export const TIER_PERMISSIONS: Record<CoachTier, Record<PermissionKey, Permissio
     max_programs: 50,
     max_squads: 100,
     max_funnels_per_target: -1, // Unlimited
+    max_order_bumps: 2, // Scale gets 2 order bumps per product (same as Pro)
     // Platform features
     custom_domain: true,
     email_whitelabel: true,
@@ -142,6 +152,8 @@ export const TIER_PERMISSIONS: Record<CoachTier, Record<PermissionKey, Permissio
     funnel_step_plan_reveal: true,
     funnel_step_transformation: true,
     funnel_custom_branding: true,
+    // AI features
+    ai_landing_page_generation: true,
     // Future features
     analytics_advanced: true,
     ab_testing: true,
@@ -332,6 +344,7 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   max_programs: 'Programs',
   max_squads: 'Squads',
   max_funnels_per_target: 'Funnels per Program/Squad',
+  max_order_bumps: 'Order Bumps per Product',
   custom_domain: 'Custom Domain',
   email_whitelabel: 'Email Whitelabeling',
   stripe_connect: 'Stripe Connect',
@@ -340,6 +353,7 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   funnel_step_plan_reveal: 'Plan Reveal Step',
   funnel_step_transformation: 'Transformation Step',
   funnel_custom_branding: 'Custom Funnel Branding',
+  ai_landing_page_generation: 'AI Landing Page Generation',
   analytics_advanced: 'Advanced Analytics',
   ab_testing: 'A/B Testing',
   api_access: 'API Access',

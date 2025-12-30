@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
-import { Search, Sparkles, ArrowRight, Users, Zap, Target } from 'lucide-react';
+import { Search, Sparkles, ArrowRight, Users, Zap, Target, Compass, UserPlus, Rocket, ChevronDown, Heart } from 'lucide-react';
 import type { MarketplaceListing, MarketplaceCategory } from '@/types';
 import { MARKETPLACE_CATEGORIES } from '@/types';
 import { CreateProgramModal } from '@/components/marketplace/CreateProgramModal';
@@ -30,6 +30,14 @@ export default function MarketplacePage() {
   // Check if user is a coach with incomplete onboarding
   const [showOnboardingOverlay, setShowOnboardingOverlay] = useState(false);
   const [onboardingState, setOnboardingState] = useState<'needs_profile' | 'needs_plan' | null>(null);
+  
+  // Pagination - show 9 items (3 rows) initially
+  const ITEMS_PER_PAGE = 9;
+  const [showAllListings, setShowAllListings] = useState(false);
+  
+  // Timeline animation ref
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const [timelineProgress, setTimelineProgress] = useState(0);
   
   // Fetch listings
   const fetchListings = useCallback(async () => {
@@ -91,6 +99,57 @@ export default function MarketplacePage() {
       listing.coachName?.toLowerCase().includes(query)
     );
   }, [listings, searchQuery]);
+
+  // Paginated listings - show only first 9 unless "show all" is clicked
+  const displayedListings = useMemo(() => {
+    if (showAllListings) return filteredListings;
+    return filteredListings.slice(0, ITEMS_PER_PAGE);
+  }, [filteredListings, showAllListings, ITEMS_PER_PAGE]);
+
+  const hasMoreListings = filteredListings.length > ITEMS_PER_PAGE;
+
+  // Timeline scroll animation
+  useEffect(() => {
+    const timeline = timelineRef.current;
+    if (!timeline) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            // Calculate progress based on how much of the element is visible
+            const rect = entry.boundingClientRect;
+            const windowHeight = window.innerHeight;
+            const elementTop = rect.top;
+            const elementHeight = rect.height;
+            
+            // Progress from 0 to 1 as element scrolls through viewport
+            const progress = Math.min(1, Math.max(0, (windowHeight - elementTop) / (windowHeight + elementHeight)));
+            setTimelineProgress(progress);
+          }
+        });
+      },
+      { threshold: Array.from({ length: 20 }, (_, i) => i / 20) }
+    );
+
+    observer.observe(timeline);
+    
+    // Also update on scroll for smoother animation
+    const handleScroll = () => {
+      if (!timeline) return;
+      const rect = timeline.getBoundingClientRect();
+      const windowHeight = window.innerHeight;
+      const progress = Math.min(1, Math.max(0, (windowHeight - rect.top) / (windowHeight + rect.height)));
+      setTimelineProgress(progress);
+    };
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   // Handle "Create your own" click
   const handleCreateClick = () => {
@@ -273,12 +332,223 @@ export default function MarketplacePage() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredListings.map((listing) => (
-                <ListingCard key={listing.id} listing={listing} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {displayedListings.map((listing) => (
+                  <ListingCard key={listing.id} listing={listing} />
+                ))}
+              </div>
+              
+              {/* Show more button */}
+              {hasMoreListings && !showAllListings && (
+                <div className="text-center mt-10">
+                  <button
+                    onClick={() => setShowAllListings(true)}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl font-albert text-[15px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors group"
+                  >
+                    View all {filteredListings.length} programs
+                    <ChevronDown className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
+                  </button>
+                </div>
+              )}
+            </>
           )}
+        </div>
+      </section>
+
+      {/* How to Get Started - Vertical Timeline */}
+      <section className="py-20 sm:py-28 relative overflow-hidden">
+        {/* Subtle background gradient */}
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute top-1/2 left-1/4 w-[500px] h-[500px] bg-brand-accent/5 rounded-full blur-3xl -translate-y-1/2" />
+          <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-[#e8b923]/5 rounded-full blur-3xl" />
+        </div>
+        
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Section header */}
+          <div className="text-center mb-16">
+            <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
+              How to get started
+            </h2>
+            <p className="font-sans text-[17px] text-[#5f5a55] dark:text-[#b2b6c2] max-w-xl mx-auto">
+              Three simple steps to begin your transformation journey
+            </p>
+          </div>
+          
+          {/* Vertical Timeline */}
+          <div ref={timelineRef} className="relative max-w-2xl mx-auto">
+            {/* Animated vertical line */}
+            <div className="absolute left-[27px] sm:left-[35px] top-0 bottom-0 w-[2px] bg-[#e1ddd8] dark:bg-[#262b35]">
+              <div 
+                className="absolute top-0 left-0 w-full bg-gradient-to-b from-brand-accent via-[#e8b923] to-emerald-500 transition-all duration-300 ease-out"
+                style={{ height: `${timelineProgress * 100}%` }}
+              />
+            </div>
+            
+            {/* Step 1 */}
+            <div 
+              className="relative flex gap-6 sm:gap-8 pb-12 sm:pb-16"
+              style={{ 
+                opacity: timelineProgress > 0.1 ? 1 : 0.3,
+                transform: `translateY(${timelineProgress > 0.1 ? 0 : 20}px)`,
+                transition: 'opacity 0.5s ease-out, transform 0.5s ease-out'
+              }}
+            >
+              {/* Number circle */}
+              <div className="relative z-10 flex-shrink-0">
+                <div className={`w-14 h-14 sm:w-[72px] sm:h-[72px] rounded-2xl flex items-center justify-center shadow-lg transition-all duration-500 ${
+                  timelineProgress > 0.1 
+                    ? 'bg-gradient-to-br from-brand-accent to-[#8c6245] shadow-brand-accent/25' 
+                    : 'bg-[#f3f1ef] dark:bg-[#1e222a]'
+                }`}>
+                  <span className={`font-albert text-[24px] sm:text-[28px] font-bold transition-colors duration-500 ${
+                    timelineProgress > 0.1 ? 'text-white' : 'text-[#a7a39e] dark:text-[#7d8190]'
+                  }`}>1</span>
+                </div>
+              </div>
+              
+              {/* Content */}
+              <div className="pt-2 sm:pt-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <Compass className="w-5 h-5 text-brand-accent" />
+                  <h3 className="font-albert text-[22px] sm:text-[26px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    Discover
+                  </h3>
+                </div>
+                <p className="font-sans text-[15px] sm:text-[16px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed max-w-md">
+                  Browse our curated collection of programs and find the perfect coach or community that resonates with your goals.
+                </p>
+              </div>
+            </div>
+            
+            {/* Step 2 */}
+            <div 
+              className="relative flex gap-6 sm:gap-8 pb-12 sm:pb-16"
+              style={{ 
+                opacity: timelineProgress > 0.4 ? 1 : 0.3,
+                transform: `translateY(${timelineProgress > 0.4 ? 0 : 20}px)`,
+                transition: 'opacity 0.5s ease-out 0.1s, transform 0.5s ease-out 0.1s'
+              }}
+            >
+              {/* Number circle */}
+              <div className="relative z-10 flex-shrink-0">
+                <div className={`w-14 h-14 sm:w-[72px] sm:h-[72px] rounded-2xl flex items-center justify-center shadow-lg transition-all duration-500 ${
+                  timelineProgress > 0.4 
+                    ? 'bg-gradient-to-br from-[#e8b923] to-[#c09819] shadow-[#e8b923]/25' 
+                    : 'bg-[#f3f1ef] dark:bg-[#1e222a]'
+                }`}>
+                  <span className={`font-albert text-[24px] sm:text-[28px] font-bold transition-colors duration-500 ${
+                    timelineProgress > 0.4 ? 'text-[#2c2520]' : 'text-[#a7a39e] dark:text-[#7d8190]'
+                  }`}>2</span>
+                </div>
+              </div>
+              
+              {/* Content */}
+              <div className="pt-2 sm:pt-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <UserPlus className="w-5 h-5 text-[#e8b923]" />
+                  <h3 className="font-albert text-[22px] sm:text-[26px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    Join
+                  </h3>
+                </div>
+                <p className="font-sans text-[15px] sm:text-[16px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed max-w-md">
+                  Sign up and connect with your coach or community. Get access to exclusive content, accountability tools, and support.
+                </p>
+              </div>
+            </div>
+            
+            {/* Step 3 */}
+            <div 
+              className="relative flex gap-6 sm:gap-8"
+              style={{ 
+                opacity: timelineProgress > 0.7 ? 1 : 0.3,
+                transform: `translateY(${timelineProgress > 0.7 ? 0 : 20}px)`,
+                transition: 'opacity 0.5s ease-out 0.2s, transform 0.5s ease-out 0.2s'
+              }}
+            >
+              {/* Number circle */}
+              <div className="relative z-10 flex-shrink-0">
+                <div className={`w-14 h-14 sm:w-[72px] sm:h-[72px] rounded-2xl flex items-center justify-center shadow-lg transition-all duration-500 ${
+                  timelineProgress > 0.7 
+                    ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-emerald-500/25' 
+                    : 'bg-[#f3f1ef] dark:bg-[#1e222a]'
+                }`}>
+                  <span className={`font-albert text-[24px] sm:text-[28px] font-bold transition-colors duration-500 ${
+                    timelineProgress > 0.7 ? 'text-white' : 'text-[#a7a39e] dark:text-[#7d8190]'
+                  }`}>3</span>
+                </div>
+              </div>
+              
+              {/* Content */}
+              <div className="pt-2 sm:pt-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <Rocket className="w-5 h-5 text-emerald-500" />
+                  <h3 className="font-albert text-[22px] sm:text-[26px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    Transform
+                  </h3>
+                </div>
+                <p className="font-sans text-[15px] sm:text-[16px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed max-w-md">
+                  Start your journey, track your progress, and watch yourself grow. Celebrate wins with your squad and stay accountable.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Transform Lives CTA Section */}
+      <section className="py-20 sm:py-28 bg-gradient-to-br from-[#1a1a1a] via-[#2c2520] to-[#1a1a1a] dark:from-[#0f1218] dark:via-[#171b22] dark:to-[#0f1218] relative overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#e8b923]/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-1/4 w-72 h-72 bg-brand-accent/10 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 right-1/4 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl" />
+        </div>
+        
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
+          {/* Icon */}
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#e8b923] to-[#d4a61d] shadow-lg shadow-[#e8b923]/30 mb-8">
+            <Heart className="w-8 h-8 text-[#2c2520]" />
+          </div>
+          
+          {/* Headline */}
+          <h2 className="font-albert text-[36px] sm:text-[48px] lg:text-[56px] font-bold text-white tracking-[-2px] leading-[1.1] mb-6">
+            Ready to start<br />
+            <span className="bg-gradient-to-r from-[#e8b923] via-[#f0c940] to-[#e8b923] bg-clip-text text-transparent">
+              transforming lives?
+            </span>
+          </h2>
+          
+          {/* Subtext */}
+          <p className="font-sans text-[17px] sm:text-[19px] text-[#a7a39e] dark:text-[#b2b6c2] max-w-xl mx-auto mb-10">
+            Whether you&apos;re looking to grow or help others grow, this is where meaningful change begins.
+          </p>
+          
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            {/* Primary CTA */}
+            <Link
+              href={user ? '/' : '/sign-in'}
+              className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#f0c940] hover:to-[#e8b923] text-[#2c2520] rounded-2xl font-albert text-[17px] font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-[#e8b923]/30"
+            >
+              {user ? 'Go to dashboard' : 'Start your journey'}
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+            
+            {/* Secondary CTA */}
+            <button
+              onClick={handleCreateClick}
+              className="inline-flex items-center gap-2 px-8 py-4 bg-white/10 hover:bg-white/15 backdrop-blur-sm border border-white/20 text-white rounded-2xl font-albert text-[17px] font-medium transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Sparkles className="w-5 h-5" />
+              Create your own program
+            </button>
+          </div>
+          
+          {/* Trust indicator */}
+          <p className="font-sans text-[13px] text-[#7d8190] mt-8">
+            Join coaches and communities helping thousands transform their lives
+          </p>
         </div>
       </section>
 

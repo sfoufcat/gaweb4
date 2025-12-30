@@ -46,6 +46,8 @@ import {
   CircleCheck,
 } from 'lucide-react';
 import type { PurchasableContentType } from '@/types/discover';
+import type { OrderBumpConfig, OrderBump } from '@/types';
+import { OrderBumpList, calculateBumpTotal } from '@/components/checkout';
 
 // Saved payment method type
 interface SavedPaymentMethod {
@@ -72,6 +74,7 @@ interface ContentPurchaseSheetProps {
     coachImageUrl?: string;
     keyOutcomes?: string[];
     organizationId?: string; // For fetching saved cards
+    orderBumps?: OrderBumpConfig; // Order bump configuration
   };
   onPurchaseComplete?: () => void;
 }
@@ -518,15 +521,24 @@ function PreviewContent({
   isPurchasing,
   isSignedIn,
   hasSavedCards,
+  selectedBumpIds,
+  onBumpSelectionChange,
 }: {
   content: ContentPurchaseSheetProps['content'];
   onPurchase: () => void;
   isPurchasing: boolean;
   isSignedIn: boolean;
   hasSavedCards?: boolean;
+  selectedBumpIds: string[];
+  onBumpSelectionChange: (ids: string[]) => void;
 }) {
   const { colors } = useBrandingValues();
   const ContentIcon = getContentTypeIcon(content.type);
+  
+  // Calculate total with bumps
+  const bumps = content.orderBumps?.enabled ? content.orderBumps.bumps : [];
+  const bumpTotal = calculateBumpTotal(bumps, selectedBumpIds);
+  const totalPrice = content.priceInCents + bumpTotal;
   
   return (
     <div className="flex flex-col">
@@ -609,26 +621,58 @@ function PreviewContent({
             </ul>
           </div>
         )}
+
+        {/* Order Bumps */}
+        {bumps.length > 0 && (
+          <div className="mt-5">
+            <OrderBumpList
+              bumps={bumps}
+              selectedBumpIds={selectedBumpIds}
+              onSelectionChange={onBumpSelectionChange}
+              disabled={isPurchasing}
+            />
+          </div>
+        )}
       </div>
       
       {/* Price & CTA */}
       <div className="border-t border-[#e8e4df] dark:border-[#262b35] bg-[#faf9f7] dark:bg-[#11141b] px-5 sm:px-6 py-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-bold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px]">
-              {formatPrice(content.priceInCents, content.currency)}
-            </span>
-            {content.priceInCents > 0 && (
-              <span className="text-sm text-text-muted dark:text-[#7d8190]">
-                one-time
+        {/* Show itemized pricing if bumps are selected */}
+        {selectedBumpIds.length > 0 ? (
+          <div className="mb-4 space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-text-secondary dark:text-[#b2b6c2]">{content.type.charAt(0).toUpperCase() + content.type.slice(1)}</span>
+              <span className="text-text-primary dark:text-[#f5f5f8]">{formatPrice(content.priceInCents, content.currency)}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-text-secondary dark:text-[#b2b6c2]">Add-ons ({selectedBumpIds.length})</span>
+              <span className="text-text-primary dark:text-[#f5f5f8]">+{formatPrice(bumpTotal, content.currency)}</span>
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-[#e1ddd8] dark:border-[#262b35]">
+              <span className="font-medium text-text-primary dark:text-[#f5f5f8]">Total</span>
+              <span className="text-xl font-bold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px]" style={{ color: colors.accentLight }}>
+                {formatPrice(totalPrice, content.currency)}
               </span>
-            )}
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 text-text-muted dark:text-[#7d8190]">
-            <Shield className="w-4 h-4" />
-            <span className="text-xs font-medium">Secure checkout</span>
+        ) : (
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-bold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px]">
+                {formatPrice(content.priceInCents, content.currency)}
+              </span>
+              {content.priceInCents > 0 && (
+                <span className="text-sm text-text-muted dark:text-[#7d8190]">
+                  one-time
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 text-text-muted dark:text-[#7d8190]">
+              <Shield className="w-4 h-4" />
+              <span className="text-xs font-medium">Secure checkout</span>
+            </div>
           </div>
-        </div>
+        )}
         
         <Button
           onClick={onPurchase}
@@ -645,15 +689,15 @@ function PreviewContent({
             </>
           ) : !isSignedIn ? (
             'Sign in to purchase'
-          ) : content.priceInCents === 0 ? (
+          ) : totalPrice === 0 ? (
             'Get for free'
           ) : hasSavedCards ? (
             <>
               <CreditCard className="w-4 h-4 mr-2" />
-              Pay {formatPrice(content.priceInCents, content.currency)}
+              Pay {formatPrice(totalPrice, content.currency)}
             </>
           ) : (
-            `Purchase for ${formatPrice(content.priceInCents, content.currency)}`
+            `Purchase for ${formatPrice(totalPrice, content.currency)}`
           )}
         </Button>
       </div>
@@ -741,6 +785,8 @@ function SheetContent({
   onPurchaseComplete,
   onOpenChange,
   organizationId,
+  selectedBumpIds,
+  setSelectedBumpIds,
 }: {
   content: ContentPurchaseSheetProps['content'];
   step: PurchaseStep;
@@ -754,6 +800,8 @@ function SheetContent({
   onPurchaseComplete?: () => void;
   onOpenChange: (open: boolean) => void;
   organizationId: string | null;
+  selectedBumpIds: string[];
+  setSelectedBumpIds: (ids: string[]) => void;
 }) {
   const router = useRouter();
   const { isSignedIn } = useAuth();
@@ -927,6 +975,8 @@ function SheetContent({
               isPurchasing={isPurchasing}
               isSignedIn={!!isSignedIn}
               hasSavedCards={savedMethods.length > 0}
+              selectedBumpIds={selectedBumpIds}
+              onBumpSelectionChange={setSelectedBumpIds}
             />
           </motion.div>
         )}
@@ -1101,6 +1151,7 @@ export function ContentPurchaseSheet({
   const [savedMethods, setSavedMethods] = useState<SavedPaymentMethod[]>([]);
   const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(content.organizationId || null);
+  const [selectedBumpIds, setSelectedBumpIds] = useState<string[]>([]);
   
   // Detect desktop vs mobile to render only one component
   const isDesktop = useMediaQuery('(min-width: 1024px)');
@@ -1169,6 +1220,7 @@ export function ContentPurchaseSheet({
         setStripePromise(null);
         setError(null);
         setSelectedMethodId(null);
+        setSelectedBumpIds([]);
         // Don't reset savedMethods and organizationId - they can be reused
       }, 300);
       return () => clearTimeout(timer);
@@ -1231,6 +1283,8 @@ export function ContentPurchaseSheet({
       onPurchaseComplete={onPurchaseComplete}
       onOpenChange={onOpenChange}
       organizationId={organizationId}
+      selectedBumpIds={selectedBumpIds}
+      setSelectedBumpIds={setSelectedBumpIds}
     />
   );
 

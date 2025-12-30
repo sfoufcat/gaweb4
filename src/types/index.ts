@@ -756,6 +756,9 @@ export interface Program {
   // Referral program settings
   referralConfig?: ReferralConfig;
   
+  // Order bumps - additional products offered during checkout
+  orderBumps?: OrderBumpConfig;
+  
   // Metadata
   createdAt: string;
   updatedAt: string;
@@ -910,6 +913,44 @@ export interface CohortWithSquads extends ProgramCohort {
     memberCount: number;
     capacity: number;
   }>;
+}
+
+// ============================================================================
+// ORDER BUMPS - Pre-purchase add-ons for landing pages
+// ============================================================================
+
+/** Product type for order bumps */
+export type OrderBumpProductType = 'program' | 'squad' | 'content';
+
+/** Content subtype for order bump content products */
+export type OrderBumpContentType = 'event' | 'article' | 'course' | 'download' | 'link';
+
+/**
+ * Order Bump - A product offered as an add-on during checkout
+ */
+export interface OrderBump {
+  id: string;
+  productType: OrderBumpProductType;
+  productId: string;
+  contentType?: OrderBumpContentType; // Required when productType = 'content'
+  // Cached display data (denormalized for performance)
+  productName: string;
+  productImageUrl?: string;
+  priceInCents: number;
+  currency: string;
+  // Optional override copy
+  headline?: string;        // e.g., "Add this to your order"
+  description?: string;     // Short value proposition
+  discountPercent?: number; // Optional discount (e.g., 20 = 20% off)
+}
+
+/**
+ * Order Bump Configuration for a product
+ * Stored on Program, Squad, and Content documents
+ */
+export interface OrderBumpConfig {
+  enabled: boolean;
+  bumps: OrderBump[];  // Max based on tier: Starter=1, Pro+=2
 }
 
 // ============================================================================
@@ -1072,6 +1113,9 @@ export interface Squad {
   faqs?: SquadFaq[]; // Frequently asked questions
   showMemberCount?: boolean; // Whether to show member count on landing page
   landingPageCoverImageUrl?: string; // Hero cover image for landing page
+  
+  // Order bumps - additional products offered during checkout
+  orderBumps?: OrderBumpConfig;
 }
 
 // Landing page sub-types for Squad
