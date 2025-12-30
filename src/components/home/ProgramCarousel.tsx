@@ -3,8 +3,10 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Users, User, ChevronRight, BookOpen } from 'lucide-react';
+import { Users, User, ChevronRight } from 'lucide-react';
 import type { ProgramEnrollmentWithDetails } from '@/hooks/useDashboard';
+import { useBrandingValues } from '@/contexts/BrandingContext';
+import { MenuIcon } from '@/lib/menu-icons';
 
 interface ProgramCarouselProps {
   enrollments: ProgramEnrollmentWithDetails[];
@@ -16,6 +18,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [canScroll, setCanScroll] = useState(false);
+  const { menuIcons } = useBrandingValues();
   
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
@@ -193,7 +196,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
             <div className="bg-brand-accent-subtle border border-dashed border-brand-accent/30 rounded-[20px] h-full min-h-[200px] flex items-center justify-center hover:border-brand-accent/60 transition-all group">
               <div className="text-center p-4">
                 <div className="w-12 h-12 mx-auto rounded-full bg-brand-accent/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <BookOpen className="w-6 h-6 text-brand-accent" />
+                  <MenuIcon iconKey={menuIcons.program} className="w-6 h-6 text-brand-accent" />
                 </div>
                 <p className="font-albert font-semibold text-[14px] text-brand-accent">
                   Discover more
