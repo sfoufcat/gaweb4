@@ -109,6 +109,13 @@ async function fetchSquadData(
     return { squad: null, members: [], stats: null };
   }
   
+  // Case 3: Squad has no org but user is in tenant mode - filter out
+  // All squads should belong to an organization in multi-tenant mode
+  if (userOrgId && !squadOrgId) {
+    console.log(`[SQUAD_ME] Filtering out squad ${squadId} (no org) - user is in tenant mode (${userOrgId})`);
+    return { squad: null, members: [], stats: null };
+  }
+  
   const coachId = squadData?.coachId || null;
 
   // Only fetch stats if requested (for instant load, skip this)

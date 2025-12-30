@@ -2267,6 +2267,11 @@ export interface OrgEmailSettings {
  * This is keyed by Clerk Organization ID to support future multi-tenant
  * subdomain/custom domain scenarios where each coach has their own instance.
  */
+/**
+ * Logo source type - tracks whether logo is generated or custom
+ */
+export type LogoSource = 'generated' | 'custom';
+
 export interface OrgBranding {
   id: string;                    // Same as organizationId
   organizationId: string;        // Clerk Organization ID
@@ -2274,6 +2279,7 @@ export interface OrgBranding {
   logoUrlDark: string | null;    // Custom square logo URL for dark mode (null = use logoUrl)
   horizontalLogoUrl: string | null; // Custom horizontal/wide logo URL (replaces square logo + title if set)
   horizontalLogoUrlDark: string | null; // Custom horizontal logo URL for dark mode (null = use horizontalLogoUrl)
+  logoSource?: LogoSource;       // 'generated' = auto-created from initials, 'custom' = coach-uploaded
   appTitle: string;              // App title shown in sidebar (default: "Growth Addicts")
   colors: OrgBrandingColors;
   menuTitles?: OrgMenuTitles;    // Customizable menu titles (optional, uses defaults if not set)

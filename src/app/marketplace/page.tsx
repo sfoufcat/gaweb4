@@ -71,6 +71,17 @@ export default function MarketplacePage() {
     fetchListings();
   }, [fetchListings]);
 
+  // Force fullscreen layout mode - this page should never show sidebar
+  // This handles the case where / is rewritten to /marketplace on marketing domain
+  useEffect(() => {
+    document.body.setAttribute('data-layout', 'fullscreen');
+    
+    // Cleanup: restore default on unmount (let LayoutModeSync handle next page)
+    return () => {
+      // Don't restore - let the next page's LayoutModeSync set the correct value
+    };
+  }, []);
+
   // Check coach onboarding state when user is loaded
   useEffect(() => {
     if (!isLoaded || !user) return;

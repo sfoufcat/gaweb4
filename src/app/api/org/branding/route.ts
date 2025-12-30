@@ -4,7 +4,8 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg, TenantRequiredError } from '@/lib/admin-utils-clerk';
 import { syncTenantToEdgeConfig, setTenantByCustomDomain, buildTenantConfigData, type TenantBrandingData, type TenantSubscriptionData } from '@/lib/tenant-edge-config';
-import type { OrgCustomDomain } from '@/types';
+import { regenerateDefaultLogo } from '@/lib/logo-generator';
+import type { OrgCustomDomain, LogoSource } from '@/types';
 import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgDefaultTheme, UserRole } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_THEME } from '@/types';
 
@@ -129,14 +130,41 @@ export async function POST(request: Request) {
     const now = new Date().toISOString();
 
     let brandingData: OrgBranding;
+    let finalLogoUrl: string | null = null;
+    let logoSource: LogoSource | undefined = undefined;
 
     if (existingDoc.exists) {
       // Update existing branding
       const existing = existingDoc.data() as OrgBranding;
       
+      // Handle logo source logic
+      if (logoUrl !== undefined && logoUrl !== null && logoUrl !== existing.logoUrl) {
+        // New custom logo URL provided - mark as custom
+        finalLogoUrl = logoUrl;
+        logoSource = 'custom';
+        console.log(`[ORG_BRANDING_POST] Custom logo uploaded for ${organizationId}`);
+      } else if (appTitle !== undefined && appTitle !== existing.appTitle && existing.logoSource === 'generated') {
+        // App title changed and logo is generated - regenerate logo
+        try {
+          finalLogoUrl = await regenerateDefaultLogo(organizationId, appTitle);
+          logoSource = 'generated';
+          console.log(`[ORG_BRANDING_POST] Regenerated logo for name change: ${appTitle}`);
+        } catch (logoError) {
+          console.error(`[ORG_BRANDING_POST] Failed to regenerate logo:`, logoError);
+          // Keep existing logo
+          finalLogoUrl = existing.logoUrl;
+          logoSource = existing.logoSource;
+        }
+      } else {
+        // No change to logo
+        finalLogoUrl = logoUrl !== undefined ? logoUrl : existing.logoUrl;
+        logoSource = existing.logoSource;
+      }
+      
       brandingData = {
         ...existing,
-        ...(logoUrl !== undefined && { logoUrl }),
+        ...(finalLogoUrl !== undefined && { logoUrl: finalLogoUrl }),
+        ...(logoSource !== undefined && { logoSource }),
         ...(logoUrlDark !== undefined && { logoUrlDark }),
         ...(horizontalLogoUrl !== undefined && { horizontalLogoUrl }),
         ...(horizontalLogoUrlDark !== undefined && { horizontalLogoUrlDark }),
@@ -166,13 +194,28 @@ export async function POST(request: Request) {
       };
     } else {
       // Create new branding with defaults
+      // If logoUrl provided, it's custom; otherwise generate one
+      if (logoUrl) {
+        finalLogoUrl = logoUrl;
+        logoSource = 'custom';
+      } else if (appTitle) {
+        try {
+          finalLogoUrl = await regenerateDefaultLogo(organizationId, appTitle);
+          logoSource = 'generated';
+          console.log(`[ORG_BRANDING_POST] Generated initial logo for new branding: ${appTitle}`);
+        } catch (logoError) {
+          console.error(`[ORG_BRANDING_POST] Failed to generate initial logo:`, logoError);
+        }
+      }
+      
       brandingData = {
         id: organizationId,
         organizationId,
-        logoUrl: logoUrl ?? null,
+        logoUrl: finalLogoUrl ?? null,
         logoUrlDark: logoUrlDark ?? null,
         horizontalLogoUrl: horizontalLogoUrl ?? null,
         horizontalLogoUrlDark: horizontalLogoUrlDark ?? null,
+        logoSource: logoSource,
         appTitle: appTitle ?? DEFAULT_APP_TITLE,
         colors: {
           ...DEFAULT_BRANDING_COLORS,

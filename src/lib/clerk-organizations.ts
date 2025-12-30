@@ -1,11 +1,12 @@
 import { auth, clerkClient } from '@clerk/nextjs/server';
-import type { UserRole, OrgRole, OrgSettings, DEFAULT_ORG_SETTINGS, CoachTier, CoachSubscriptionStatus, CoachSubscription } from '@/types';
+import type { UserRole, OrgRole, OrgSettings, DEFAULT_ORG_SETTINGS, CoachTier, CoachSubscriptionStatus, CoachSubscription, OrgBranding } from '@/types';
 import { setupDefaultOrgChannels } from '@/lib/org-channels';
 import { adminDb } from '@/lib/firebase-admin';
 import { syncTenantToEdgeConfig, syncSubscriptionToEdgeConfig, DEFAULT_TENANT_BRANDING } from '@/lib/tenant-edge-config';
 import type { TenantSubscriptionData, TenantBrandingData } from '@/lib/tenant-edge-config';
 import { DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_APP_TITLE, DEFAULT_BRANDING_COLORS } from '@/types';
 import { isSubdomainAvailable, updateOrgSubdomain, getOrgDomain } from '@/lib/tenant/resolveTenant';
+import { generateAndUploadDefaultLogo } from '@/lib/logo-generator';
 
 /**
  * Clerk Organizations Utilities
@@ -116,6 +117,15 @@ export async function createOrganizationForCoach(
     } catch (settingsError) {
       // Log but don't fail - settings can be created later
       console.error(`[CLERK_ORGS] Failed to create settings for ${organization.id}:`, settingsError);
+    }
+    
+    // Create default branding with generated logo
+    try {
+      await createDefaultOrgBranding(organization.id, coachName);
+      console.log(`[CLERK_ORGS] Created default branding for organization ${organization.id}`);
+    } catch (brandingError) {
+      // Log but don't fail - branding can be set up later
+      console.error(`[CLERK_ORGS] Failed to create branding for ${organization.id}:`, brandingError);
     }
     
     return organization.id;
@@ -541,6 +551,56 @@ async function createDefaultOrgSettings(organizationId: string): Promise<void> {
   };
   
   await adminDb.collection('org_settings').doc(organizationId).set(defaultSettings);
+}
+
+/**
+ * Create default org_branding for an organization
+ * Called when a coach organization is created
+ * Generates a default logo from the business name initials
+ * 
+ * @param organizationId - The Clerk organization ID
+ * @param businessName - The business name to generate logo from
+ */
+async function createDefaultOrgBranding(organizationId: string, businessName: string): Promise<void> {
+  const now = new Date().toISOString();
+  
+  // Check if branding already exists
+  const existingDoc = await adminDb.collection('org_branding').doc(organizationId).get();
+  if (existingDoc.exists) {
+    console.log(`[CLERK_ORGS] Branding already exists for organization ${organizationId}`);
+    return;
+  }
+  
+  // Generate default logo from business name
+  let generatedLogoUrl: string | null = null;
+  try {
+    generatedLogoUrl = await generateAndUploadDefaultLogo(organizationId, businessName);
+    console.log(`[CLERK_ORGS] Generated default logo for ${organizationId}: ${generatedLogoUrl}`);
+  } catch (logoError) {
+    console.error(`[CLERK_ORGS] Failed to generate default logo for ${organizationId}:`, logoError);
+    // Continue without logo - will use platform default
+  }
+  
+  // Create default branding
+  const defaultBranding: OrgBranding = {
+    id: organizationId,
+    organizationId,
+    logoUrl: generatedLogoUrl,
+    logoUrlDark: null,
+    horizontalLogoUrl: null,
+    horizontalLogoUrlDark: null,
+    logoSource: generatedLogoUrl ? 'generated' : undefined,
+    appTitle: businessName, // Use business name as the app title
+    colors: DEFAULT_BRANDING_COLORS,
+    menuTitles: DEFAULT_MENU_TITLES,
+    menuIcons: DEFAULT_MENU_ICONS,
+    menuOrder: DEFAULT_MENU_ORDER,
+    createdAt: now,
+    updatedAt: now,
+  };
+  
+  await adminDb.collection('org_branding').doc(organizationId).set(defaultBranding);
+  console.log(`[CLERK_ORGS] Created default branding for ${organizationId} with appTitle: "${businessName}"`);
 }
 
 // ============================================================================
