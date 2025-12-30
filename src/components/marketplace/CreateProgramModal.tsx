@@ -608,14 +608,12 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                     
                     {/* Actions */}
                     <div className="px-6 pb-8 space-y-3">
-                      {/* Continue to existing program */}
+                      {/* Continue to existing program - always stay on marketing domain for onboarding */}
                       <button
                         onClick={() => {
-                          if (existingCoachUrl) {
-                            window.location.href = `${existingCoachUrl}/coach/onboarding/profile`;
-                          } else {
-                            router.push('/coach/onboarding/profile');
-                          }
+                          // Always use router.push to stay on marketing domain for onboarding
+                          // After onboarding is complete, user will be redirected to their subdomain
+                          router.push('/coach/onboarding/profile');
                           onClose();
                         }}
                         className="w-full flex items-center justify-center gap-2 py-4 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-full font-sans font-bold text-[16px] transition-all hover:scale-[1.01] active:scale-[0.99] shadow-lg"
