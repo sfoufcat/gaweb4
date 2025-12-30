@@ -28,18 +28,19 @@ export async function GET() {
     
     const client = await clerkClient();
     const user = await client.users.getUser(userId);
-    const metadata = user.publicMetadata as ClerkPublicMetadataWithOrg;
+    const metadata = user.publicMetadata as ClerkPublicMetadataWithOrg & { primaryOrganizationId?: string };
+    
+    // Use primaryOrganizationId (new multi-org field) with fallback to organizationId (legacy)
+    const organizationId = metadata?.primaryOrganizationId || metadata?.organizationId;
     
     // Check if user has an organization
-    if (!metadata?.organizationId) {
+    if (!organizationId) {
       // Not a coach yet
       return NextResponse.json({ 
         state: null,
         isCoach: false,
       });
     }
-    
-    const organizationId = metadata.organizationId;
     
     // Get onboarding state from Firestore
     const onboardingDoc = await adminDb.collection('coach_onboarding').doc(organizationId).get();
@@ -104,16 +105,18 @@ export async function PATCH(req: Request) {
     
     const client = await clerkClient();
     const user = await client.users.getUser(userId);
-    const metadata = user.publicMetadata as ClerkPublicMetadataWithOrg;
+    const metadata = user.publicMetadata as ClerkPublicMetadataWithOrg & { primaryOrganizationId?: string };
     
-    if (!metadata?.organizationId) {
+    // Use primaryOrganizationId (new multi-org field) with fallback to organizationId (legacy)
+    const organizationId = metadata?.primaryOrganizationId || metadata?.organizationId;
+    
+    if (!organizationId) {
       return NextResponse.json(
         { error: 'No organization found' },
         { status: 404 }
       );
     }
     
-    const organizationId = metadata.organizationId;
     const now = new Date().toISOString();
     
     // Check if doc exists (for force-create scenario)

@@ -39,16 +39,18 @@ export async function POST(req: Request) {
     
     const client = await clerkClient();
     const user = await client.users.getUser(userId);
-    const metadata = user.publicMetadata as ClerkPublicMetadataWithOrg;
+    const metadata = user.publicMetadata as ClerkPublicMetadataWithOrg & { primaryOrganizationId?: string };
     
-    if (!metadata?.organizationId) {
+    // Use primaryOrganizationId (new multi-org field) with fallback to organizationId (legacy)
+    const organizationId = metadata?.primaryOrganizationId || metadata?.organizationId;
+    
+    if (!organizationId) {
       return NextResponse.json(
         { error: 'No organization found. Please start the signup process again.' },
         { status: 404 }
       );
     }
     
-    const organizationId = metadata.organizationId;
     const now = new Date().toISOString();
     
     // Generate and update subdomain from business name

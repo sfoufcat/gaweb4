@@ -56,8 +56,9 @@ export async function POST(req: Request) {
     }
 
     // Get organization from user metadata (works on main domain during onboarding)
+    // Use primaryOrganizationId (new multi-org field) with fallback to organizationId (legacy)
     const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    const organizationId = publicMetadata?.organizationId || publicMetadata?.primaryOrganizationId;
+    const organizationId = publicMetadata?.primaryOrganizationId || publicMetadata?.organizationId;
 
     if (!organizationId) {
       return NextResponse.json(
