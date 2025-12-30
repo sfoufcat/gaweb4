@@ -722,7 +722,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     if (!isPlatformPublicRoute) {
       // Check if user is super_admin
       const { userId, sessionClaims } = await auth();
-      const role = (sessionClaims?.metadata as { role?: string })?.role;
+      const role = (sessionClaims?.publicMetadata as ClerkPublicMetadata)?.role;
       
       if (!userId || role !== 'super_admin') {
         console.log(`[PROXY] Platform domain access denied for user ${userId}, role: ${role}`);

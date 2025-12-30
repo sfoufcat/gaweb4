@@ -5,6 +5,10 @@
  * 
  * Returns org name, subdomain, and custom domain for each organization
  * the user is a member of. Used on platform domain to show links.
+ * 
+ * Checks both:
+ * - Firestore org_memberships (for regular members)
+ * - Clerk organization memberships (for coaches who own their orgs)
  */
 
 import { auth, clerkClient } from '@clerk/nextjs/server';
@@ -18,6 +22,7 @@ interface TenantDomainInfo {
   customDomain: string | null;
   imageUrl: string | null;
   tenantUrl: string | null;
+  isOwner?: boolean; // True if user is the org owner/coach
 }
 
 export async function GET() {
@@ -28,24 +33,47 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    // Get user's active memberships from Firestore
+    const client = await clerkClient();
+    
+    // Collect all unique organization IDs from multiple sources
+    const orgIds = new Set<string>();
+    const ownerOrgIds = new Set<string>(); // Track which orgs the user owns
+    
+    // Source 1: Clerk organization memberships (includes coaches who own their orgs)
+    try {
+      const clerkMemberships = await client.users.getOrganizationMembershipList({ userId });
+      for (const membership of clerkMemberships.data) {
+        orgIds.add(membership.organization.id);
+        // If user is org:admin, they're the owner
+        if (membership.role === 'org:admin') {
+          ownerOrgIds.add(membership.organization.id);
+        }
+      }
+    } catch (clerkError) {
+      console.warn(`[USER_TENANT_DOMAINS] Could not fetch Clerk memberships for ${userId}:`, clerkError);
+    }
+    
+    // Source 2: Firestore org_memberships (for regular members)
     const membershipsSnapshot = await adminDb
       .collection('org_memberships')
       .where('userId', '==', userId)
       .where('isActive', '==', true)
       .get();
     
-    if (membershipsSnapshot.empty) {
+    for (const doc of membershipsSnapshot.docs) {
+      const membership = doc.data();
+      orgIds.add(membership.organizationId);
+    }
+    
+    // If no orgs found, return empty
+    if (orgIds.size === 0) {
       return NextResponse.json({ tenantDomains: [] });
     }
     
-    const client = await clerkClient();
     const tenantDomains: TenantDomainInfo[] = [];
     
-    for (const doc of membershipsSnapshot.docs) {
-      const membership = doc.data();
-      const organizationId = membership.organizationId;
-      
+    // Fetch domain info for all unique organizations
+    for (const organizationId of orgIds) {
       try {
         // Get organization info from Clerk
         const org = await client.organizations.getOrganization({ organizationId });
@@ -72,6 +100,7 @@ export async function GET() {
           customDomain,
           imageUrl: org.imageUrl,
           tenantUrl,
+          isOwner: ownerOrgIds.has(organizationId),
         });
       } catch (error) {
         console.warn(`[USER_TENANT_DOMAINS] Could not fetch org ${organizationId}:`, error);
@@ -79,8 +108,12 @@ export async function GET() {
       }
     }
     
-    // Sort alphabetically by name
-    tenantDomains.sort((a, b) => a.name.localeCompare(b.name));
+    // Sort: owner orgs first, then alphabetically by name
+    tenantDomains.sort((a, b) => {
+      if (a.isOwner && !b.isOwner) return -1;
+      if (!a.isOwner && b.isOwner) return 1;
+      return a.name.localeCompare(b.name);
+    });
     
     return NextResponse.json({
       tenantDomains,

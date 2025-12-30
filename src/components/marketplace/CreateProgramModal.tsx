@@ -25,7 +25,7 @@ interface CreateProgramModalProps {
   onClose: () => void;
 }
 
-type ModalStep = 'persuasion' | 'signup' | 'creating';
+type ModalStep = 'persuasion' | 'signup' | 'creating' | 'existing_coach';
 
 const LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af';
 
@@ -55,6 +55,9 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
   const [pendingVerification, setPendingVerification] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
   
+  // Existing coach state
+  const [existingCoachUrl, setExistingCoachUrl] = useState<string | null>(null);
+  
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -74,7 +77,28 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
     if (!userLoaded) return;
     
     if (user) {
-      // User is already logged in, create their organization
+      // Check if user already has an organization
+      const metadata = user.publicMetadata as { organizationId?: string };
+      
+      if (metadata?.organizationId) {
+        // User is already a coach - fetch their subdomain to redirect
+        try {
+          const response = await fetch('/api/user/tenant-domains');
+          if (response.ok) {
+            const data = await response.json();
+            const ownerDomain = data.tenantDomains?.find((d: { isOwner?: boolean }) => d.isOwner);
+            if (ownerDomain?.tenantUrl) {
+              setExistingCoachUrl(ownerDomain.tenantUrl);
+            }
+          }
+        } catch (e) {
+          console.error('Error fetching tenant domains:', e);
+        }
+        setStep('existing_coach');
+        return;
+      }
+      
+      // User is logged in but not a coach yet, create their organization
       setStep('creating');
       await createCoachOrganization();
     } else {
@@ -551,6 +575,74 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                           </div>
                         ))}
                       </div>
+                    </div>
+                  </motion.div>
+                )}
+                
+                {/* Step 4: Existing Coach */}
+                {step === 'existing_coach' && (
+                  <motion.div
+                    key="existing_coach"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {/* Header */}
+                    <div className="pt-8 pb-6 px-6 text-center">
+                      <Image 
+                        src={user?.imageUrl || LOGO_URL}
+                        alt={user?.firstName || 'Coach'}
+                        width={72}
+                        height={72}
+                        className="w-18 h-18 rounded-full mx-auto mb-5 shadow-lg border-4 border-white dark:border-[#262b35]"
+                        unoptimized
+                      />
+                      <h2 className="font-albert text-[28px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1px]">
+                        Welcome back, {user?.firstName || 'Coach'}!
+                      </h2>
+                      <p className="font-sans text-[15px] text-[#5f5a55] dark:text-[#b2b6c2] mt-2">
+                        You already have a program in progress
+                      </p>
+                    </div>
+                    
+                    {/* Actions */}
+                    <div className="px-6 pb-8 space-y-3">
+                      {/* Continue to existing program */}
+                      <button
+                        onClick={() => {
+                          if (existingCoachUrl) {
+                            window.location.href = `${existingCoachUrl}/coach/onboarding/profile`;
+                          } else {
+                            router.push('/coach/onboarding/profile');
+                          }
+                          onClose();
+                        }}
+                        className="w-full flex items-center justify-center gap-2 py-4 bg-brand-accent hover:bg-brand-accent/90 text-white rounded-full font-sans font-bold text-[16px] transition-all hover:scale-[1.01] active:scale-[0.99] shadow-lg"
+                      >
+                        Continue as {user?.firstName}
+                        <ArrowRight className="w-5 h-5" />
+                      </button>
+                      
+                      {/* Go to dashboard if already set up */}
+                      {existingCoachUrl && (
+                        <button
+                          onClick={() => {
+                            window.location.href = existingCoachUrl;
+                            onClose();
+                          }}
+                          className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#f3f1ef] dark:bg-[#1e222a] hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-full font-sans font-medium text-[15px] transition-colors"
+                        >
+                          Go to dashboard
+                        </button>
+                      )}
+                      
+                      <p className="text-center font-sans text-[12px] text-[#a7a39e] dark:text-[#7d8190] pt-2">
+                        Want to create another program?{' '}
+                        <a href="mailto:support@growthaddicts.com" className="text-brand-accent hover:underline">
+                          Contact us
+                        </a>
+                      </p>
                     </div>
                   </motion.div>
                 )}

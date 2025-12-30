@@ -309,7 +309,7 @@ export default function MarketplacePage() {
       </section>
 
       {/* Category Pills */}
-      <section className="py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+      <section id="marketplace-listings" className="py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <button
@@ -404,10 +404,10 @@ export default function MarketplacePage() {
       {/* Value Props Section */}
       <section className="py-16 sm:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-[#f3f1ef] dark:bg-[#0f1218] rounded-3xl p-8 sm:p-12 lg:p-16">
+          <div className="bg-white dark:bg-[#0f1218] rounded-3xl p-8 sm:p-12 lg:p-16">
             <div className="text-center mb-12">
               <h2 className="font-albert text-[32px] sm:text-[40px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-3">
-                Why create on Growth Addicts?
+                Why create on GrowthAddicts?
               </h2>
               <p className="font-sans text-[16px] text-[#5f5a55] dark:text-[#b2b6c2]">
                 Everything you need to build and scale your coaching business
@@ -651,13 +651,13 @@ export default function MarketplacePage() {
                     <ArrowRight className="w-5 h-5" />
                   </a>
                 ) : (
-                  <Link
-                    href="/sign-in"
+                  <button
+                    onClick={() => document.getElementById('marketplace-listings')?.scrollIntoView({ behavior: 'smooth' })}
                     className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#f0c940] hover:to-[#e8b923] text-[#2c2520] rounded-2xl font-albert text-[17px] font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-[#e8b923]/30"
                   >
                     Start your journey
                     <ArrowRight className="w-5 h-5" />
-                  </Link>
+                  </button>
                 )}
                 
                 {/* Secondary CTA */}
