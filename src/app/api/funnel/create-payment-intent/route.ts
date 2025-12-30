@@ -258,7 +258,7 @@ export async function POST(req: Request) {
 
     // Create payment intent on the Connected account with application fee
     // Using setup_future_usage: 'off_session' to save the payment method for future use (upsells)
-    const paymentIntentParams: Parameters<typeof getStripe().paymentIntents.create>[0] = {
+    const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
       amount: priceInCents,
       currency: currency.toLowerCase(),
       customer: customerId,
