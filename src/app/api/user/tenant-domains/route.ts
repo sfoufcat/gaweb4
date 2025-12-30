@@ -78,9 +78,13 @@ export async function GET() {
         // Get organization info from Clerk
         const org = await client.organizations.getOrganization({ organizationId });
         
-        // Get domain info from Firestore
-        const domainDoc = await adminDb.collection('org_domains').doc(organizationId).get();
-        const domainData = domainDoc.data();
+        // Get domain info from Firestore (query by field since docs may have auto-generated IDs)
+        const domainSnapshot = await adminDb
+          .collection('org_domains')
+          .where('organizationId', '==', organizationId)
+          .limit(1)
+          .get();
+        const domainData = domainSnapshot.docs[0]?.data();
         
         const subdomain = domainData?.subdomain || null;
         const customDomain = domainData?.verifiedCustomDomain || null;
