@@ -25,7 +25,8 @@ import { generateAndUploadDefaultLogo } from '@/lib/logo-generator';
 export interface ClerkPublicMetadataWithOrg {
   role?: UserRole;
   orgRole?: OrgRole;         // Organization-level role (super_coach, coach, member)
-  organizationId?: string;   // Clerk Organization ID this user belongs to (as admin)
+  primaryOrganizationId?: string;  // Active/current organization (preferred, multi-org support)
+  organizationId?: string;   // Clerk Organization ID - DEPRECATED, use primaryOrganizationId
   [key: string]: unknown;
 }
 
@@ -46,7 +47,7 @@ export async function createOrganizationForCoach(
 ): Promise<string> {
   const client = await clerkClient();
   const user = await client.users.getUser(coachUserId);
-  const metadata = user.publicMetadata as ClerkPublicMetadataWithOrg & { primaryOrganizationId?: string };
+  const metadata = user.publicMetadata as ClerkPublicMetadataWithOrg;
   
   // Check if this is their first organization (for backward compat field)
   const isFirstOrg = !metadata?.organizationId;
@@ -156,7 +157,7 @@ export async function createOrganizationForCoach(
 
 /**
  * Get the organization ID for a user
- * Returns the organizationId from their publicMetadata
+ * Returns primaryOrganizationId (active org) or organizationId (legacy) from publicMetadata
  * 
  * @param userId - The Clerk user ID
  * @returns The organization ID or null if not found
@@ -165,7 +166,8 @@ export async function getUserOrganizationId(userId: string): Promise<string | nu
   const client = await clerkClient();
   const user = await client.users.getUser(userId);
   const metadata = user.publicMetadata as ClerkPublicMetadataWithOrg;
-  return metadata?.organizationId || null;
+  // Use primaryOrganizationId (active org) with fallback to organizationId (legacy)
+  return metadata?.primaryOrganizationId || metadata?.organizationId || null;
 }
 
 /**
@@ -173,8 +175,9 @@ export async function getUserOrganizationId(userId: string): Promise<string | nu
  * 
  * Priority order:
  * 1. Clerk's native org session (auth().orgId) - preferred for full Clerk Orgs
- * 2. publicMetadata.organizationId from JWT - backward compatibility
- * 3. API call to fetch user's org - fallback
+ * 2. publicMetadata.primaryOrganizationId from JWT - active organization
+ * 3. publicMetadata.organizationId from JWT - backward compatibility (legacy)
+ * 4. API call to fetch user's org - fallback
  * 
  * @returns The organization ID or null if not found
  */
@@ -187,10 +190,12 @@ export async function getCurrentUserOrganizationId(): Promise<string | null> {
     return orgId;
   }
   
-  // Fallback 1: Get from session claims publicMetadata (backward compatibility)
+  // Fallback 1: Get from session claims publicMetadata
   const metadata = sessionClaims?.publicMetadata as ClerkPublicMetadataWithOrg | undefined;
-  if (metadata?.organizationId) {
-    return metadata.organizationId;
+  // Use primaryOrganizationId (active org) with fallback to organizationId (legacy)
+  const metadataOrgId = metadata?.primaryOrganizationId || metadata?.organizationId;
+  if (metadataOrgId) {
+    return metadataOrgId;
   }
   
   // Fallback 2: Fetch from Clerk API

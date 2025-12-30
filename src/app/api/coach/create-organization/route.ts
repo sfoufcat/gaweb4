@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     
     const client = await clerkClient();
     const user = await client.users.getUser(userId);
-    const metadata = user.publicMetadata as ClerkPublicMetadataWithOrg & { primaryOrganizationId?: string };
+    const metadata = user.publicMetadata as ClerkPublicMetadataWithOrg;
     
     // Check if this is their first organization (for logging)
     const isFirstOrg = !metadata?.organizationId;

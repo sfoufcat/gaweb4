@@ -28,7 +28,7 @@ export async function GET() {
     
     const client = await clerkClient();
     const user = await client.users.getUser(userId);
-    const metadata = user.publicMetadata as ClerkPublicMetadataWithOrg & { primaryOrganizationId?: string };
+    const metadata = user.publicMetadata as ClerkPublicMetadataWithOrg;
     
     // Use primaryOrganizationId (new multi-org field) with fallback to organizationId (legacy)
     const organizationId = metadata?.primaryOrganizationId || metadata?.organizationId;
@@ -105,7 +105,7 @@ export async function PATCH(req: Request) {
     
     const client = await clerkClient();
     const user = await client.users.getUser(userId);
-    const metadata = user.publicMetadata as ClerkPublicMetadataWithOrg & { primaryOrganizationId?: string };
+    const metadata = user.publicMetadata as ClerkPublicMetadataWithOrg;
     
     // Use primaryOrganizationId (new multi-org field) with fallback to organizationId (legacy)
     const organizationId = metadata?.primaryOrganizationId || metadata?.organizationId;

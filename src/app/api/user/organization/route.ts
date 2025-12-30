@@ -30,11 +30,12 @@ export async function GET() {
     const organizationIds: Set<string> = new Set();
     let primaryOrganizationId: string | null = null;
     
-    // Source 1: Clerk publicMetadata.organizationId (backward compatibility)
+    // Source 1: Clerk publicMetadata - check primaryOrganizationId first, then legacy organizationId
     const metadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-    if (metadata?.organizationId) {
-      organizationIds.add(metadata.organizationId);
-      primaryOrganizationId = metadata.organizationId;
+    const metadataPrimaryOrgId = metadata?.primaryOrganizationId || metadata?.organizationId;
+    if (metadataPrimaryOrgId) {
+      organizationIds.add(metadataPrimaryOrgId);
+      primaryOrganizationId = metadataPrimaryOrgId;
     }
     
     // Source 2: Check actual Clerk organization memberships

@@ -78,9 +78,10 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
     
     if (user) {
       // Check if user already has an organization
-      const metadata = user.publicMetadata as { organizationId?: string };
+      const metadata = user.publicMetadata as { primaryOrganizationId?: string; organizationId?: string };
+      const existingOrgId = metadata?.primaryOrganizationId || metadata?.organizationId;
       
-      if (metadata?.organizationId) {
+      if (existingOrgId) {
         // User is already a coach - fetch their subdomain to redirect
         try {
           const response = await fetch('/api/user/tenant-domains');
