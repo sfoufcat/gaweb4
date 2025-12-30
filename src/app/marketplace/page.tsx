@@ -171,6 +171,18 @@ export default function MarketplacePage() {
     setShowCreateModal(true);
   };
 
+  // Get user's org subdomain for dashboard redirect
+  const userPublicMetadata = user?.publicMetadata as {
+    subdomain?: string;
+    organizationId?: string;
+    primaryOrganizationId?: string;
+  } | undefined;
+  
+  // Redirect to user's org subdomain, or app.growthaddicts.com for platform admins
+  const dashboardUrl = userPublicMetadata?.subdomain 
+    ? `https://${userPublicMetadata.subdomain}.growthaddicts.com`
+    : 'https://app.growthaddicts.com';
+
   return (
     <div className="min-h-screen bg-[#faf8f6] dark:bg-[#05070b] relative">
       {/* Subtle lined gradient background */}
@@ -198,13 +210,13 @@ export default function MarketplacePage() {
 
             {/* Auth Button */}
             {user ? (
-              <Link
-                href="/"
+              <a
+                href={dashboardUrl}
                 className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] rounded-full font-albert text-sm font-medium hover:opacity-90 transition-opacity"
               >
                 Dashboard
                 <ArrowRight className="w-4 h-4" />
-              </Link>
+              </a>
             ) : (
               <Link
                 href="/sign-in"
@@ -593,13 +605,23 @@ export default function MarketplacePage() {
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             {/* Primary CTA */}
-            <Link
-              href={user ? '/' : '/sign-in'}
-              className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#f0c940] hover:to-[#e8b923] text-[#2c2520] rounded-2xl font-albert text-[17px] font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-[#e8b923]/30"
-            >
-              {user ? 'Go to dashboard' : 'Start your journey'}
-              <ArrowRight className="w-5 h-5" />
-            </Link>
+            {user ? (
+              <a
+                href={dashboardUrl}
+                className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#f0c940] hover:to-[#e8b923] text-[#2c2520] rounded-2xl font-albert text-[17px] font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-[#e8b923]/30"
+              >
+                Go to dashboard
+                <ArrowRight className="w-5 h-5" />
+              </a>
+            ) : (
+              <Link
+                href="/sign-in"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#f0c940] hover:to-[#e8b923] text-[#2c2520] rounded-2xl font-albert text-[17px] font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-[#e8b923]/30"
+              >
+                Start your journey
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            )}
             
             {/* Secondary CTA */}
             <button

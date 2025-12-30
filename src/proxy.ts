@@ -665,7 +665,8 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   // ==========================================================================
   
   // Marketing domain: Show marketplace as landing page
-  // The main domain is reserved for marketing, users should go to tenant domains for app
+  // The main domain is reserved for marketing only - no app features
+  // Users must go to tenant domains or app.growthaddicts.com for the app
   if (isMarketingDomain(hostname)) {
     // Redirect /marketplace to / (canonical URL - avoid duplicate content)
     if (pathname === '/marketplace') {
@@ -682,21 +683,26 @@ export const proxy = clerkMiddleware(async (auth, request) => {
       return response;
     }
     
-    // Allow other marketing-related routes
-    const isMarketingRoute = 
-      pathname.startsWith('/join') ||    // New unified funnel system
-      pathname.startsWith('/sign-in') ||
-      pathname.startsWith('/sign-up') ||
-      pathname.startsWith('/terms') ||
-      pathname.startsWith('/privacy') ||
-      pathname.startsWith('/refund-policy') ||
-      pathname.startsWith('/subscription-policy') ||
-      pathname.startsWith('/api/') ||
-      pathname.startsWith('/sso-callback');
+    // Only allow public/marketing routes on marketing domain
+    const isAllowedRoute = 
+      pathname.startsWith('/join') ||           // Funnel system
+      pathname.startsWith('/sign-in') ||        // Auth
+      pathname.startsWith('/sign-up') ||        // Auth
+      pathname.startsWith('/signup') ||         // Auth (alt)
+      pathname.startsWith('/sso-callback') ||   // Auth callback
+      pathname.startsWith('/terms') ||          // Legal
+      pathname.startsWith('/privacy') ||        // Legal
+      pathname.startsWith('/refund-policy') ||  // Legal
+      pathname.startsWith('/subscription-policy') || // Legal
+      pathname.startsWith('/api/') ||           // API routes
+      pathname.startsWith('/_next/') ||         // Next.js assets
+      pathname.startsWith('/static/');          // Static assets
     
-    // If user is authenticated and tries to access app routes on marketing domain,
-    // they should be on a tenant domain or app.growthaddicts.com
-    // For now, allow this but in the future could redirect to their primary org
+    // Redirect any non-allowed routes to platform domain
+    if (!isAllowedRoute) {
+      console.log(`[PROXY] Marketing domain blocking app route: ${pathname}, redirecting to app.growthaddicts.com`);
+      return NextResponse.redirect(`https://app.growthaddicts.com${pathname}`, 302);
+    }
   }
   
   // Platform admin domain: Restrict to super_admins only for admin routes
