@@ -484,7 +484,7 @@ async function resolveTenant(
 // MIDDLEWARE
 // =============================================================================
 
-export default clerkMiddleware(async (auth, request) => {
+export const proxy = clerkMiddleware(async (auth, request) => {
   const hostname = request.headers.get('host') || 'localhost:3000';
   const pathname = request.nextUrl.pathname;
   
@@ -1133,3 +1133,4 @@ export const config = {
     '/(api|trpc)(.*)',
   ],
 };
+

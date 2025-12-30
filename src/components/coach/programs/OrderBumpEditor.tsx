@@ -63,7 +63,8 @@ function ProductSelector({
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<'all' | 'program' | 'squad' | 'content'>('all');
-  const { accentLight } = useBrandingValues();
+  const { colors } = useBrandingValues();
+  const accentLight = colors.accentLight;
 
   // Fetch available products
   useEffect(() => {
@@ -259,7 +260,8 @@ interface BumpItemEditorProps {
 
 function BumpItemEditor({ bump, onChange, onRemove }: BumpItemEditorProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const { accentLight } = useBrandingValues();
+  const { colors } = useBrandingValues();
+  const accentLight = colors.accentLight;
   
   const discountedPrice = bump.discountPercent 
     ? Math.round(bump.priceInCents * (1 - bump.discountPercent / 100))
@@ -403,7 +405,8 @@ export function OrderBumpEditor({
   excludeProductType,
 }: OrderBumpEditorProps) {
   const [showSelector, setShowSelector] = useState(false);
-  const { accentLight } = useBrandingValues();
+  const { colors } = useBrandingValues();
+  const accentLight = colors.accentLight;
   
   const maxBumps = getLimit(currentTier, 'max_order_bumps');
   const currentBumps = orderBumps?.bumps || [];
