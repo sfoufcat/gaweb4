@@ -93,6 +93,10 @@ export default async function RootLayout({
                 body[data-layout="with-sidebar"] main {
                   padding-left: 16rem !important;
                 }
+                /* Force fullscreen for marketplace regardless of data-layout attribute timing */
+                body:has(.marketplace-root) main {
+                  padding-left: 0 !important;
+                }
               }
             `
           }} />

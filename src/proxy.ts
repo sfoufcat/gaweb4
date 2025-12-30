@@ -240,6 +240,7 @@ const isPublicRoute = createRouteMatcher([
   '/coach/complete-signup',  // Coach OAuth completion - handles org creation
   '/coach/onboarding(.*)',   // Coach onboarding - pages verify auth via API
   '/api/webhooks(.*)',
+  '/api/clerk-emails',  // Clerk email webhook - auth via Svix signature
   '/api/notifications/cron(.*)',  // Cron jobs - auth via CRON_SECRET header
   '/api/squad/validate-invite',  // Allow validating invite tokens without auth
   '/api/funnel(.*)',  // Funnel data for funnel flow - no auth required
@@ -1165,9 +1166,9 @@ export const proxy = clerkMiddleware(async (auth, request) => {
 export const config = {
   matcher: [
     // Skip Next.js internals, static files, AND webhooks (webhooks verify via Svix signature, not middleware)
-    '/((?!_next|api/webhooks|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/((?!_next|api/webhooks|api/clerk-emails|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
     // Run for API routes EXCEPT webhooks (which are excluded above and handle their own auth via Svix)
-    '/(api(?!/webhooks)|trpc)(.*)',
+    '/(api(?!/webhooks)(?!/clerk-emails)|trpc)(.*)',
   ],
 };
 

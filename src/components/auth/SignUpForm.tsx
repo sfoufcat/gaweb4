@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSignUp } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { AuthInput } from './AuthInput';
 import { OAuthButton } from './OAuthButton';
 import { VerificationCodeInput } from './VerificationCodeInput';
@@ -223,55 +224,122 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
 
   // Verification step
   if (pendingVerification) {
+    // Animation variants for staggered entrance
+    const containerVariants = {
+      hidden: { opacity: 0 },
+      visible: {
+        opacity: 1,
+        transition: {
+          staggerChildren: 0.05,
+          delayChildren: 0.1,
+        },
+      },
+    };
+
+    const itemVariants = {
+      hidden: { opacity: 0, y: 16 },
+      visible: {
+        opacity: 1,
+        y: 0,
+        transition: {
+          duration: 0.4,
+          ease: [0.16, 1, 0.3, 1],
+        },
+      },
+    };
+
     return (
       <div className="w-full max-w-lg mx-auto">
-        <div className="bg-white/80 backdrop-blur-sm border border-[#e1ddd8]/60 rounded-3xl p-8 shadow-lg">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#f3f1ef] flex items-center justify-center">
+        <motion.div 
+          className="bg-white/80 dark:bg-[#171b22]/90 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-[#262b35]/60 rounded-3xl p-8 shadow-lg"
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <motion.div 
+            className="text-center mb-8"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <motion.div 
+              className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#f3f1ef] dark:bg-[#262b35] flex items-center justify-center"
+              variants={itemVariants}
+            >
               <svg className="w-8 h-8 text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-            </div>
-            <h2 className="font-albert text-2xl text-text-primary tracking-[-1px] mb-2">
+            </motion.div>
+            <motion.h2 
+              className="font-albert text-2xl text-text-primary tracking-[-1px] mb-2"
+              variants={itemVariants}
+            >
               Check your email
-            </h2>
-            <p className="font-sans text-sm text-text-secondary">
+            </motion.h2>
+            <motion.p 
+              className="font-sans text-sm text-text-secondary"
+              variants={itemVariants}
+            >
               We sent a verification code to <span className="font-medium text-text-primary">{email}</span>
-            </p>
-          </div>
+            </motion.p>
+          </motion.div>
 
-          <form onSubmit={handleVerification} className="space-y-6">
-            <VerificationCodeInput
-              value={verificationCode}
-              onChange={setVerificationCode}
-              error={fieldErrors.code}
-              disabled={loading}
-              autoFocus
-            />
+          <motion.form 
+            onSubmit={handleVerification} 
+            className="space-y-6"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <motion.div variants={itemVariants}>
+              <VerificationCodeInput
+                value={verificationCode}
+                onChange={setVerificationCode}
+                error={fieldErrors.code}
+                disabled={loading}
+                autoFocus
+              />
+            </motion.div>
 
             {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-2xl">
-                <p className="text-sm text-red-600 font-sans">{error}</p>
-              </div>
+              <motion.div 
+                className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-2xl"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <p className="text-sm text-red-600 dark:text-red-400 font-sans">{error}</p>
+              </motion.div>
             )}
 
-            <button
+            <motion.button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#2c2520] hover:bg-[#1a1512] text-white font-sans font-bold text-base rounded-full py-4 px-6 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg"
+              className="w-full bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#d4a61d] hover:to-[#c09819] text-[#2c2520] dark:bg-none dark:bg-[#b8896a] dark:hover:bg-[#a07855] dark:text-white font-sans font-bold text-base rounded-full py-4 px-6 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg flex items-center justify-center gap-2"
+              variants={itemVariants}
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-[#2c2520]/30 dark:border-white/30 border-t-[#2c2520] dark:border-t-white rounded-full animate-spin" />
                   Verifying...
                 </span>
               ) : (
-                'Verify email'
+                <>
+                  Verify & continue
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                </>
               )}
-            </button>
-          </form>
+            </motion.button>
+          </motion.form>
 
-          <div className="mt-6 text-center">
+          <motion.div 
+            className="mt-6 text-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4, duration: 0.3 }}
+          >
             <button
               type="button"
               onClick={handleResendCode}
@@ -279,9 +347,14 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
             >
               Didn&apos;t receive the code? Resend
             </button>
-          </div>
+          </motion.div>
 
-          <div className="mt-4 text-center">
+          <motion.div 
+            className="mt-4 text-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.45, duration: 0.3 }}
+          >
             <button
               type="button"
               onClick={() => {
@@ -293,8 +366,8 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
             >
               ← Back to sign up
             </button>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
     );
   }
@@ -382,11 +455,11 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#2c2520] hover:bg-[#1a1512] text-white font-sans font-bold text-base rounded-full py-4 px-6 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg mt-2"
+            className="w-full bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#d4a61d] hover:to-[#c09819] text-[#2c2520] dark:bg-none dark:bg-[#b8896a] dark:hover:bg-[#a07855] dark:text-white font-sans font-bold text-base rounded-full py-4 px-6 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-[#e8b923]/20 dark:shadow-[#b8896a]/20 mt-2"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-[#2c2520]/30 dark:border-white/30 border-t-[#2c2520] dark:border-t-white rounded-full animate-spin" />
                 Creating account...
               </span>
             ) : (

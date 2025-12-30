@@ -136,7 +136,7 @@ export default function SignupPageClient({
                 {coachEmail && (
                   <a
                     href={`mailto:${coachEmail}?subject=Request%20to%20Join%20${encodeURIComponent(appTitle)}`}
-                    className="w-full flex items-center justify-center gap-3 bg-[#2c2520] hover:bg-[#1a1512] text-white font-sans font-bold text-base rounded-full py-4 px-6 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+                    className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#d4a61d] hover:to-[#c09819] text-[#2c2520] dark:bg-none dark:bg-[#b8896a] dark:hover:bg-[#a07855] dark:text-white font-sans font-bold text-base rounded-full py-4 px-6 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-[#e8b923]/20 dark:shadow-[#b8896a]/20"
                   >
                     <Mail className="w-5 h-5" />
                     Contact {coachName}
