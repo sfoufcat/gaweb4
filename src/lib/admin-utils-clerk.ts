@@ -343,6 +343,10 @@ export async function requireCoachWithOrg(options?: {
   const role = publicMetadata?.role || 'user';
   const orgRole = publicMetadata?.orgRole;
   
+  // Helper to safely get string org IDs from metadata (Clerk metadata can sometimes be empty objects)
+  const primaryOrgId = typeof publicMetadata?.primaryOrganizationId === 'string' ? publicMetadata.primaryOrganizationId : undefined;
+  const legacyOrgId = typeof publicMetadata?.organizationId === 'string' ? publicMetadata.organizationId : undefined;
+  
   // Check access: global coach/admin roles OR org-level coach roles
   const hasGlobalAccess = role === 'coach' || role === 'admin' || role === 'super_admin';
   const hasOrgAccess = isOrgCoach(orgRole); // super_coach or coach
@@ -369,7 +373,7 @@ export async function requireCoachWithOrg(options?: {
   if (!isTenantMode && !options?.allowPlatformMode) {
     // Super admins always have full access on platform domain (for support/debugging)
     if (role === 'super_admin') {
-      const organizationId = orgId || publicMetadata?.primaryOrganizationId || publicMetadata?.organizationId;
+      const organizationId = orgId || primaryOrgId || legacyOrgId;
       if (organizationId) {
         console.log(`[requireCoachWithOrg] Super admin ${userId} accessing org ${organizationId} from platform domain`);
         return { userId, role, orgRole, organizationId, isTenantMode: false };
@@ -378,7 +382,7 @@ export async function requireCoachWithOrg(options?: {
     
     // Regular coaches must use their tenant domain
     // Look up their subdomain to provide a helpful redirect URL
-    const userOrgId = orgId || publicMetadata?.primaryOrganizationId || publicMetadata?.organizationId;
+    const userOrgId = orgId || primaryOrgId || legacyOrgId;
     let tenantUrl: string | null = null;
     let subdomain: string | null = null;
     
@@ -400,7 +404,7 @@ export async function requireCoachWithOrg(options?: {
   }
   
   // Get organizationId - priority: tenant context > Clerk org session > primaryOrganizationId > organizationId (legacy)
-  const organizationId = tenantOrgId || orgId || publicMetadata?.primaryOrganizationId || publicMetadata?.organizationId;
+  const organizationId = tenantOrgId || orgId || primaryOrgId || legacyOrgId;
   
   if (!organizationId) {
     throw new Error('Organization not found: Coach must have an organization');
