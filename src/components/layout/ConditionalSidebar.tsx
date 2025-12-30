@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
 
@@ -15,6 +16,17 @@ import { Sidebar } from '@/components/layout/Sidebar';
 export function ConditionalSidebar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  
+  // Hide sidebar on marketing domain (growthaddicts.com / www.growthaddicts.com)
+  const [isMarketingDomain, setIsMarketingDomain] = useState(false);
+  
+  useEffect(() => {
+    const hostname = window.location.hostname;
+    setIsMarketingDomain(
+      hostname === 'growthaddicts.com' || 
+      hostname === 'www.growthaddicts.com'
+    );
+  }, []);
   
   // Hide sidebar on onboarding pages
   const isOnboardingPage = pathname?.startsWith('/onboarding');
@@ -48,16 +60,13 @@ export function ConditionalSidebar() {
   // Hide sidebar on marketplace page (fullscreen public experience)
   const isMarketplacePage = pathname?.startsWith('/marketplace');
   
-  // Hide sidebar on root path (marketing domain shows marketplace)
-  const isRootPage = pathname === '/';
-  
   // Hide sidebar on coach onboarding pages (fullscreen experience)
   const isCoachOnboarding = pathname?.startsWith('/coach/onboarding');
   
   // Hide sidebar on coach welcome page (fullscreen experience)
   const isCoachWelcome = pathname?.startsWith('/coach/welcome');
   
-  const shouldHideSidebar = isOnboardingPage || isStartPage || isCheckInPage || isJoinPage || isSignInPage || isProfileEditOnboarding || isPremiumUpgradeForm || isCoachingForm || isInvitePage || isMarketplacePage || isRootPage || isCoachOnboarding || isCoachWelcome;
+  const shouldHideSidebar = isMarketingDomain || isOnboardingPage || isStartPage || isCheckInPage || isJoinPage || isSignInPage || isProfileEditOnboarding || isPremiumUpgradeForm || isCoachingForm || isInvitePage || isMarketplacePage || isCoachOnboarding || isCoachWelcome;
   
   if (shouldHideSidebar) {
     return null;

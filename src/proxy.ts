@@ -705,10 +705,30 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     }
   }
   
-  // Platform admin domain: Restrict to super_admins only for admin routes
+  // Platform admin domain: Restrict to super_admins only
+  // Regular users and coaches should use their tenant subdomains, not app.growthaddicts.com
   if (isPlatformAdminDomain(hostname)) {
-    // On platform admin domain, admin routes require super_admin role
-    // This is handled later in the admin route checks with the auth state
+    // Allow public routes (auth, api, static assets, access-denied page)
+    const isPlatformPublicRoute = 
+      pathname.startsWith('/sign-in') ||
+      pathname.startsWith('/sign-up') ||
+      pathname.startsWith('/sso-callback') ||
+      pathname.startsWith('/api/') ||
+      pathname.startsWith('/_next/') ||
+      pathname.startsWith('/static/') ||
+      pathname === '/access-denied' ||
+      pathname === '/favicon.ico';
+    
+    if (!isPlatformPublicRoute) {
+      // Check if user is super_admin
+      const { userId, sessionClaims } = await auth();
+      const role = (sessionClaims?.metadata as { role?: string })?.role;
+      
+      if (!userId || role !== 'super_admin') {
+        console.log(`[PROXY] Platform domain access denied for user ${userId}, role: ${role}`);
+        return NextResponse.redirect(new URL('/access-denied', request.url));
+      }
+    }
   }
   
   // ==========================================================================

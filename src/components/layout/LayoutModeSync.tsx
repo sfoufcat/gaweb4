@@ -19,12 +19,19 @@ export function LayoutModeSync() {
   const searchParams = useSearchParams();
   
   useEffect(() => {
+    // Check if we're on the marketing domain (growthaddicts.com / www.growthaddicts.com)
+    const hostname = window.location.hostname;
+    const isMarketingDomain = 
+      hostname === 'growthaddicts.com' || 
+      hostname === 'www.growthaddicts.com';
+    
     // Determine if this is a fullscreen page (same logic as middleware)
     const isProfileEditOnboarding = pathname === '/profile' && 
       searchParams.get('edit') === 'true' && 
       searchParams.get('fromOnboarding') === 'true';
     
     const isFullscreenPage = 
+      isMarketingDomain ||  // Marketing domain is always fullscreen
       pathname?.startsWith('/onboarding') ||
       pathname?.startsWith('/start') ||
       pathname?.startsWith('/checkin') ||

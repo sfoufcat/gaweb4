@@ -435,8 +435,8 @@ export default function MarketplacePage() {
       </section>
 
       {/* How to Get Started - Vertical Timeline */}
-      <section className="py-20 sm:py-28 relative overflow-hidden">
-        {/* Subtle background gradient */}
+      <section className="py-20 sm:py-28 relative overflow-hidden bg-white dark:bg-[#0a0d12]">
+        {/* Subtle background gradient - full width */}
         <div className="absolute inset-0 -z-10">
           <div className="absolute top-1/2 left-1/4 w-[500px] h-[500px] bg-brand-accent/5 rounded-full blur-3xl -translate-y-1/2" />
           <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-[#e8b923]/5 rounded-full blur-3xl" />
