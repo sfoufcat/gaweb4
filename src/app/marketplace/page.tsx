@@ -436,11 +436,8 @@ export default function MarketplacePage() {
                 <div className="w-14 h-14 bg-gradient-to-br from-[#e8b923]/20 to-[#e8b923]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Zap className="w-7 h-7 text-[#e8b923]" />
                 </div>
-                <h3 className="font-albert text-[20px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                  Simple setup
-                </h3>
                 <p className="font-sans text-[14px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed">
-                  Launch your program in minutes. Custom funnels, branding, and payments—all in one place.
+                  Launch your program in minutes with custom funnels, branding, and payments.
                 </p>
               </div>
               

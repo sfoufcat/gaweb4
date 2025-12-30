@@ -224,6 +224,9 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
 
   // Verification step
   if (pendingVerification) {
+    // Cubic bezier easing for smooth animations
+    const smoothEase = [0.16, 1, 0.3, 1] as const;
+
     // Animation variants for staggered entrance
     const containerVariants = {
       hidden: { opacity: 0 },
@@ -243,7 +246,7 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
         y: 0,
         transition: {
           duration: 0.4,
-          ease: [0.16, 1, 0.3, 1],
+          ease: smoothEase,
         },
       },
     };
@@ -254,7 +257,7 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
           className="bg-white/80 dark:bg-[#171b22]/90 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-[#262b35]/60 rounded-3xl p-8 shadow-lg"
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.3, ease: smoothEase }}
         >
           <motion.div 
             className="text-center mb-8"
