@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       'weeklyReminderEnabled',
     ];
     
-    const updates: Partial<EmailPreferences> = {};
+    const updates: Partial<Record<string, boolean>> = {};
     
     for (const key of allowedKeys) {
       if (key in body && typeof body[key] === 'boolean') {

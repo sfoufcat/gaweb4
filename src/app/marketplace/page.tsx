@@ -276,10 +276,9 @@ export default function MarketplacePage() {
 
       {/* Hero Section */}
       <section className="relative py-16 sm:py-24 overflow-hidden">
-        {/* Background decoration */}
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute -top-20 -left-20 w-[500px] h-[500px] bg-brand-accent/8 rounded-full blur-[120px]" />
-          <div className="absolute -bottom-20 -right-20 w-[600px] h-[600px] bg-[#e8b923]/8 dark:bg-[#e8b923]/4 rounded-full blur-[150px]" />
+        {/* Background decoration - centered glow behind text */}
+        <div className="absolute inset-0 -z-10 flex items-center justify-center">
+          <div className="w-[800px] h-[600px] bg-brand-accent/15 dark:bg-brand-accent/10 rounded-full blur-[120px] opacity-80" />
         </div>
         
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
