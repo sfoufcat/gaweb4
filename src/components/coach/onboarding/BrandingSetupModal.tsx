@@ -158,8 +158,10 @@ export function BrandingSetupModal({ isOpen, onComplete, businessName }: Brandin
     } catch (e) {
       console.error('Error fetching tenant URL:', e);
     }
-    // Fallback to relative path (works if already on subdomain)
-    router.push('/coach?tour=true');
+    // Fallback: stay on marketing domain - this shouldn't happen in normal flow
+    // but if it does, go to profile page which can re-check state
+    console.error('Could not find tenant URL for redirect after branding setup');
+    router.push('/coach/onboarding/profile');
   };
 
   // Handle saving branding and continuing

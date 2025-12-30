@@ -61,7 +61,22 @@ export default function CompleteSignupPage() {
                 router.push('/coach/onboarding/plans');
                 return;
               } else if (stateData.state === 'active') {
-                router.push('/coach');
+                // Redirect to subdomain coach dashboard
+                try {
+                  const tenantRes = await fetch('/api/user/tenant-domains');
+                  if (tenantRes.ok) {
+                    const tenantData = await tenantRes.json();
+                    const ownerDomain = tenantData.tenantDomains?.find((d: { isOwner?: boolean }) => d.isOwner);
+                    if (ownerDomain?.tenantUrl) {
+                      window.location.href = `${ownerDomain.tenantUrl}/coach`;
+                      return;
+                    }
+                  }
+                } catch (e) {
+                  console.error('Error fetching tenant URL:', e);
+                }
+                // Fallback: go to profile to re-verify
+                router.push('/coach/onboarding/profile');
                 return;
               }
             }
@@ -69,8 +84,8 @@ export default function CompleteSignupPage() {
             console.error('Error checking onboarding state:', err);
           }
           
-          // Fallback: go to coach dashboard
-          router.push('/coach');
+          // Fallback: go to profile to check/continue onboarding
+          router.push('/coach/onboarding/profile');
           return;
         }
         

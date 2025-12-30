@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useSignUp } from '@clerk/nextjs';
+import { useUser, useSignUp, useClerk } from '@clerk/nextjs';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -41,6 +41,7 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
   const router = useRouter();
   const { user, isLoaded: userLoaded } = useUser();
   const { signUp, isLoaded: signUpLoaded, setActive } = useSignUp();
+  const { signOut } = useClerk();
   
   const [step, setStep] = useState<ModalStep>('persuasion');
   const [error, setError] = useState<string | null>(null);
@@ -622,18 +623,16 @@ export function CreateProgramModal({ isOpen, onClose }: CreateProgramModalProps)
                         <ArrowRight className="w-5 h-5" />
                       </button>
                       
-                      {/* Go to dashboard if already set up */}
-                      {existingCoachUrl && (
-                        <button
-                          onClick={() => {
-                            window.location.href = existingCoachUrl;
-                            onClose();
-                          }}
-                          className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#f3f1ef] dark:bg-[#1e222a] hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-full font-sans font-medium text-[15px] transition-colors"
-                        >
-                          Go to dashboard
-                        </button>
-                      )}
+                      {/* Use different email - sign out option */}
+                      <button
+                        onClick={async () => {
+                          await signOut();
+                          onClose();
+                        }}
+                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#f3f1ef] dark:bg-[#1e222a] hover:bg-[#e1ddd8] dark:hover:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-full font-sans font-medium text-[15px] transition-colors"
+                      >
+                        Use different email
+                      </button>
                       
                       <p className="text-center font-sans text-[12px] text-[#a7a39e] dark:text-[#7d8190] pt-2">
                         Want to create another program?{' '}

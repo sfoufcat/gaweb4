@@ -175,21 +175,7 @@ export default function MarketplacePage() {
 
   // Handle "Create your own" click
   const handleCreateClick = () => {
-    if (user) {
-      // Check if user is already a coach with an org
-      const publicMetadata = user.publicMetadata as {
-        role?: string;
-        orgRole?: string;
-        organizationId?: string;
-      };
-      
-      if (publicMetadata?.organizationId && userOrg?.tenantUrl) {
-        // Already has an org, redirect to their subdomain's coach dashboard
-        window.location.href = `${userOrg.tenantUrl}/coach`;
-        return;
-      }
-    }
-    
+    // Always show the modal - it handles existing coach case with options
     setShowCreateModal(true);
   };
 

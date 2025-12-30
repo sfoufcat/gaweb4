@@ -358,8 +358,8 @@ export default function OnboardingPlansPage() {
             } catch (e) {
               console.error('Error fetching tenant URL:', e);
             }
-            // Fallback to relative path (works if already on subdomain)
-            router.push('/coach');
+            // Fallback: stay on marketing domain, go to profile page
+            router.push('/coach/onboarding/profile');
             return;
           }
         }
