@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useSignIn } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { AuthInput } from './AuthInput';
@@ -17,28 +17,65 @@ interface SignInFormProps {
 export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', hideOAuth = false }: SignInFormProps) {
   const { signIn, isLoaded, setActive } = useSignIn();
   const router = useRouter();
-
-  // Helper to handle successful auth
-  // In embedded mode: send postMessage to parent
-  // Otherwise: redirect normally
-  const handleAuthSuccess = () => {
-    if (embedded && origin) {
-      // Notify parent window of successful auth
-      window.parent.postMessage({ type: 'auth-success' }, origin);
-    } else {
-      handleRedirect(redirectUrl);
+  
+  // Check if we're on the marketing domain (growthaddicts.com without subdomain)
+  const [isMarketingDomain, setIsMarketingDomain] = useState(false);
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname.toLowerCase();
+      // Marketing domain: growthaddicts.com or www.growthaddicts.com (not subdomains)
+      const isMarketing = hostname === 'growthaddicts.com' || hostname === 'www.growthaddicts.com';
+      setIsMarketingDomain(isMarketing);
     }
-  };
+  }, []);
 
   // Helper to handle redirects - external URLs (http/https) use window.location
   // Internal paths use Next.js router
-  const handleRedirect = (url: string) => {
+  const handleRedirect = useCallback((url: string) => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       window.location.href = url;
     } else {
       router.push(url);
     }
-  };
+  }, [router]);
+
+  // Helper to handle successful auth
+  // In embedded mode: send postMessage to parent
+  // On marketing domain: call API to determine redirect URL (for coaches)
+  // Otherwise: redirect normally
+  const handleAuthSuccess = useCallback(async () => {
+    if (embedded && origin) {
+      // Notify parent window of successful auth
+      window.parent.postMessage({ type: 'auth-success' }, origin);
+      return;
+    }
+    
+    // On marketing domain, check if user is a coach with an org
+    // and redirect them appropriately (to onboarding or their subdomain)
+    if (isMarketingDomain) {
+      try {
+        const response = await fetch('/api/auth/post-signin-redirect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.redirect) {
+            handleRedirect(data.redirect);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('[SignInForm] Error fetching redirect URL:', error);
+        // Fall through to default redirect on error
+      }
+    }
+    
+    // Default: use provided redirectUrl
+    handleRedirect(redirectUrl);
+  }, [embedded, origin, isMarketingDomain, redirectUrl, handleRedirect]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -88,10 +125,14 @@ export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', h
         setOauthLoading(false);
       } else {
         // Normal OAuth flow with redirect
+        // On marketing domain, redirect to a page that will check for coach redirect
+        // On other domains, use the provided redirectUrl
+        const oauthRedirectUrl = isMarketingDomain ? '/?from_signin=1' : redirectUrl;
+        
         await signIn.authenticateWithRedirect({
           strategy: provider,
           redirectUrl: '/sso-callback',
-          redirectUrlComplete: redirectUrl,
+          redirectUrlComplete: oauthRedirectUrl,
         });
       }
     } catch (err: unknown) {

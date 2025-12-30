@@ -177,9 +177,42 @@ export async function POST(req: Request) {
           },
         });
       } catch (error) {
-        console.error('[COACH_SUBSCRIPTION_CONFIRM] Failed to update Clerk metadata:', error);
+        console.error('[COACH_SUBSCRIPTION_CONFIRM] Failed to update Clerk user metadata:', error);
         // Continue - subscription is created, this is not critical
       }
+    }
+
+    // CRITICAL: Sync billing state to Clerk ORGANIZATION publicMetadata
+    // This is what the middleware checks for subscription access on tenant domains
+    // Without this, the coach would be redirected to /coach/reactivate after payment
+    try {
+      const clerk = await clerkClient();
+      const org = await clerk.organizations.getOrganization({ organizationId });
+      const existingOrgMetadata = org.publicMetadata || {};
+      
+      const subscriptionStatus = subscription.status === 'trialing' ? 'trialing' : 'active';
+      
+      await clerk.organizations.updateOrganization(organizationId, {
+        publicMetadata: {
+          ...existingOrgMetadata,
+          plan: tier,
+          subscriptionStatus,
+          currentPeriodEnd: coachSubscriptionData.currentPeriodEnd,
+          trialEnd: coachSubscriptionData.trialEnd,
+          cancelAtPeriodEnd: false,
+          onboardingState: 'active',
+        },
+      });
+      console.log(`[COACH_SUBSCRIPTION_CONFIRM] Synced billing to Clerk org ${organizationId}: plan=${tier}, status=${subscriptionStatus}`);
+      
+      // Also update org_settings with subscription status for Edge Config sync
+      await adminDb.collection('org_settings').doc(organizationId).set({
+        subscriptionStatus,
+        updatedAt: now,
+      }, { merge: true });
+    } catch (orgError) {
+      console.error('[COACH_SUBSCRIPTION_CONFIRM] Failed to sync org metadata:', orgError);
+      // Don't fail the request - the Stripe webhook will eventually sync this
     }
 
     return NextResponse.json({ 

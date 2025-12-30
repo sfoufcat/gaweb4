@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Search, Sparkles, ArrowRight, Users, Zap, Target, Palette, Rocket, ChevronDown, ChevronLeft, ChevronRight, Heart, PlusCircle } from 'lucide-react';
 import type { MarketplaceListing, MarketplaceCategory, DecoyListing } from '@/types';
 import { MARKETPLACE_CATEGORIES } from '@/types';
@@ -20,6 +21,8 @@ import { LinedGradientBackground } from '@/components/ui/lined-gradient-backgrou
  */
 export default function MarketplacePage() {
   const { user, isLoaded } = useUser();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   
   // State - using extended type with funnel info
   const [listings, setListings] = useState<(MarketplaceListing & { funnelSlug?: string | null; programSlug?: string | null })[]>([]);
@@ -110,6 +113,43 @@ export default function MarketplacePage() {
     
     checkOnboardingState();
   }, [isLoaded, user]);
+  
+  // Handle OAuth sign-in redirect from marketing domain
+  // When a coach signs in via OAuth, they land here with ?from_signin=1
+  // We need to check if they're a coach and redirect them appropriately
+  useEffect(() => {
+    if (!isLoaded || !user) return;
+    
+    const fromSignin = searchParams.get('from_signin');
+    if (fromSignin !== '1') return;
+    
+    // Call the post-signin redirect API to determine where to send the user
+    const handlePostSigninRedirect = async () => {
+      try {
+        const response = await fetch('/api/auth/post-signin-redirect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.redirect && data.redirect !== '/') {
+            // Redirect to the appropriate destination
+            if (data.redirect.startsWith('http://') || data.redirect.startsWith('https://')) {
+              window.location.href = data.redirect;
+            } else {
+              router.push(data.redirect);
+            }
+          }
+          // If redirect is '/', they stay on marketplace (not a coach or no org)
+        }
+      } catch (error) {
+        console.error('Error handling post-signin redirect:', error);
+      }
+    };
+    
+    handlePostSigninRedirect();
+  }, [isLoaded, user, searchParams, router]);
   
   // Fetch user's organization data for dashboard redirect
   useEffect(() => {

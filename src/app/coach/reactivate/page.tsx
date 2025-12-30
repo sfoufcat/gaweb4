@@ -119,6 +119,10 @@ export default function ReactivatePage() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Activation state (after payment completes)
+  const [isActivating, setIsActivating] = useState(false);
+  const [activationTimeout, setActivationTimeout] = useState(false);
 
   // Fetch current subscription status
   useEffect(() => {
@@ -199,10 +203,49 @@ export default function ReactivatePage() {
     setClientSecret(null);
   }, []);
 
-  const handleCheckoutComplete = useCallback(() => {
-    // Redirect to dashboard after successful reactivation
-    router.push('/coach');
+  const handleCheckoutComplete = useCallback(async () => {
+    // Don't redirect immediately - poll for subscription to become active
+    // The Stripe webhook needs to process and update Clerk org metadata
+    setShowCheckout(false);
+    setClientSecret(null);
+    setIsActivating(true);
+    setActivationTimeout(false);
+    
+    const maxAttempts = 15;
+    const pollInterval = 2000; // 2 seconds
+    
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const response = await fetch('/api/coach/subscription');
+        if (response.ok) {
+          const data = await response.json();
+          const status = data.subscription?.status;
+          
+          if (status === 'active' || status === 'trialing') {
+            // Subscription is active - redirect to dashboard
+            console.log('[REACTIVATE] Subscription activated, redirecting to dashboard');
+            router.push('/coach');
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('[REACTIVATE] Error polling subscription:', err);
+      }
+      
+      // Wait before next poll
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+    
+    // Timeout - show retry option
+    console.log('[REACTIVATE] Activation polling timeout');
+    setIsActivating(false);
+    setActivationTimeout(true);
   }, [router]);
+  
+  const handleRetryActivation = useCallback(() => {
+    // Re-trigger activation polling
+    handleCheckoutComplete();
+  }, [handleCheckoutComplete]);
 
   const getStatusMessage = () => {
     if (!subscriptionInfo) {
@@ -250,6 +293,68 @@ export default function ReactivatePage() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b] flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-brand-accent/20 border-t-[#a07855] rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Activation in progress - show activating UI
+  if (isActivating) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b] flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="mb-8 inline-flex items-center justify-center w-24 h-24 bg-brand-accent/10 rounded-3xl">
+            <Loader2 className="w-12 h-12 text-brand-accent animate-spin" />
+          </div>
+          <h1 className="font-albert text-[32px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1px] mb-4">
+            Activating your subscription...
+          </h1>
+          <p className="font-sans text-[16px] text-[#5f5a55] dark:text-[#b2b6c2]">
+            Please wait while we activate your subscription. This usually takes just a few seconds.
+          </p>
+          <div className="flex justify-center gap-2 mt-8">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="w-2 h-2 rounded-full bg-brand-accent animate-pulse"
+                style={{ animationDelay: `${i * 0.2}s` }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Activation timeout - show retry UI
+  if (activationTimeout) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#faf8f6] to-[#f5f2ed] dark:from-[#0a0c10] dark:to-[#11141b] flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="mb-8 inline-flex items-center justify-center w-24 h-24 bg-amber-100 dark:bg-amber-950/30 rounded-3xl">
+            <AlertCircle className="w-12 h-12 text-amber-600 dark:text-amber-400" />
+          </div>
+          <h1 className="font-albert text-[32px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1px] mb-4">
+            Taking longer than expected
+          </h1>
+          <p className="font-sans text-[16px] text-[#5f5a55] dark:text-[#b2b6c2] mb-8">
+            Your payment was successful, but activation is taking a moment. You can try again or go to the dashboard.
+          </p>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={handleRetryActivation}
+              className="w-full flex items-center justify-center gap-2 py-4 bg-brand-accent hover:bg-[#8b6847] text-white rounded-xl font-sans font-semibold text-base transition-all"
+            >
+              <RefreshCw className="w-5 h-5" />
+              Try again
+            </button>
+            <button
+              onClick={() => router.push('/coach')}
+              className="w-full py-3 text-[#5f5a55] dark:text-[#b2b6c2] font-sans text-sm hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors"
+            >
+              Go to dashboard anyway
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
