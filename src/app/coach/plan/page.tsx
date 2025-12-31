@@ -38,9 +38,24 @@ import {
   getNextTier,
 } from '@/lib/coach-permissions';
 import { CoachPlanSkeleton } from '@/components/coach/CoachPlanSkeleton';
+import type { CoachSavedPaymentMethod } from '@/app/api/coach/payment-methods/route';
 
 // Initialize Stripe outside component to avoid recreation on each render
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+
+// Helper to format card brand for display
+function formatCardBrand(brand: string): string {
+  const brands: Record<string, string> = {
+    visa: 'Visa',
+    mastercard: 'Mastercard',
+    amex: 'American Express',
+    discover: 'Discover',
+    diners: 'Diners Club',
+    jcb: 'JCB',
+    unionpay: 'UnionPay',
+  };
+  return brands[brand.toLowerCase()] || brand.charAt(0).toUpperCase() + brand.slice(1);
+}
 
 // =============================================================================
 // PLAN DEFINITIONS
@@ -280,17 +295,6 @@ function CheckoutForm({ planName, price, onSuccess, onCancel }: CheckoutFormProp
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {/* Plan Summary */}
-      <div className="bg-[#faf8f6] dark:bg-[#262b35] rounded-xl p-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <p className="font-sans text-[14px] font-medium text-text-primary">{planName} Plan</p>
-            <p className="font-sans text-[12px] text-text-secondary">Monthly subscription</p>
-          </div>
-          <p className="font-albert text-[20px] font-bold text-text-primary">{price}/mo</p>
-        </div>
-      </div>
-
       {/* Payment Element */}
       <div className="bg-white dark:bg-[#1a1e26] rounded-xl border border-[#e1ddd8] dark:border-[#313746] p-4">
         <div className="flex items-center gap-2 mb-4">
@@ -398,6 +402,12 @@ export default function CoachPlanPage() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<CoachTier | null>(null);
+  
+  // Saved payment methods state
+  const [savedPaymentMethods, setSavedPaymentMethods] = useState<CoachSavedPaymentMethod[]>([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | 'new'>('new');
+  const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(false);
+  const [isProcessingSavedCard, setIsProcessingSavedCard] = useState(false);
 
   // Fetch current subscription status
   useEffect(() => {
@@ -437,6 +447,33 @@ export default function CoachPlanPage() {
     checkSubscription();
   }, [isLoaded, user]);
 
+  // Fetch saved payment methods when user loads
+  useEffect(() => {
+    if (!isLoaded || !user) return;
+
+    const fetchPaymentMethods = async () => {
+      setIsLoadingPaymentMethods(true);
+      try {
+        const response = await fetch('/api/coach/payment-methods');
+        if (response.ok) {
+          const data = await response.json();
+          setSavedPaymentMethods(data.paymentMethods || []);
+          // Pre-select default payment method if available
+          const defaultPm = data.paymentMethods?.find((pm: CoachSavedPaymentMethod) => pm.isDefault);
+          if (defaultPm) {
+            setSelectedPaymentMethod(defaultPm.id);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch payment methods:', err);
+      } finally {
+        setIsLoadingPaymentMethods(false);
+      }
+    };
+
+    fetchPaymentMethods();
+  }, [isLoaded, user]);
+
   const handleSelectPlan = async () => {
     if (!selectedPlan) return;
 
@@ -451,6 +488,15 @@ export default function CoachPlanPage() {
       }
     }
 
+    // If there are saved payment methods, show the checkout modal with payment selection
+    // Otherwise, go directly to the payment flow
+    if (savedPaymentMethods.length > 0) {
+      setCheckoutPlan(selectedPlan);
+      setShowCheckout(true);
+      return;
+    }
+
+    // No saved cards - go directly to new card flow
     setIsLoading(true);
     setError(null);
 
@@ -483,11 +529,98 @@ export default function CoachPlanPage() {
     }
   };
 
+  // Handle payment with saved card
+  const handlePayWithSavedCard = async () => {
+    if (!checkoutPlan || selectedPaymentMethod === 'new') return;
+
+    setIsProcessingSavedCard(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/coach/subscription/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          tier: checkoutPlan, 
+          upgrade: true,
+          paymentMethodId: selectedPaymentMethod,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Payment failed');
+      }
+
+      // Check if payment succeeded directly
+      if (data.success) {
+        // Payment succeeded with saved card
+        window.location.href = '/coach?upgraded=true';
+        return;
+      }
+
+      // Check if 3DS is required
+      if (data.requires3DS && data.clientSecret) {
+        // Need to handle 3DS - set clientSecret and switch to PaymentElement mode
+        setClientSecret(data.clientSecret);
+        setSelectedPaymentMethod('new'); // Switch to show PaymentElement for 3DS
+        setIsProcessingSavedCard(false);
+        return;
+      }
+
+      // If we got a clientSecret without success, something went wrong
+      throw new Error('Unexpected response from server');
+    } catch (err) {
+      console.error('Saved card payment error:', err);
+      setError(err instanceof Error ? err.message : 'Payment failed');
+      setIsProcessingSavedCard(false);
+    }
+  };
+
+  // Start new card flow from checkout modal
+  const handleUseNewCard = async () => {
+    if (!checkoutPlan) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/coach/subscription/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier: checkoutPlan, upgrade: true }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create checkout session');
+      }
+
+      if (data.clientSecret) {
+        setClientSecret(data.clientSecret);
+        setIsLoading(false);
+      } else {
+        throw new Error('No checkout session received');
+      }
+    } catch (err) {
+      console.error('Checkout error:', err);
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setIsLoading(false);
+    }
+  };
+
   const handleCloseCheckout = useCallback(() => {
     setShowCheckout(false);
     setClientSecret(null);
     setCheckoutPlan(null);
-  }, []);
+    setError(null);
+    setIsProcessingSavedCard(false);
+    // Reset to default payment method selection
+    const defaultPm = savedPaymentMethods.find(pm => pm.isDefault);
+    setSelectedPaymentMethod(defaultPm ? defaultPm.id : savedPaymentMethods.length > 0 ? savedPaymentMethods[0].id : 'new');
+  }, [savedPaymentMethods]);
 
   const handleManageSubscription = async () => {
     // For admin-granted plans, show the info popup instead of Stripe portal
@@ -897,7 +1030,7 @@ export default function CoachPlanPage() {
 
       {/* Payment Checkout Modal */}
       <AnimatePresence>
-        {showCheckout && clientSecret && checkoutPlan && (
+        {showCheckout && checkoutPlan && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -937,26 +1070,197 @@ export default function CoachPlanPage() {
                 </button>
               </div>
 
-              {/* Checkout Content with PaymentElement */}
+              {/* Checkout Content */}
               <div className="flex-1 overflow-y-auto p-6">
-                <Elements
-                  stripe={stripePromise}
-                  options={{
-                    clientSecret,
-                    appearance: getStripeAppearance(isDark),
-                  }}
-                >
-                  <CheckoutForm
-                    planName={TIER_PRICING[checkoutPlan].name}
-                    price={`$${(TIER_PRICING[checkoutPlan].monthly / 100).toFixed(0)}`}
-                    onSuccess={() => {
-                      handleCloseCheckout();
-                      // Refresh page to show updated subscription
-                      window.location.href = '/coach?upgraded=true';
+                {/* Plan Summary */}
+                <div className="bg-[#faf8f6] dark:bg-[#262b35] rounded-xl p-4 mb-5">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-sans text-[14px] font-medium text-text-primary">{TIER_PRICING[checkoutPlan].name} Plan</p>
+                      <p className="font-sans text-[12px] text-text-secondary">Monthly subscription</p>
+                    </div>
+                    <p className="font-albert text-[20px] font-bold text-text-primary">${(TIER_PRICING[checkoutPlan].monthly / 100).toFixed(0)}/mo</p>
+                  </div>
+                </div>
+
+                {/* Payment Method Selection (if has saved cards and no clientSecret yet) */}
+                {savedPaymentMethods.length > 0 && !clientSecret && (
+                  <div className="space-y-5">
+                    {/* Saved Cards */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CreditCard className="w-4 h-4 text-text-secondary" />
+                        <span className="font-sans text-[14px] font-medium text-text-primary">
+                          Payment method
+                        </span>
+                      </div>
+                      
+                      {savedPaymentMethods.map((pm) => (
+                        <button
+                          key={pm.id}
+                          onClick={() => setSelectedPaymentMethod(pm.id)}
+                          className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                            selectedPaymentMethod === pm.id
+                              ? 'border-brand-accent bg-[#faf8f6] dark:bg-[#262b35]'
+                              : 'border-[#e1ddd8] dark:border-[#313746] hover:border-[#d4d0cb]'
+                          }`}
+                        >
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                            selectedPaymentMethod === pm.id
+                              ? 'border-brand-accent bg-brand-accent'
+                              : 'border-[#d4d0cb]'
+                          }`}>
+                            {selectedPaymentMethod === pm.id && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                          </div>
+                          <div className="flex-1 text-left">
+                            <p className="font-sans text-[14px] font-medium text-text-primary">
+                              {formatCardBrand(pm.brand)} •••• {pm.last4}
+                            </p>
+                            <p className="font-sans text-[12px] text-text-secondary">
+                              Expires {pm.expMonth.toString().padStart(2, '0')}/{pm.expYear.toString().slice(-2)}
+                              {pm.isDefault && ' • Default'}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+
+                      {/* Add New Card Option */}
+                      <button
+                        onClick={() => setSelectedPaymentMethod('new')}
+                        className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                          selectedPaymentMethod === 'new'
+                            ? 'border-brand-accent bg-[#faf8f6] dark:bg-[#262b35]'
+                            : 'border-[#e1ddd8] dark:border-[#313746] hover:border-[#d4d0cb]'
+                        }`}
+                      >
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                          selectedPaymentMethod === 'new'
+                            ? 'border-brand-accent bg-brand-accent'
+                            : 'border-[#d4d0cb]'
+                        }`}>
+                          {selectedPaymentMethod === 'new' && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="font-sans text-[14px] font-medium text-text-primary">
+                            Add new card
+                          </p>
+                          <p className="font-sans text-[12px] text-text-secondary">
+                            Enter new payment details
+                          </p>
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Error Message */}
+                    <AnimatePresence>
+                      {error && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl"
+                        >
+                          <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Security Badge */}
+                    <div className="flex items-center justify-center gap-2 text-text-secondary">
+                      <Lock className="w-4 h-4" />
+                      <span className="font-sans text-[12px]">
+                        Secured by Stripe. Your payment info is encrypted.
+                      </span>
+                    </div>
+
+                    {/* Action Button */}
+                    {selectedPaymentMethod !== 'new' ? (
+                      <button
+                        onClick={handlePayWithSavedCard}
+                        disabled={isProcessingSavedCard}
+                        className="w-full bg-brand-accent hover:bg-[#8b6847] text-white font-sans font-bold text-[15px] py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {isProcessingSavedCard ? (
+                          <>
+                            <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                            Processing payment...
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="w-4 h-4" />
+                            Subscribe to {TIER_PRICING[checkoutPlan].name}
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleUseNewCard}
+                        disabled={isLoading}
+                        className="w-full bg-brand-accent hover:bg-[#8b6847] text-white font-sans font-bold text-[15px] py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {isLoading ? (
+                          <>
+                            <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                            Loading...
+                          </>
+                        ) : (
+                          <>
+                            <ArrowRight className="w-4 h-4" />
+                            Continue with new card
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    {/* Cancel Link */}
+                    <button
+                      type="button"
+                      onClick={handleCloseCheckout}
+                      disabled={isProcessingSavedCard || isLoading}
+                      className="w-full text-center font-sans text-[14px] text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+
+                {/* Stripe PaymentElement (when using new card or no saved cards) */}
+                {clientSecret && (
+                  <Elements
+                    stripe={stripePromise}
+                    options={{
+                      clientSecret,
+                      appearance: getStripeAppearance(isDark),
                     }}
-                    onCancel={handleCloseCheckout}
-                  />
-                </Elements>
+                  >
+                    <CheckoutForm
+                      planName={TIER_PRICING[checkoutPlan].name}
+                      price={`$${(TIER_PRICING[checkoutPlan].monthly / 100).toFixed(0)}`}
+                      onSuccess={() => {
+                        handleCloseCheckout();
+                        // Refresh page to show updated subscription
+                        window.location.href = '/coach?upgraded=true';
+                      }}
+                      onCancel={handleCloseCheckout}
+                    />
+                  </Elements>
+                )}
+
+                {/* No saved cards and no clientSecret - show loading */}
+                {savedPaymentMethods.length === 0 && !clientSecret && (
+                  <div className="flex items-center justify-center py-8">
+                    <svg className="animate-spin h-8 w-8 text-brand-accent" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>

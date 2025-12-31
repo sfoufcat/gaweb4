@@ -25,25 +25,30 @@ const COACH_TIER_PRICE_IDS: Record<CoachTier, string> = {
 /**
  * POST /api/coach/subscription/checkout
  * 
- * Three flows supported:
+ * Four flows supported:
  * 
- * 1. REACTIVATION (reactivate: true):
+ * 1. SAVED PAYMENT METHOD (paymentMethodId provided):
+ *    - Uses existing saved card to create subscription immediately
+ *    - No PaymentIntent needed - subscription is created and activated
+ *    - Returns success: true with subscriptionId
+ * 
+ * 2. REACTIVATION (reactivate: true, no paymentMethodId):
  *    - Creates Subscription with payment_behavior: 'default_incomplete'
  *    - Frontend uses PaymentElement to collect payment details
  *    - Returns PaymentIntent clientSecret and subscriptionId
  * 
- * 2. UPGRADE (upgrade: true):
+ * 3. UPGRADE (upgrade: true, no paymentMethodId):
  *    - Creates Subscription with payment_behavior: 'default_incomplete'
  *    - Frontend uses PaymentElement to collect payment details
  *    - Returns PaymentIntent clientSecret and subscriptionId
  * 
- * 3. ONBOARDING WITH TRIAL (trial: true):
+ * 4. ONBOARDING WITH TRIAL (trial: true):
  *    - Creates SetupIntent to save payment method
  *    - Frontend uses PaymentElement to collect payment details
  *    - On success, /api/coach/subscription/confirm creates the subscription with trial
  *    - Returns SetupIntent clientSecret
  * 
- * Body: { tier: CoachTier, trial?: boolean, onboarding?: boolean, reactivate?: boolean, upgrade?: boolean }
+ * Body: { tier: CoachTier, trial?: boolean, onboarding?: boolean, reactivate?: boolean, upgrade?: boolean, paymentMethodId?: string }
  */
 export async function POST(req: Request) {
   try {
@@ -68,12 +73,13 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { tier, trial, onboarding, reactivate, upgrade } = body as { 
+    const { tier, trial, onboarding, reactivate, upgrade, paymentMethodId } = body as { 
       tier: CoachTier; 
       trial?: boolean;      // Request 7-day trial
       onboarding?: boolean; // Is part of onboarding flow
       reactivate?: boolean; // Reactivating canceled/expired subscription
       upgrade?: boolean;    // Upgrading to a higher tier
+      paymentMethodId?: string; // Use existing saved payment method
     };
 
     // Validate tier
@@ -138,7 +144,93 @@ export async function POST(req: Request) {
       );
     }
 
-    // REACTIVATION/UPGRADE FLOW: Create subscription with incomplete payment
+    // SAVED PAYMENT METHOD FLOW: Use existing card to create subscription immediately
+    // This skips the PaymentElement and charges the saved card directly
+    if (paymentMethodId && (reactivate || upgrade)) {
+      const priceId = COACH_TIER_PRICE_IDS[tier];
+      const flowType = reactivate ? 'reactivate' : 'upgrade';
+      
+      try {
+        // Verify the payment method belongs to this customer
+        const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+        if (paymentMethod.customer !== customerId) {
+          return NextResponse.json(
+            { error: 'Invalid payment method' },
+            { status: 400 }
+          );
+        }
+
+        // Create subscription with the saved payment method
+        const subscription = await stripe.subscriptions.create({
+          customer: customerId,
+          items: [{ price: priceId }],
+          default_payment_method: paymentMethodId,
+          payment_settings: { 
+            save_default_payment_method: 'on_subscription',
+            payment_method_types: ['card'],
+          },
+          expand: ['latest_invoice.payment_intent'],
+          metadata: {
+            userId,
+            organizationId,
+            tier,
+            type: 'coach_subscription',
+            reactivate: reactivate ? 'true' : 'false',
+            upgrade: upgrade ? 'true' : 'false',
+          },
+        });
+
+        // Check if payment succeeded
+        const invoice = subscription.latest_invoice as Stripe.Invoice;
+        
+        if (subscription.status === 'active') {
+          console.log(`[COACH_CHECKOUT] Created active subscription ${subscription.id} with saved PM for ${flowType}, org ${organizationId}, tier ${tier}`);
+          
+          return NextResponse.json({ 
+            success: true,
+            subscriptionId: subscription.id,
+            status: subscription.status,
+            customerId,
+          });
+        }
+        
+        // If subscription requires payment (e.g., card declined), handle it
+        if (subscription.status === 'incomplete') {
+          const paymentIntent = invoice.payment_intent as Stripe.PaymentIntent;
+          
+          if (paymentIntent?.status === 'requires_action') {
+            // 3D Secure required - return clientSecret for frontend to handle
+            console.log(`[COACH_CHECKOUT] 3DS required for subscription ${subscription.id}, org ${organizationId}`);
+            return NextResponse.json({ 
+              clientSecret: paymentIntent.client_secret,
+              subscriptionId: subscription.id,
+              requires3DS: true,
+              customerId,
+            });
+          }
+          
+          // Payment failed - cancel subscription and return error
+          await stripe.subscriptions.cancel(subscription.id);
+          return NextResponse.json(
+            { error: 'Payment failed. Please try a different card.' },
+            { status: 402 }
+          );
+        }
+
+        // Unexpected status
+        console.error(`[COACH_CHECKOUT] Unexpected subscription status: ${subscription.status}`);
+        return NextResponse.json(
+          { error: 'Subscription creation failed. Please try again.' },
+          { status: 500 }
+        );
+      } catch (error) {
+        console.error(`[COACH_CHECKOUT] Saved payment method error:`, error);
+        const message = error instanceof Error ? error.message : 'Payment failed';
+        return NextResponse.json({ error: message }, { status: 402 });
+      }
+    }
+
+    // REACTIVATION/UPGRADE FLOW (without saved payment method): Create subscription with incomplete payment
     // This returns a PaymentIntent clientSecret compatible with PaymentElement
     if (reactivate || upgrade) {
       const priceId = COACH_TIER_PRICE_IDS[tier];
