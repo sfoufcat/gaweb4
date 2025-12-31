@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useUser, SignInButton, SignUpButton } from '@clerk/nextjs';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useHabits } from '@/hooks/useHabits';
 import { useAlignment } from '@/hooks/useAlignment';
 import { useDashboard } from '@/hooks/useDashboard';
@@ -34,6 +34,7 @@ import { useDailyFocusLimit } from '@/hooks/useDailyFocusLimit';
 import { useAvailablePrograms } from '@/hooks/useAvailablePrograms';
 import { ProgramCarousel } from '@/components/home/ProgramCarousel';
 import { SquadCarousel } from '@/components/home/SquadCarousel';
+import { WelcomeTour } from '@/components/coach/onboarding';
 
 /**
  * Homepage / Dashboard
@@ -43,8 +44,12 @@ import { SquadCarousel } from '@/components/home/SquadCarousel';
 
 export default function Dashboard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isLoaded } = useUser();
   const [mounted, setMounted] = useState(false);
+  
+  // Coach welcome tour state
+  const [showWelcomeTour, setShowWelcomeTour] = useState(false);
   const [_userMission, setUserMission] = useState<string | null>(null);
   const [userGoal, setUserGoal] = useState<{ goal?: string; targetDate?: string; progress?: { percentage: number } } | null>(null);
   const [recentlyAchievedGoal, setRecentlyAchievedGoal] = useState<GoalHistoryEntry | null>(null);
@@ -150,6 +155,30 @@ export default function Dashboard() {
   
   // Get customizable menu titles
   const { mySquad: mySquadTitle, squad: squadTerm } = useMenuTitles();
+  
+  // Check if current user is a coach (global role or org-level role)
+  // Used to show coach-specific CTAs in Program and Mastermind sections
+  const isCoachUser = useMemo(() => {
+    if (!user) return false;
+    const userRole = (user?.publicMetadata as { role?: string })?.role;
+    const userOrgRole = (user?.publicMetadata as { orgRole?: string })?.orgRole;
+    return userRole === 'coach' || userOrgRole === 'super_coach' || userOrgRole === 'coach';
+  }, [user]);
+  
+  // Show WelcomeTour for coaches when ?tour=true is in URL
+  useEffect(() => {
+    if (!mounted || !isLoaded) return;
+    
+    const shouldShowTour = searchParams.get('tour') === 'true';
+    
+    if (shouldShowTour && isCoachUser) {
+      setShowWelcomeTour(true);
+      // Remove the tour param from URL to prevent re-showing on refresh
+      const url = new URL(window.location.href);
+      url.searchParams.delete('tour');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [mounted, isLoaded, isCoachUser, searchParams]);
   
   // Program-based prompts have replaced track-based prompts
   
@@ -1324,6 +1353,13 @@ export default function Dashboard() {
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
       
+      {/* Coach Welcome Tour - shown after onboarding */}
+      <WelcomeTour
+        isOpen={showWelcomeTour}
+        onComplete={() => setShowWelcomeTour(false)}
+        onSkip={() => setShowWelcomeTour(false)}
+      />
+      
       {/* HEADER with Profile and Alignment Score */}
       <div className="space-y-3 mb-6">
         <div className="flex items-center justify-between">
@@ -1707,6 +1743,7 @@ export default function Dashboard() {
           enrollments={[...programEnrollments.active, ...programEnrollments.upcoming]}
           isLoading={enrollmentsLoading}
           hasAvailablePrograms={hasAvailablePrograms}
+          isCoach={isCoachUser}
         />
       </div>
 
@@ -1721,6 +1758,7 @@ export default function Dashboard() {
           isLoading={squadLoading}
           squadTitle={mySquadTitle}
           squadTerm={squadTerm}
+          isCoach={isCoachUser}
         />
       </div>
 

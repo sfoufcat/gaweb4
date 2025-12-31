@@ -664,10 +664,10 @@ export default function OnboardingPlansPage() {
             const planPrice = PLANS.find(p => p.id === selectedPlan)?.price || 49;
             
             return (
-              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#f5f3f0] to-[#ebe7e2] dark:from-[#171b22] dark:to-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] p-6 sm:p-8">
+              <div className="relative overflow-hidden rounded-2xl bg-white dark:from-[#171b22] dark:to-[#1e222a] dark:bg-gradient-to-br border border-[#f0ede8] dark:border-[#313746] p-6 sm:p-8">
                 {/* Decorative gradient orbs */}
-                <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-emerald-500/10 dark:from-emerald-500/20 to-transparent rounded-full blur-3xl" />
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-amber-500/10 dark:from-amber-500/15 to-transparent rounded-full blur-2xl" />
+                <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-emerald-400/15 dark:from-emerald-500/20 to-transparent rounded-full blur-3xl" />
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-amber-400/12 dark:from-amber-500/15 to-transparent rounded-full blur-2xl" />
                 
                 <div className="relative z-10">
                   <h3 className="font-albert text-[20px] sm:text-[24px] font-bold text-[#1a1a1a] dark:text-white tracking-[-1px] mb-2">
@@ -680,7 +680,7 @@ export default function OnboardingPlansPage() {
                   {/* Competitor pricing breakdown */}
                   <div className="grid sm:grid-cols-2 gap-3 mb-6">
                     {competitorPricing.map((item, i) => (
-                      <div key={i} className="flex items-center justify-between py-2 px-3 bg-white dark:bg-white/5 rounded-lg border border-[#e1ddd8]/50 dark:border-transparent">
+                      <div key={i} className="flex items-center justify-between py-2 px-3 bg-[#fafaf9] dark:bg-white/5 rounded-lg border border-[#f0ede8] dark:border-transparent">
                         <div>
                           <span className="font-sans text-[13px] text-[#1a1a1a] dark:text-white/90">{item.tool}</span>
                           <span className="font-sans text-[11px] text-[#a7a39e] dark:text-white/40 ml-2">({item.competitor})</span>

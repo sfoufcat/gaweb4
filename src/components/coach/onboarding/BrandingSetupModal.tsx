@@ -151,7 +151,7 @@ export function BrandingSetupModal({ isOpen, onComplete, businessName }: Brandin
         const tenantData = await tenantRes.json();
         const ownerDomain = tenantData.tenantDomains?.find((d: { isOwner?: boolean }) => d.isOwner);
         if (ownerDomain?.tenantUrl) {
-          window.location.href = `${ownerDomain.tenantUrl}/coach?tour=true`;
+          window.location.href = `${ownerDomain.tenantUrl}/?tour=true`;
           return;
         }
       }

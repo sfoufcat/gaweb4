@@ -160,7 +160,11 @@ const SUBTABS: { id: CustomizeSubtab; label: string; icon: React.ReactNode }[] =
   { id: 'communications', label: 'Communications', icon: <Mail className="w-4 h-4" /> },
 ];
 
-export function CustomizeBrandingTab() {
+interface CustomizeBrandingTabProps {
+  onRestartTour?: () => void;
+}
+
+export function CustomizeBrandingTab({ onRestartTour }: CustomizeBrandingTabProps) {
   const { setPreviewMode, isPreviewMode, refetch } = useBranding();
   
   // Subtab state
@@ -1299,13 +1303,26 @@ export function CustomizeBrandingTab() {
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
-        <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert tracking-[-0.5px]">
-          Customize Your Branding
-        </h2>
-        <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-sm">
-          Personalize the look and feel of your app. These settings will apply to your organization
-          when custom domains or subdomains are configured.
-        </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert tracking-[-0.5px]">
+              Customize Your Branding
+            </h2>
+            <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-sm">
+              Personalize the look and feel of your app. These settings will apply to your organization
+              when custom domains or subdomains are configured.
+            </p>
+          </div>
+          {onRestartTour && (
+            <button
+              onClick={onRestartTour}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef]/50 dark:hover:bg-[#262b35]/50 rounded-lg transition-colors font-albert"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Restart Tour
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Error Message */}

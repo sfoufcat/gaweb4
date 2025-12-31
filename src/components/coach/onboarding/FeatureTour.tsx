@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import {
@@ -13,6 +13,7 @@ import {
   ArrowRight,
   X,
   CheckCircle2,
+  Loader2,
 } from 'lucide-react';
 
 // Tour step definitions
@@ -77,11 +78,67 @@ export function FeatureTour({ isActive, onComplete, onSkip }: FeatureTourProps) 
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [isExiting, setIsExiting] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const [availableSteps, setAvailableSteps] = useState<typeof TOUR_STEPS>([]);
   const observerRef = useRef<MutationObserver | null>(null);
-  const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
-  const step = TOUR_STEPS[currentStep];
-  const isLastStep = currentStep === TOUR_STEPS.length - 1;
+  // Check which tabs actually exist in the DOM
+  const detectAvailableTabs = useCallback(() => {
+    const available = TOUR_STEPS.filter(step => {
+      const tab = document.querySelector(`[data-state][value="${step.tabValue}"]`);
+      return !!tab;
+    });
+    return available;
+  }, []);
+
+  // Poll for tabs to exist before starting tour
+  useEffect(() => {
+    if (!isActive) {
+      setIsReady(false);
+      setCurrentStep(0);
+      setAvailableSteps([]);
+      return;
+    }
+
+    let attempts = 0;
+    const maxAttempts = 15; // 3 seconds
+    
+    const checkTabs = () => {
+      attempts++;
+      const tabs = detectAvailableTabs();
+      
+      if (tabs.length > 0) {
+        console.log(`[FeatureTour] Found ${tabs.length} tabs after ${attempts} attempts:`, tabs.map(t => t.id));
+        setAvailableSteps(tabs);
+        setIsReady(true);
+        return true;
+      }
+      
+      if (attempts >= maxAttempts) {
+        console.warn('[FeatureTour] No tabs found after 3 seconds, skipping tour');
+        onSkip();
+        return true;
+      }
+      
+      return false;
+    };
+    
+    // Check immediately
+    if (checkTabs()) return;
+    
+    // Then poll every 200ms
+    const interval = setInterval(() => {
+      if (checkTabs()) {
+        clearInterval(interval);
+      }
+    }, 200);
+    
+    return () => clearInterval(interval);
+  }, [isActive, detectAvailableTabs, onSkip]);
+
+  // Current step based on available steps
+  const step = availableSteps[currentStep];
+  const isLastStep = currentStep === availableSteps.length - 1;
 
   // Find and highlight the target tab element
   const updateTargetPosition = useCallback(() => {
@@ -96,12 +153,14 @@ export function FeatureTour({ isActive, onComplete, onSkip }: FeatureTourProps) 
       
       // Scroll into view if needed
       tabTrigger.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    } else {
+      setTargetRect(null);
     }
   }, [step]);
 
   // Update position on step change and window events
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive || !isReady) return;
 
     updateTargetPosition();
 
@@ -123,11 +182,11 @@ export function FeatureTour({ isActive, onComplete, onSkip }: FeatureTourProps) 
       window.removeEventListener('scroll', handleResize, true);
       observerRef.current?.disconnect();
     };
-  }, [isActive, currentStep, updateTargetPosition]);
+  }, [isActive, isReady, currentStep, updateTargetPosition]);
 
   // Click the tab to show its content
   useEffect(() => {
-    if (!isActive || !step) return;
+    if (!isActive || !isReady || !step) return;
 
     const tabTrigger = document.querySelector(`[data-state][value="${step.tabValue}"]`) as HTMLElement;
     if (tabTrigger) {
@@ -137,7 +196,7 @@ export function FeatureTour({ isActive, onComplete, onSkip }: FeatureTourProps) 
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isActive, step]);
+  }, [isActive, isReady, step]);
 
   const handleNext = () => {
     if (isLastStep) {
@@ -191,7 +250,30 @@ export function FeatureTour({ isActive, onComplete, onSkip }: FeatureTourProps) 
     }, 300);
   };
 
-  if (!isActive || !step) return null;
+  // Don't render anything if not active
+  if (!isActive) return null;
+
+  // Show loading state while waiting for tabs
+  if (!isReady) {
+    return createPortal(
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="fixed inset-0 z-[90] bg-black/70 flex items-center justify-center"
+      >
+        <div className="bg-white dark:bg-[#1a1e26] rounded-2xl p-6 shadow-2xl flex items-center gap-3">
+          <Loader2 className="w-5 h-5 animate-spin text-[#FFD036]" />
+          <span className="font-sans text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+            Preparing tour...
+          </span>
+        </div>
+      </motion.div>,
+      document.body
+    );
+  }
+
+  // No steps available
+  if (!step) return null;
 
   const StepIcon = step.icon;
 
@@ -275,7 +357,7 @@ export function FeatureTour({ isActive, onComplete, onSkip }: FeatureTourProps) 
                 <div className="px-5 py-4 bg-[#f9f8f7] dark:bg-[#171b22] border-t border-[#e1ddd8] dark:border-[#313746]">
                   {/* Progress dots */}
                   <div className="flex items-center justify-center gap-1.5 mb-4">
-                    {TOUR_STEPS.map((_, index) => (
+                    {availableSteps.map((_, index) => (
                       <button
                         key={index}
                         onClick={() => setCurrentStep(index)}
@@ -352,7 +434,7 @@ export function FeatureTour({ isActive, onComplete, onSkip }: FeatureTourProps) 
           {/* Step counter in corner */}
           <div className="fixed top-4 left-4 z-[94] px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm">
             <span className="font-sans text-sm text-white">
-              {currentStep + 1} of {TOUR_STEPS.length}
+              {currentStep + 1} of {availableSteps.length}
             </span>
           </div>
         </>
@@ -361,5 +443,3 @@ export function FeatureTour({ isActive, onComplete, onSkip }: FeatureTourProps) 
     document.body
   );
 }
-
-

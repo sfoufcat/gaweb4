@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Users, ChevronRight, MessageCircle } from 'lucide-react';
+import { Users, ChevronRight, MessageCircle, Plus } from 'lucide-react';
 import type { Squad, SquadMember } from '@/types';
 
 interface SquadData {
@@ -17,9 +17,10 @@ interface SquadCarouselProps {
   isLoading?: boolean;
   squadTitle?: string;
   squadTerm?: string;
+  isCoach?: boolean;
 }
 
-export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTitle = 'My Cohort', squadTerm = 'Mastermind' }: SquadCarouselProps) {
+export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTitle = 'My Cohort', squadTerm = 'Mastermind', isCoach = false }: SquadCarouselProps) {
   // Lowercase version for use in sentences
   const squadTermLower = squadTerm.toLowerCase();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -73,7 +74,34 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
   }
   
   if (squads.length === 0) {
-    // Empty state - show find squad CTA
+    // Coach empty state - show create mastermind CTA
+    if (isCoach) {
+      return (
+        <Link 
+          href="/coach?tab=squads"
+          className="block bg-gradient-to-br from-[#F0F7FF] to-[#E4F0FF] dark:from-[#141a25] dark:to-[#101520] border border-[#C8DFFF] dark:border-[#2d3d55] rounded-[20px] p-5 hover:shadow-lg hover:border-[#5B9BF5]/60 dark:hover:border-[#5B9BF5]/40 transition-all duration-300 group"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-full bg-[#C8DFFF] dark:bg-[#2d3d55] flex items-center justify-center flex-shrink-0">
+              <Plus className="w-7 h-7 text-[#3B7DD8] dark:text-[#7EB3F5]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px] mb-1">
+                Create your {squadTermLower}
+              </h3>
+              <p className="font-albert text-[14px] text-text-secondary leading-[1.4]">
+                Build a {squadTermLower} group for your clients to stay accountable together.
+              </p>
+            </div>
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#5B9BF5] dark:bg-[#3B7DD8] flex items-center justify-center group-hover:opacity-90 group-hover:scale-105 transition-all">
+              <ChevronRight className="w-5 h-5 text-white" />
+            </div>
+          </div>
+        </Link>
+      );
+    }
+    
+    // Member empty state - show find mastermind CTA
     return (
       <Link 
         href="/squad"
@@ -85,7 +113,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-albert font-semibold text-[18px] text-text-primary tracking-[-0.5px] mb-1">
-              Find your {squadTermLower}
+              Find a {squadTermLower}
             </h3>
             <p className="font-albert text-[14px] text-text-secondary leading-[1.4]">
               Join a {squadTermLower} of growth-minded people and stay accountable together.
