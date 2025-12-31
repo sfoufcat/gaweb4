@@ -1010,17 +1010,22 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   } else if (userId && requiresBilling(request)) {
     // PLATFORM MODE BILLING CHECK: For authenticated users on protected app routes
     if (!isStaffRole(role)) {
-      // Skip billing check for coaches in coach onboarding flow
-      // Coaches with an organizationId but no billing yet need to complete their onboarding
+      // Skip billing check for ALL coach onboarding routes
+      // This prevents redirecting new coaches to /onboarding/plan before they can complete setup
+      // The coach onboarding pages handle their own state checking and redirects
       const isCoachOnboarding = pathname?.startsWith('/coach/onboarding');
       const isCoachWelcome = pathname?.startsWith('/coach/welcome');
-      const hasOrganization = !!publicMetadata?.organizationId || !!publicMetadata?.primaryOrganizationId;
+      const isCoachSignup = pathname?.startsWith('/coach/complete-signup');
       
-      if (hasOrganization && (isCoachOnboarding || isCoachWelcome)) {
-        // Coach in onboarding - let them through to complete their setup
-        console.log(`[MIDDLEWARE] Coach ${userId} on onboarding route, allowing access`);
+      if (isCoachOnboarding || isCoachWelcome || isCoachSignup) {
+        // Allow access to coach onboarding routes without billing check
+        // The pages themselves check auth and redirect appropriately
+        console.log(`[MIDDLEWARE] User ${userId} on coach onboarding route, allowing access`);
         return response;
       }
+      
+      // Check if user has an organization (is a coach)
+      const hasOrganization = !!publicMetadata?.organizationId || !!publicMetadata?.primaryOrganizationId;
       
       // For coaches without billing, redirect to coach onboarding instead of user onboarding
       if (hasOrganization) {
