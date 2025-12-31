@@ -1,13 +1,33 @@
 import { auth } from '@clerk/nextjs/server';
 import { headers } from 'next/headers';
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg, TenantRequiredError } from '@/lib/admin-utils-clerk';
 import { syncTenantToEdgeConfig, setTenantByCustomDomain, buildTenantConfigData, type TenantBrandingData, type TenantSubscriptionData } from '@/lib/tenant-edge-config';
 import { regenerateDefaultLogo } from '@/lib/logo-generator';
-import type { OrgCustomDomain, LogoSource } from '@/types';
+import type { OrgCustomDomain, LogoSource, MenuItemKey } from '@/types';
 import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgDefaultTheme, UserRole } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_THEME } from '@/types';
+
+/**
+ * Cookie data structure for tenant context (must match branding-server.ts)
+ */
+interface TenantCookieData {
+  orgId: string;
+  subdomain: string;
+  branding: {
+    logoUrl: string | null;
+    logoUrlDark?: string | null;
+    horizontalLogoUrl: string | null;
+    horizontalLogoUrlDark?: string | null;
+    appTitle: string;
+    colors: OrgBrandingColors;
+    menuTitles: OrgMenuTitles;
+    menuIcons: OrgMenuIcons;
+    menuOrder: MenuItemKey[];
+  };
+  feedEnabled?: boolean;
+}
 
 /**
  * GET /api/org/branding
@@ -98,7 +118,7 @@ export async function GET(request: Request) {
  * 
  * Body: Partial<OrgBranding> - fields to update
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     // Use requireCoachWithOrg which enforces tenant mode
     // Super admins are exempted and can access from platform domain
@@ -258,6 +278,23 @@ export async function POST(request: Request) {
       menuIcons: brandingData.menuIcons,
     });
 
+    // Fetch subdomain and feedEnabled for both Edge Config sync and cookie update
+    let subdomain: string | undefined;
+    let feedEnabled = false;
+    
+    try {
+      // Get subdomain from org_domains
+      const domainDoc = await adminDb.collection('org_domains').doc(organizationId).get();
+      const domainData = domainDoc.data();
+      subdomain = domainData?.subdomain;
+      
+      // Get feedEnabled from org_settings
+      const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
+      feedEnabled = orgSettingsDoc.exists ? (orgSettingsDoc.data()?.feedEnabled === true) : false;
+    } catch (fetchError) {
+      console.warn('[ORG_BRANDING_POST] Failed to fetch subdomain/feedEnabled:', fetchError);
+    }
+
     // Sync to Edge Config for fast tenant resolution
     try {
       // Build branding data for Edge Config
@@ -271,11 +308,6 @@ export async function POST(request: Request) {
         menuOrder: brandingData.menuOrder || DEFAULT_MENU_ORDER,
       };
       
-      // Get subdomain from org_domains
-      const domainDoc = await adminDb.collection('org_domains').doc(organizationId).get();
-      const domainData = domainDoc.data();
-      const subdomain = domainData?.subdomain;
-      
       // Get verified custom domain from org_custom_domains
       const customDomainSnapshot = await adminDb
         .collection('org_custom_domains')
@@ -287,10 +319,6 @@ export async function POST(request: Request) {
       const verifiedCustomDomain = customDomainSnapshot.empty 
         ? null 
         : (customDomainSnapshot.docs[0].data() as OrgCustomDomain).domain;
-      
-      // Get feedEnabled from org_settings for Edge Config
-      const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
-      const feedEnabled = orgSettingsDoc.exists ? (orgSettingsDoc.data()?.feedEnabled === true) : false;
       
       // Fetch subscription from Firestore to preserve it in Edge Config
       // This prevents subscription status from being reset when only branding changes
@@ -351,10 +379,79 @@ export async function POST(request: Request) {
       console.error('[ORG_BRANDING_POST] Edge Config sync error (non-fatal):', edgeError);
     }
 
-    return NextResponse.json({
+    // Build the response
+    const response = NextResponse.json({
       success: true,
       branding: brandingData,
     });
+    
+    // Update the ga_tenant_context cookie with new branding data
+    // This ensures the browser has updated data immediately, bypassing Edge Config propagation delay
+    try {
+      const existingCookie = request.cookies.get('ga_tenant_context')?.value;
+      let cookieData: TenantCookieData | null = null;
+      
+      if (existingCookie) {
+        try {
+          cookieData = JSON.parse(existingCookie) as TenantCookieData;
+        } catch {
+          console.warn('[ORG_BRANDING_POST] Failed to parse existing tenant cookie');
+        }
+      }
+      
+      // If no existing cookie, try to build one from available data
+      if (!cookieData && subdomain) {
+        cookieData = {
+          orgId: organizationId,
+          subdomain: subdomain,
+          branding: {
+            logoUrl: brandingData.logoUrl,
+            logoUrlDark: brandingData.logoUrlDark,
+            horizontalLogoUrl: brandingData.horizontalLogoUrl,
+            horizontalLogoUrlDark: brandingData.horizontalLogoUrlDark,
+            appTitle: brandingData.appTitle,
+            colors: brandingData.colors,
+            menuTitles: brandingData.menuTitles || DEFAULT_MENU_TITLES,
+            menuIcons: brandingData.menuIcons || DEFAULT_MENU_ICONS,
+            menuOrder: brandingData.menuOrder || DEFAULT_MENU_ORDER,
+          },
+          feedEnabled: feedEnabled,
+        };
+      }
+      
+      // Update branding in existing cookie
+      if (cookieData) {
+        cookieData.branding = {
+          logoUrl: brandingData.logoUrl,
+          logoUrlDark: brandingData.logoUrlDark,
+          horizontalLogoUrl: brandingData.horizontalLogoUrl,
+          horizontalLogoUrlDark: brandingData.horizontalLogoUrlDark,
+          appTitle: brandingData.appTitle,
+          colors: brandingData.colors,
+          menuTitles: brandingData.menuTitles || DEFAULT_MENU_TITLES,
+          menuIcons: brandingData.menuIcons || DEFAULT_MENU_ICONS,
+          menuOrder: brandingData.menuOrder || DEFAULT_MENU_ORDER,
+        };
+        // Also update feedEnabled if we fetched it
+        if (typeof feedEnabled === 'boolean') {
+          cookieData.feedEnabled = feedEnabled;
+        }
+        
+        // Set the updated cookie
+        response.cookies.set('ga_tenant_context', JSON.stringify(cookieData), {
+          path: '/',
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24 * 7, // 1 week
+        });
+        console.log('[ORG_BRANDING_POST] Updated ga_tenant_context cookie with new branding');
+      }
+    } catch (cookieError) {
+      // Log but don't fail the request - cookie update is optimization
+      console.error('[ORG_BRANDING_POST] Cookie update error (non-fatal):', cookieError);
+    }
+    
+    return response;
   } catch (error) {
     console.error('[ORG_BRANDING_POST_ERROR]', error);
     return NextResponse.json({ error: 'Internal Error' }, { status: 500 });

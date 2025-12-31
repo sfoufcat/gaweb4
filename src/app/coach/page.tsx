@@ -75,9 +75,8 @@ export default function CoachPage() {
   const initialTab = tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'clients';
   const [activeTab, setActiveTab] = useState<CoachTab>(initialTab);
   
-  // Feature tour state - triggered by ?tour=true from onboarding or restart-tour=true
+  // Feature tour state - triggered by ?tour=true from onboarding
   const shouldStartTour = searchParams.get('tour') === 'true';
-  const shouldRestartTour = searchParams.get('restart-tour') === 'true';
   const [isTourActive, setIsTourActive] = useState(false);
 
   // Get role and orgRole from Clerk session
@@ -102,21 +101,20 @@ export default function CoachPage() {
     setMounted(true);
   }, []);
 
-  // Start feature tour if URL has tour=true or restart-tour=true
+  // Start feature tour if URL has tour=true
   useEffect(() => {
-    if (mounted && (shouldStartTour || shouldRestartTour) && !isTourActive) {
+    if (mounted && shouldStartTour && !isTourActive) {
       // Small delay to let the dashboard render first
       const timer = setTimeout(() => {
         setIsTourActive(true);
-        // Remove the tour params from URL to prevent restart on refresh
+        // Remove the tour param from URL to prevent restart on refresh
         const url = new URL(window.location.href);
         url.searchParams.delete('tour');
-        url.searchParams.delete('restart-tour');
         window.history.replaceState({}, '', url.toString());
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [mounted, shouldStartTour, shouldRestartTour, isTourActive]);
+  }, [mounted, shouldStartTour, isTourActive]);
 
   // Update active tab when URL query param changes
   useEffect(() => {
@@ -234,11 +232,6 @@ export default function CoachPage() {
   // Handle tour completion/skip
   const handleTourComplete = () => {
     setIsTourActive(false);
-  };
-  
-  // Handle restart tour
-  const handleRestartTour = () => {
-    setIsTourActive(true);
   };
   
   // Handle payment update (opens Stripe customer portal)
@@ -583,7 +576,7 @@ export default function CoachPage() {
 
           {/* Customize Branding Tab */}
           <TabsContent value="customize">
-            <CustomizeBrandingTab onRestartTour={handleRestartTour} />
+            <CustomizeBrandingTab />
           </TabsContent>
 
           {/* Plan & Billing Tab */}

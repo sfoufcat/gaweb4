@@ -160,11 +160,7 @@ const SUBTABS: { id: CustomizeSubtab; label: string; icon: React.ReactNode }[] =
   { id: 'communications', label: 'Communications', icon: <Mail className="w-4 h-4" /> },
 ];
 
-interface CustomizeBrandingTabProps {
-  onRestartTour?: () => void;
-}
-
-export function CustomizeBrandingTab({ onRestartTour }: CustomizeBrandingTabProps) {
+export function CustomizeBrandingTab() {
   const { setPreviewMode, isPreviewMode, refetch } = useBranding();
   
   // Subtab state
@@ -1317,15 +1313,13 @@ export function CustomizeBrandingTab({ onRestartTour }: CustomizeBrandingTabProp
               when custom domains or subdomains are configured.
             </p>
           </div>
-          {onRestartTour && (
-            <button
-              onClick={onRestartTour}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef]/50 dark:hover:bg-[#262b35]/50 rounded-lg transition-colors font-albert"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Restart Tour
-            </button>
-          )}
+          <button
+            onClick={() => window.location.href = '/?tour=true'}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef]/50 dark:hover:bg-[#262b35]/50 rounded-lg transition-colors font-albert"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Restart Tour
+          </button>
         </div>
       </div>
 
