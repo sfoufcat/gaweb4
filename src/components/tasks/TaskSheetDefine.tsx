@@ -113,7 +113,7 @@ export function TaskSheetDefine({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Write one thing you'll commit to today."
-              className="w-full font-sans text-[20px] md:text-[24px] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted dark:placeholder:text-[#7d8190] leading-[1.2] tracking-[-0.5px] resize-none focus:outline-none min-h-[80px] bg-transparent"
+              className="w-full font-sans text-[20px] md:text-[24px] text-text-primary dark:text-[#f5f5f8] placeholder:text-text-muted dark:placeholder:text-[#7d8190] leading-[1.2] tracking-[-0.5px] resize-none focus:outline-none min-h-[80px] bg-transparent dark:bg-transparent border-none appearance-none"
               rows={2}
               autoFocus
             />

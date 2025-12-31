@@ -169,6 +169,14 @@ export async function PATCH(req: Request) {
       }
     }
 
+    // When 'name' is provided, also parse and save firstName/lastName
+    // This ensures comment author names display correctly
+    if (updateData.name && typeof updateData.name === 'string') {
+      const nameParts = (updateData.name as string).trim().split(/\s+/);
+      updateData.firstName = nameParts[0] || '';
+      updateData.lastName = nameParts.slice(1).join(' ') || '';
+    }
+
     // Always update the updatedAt timestamp
     updateData.updatedAt = new Date().toISOString();
 

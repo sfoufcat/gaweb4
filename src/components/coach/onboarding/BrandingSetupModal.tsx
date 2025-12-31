@@ -12,6 +12,7 @@ import {
   Check,
   Sparkles,
   ArrowRight,
+  Pencil,
 } from 'lucide-react';
 
 const GA_LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af';
@@ -302,47 +303,47 @@ export function BrandingSetupModal({ isOpen, onComplete, businessName }: Brandin
               <label className="block font-sans text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3">
                 Your Logo
               </label>
-              <div className="flex flex-col items-center gap-3">
-                {/* Logo preview */}
-                <div className="relative w-20 h-20 rounded-xl border-2 border-dashed border-[#e1ddd8] dark:border-[#313746] flex items-center justify-center overflow-hidden bg-[#f9f8f7] dark:bg-[#171b22]">
+              <div className="flex flex-col items-center gap-2">
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoSelect}
+                  className="hidden"
+                />
+                {/* Clickable logo preview */}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="relative w-20 h-20 rounded-xl border-2 border-dashed border-[#e1ddd8] dark:border-[#313746] flex items-center justify-center overflow-hidden bg-[#f9f8f7] dark:bg-[#171b22] cursor-pointer hover:border-brand-accent dark:hover:border-brand-accent transition-colors disabled:cursor-not-allowed group"
+                >
                   {logoPreview || logoUrl ? (
-                    <Image
-                      src={logoPreview || logoUrl || ''}
-                      alt="Logo preview"
-                      fill
-                      className="object-contain p-2"
-                      unoptimized
-                    />
+                    <>
+                      <Image
+                        src={logoPreview || logoUrl || ''}
+                        alt="Logo preview"
+                        fill
+                        className="object-contain p-2"
+                        unoptimized
+                      />
+                      {/* Pencil overlay on hover */}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Pencil className="w-5 h-5 text-white" />
+                      </div>
+                    </>
                   ) : (
-                    <Upload className="w-6 h-6 text-[#a7a39e] dark:text-[#7d8190]" />
+                    <Upload className="w-6 h-6 text-[#a7a39e] dark:text-[#7d8190] group-hover:text-brand-accent transition-colors" />
                   )}
                   {isUploading && (
                     <div className="absolute inset-0 bg-white/80 dark:bg-black/50 flex items-center justify-center">
                       <Loader2 className="w-5 h-5 animate-spin text-brand-accent" />
                     </div>
                   )}
-                </div>
-
-                {/* Upload button */}
-                <div className="w-full max-w-xs">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoSelect}
-                    className="hidden"
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    className="w-full py-2.5 px-4 border border-[#e1ddd8] dark:border-[#313746] rounded-xl font-sans text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#f9f8f7] dark:hover:bg-[#1e222a] transition-colors disabled:opacity-50"
-                  >
-                    {logoUrl ? 'Change Logo' : 'Upload Logo'}
-                  </button>
-                  <p className="mt-1 font-sans text-xs text-[#a7a39e] dark:text-[#7d8190]">
-                    Square image, PNG or JPG, max 5MB
-                  </p>
-                </div>
+                </button>
+                <p className="font-sans text-xs text-[#a7a39e] dark:text-[#7d8190]">
+                  Square image, PNG or JPG, max 5MB
+                </p>
               </div>
             </div>
 

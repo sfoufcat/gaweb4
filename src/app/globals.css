@@ -613,6 +613,12 @@ html.dark textarea {
   color: #f5f5f8 !important;
 }
 
+/* Override for transparent textareas (e.g., Define Focus modal) */
+html.dark textarea.bg-transparent {
+  background-color: transparent !important;
+  border-color: transparent !important;
+}
+
 html.dark input::placeholder,
 html.dark textarea::placeholder {
   color: #7d8190 !important;

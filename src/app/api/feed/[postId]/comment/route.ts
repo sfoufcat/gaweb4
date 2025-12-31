@@ -66,6 +66,10 @@ export async function GET(
       const data = doc.data();
       const author = authorMap.get(data.authorId);
       
+      // Parse firstName/lastName with fallback to 'name' field
+      const firstName = author?.firstName || (author?.name?.split(' ')[0]) || '';
+      const lastName = author?.lastName || (author?.name?.split(' ').slice(1).join(' ')) || '';
+      
       return {
         id: doc.id,
         postId,
@@ -76,8 +80,8 @@ export async function GET(
         updatedAt: data.updatedAt || null,
         author: author ? {
           id: data.authorId,
-          firstName: author.firstName,
-          lastName: author.lastName,
+          firstName,
+          lastName,
           imageUrl: author.avatarUrl || author.imageUrl,
         } : null,
       };
@@ -154,6 +158,10 @@ export async function POST(
     const userDoc = await adminDb.collection('users').doc(userId).get();
     const userData = userDoc.data();
 
+    // Parse firstName/lastName with fallback to 'name' field
+    const firstName = userData?.firstName || (userData?.name?.split(' ')[0]) || '';
+    const lastName = userData?.lastName || (userData?.name?.split(' ').slice(1).join(' ')) || '';
+
     // Notify post author (fire-and-forget)
     notifyPostAuthor(postId, userId, organizationId, text.trim()).catch(console.error);
 
@@ -168,8 +176,8 @@ export async function POST(
         createdAt: now,
         author: userData ? {
           id: userId,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
+          firstName,
+          lastName,
           imageUrl: userData.avatarUrl || userData.imageUrl,
         } : null,
       },
@@ -256,6 +264,10 @@ export async function PATCH(
     const userDoc = await adminDb.collection('users').doc(userId).get();
     const userData = userDoc.data();
 
+    // Parse firstName/lastName with fallback to 'name' field
+    const firstName = userData?.firstName || (userData?.name?.split(' ')[0]) || '';
+    const lastName = userData?.lastName || (userData?.name?.split(' ').slice(1).join(' ')) || '';
+
     return NextResponse.json({
       success: true,
       comment: {
@@ -268,8 +280,8 @@ export async function PATCH(
         updatedAt: now,
         author: userData ? {
           id: userId,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
+          firstName,
+          lastName,
           imageUrl: userData.avatarUrl || userData.imageUrl,
         } : null,
       },
@@ -376,10 +388,10 @@ async function notifyPostAuthor(
     // Don't notify yourself
     if (authorId === commenterId) return;
 
-    // Get commenter's name
+    // Get commenter's name (with fallback to 'name' field)
     const commenterDoc = await adminDb.collection('users').doc(commenterId).get();
     const commenterData = commenterDoc.data();
-    const commenterName = commenterData?.firstName || 'Someone';
+    const commenterName = commenterData?.firstName || (commenterData?.name?.split(' ')[0]) || 'Someone';
 
     // Comment preview
     const commentPreview = commentText.length > 50 

@@ -318,10 +318,15 @@ export async function POST(request: NextRequest) {
     let feedEnabled = false;
     
     try {
-      // Get subdomain from org_domains
-      const domainDoc = await adminDb.collection('org_domains').doc(organizationId).get();
-      const domainData = domainDoc.data();
-      subdomain = domainData?.subdomain;
+      // Get subdomain from org_domains (query by field, not doc ID - docs use auto-generated IDs)
+      const domainSnapshot = await adminDb
+        .collection('org_domains')
+        .where('organizationId', '==', organizationId)
+        .limit(1)
+        .get();
+      if (!domainSnapshot.empty) {
+        subdomain = domainSnapshot.docs[0].data()?.subdomain;
+      }
       
       // Get feedEnabled from org_settings
       const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
