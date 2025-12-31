@@ -279,6 +279,40 @@ export async function POST(request: NextRequest) {
       menuIcons: brandingData.menuIcons,
     });
 
+    // Check if this completes the onboarding flow (state was 'needs_branding')
+    // If so, update state to 'active' in both Firestore and Clerk org metadata
+    try {
+      const onboardingDoc = await adminDb.collection('coach_onboarding').doc(organizationId).get();
+      if (onboardingDoc.exists && onboardingDoc.data()?.status === 'needs_branding') {
+        const now = new Date().toISOString();
+        
+        // Update Firestore onboarding state to active
+        await adminDb.collection('coach_onboarding').doc(organizationId).set({
+          status: 'active',
+          brandingCompletedAt: now,
+          updatedAt: now,
+        }, { merge: true });
+        console.log(`[ORG_BRANDING_POST] Updated onboarding state to 'active' for org ${organizationId}`);
+        
+        // Update Clerk organization metadata
+        const { clerkClient } = await import('@clerk/nextjs/server');
+        const clerk = await clerkClient();
+        const org = await clerk.organizations.getOrganization({ organizationId });
+        const existingOrgMetadata = org.publicMetadata || {};
+        
+        await clerk.organizations.updateOrganization(organizationId, {
+          publicMetadata: {
+            ...existingOrgMetadata,
+            onboardingState: 'active',
+          },
+        });
+        console.log(`[ORG_BRANDING_POST] Updated Clerk org onboardingState to 'active' for ${organizationId}`);
+      }
+    } catch (onboardingError) {
+      // Log but don't fail - branding was saved, onboarding state is not critical for this request
+      console.error('[ORG_BRANDING_POST] Failed to update onboarding state (non-fatal):', onboardingError);
+    }
+
     // Fetch subdomain and feedEnabled for both Edge Config sync and cookie update
     let subdomain: string | undefined;
     let feedEnabled = false;

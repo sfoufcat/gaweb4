@@ -158,10 +158,11 @@ export async function POST(req: Request) {
       updatedAt: now,
     }, { merge: true });
 
-    // If this is onboarding, update onboarding state to active
+    // If this is onboarding, update onboarding state to needs_branding
+    // The state will be set to 'active' after the user completes branding setup
     if (onboarding) {
       await adminDb.collection('coach_onboarding').doc(organizationId).set({
-        status: 'active',
+        status: 'needs_branding',
         planSelectedAt: now,
         updatedAt: now,
       }, { merge: true });
@@ -200,7 +201,7 @@ export async function POST(req: Request) {
           currentPeriodEnd: coachSubscriptionData.currentPeriodEnd,
           trialEnd: coachSubscriptionData.trialEnd,
           cancelAtPeriodEnd: false,
-          onboardingState: 'active',
+          onboardingState: 'needs_branding', // Will be set to 'active' after branding setup
         },
       });
       console.log(`[COACH_SUBSCRIPTION_CONFIRM] Synced billing to Clerk org ${organizationId}: plan=${tier}, status=${subscriptionStatus}`);

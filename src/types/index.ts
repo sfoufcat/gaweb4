@@ -4230,9 +4230,10 @@ export interface FeatureVote {
  * Coach onboarding state
  * - needs_profile: Coach hasn't completed profile (avatar, bio)
  * - needs_plan: Coach hasn't selected a plan / subscription not active
+ * - needs_branding: Coach has paid but needs to set up branding (logo, colors)
  * - active: Coach has completed onboarding and has active/trialing subscription
  */
-export type CoachOnboardingState = 'needs_profile' | 'needs_plan' | 'active';
+export type CoachOnboardingState = 'needs_profile' | 'needs_plan' | 'needs_branding' | 'active';
 
 /**
  * MarketplaceListing - Public listing for a coach's program/funnel

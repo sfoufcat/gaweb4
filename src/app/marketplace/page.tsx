@@ -266,6 +266,12 @@ export default function MarketplacePage() {
       <div className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] -z-10" />
       <LinedGradientBackground fixed />
       
+      {/* Fixed top spotlight glow - blends header with hero section in dark mode */}
+      <div 
+        className="fixed top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-[#e8b923]/5 dark:bg-[#e8b923]/3 rounded-full blur-[120px] pointer-events-none -z-[5]"
+        aria-hidden="true"
+      />
+      
       <div className="marketplace-root min-h-screen relative">
       {/* Header */}
       <header className="sticky top-0 z-40">

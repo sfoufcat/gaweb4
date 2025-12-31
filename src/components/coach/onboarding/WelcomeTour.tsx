@@ -8,19 +8,19 @@ import {
   Users,
   Target,
   BarChart3,
-  Sparkles,
   ArrowRight,
   ArrowLeft,
   X,
   CheckCircle2,
 } from 'lucide-react';
+import { GrowthAddictsLogo } from '@/components/shared/GrowthAddictsLogo';
 
 // Welcome tour cards - showcasing platform features
 // First card is yellow (brand), others have varied colors
 const WELCOME_CARDS = [
   {
     id: 'welcome',
-    icon: Sparkles,
+    icon: GrowthAddictsLogo,
     iconBg: 'from-[#FFD036] to-[#f5a623]', // Yellow/brand for first card
     title: 'Welcome to Your Coaching Platform! 🎉',
     subtitle: 'Everything you need to build a thriving coaching business',

@@ -298,11 +298,11 @@ export function BrandingSetupModal({ isOpen, onComplete, businessName }: Brandin
             className="px-6 pb-6 space-y-6"
           >
             {/* Logo Upload */}
-            <div>
-              <label className="block font-sans text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+            <div className="text-center">
+              <label className="block font-sans text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3">
                 Your Logo
               </label>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col items-center gap-3">
                 {/* Logo preview */}
                 <div className="relative w-20 h-20 rounded-xl border-2 border-dashed border-[#e1ddd8] dark:border-[#313746] flex items-center justify-center overflow-hidden bg-[#f9f8f7] dark:bg-[#171b22]">
                   {logoPreview || logoUrl ? (
@@ -324,7 +324,7 @@ export function BrandingSetupModal({ isOpen, onComplete, businessName }: Brandin
                 </div>
 
                 {/* Upload button */}
-                <div className="flex-1">
+                <div className="w-full max-w-xs">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -347,14 +347,14 @@ export function BrandingSetupModal({ isOpen, onComplete, businessName }: Brandin
             </div>
 
             {/* Accent Color */}
-            <div>
-              <label className="block font-sans text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+            <div className="text-center">
+              <label className="block font-sans text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3">
                 <Palette className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
                 Brand Accent Color
               </label>
               
               {/* Color presets */}
-              <div className="flex flex-wrap gap-2 mb-3">
+              <div className="flex flex-wrap justify-center gap-2 mb-3">
                 {PRESET_COLORS.map((color) => (
                   <button
                     key={color.value}
@@ -374,7 +374,7 @@ export function BrandingSetupModal({ isOpen, onComplete, businessName }: Brandin
               </div>
 
               {/* Custom color input */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center gap-3">
                 <input
                   type="color"
                   value={customColor}
@@ -395,7 +395,7 @@ export function BrandingSetupModal({ isOpen, onComplete, businessName }: Brandin
                     }
                   }}
                   placeholder="#a07855"
-                  className="flex-1 py-2 px-3 border border-[#e1ddd8] dark:border-[#313746] rounded-lg font-mono text-sm bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+                  className="flex-1 max-w-[200px] py-2 px-3 border border-[#e1ddd8] dark:border-[#313746] rounded-lg font-mono text-sm bg-white dark:bg-[#171b22] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
                 />
               </div>
 
@@ -404,7 +404,7 @@ export function BrandingSetupModal({ isOpen, onComplete, businessName }: Brandin
                 <p className="font-sans text-xs text-[#5f5a55] dark:text-[#b2b6c2] mb-2">
                   Preview:
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center gap-3">
                   <button
                     className="py-2 px-4 rounded-full text-white text-sm font-medium"
                     style={{ backgroundColor: accentColor }}

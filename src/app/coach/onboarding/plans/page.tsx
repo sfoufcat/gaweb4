@@ -351,7 +351,7 @@ export default function OnboardingPlansPage() {
   // Check onboarding state on mount
   useEffect(() => {
     if (!isLoaded || !user) return;
-    // Don't redirect if branding modal is already showing (payment just completed)
+    // Don't run checkState if branding modal is already showing
     if (showBrandingModal) return;
     
     const checkState = async () => {
@@ -372,7 +372,13 @@ export default function OnboardingPlansPage() {
             return;
           }
           
-          // If already active, go to dashboard
+          // If needs_branding, show the branding modal (payment was completed)
+          if (data.state === 'needs_branding') {
+            setShowBrandingModal(true);
+            return;
+          }
+          
+          // If already active, go to dashboard with tour
           if (data.state === 'active') {
             // Fetch tenant URL to redirect to subdomain (needed on marketing domain)
             try {
@@ -381,7 +387,8 @@ export default function OnboardingPlansPage() {
                 const tenantData = await tenantRes.json();
                 const ownerDomain = tenantData.tenantDomains?.find((d: { isOwner?: boolean }) => d.isOwner);
                 if (ownerDomain?.tenantUrl) {
-                  window.location.href = `${ownerDomain.tenantUrl}/coach`;
+                  // Redirect to home with tour param for the welcome tour
+                  window.location.href = `${ownerDomain.tenantUrl}/?tour=true`;
                   return;
                 }
               }
