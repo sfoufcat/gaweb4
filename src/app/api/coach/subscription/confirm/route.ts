@@ -227,8 +227,7 @@ export async function POST(req: Request) {
               subscriptionStatus,
               currentPeriodEnd: coachSubscriptionData.currentPeriodEnd || undefined,
               cancelAtPeriodEnd: false,
-            },
-            orgDomain.customDomain || undefined
+            }
           );
           console.log(`[COACH_SUBSCRIPTION_CONFIRM] Synced subscription to Edge Config for ${orgDomain.subdomain}`);
         }
