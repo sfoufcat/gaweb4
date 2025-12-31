@@ -85,7 +85,8 @@ export function FeatureTour({ isActive, onComplete, onSkip }: FeatureTourProps) 
   // Check which tabs actually exist in the DOM
   const detectAvailableTabs = useCallback(() => {
     const available = TOUR_STEPS.filter(step => {
-      const tab = document.querySelector(`[data-state][value="${step.tabValue}"]`);
+      // Radix UI renders value prop as data-value attribute
+      const tab = document.querySelector(`[data-state][data-value="${step.tabValue}"]`);
       return !!tab;
     });
     return available;
@@ -144,8 +145,8 @@ export function FeatureTour({ isActive, onComplete, onSkip }: FeatureTourProps) 
   const updateTargetPosition = useCallback(() => {
     if (!step) return;
 
-    // Find the tab trigger by its value
-    const tabTrigger = document.querySelector(`[data-state][value="${step.tabValue}"]`);
+    // Find the tab trigger by its value (Radix renders value as data-value)
+    const tabTrigger = document.querySelector(`[data-state][data-value="${step.tabValue}"]`);
     
     if (tabTrigger) {
       const rect = tabTrigger.getBoundingClientRect();
@@ -188,7 +189,7 @@ export function FeatureTour({ isActive, onComplete, onSkip }: FeatureTourProps) 
   useEffect(() => {
     if (!isActive || !isReady || !step) return;
 
-    const tabTrigger = document.querySelector(`[data-state][value="${step.tabValue}"]`) as HTMLElement;
+    const tabTrigger = document.querySelector(`[data-state][data-value="${step.tabValue}"]`) as HTMLElement;
     if (tabTrigger) {
       // Small delay to let the highlight appear first
       const timer = setTimeout(() => {

@@ -109,8 +109,9 @@ export async function POST(request: Request) {
       // This is safe because the function still requires coach auth and resolves org from user metadata
       const result = await requireCoachWithOrg({ allowPlatformMode: true });
       organizationId = result.organizationId;
-      console.log(`[ORG_BRANDING_POST] Using org: ${organizationId} (tenantMode: ${result.isTenantMode})`);
+      console.log(`[ORG_BRANDING_POST] Using org: ${organizationId} (tenantMode: ${result.isTenantMode}, role: ${result.role})`);
     } catch (error) {
+      console.error('[ORG_BRANDING_POST] Auth error:', error instanceof Error ? error.message : error);
       if (error instanceof TenantRequiredError) {
         return NextResponse.json({
           error: 'tenant_required',
@@ -118,6 +119,18 @@ export async function POST(request: Request) {
           tenantUrl: error.tenantUrl,
           subdomain: error.subdomain,
         }, { status: 403 });
+      }
+      // Return proper error for other auth failures
+      if (error instanceof Error) {
+        if (error.message === 'Unauthorized') {
+          return NextResponse.json({ error: 'Unauthorized', message: 'You must be logged in' }, { status: 401 });
+        }
+        if (error.message.includes('Coach access required') || error.message.includes('Forbidden')) {
+          return NextResponse.json({ error: 'Forbidden', message: error.message }, { status: 403 });
+        }
+        if (error.message.includes('Organization not found')) {
+          return NextResponse.json({ error: 'OrganizationNotFound', message: error.message }, { status: 400 });
+        }
       }
       throw error;
     }

@@ -1191,6 +1191,8 @@ export function CustomizeBrandingTab({ onRestartTour }: CustomizeBrandingTabProp
     try {
       setSaving(true);
       setError(null);
+      
+      console.log('[CustomizeBrandingTab] Saving branding...');
 
       const response = await fetch('/api/org/branding', {
         method: 'POST',
@@ -1210,6 +1212,7 @@ export function CustomizeBrandingTab({ onRestartTour }: CustomizeBrandingTabProp
 
       if (!response.ok) {
         const data = await response.json();
+        console.error('[CustomizeBrandingTab] Save failed:', response.status, data);
         // Handle tenant_required error
         if (data.error === 'tenant_required') {
           setTenantRequired({
@@ -1218,10 +1221,11 @@ export function CustomizeBrandingTab({ onRestartTour }: CustomizeBrandingTabProp
           });
           return;
         }
-        throw new Error(data.error || 'Failed to save branding');
+        throw new Error(data.error || data.message || 'Failed to save branding');
       }
 
       const data = await response.json();
+      console.log('[CustomizeBrandingTab] Save successful:', data.branding?.id);
       setOriginalBranding(data.branding);
       setSuccessMessage('Branding saved successfully!');
       setTimeout(() => setSuccessMessage(null), 3000);
@@ -1232,7 +1236,7 @@ export function CustomizeBrandingTab({ onRestartTour }: CustomizeBrandingTabProp
       // Disable preview mode after saving
       setPreviewMode(false);
     } catch (err) {
-      console.error('Error saving branding:', err);
+      console.error('[CustomizeBrandingTab] Error saving branding:', err);
       setError(err instanceof Error ? err.message : 'Failed to save branding');
     } finally {
       setSaving(false);
