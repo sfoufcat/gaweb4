@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import type { CoachTier, CoachSubscription, OrgSettings, ClerkPublicMetadata } from '@/types';
+import type { BillingPeriod } from '@/lib/coach-permissions';
 
 // Lazy initialization of Stripe
 function getStripeClient(): Stripe {
@@ -15,12 +16,26 @@ function getStripeClient(): Stripe {
   });
 }
 
-// Coach tier Stripe price IDs
-const COACH_TIER_PRICE_IDS: Record<CoachTier, string> = {
+// Coach tier Stripe price IDs - Monthly
+const COACH_TIER_MONTHLY_PRICE_IDS: Record<CoachTier, string> = {
   starter: process.env.STRIPE_COACH_STARTER_PRICE_ID || 'price_1ShVoxGZhrOwy75wozPPoU4f',
   pro: process.env.STRIPE_COACH_PRO_PRICE_ID || 'price_1ShVpGGZhrOwy75wcFJQasPA',
   scale: process.env.STRIPE_COACH_SCALE_PRICE_ID || 'price_1ShVqFGZhrOwy75w0FPwa1Z9',
 };
+
+// Coach tier Stripe price IDs - Yearly
+const COACH_TIER_YEARLY_PRICE_IDS: Record<CoachTier, string> = {
+  starter: process.env.STRIPE_COACH_STARTER_YEARLY_PRICE_ID || 'price_1SkVUEGZhrOwy75wa5gVzRgV',
+  pro: process.env.STRIPE_COACH_PRO_YEARLY_PRICE_ID || 'price_1SkVV8GZhrOwy75w3TMsA8U9',
+  scale: process.env.STRIPE_COACH_SCALE_YEARLY_PRICE_ID || 'price_1SkVVVGZhrOwy75wqY09RQZY',
+};
+
+// Helper to get price ID based on tier and billing period
+function getPriceId(tier: CoachTier, billingPeriod: BillingPeriod = 'monthly'): string {
+  return billingPeriod === 'yearly' 
+    ? COACH_TIER_YEARLY_PRICE_IDS[tier] 
+    : COACH_TIER_MONTHLY_PRICE_IDS[tier];
+}
 
 /**
  * POST /api/coach/subscription/confirm
@@ -29,6 +44,7 @@ const COACH_TIER_PRICE_IDS: Record<CoachTier, string> = {
  * Body: { 
  *   setupIntentId: string,
  *   tier: CoachTier,
+ *   billingPeriod?: BillingPeriod,
  *   trial?: boolean,
  *   onboarding?: boolean
  * }
@@ -55,9 +71,10 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { setupIntentId, tier, trial, onboarding } = body as { 
+    const { setupIntentId, tier, billingPeriod = 'monthly', trial, onboarding } = body as { 
       setupIntentId: string;
-      tier: CoachTier; 
+      tier: CoachTier;
+      billingPeriod?: BillingPeriod;
       trial?: boolean;
       onboarding?: boolean;
     };
@@ -71,7 +88,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid tier selected' }, { status: 400 });
     }
 
-    const priceId = COACH_TIER_PRICE_IDS[tier];
+    const priceId = getPriceId(tier, billingPeriod);
     if (!priceId) {
       return NextResponse.json(
         { error: `Subscription not configured for ${tier} tier.` },
@@ -117,6 +134,7 @@ export async function POST(req: Request) {
         userId,
         organizationId,
         tier,
+        billingPeriod,
         type: 'coach_subscription',
       },
       // Add 7-day trial if requested
@@ -127,7 +145,7 @@ export async function POST(req: Request) {
 
     const subscription = await stripe.subscriptions.create(subscriptionParams);
 
-    console.log(`[COACH_SUBSCRIPTION_CONFIRM] Created subscription ${subscription.id} for org ${organizationId}, tier ${tier}`);
+    console.log(`[COACH_SUBSCRIPTION_CONFIRM] Created subscription ${subscription.id} for org ${organizationId}, tier ${tier}, billing ${billingPeriod}`);
 
     // Save subscription to Firestore
     const now = new Date().toISOString();

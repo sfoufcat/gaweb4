@@ -218,9 +218,8 @@ export function WelcomeTour({ isOpen, onComplete, onSkip }: WelcomeTourProps) {
           >
             {/* Card header with gradient - dynamic color per card */}
             <div className={`relative px-8 pt-10 pb-8 bg-gradient-to-br ${card.iconBg} overflow-hidden`}>
-              {/* Decorative circles - subtle in both light and dark mode */}
+              {/* Decorative circle - subtle in both light and dark mode */}
               <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/5 rounded-full translate-y-1/2 -translate-x-1/2" />
               
               <div className="relative z-10">
                 {/* Icon */}

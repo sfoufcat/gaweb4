@@ -50,25 +50,58 @@ export type PermissionValue = boolean | number;
 // =============================================================================
 
 /**
- * Tier pricing in cents
+ * Billing period type
  */
-export const TIER_PRICING: Record<CoachTier, { monthly: number; name: string; description: string }> = {
+export type BillingPeriod = 'monthly' | 'yearly';
+
+/**
+ * Tier pricing in cents with monthly and yearly options
+ */
+export interface TierPricing {
+  monthly: number;
+  yearly: number;
+  name: string;
+  description: string;
+}
+
+export const TIER_PRICING: Record<CoachTier, TierPricing> = {
   starter: {
-    monthly: 4900, // $49
+    monthly: 4900,   // $49/month
+    yearly: 34900,   // $349/year (saves $239/year, ~41% off)
     name: 'Starter',
     description: 'Perfect for coaches just starting out',
   },
   pro: {
-    monthly: 12900, // $129
+    monthly: 12900,  // $129/month
+    yearly: 97900,   // $979/year (saves $569/year, ~37% off)
     name: 'Pro',
     description: 'For growing coaching businesses',
   },
   scale: {
-    monthly: 29900, // $299
+    monthly: 29900,  // $299/month
+    yearly: 218900,  // $2189/year (saves $1399/year, ~39% off)
     name: 'Scale',
     description: 'For established coaching operations',
   },
 };
+
+/**
+ * Calculate yearly savings compared to monthly billing
+ */
+export function getYearlySavings(tier: CoachTier): { amount: number; percent: number } {
+  const pricing = TIER_PRICING[tier];
+  const monthlyTotal = pricing.monthly * 12;
+  const savings = monthlyTotal - pricing.yearly;
+  const percent = Math.round((savings / monthlyTotal) * 100);
+  return { amount: savings, percent };
+}
+
+/**
+ * Get the equivalent monthly price when billed yearly
+ */
+export function getYearlyMonthlyEquivalent(tier: CoachTier): number {
+  return Math.round(TIER_PRICING[tier].yearly / 12);
+}
 
 // =============================================================================
 // TIER PERMISSIONS REGISTRY

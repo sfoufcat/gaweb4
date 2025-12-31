@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import type { CoachTier, CoachSubscription, OrgSettings, ClerkPublicMetadata } from '@/types';
+import type { BillingPeriod } from '@/lib/coach-permissions';
 
 // Lazy initialization of Stripe
 function getStripeClient(): Stripe {
@@ -15,12 +16,26 @@ function getStripeClient(): Stripe {
   });
 }
 
-// Coach tier Stripe price IDs
-const COACH_TIER_PRICE_IDS: Record<CoachTier, string> = {
+// Coach tier Stripe price IDs - Monthly
+const COACH_TIER_MONTHLY_PRICE_IDS: Record<CoachTier, string> = {
   starter: process.env.STRIPE_COACH_STARTER_PRICE_ID || 'price_1ShVoxGZhrOwy75wozPPoU4f',
   pro: process.env.STRIPE_COACH_PRO_PRICE_ID || 'price_1ShVpGGZhrOwy75wcFJQasPA',
   scale: process.env.STRIPE_COACH_SCALE_PRICE_ID || 'price_1ShVqFGZhrOwy75w0FPwa1Z9',
 };
+
+// Coach tier Stripe price IDs - Yearly
+const COACH_TIER_YEARLY_PRICE_IDS: Record<CoachTier, string> = {
+  starter: process.env.STRIPE_COACH_STARTER_YEARLY_PRICE_ID || 'price_1SkVUEGZhrOwy75wa5gVzRgV',
+  pro: process.env.STRIPE_COACH_PRO_YEARLY_PRICE_ID || 'price_1SkVV8GZhrOwy75w3TMsA8U9',
+  scale: process.env.STRIPE_COACH_SCALE_YEARLY_PRICE_ID || 'price_1SkVVVGZhrOwy75wqY09RQZY',
+};
+
+// Helper to get price ID based on tier and billing period
+function getPriceId(tier: CoachTier, billingPeriod: BillingPeriod = 'monthly'): string {
+  return billingPeriod === 'yearly' 
+    ? COACH_TIER_YEARLY_PRICE_IDS[tier] 
+    : COACH_TIER_MONTHLY_PRICE_IDS[tier];
+}
 
 /**
  * POST /api/coach/subscription/checkout
@@ -48,7 +63,7 @@ const COACH_TIER_PRICE_IDS: Record<CoachTier, string> = {
  *    - On success, /api/coach/subscription/confirm creates the subscription with trial
  *    - Returns SetupIntent clientSecret
  * 
- * Body: { tier: CoachTier, trial?: boolean, onboarding?: boolean, reactivate?: boolean, upgrade?: boolean, paymentMethodId?: string }
+ * Body: { tier: CoachTier, billingPeriod?: BillingPeriod, trial?: boolean, onboarding?: boolean, reactivate?: boolean, upgrade?: boolean, paymentMethodId?: string }
  */
 export async function POST(req: Request) {
   try {
@@ -73,8 +88,9 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { tier, trial, onboarding, reactivate, upgrade, paymentMethodId } = body as { 
+    const { tier, billingPeriod = 'monthly', trial, onboarding, reactivate, upgrade, paymentMethodId } = body as { 
       tier: CoachTier; 
+      billingPeriod?: BillingPeriod; // 'monthly' or 'yearly'
       trial?: boolean;      // Request 7-day trial
       onboarding?: boolean; // Is part of onboarding flow
       reactivate?: boolean; // Reactivating canceled/expired subscription
@@ -147,7 +163,7 @@ export async function POST(req: Request) {
     // SAVED PAYMENT METHOD FLOW: Use existing card to create subscription immediately
     // This skips the PaymentElement and charges the saved card directly
     if (paymentMethodId && (reactivate || upgrade)) {
-      const priceId = COACH_TIER_PRICE_IDS[tier];
+      const priceId = getPriceId(tier, billingPeriod);
       const flowType = reactivate ? 'reactivate' : 'upgrade';
       
       try {
@@ -174,6 +190,7 @@ export async function POST(req: Request) {
             userId,
             organizationId,
             tier,
+            billingPeriod,
             type: 'coach_subscription',
             reactivate: reactivate ? 'true' : 'false',
             upgrade: upgrade ? 'true' : 'false',
@@ -184,7 +201,7 @@ export async function POST(req: Request) {
         const invoice = subscription.latest_invoice as Stripe.Invoice;
         
         if (subscription.status === 'active') {
-          console.log(`[COACH_CHECKOUT] Created active subscription ${subscription.id} with saved PM for ${flowType}, org ${organizationId}, tier ${tier}`);
+          console.log(`[COACH_CHECKOUT] Created active subscription ${subscription.id} with saved PM for ${flowType}, org ${organizationId}, tier ${tier}, billing ${billingPeriod}`);
           
           return NextResponse.json({ 
             success: true,
@@ -233,7 +250,7 @@ export async function POST(req: Request) {
     // REACTIVATION/UPGRADE FLOW (without saved payment method): Create subscription with incomplete payment
     // This returns a PaymentIntent clientSecret compatible with PaymentElement
     if (reactivate || upgrade) {
-      const priceId = COACH_TIER_PRICE_IDS[tier];
+      const priceId = getPriceId(tier, billingPeriod);
       const flowType = reactivate ? 'reactivate' : 'upgrade';
       
       // Create subscription with payment_behavior: 'default_incomplete'
@@ -251,6 +268,7 @@ export async function POST(req: Request) {
           userId,
           organizationId,
           tier,
+          billingPeriod,
           type: 'coach_subscription',
           reactivate: reactivate ? 'true' : 'false',
           upgrade: upgrade ? 'true' : 'false',
@@ -270,7 +288,7 @@ export async function POST(req: Request) {
         );
       }
 
-      console.log(`[COACH_CHECKOUT] Created Subscription ${subscription.id} with PaymentIntent for ${flowType}, org ${organizationId}, tier ${tier}`);
+      console.log(`[COACH_CHECKOUT] Created Subscription ${subscription.id} with PaymentIntent for ${flowType}, org ${organizationId}, tier ${tier}, billing ${billingPeriod}`);
 
       return NextResponse.json({ 
         clientSecret: paymentIntent.client_secret,
@@ -288,6 +306,7 @@ export async function POST(req: Request) {
         userId,
         organizationId,
         tier,
+        billingPeriod,
         type: 'coach_subscription',
         trial: trial ? 'true' : 'false',
         onboarding: onboarding ? 'true' : 'false',
@@ -295,7 +314,7 @@ export async function POST(req: Request) {
       usage: 'off_session', // For recurring subscription billing
     });
 
-    console.log(`[COACH_CHECKOUT] Created SetupIntent ${setupIntent.id} for org ${organizationId}, tier ${tier}`);
+    console.log(`[COACH_CHECKOUT] Created SetupIntent ${setupIntent.id} for org ${organizationId}, tier ${tier}, billing ${billingPeriod}`);
 
     return NextResponse.json({ 
       clientSecret: setupIntent.client_secret,

@@ -36,6 +36,9 @@ import {
   getTierDisplayInfo, 
   formatLimitValue,
   getNextTier,
+  getYearlySavings,
+  getYearlyMonthlyEquivalent,
+  type BillingPeriod,
 } from '@/lib/coach-permissions';
 import { CoachPlanSkeleton } from '@/components/coach/CoachPlanSkeleton';
 import type { CoachSavedPaymentMethod } from '@/app/api/coach/payment-methods/route';
@@ -70,8 +73,8 @@ interface PlanFeature {
 interface Plan {
   id: CoachTier;
   name: string;
-  price: string;
-  period: string;
+  monthlyPrice: number; // in cents
+  yearlyPrice: number;  // in cents
   description: string;
   limits: { label: string; value: string }[];
   features: PlanFeature[];
@@ -83,8 +86,8 @@ const PLANS: Plan[] = [
   {
     id: 'starter',
     name: 'Starter',
-    price: '$49',
-    period: '/month',
+    monthlyPrice: TIER_PRICING.starter.monthly,
+    yearlyPrice: TIER_PRICING.starter.yearly,
     description: 'Perfect for coaches just starting out',
     limits: [
       { label: 'Clients', value: '15' },
@@ -109,8 +112,8 @@ const PLANS: Plan[] = [
   {
     id: 'pro',
     name: 'Pro',
-    price: '$129',
-    period: '/month',
+    monthlyPrice: TIER_PRICING.pro.monthly,
+    yearlyPrice: TIER_PRICING.pro.yearly,
     description: 'For growing coaching businesses',
     limits: [
       { label: 'Clients', value: '150' },
@@ -133,8 +136,8 @@ const PLANS: Plan[] = [
   {
     id: 'scale',
     name: 'Scale',
-    price: '$299',
-    period: '/month',
+    monthlyPrice: TIER_PRICING.scale.monthly,
+    yearlyPrice: TIER_PRICING.scale.yearly,
     description: 'For established coaching operations',
     limits: [
       { label: 'Clients', value: '500' },
@@ -152,6 +155,14 @@ const PLANS: Plan[] = [
     ],
   },
 ];
+
+// Helper to format price for display
+function formatPrice(cents: number, period: BillingPeriod): string {
+  const amount = period === 'yearly' 
+    ? Math.round(cents / 12 / 100)  // Show monthly equivalent for yearly
+    : Math.round(cents / 100);
+  return `$${amount}`;
+}
 
 const WHY_UPGRADE_PRO = [
   {
@@ -382,6 +393,7 @@ export default function CoachPlanPage() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [selectedPlan, setSelectedPlan] = useState<CoachTier>('pro');
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentTier, setCurrentTier] = useState<CoachTier | null>(null);
@@ -504,7 +516,7 @@ export default function CoachPlanPage() {
       const response = await fetch('/api/coach/subscription/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier: selectedPlan, upgrade: true }),
+        body: JSON.stringify({ tier: selectedPlan, billingPeriod, upgrade: true }),
       });
 
       const data = await response.json();
@@ -542,6 +554,7 @@ export default function CoachPlanPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           tier: checkoutPlan, 
+          billingPeriod,
           upgrade: true,
           paymentMethodId: selectedPaymentMethod,
         }),
@@ -589,7 +602,7 @@ export default function CoachPlanPage() {
       const response = await fetch('/api/coach/subscription/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier: checkoutPlan, upgrade: true }),
+        body: JSON.stringify({ tier: checkoutPlan, billingPeriod, upgrade: true }),
       });
 
       const data = await response.json();
@@ -697,9 +710,16 @@ export default function CoachPlanPage() {
           <h1 className="font-albert text-[32px] lg:text-[44px] text-text-primary tracking-[-2px] leading-[1.15] mb-3">
                 Upgrade Your Plan
           </h1>
-              <p className="font-sans text-[16px] lg:text-[18px] text-text-secondary max-w-xl lg:max-w-none">
+              <p className="font-sans text-[16px] lg:text-[18px] text-text-secondary max-w-xl lg:max-w-none mb-4">
                 You&apos;re currently on the {TIER_PRICING[currentTier].name} plan. Upgrade to unlock more features.
-          </p>
+              </p>
+              {/* Annual Savings Callout */}
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-full px-4 py-2">
+                <span className="text-emerald-600 dark:text-emerald-400 text-lg">💰</span>
+                <span className="font-sans text-[14px] font-medium text-emerald-700 dark:text-emerald-300">
+                  Save up to 41% with annual billing
+                </span>
+              </div>
         </motion.div>
 
             {/* Right: Current Plan Card */}
@@ -764,6 +784,22 @@ export default function CoachPlanPage() {
                     ${(TIER_PRICING[currentTier].monthly / 100).toFixed(0)}/month
                   </p>
                 </div>
+                {/* Saved Payment Method */}
+                <div>
+                  <p className="font-sans text-[12px] text-text-tertiary uppercase tracking-wide mb-1">Payment method</p>
+                  {isLoadingPaymentMethods ? (
+                    <div className="h-5 w-24 bg-[#e1ddd8] dark:bg-[#313746] rounded animate-pulse" />
+                  ) : savedPaymentMethods.length > 0 ? (
+                    <div className="flex items-center gap-1.5">
+                      <CreditCard className="w-4 h-4 text-text-secondary" />
+                      <p className="font-sans text-[14px] text-text-primary font-medium">
+                        {formatCardBrand(savedPaymentMethods.find(pm => pm.isDefault)?.brand || savedPaymentMethods[0].brand)} •••• {savedPaymentMethods.find(pm => pm.isDefault)?.last4 || savedPaymentMethods[0].last4}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="font-sans text-[14px] text-text-secondary">No card saved</p>
+                  )}
+                </div>
               </div>
               
               {/* Cancel Link */}
@@ -790,11 +826,56 @@ export default function CoachPlanPage() {
             <h1 className="font-albert text-[32px] lg:text-[44px] text-text-primary tracking-[-2px] leading-[1.15] mb-3">
               Choose Your Plan
             </h1>
-            <p className="font-sans text-[16px] lg:text-[18px] text-text-secondary max-w-xl mx-auto">
+            <p className="font-sans text-[16px] lg:text-[18px] text-text-secondary max-w-xl mx-auto mb-4">
               Start building your coaching business with the right tools.
             </p>
+            {/* Annual Savings Callout */}
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-full px-4 py-2">
+              <span className="text-emerald-600 dark:text-emerald-400 text-lg">💰</span>
+              <span className="font-sans text-[14px] font-medium text-emerald-700 dark:text-emerald-300">
+                Save up to 41% with annual billing
+              </span>
+            </div>
           </motion.div>
         )}
+
+        {/* Billing Period Switcher */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="flex justify-center mb-8"
+        >
+          <div className="inline-flex items-center bg-[#f5f3f0] dark:bg-[#262b35] rounded-full p-1">
+            <button
+              onClick={() => setBillingPeriod('monthly')}
+              className={`relative px-6 py-2.5 rounded-full font-sans text-[14px] font-medium transition-all duration-200 ${
+                billingPeriod === 'monthly'
+                  ? 'bg-white dark:bg-[#1a1e26] text-text-primary shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setBillingPeriod('yearly')}
+              className={`relative px-6 py-2.5 rounded-full font-sans text-[14px] font-medium transition-all duration-200 flex items-center gap-2 ${
+                billingPeriod === 'yearly'
+                  ? 'bg-white dark:bg-[#1a1e26] text-text-primary shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              Annual
+              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full transition-colors ${
+                billingPeriod === 'yearly'
+                  ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                  : 'bg-emerald-100/70 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-500'
+              }`}>
+                SAVE 41%
+              </span>
+            </button>
+          </div>
+        </motion.div>
 
         {/* Plan Cards */}
         <motion.div
@@ -871,12 +952,29 @@ export default function CoachPlanPage() {
                 <div className="mb-5">
                   <div className="flex items-baseline gap-1">
                     <span className="font-albert text-[40px] font-bold text-text-primary tracking-[-2px]">
-                      {plan.price}
+                      {formatPrice(billingPeriod === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice, billingPeriod)}
                     </span>
                     <span className="font-sans text-[14px] text-text-secondary">
-                      {plan.period}
+                      /month
                     </span>
                   </div>
+                  {/* Show annual billing info */}
+                  {billingPeriod === 'yearly' && (
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="font-sans text-[12px] text-text-tertiary line-through">
+                        ${(plan.monthlyPrice / 100).toFixed(0)}/mo
+                      </span>
+                      <span className="font-sans text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
+                        SAVE {getYearlySavings(plan.id).percent}%
+                      </span>
+                    </div>
+                  )}
+                  <p className="font-sans text-[12px] text-text-tertiary mt-1">
+                    {billingPeriod === 'yearly' 
+                      ? `Billed annually at $${(plan.yearlyPrice / 100).toFixed(0)}/year`
+                      : 'Billed monthly'
+                    }
+                  </p>
                 </div>
 
                 {/* Limits */}
@@ -1077,9 +1175,23 @@ export default function CoachPlanPage() {
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="font-sans text-[14px] font-medium text-text-primary">{TIER_PRICING[checkoutPlan].name} Plan</p>
-                      <p className="font-sans text-[12px] text-text-secondary">Monthly subscription</p>
+                      <p className="font-sans text-[12px] text-text-secondary">
+                        {billingPeriod === 'yearly' ? 'Annual subscription' : 'Monthly subscription'}
+                      </p>
                     </div>
-                    <p className="font-albert text-[20px] font-bold text-text-primary">${(TIER_PRICING[checkoutPlan].monthly / 100).toFixed(0)}/mo</p>
+                    <div className="text-right">
+                      <p className="font-albert text-[20px] font-bold text-text-primary">
+                        {billingPeriod === 'yearly' 
+                          ? `$${(TIER_PRICING[checkoutPlan].yearly / 100).toFixed(0)}/yr`
+                          : `$${(TIER_PRICING[checkoutPlan].monthly / 100).toFixed(0)}/mo`
+                        }
+                      </p>
+                      {billingPeriod === 'yearly' && (
+                        <p className="font-sans text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                          Save ${(getYearlySavings(checkoutPlan).amount / 100).toFixed(0)}/year
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -1241,7 +1353,10 @@ export default function CoachPlanPage() {
                   >
                     <CheckoutForm
                       planName={TIER_PRICING[checkoutPlan].name}
-                      price={`$${(TIER_PRICING[checkoutPlan].monthly / 100).toFixed(0)}`}
+                      price={billingPeriod === 'yearly' 
+                        ? `$${(TIER_PRICING[checkoutPlan].yearly / 100).toFixed(0)}/year`
+                        : `$${(TIER_PRICING[checkoutPlan].monthly / 100).toFixed(0)}/month`
+                      }
                       onSuccess={() => {
                         handleCloseCheckout();
                         // Refresh page to show updated subscription

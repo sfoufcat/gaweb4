@@ -25,16 +25,22 @@ import {
 import { useTheme } from '@/contexts/ThemeContext';
 import type { CoachTier } from '@/types';
 import { BrandingSetupModal } from '@/components/coach/onboarding';
+import { 
+  TIER_PRICING, 
+  getYearlySavings,
+  type BillingPeriod 
+} from '@/lib/coach-permissions';
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-// Plan definitions with trial emphasis - matches exact spec
+// Plan definitions with trial emphasis - uses dynamic pricing from TIER_PRICING
 const PLANS = [
   {
     id: 'starter' as CoachTier,
     name: 'Starter',
-    price: 49,
+    monthlyPrice: TIER_PRICING.starter.monthly / 100,
+    yearlyPrice: TIER_PRICING.starter.yearly / 100,
     description: 'Perfect for coaches just starting out',
     limits: [
       { label: 'Clients', value: '15' },
@@ -55,7 +61,8 @@ const PLANS = [
   {
     id: 'pro' as CoachTier,
     name: 'Pro',
-    price: 129,
+    monthlyPrice: TIER_PRICING.pro.monthly / 100,
+    yearlyPrice: TIER_PRICING.pro.yearly / 100,
     description: 'For growing coaching businesses',
     popular: true,
     limits: [
@@ -75,7 +82,8 @@ const PLANS = [
   {
     id: 'scale' as CoachTier,
     name: 'Scale',
-    price: 299,
+    monthlyPrice: TIER_PRICING.scale.monthly / 100,
+    yearlyPrice: TIER_PRICING.scale.yearly / 100,
     description: 'For established coaching operations',
     limits: [
       { label: 'Clients', value: '500' },
@@ -164,18 +172,22 @@ function getStripeAppearance(isDark: boolean): import('@stripe/stripe-js').Appea
 // Payment Form Component (inside Elements provider)
 interface PaymentFormProps {
   selectedPlan: CoachTier;
+  billingPeriod: BillingPeriod;
   onSuccess: () => void;
   onCancel: () => void;
   setupIntentId: string;
 }
 
-function PaymentForm({ selectedPlan, onSuccess, onCancel, setupIntentId }: PaymentFormProps) {
+function PaymentForm({ selectedPlan, billingPeriod, onSuccess, onCancel, setupIntentId }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const plan = PLANS.find(p => p.id === selectedPlan);
+  const displayPrice = billingPeriod === 'yearly' 
+    ? Math.round((plan?.yearlyPrice || 0) / 12) 
+    : plan?.monthlyPrice || 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -211,6 +223,7 @@ function PaymentForm({ selectedPlan, onSuccess, onCancel, setupIntentId }: Payme
           body: JSON.stringify({
             setupIntentId: setupIntent.id,
             tier: selectedPlan,
+            billingPeriod,
             trial: true,
             onboarding: true,
           }),
@@ -241,7 +254,7 @@ function PaymentForm({ selectedPlan, onSuccess, onCancel, setupIntentId }: Payme
         <div className="flex items-center justify-between">
           <div>
             <p className="font-sans text-sm text-[#92400e] dark:text-[#fbbf24]">
-              {plan?.name} plan
+              {plan?.name} plan {billingPeriod === 'yearly' && '(Annual)'}
             </p>
             <p className="font-albert text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8]">
               7 days free
@@ -251,9 +264,20 @@ function PaymentForm({ selectedPlan, onSuccess, onCancel, setupIntentId }: Payme
             <p className="font-sans text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
               then
             </p>
-            <p className="font-albert text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-              ${plan?.price}/mo
-            </p>
+            {billingPeriod === 'yearly' ? (
+              <>
+                <p className="font-albert text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  ${plan?.yearlyPrice}/yr
+                </p>
+                <p className="font-sans text-xs text-emerald-600 dark:text-emerald-400">
+                  (${displayPrice}/mo equivalent)
+                </p>
+              </>
+            ) : (
+              <p className="font-albert text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                ${plan?.monthlyPrice}/mo
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -337,6 +361,7 @@ export default function OnboardingPlansPage() {
   const isDark = theme === 'dark';
   
   const [selectedPlan, setSelectedPlan] = useState<CoachTier>('starter');
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -420,6 +445,7 @@ export default function OnboardingPlansPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           tier: selectedPlan,
+          billingPeriod,
           trial: true,
           onboarding: true,
         }),
@@ -527,10 +553,41 @@ export default function OnboardingPlansPage() {
           <h1 className="font-albert text-[36px] sm:text-[44px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-2px] leading-[1.1] mb-4">
             Choose your plan
           </h1>
-          <p className="font-sans text-[16px] text-[#5f5a55] dark:text-[#b2b6c2] max-w-xl mx-auto">
+          <p className="font-sans text-[16px] text-[#5f5a55] dark:text-[#b2b6c2] max-w-xl mx-auto mb-6">
             Start with a 7-day free trial. You won't be charged until the trial ends, 
             and you can cancel anytime.
           </p>
+          
+          {/* Billing Period Switcher */}
+          <div className="inline-flex items-center bg-[#f5f3f0] dark:bg-[#262b35] rounded-full p-1">
+            <button
+              onClick={() => setBillingPeriod('monthly')}
+              className={`relative px-5 py-2 rounded-full font-sans text-[14px] font-medium transition-all duration-200 ${
+                billingPeriod === 'monthly'
+                  ? 'bg-white dark:bg-[#1a1e26] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setBillingPeriod('yearly')}
+              className={`relative px-5 py-2 rounded-full font-sans text-[14px] font-medium transition-all duration-200 flex items-center gap-2 ${
+                billingPeriod === 'yearly'
+                  ? 'bg-white dark:bg-[#1a1e26] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+              }`}
+            >
+              Annual
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors ${
+                billingPeriod === 'yearly'
+                  ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                  : 'bg-emerald-100/70 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-500'
+              }`}>
+                SAVE 41%
+              </span>
+            </button>
+          </div>
         </motion.div>
 
         {/* Plan Cards */}
@@ -585,14 +642,32 @@ export default function OnboardingPlansPage() {
                 <div className="mb-4">
                   <div className="flex items-baseline gap-1">
                     <span className="font-albert text-[36px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px]">
-                      ${plan.price}
+                      ${billingPeriod === 'yearly' 
+                        ? Math.round(plan.yearlyPrice / 12) 
+                        : plan.monthlyPrice}
                     </span>
                     <span className="font-sans text-[14px] text-[#5f5a55] dark:text-[#b2b6c2]">
                       /month
                     </span>
                   </div>
-                  <p className="font-sans text-[12px] text-[#22c55e] font-medium">
+                  {billingPeriod === 'yearly' && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="font-sans text-[12px] text-[#a7a39e] dark:text-[#7d8190] line-through">
+                        ${plan.monthlyPrice}/mo
+                      </span>
+                      <span className="font-sans text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
+                        SAVE {getYearlySavings(plan.id).percent}%
+                      </span>
+                    </div>
+                  )}
+                  <p className="font-sans text-[12px] text-[#22c55e] font-medium mt-1">
                     Free for 7 days
+                  </p>
+                  <p className="font-sans text-[11px] text-[#a7a39e] dark:text-[#7d8190]">
+                    {billingPeriod === 'yearly' 
+                      ? `Billed at $${plan.yearlyPrice}/year after trial`
+                      : 'Billed monthly after trial'
+                    }
                   </p>
                 </div>
                 
@@ -653,7 +728,10 @@ export default function OnboardingPlansPage() {
           )}
           
           <p className="mt-4 font-sans text-[12px] text-[#a7a39e] dark:text-[#7d8190]">
-            You'll be charged ${PLANS.find(p => p.id === selectedPlan)?.price}/month after the trial ends.
+            {billingPeriod === 'yearly' 
+              ? `You'll be charged $${PLANS.find(p => p.id === selectedPlan)?.yearlyPrice}/year after the trial ends.`
+              : `You'll be charged $${PLANS.find(p => p.id === selectedPlan)?.monthlyPrice}/month after the trial ends.`
+            }
             <br />Cancel anytime during the trial to avoid charges.
           </p>
         </motion.div>
@@ -668,7 +746,10 @@ export default function OnboardingPlansPage() {
           {(() => {
             const competitorPricing = COMPETITOR_PRICING[selectedPlan];
             const competitorTotal = competitorPricing.reduce((sum, item) => sum + item.price, 0);
-            const planPrice = PLANS.find(p => p.id === selectedPlan)?.price || 49;
+            const plan = PLANS.find(p => p.id === selectedPlan);
+            const planPrice = billingPeriod === 'yearly' 
+              ? Math.round((plan?.yearlyPrice || 0) / 12) 
+              : plan?.monthlyPrice || 49;
             
             return (
               <div className="relative overflow-hidden rounded-2xl bg-white dark:from-[#171b22] dark:to-[#1e222a] dark:bg-gradient-to-br border border-[#f0ede8] dark:border-[#313746] p-6 sm:p-8">
@@ -686,15 +767,26 @@ export default function OnboardingPlansPage() {
                   
                   {/* Competitor pricing breakdown */}
                   <div className="grid sm:grid-cols-2 gap-3 mb-6">
-                    {competitorPricing.map((item, i) => (
-                      <div key={i} className="flex items-center justify-between py-2 px-3 bg-[#fafaf9] dark:bg-white/5 rounded-lg border border-[#f0ede8] dark:border-transparent">
-                        <div>
-                          <span className="font-sans text-[13px] text-[#1a1a1a] dark:text-white/90">{item.tool}</span>
-                          <span className="font-sans text-[11px] text-[#a7a39e] dark:text-white/40 ml-2">({item.competitor})</span>
+                    {competitorPricing.map((item, i) => {
+                      // Subtle color tints for each tool type
+                      const colorClasses = [
+                        'bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20', // Funnel builder
+                        'bg-violet-50 dark:bg-violet-500/10 border-violet-100 dark:border-violet-500/20', // Community
+                        'bg-sky-50 dark:bg-sky-500/10 border-sky-100 dark:border-sky-500/20', // Course hosting
+                        'bg-teal-50 dark:bg-teal-500/10 border-teal-100 dark:border-teal-500/20', // Scheduling
+                        'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-100 dark:border-indigo-500/20', // Video calls
+                        'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20', // Check-ins
+                      ];
+                      return (
+                        <div key={i} className={`flex items-center justify-between py-2 px-3 rounded-lg border ${colorClasses[i]}`}>
+                          <div className="min-w-0 flex-1 mr-2">
+                            <span className="font-sans text-[13px] text-[#1a1a1a] dark:text-white/90">{item.tool}</span>
+                            <span className="font-sans text-[11px] text-[#a7a39e] dark:text-white/40 ml-2 truncate inline-block max-w-[100px] align-bottom">({item.competitor})</span>
+                          </div>
+                          <span className="font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-white/70 flex-shrink-0">${item.price}/mo</span>
                         </div>
-                        <span className="font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-white/70">${item.price}/mo</span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   
                   {/* Total comparison */}
@@ -802,6 +894,7 @@ export default function OnboardingPlansPage() {
                 >
                   <PaymentForm
                     selectedPlan={selectedPlan}
+                    billingPeriod={billingPeriod}
                     onSuccess={handlePaymentSuccess}
                     onCancel={handleCloseCheckout}
                     setupIntentId={setupIntentId}
