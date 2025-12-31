@@ -139,7 +139,7 @@ export default function OnboardingIdentityPage() {
         <div className="text-center">
           <div className="relative mb-4">
             <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
-            <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-[#a07855] animate-spin" />
+            <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-brand-accent animate-spin" />
           </div>
           <p className="text-text-secondary font-sans text-[15px]">{isSaving ? 'Saving your identity...' : 'Loading...'}</p>
         </div>

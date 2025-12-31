@@ -17,6 +17,11 @@ export { CheckInFlowStepsEditor } from './checkins';
 export { CheckInFlowEditorDialog } from './checkins';
 export { CheckInStepConfigEditor } from './checkins';
 
+// Onboarding flow management
+export { CoachOnboardingFlowTab } from './onboarding-flow';
+export { OnboardingFlowEditor } from './onboarding-flow';
+export { OnboardingResponsesView } from './onboarding-flow';
+
 // Support & Feedback
 export { CoachSupportTab } from './support';
 export { ContactSupportForm } from './support';

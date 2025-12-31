@@ -105,7 +105,9 @@ export async function POST(request: Request) {
     let organizationId: string;
     
     try {
-      const result = await requireCoachWithOrg();
+      // Allow platform mode for branding updates (e.g., during onboarding on marketing domain)
+      // This is safe because the function still requires coach auth and resolves org from user metadata
+      const result = await requireCoachWithOrg({ allowPlatformMode: true });
       organizationId = result.organizationId;
       console.log(`[ORG_BRANDING_POST] Using org: ${organizationId} (tenantMode: ${result.isTenantMode})`);
     } catch (error) {

@@ -25,14 +25,30 @@ export async function syncClerkUserToFirebase() {
     updatedAt: new Date().toISOString(),
   };
 
+  // Check if user is a coach - coaches skip user onboarding
+  const publicMetadata = user.publicMetadata as { role?: string; orgRole?: string } | undefined;
+  const isCoach = publicMetadata?.role === 'coach' || 
+                  publicMetadata?.orgRole === 'super_coach' || 
+                  publicMetadata?.orgRole === 'coach';
+
   if (!userDoc.exists) {
-    // Create new user document with initial onboarding status
-    await userRef.set({
-      ...userData,
-      createdAt: new Date().toISOString(),
-      onboardingStatus: 'welcome',
-      hasCompletedOnboarding: false,
-    });
+    // Create new user document
+    // Coaches skip user onboarding - they have their own coach onboarding flow
+    if (isCoach) {
+      await userRef.set({
+        ...userData,
+        createdAt: new Date().toISOString(),
+        hasCompletedOnboarding: true, // Coaches bypass user onboarding
+      });
+    } else {
+      // Regular users get initial onboarding status
+      await userRef.set({
+        ...userData,
+        createdAt: new Date().toISOString(),
+        onboardingStatus: 'welcome',
+        hasCompletedOnboarding: false,
+      });
+    }
   } else {
     // Update existing user document
     await userRef.update(userData);

@@ -107,7 +107,7 @@ export default function GoalImpactPage() {
         <div className="fixed inset-0 bg-app-bg flex items-center justify-center">
           <div className="relative">
             <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
-            <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-[#a07855] animate-spin" />
+            <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-brand-accent animate-spin" />
           </div>
         </div>
       );

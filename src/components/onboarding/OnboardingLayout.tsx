@@ -120,8 +120,8 @@ export function QuizOption({
       disabled={disabled}
       className={`w-full p-5 rounded-[20px] border-2 text-left transition-all hover:scale-[1.01] active:scale-[0.99] ${
         selected 
-          ? 'border-brand-accent bg-[#faf8f6] shadow-sm' 
-          : 'border-[#e1ddd8] bg-white hover:border-[#d4d0cb] hover:shadow-sm'
+          ? 'border-brand-accent bg-brand-accent/5 dark:bg-brand-accent/10 shadow-sm' 
+          : 'border-[#e1ddd8] dark:border-[#363d4a] bg-white dark:bg-surface hover:border-[#d4d0cb] dark:hover:border-[#464d5c] hover:shadow-sm'
       } disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
     >
       {children}
@@ -131,6 +131,7 @@ export function QuizOption({
 
 /**
  * Bottom CTA button wrapper with animation
+ * Uses brand-accent for primary button (coach's accent color)
  */
 export function OnboardingCTA({ 
   children,
@@ -144,8 +145,8 @@ export function OnboardingCTA({
   variant?: 'primary' | 'secondary' | 'golden';
 }) {
   const variants = {
-    primary: 'bg-[#2c2520] text-white shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)]',
-    secondary: 'bg-white border border-[rgba(215,210,204,0.5)] text-[#2c2520]',
+    primary: 'bg-brand-accent text-brand-accent-foreground shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)]',
+    secondary: 'bg-white dark:bg-surface border border-[rgba(215,210,204,0.5)] dark:border-[#363d4a] text-text-primary',
     golden: 'bg-gradient-to-r from-[#f7c948] to-[#f5b820] text-[#2c2520] shadow-[0px_8px_24px_0px_rgba(247,201,72,0.35)]',
   };
 

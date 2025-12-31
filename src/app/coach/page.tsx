@@ -19,6 +19,7 @@ import { CoachProgramsTab } from '@/components/coach/programs';
 import { CoachSquadsTab } from '@/components/coach/squads';
 import { CoachReferralsTab } from '@/components/coach/referrals';
 import { CoachCheckInsTab } from '@/components/coach/checkins';
+import { CoachOnboardingFlowTab } from '@/components/coach/onboarding-flow';
 import { CoachPlanTab } from '@/components/coach/CoachPlanTab';
 import { DiscountCodesTab } from '@/components/coach/DiscountCodesTab';
 import { AnalyticsDashboard } from '@/components/coach/analytics';
@@ -38,8 +39,8 @@ import { FeatureTour } from '@/components/coach/onboarding';
  */
 
 // Valid tab values
-type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'checkins' | 'channels' | 'customize' | 'plan' | 'support';
-const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'referrals', 'analytics', 'discounts', 'discover', 'upgrade-forms', 'coaching-forms', 'funnels', 'checkins', 'channels', 'customize', 'plan', 'support'];
+type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'checkins' | 'onboarding' | 'channels' | 'customize' | 'plan' | 'support';
+const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'referrals', 'analytics', 'discounts', 'discover', 'upgrade-forms', 'coaching-forms', 'funnels', 'checkins', 'onboarding', 'channels', 'customize', 'plan', 'support'];
 
 // Columns for Coach Dashboard (excludes 'tier' - tiers are not used in coach context)
 // Uses 'programs' column instead of 'coaching' to show enrolled programs with (1:1)/(Group) prefixes
@@ -403,6 +404,12 @@ export default function CoachPage() {
                   Check-ins
                 </TabsTrigger>
                 <TabsTrigger 
+                  value="onboarding"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Onboarding
+                </TabsTrigger>
+                <TabsTrigger 
                   value="channels"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
                 >
@@ -524,6 +531,13 @@ export default function CoachPage() {
           <TabsContent value="checkins">
             <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
               <CoachCheckInsTab />
+            </div>
+          </TabsContent>
+
+          {/* Onboarding Tab */}
+          <TabsContent value="onboarding">
+            <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
+              <CoachOnboardingFlowTab />
             </div>
           </TabsContent>
 

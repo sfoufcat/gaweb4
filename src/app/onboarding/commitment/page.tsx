@@ -125,7 +125,7 @@ export default function CommitmentPage() {
           <button
             onClick={handleContinue}
             disabled={isNavigating}
-            className="w-full bg-[#2c2520] text-white font-sans font-bold text-[16px] tracking-[-0.5px] leading-[1.4] py-4 px-6 rounded-[32px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-80 disabled:cursor-not-allowed"
+            className="w-full bg-brand-accent text-brand-accent-foreground font-sans font-bold text-[16px] tracking-[-0.5px] leading-[1.4] py-4 px-6 rounded-[32px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-80 disabled:cursor-not-allowed"
           >
             {isNavigating ? '🎉 Let\'s go!' : 'Let\'s go!'}
           </button>

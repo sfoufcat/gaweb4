@@ -75,7 +75,7 @@ export default function CreateProfileIntroPage() {
             <button
               onClick={handleNext}
               disabled={isNavigating}
-              className="w-full bg-[#2c2520] text-white font-sans font-bold text-[16px] tracking-[-0.5px] leading-[1.4] py-4 px-6 rounded-[32px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-brand-accent text-brand-accent-foreground font-sans font-bold text-[16px] tracking-[-0.5px] leading-[1.4] py-4 px-6 rounded-[32px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isNavigating ? 'Loading...' : 'Next'}
             </button>
@@ -84,7 +84,7 @@ export default function CreateProfileIntroPage() {
             <button
               onClick={handleSkip}
               disabled={isNavigating}
-              className="w-full bg-white border border-[rgba(215,210,204,0.5)] text-[#2c2520] font-sans font-bold text-[16px] tracking-[-0.5px] leading-[1.4] py-4 px-6 rounded-[32px] hover:bg-[#faf8f6] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-white dark:bg-surface border border-[rgba(215,210,204,0.5)] dark:border-[#363d4a] text-text-primary font-sans font-bold text-[16px] tracking-[-0.5px] leading-[1.4] py-4 px-6 rounded-[32px] hover:bg-[#faf8f6] dark:hover:bg-[#1a1f27] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               I&apos;ll do it later in settings
             </button>

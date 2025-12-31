@@ -4342,3 +4342,84 @@ export interface PlatformSettings {
   updatedBy: string;                 // Clerk user ID who last updated
 }
 
+// =============================================================================
+// ORGANIZATION ONBOARDING FLOW TYPES
+// Coach-customizable onboarding quiz for new users
+// =============================================================================
+
+/**
+ * Step types available for onboarding flows
+ * Reuses funnel step types that make sense for onboarding
+ */
+export type OnboardingStepType = 
+  | 'question'        // Quiz question (single-select, multi-select, open text)
+  | 'goal_setting'    // User sets their goal
+  | 'identity'        // User defines their identity/who they're becoming
+  | 'explainer'       // Rich media explanation step
+  | 'success';        // Final success/welcome step
+
+/**
+ * Onboarding step - A single step in an onboarding flow
+ * Reuses FunnelStep config structure for consistency
+ */
+export interface OnboardingStep {
+  id: string;
+  flowId: string;
+  order: number;                      // 0-indexed order
+  type: OnboardingStepType;
+  name?: string;                      // Custom name for coach reference
+  config: {
+    type: OnboardingStepType;
+    config: FunnelStepConfigQuestion | FunnelStepConfigGoal | FunnelStepConfigIdentity | FunnelStepConfigExplainer | FunnelStepConfigSuccess;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * OrgOnboardingFlow - Organization's customizable onboarding flow
+ * Stored in Firestore 'org_onboarding_flows/{organizationId}' (one per org)
+ */
+export interface OrgOnboardingFlow {
+  id: string;
+  organizationId: string;             // Clerk Organization ID
+  name: string;                       // e.g., "Welcome Quiz"
+  description?: string;               // Coach notes about this flow
+  enabled: boolean;                   // Whether to show to new users
+  
+  // Steps are stored in a subcollection: org_onboarding_flows/{id}/steps
+  stepCount: number;                  // Denormalized count for display
+  
+  // Audit fields
+  createdByUserId: string;
+  lastEditedByUserId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * OnboardingResponse - User's answers to an onboarding flow
+ * Stored in Firestore 'users/{userId}' under onboardingResponse field
+ * OR in a separate 'onboarding_responses' collection for coach review
+ */
+export interface OnboardingResponse {
+  id: string;
+  userId: string;
+  organizationId: string;
+  flowId: string;
+  
+  // Answers keyed by step ID
+  answers: Record<string, {
+    stepId: string;
+    stepType: OnboardingStepType;
+    question?: string;                // The question that was asked
+    answer: unknown;                  // String, string[], or object depending on type
+    answeredAt: string;               // ISO timestamp
+  }>;
+  
+  // Status
+  status: 'in_progress' | 'completed' | 'abandoned';
+  startedAt: string;
+  completedAt?: string;
+}
+

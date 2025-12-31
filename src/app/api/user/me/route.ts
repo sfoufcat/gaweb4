@@ -95,10 +95,28 @@ export async function GET() {
       }),
     };
 
+    // Check if org has an enabled onboarding flow for new users
+    let orgOnboardingEnabled = false;
+    if (organizationId) {
+      try {
+        const flowSnapshot = await adminDb
+          .collection('org_onboarding_flows')
+          .where('organizationId', '==', organizationId)
+          .where('enabled', '==', true)
+          .limit(1)
+          .get();
+        
+        orgOnboardingEnabled = !flowSnapshot.empty;
+      } catch (error) {
+        console.warn('[USER_ME] Failed to check org onboarding flow:', error);
+      }
+    }
+
     return NextResponse.json({
       exists: true,
       user: mergedUserData,
       goal: activeGoal,
+      orgOnboardingEnabled,
     });
 
   } catch (error) {

@@ -119,7 +119,7 @@ export default function OnboardingWelcomePage() {
       <div className="fixed inset-0 bg-app-bg flex items-center justify-center">
         <div className="relative">
           <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
-          <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-[#a07855] animate-spin" />
+          <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-brand-accent animate-spin" />
         </div>
       </div>
     );
@@ -127,10 +127,10 @@ export default function OnboardingWelcomePage() {
 
   return (
     <div className="min-h-screen bg-app-bg overflow-y-auto">
-      {/* Subtle background pattern */}
+      {/* Subtle background pattern - uses brand accent color */}
       <div className="fixed inset-0 opacity-[0.03] pointer-events-none">
         <div className="absolute inset-0" style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, #a07855 1px, transparent 0)`,
+          backgroundImage: `radial-gradient(circle at 1px 1px, var(--brand-accent) 1px, transparent 0)`,
           backgroundSize: '32px 32px'
         }} />
       </div>

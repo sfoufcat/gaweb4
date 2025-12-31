@@ -559,16 +559,34 @@ export default function Dashboard() {
             const clerkBillingStatus = (user?.publicMetadata as { billingStatus?: string })?.billingStatus;
             const hasActiveBilling = justCompletedPayment || clerkBillingStatus === 'active' || clerkBillingStatus === 'trialing';
             
+            // IMPORTANT: Coaches should NEVER see user onboarding flow
+            // They have their own coach onboarding at /coach/onboarding/*
+            const userRole = (user?.publicMetadata as { role?: string })?.role;
+            const userOrgRole = (user?.publicMetadata as { orgRole?: string })?.orgRole;
+            const isCoach = userRole === 'coach' || userOrgRole === 'super_coach' || userOrgRole === 'coach';
+            
+            if (isCoach) {
+              console.log('[DASHBOARD] User is a coach, skipping user onboarding redirects');
+              // Don't redirect - coaches use their own onboarding flow
+            }
             // IMPORTANT: Users who converted from guest flow should NEVER be redirected to old onboarding
             // They completed onboarding via /start/* flow and paid - treat them as fully onboarded
-            if (convertedToMember) {
+            else if (convertedToMember) {
               console.log('[DASHBOARD] User converted from guest flow, skipping onboarding redirects');
               // Don't redirect - let them stay on dashboard
             }
             // If user hasn't completed onboarding, redirect to appropriate step
             // BUT: If they have active billing, don't redirect to plan page (would cause loop)
+            // Also check if the organization has enabled onboarding for users
             else if (!hasCompletedOnboarding) {
-              if (!onboardingStatus || onboardingStatus === 'welcome') {
+              // Check if org has onboarding enabled - if not, skip to dashboard
+              const orgOnboardingEnabled = data.orgOnboardingEnabled;
+              
+              if (!orgOnboardingEnabled) {
+                console.log('[DASHBOARD] Org onboarding is disabled, skipping onboarding redirects');
+                // Don't redirect - let user stay on dashboard
+              }
+              else if (!onboardingStatus || onboardingStatus === 'welcome') {
                 router.push('/onboarding/welcome');
                 return;
               } else if (onboardingStatus === 'workday') {
