@@ -23,11 +23,11 @@ const COACH_TIER_MONTHLY_PRICE_IDS: Record<CoachTier, string> = {
   scale: process.env.STRIPE_COACH_SCALE_PRICE_ID || 'price_1ShVqFGZhrOwy75w0FPwa1Z9',
 };
 
-// Coach tier Stripe price IDs - Yearly
+// Coach tier Stripe price IDs - Yearly (from Doppler)
 const COACH_TIER_YEARLY_PRICE_IDS: Record<CoachTier, string> = {
-  starter: process.env.STRIPE_COACH_STARTER_YEARLY_PRICE_ID || 'price_1SkVUEGZhrOwy75wa5gVzRgV',
-  pro: process.env.STRIPE_COACH_PRO_YEARLY_PRICE_ID || 'price_1SkVV8GZhrOwy75w3TMsA8U9',
-  scale: process.env.STRIPE_COACH_SCALE_YEARLY_PRICE_ID || 'price_1SkVVVGZhrOwy75wqY09RQZY',
+  starter: process.env.STRIPE_COACH_STARTER_YEARLY_PRICE_ID!,
+  pro: process.env.STRIPE_COACH_PRO_YEARLY_PRICE_ID!,
+  scale: process.env.STRIPE_COACH_SCALE_YEARLY_PRICE_ID!,
 };
 
 // Helper to get price ID based on tier and billing period
