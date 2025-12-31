@@ -40,18 +40,21 @@ export default function OnboardingProfilePage() {
   useEffect(() => {
     if (!isLoaded || !user) return;
     
-    // Use user's name as default business name
-    const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
-    if (fullName) {
-      setBusinessName(`${fullName}'s Coaching`);
+    // Use user's name as default business name (only if empty)
+    if (!businessName) {
+      const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
+      if (fullName) {
+        setBusinessName(`${fullName}'s Coaching`);
+      }
     }
     
-    // Use existing avatar if available
-    if (user.imageUrl) {
+    // Use existing avatar if available AND no local file has been selected
+    // This prevents overwriting the user's selected file preview when Clerk refreshes
+    if (user.imageUrl && !avatarFile) {
       setAvatarPreview(user.imageUrl);
       setAvatarUrl(user.imageUrl);
     }
-  }, [isLoaded, user]);
+  }, [isLoaded, user]); // Keep dependencies minimal - only run on auth state changes
 
   // Check onboarding state
   useEffect(() => {

@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { ensureCoachHasOrganization } from '@/lib/clerk-organizations';
 import sharp from 'sharp';
-import type { UserRole } from '@/types';
+import type { UserRole, OrgRole } from '@/types';
 
 /**
  * POST /api/org/branding/logo
@@ -40,15 +40,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized - not logged in' }, { status: 401 });
     }
 
-    // Step 2: Check permissions (coach, admin, super_admin)
-    const publicMetadata = sessionClaims?.publicMetadata as { role?: UserRole } | undefined;
+    // Step 2: Check permissions (coach, admin, super_admin, or org-level super_coach/coach)
+    // Check both role and orgRole since new coaches might have stale session claims
+    const publicMetadata = sessionClaims?.publicMetadata as { role?: UserRole; orgRole?: OrgRole } | undefined;
     const role = publicMetadata?.role;
+    const orgRole = publicMetadata?.orgRole;
     
-    if (!canAccessCoachDashboard(role)) {
-      console.log('[ORG_LOGO_UPLOAD] Permission denied for role:', role);
+    if (!canAccessCoachDashboard(role, orgRole)) {
+      console.log('[ORG_LOGO_UPLOAD] Permission denied for role:', role, 'orgRole:', orgRole);
       return NextResponse.json({ 
         error: 'Insufficient permissions',
-        details: `Role '${role || 'undefined'}' cannot upload logo. Required: coach, admin, or super_admin`
+        details: `Role '${role || 'undefined'}' / orgRole '${orgRole || 'undefined'}' cannot upload logo. Required: coach, admin, super_admin, or org-level super_coach/coach`
       }, { status: 403 });
     }
 

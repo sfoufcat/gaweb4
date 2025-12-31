@@ -92,6 +92,34 @@ const PLANS = [
   },
 ];
 
+// Tiered competitor pricing - prices adjust based on selected plan tier
+const COMPETITOR_PRICING = {
+  starter: [
+    { tool: 'Funnel builder', price: 99, competitor: 'ClickFunnels Basic' },
+    { tool: 'Community platform', price: 99, competitor: 'Circle' },
+    { tool: 'Course hosting', price: 49, competitor: 'Teachable Basic' },
+    { tool: 'Scheduling + CRM', price: 50, competitor: 'Calendly + tools' },
+    { tool: 'Video calls', price: 20, competitor: 'Zoom Pro' },
+    { tool: 'Check-ins & tasks', price: 30, competitor: 'CoachAccountable' },
+  ],
+  pro: [
+    { tool: 'Funnel builder', price: 197, competitor: 'ClickFunnels Pro' },
+    { tool: 'Community platform', price: 199, competitor: 'Circle Pro' },
+    { tool: 'Course hosting', price: 119, competitor: 'Teachable Pro' },
+    { tool: 'Scheduling + CRM', price: 80, competitor: 'Calendly Teams' },
+    { tool: 'Video calls', price: 20, competitor: 'Zoom Pro' },
+    { tool: 'Check-ins & tasks', price: 50, competitor: 'CoachAccountable Pro' },
+  ],
+  scale: [
+    { tool: 'Funnel builder', price: 299, competitor: 'ClickFunnels Funnel Hacker' },
+    { tool: 'Community platform', price: 399, competitor: 'Circle Enterprise' },
+    { tool: 'Course hosting', price: 199, competitor: 'Teachable Business' },
+    { tool: 'Scheduling + CRM', price: 120, competitor: 'Calendly Enterprise' },
+    { tool: 'Video calls', price: 25, competitor: 'Zoom Business' },
+    { tool: 'Check-ins & tasks', price: 70, competitor: 'CoachAccountable Team' },
+  ],
+};
+
 // Stripe appearance configuration helper - returns theme-aware appearance
 function getStripeAppearance(isDark: boolean): import('@stripe/stripe-js').Appearance {
   return {
@@ -323,6 +351,8 @@ export default function OnboardingPlansPage() {
   // Check onboarding state on mount
   useEffect(() => {
     if (!isLoaded || !user) return;
+    // Don't redirect if branding modal is already showing (payment just completed)
+    if (showBrandingModal) return;
     
     const checkState = async () => {
       try {
@@ -369,7 +399,7 @@ export default function OnboardingPlansPage() {
     };
     
     checkState();
-  }, [isLoaded, user, router]);
+  }, [isLoaded, user, router, showBrandingModal]);
 
   const handleStartTrial = async () => {
     if (!selectedPlan) return;
@@ -628,62 +658,63 @@ export default function OnboardingPlansPage() {
           transition={{ delay: 0.25 }}
           className="max-w-2xl mx-auto mt-10"
         >
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#2d2d2d] dark:from-[#171b22] dark:to-[#1e222a] p-6 sm:p-8">
-            {/* Decorative gradient orbs */}
-            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-emerald-500/20 to-transparent rounded-full blur-3xl" />
-            <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-amber-500/15 to-transparent rounded-full blur-2xl" />
+          {(() => {
+            const competitorPricing = COMPETITOR_PRICING[selectedPlan];
+            const competitorTotal = competitorPricing.reduce((sum, item) => sum + item.price, 0);
+            const planPrice = PLANS.find(p => p.id === selectedPlan)?.price || 49;
             
-            <div className="relative z-10">
-              <h3 className="font-albert text-[20px] sm:text-[24px] font-bold text-white tracking-[-1px] mb-2">
-                Why coaches choose us over piecing tools together
-              </h3>
-              <p className="font-sans text-[14px] text-white/60 mb-6">
-                Everything you need in one platform — no more juggling subscriptions
-              </p>
-              
-              {/* Competitor pricing breakdown */}
-              <div className="grid sm:grid-cols-2 gap-3 mb-6">
-                {[
-                  { tool: 'Funnel builder', price: '$99', competitor: 'ClickFunnels' },
-                  { tool: 'Community platform', price: '$99', competitor: 'Circle' },
-                  { tool: 'Course hosting', price: '$49', competitor: 'Teachable' },
-                  { tool: 'Scheduling + CRM', price: '$50', competitor: 'Calendly + tools' },
-                  { tool: 'Video calls', price: '$20', competitor: 'Zoom Pro' },
-                  { tool: 'Check-ins & tasks', price: '$30', competitor: 'CoachAccountable' },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center justify-between py-2 px-3 bg-white/5 rounded-lg">
-                    <div>
-                      <span className="font-sans text-[13px] text-white/90">{item.tool}</span>
-                      <span className="font-sans text-[11px] text-white/40 ml-2">({item.competitor})</span>
-                    </div>
-                    <span className="font-albert text-[14px] font-semibold text-white/70">{item.price}/mo</span>
-                  </div>
-                ))}
-              </div>
-              
-              {/* Total comparison */}
-              <div className="flex items-center justify-between pt-4 border-t border-white/10">
-                <div>
-                  <p className="font-sans text-[12px] text-white/50 uppercase tracking-wide">Elsewhere you'd pay</p>
-                  <p className="font-albert text-[28px] font-bold text-white/40 line-through tracking-[-1px]">$347+/mo</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-sans text-[12px] text-emerald-400 uppercase tracking-wide">Your price</p>
-                  <p className="font-albert text-[32px] font-bold text-emerald-400 tracking-[-1px]">
-                    ${PLANS.find(p => p.id === selectedPlan)?.price}/mo
+            return (
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#f5f3f0] to-[#ebe7e2] dark:from-[#171b22] dark:to-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] p-6 sm:p-8">
+                {/* Decorative gradient orbs */}
+                <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-emerald-500/10 dark:from-emerald-500/20 to-transparent rounded-full blur-3xl" />
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-amber-500/10 dark:from-amber-500/15 to-transparent rounded-full blur-2xl" />
+                
+                <div className="relative z-10">
+                  <h3 className="font-albert text-[20px] sm:text-[24px] font-bold text-[#1a1a1a] dark:text-white tracking-[-1px] mb-2">
+                    Why coaches choose us over piecing tools together
+                  </h3>
+                  <p className="font-sans text-[14px] text-[#5f5a55] dark:text-white/60 mb-6">
+                    Everything you need in one platform — no more juggling subscriptions
                   </p>
+                  
+                  {/* Competitor pricing breakdown */}
+                  <div className="grid sm:grid-cols-2 gap-3 mb-6">
+                    {competitorPricing.map((item, i) => (
+                      <div key={i} className="flex items-center justify-between py-2 px-3 bg-white dark:bg-white/5 rounded-lg border border-[#e1ddd8]/50 dark:border-transparent">
+                        <div>
+                          <span className="font-sans text-[13px] text-[#1a1a1a] dark:text-white/90">{item.tool}</span>
+                          <span className="font-sans text-[11px] text-[#a7a39e] dark:text-white/40 ml-2">({item.competitor})</span>
+                        </div>
+                        <span className="font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-white/70">${item.price}/mo</span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Total comparison */}
+                  <div className="flex items-center justify-between pt-4 border-t border-[#e1ddd8] dark:border-white/10">
+                    <div>
+                      <p className="font-sans text-[12px] text-[#a7a39e] dark:text-white/50 uppercase tracking-wide">Elsewhere you'd pay</p>
+                      <p className="font-albert text-[28px] font-bold text-[#a7a39e] dark:text-white/40 line-through tracking-[-1px]">${competitorTotal}+/mo</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-sans text-[12px] text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">Your price</p>
+                      <p className="font-albert text-[32px] font-bold text-emerald-600 dark:text-emerald-400 tracking-[-1px]">
+                        ${planPrice}/mo
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Savings badge */}
+                  <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-full">
+                    <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <span className="font-sans text-[13px] font-medium text-emerald-600 dark:text-emerald-400">
+                      Save ${competitorTotal - planPrice}+ every month
+                    </span>
+                  </div>
                 </div>
               </div>
-              
-              {/* Savings badge */}
-              <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-full">
-                <Zap className="w-4 h-4 text-emerald-400" />
-                <span className="font-sans text-[13px] font-medium text-emerald-400">
-                  Save ${347 - (PLANS.find(p => p.id === selectedPlan)?.price || 49)}+ every month
-                </span>
-              </div>
-            </div>
-          </div>
+            );
+          })()}
         </motion.div>
 
         {/* Trust Signals */}

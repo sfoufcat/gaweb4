@@ -210,6 +210,33 @@ export async function POST(req: Request) {
         subscriptionStatus,
         updatedAt: now,
       }, { merge: true });
+      
+      // Sync subscription to Edge Config for immediate middleware access
+      // This prevents redirect to /coach/reactivate before Clerk session refreshes
+      try {
+        const { getOrgDomain } = await import('@/lib/tenant/resolveTenant');
+        const { syncSubscriptionToEdgeConfig } = await import('@/lib/tenant-edge-config');
+        
+        const orgDomain = await getOrgDomain(organizationId);
+        if (orgDomain?.subdomain) {
+          await syncSubscriptionToEdgeConfig(
+            organizationId,
+            orgDomain.subdomain,
+            {
+              plan: tier,
+              subscriptionStatus,
+              currentPeriodEnd: coachSubscriptionData.currentPeriodEnd,
+              trialEnd: coachSubscriptionData.trialEnd,
+              cancelAtPeriodEnd: false,
+            },
+            orgDomain.customDomain || undefined
+          );
+          console.log(`[COACH_SUBSCRIPTION_CONFIRM] Synced subscription to Edge Config for ${orgDomain.subdomain}`);
+        }
+      } catch (edgeError) {
+        console.error('[COACH_SUBSCRIPTION_CONFIRM] Failed to sync Edge Config:', edgeError);
+        // Non-critical - middleware will fall back to Clerk org metadata
+      }
     } catch (orgError) {
       console.error('[COACH_SUBSCRIPTION_CONFIRM] Failed to sync org metadata:', orgError);
       // Don't fail the request - the Stripe webhook will eventually sync this
