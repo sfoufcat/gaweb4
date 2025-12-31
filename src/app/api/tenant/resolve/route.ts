@@ -153,12 +153,33 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const subdomain = searchParams.get('subdomain');
   const domain = searchParams.get('domain');
+  const orgId = searchParams.get('orgId');
   
-  if (!subdomain && !domain) {
-    return NextResponse.json({ error: 'Missing subdomain or domain parameter' }, { status: 400 });
+  if (!subdomain && !domain && !orgId) {
+    return NextResponse.json({ error: 'Missing subdomain, domain, or orgId parameter' }, { status: 400 });
   }
   
   try {
+    // Resolve by organization ID (reverse lookup)
+    if (orgId) {
+      const snapshot = await adminDb
+        .collection('org_domains')
+        .where('organizationId', '==', orgId)
+        .limit(1)
+        .get();
+      
+      if (snapshot.empty) {
+        return NextResponse.json({ found: false, subdomain: null }, { status: 404 });
+      }
+      
+      const data = snapshot.docs[0].data() as OrgDomain;
+      return NextResponse.json({
+        found: true,
+        organizationId: data.organizationId,
+        subdomain: data.subdomain,
+      });
+    }
+    
     if (subdomain) {
       // Resolve by subdomain
       const snapshot = await adminDb

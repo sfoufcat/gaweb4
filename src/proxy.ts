@@ -1,6 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { get } from '@vercel/edge-config';
 import { getTenantBySubdomain, getTenantByCustomDomain, type TenantConfigData, DEFAULT_TENANT_BRANDING } from '@/lib/tenant-edge-config';
 import { shouldRedirectToFunnel, getFunnelRedirectUrl } from '@/lib/funnel-redirects';
 
@@ -378,6 +379,43 @@ interface ResolvedTenant {
 }
 
 /**
+ * Get subdomain for an organization by its ID
+ * Used when we need to redirect a user to their tenant subdomain
+ * Falls back to API call since Edge Config is keyed by subdomain, not org ID
+ */
+async function getSubdomainByOrgId(organizationId: string): Promise<string | null> {
+  try {
+    // Try Edge Config reverse lookup first (org_subdomain_<orgId> -> subdomain)
+    // This is faster than API calls but requires the reverse mapping to be synced
+    const reverseKey = `org_subdomain_${organizationId}`;
+    const cachedSubdomain = await get<string>(reverseKey);
+    if (cachedSubdomain) {
+      return cachedSubdomain;
+    }
+    
+    // Fallback: Query the API to get org domain info
+    // This is slower but works for orgs that haven't been synced to Edge Config yet
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const response = await fetch(`${baseUrl}/api/tenant/resolve?orgId=${organizationId}`, {
+      method: 'GET',
+      headers: { 'x-internal-request': 'true' },
+      // Short timeout to avoid blocking middleware too long
+      signal: AbortSignal.timeout(3000),
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.subdomain || null;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`[MIDDLEWARE] Error getting subdomain for org ${organizationId}:`, error);
+    return null;
+  }
+}
+
+/**
  * Resolve tenant from Vercel Edge Config
  * Ultra-fast Edge-compatible lookup - no HTTP calls needed
  */
@@ -697,6 +735,8 @@ export const proxy = clerkMiddleware(async (auth, request) => {
       pathname.startsWith('/coach/onboarding') ||      // Coach onboarding (stays on marketing domain)
       pathname.startsWith('/coach/complete-signup') || // Coach OAuth completion
       pathname.startsWith('/coach/welcome') ||         // Coach welcome page
+      pathname.startsWith('/coach/plan') ||            // Coach plan selection (for reactivation)
+      pathname.startsWith('/coach/reactivate') ||      // Coach subscription reactivation
       pathname.startsWith('/terms') ||          // Legal
       pathname.startsWith('/privacy') ||        // Legal
       pathname.startsWith('/refund-policy') ||  // Legal
@@ -705,10 +745,49 @@ export const proxy = clerkMiddleware(async (auth, request) => {
       pathname.startsWith('/_next/') ||         // Next.js assets
       pathname.startsWith('/static/');          // Static assets
     
-    // Redirect any non-allowed routes to platform domain
+    // Handle non-allowed routes on marketing domain
+    // IMPORTANT: Do NOT redirect to app.growthaddicts.com - that's for super_admins only!
+    // Instead, redirect to appropriate location based on user state
     if (!isAllowedRoute) {
-      console.log(`[PROXY] Marketing domain blocking app route: ${pathname}, redirecting to app.growthaddicts.com`);
-      return NextResponse.redirect(`https://app.growthaddicts.com${pathname}`, 302);
+      const { userId, sessionClaims } = await auth();
+      const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+      const primaryOrgId = publicMetadata?.primaryOrganizationId;
+      const legacyOrgId = publicMetadata?.organizationId;
+      const organizationId = primaryOrgId || legacyOrgId;
+      
+      // Super admins can go to app.growthaddicts.com
+      if (userId && publicMetadata?.role === 'super_admin') {
+        console.log(`[PROXY] Marketing domain: super_admin ${userId} accessing ${pathname}, redirecting to app.growthaddicts.com`);
+        return NextResponse.redirect(`https://app.growthaddicts.com${pathname}`, 302);
+      }
+      
+      // Authenticated coach with organization - try to redirect to their subdomain
+      if (userId && organizationId) {
+        // Try to get subdomain from Edge Config by organization ID
+        // We need to check if there's cached tenant data for this org
+        const tenantSubdomain = await getSubdomainByOrgId(organizationId);
+        
+        if (tenantSubdomain) {
+          console.log(`[PROXY] Marketing domain: redirecting ${userId} to subdomain ${tenantSubdomain}${pathname}`);
+          return NextResponse.redirect(`https://${tenantSubdomain}.growthaddicts.com${pathname}`, 302);
+        }
+        
+        // No subdomain found - coach might be in onboarding, send to profile page
+        console.log(`[PROXY] Marketing domain: no subdomain for org ${organizationId}, redirecting to onboarding`);
+        return NextResponse.redirect(new URL('/coach/onboarding/profile', request.url), 302);
+      }
+      
+      // Authenticated but no organization - might be a user browsing, send to marketplace
+      if (userId) {
+        console.log(`[PROXY] Marketing domain: authenticated user ${userId} without org accessing ${pathname}, redirecting to marketplace`);
+        return NextResponse.redirect(new URL('/', request.url), 302);
+      }
+      
+      // Not authenticated - send to sign-in with return URL
+      console.log(`[PROXY] Marketing domain: unauthenticated access to ${pathname}, redirecting to sign-in`);
+      const signInUrl = new URL('/sign-in', request.url);
+      signInUrl.searchParams.set('redirect_url', pathname);
+      return NextResponse.redirect(signInUrl, 302);
     }
   }
   

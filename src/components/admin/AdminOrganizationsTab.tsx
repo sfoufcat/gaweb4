@@ -64,6 +64,11 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
   const [deletingDomain, setDeletingDomain] = useState<string | null>(null);
   
+  // Organization deletion state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [orgToDelete, setOrgToDelete] = useState<Organization | null>(null);
+  const [deletingOrg, setDeletingOrg] = useState(false);
+  
   // Tier management state
   const [tierDialogOpen, setTierDialogOpen] = useState(false);
   const [editingTier, setEditingTier] = useState<CoachTier>('starter');
@@ -201,6 +206,44 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
         return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
       default:
         return 'bg-slate-100 text-slate-600 dark:bg-slate-800/30 dark:text-slate-400';
+    }
+  };
+
+  // Handle organization deletion
+  const handleDeleteOrganization = async () => {
+    if (!orgToDelete) return;
+    
+    setDeletingOrg(true);
+    try {
+      const response = await fetch(`/api/admin/organizations/${orgToDelete.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to delete organization');
+      }
+
+      const result = await response.json();
+      
+      // Close dialog and refresh list
+      setDeleteDialogOpen(false);
+      setOrgToDelete(null);
+      
+      // Show success message with details
+      if (result.errors && result.errors.length > 0) {
+        alert(`Organization "${result.organizationName}" was deleted, but some cleanup operations had issues:\n\n${result.errors.join('\n')}`);
+      } else {
+        alert(`Organization "${result.organizationName}" has been successfully deleted.`);
+      }
+      
+      // Refresh the organizations list
+      await fetchOrganizations();
+    } catch (err) {
+      console.error('Error deleting organization:', err);
+      alert(err instanceof Error ? err.message : 'Failed to delete organization');
+    } finally {
+      setDeletingOrg(false);
     }
   };
 
@@ -480,88 +523,166 @@ export function AdminOrganizationsTab({ currentUserRole }: AdminOrganizationsTab
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {organizations.map((org) => (
-              <button
+              <div
                 key={org.id}
-                onClick={() => {
-                  setSelectedOrg(org);
-                  // Fetch tier info when selecting org
-                  fetchOrgTier(org.id);
-                }}
-                className="p-4 rounded-xl border border-[#e1ddd8] dark:border-[#262b35]/50 bg-white/40 dark:bg-white/5 hover:bg-[#faf8f6] dark:hover:bg-white/10 transition-colors text-left group"
+                className="relative p-4 rounded-xl border border-[#e1ddd8] dark:border-[#262b35]/50 bg-white/40 dark:bg-white/5 hover:bg-[#faf8f6] dark:hover:bg-white/10 transition-colors text-left group"
               >
-                <div className="flex items-start gap-3">
-                  {org.imageUrl ? (
-                    <Image
-                      src={org.imageUrl}
-                      alt={org.name}
-                      width={48}
-                      height={48}
-                      className="rounded-lg object-cover"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-brand-accent/20 to-[#8c6245]/10 flex items-center justify-center flex-shrink-0">
-                      <Building2 className="w-6 h-6 text-brand-accent" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate group-hover:text-brand-accent dark:group-hover:text-brand-accent transition-colors">
-                      {org.name}
-                    </h4>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-xs flex items-center gap-1">
-                        <Users className="w-3 h-3" />
-                        {org.membersCount}
-                      </span>
-                      {org.subdomain && (
-                        <span className="text-brand-accent font-albert text-xs flex items-center gap-1">
-                          <Globe className="w-3 h-3" />
-                          {org.subdomain}
+                {/* Delete button - top right corner */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOrgToDelete(org);
+                    setDeleteDialogOpen(true);
+                  }}
+                  className="absolute top-2 right-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 dark:hover:bg-red-900/30 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-red-600 dark:hover:text-red-400 transition-all z-10"
+                  title={`Delete ${org.name}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                
+                {/* Clickable area for selecting org */}
+                <button
+                  onClick={() => {
+                    setSelectedOrg(org);
+                    // Fetch tier info when selecting org
+                    fetchOrgTier(org.id);
+                  }}
+                  className="w-full text-left"
+                >
+                  <div className="flex items-start gap-3">
+                    {org.imageUrl ? (
+                      <Image
+                        src={org.imageUrl}
+                        alt={org.name}
+                        width={48}
+                        height={48}
+                        className="rounded-lg object-cover"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-brand-accent/20 to-[#8c6245]/10 flex items-center justify-center flex-shrink-0">
+                        <Building2 className="w-6 h-6 text-brand-accent" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate group-hover:text-brand-accent dark:group-hover:text-brand-accent transition-colors">
+                        {org.name}
+                      </h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-xs flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          {org.membersCount}
                         </span>
-                      )}
-                    </div>
-                    {org.customDomains.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {org.customDomains.slice(0, 2).map((cd) => (
-                          <span
-                            key={cd.id}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-albert ${
-                              cd.status === 'verified'
-                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                            }`}
-                          >
-                            {cd.domain}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteDomain(org.id, cd.id, cd.domain);
-                              }}
-                              disabled={deletingDomain === cd.id}
-                              className="ml-1 p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors disabled:opacity-50"
-                              title={`Delete ${cd.domain}`}
-                            >
-                              {deletingDomain === cd.id ? (
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                              ) : (
-                                <Trash2 className="w-3 h-3" />
-                              )}
-                            </button>
-                          </span>
-                        ))}
-                        {org.customDomains.length > 2 && (
-                          <span className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-xs">
-                            +{org.customDomains.length - 2} more
+                        {org.subdomain && (
+                          <span className="text-brand-accent font-albert text-xs flex items-center gap-1">
+                            <Globe className="w-3 h-3" />
+                            {org.subdomain}
                           </span>
                         )}
                       </div>
-                    )}
+                      {org.customDomains.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {org.customDomains.slice(0, 2).map((cd) => (
+                            <span
+                              key={cd.id}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-albert ${
+                                cd.status === 'verified'
+                                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                  : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                              }`}
+                            >
+                              {cd.domain}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteDomain(org.id, cd.id, cd.domain);
+                                }}
+                                disabled={deletingDomain === cd.id}
+                                className="ml-1 p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors disabled:opacity-50"
+                                title={`Delete ${cd.domain}`}
+                              >
+                                {deletingDomain === cd.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-3 h-3" />
+                                )}
+                              </button>
+                            </span>
+                          ))}
+                          {org.customDomains.length > 2 && (
+                            <span className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert text-xs">
+                              +{org.customDomains.length - 2} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </button>
+                </button>
+              </div>
             ))}
           </div>
         )}
       </div>
+      
+      {/* Delete Organization Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="sm:max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-albert text-red-600 dark:text-red-400">
+              Delete Organization
+            </AlertDialogTitle>
+            <AlertDialogDescription className="font-albert" asChild>
+              <div className="space-y-4">
+                <p>
+                  Are you sure you want to delete <strong className="text-[#1a1a1a] dark:text-[#f5f5f8]">{orgToDelete?.name}</strong>?
+                </p>
+                
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-lg p-4 space-y-2">
+                  <p className="font-semibold text-red-700 dark:text-red-400 text-sm">
+                    This action will permanently delete:
+                  </p>
+                  <ul className="text-sm text-red-600 dark:text-red-300 space-y-1 list-disc list-inside">
+                    <li>All {orgToDelete?.membersCount || 0} user memberships</li>
+                    <li>All custom domains and subdomains</li>
+                    <li>Organization branding and settings</li>
+                    <li>All community channels</li>
+                    <li>Subscription information</li>
+                  </ul>
+                </div>
+                
+                <p className="text-sm text-[#8c8c8c] dark:text-[#7d8190]">
+                  This action cannot be undone. User accounts will not be deleted, but they will lose access to this organization.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={deletingOrg}
+              className="font-albert"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e: React.MouseEvent) => {
+                e.preventDefault();
+                handleDeleteOrganization();
+              }}
+              disabled={deletingOrg}
+              className="bg-red-600 hover:bg-red-700 text-white font-albert"
+            >
+              {deletingOrg ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Organization'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
