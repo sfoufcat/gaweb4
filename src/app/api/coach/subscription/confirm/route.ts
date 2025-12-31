@@ -226,7 +226,6 @@ export async function POST(req: Request) {
               plan: tier,
               subscriptionStatus,
               currentPeriodEnd: coachSubscriptionData.currentPeriodEnd || undefined,
-              trialEnd: coachSubscriptionData.trialEnd || undefined,
               cancelAtPeriodEnd: false,
             },
             orgDomain.customDomain || undefined
