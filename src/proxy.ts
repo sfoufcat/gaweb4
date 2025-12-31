@@ -694,6 +694,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
       pathname.startsWith('/sign-up') ||        // Auth
       pathname.startsWith('/signup') ||         // Auth (alt)
       pathname.startsWith('/sso-callback') ||   // Auth callback
+      pathname.startsWith('/onboarding') ||            // User onboarding (prevents redirect loops)
       pathname.startsWith('/coach/onboarding') ||      // Coach onboarding (stays on marketing domain)
       pathname.startsWith('/coach/complete-signup') || // Coach OAuth completion
       pathname.startsWith('/coach/welcome') ||         // Coach welcome page
