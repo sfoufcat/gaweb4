@@ -30,6 +30,7 @@ import {
   getYearlySavings,
   type BillingPeriod 
 } from '@/lib/coach-permissions';
+import { trackCoachTrialConversion } from '@/lib/google-ads';
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -475,6 +476,9 @@ export default function OnboardingPlansPage() {
   };
 
   const handlePaymentSuccess = () => {
+    // Track Google Ads conversion for coach trial signup
+    trackCoachTrialConversion(selectedPlan, billingPeriod);
+    
     // Close checkout modal and show branding setup modal
     setShowCheckout(false);
     setClientSecret(null);
