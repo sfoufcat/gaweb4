@@ -27,6 +27,7 @@ interface TenantCookieData {
     menuOrder: MenuItemKey[];
   };
   feedEnabled?: boolean;
+  updatedAt?: string; // Timestamp for freshness comparison with Edge Config
 }
 
 /**
@@ -399,6 +400,9 @@ export async function POST(request: NextRequest) {
         }
       }
       
+      // Current timestamp for freshness tracking
+      const cookieUpdatedAt = new Date().toISOString();
+      
       // If no existing cookie, try to build one from available data
       if (!cookieData && subdomain) {
         cookieData = {
@@ -416,6 +420,7 @@ export async function POST(request: NextRequest) {
             menuOrder: brandingData.menuOrder || DEFAULT_MENU_ORDER,
           },
           feedEnabled: feedEnabled,
+          updatedAt: cookieUpdatedAt,
         };
       }
       
@@ -436,6 +441,9 @@ export async function POST(request: NextRequest) {
         if (typeof feedEnabled === 'boolean') {
           cookieData.feedEnabled = feedEnabled;
         }
+        // Set updatedAt to current time - this makes the cookie "fresher" than Edge Config
+        // so middleware won't overwrite it until Edge Config propagates
+        cookieData.updatedAt = cookieUpdatedAt;
         
         // Set the updated cookie
         response.cookies.set('ga_tenant_context', JSON.stringify(cookieData), {
@@ -444,7 +452,7 @@ export async function POST(request: NextRequest) {
           sameSite: 'lax',
           maxAge: 60 * 60 * 24 * 7, // 1 week
         });
-        console.log('[ORG_BRANDING_POST] Updated ga_tenant_context cookie with new branding');
+        console.log('[ORG_BRANDING_POST] Updated ga_tenant_context cookie with new branding, updatedAt:', cookieUpdatedAt);
       }
     } catch (cookieError) {
       // Log but don't fail the request - cookie update is optimization

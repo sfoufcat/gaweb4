@@ -819,11 +819,13 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   // between different tenants or from tenant to platform domain
   const existingCookie = request.cookies.get('ga_tenant_context');
   let existingOrgId: string | null = null;
+  let existingCookieUpdatedAt: string | null = null;
   
   if (existingCookie) {
     try {
       const existing = JSON.parse(existingCookie.value);
       existingOrgId = existing.orgId || null;
+      existingCookieUpdatedAt = existing.updatedAt || null;
     } catch {
       // Invalid cookie, will be replaced
     }
@@ -836,36 +838,56 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     response.headers.set('x-tenant-is-custom-domain', isCustomDomain ? 'true' : 'false');
     response.headers.set('x-tenant-hostname', hostname);
     
-    // Set branding cookie for SSR access (JSON-encoded, httpOnly for security)
-    // This allows Server Components to read branding without additional API calls
-    // Always set the cookie to ensure correct tenant context (handles switching between tenants)
-    const brandingData = tenantConfigData?.branding || DEFAULT_TENANT_BRANDING;
-    const coachingPromoData = tenantConfigData?.coachingPromo; // May be undefined
-    const feedEnabledData = tenantConfigData?.feedEnabled === true; // Feed enabled flag for instant SSR
-    const programEmptyStateData = tenantConfigData?.programEmptyStateBehavior || 'discover';
-    const squadEmptyStateData = tenantConfigData?.squadEmptyStateBehavior || 'discover';
-    const tenantCookieData = {
-      orgId: tenantOrgId,
-      subdomain: tenantSubdomain,
-      branding: brandingData,
-      feedEnabled: feedEnabledData,
-      coachingPromo: coachingPromoData,
-      programEmptyStateBehavior: programEmptyStateData,
-      squadEmptyStateBehavior: squadEmptyStateData,
-    };
+    // Check if existing cookie has fresher data than Edge Config
+    // This handles the case where branding was just saved but Edge Config hasn't propagated yet
+    const edgeConfigUpdatedAt = tenantConfigData?.updatedAt;
+    const shouldPreserveExistingCookie = 
+      existingOrgId === tenantOrgId && 
+      existingCookieUpdatedAt && 
+      (!edgeConfigUpdatedAt || existingCookieUpdatedAt > edgeConfigUpdatedAt);
     
-    // Log when replacing a different tenant's cookie (for debugging)
-    if (existingOrgId && existingOrgId !== tenantOrgId) {
-      console.log(`[MIDDLEWARE] Replacing tenant cookie: ${existingOrgId} -> ${tenantOrgId}`);
+    if (shouldPreserveExistingCookie) {
+      // Existing cookie has fresher data - don't overwrite it
+      // Just refresh the maxAge to keep it alive
+      response.cookies.set('ga_tenant_context', existingCookie!.value, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24, // 24 hours
+      });
+    } else {
+      // Set branding cookie for SSR access (JSON-encoded, httpOnly for security)
+      // This allows Server Components to read branding without additional API calls
+      const brandingData = tenantConfigData?.branding || DEFAULT_TENANT_BRANDING;
+      const coachingPromoData = tenantConfigData?.coachingPromo; // May be undefined
+      const feedEnabledData = tenantConfigData?.feedEnabled === true; // Feed enabled flag for instant SSR
+      const programEmptyStateData = tenantConfigData?.programEmptyStateBehavior || 'discover';
+      const squadEmptyStateData = tenantConfigData?.squadEmptyStateBehavior || 'discover';
+      const tenantCookieData = {
+        orgId: tenantOrgId,
+        subdomain: tenantSubdomain,
+        branding: brandingData,
+        feedEnabled: feedEnabledData,
+        coachingPromo: coachingPromoData,
+        programEmptyStateBehavior: programEmptyStateData,
+        squadEmptyStateBehavior: squadEmptyStateData,
+        updatedAt: edgeConfigUpdatedAt || new Date().toISOString(), // Include timestamp for freshness comparison
+      };
+      
+      // Log when replacing a different tenant's cookie (for debugging)
+      if (existingOrgId && existingOrgId !== tenantOrgId) {
+        console.log(`[MIDDLEWARE] Replacing tenant cookie: ${existingOrgId} -> ${tenantOrgId}`);
+      }
+      
+      response.cookies.set('ga_tenant_context', JSON.stringify(tenantCookieData), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24, // 24 hours - will be refreshed on each request
+      });
     }
-    
-    response.cookies.set('ga_tenant_context', JSON.stringify(tenantCookieData), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24, // 24 hours - will be refreshed on each request
-    });
   } else {
     // Platform mode - force-clear tenant cookie by setting to empty with immediate expiration
     // This is more reliable than cookies.delete() which may not work across subdomains

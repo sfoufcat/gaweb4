@@ -74,6 +74,24 @@ interface FeatureTourProps {
   onSkip: () => void;
 }
 
+// Helper to find tab element with multiple selector strategies
+function findTabElement(tabValue: string): HTMLElement | null {
+  // Radix UI TabsTrigger - try multiple selectors
+  const selectors = [
+    `button[data-state][value="${tabValue}"]`,
+    `[data-radix-collection-item][value="${tabValue}"]`,
+    `[role="tab"][value="${tabValue}"]`,
+  ];
+  
+  for (const selector of selectors) {
+    const tab = document.querySelector(selector) as HTMLElement;
+    if (tab) {
+      return tab;
+    }
+  }
+  return null;
+}
+
 export function FeatureTour({ isActive, onComplete, onSkip }: FeatureTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
@@ -85,9 +103,13 @@ export function FeatureTour({ isActive, onComplete, onSkip }: FeatureTourProps) 
   // Check which tabs actually exist in the DOM
   const detectAvailableTabs = useCallback(() => {
     const available = TOUR_STEPS.filter(step => {
-      // Radix UI renders value prop as data-value attribute
-      const tab = document.querySelector(`[data-state][data-value="${step.tabValue}"]`);
-      return !!tab;
+      const tab = findTabElement(step.tabValue);
+      if (tab) {
+        console.log(`[FeatureTour] Found tab "${step.tabValue}"`);
+        return true;
+      }
+      console.log(`[FeatureTour] Tab "${step.tabValue}" not found`);
+      return false;
     });
     return available;
   }, []);
@@ -145,8 +167,7 @@ export function FeatureTour({ isActive, onComplete, onSkip }: FeatureTourProps) 
   const updateTargetPosition = useCallback(() => {
     if (!step) return;
 
-    // Find the tab trigger by its value (Radix renders value as data-value)
-    const tabTrigger = document.querySelector(`[data-state][data-value="${step.tabValue}"]`);
+    const tabTrigger = findTabElement(step.tabValue);
     
     if (tabTrigger) {
       const rect = tabTrigger.getBoundingClientRect();
@@ -189,7 +210,7 @@ export function FeatureTour({ isActive, onComplete, onSkip }: FeatureTourProps) 
   useEffect(() => {
     if (!isActive || !isReady || !step) return;
 
-    const tabTrigger = document.querySelector(`[data-state][data-value="${step.tabValue}"]`) as HTMLElement;
+    const tabTrigger = findTabElement(step.tabValue);
     if (tabTrigger) {
       // Small delay to let the highlight appear first
       const timer = setTimeout(() => {

@@ -23,12 +23,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
     }
 
-    // Check if feed is enabled (stories are part of the feed feature)
+    // Check if stories are enabled (separate from feed setting)
+    // Default to true for backwards compatibility - stories are enabled unless explicitly disabled
     const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
     const orgSettings = orgSettingsDoc.data();
     
-    if (!orgSettings?.feedEnabled) {
-      return NextResponse.json({ error: 'Feed/Stories not enabled for this organization' }, { status: 403 });
+    // storiesEnabled defaults to true if not explicitly set
+    if (orgSettings?.storiesEnabled === false) {
+      return NextResponse.json({ error: 'Stories not enabled for this organization' }, { status: 403 });
     }
 
     // Get target user ID from query params (or current user)
@@ -268,12 +270,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
     }
 
-    // Check if feed is enabled
+    // Check if stories are enabled (separate from feed setting)
+    // Default to true for backwards compatibility
     const orgSettingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
     const orgSettings = orgSettingsDoc.data();
     
-    if (!orgSettings?.feedEnabled) {
-      return NextResponse.json({ error: 'Feed/Stories not enabled for this organization' }, { status: 403 });
+    // storiesEnabled defaults to true if not explicitly set
+    if (orgSettings?.storiesEnabled === false) {
+      return NextResponse.json({ error: 'Stories not enabled for this organization' }, { status: 403 });
     }
 
     // Parse request body

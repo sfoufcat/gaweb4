@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Eye, EyeOff, Upload, RotateCcw, Save, Palette, Type, ImageIcon, Globe, Link2, Trash2, Copy, Check, ExternalLink, RefreshCw, CreditCard, AlertCircle, CheckCircle2, Clock, Mail, Send, Bell, Settings, Moon, GripVertical, Menu, Sparkles, Store } from 'lucide-react';
 import { useBranding } from '@/contexts/BrandingContext';
 import { FeedSettingsToggle } from './FeedSettingsToggle';
+import { StoriesSettingsToggle } from './StoriesSettingsToggle';
 import { PublicSignupToggle } from './PublicSignupToggle';
 import { EmailPreferencesSection } from './EmailPreferencesSection';
 import { EmailTemplateEditor } from './EmailTemplateEditor';
@@ -1776,6 +1777,11 @@ export function CustomizeBrandingTab() {
         {/* Enable Social Feed */}
         <div className="mt-4">
           <FeedSettingsToggle />
+        </div>
+        
+        {/* Enable Stories */}
+        <div className="mt-4">
+          <StoriesSettingsToggle />
         </div>
         
         {/* Auto-Convert to Community */}
