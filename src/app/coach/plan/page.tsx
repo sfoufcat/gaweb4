@@ -714,12 +714,15 @@ export default function CoachPlanPage() {
                 You&apos;re currently on the {TIER_PRICING[currentTier].name} plan. Upgrade to unlock more features.
               </p>
               {/* Annual Savings Callout */}
-              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-full px-4 py-2">
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-full px-4 py-2 mb-3">
                 <span className="text-emerald-600 dark:text-emerald-400 text-lg">💰</span>
                 <span className="font-sans text-[14px] font-medium text-emerald-700 dark:text-emerald-300">
                   Save up to 41% with annual billing
                 </span>
               </div>
+              <p className="font-sans text-[14px] text-text-secondary lg:text-left">
+                Select a plan below and take your coaching business to the next level
+              </p>
         </motion.div>
 
             {/* Right: Current Plan Card */}
@@ -830,12 +833,15 @@ export default function CoachPlanPage() {
               Start building your coaching business with the right tools.
             </p>
             {/* Annual Savings Callout */}
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-full px-4 py-2">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-full px-4 py-2 mb-3">
               <span className="text-emerald-600 dark:text-emerald-400 text-lg">💰</span>
               <span className="font-sans text-[14px] font-medium text-emerald-700 dark:text-emerald-300">
                 Save up to 41% with annual billing
               </span>
             </div>
+            <p className="font-sans text-[14px] text-text-secondary">
+              Select a plan below to get started
+            </p>
           </motion.div>
         )}
 
@@ -895,14 +901,14 @@ export default function CoachPlanPage() {
                 key={plan.id}
                 onClick={() => !isDowngrade && setSelectedPlan(plan.id)}
                 disabled={isDowngrade && !isCurrentPlan}
-                className={`relative p-6 rounded-[24px] border-2 text-left transition-all duration-300 ${
+                className={`relative pt-8 pb-6 px-6 rounded-[24px] border-2 text-left transition-all duration-300 flex flex-col ${
                   isCurrentPlan
-                    ? 'border-[#22c55e] cursor-default'
+                    ? 'border-[#22c55e] bg-white dark:bg-[#171b22] cursor-default'
                     : isDowngrade
-                    ? 'border-[#e1ddd8] opacity-60 cursor-not-allowed'
+                    ? 'border-[#e1ddd8] dark:border-[#313746] bg-[#faf8f6] dark:bg-[#171b22] opacity-60 cursor-not-allowed'
                     : isSelected
-                    ? 'border-brand-accent shadow-lg'
-                    : 'border-[#e1ddd8] hover:border-[#d4d0cb] hover:shadow-md'
+                    ? 'border-brand-accent bg-white dark:bg-[#171b22] shadow-lg'
+                    : 'border-[#e1ddd8] dark:border-[#313746] bg-white dark:bg-[#171b22] hover:border-[#d4d0cb] hover:shadow-md'
                 }`}
               >
                 {/* Tag */}
@@ -939,7 +945,7 @@ export default function CoachPlanPage() {
                 )}
 
                 {/* Plan Header */}
-                <div className="mb-4 pr-8">
+                <div className="mb-4 pr-8 min-h-[60px]">
                   <h3 className="font-albert text-[22px] font-semibold text-text-primary tracking-[-0.5px] mb-1">
                     {plan.name}
                   </h3>
@@ -949,7 +955,7 @@ export default function CoachPlanPage() {
                 </div>
 
                 {/* Pricing */}
-                <div className="mb-5">
+                <div className="mb-5 min-h-[110px]">
                   <div className="flex items-baseline gap-1">
                     <span className="font-albert text-[40px] font-bold text-text-primary tracking-[-2px]">
                       {formatPrice(billingPeriod === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice, billingPeriod)}
