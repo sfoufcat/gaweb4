@@ -12,7 +12,6 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import type { QuizLead } from '@/types';
 
 interface QuizLeadStats {
@@ -148,12 +147,12 @@ export function AdminQuizLeadsTab() {
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8a8580]" />
-          <Input
+          <input
             type="text"
             placeholder="Search by email or name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
+            className="pl-10 h-10 w-full rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#1a1e26] px-3 py-2 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8a8580] focus:outline-none focus:ring-2 focus:ring-brand-accent/20 focus:border-brand-accent font-sans"
           />
         </div>
         
