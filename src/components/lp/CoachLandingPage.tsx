@@ -379,14 +379,14 @@ export function CoachLandingPage() {
                 {TRUST_LOGOS.map((logo) => (
                   <div 
                     key={logo.name} 
-                    className="h-6 sm:h-10 opacity-60 dark:opacity-90 hover:opacity-100 transition-opacity"
+                    className="h-6 sm:h-10 opacity-60 dark:opacity-60 hover:opacity-100 transition-opacity"
                   >
                     <Image
                       src={logo.logo}
                       alt={logo.name}
                       width={120}
                       height={40}
-                      className="h-full w-auto object-contain grayscale dark:invert dark:brightness-200"
+                      className="h-full w-auto object-contain grayscale dark:brightness-0 dark:invert"
                       unoptimized
                     />
                   </div>
@@ -754,7 +754,7 @@ export function CoachLandingPage() {
               
               {/* Disclaimer */}
               <p className="text-center mt-6 text-[12px] text-[#a7a39e] dark:text-[#7d8190]">
-                *These testimonials are illustrative examples and do not represent actual customers.
+                *Testimonials shown are illustrative examples.
               </p>
             </div>
           </div>
