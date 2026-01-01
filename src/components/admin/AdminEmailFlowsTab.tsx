@@ -15,11 +15,11 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import type { EmailFlow, EmailTemplate, EmailFlowStats } from '@/types';
+import type { EmailFlow, AutomatedEmailTemplate, EmailFlowStats } from '@/types';
 
 interface FlowWithTemplates extends EmailFlow {
   stats: EmailFlowStats;
-  templates: EmailTemplate[];
+  templates: AutomatedEmailTemplate[];
 }
 
 interface QueueStats {

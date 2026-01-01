@@ -8,7 +8,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { resend, isResendConfigured } from '@/lib/resend';
 import type { 
-  EmailTemplate, 
+  AutomatedEmailTemplate, 
   EmailFlow, 
   EmailSend, 
   EmailQueueItem,
@@ -21,7 +21,7 @@ import type {
 // DEFAULT EMAIL TEMPLATES
 // =============================================================================
 
-const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id' | 'createdAt' | 'updatedAt'>[] = [
+const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'updatedAt'>[] = [
   // Abandoned Cart Flow
   {
     flowId: 'abandoned_cart',
@@ -288,7 +288,7 @@ export async function sendTemplatedEmail(
       return { success: false, error: 'Template not found' };
     }
     
-    const template = templateDoc.data() as EmailTemplate;
+    const template = templateDoc.data() as AutomatedEmailTemplate;
     if (!template.enabled) {
       return { success: false, error: 'Template is disabled' };
     }
@@ -392,7 +392,7 @@ export async function queueEmailsForTrigger(
     let queuedCount = 0;
     
     for (const templateDoc of templatesSnapshot.docs) {
-      const template = templateDoc.data() as EmailTemplate;
+      const template = templateDoc.data() as AutomatedEmailTemplate;
       
       // Calculate scheduled time
       const scheduledFor = new Date(now.getTime() + template.delayMinutes * 60 * 1000);

@@ -4500,10 +4500,10 @@ export interface CoachReferralCode {
 // =============================================================================
 
 /**
- * EmailTemplate - Editable email template
+ * AutomatedEmailTemplate - Editable email template for automation flows
  * Stored in Firestore 'email_templates/{id}'
  */
-export interface EmailTemplate {
+export interface AutomatedEmailTemplate {
   id: string;                         // e.g., "abandoned_cart_1"
   flowId: string;                     // Links to email_flows
   name: string;                       // Human-readable name

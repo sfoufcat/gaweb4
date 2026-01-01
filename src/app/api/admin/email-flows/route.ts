@@ -10,7 +10,7 @@ import { auth } from '@clerk/nextjs/server';
 import { isSuperAdmin } from '@/lib/admin-utils-shared';
 import { adminDb } from '@/lib/firebase-admin';
 import { getAllFlowsWithStats, initializeEmailFlows } from '@/lib/email-automation';
-import type { EmailFlow, EmailTemplate, ClerkPublicMetadata } from '@/types';
+import type { EmailFlow, AutomatedEmailTemplate, ClerkPublicMetadata } from '@/types';
 
 /**
  * GET /api/admin/email-flows
@@ -43,7 +43,7 @@ export async function GET() {
         const templates = templatesSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
-        } as EmailTemplate));
+        } as AutomatedEmailTemplate));
         
         return {
           ...flow,
