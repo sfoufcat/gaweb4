@@ -391,7 +391,7 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
               )}
 
               <AnimatePresence mode="wait">
-                {/* Step 1: Why Growth Addicts */}
+                {/* Step 1: Why GrowthAddicts */}
                 {step === 'why' && (
                   <motion.div
                     key="why"
@@ -405,14 +405,14 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
                       <div className="w-14 h-14 rounded-2xl overflow-hidden mx-auto mb-4 relative">
                         <Image
                           src={LOGO_URL}
-                          alt="Growth Addicts"
+                          alt="GrowthAddicts"
                           fill
                           className="object-cover"
                           unoptimized
                         />
                       </div>
                       <h2 className="font-albert text-[26px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1px]">
-                        Why Growth Addicts?
+                        Why GrowthAddicts?
                       </h2>
                       <p className="font-sans text-[15px] text-[#5f5a55] dark:text-[#b2b6c2] mt-2">
                         Built for coaches who want results, not just engagement
@@ -709,7 +709,7 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
                         transition={{ delay: 0.3 }}
                         className="font-sans text-[15px] text-[#5f5a55] dark:text-[#b2b6c2] mt-2"
                       >
-                        Growth Addicts was built for coaches exactly like you
+                        GrowthAddicts was built for coaches exactly like you
                       </motion.p>
                     </div>
                     
@@ -801,7 +801,7 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
                     <div className="text-center mb-6">
                       <Image 
                         src={LOGO_URL}
-                        alt="Growth Addicts"
+                        alt="GrowthAddicts"
                         width={56}
                         height={56}
                         className="w-14 h-14 rounded-xl mx-auto mb-4 shadow-md"
@@ -952,7 +952,7 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
                     <div className="text-center mb-6">
                       <Image 
                         src={LOGO_URL}
-                        alt="Growth Addicts"
+                        alt="GrowthAddicts"
                         width={56}
                         height={56}
                         className="w-14 h-14 rounded-xl mx-auto mb-4 shadow-md"

@@ -37,18 +37,18 @@ const TRUST_LOGOS = [
 
 const TESTIMONIALS = [
   {
-    quote: "I had 40 clients in a Circle community. 12 were active. I moved to Growth Addicts. Now I can see exactly who's doing the work. My renewal rate went from 60% to 85%.",
+    quote: "I had 40 clients in a Circle community. 12 were active. I moved to GrowthAddicts. Now I can see exactly who's doing the work. My renewal rate went from 60% to 85%.",
     name: 'David L.',
     title: 'Executive Coach',
     clients: '40 clients',
     revenue: '$32K/mo',
   },
   {
-    quote: "Skool was great for building an audience. But my PAID clients? They got lost in the noise. Growth Addicts separates the two. My premium clients get accountability.",
+    quote: "Skool was great for building an audience. But my PAID clients? They got lost in the noise. GrowthAddicts separates the two. My premium clients get accountability.",
     name: 'Jen T.',
     title: 'Business Coach',
     clients: '28 clients',
-    note: 'Uses both Skool + Growth Addicts',
+    note: 'Uses both Skool + GrowthAddicts',
   },
   {
     quote: "The Alignment Score changed everything. My clients actually compete to have the highest score. I've never seen this level of engagement with any other tool.",
@@ -144,7 +144,7 @@ const FAQ = [
   },
   {
     q: 'Do I need to stop using Skool/Circle?',
-    a: 'No. Many coaches use Skool for free community and Growth Addicts for paid clients who need accountability.',
+    a: 'No. Many coaches use Skool for free community and GrowthAddicts for paid clients who need accountability.',
   },
   {
     q: 'What if my clients don\'t log in?',
@@ -217,7 +217,7 @@ export function CoachLandingPage() {
                   />
                 </div>
                 <span className="font-albert text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-tight">
-                  Growth Addicts
+                  GrowthAddicts
                 </span>
               </Link>
 
@@ -281,7 +281,7 @@ export function CoachLandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              Growth Addicts is the only coaching platform where clients don't just watch—they <strong className="text-[#1a1a1a] dark:text-[#f5f5f8]">do</strong>. Track habits, daily commitments, and accountability scores. Finally prove your coaching works.
+              GrowthAddicts is the only coaching platform where clients don't just watch—they <strong className="text-[#1a1a1a] dark:text-[#f5f5f8]">do</strong>. Track habits, daily commitments, and accountability scores. Finally prove your coaching works.
             </motion.p>
             
             {/* CTA Buttons */}
@@ -318,25 +318,27 @@ export function CoachLandingPage() {
             </motion.p>
             
             {/* Trust badges - actual logos in grayscale */}
-            <div className="mt-12 flex flex-wrap items-center justify-center gap-8 sm:gap-12">
+            <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-12">
               <span className="font-sans text-[12px] text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wider">
                 Trusted by coaches from:
               </span>
-              {TRUST_LOGOS.map((logo) => (
-                <div 
-                  key={logo.name} 
-                  className="h-8 sm:h-10 opacity-60 hover:opacity-100 transition-opacity"
-                >
-                  <Image
-                    src={logo.logo}
-                    alt={logo.name}
-                    width={120}
-                    height={40}
-                    className="h-full w-auto object-contain grayscale dark:invert dark:brightness-200"
-                    unoptimized
-                  />
-                </div>
-              ))}
+              <div className="flex items-center justify-center gap-4 sm:gap-8">
+                {TRUST_LOGOS.map((logo) => (
+                  <div 
+                    key={logo.name} 
+                    className="h-6 sm:h-10 opacity-60 hover:opacity-100 transition-opacity"
+                  >
+                    <Image
+                      src={logo.logo}
+                      alt={logo.name}
+                      width={120}
+                      height={40}
+                      className="h-full w-auto object-contain grayscale dark:invert dark:brightness-200"
+                      unoptimized
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
           
@@ -501,7 +503,7 @@ export function CoachLandingPage() {
               Finally. Accountability That Scales.
             </h2>
             <p className="font-sans text-[17px] text-[#5f5a55] dark:text-[#b2b6c2] max-w-2xl mx-auto mb-16">
-              Growth Addicts replaces your patchwork of tools with one platform built for coaches who need <strong className="text-[#1a1a1a] dark:text-[#f5f5f8]">results</strong>, not vanity metrics.
+              GrowthAddicts replaces your patchwork of tools with one platform built for coaches who need <strong className="text-[#1a1a1a] dark:text-[#f5f5f8]">results</strong>, not vanity metrics.
             </p>
             
             {/* Before/After */}
@@ -540,7 +542,7 @@ export function CoachLandingPage() {
                 <div className="flex items-center gap-2 mb-6">
                   <Zap className="w-5 h-5 text-emerald-500" />
                   <span className="font-albert text-[14px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
-                    After: With Growth Addicts
+                    After: With GrowthAddicts
                   </span>
                 </div>
                 <ul className="space-y-3 flex-1">
@@ -708,7 +710,7 @@ export function CoachLandingPage() {
                       <th className="text-left p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2]">Feature</th>
                       <th className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] text-center w-24">Skool</th>
                       <th className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] text-center w-24">Circle</th>
-                      <th className="p-4 font-albert text-[14px] font-semibold text-brand-accent text-center w-32">Growth Addicts</th>
+                      <th className="p-4 font-albert text-[14px] font-semibold text-brand-accent text-center w-32">GrowthAddicts</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -936,7 +938,7 @@ export function CoachLandingPage() {
                   />
                 </div>
                 <span className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                  Growth Addicts
+                  GrowthAddicts
                 </span>
               </div>
               
@@ -947,7 +949,7 @@ export function CoachLandingPage() {
               </div>
               
               <p className="font-sans text-[13px] text-[#a7a39e] dark:text-[#7d8190]">
-                © 2025 Growth Addicts. Built for coaches who get results.
+                © 2025 GrowthAddicts. Built for coaches who get results.
               </p>
             </div>
           </div>
