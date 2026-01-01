@@ -348,14 +348,14 @@ export function CoachLandingPage() {
                 {TRUST_LOGOS.map((logo) => (
                   <div 
                     key={logo.name} 
-                    className="h-6 sm:h-10 opacity-60 hover:opacity-100 transition-opacity"
+                    className="h-6 sm:h-10 opacity-60 dark:opacity-70 hover:opacity-100 transition-opacity"
                   >
                     <Image
                       src={logo.logo}
                       alt={logo.name}
                       width={120}
                       height={40}
-                      className="h-full w-auto object-contain grayscale dark:invert dark:brightness-200"
+                      className="h-full w-auto object-contain grayscale dark:invert dark:brightness-[2.5]"
                       unoptimized
                     />
                   </div>
