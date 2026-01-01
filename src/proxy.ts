@@ -797,6 +797,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     pathname.startsWith('/coach/onboarding') ||
     pathname.startsWith('/coach/welcome') ||
     pathname === '/marketplace' ||
+    pathname === '/coaches' ||
     pathname === '/upgrade-premium/form' ||
     pathname === '/get-coach/form' ||
     pathname.startsWith('/invite') ||

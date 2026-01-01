@@ -307,7 +307,7 @@ export default function MarketplacePage() {
                   href={dashboardUrl}
                   className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a] rounded-full font-albert text-sm font-medium hover:opacity-90 transition-opacity"
                 >
-                  {isCoach ? 'Dashboard' : (userOrg?.name || 'Dashboard')}
+                  Dashboard
                   <ArrowRight className="w-4 h-4" />
                 </a>
               ) : (

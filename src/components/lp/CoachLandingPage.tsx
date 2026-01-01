@@ -3,15 +3,12 @@
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useUser } from '@clerk/nextjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
   Check,
   X,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Users,
   Zap,
   Target,
@@ -20,7 +17,6 @@ import {
   Video,
   Flame,
   Clock,
-  Shield,
   Star,
   Play,
 } from 'lucide-react';
@@ -135,8 +131,8 @@ const PRICING = [
     name: 'Scale',
     price: 299,
     description: 'For established operations',
-    features: ['Up to 500 clients', 'Everything in Pro', '50 programs', '100 squads', 'API access', 'White-label', 'Priority support'],
-    cta: 'Contact sales',
+    features: ['Up to 500 clients', 'Everything in Pro', '50 programs', '100 squads', 'API access', 'Priority support'],
+    cta: 'Start free trial',
     popular: false,
   },
 ];
@@ -169,7 +165,6 @@ const FAQ = [
 ];
 
 export function CoachLandingPage() {
-  const { user, isLoaded } = useUser();
   const [quizOpen, setQuizOpen] = useState(false);
   const [testimonialIndex, setTestimonialIndex] = useState(0);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -429,14 +424,14 @@ export function CoachLandingPage() {
             {/* Before/After */}
             <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-20">
               {/* Before */}
-              <div className="bg-rose-50 dark:bg-rose-950/20 rounded-2xl p-8 border border-rose-200/50 dark:border-rose-900/30 text-left">
+              <div className="bg-rose-50 dark:bg-rose-950/20 rounded-2xl p-8 border border-rose-200/50 dark:border-rose-900/30 text-left flex flex-col">
                 <div className="flex items-center gap-2 mb-6">
                   <Clock className="w-5 h-5 text-rose-500" />
                   <span className="font-albert text-[14px] font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wide">
                     Before: Your typical Monday
                   </span>
                 </div>
-                <ul className="space-y-3">
+                <ul className="space-y-3 flex-1">
                   {[
                     'Check Slack for client messages',
                     'Send "how\'s it going?" texts to 5 quiet clients',
@@ -446,7 +441,7 @@ export function CoachLandingPage() {
                     'Wonder if any of this is working',
                   ].map((item, i) => (
                     <li key={i} className="flex items-start gap-3">
-                      <div className="w-4 h-4 rounded border border-rose-300 dark:border-rose-800 mt-0.5 flex-shrink-0" />
+                      <X className="w-4 h-4 text-rose-500 mt-0.5 flex-shrink-0" />
                       <span className="font-sans text-[14px] text-rose-700 dark:text-rose-300">{item}</span>
                     </li>
                   ))}
@@ -458,14 +453,14 @@ export function CoachLandingPage() {
               </div>
               
               {/* After */}
-              <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl p-8 border border-emerald-200/50 dark:border-emerald-900/30 text-left">
+              <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl p-8 border border-emerald-200/50 dark:border-emerald-900/30 text-left flex flex-col">
                 <div className="flex items-center gap-2 mb-6">
                   <Zap className="w-5 h-5 text-emerald-500" />
                   <span className="font-albert text-[14px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
                     After: With Growth Addicts
                   </span>
                 </div>
-                <ul className="space-y-3">
+                <ul className="space-y-3 flex-1">
                   {[
                     'Open dashboard. See all 24 clients at once.',
                     'Sarah: 94 alignment, 18-day streak. Crushing it.',

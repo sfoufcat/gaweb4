@@ -48,6 +48,7 @@ export function LayoutModeSync() {
       pathname?.startsWith('/marketplace') ||
       pathname?.startsWith('/coach/onboarding') ||
       pathname?.startsWith('/coach/welcome') ||
+      pathname === '/coaches' ||
       pathname === '/upgrade-premium/form' ||
       pathname === '/get-coach/form' ||
       pathname?.startsWith('/invite') ||
