@@ -286,9 +286,9 @@ export function CoachLandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
-              Finally, Coaching<br />
+              Finally, Proof<br />
               <span className="bg-gradient-to-r from-brand-accent via-[#d4a61d] to-[#c08a5c] bg-clip-text text-transparent bg-[length:200%_auto]" style={{ animation: 'shimmer 3s ease-in-out infinite' }}>
-                You Can Prove Works.
+                Your Coaching Works.
               </span>
             </motion.h1>
             
@@ -348,14 +348,14 @@ export function CoachLandingPage() {
                 {TRUST_LOGOS.map((logo) => (
                   <div 
                     key={logo.name} 
-                    className="h-6 sm:h-10 opacity-60 dark:opacity-70 hover:opacity-100 transition-opacity"
+                    className="h-6 sm:h-10 opacity-60 dark:opacity-90 hover:opacity-100 transition-opacity"
                   >
                     <Image
                       src={logo.logo}
                       alt={logo.name}
                       width={120}
                       height={40}
-                      className="h-full w-auto object-contain grayscale dark:invert dark:brightness-[4] dark:contrast-125"
+                      className="h-full w-auto object-contain grayscale dark:invert dark:brightness-200"
                       unoptimized
                     />
                   </div>

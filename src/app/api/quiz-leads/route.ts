@@ -58,7 +58,10 @@ export async function POST(request: Request) {
       frustrations, 
       impactFeatures,
       referralCode,
-      source 
+      source,
+      utmData,
+      referrer,
+      landingPage,
     } = body;
 
     // Validate required fields
@@ -88,13 +91,18 @@ export async function POST(request: Request) {
     if (!existingLeads.empty) {
       // Update existing lead with new data
       const existingDoc = existingLeads.docs[0];
+      const existingData = existingDoc.data();
       await existingDoc.ref.update({
-        name: name || existingDoc.data().name,
-        clientCount: clientCount || existingDoc.data().clientCount,
-        frustrations: frustrations || existingDoc.data().frustrations,
-        impactFeatures: impactFeatures || existingDoc.data().impactFeatures,
-        referralCode: referralCode || existingDoc.data().referralCode,
-        source: source || existingDoc.data().source,
+        name: name || existingData.name,
+        clientCount: clientCount || existingData.clientCount,
+        frustrations: frustrations || existingData.frustrations,
+        impactFeatures: impactFeatures || existingData.impactFeatures,
+        referralCode: referralCode || existingData.referralCode,
+        source: source || existingData.source,
+        // Preserve original UTM data (don't overwrite with empty)
+        utmData: utmData && Object.values(utmData).some(v => v) ? utmData : existingData.utmData,
+        referrer: referrer || existingData.referrer,
+        landingPage: landingPage || existingData.landingPage,
         updatedAt: new Date().toISOString(),
       });
 
@@ -115,6 +123,9 @@ export async function POST(request: Request) {
       impactFeatures: Array.isArray(impactFeatures) ? impactFeatures : [],
       referralCode: referralCode || undefined,
       source: source || undefined,
+      utmData: utmData && Object.values(utmData).some(v => v) ? utmData : undefined,
+      referrer: referrer || undefined,
+      landingPage: landingPage || undefined,
       createdAt: now,
     };
 

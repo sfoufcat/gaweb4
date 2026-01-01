@@ -21,6 +21,7 @@ import { AdminPlatformSettingsTab } from '@/components/admin/AdminPlatformSettin
 import { AdminQuizLeadsTab } from '@/components/admin/AdminQuizLeadsTab';
 import { AdminCoachReferralsTab } from '@/components/admin/AdminCoachReferralsTab';
 import { AdminEmailFlowsTab } from '@/components/admin/AdminEmailFlowsTab';
+import { AdminAttributionTab } from '@/components/admin/AdminAttributionTab';
 import type { ClerkPublicMetadata } from '@/types';
 
 export default function AdminPage() {
@@ -165,6 +166,12 @@ export default function AdminPage() {
                   Quiz Leads
                 </TabsTrigger>
                 <TabsTrigger 
+                  value="attribution"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Attribution
+                </TabsTrigger>
+                <TabsTrigger 
                   value="coach-referrals"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
                 >
@@ -231,6 +238,9 @@ export default function AdminPage() {
               </TabsContent>
               <TabsContent value="quiz-leads">
                 <AdminQuizLeadsTab />
+              </TabsContent>
+              <TabsContent value="attribution">
+                <AdminAttributionTab />
               </TabsContent>
               <TabsContent value="coach-referrals">
                 <AdminCoachReferralsTab />

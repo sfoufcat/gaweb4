@@ -148,7 +148,20 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
       // Get referral code from URL if present
       const urlParams = new URLSearchParams(window.location.search);
       const referralCode = urlParams.get('ref') || urlParams.get('referral');
-      const source = urlParams.get('utm_source') || document.referrer || undefined;
+      
+      // Capture full UTM data for attribution tracking
+      const utmData = {
+        source: urlParams.get('utm_source') || undefined,
+        medium: urlParams.get('utm_medium') || undefined,
+        campaign: urlParams.get('utm_campaign') || undefined,
+        content: urlParams.get('utm_content') || undefined,
+        term: urlParams.get('utm_term') || undefined,
+      };
+      
+      // Legacy source field (fallback to UTM source or referrer)
+      const source = utmData.source || undefined;
+      const referrer = document.referrer || undefined;
+      const landingPage = window.location.href;
 
       const response = await fetch('/api/quiz-leads', {
         method: 'POST',
@@ -161,6 +174,9 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
           impactFeatures: Array.from(impactFeatures),
           referralCode,
           source,
+          utmData,
+          referrer,
+          landingPage,
         }),
       });
 
@@ -184,12 +200,25 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
   // Store quiz data in localStorage for OAuth flow (retrieved after redirect)
   const storeQuizDataForOAuth = () => {
     const urlParams = new URLSearchParams(window.location.search);
+    
+    // Capture full UTM data
+    const utmData = {
+      source: urlParams.get('utm_source') || undefined,
+      medium: urlParams.get('utm_medium') || undefined,
+      campaign: urlParams.get('utm_campaign') || undefined,
+      content: urlParams.get('utm_content') || undefined,
+      term: urlParams.get('utm_term') || undefined,
+    };
+    
     const quizData = {
       clientCount,
       frustrations: Array.from(frustrations),
       impactFeatures: Array.from(impactFeatures),
       referralCode: urlParams.get('ref') || urlParams.get('referral'),
-      source: urlParams.get('utm_source') || document.referrer || undefined,
+      source: utmData.source || undefined,
+      utmData,
+      referrer: document.referrer || undefined,
+      landingPage: window.location.href,
     };
     localStorage.setItem('ga_quiz_data', JSON.stringify(quizData));
   };

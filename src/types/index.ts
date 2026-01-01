@@ -4431,6 +4431,17 @@ export interface OnboardingResponse {
 // =============================================================================
 
 /**
+ * UTM tracking data for attribution
+ */
+export interface UTMData {
+  source?: string;                    // utm_source (e.g., "google", "woodpecker")
+  medium?: string;                    // utm_medium (e.g., "cpc", "email")
+  campaign?: string;                  // utm_campaign (e.g., "coaching_platform_jan26")
+  content?: string;                   // utm_content (e.g., "skool_alternative")
+  term?: string;                      // utm_term (keyword for paid search)
+}
+
+/**
  * QuizLead - Captured data from landing page quiz
  * Stored in Firestore 'quiz_leads/{id}'
  */
@@ -4442,7 +4453,10 @@ export interface QuizLead {
   frustrations: string[];             // From quiz step 2 (multi-select)
   impactFeatures: string[];           // From quiz step 3 (multi-select)
   referralCode?: string;              // If came from coach referral
-  source?: string;                    // UTM source or referrer
+  source?: string;                    // UTM source or referrer (legacy, use utmData instead)
+  utmData?: UTMData;                  // Full UTM tracking data
+  referrer?: string;                  // document.referrer
+  landingPage?: string;               // URL they landed on
   createdAt: string;                  // ISO timestamp
   convertedAt?: string;               // When they signed up (ISO timestamp)
   convertedToOrgId?: string;          // Their org after signup
