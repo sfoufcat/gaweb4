@@ -4426,3 +4426,172 @@ export interface OnboardingResponse {
   completedAt?: string;
 }
 
+// =============================================================================
+// QUIZ LEADS (Landing Page Quiz Captures)
+// =============================================================================
+
+/**
+ * QuizLead - Captured data from landing page quiz
+ * Stored in Firestore 'quiz_leads/{id}'
+ */
+export interface QuizLead {
+  id: string;
+  email: string;
+  name?: string;
+  clientCount: string;                // From quiz step 1 (e.g., "1-10", "11-25", etc.)
+  frustrations: string[];             // From quiz step 2 (multi-select)
+  impactFeatures: string[];           // From quiz step 3 (multi-select)
+  referralCode?: string;              // If came from coach referral
+  source?: string;                    // UTM source or referrer
+  createdAt: string;                  // ISO timestamp
+  convertedAt?: string;               // When they signed up (ISO timestamp)
+  convertedToOrgId?: string;          // Their org after signup
+  convertedToUserId?: string;         // Their user ID after signup
+}
+
+// =============================================================================
+// COACH REFERRAL PROGRAM (Coach-to-Coach Referrals)
+// =============================================================================
+
+/**
+ * CoachReferral - Tracks coach-to-coach referrals
+ * Stored in Firestore 'coach_referrals/{id}'
+ */
+export interface CoachReferral {
+  id: string;
+  referrerOrgId: string;              // Coach's org who referred
+  referrerUserId: string;             // Coach's user ID who referred
+  referralCode: string;               // Unique code (e.g., "COACH-ABC123")
+  referredEmail?: string;             // Email of referred coach (before signup)
+  referredOrgId?: string;             // New coach's org (after conversion)
+  referredUserId?: string;            // New coach's user ID
+  status: CoachReferralStatus;
+  rewardType: 'free_month';           // Currently only free month supported
+  referrerRewarded: boolean;          // Whether referrer got their reward
+  refereeRewarded: boolean;           // Whether referee got their reward
+  referrerRewardAppliedAt?: string;   // When referrer reward was applied
+  refereeRewardAppliedAt?: string;    // When referee reward was applied
+  createdAt: string;                  // ISO timestamp
+  signedUpAt?: string;                // When referred coach signed up
+  subscribedAt?: string;              // When referred coach subscribed to paid plan
+  rewardedAt?: string;                // When rewards were fully applied
+}
+
+export type CoachReferralStatus = 'pending' | 'signed_up' | 'subscribed' | 'rewarded';
+
+/**
+ * CoachReferralCode - Stores a coach's unique referral code
+ * Stored in Firestore 'coach_referral_codes/{orgId}'
+ */
+export interface CoachReferralCode {
+  id: string;                         // Same as orgId
+  orgId: string;
+  userId: string;                     // Coach's user ID
+  code: string;                       // Unique code (e.g., "COACH-ABC123")
+  totalReferrals: number;             // Total referrals made
+  successfulReferrals: number;        // Referrals that converted to paid
+  totalRewardsEarned: number;         // Total months earned
+  createdAt: string;
+  updatedAt: string;
+}
+
+// =============================================================================
+// EMAIL AUTOMATION SYSTEM
+// =============================================================================
+
+/**
+ * EmailTemplate - Editable email template
+ * Stored in Firestore 'email_templates/{id}'
+ */
+export interface EmailTemplate {
+  id: string;                         // e.g., "abandoned_cart_1"
+  flowId: string;                     // Links to email_flows
+  name: string;                       // Human-readable name
+  subject: string;                    // Email subject (supports {{variables}})
+  htmlContent: string;                // HTML content (supports {{variables}})
+  textContent?: string;               // Plain text fallback
+  enabled: boolean;                   // Whether this template is active
+  delayMinutes: number;               // Minutes after trigger to send
+  order: number;                      // Order within the flow
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * EmailFlow - Defines an automated email sequence
+ * Stored in Firestore 'email_flows/{id}'
+ */
+export interface EmailFlow {
+  id: string;                         // e.g., "abandoned_cart"
+  name: string;                       // Human-readable name
+  description: string;                // What this flow does
+  trigger: EmailFlowTrigger;          // What triggers this flow
+  enabled: boolean;                   // Whether flow is active
+  templateIds: string[];              // Ordered list of template IDs
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type EmailFlowTrigger = 
+  | 'signup_no_plan'                  // Coach signed up but didn't select plan
+  | 'trial_started'                   // Coach started their trial
+  | 'day_14'                          // 14 days after signup (testimonial request)
+  | 'trial_ending'                    // Trial ending in 3 days
+  | 'subscription_canceled';          // Subscription was canceled
+
+/**
+ * EmailSend - Record of a sent email
+ * Stored in Firestore 'email_sends/{id}'
+ */
+export interface EmailSend {
+  id: string;
+  templateId: string;
+  flowId: string;
+  recipientEmail: string;
+  recipientUserId?: string;
+  recipientOrgId?: string;
+  resendMessageId?: string;           // Resend's message ID for tracking
+  status: EmailSendStatus;
+  sentAt: string;
+  deliveredAt?: string;
+  openedAt?: string;
+  clickedAt?: string;
+  bouncedAt?: string;
+  metadata?: Record<string, string>;  // Additional tracking data
+}
+
+export type EmailSendStatus = 'queued' | 'sent' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'failed';
+
+/**
+ * EmailQueueItem - Pending email to be sent
+ * Stored in Firestore 'email_queue/{id}'
+ */
+export interface EmailQueueItem {
+  id: string;
+  flowId: string;
+  templateId: string;
+  recipientEmail: string;
+  recipientUserId: string;
+  recipientOrgId?: string;
+  scheduledFor: string;               // ISO timestamp when to send
+  cancelled: boolean;                 // Set true if user converts (e.g., selects plan)
+  cancelledReason?: string;           // Why it was cancelled
+  variables?: Record<string, string>; // Template variables
+  createdAt: string;
+}
+
+/**
+ * EmailFlowStats - Aggregated stats for an email flow
+ */
+export interface EmailFlowStats {
+  flowId: string;
+  totalSent: number;
+  totalDelivered: number;
+  totalOpened: number;
+  totalClicked: number;
+  totalBounced: number;
+  openRate: number;                   // Percentage
+  clickRate: number;                  // Percentage
+  lastUpdated: string;
+}
+

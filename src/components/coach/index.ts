@@ -10,6 +10,7 @@ export { LockedFeature, LockedFeatureBadge, LockedIndicator } from './LockedFeat
 export { LimitReachedModal, useLimitCheck } from './LimitReachedModal';
 export { MarketplaceSettings } from './MarketplaceSettings';
 export { PaymentFailedBanner } from './PaymentFailedBanner';
+export { CoachReferralCard } from './CoachReferralCard';
 
 // Check-in flow management
 export { CoachCheckInsTab } from './checkins';

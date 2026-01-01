@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { createOrganizationForCoach, ClerkPublicMetadataWithOrg } from '@/lib/clerk-organizations';
 import { adminDb } from '@/lib/firebase-admin';
+import { queueEmailsForTrigger } from '@/lib/email-automation';
 
 /**
  * POST /api/coach/create-organization
@@ -67,6 +68,24 @@ export async function POST(req: Request) {
     });
     
     console.log(`[API_CREATE_ORG] Created organization ${organizationId} for user ${userId} (isFirstOrg: ${isFirstOrg})`);
+    
+    // Queue abandoned cart emails (will be cancelled when they select a plan)
+    const email = user.emailAddresses[0]?.emailAddress;
+    if (email) {
+      try {
+        await queueEmailsForTrigger(
+          'signup_no_plan',
+          email,
+          userId,
+          organizationId,
+          { firstName: user.firstName || 'there' }
+        );
+        console.log(`[API_CREATE_ORG] Queued abandoned cart emails for ${email}`);
+      } catch (emailErr) {
+        console.warn('[API_CREATE_ORG] Failed to queue emails:', emailErr);
+        // Don't fail org creation if email queueing fails
+      }
+    }
     
     return NextResponse.json({
       success: true,

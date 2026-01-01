@@ -43,6 +43,14 @@
     {
       "path": "/api/analytics/cron/client-analytics",
       "schedule": "15 2 * * *"
+    },
+    {
+      "path": "/api/cron/process-email-queue",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/testimonial-requests",
+      "schedule": "0 10 * * *"
     }
   ],
   "redirects": [

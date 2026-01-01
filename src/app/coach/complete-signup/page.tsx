@@ -41,6 +41,33 @@ export default function CompleteSignupPage() {
         // The API handles setting primaryOrganizationId to the new org
         setStatus('creating');
         
+        // Try to save quiz data from localStorage (if present from OAuth flow)
+        try {
+          const storedQuizData = localStorage.getItem('ga_quiz_data');
+          if (storedQuizData && user?.primaryEmailAddress?.emailAddress) {
+            const quizData = JSON.parse(storedQuizData);
+            await fetch('/api/quiz-leads', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: user.primaryEmailAddress.emailAddress,
+                name: user.fullName || undefined,
+                clientCount: quizData.clientCount || '',
+                frustrations: quizData.frustrations || [],
+                impactFeatures: quizData.impactFeatures || [],
+                referralCode: quizData.referralCode,
+                source: quizData.source,
+              }),
+            });
+            // Clear stored quiz data
+            localStorage.removeItem('ga_quiz_data');
+            console.log('[COMPLETE_SIGNUP] Quiz data saved from OAuth flow');
+          }
+        } catch (quizErr) {
+          console.warn('[COMPLETE_SIGNUP] Failed to save quiz data:', quizErr);
+          // Don't block signup on quiz save failure
+        }
+        
         const response = await fetch('/api/coach/create-organization', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

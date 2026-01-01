@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import type { CoachTier, CoachSubscription, OrgSettings, ClerkPublicMetadata } from '@/types';
 import type { BillingPeriod } from '@/lib/coach-permissions';
+import { cancelQueuedEmails } from '@/lib/email-automation';
 
 // Lazy initialization of Stripe
 function getStripeClient(): Stripe {
@@ -202,6 +203,13 @@ export async function POST(req: Request) {
         
         if (subscription.status === 'active') {
           console.log(`[COACH_CHECKOUT] Created active subscription ${subscription.id} with saved PM for ${flowType}, org ${organizationId}, tier ${tier}, billing ${billingPeriod}`);
+          
+          // Cancel any queued abandoned cart emails
+          try {
+            await cancelQueuedEmails(userId, 'Subscribed via saved payment method');
+          } catch (emailErr) {
+            console.warn('[COACH_CHECKOUT] Failed to cancel queued emails:', emailErr);
+          }
           
           return NextResponse.json({ 
             success: true,

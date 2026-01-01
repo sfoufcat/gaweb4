@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import type { CoachTier, CoachSubscription, OrgSettings, ClerkPublicMetadata } from '@/types';
 import type { BillingPeriod } from '@/lib/coach-permissions';
+import { cancelQueuedEmails } from '@/lib/email-automation';
 
 // Lazy initialization of Stripe
 function getStripeClient(): Stripe {
@@ -257,6 +258,42 @@ export async function POST(req: Request) {
     } catch (orgError) {
       console.error('[COACH_SUBSCRIPTION_CONFIRM] Failed to sync org metadata:', orgError);
       // Don't fail the request - the Stripe webhook will eventually sync this
+    }
+
+    // Cancel any queued abandoned cart emails now that they've subscribed
+    try {
+      const result = await cancelQueuedEmails(userId, 'Subscribed to plan');
+      if (result.cancelledCount > 0) {
+        console.log(`[COACH_SUBSCRIPTION_CONFIRM] Cancelled ${result.cancelledCount} queued emails for user ${userId}`);
+      }
+    } catch (emailErr) {
+      console.warn('[COACH_SUBSCRIPTION_CONFIRM] Failed to cancel queued emails:', emailErr);
+      // Don't fail subscription confirmation for email cancellation issues
+    }
+
+    // Complete any pending referral and apply rewards
+    try {
+      const referralResponse = await fetch(new URL('/api/coach-referral/complete', process.env.NEXT_PUBLIC_APP_URL || 'https://growthaddicts.com').toString(), {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-internal-key': process.env.INTERNAL_API_KEY || '',
+        },
+        body: JSON.stringify({
+          referredOrgId: organizationId,
+          referredUserId: userId,
+        }),
+      });
+      
+      if (referralResponse.ok) {
+        const referralResult = await referralResponse.json();
+        if (referralResult.referrerRewarded || referralResult.refereeRewarded) {
+          console.log(`[COACH_SUBSCRIPTION_CONFIRM] Referral rewards applied: referrer=${referralResult.referrerRewarded}, referee=${referralResult.refereeRewarded}`);
+        }
+      }
+    } catch (referralErr) {
+      console.warn('[COACH_SUBSCRIPTION_CONFIRM] Failed to complete referral:', referralErr);
+      // Don't fail subscription confirmation for referral issues
     }
 
     return NextResponse.json({ 

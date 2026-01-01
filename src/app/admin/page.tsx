@@ -18,6 +18,9 @@ import { AdminOrganizationsTab } from '@/components/admin/AdminOrganizationsTab'
 import { AdminTemplatesTab } from '@/components/admin/AdminTemplatesTab';
 import { AdminFeaturesTab } from '@/components/admin/AdminFeaturesTab';
 import { AdminPlatformSettingsTab } from '@/components/admin/AdminPlatformSettingsTab';
+import { AdminQuizLeadsTab } from '@/components/admin/AdminQuizLeadsTab';
+import { AdminCoachReferralsTab } from '@/components/admin/AdminCoachReferralsTab';
+import { AdminEmailFlowsTab } from '@/components/admin/AdminEmailFlowsTab';
 import type { ClerkPublicMetadata } from '@/types';
 
 export default function AdminPage() {
@@ -155,6 +158,24 @@ export default function AdminPage() {
                 >
                   Platform Settings
                 </TabsTrigger>
+                <TabsTrigger 
+                  value="quiz-leads"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Quiz Leads
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="coach-referrals"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Coach Referrals
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="email-flows"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Email Flows
+                </TabsTrigger>
               </>
             )}
           </TabsList>
@@ -207,6 +228,15 @@ export default function AdminPage() {
               </TabsContent>
               <TabsContent value="platform-settings">
                 <AdminPlatformSettingsTab />
+              </TabsContent>
+              <TabsContent value="quiz-leads">
+                <AdminQuizLeadsTab />
+              </TabsContent>
+              <TabsContent value="coach-referrals">
+                <AdminCoachReferralsTab />
+              </TabsContent>
+              <TabsContent value="email-flows">
+                <AdminEmailFlowsTab />
               </TabsContent>
             </>
           )}

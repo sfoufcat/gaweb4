@@ -144,6 +144,58 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
     });
   };
 
+  // Save quiz data to database
+  const saveQuizData = async (userEmail: string, userName?: string) => {
+    try {
+      // Get referral code from URL if present
+      const urlParams = new URLSearchParams(window.location.search);
+      const referralCode = urlParams.get('ref') || urlParams.get('referral');
+      const source = urlParams.get('utm_source') || document.referrer || undefined;
+
+      const response = await fetch('/api/quiz-leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: userEmail,
+          name: userName,
+          clientCount: clientCount || '',
+          frustrations: Array.from(frustrations),
+          impactFeatures: Array.from(impactFeatures),
+          referralCode,
+          source,
+        }),
+      });
+
+      if (!response.ok) {
+        console.warn('[CoachQuizModal] Failed to save quiz data:', await response.text());
+      } else {
+        const data = await response.json();
+        console.log('[CoachQuizModal] Quiz data saved:', data.leadId);
+        
+        // Store lead ID for later conversion tracking
+        if (data.leadId) {
+          localStorage.setItem('ga_quiz_lead_id', data.leadId);
+        }
+      }
+    } catch (err) {
+      console.warn('[CoachQuizModal] Error saving quiz data:', err);
+      // Don't block signup on quiz save failure
+    }
+  };
+
+  // Store quiz data in localStorage for OAuth flow (retrieved after redirect)
+  const storeQuizDataForOAuth = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const quizData = {
+      clientCount,
+      frustrations: Array.from(frustrations),
+      impactFeatures: Array.from(impactFeatures),
+      referralCode: urlParams.get('ref') || urlParams.get('referral'),
+      source: urlParams.get('utm_source') || document.referrer || undefined,
+    };
+    localStorage.setItem('ga_quiz_data', JSON.stringify(quizData));
+  };
+
   const handleNext = () => {
     if (step === 'why') setStep('clients');
     else if (step === 'clients' && clientCount) setStep('frustration');
@@ -191,6 +243,9 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
     setError(null);
 
     try {
+      // Store quiz data in localStorage for retrieval after OAuth redirect
+      storeQuizDataForOAuth();
+      
       await signUp.authenticateWithRedirect({
         strategy: 'oauth_google',
         redirectUrl: '/sso-callback',
@@ -214,6 +269,9 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
     setIsLoading(true);
     
     try {
+      // Save quiz data before signup
+      await saveQuizData(email, `${firstName} ${lastName}`.trim() || undefined);
+      
       // Create the signup
       await signUp.create({
         firstName,
