@@ -996,7 +996,7 @@ export function CoachLandingPage() {
                 </h2>
                 
                 <p className="font-sans text-[17px] sm:text-[19px] text-[#a7a39e] dark:text-[#b2b6c2] max-w-xl mx-auto mb-10">
-                  Stop guessing. Start seeing. Set up your first program in 10 minutes.
+                  Stop guessing. Start delivering. Set up your first program in 10 minutes.
                 </p>
                 
                 <button
