@@ -299,10 +299,10 @@ export function CoachLandingPage() {
               transition={{ duration: 0.6, delay: 0.2 }}
             >
               <p className="font-sans text-[18px] sm:text-[20px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed">
-                <span>GrowthAddicts is the only coaching platform where clients don't just watch - they <strong className="text-[#1a1a1a] dark:text-[#f5f5f8]">do</strong>.</span>
+                <span>GrowthAddicts is the only coaching platform where clients don't just listen - they <strong className="text-[#1a1a1a] dark:text-[#f5f5f8]">do</strong>.</span>
                 <span className="block h-3 sm:hidden" />
                 <span className="hidden sm:inline"> </span>
-                <span>Track habits, daily commitments, and accountability scores. Finally prove your coaching works.</span>
+                <span>Track habits, daily commitments, and accountability scores. Start delivering proof, not promises.</span>
               </p>
             </motion.div>
             
@@ -355,7 +355,7 @@ export function CoachLandingPage() {
                       alt={logo.name}
                       width={120}
                       height={40}
-                      className="h-full w-auto object-contain grayscale dark:invert dark:brightness-[2.5]"
+                      className="h-full w-auto object-contain grayscale dark:invert dark:brightness-[4] dark:contrast-125"
                       unoptimized
                     />
                   </div>

@@ -55,7 +55,6 @@ type ImpactFeature =
   | 'squad_accountability'
   | 'daily_habits'
   | 'engagement_visibility'
-  | 'automated_delivery'
   | 'personal_group';
 
 const IMPACT_OPTIONS: { id: ImpactFeature; label: string }[] = [
@@ -63,7 +62,6 @@ const IMPACT_OPTIONS: { id: ImpactFeature; label: string }[] = [
   { id: 'squad_accountability', label: 'Squad accountability groups' },
   { id: 'daily_habits', label: 'Daily habits & check-ins' },
   { id: 'engagement_visibility', label: 'Seeing who\'s actually engaged' },
-  { id: 'automated_delivery', label: 'Automated program delivery' },
   { id: 'personal_group', label: 'Group coaching that feels personal' },
 ];
 
