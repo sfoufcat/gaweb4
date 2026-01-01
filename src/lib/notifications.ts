@@ -652,7 +652,8 @@ export async function sendMorningCheckInNotification(userId: string): Promise<st
   // Get user's timezone and organization for accurate "today" check
   const user = await getUserById(userId);
   const timezone = user?.timezone;
-  const organizationId = user?.primaryOrganizationId;
+  // Fallback to organizationId for users enrolled via funnel (which sets organizationId, not primaryOrganizationId)
+  const organizationId = user?.primaryOrganizationId || user?.organizationId;
 
   // Check if already sent today (scoped by organization for multi-tenancy)
   const alreadySent = await hasNotificationForToday(userId, 'morning_checkin', timezone, organizationId);
@@ -677,7 +678,8 @@ export async function sendTasksCompletedNotification(userId: string): Promise<st
   // Get user's timezone and organization for accurate "today" check
   const user = await getUserById(userId);
   const timezone = user?.timezone;
-  const organizationId = user?.primaryOrganizationId;
+  // Fallback to organizationId for users enrolled via funnel (which sets organizationId, not primaryOrganizationId)
+  const organizationId = user?.primaryOrganizationId || user?.organizationId;
 
   // Check if ANY evening notification already exists for today (scoped by organization)
   const alreadySent = await hasAnyEveningNotificationForToday(userId, timezone, organizationId);
@@ -703,7 +705,8 @@ export async function sendEveningReminderNotification(userId: string): Promise<s
   // Get user's timezone and organization for accurate "today" check
   const user = await getUserById(userId);
   const timezone = user?.timezone;
-  const organizationId = user?.primaryOrganizationId;
+  // Fallback to organizationId for users enrolled via funnel (which sets organizationId, not primaryOrganizationId)
+  const organizationId = user?.primaryOrganizationId || user?.organizationId;
 
   // Check if ANY evening notification already exists for today (scoped by organization)
   const alreadySent = await hasAnyEveningNotificationForToday(userId, timezone, organizationId);
@@ -731,7 +734,8 @@ export async function sendWeeklyReflectionNotification(
 ): Promise<string | null> {
   // Get user's organization for multi-tenancy
   const user = await getUserById(userId);
-  const organizationId = user?.primaryOrganizationId;
+  // Fallback to organizationId for users enrolled via funnel (which sets organizationId, not primaryOrganizationId)
+  const organizationId = user?.primaryOrganizationId || user?.organizationId;
 
   // Check if already sent this week (scoped by organization)
   const alreadySent = await hasWeeklyReflectionNotificationForThisWeek(userId, organizationId);

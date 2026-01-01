@@ -292,17 +292,17 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
     },
   ];
 
-  // Animation variants - different for mobile vs desktop
-  const modalVariants = {
-    hidden: isMobile 
-      ? { opacity: 1, y: '100%' }
-      : { opacity: 0, scale: 0.95, y: 20 },
-    visible: isMobile
-      ? { opacity: 1, y: 0 }
-      : { opacity: 1, scale: 1, y: 0 },
-    exit: isMobile
-      ? { opacity: 1, y: '100%' }
-      : { opacity: 0, scale: 0.95, y: 20 },
+  // Compute animation props based on device
+  const mobileAnimation = {
+    initial: { y: '100%' },
+    animate: { y: 0 },
+    exit: { y: '100%' },
+  };
+  
+  const desktopAnimation = {
+    initial: { opacity: 0, scale: 0.95 },
+    animate: { opacity: 1, scale: 1 },
+    exit: { opacity: 0, scale: 0.95 },
   };
 
   return (
@@ -320,14 +320,17 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
           
           {/* Modal - Desktop: centered popup, Mobile: bottom sheet */}
           <motion.div
-            variants={modalVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed inset-x-0 bottom-0 z-50 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 pointer-events-none"
+            {...(isMobile ? mobileAnimation : desktopAnimation)}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className={
+              isMobile 
+                ? "fixed inset-x-0 bottom-0 z-50 pointer-events-none"
+                : "fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
+            }
           >
-            <div className="w-full sm:w-[480px] max-h-[90vh] overflow-y-auto bg-white dark:bg-[#171b22] rounded-t-3xl sm:rounded-3xl shadow-2xl pointer-events-auto">
+            <div className={`w-full max-h-[90vh] overflow-y-auto bg-white dark:bg-[#171b22] shadow-2xl pointer-events-auto ${
+              isMobile ? 'rounded-t-3xl' : 'sm:w-[480px] rounded-3xl'
+            }`}>
               {/* Close button */}
               <button
                 onClick={onClose}

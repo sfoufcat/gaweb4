@@ -116,7 +116,7 @@ const PRICING = [
     price: 49,
     description: 'Perfect for coaches just starting',
     features: ['Up to 15 clients', 'All core features', '2 programs', '3 squads', 'Stripe payments', 'Custom branding'],
-    cta: 'Start trial',
+    cta: 'Start free trial',
     popular: false,
   },
   {
@@ -124,7 +124,7 @@ const PRICING = [
     price: 129,
     description: 'For growing coaching businesses',
     features: ['Up to 150 clients', 'Everything in Starter', '10 programs', '25 squads', 'Custom domain', 'AI features', 'Advanced analytics'],
-    cta: 'Start trial',
+    cta: 'Start free trial',
     popular: true,
   },
   {
@@ -140,7 +140,7 @@ const PRICING = [
 const FAQ = [
   {
     q: 'Can I migrate my clients from Skool/Circle?',
-    a: 'Yes. Invite them via email or link. They sign up and you assign them to a program or squad. Takes 2 minutes per client.',
+    a: 'Yes. Invite them via email or link. They sign up and you assign them to a program or squad. You can import clients in bulk.',
   },
   {
     q: 'Do I need to stop using Skool/Circle?',
@@ -286,14 +286,19 @@ export function CoachLandingPage() {
             </p>
             
             {/* Trust badges */}
-            <div className="mt-12 flex items-center justify-center gap-8 opacity-60">
+            <div className="mt-12 flex flex-wrap items-center justify-center gap-4 sm:gap-6">
               <span className="font-sans text-[12px] text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wider">
                 Trusted by coaches from:
               </span>
               {TRUST_LOGOS.map((logo) => (
-                <span key={logo.name} className="font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2]">
-                  {logo.abbrev}
-                </span>
+                <div 
+                  key={logo.name} 
+                  className="px-4 py-2 bg-white dark:bg-[#1e222a] rounded-lg border border-[#e1ddd8] dark:border-[#313746] shadow-sm"
+                >
+                  <span className="font-albert text-[14px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    {logo.abbrev}
+                  </span>
+                </div>
               ))}
             </div>
           </div>
@@ -322,19 +327,17 @@ export function CoachLandingPage() {
                   </div>
                 </div>
                 
-                {/* Dashboard preview - placeholder */}
-                <div className="aspect-[16/9] bg-gradient-to-br from-[#faf8f6] to-[#f0ede8] dark:from-[#0f1218] dark:to-[#171b22] flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-brand-accent/10 dark:bg-brand-accent/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                      <BarChart3 className="w-8 h-8 text-brand-accent" />
-                    </div>
-                    <p className="font-albert text-[18px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                      Coach Dashboard Preview
-                    </p>
-                    <p className="font-sans text-[14px] text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
-                      See all your clients' alignment scores at a glance
-                    </p>
-                  </div>
+                {/* Dashboard preview - actual screenshot */}
+                <div className="relative">
+                  <Image
+                    src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/images%2Fcoachdash.png?alt=media&token=ef410083-561e-4594-9381-aa604d04a490"
+                    alt="Coach Dashboard - See all your clients' alignment scores at a glance"
+                    width={1920}
+                    height={1080}
+                    className="w-full h-auto"
+                    unoptimized
+                    priority
+                  />
                 </div>
               </div>
             </div>
@@ -342,72 +345,78 @@ export function CoachLandingPage() {
         </section>
 
         {/* Problem Section */}
-        <section className="py-20 sm:py-28 bg-white dark:bg-[#0f1218]">
+        <section className="py-20 sm:py-28 bg-gradient-to-b from-white via-[#fdfcfb] to-white dark:from-[#0f1218] dark:via-[#12161e] dark:to-[#0f1218]">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
-                You've Tried the Alternatives.
-              </h2>
-              <p className="font-sans text-[17px] text-[#5f5a55] dark:text-[#b2b6c2]">
-                Community isn't accountability. Here's what you're probably experiencing:
-              </p>
-            </div>
-            
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Skool/Circle */}
-              <div className="bg-[#faf8f6] dark:bg-[#171b22] rounded-2xl p-8 border border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/50 flex items-center justify-center">
-                    <X className="w-5 h-5 text-rose-500" />
-                  </div>
-                  <h3 className="font-albert text-[20px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    Skool / Circle
-                  </h3>
-                </div>
-                <ul className="space-y-4">
-                  {[
-                    'Community is "active" but clients aren\'t changing',
-                    '60%+ are lurkers who never post',
-                    'You can\'t track who\'s actually implementing',
-                    'No way to prove ROI when they ask "is this working?"',
-                  ].map((item, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <X className="w-4 h-4 text-rose-500 mt-1 flex-shrink-0" />
-                      <span className="font-sans text-[15px] text-[#5f5a55] dark:text-[#b2b6c2]">{item}</span>
-                    </li>
-                  ))}
-                </ul>
+            <div className="bg-white/50 dark:bg-[#0f1218]/50 backdrop-blur-sm rounded-[2rem] p-8 sm:p-12 border border-[#e1ddd8]/30 dark:border-[#262b35]/30">
+              <div className="text-center mb-16">
+                <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
+                  You've Tried the Alternatives.
+                </h2>
+                <p className="font-sans text-[17px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                  Community isn't accountability. Here's what you're probably experiencing:
+                </p>
               </div>
               
-              {/* Notion/Docs */}
-              <div className="bg-[#faf8f6] dark:bg-[#171b22] rounded-2xl p-8 border border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/50 flex items-center justify-center">
-                    <X className="w-5 h-5 text-rose-500" />
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Skool/Circle */}
+                <div className="bg-white dark:bg-[#171b22] rounded-2xl p-8 border border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/50 flex items-center justify-center">
+                      <X className="w-5 h-5 text-rose-500" />
+                    </div>
+                    <h3 className="font-albert text-[20px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                      Skool / Circle
+                    </h3>
                   </div>
-                  <h3 className="font-albert text-[20px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    Notion / Google Docs
-                  </h3>
+                  <ul className="space-y-4">
+                    {[
+                      'Community is "active" but clients aren\'t changing',
+                      '60%+ are lurkers who never post',
+                      'You can\'t track who\'s actually implementing',
+                      'No way to prove ROI when they ask "is this working?"',
+                    ].map((item, i) => (
+                      <li key={i} className="flex items-start gap-3">
+                        <X className="w-4 h-4 text-rose-500 mt-1 flex-shrink-0" />
+                        <span className="font-sans text-[15px] text-[#5f5a55] dark:text-[#b2b6c2]">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <ul className="space-y-4">
-                  {[
-                    'You built it yourself. It\'s a mess.',
-                    'Clients "forget" to update it',
-                    'No notifications, no accountability, no streaks',
-                    'Looks unprofessional—like you\'re winging it',
-                  ].map((item, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <X className="w-4 h-4 text-rose-500 mt-1 flex-shrink-0" />
-                      <span className="font-sans text-[15px] text-[#5f5a55] dark:text-[#b2b6c2]">{item}</span>
-                    </li>
-                  ))}
-                </ul>
+                
+                {/* Notion/Docs */}
+                <div className="bg-white dark:bg-[#171b22] rounded-2xl p-8 border border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/50 flex items-center justify-center">
+                      <X className="w-5 h-5 text-rose-500" />
+                    </div>
+                    <h3 className="font-albert text-[20px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                      Notion / Google Docs
+                    </h3>
+                  </div>
+                  <ul className="space-y-4">
+                    {[
+                      'You built it yourself. It\'s a mess.',
+                      'Clients "forget" to update it',
+                      'No notifications, no accountability, no streaks',
+                      'Looks unprofessional—like you\'re winging it',
+                    ].map((item, i) => (
+                      <li key={i} className="flex items-start gap-3">
+                        <X className="w-4 h-4 text-rose-500 mt-1 flex-shrink-0" />
+                        <span className="font-sans text-[15px] text-[#5f5a55] dark:text-[#b2b6c2]">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              
+              <div className="mt-12 text-center">
+                <div className="inline-block px-8 py-5 bg-gradient-to-r from-brand-accent/10 via-[#e8b923]/5 to-brand-accent/10 dark:from-brand-accent/20 dark:via-[#e8b923]/10 dark:to-brand-accent/20 rounded-2xl border border-brand-accent/20">
+                  <p className="font-albert text-[20px] sm:text-[22px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    The problem isn't your clients. <span className="text-brand-accent font-bold">It's your tools.</span>
+                  </p>
+                </div>
               </div>
             </div>
-            
-            <p className="text-center font-albert text-[18px] text-[#1a1a1a] dark:text-[#f5f5f8] mt-12">
-              The problem isn't your clients. <span className="text-brand-accent font-semibold">It's your tools.</span>
-            </p>
           </div>
         </section>
 
@@ -475,7 +484,7 @@ export function CoachLandingPage() {
                   ))}
                 </ul>
                 <div className="mt-6 pt-4 border-t border-emerald-200/50 dark:border-emerald-900/30">
-                  <span className="font-albert text-[24px] font-bold text-emerald-600 dark:text-emerald-400">15 minutes</span>
+                  <span className="font-albert text-[24px] font-bold text-emerald-600 dark:text-emerald-400">10 minutes</span>
                   <span className="font-sans text-[14px] text-emerald-500 dark:text-emerald-400 ml-2">and done</span>
                 </div>
               </div>
@@ -484,34 +493,36 @@ export function CoachLandingPage() {
         </section>
 
         {/* Features Section */}
-        <section id="features" className="py-20 sm:py-28 bg-white dark:bg-[#0f1218]">
+        <section id="features" className="py-20 sm:py-28 bg-gradient-to-b from-white via-[#fdfcfb] to-white dark:from-[#0f1218] dark:via-[#12161e] dark:to-[#0f1218]">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
-                Everything You Need to Scale
-              </h2>
-              <p className="font-sans text-[17px] text-[#5f5a55] dark:text-[#b2b6c2]">
-                Built specifically for coaches who want client transformation, not just community
-              </p>
-            </div>
-            
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {FEATURES.map((feature, i) => (
-                <div
-                  key={i}
-                  className="bg-[#faf8f6] dark:bg-[#171b22] rounded-2xl p-6 border border-[#e1ddd8]/50 dark:border-[#262b35]/50 hover:shadow-lg transition-shadow"
-                >
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-4`}>
-                    <feature.icon className="w-6 h-6 text-white" />
+            <div className="bg-white/50 dark:bg-[#0f1218]/50 backdrop-blur-sm rounded-[2rem] p-8 sm:p-12 border border-[#e1ddd8]/30 dark:border-[#262b35]/30">
+              <div className="text-center mb-16">
+                <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
+                  Everything You Need to Scale
+                </h2>
+                <p className="font-sans text-[17px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                  Built specifically for coaches who want client transformation, not just community
+                </p>
+              </div>
+              
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {FEATURES.map((feature, i) => (
+                  <div
+                    key={i}
+                    className="bg-white dark:bg-[#171b22] rounded-2xl p-6 border border-[#e1ddd8]/50 dark:border-[#262b35]/50 hover:shadow-lg hover:border-brand-accent/20 transition-all"
+                  >
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-4`}>
+                      <feature.icon className="w-6 h-6 text-white" />
+                    </div>
+                    <h3 className="font-albert text-[18px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                      {feature.title}
+                    </h3>
+                    <p className="font-sans text-[14px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed">
+                      {feature.description}
+                    </p>
                   </div>
-                  <h3 className="font-albert text-[18px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                    {feature.title}
-                  </h3>
-                  <p className="font-sans text-[14px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed">
-                    {feature.description}
-                  </p>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -575,18 +586,19 @@ export function CoachLandingPage() {
         </section>
 
         {/* Comparison Table */}
-        <section className="py-20 sm:py-28 bg-white dark:bg-[#0f1218]">
+        <section className="py-20 sm:py-28 bg-gradient-to-b from-white via-[#fdfcfb] to-white dark:from-[#0f1218] dark:via-[#12161e] dark:to-[#0f1218]">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
-                Why Coaches Switch
-              </h2>
-              <p className="font-sans text-[17px] text-[#5f5a55] dark:text-[#b2b6c2]">
-                They track community. We track transformation.
-              </p>
-            </div>
-            
-            <div className="bg-[#faf8f6] dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 overflow-hidden">
+            <div className="bg-white/50 dark:bg-[#0f1218]/50 backdrop-blur-sm rounded-[2rem] p-8 sm:p-12 border border-[#e1ddd8]/30 dark:border-[#262b35]/30">
+              <div className="text-center mb-12">
+                <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
+                  Why Coaches Switch
+                </h2>
+                <p className="font-sans text-[17px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                  They track community. We track transformation.
+                </p>
+              </div>
+              
+              <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -633,6 +645,7 @@ export function CoachLandingPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
             </div>
           </div>
         </section>
@@ -709,20 +722,21 @@ export function CoachLandingPage() {
         </section>
 
         {/* FAQ Section */}
-        <section id="faq" className="py-20 sm:py-28 bg-white dark:bg-[#0f1218]">
+        <section id="faq" className="py-20 sm:py-28 bg-gradient-to-b from-white via-[#fdfcfb] to-white dark:from-[#0f1218] dark:via-[#12161e] dark:to-[#0f1218]">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
-                Questions Coaches Ask
-              </h2>
-            </div>
-            
-            <div className="space-y-4">
-              {FAQ.map((item, i) => (
-                <div
-                  key={i}
-                  className="bg-[#faf8f6] dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 overflow-hidden"
-                >
+            <div className="bg-white/50 dark:bg-[#0f1218]/50 backdrop-blur-sm rounded-[2rem] p-8 sm:p-12 border border-[#e1ddd8]/30 dark:border-[#262b35]/30">
+              <div className="text-center mb-12">
+                <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
+                  Questions Coaches Ask
+                </h2>
+              </div>
+              
+              <div className="space-y-4">
+                {FAQ.map((item, i) => (
+                  <div
+                    key={i}
+                    className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 overflow-hidden"
+                  >
                   <button
                     onClick={() => setOpenFaq(openFaq === i ? null : i)}
                     className="w-full flex items-center justify-between p-5 text-left"
@@ -749,8 +763,9 @@ export function CoachLandingPage() {
                       </motion.div>
                     )}
                   </AnimatePresence>
-                </div>
-              ))}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -774,7 +789,7 @@ export function CoachLandingPage() {
                 </h2>
                 
                 <p className="font-sans text-[17px] sm:text-[19px] text-[#a7a39e] dark:text-[#b2b6c2] max-w-xl mx-auto mb-10">
-                  Stop guessing. Start seeing. Set up your first program in 15 minutes.
+                  Stop guessing. Start seeing. Set up your first program in 10 minutes.
                 </p>
                 
                 <button
