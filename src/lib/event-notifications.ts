@@ -316,7 +316,8 @@ async function sendEventNotification({
   if (!user) return;
 
   const userTimezone = user.timezone || 'UTC';
-  const organizationId = user.primaryOrganizationId;
+  // Fallback to organizationId for users enrolled via funnel (which sets organizationId, not primaryOrganizationId)
+  const organizationId = user.primaryOrganizationId || user.organizationId;
   const eventTime = formatEventTimeForDisplay(job.eventDateTime, job.eventTimezone);
   const userTime = formatEventTimeInUserTimezone(job.eventDateTime, userTimezone);
 

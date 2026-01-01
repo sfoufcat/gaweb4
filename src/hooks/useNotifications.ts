@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useUser, useOrganization } from '@clerk/nextjs';
+import { useUser } from '@clerk/nextjs';
 import { 
   collection, 
   query, 
@@ -12,6 +12,7 @@ import {
   Unsubscribe 
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useBranding } from '@/contexts/BrandingContext';
 import type { Notification } from '@/types';
 
 interface UseNotificationsReturn {
@@ -36,16 +37,17 @@ interface UseNotificationsReturn {
  */
 export function useNotifications(): UseNotificationsReturn {
   const { user, isLoaded } = useUser();
-  const { organization } = useOrganization();
+  const { branding } = useBranding();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Get current organization ID from user metadata or Clerk organization
-  const organizationId = (user?.publicMetadata as { primaryOrganizationId?: string })?.primaryOrganizationId 
-    || organization?.id 
-    || null;
+  // Get organization ID from branding context (set by tenant domain middleware)
+  // This ensures we use the correct org on tenant domains, not user's Clerk metadata
+  const organizationId = branding?.organizationId && branding.organizationId !== 'default' 
+    ? branding.organizationId 
+    : null;
 
   // Fetch notifications from API (for initial load and refetch)
   const fetchNotifications = useCallback(async () => {

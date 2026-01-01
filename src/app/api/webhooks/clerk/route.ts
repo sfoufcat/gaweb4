@@ -18,8 +18,9 @@ import { WebhookEvent, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getStreamServerClient } from '@/lib/stream-server';
 import { resend, isResendConfigured } from '@/lib/resend';
-import type { OrgMembership, OrgSettings, DEFAULT_ORG_SETTINGS } from '@/types';
+import type { OrgMembership, OrgSettings, DEFAULT_ORG_SETTINGS, EmailPreferences } from '@/types';
 import { parseHost } from '@/lib/tenant/parseHost';
+import { DEFAULT_EMAIL_DEFAULTS } from '@/types';
 
 // Email senders for verification emails
 const PLATFORM_DEFAULT_SENDER = 'Growth Addicts <notifications@growthaddicts.com>';
@@ -314,20 +315,21 @@ export async function POST(req: Request) {
     
     console.log(`[CLERK_WEBHOOK] User created: ${id}, signupDomain: ${signupDomain || 'none'}`);
 
-    // Create basic user data
+    // Create basic user data with default email preferences enabled
     const userData = {
       id,
       email: email_addresses[0]?.email_address || '',
       firstName: first_name || '',
       lastName: last_name || '',
       imageUrl: image_url || '',
+      emailPreferences: DEFAULT_EMAIL_DEFAULTS, // Enable all notifications by default
       createdAt: now,
       updatedAt: now,
     };
 
     // Create user document in Firebase
     await adminDb.collection('users').doc(id).set(userData);
-    console.log(`[CLERK_WEBHOOK] Created Firebase user document for ${id}`);
+    console.log(`[CLERK_WEBHOOK] Created Firebase user document for ${id} with default email preferences`);
 
     // Auto-enroll if signup domain is provided
     if (signupDomain) {

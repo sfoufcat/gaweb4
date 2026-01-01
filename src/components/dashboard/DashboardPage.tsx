@@ -628,7 +628,8 @@ export function DashboardPage() {
                 router.push('/onboarding/business-stage');
                 return;
               } else if (onboardingStatus === 'goal_impact') {
-                router.push('/onboarding/goal-impact');
+                // goal_impact step removed - redirect to support_needs
+                router.push('/onboarding/support-needs');
                 return;
               } else if (onboardingStatus === 'support_needs') {
                 router.push('/onboarding/support-needs');
@@ -646,8 +647,11 @@ export function DashboardPage() {
                 router.push('/onboarding/goal');
                 return;
               } else if (onboardingStatus === 'transformation') {
-                router.push('/onboarding/transformation');
-                return;
+                // transformation step removed - go to plan or stay on dashboard
+                if (!hasActiveBilling) {
+                  router.push('/onboarding/plan');
+                  return;
+                }
               } else if (onboardingStatus === 'plan' || onboardingStatus === 'completed') {
                 // User at plan step - BUT if already billed, stay on dashboard
                 // This prevents redirect loop: home -> plan -> home -> plan...

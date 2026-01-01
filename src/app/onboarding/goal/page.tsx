@@ -149,7 +149,7 @@ export default function GoalPage() {
         throw new Error('Failed to save goal');
       }
 
-      router.push('/onboarding/goal-impact');
+      router.push('/onboarding/support-needs');
     } catch (err) {
       setError('Failed to save your goal. Please try again.');
       console.error('Save error:', err);
@@ -180,9 +180,9 @@ export default function GoalPage() {
   if (!isLoaded || isSaving) {
     return (
       <div className="fixed inset-0 bg-app-bg flex items-center justify-center">
-        <div className="text-center">
-          <div className="relative mb-4">
-            <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
+        <div className="flex flex-col items-center justify-center text-center">
+          <div className="relative mb-4 w-12 h-12 mx-auto">
+            <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8] dark:border-[#262b35]" />
             <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-brand-accent animate-spin" />
           </div>
           <p className="text-text-secondary font-sans text-[15px]">{isSaving ? 'Saving your goal...' : 'Loading...'}</p>
@@ -326,13 +326,13 @@ export default function GoalPage() {
             <AnimatePresence>
               {error && (
                 <motion.div 
-                  className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl"
+                  className="mb-6 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-xl"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <p className="text-sm text-red-700">{error}</p>
+                  <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -347,13 +347,13 @@ export default function GoalPage() {
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.4 }}
                 >
-                  <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-[#f0fdf4] to-[#dcfce7] border border-[#bbf7d0] rounded-xl">
-                    <svg className="w-5 h-5 text-[#22c55e] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-[#f0fdf4] to-[#dcfce7] dark:from-green-950/40 dark:to-green-900/30 border border-[#bbf7d0] dark:border-green-800/50 rounded-xl">
+                    <svg className="w-5 h-5 text-[#22c55e] dark:text-green-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                     <div>
-                      <p className="font-semibold text-[#166534]">Perfect</p>
-                      <p className="text-sm text-[#15803d]">This is a strong, measurable goal</p>
+                      <p className="font-semibold text-[#166534] dark:text-green-300">Perfect</p>
+                      <p className="text-sm text-[#15803d] dark:text-green-400">This is a strong, measurable goal</p>
                     </div>
                   </div>
                 </motion.div>
@@ -371,18 +371,18 @@ export default function GoalPage() {
                   transition={{ duration: 0.4 }}
                 >
                   {validationResult.suggestedGoal && (
-                    <div className="space-y-3 p-4 bg-amber-50/50 border border-amber-200/50 rounded-xl">
+                    <div className="space-y-3 p-4 bg-amber-50/50 dark:bg-amber-950/30 border border-amber-200/50 dark:border-amber-700/40 rounded-xl">
                       <div className="space-y-2">
-                        <h3 className="font-albert text-[18px] font-medium text-amber-800 tracking-[-0.5px] leading-[1.3]">
+                        <h3 className="font-albert text-[18px] font-medium text-amber-800 dark:text-amber-300 tracking-[-0.5px] leading-[1.3]">
                           💡 Suggestion:
                         </h3>
-                        <p className="font-sans text-[16px] text-amber-900 tracking-[-0.5px] leading-[1.3]">
+                        <p className="font-sans text-[16px] text-amber-900 dark:text-amber-200 tracking-[-0.5px] leading-[1.3]">
                           {validationResult.suggestedGoal}
                         </p>
                       </div>
                       
                       {validationResult.feedback && (
-                        <p className="font-sans text-[14px] text-amber-700 leading-[1.4]">
+                        <p className="font-sans text-[14px] text-amber-700 dark:text-amber-400 leading-[1.4]">
                           {validationResult.feedback}
                         </p>
                       )}
@@ -396,7 +396,7 @@ export default function GoalPage() {
             <AnimatePresence>
               {!showSuggestion && !showValidatedGoal && (
                 <motion.div 
-                  className="space-y-2 mb-12 p-4 bg-[#faf8f6] border border-[#e1ddd8] rounded-xl"
+                  className="space-y-2 mb-12 p-4 bg-[#faf8f6] dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -446,7 +446,7 @@ export default function GoalPage() {
                 <button
                   onClick={handleKeepOriginal}
                   disabled={isSaving}
-                  className="w-full bg-white border border-[rgba(215,210,204,0.5)] text-[#2c2520] font-sans font-bold text-[16px] tracking-[-0.5px] leading-[1.4] py-4 px-6 rounded-[32px] hover:bg-[#faf8f6] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-white dark:bg-[#171b22] border border-[rgba(215,210,204,0.5)] dark:border-[#262b35] text-[#2c2520] dark:text-text-primary font-sans font-bold text-[16px] tracking-[-0.5px] leading-[1.4] py-4 px-6 rounded-[32px] hover:bg-[#faf8f6] dark:hover:bg-[#1d222b] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Keep original goal
                 </button>

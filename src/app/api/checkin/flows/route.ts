@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
-import type { OrgCheckInFlow, CheckInStep, CheckInFlowType } from '@/types';
+import type { OrgCheckInFlow, CheckInFlowType, CheckInFlowTemplate } from '@/types';
 
 // Ensure this route is never cached - coaches expect immediate updates
 export const dynamic = 'force-dynamic';
@@ -16,6 +16,9 @@ export const dynamic = 'force-dynamic';
  * - enabledOnly?: 'true' (default: true - only get enabled flows)
  * 
  * Used by end-user app to determine which check-ins are available
+ * 
+ * IMPORTANT: Auto-creates default check-in flows if none exist for the org.
+ * This ensures users can access check-ins even before coaches configure them.
  */
 export async function GET(req: Request) {
   try {
@@ -60,6 +63,79 @@ export async function GET(req: Request) {
         stepCount: data.stepCount,
       };
     });
+
+    // Auto-create default check-in flows if none exist for this organization
+    // This ensures users can access check-ins even before coaches configure them
+    if (flows.length === 0 && !type) {
+      const templatesSnapshot = await adminDb
+        .collection('checkInFlowTemplates')
+        .get();
+      
+      if (!templatesSnapshot.empty) {
+        const now = new Date().toISOString();
+        const batch = adminDb.batch();
+        const newFlows: { id: string; name: string; type: CheckInFlowType; description?: string; enabled: boolean; stepCount: number }[] = [];
+        
+        for (const templateDoc of templatesSnapshot.docs) {
+          const template = templateDoc.data() as CheckInFlowTemplate;
+          
+          // Create new flow ref
+          const flowRef = adminDb.collection('orgCheckInFlows').doc();
+          
+          const flowData: Omit<OrgCheckInFlow, 'id'> = {
+            organizationId: orgId,
+            name: template.name,
+            type: template.key,
+            description: template.description,
+            enabled: true, // Enabled by default!
+            stepCount: template.defaultSteps.length,
+            isSystemDefault: true,
+            createdFromTemplateId: template.id,
+            templateVersion: template.version,
+            createdByUserId: 'system', // Created automatically
+            createdAt: now,
+            updatedAt: now,
+          };
+          
+          batch.set(flowRef, flowData);
+          newFlows.push({
+            id: flowRef.id,
+            name: flowData.name,
+            type: flowData.type,
+            description: flowData.description,
+            enabled: flowData.enabled,
+            stepCount: flowData.stepCount,
+          });
+          
+          // Create steps
+          template.defaultSteps.forEach((step, index) => {
+            const stepRef = adminDb
+              .collection('orgCheckInFlows')
+              .doc(flowRef.id)
+              .collection('steps')
+              .doc();
+            
+            batch.set(stepRef, {
+              flowId: flowRef.id,
+              order: step.order ?? index,
+              type: step.type,
+              name: step.name,
+              config: step.config,
+              conditions: step.conditions || [],
+              conditionLogic: step.conditionLogic || 'and',
+              createdAt: now,
+              updatedAt: now,
+            });
+          });
+        }
+        
+        await batch.commit();
+        console.log(`[CHECKIN_FLOWS_GET] Auto-created ${newFlows.length} default flows for org ${orgId}`);
+        
+        // Use newly created flows
+        flows = newFlows;
+      }
+    }
 
     // Filter by enabled status in memory (avoids needing composite index)
     // Use !== false to treat undefined/missing enabled field as true (default)

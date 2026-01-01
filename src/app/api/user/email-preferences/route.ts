@@ -35,6 +35,9 @@ async function getEffectiveDefaults(primaryOrganizationId?: string | null): Prom
  * Get current user's email notification preferences
  * 
  * Fallback chain: user's explicit prefs > org defaults > global defaults
+ * 
+ * IMPORTANT: If user doesn't have explicit preferences, this will SET the defaults
+ * on the user document to ensure check-ins are enabled for all users.
  */
 export async function GET() {
   try {
@@ -61,6 +64,19 @@ export async function GET() {
 
     // Otherwise, get effective defaults (org defaults or global defaults)
     const effectiveDefaults = await getEffectiveDefaults(userData?.primaryOrganizationId);
+    
+    // IMPORTANT: Persist the defaults to the user document so check-ins work properly
+    // This ensures existing users get the defaults applied
+    try {
+      await adminDb.collection('users').doc(userId).update({
+        emailPreferences: effectiveDefaults,
+        updatedAt: new Date().toISOString(),
+      });
+      console.log(`[EMAIL_PREFERENCES_GET] Set default email preferences for user ${userId}`);
+    } catch (updateError) {
+      // Log but don't fail the request
+      console.error(`[EMAIL_PREFERENCES_GET] Failed to persist defaults for user ${userId}:`, updateError);
+    }
     
     return NextResponse.json({ emailPreferences: effectiveDefaults });
   } catch (error) {

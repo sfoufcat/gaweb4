@@ -202,7 +202,7 @@ export function CoachLandingPage() {
 
       <div className="min-h-screen relative">
         {/* Header */}
-        <header className="sticky top-0 z-40 mx-2 sm:mx-0 mt-2 sm:mt-0 rounded-2xl sm:rounded-none bg-[#faf8f6]/80 dark:bg-[#05070b]/80 backdrop-blur-xl border border-[#e1ddd8]/30 dark:border-[#262b35]/30 sm:border-b sm:border-t-0 sm:border-x-0">
+        <header className="sticky top-0 z-40 mx-2 sm:mx-4 mt-2 rounded-2xl bg-[#faf8f6]/80 dark:bg-[#05070b]/80 backdrop-blur-xl border border-[#e1ddd8]/30 dark:border-[#262b35]/30">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
             <div className="flex items-center justify-between">
               {/* Logo */}
@@ -282,10 +282,10 @@ export function CoachLandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              <p className="font-sans text-[18px] sm:text-[20px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed mb-4">
-                GrowthAddicts is the only coaching platform where clients don't just watch - they <strong className="text-[#1a1a1a] dark:text-[#f5f5f8]">do</strong>.
-              </p>
               <p className="font-sans text-[18px] sm:text-[20px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed">
+                GrowthAddicts is the only coaching platform where clients don't just watch - they <strong className="text-[#1a1a1a] dark:text-[#f5f5f8]">do</strong>.
+                <br className="hidden sm:inline" />
+                <span className="sm:hidden"> </span>
                 Track habits, daily commitments, and accountability scores. Finally prove your coaching works.
               </p>
             </motion.div>
@@ -385,12 +385,23 @@ export function CoachLandingPage() {
                 
                 {/* Dashboard preview - actual screenshot */}
                 <div className="relative">
+                  {/* Light mode screenshot */}
                   <Image
                     src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/images%2Fcoachdash.png?alt=media&token=ef410083-561e-4594-9381-aa604d04a490"
                     alt="Coach Dashboard - See all your clients' alignment scores at a glance"
                     width={1920}
                     height={1080}
-                    className="w-full h-auto"
+                    className="w-full h-auto dark:hidden"
+                    unoptimized
+                    priority
+                  />
+                  {/* Dark mode screenshot */}
+                  <Image
+                    src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/images%2Fcoachdashdark.png?alt=media&token=8fd12376-9f03-4a85-9033-03eec00ae1fa"
+                    alt="Coach Dashboard - See all your clients' alignment scores at a glance"
+                    width={1920}
+                    height={1080}
+                    className="w-full h-auto hidden dark:block"
                     unoptimized
                     priority
                   />
@@ -631,7 +642,7 @@ export function CoachLandingPage() {
               </h2>
             </div>
             
-            <div className="relative">
+            <div className="relative overflow-hidden touch-pan-y">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={testimonialIndex}
@@ -639,9 +650,22 @@ export function CoachLandingPage() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.3 }}
-                  className="bg-white dark:bg-[#171b22] rounded-3xl p-8 sm:p-12 shadow-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50"
+                  drag="x"
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0.2}
+                  onDragEnd={(_, info) => {
+                    const swipeThreshold = 50;
+                    if (info.offset.x < -swipeThreshold) {
+                      // Swiped left - go to next
+                      setTestimonialIndex((prev) => (prev + 1) % TESTIMONIALS.length);
+                    } else if (info.offset.x > swipeThreshold) {
+                      // Swiped right - go to previous
+                      setTestimonialIndex((prev) => (prev - 1 + TESTIMONIALS.length) % TESTIMONIALS.length);
+                    }
+                  }}
+                  className="bg-white dark:bg-[#171b22] rounded-3xl p-8 sm:p-12 shadow-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 cursor-grab active:cursor-grabbing"
                 >
-                  <div className="flex flex-col items-center text-center">
+                  <div className="flex flex-col items-center text-center select-none">
                     <div className="flex gap-1 mb-6">
                       {[1, 2, 3, 4, 5].map((i) => (
                         <Star key={i} className="w-5 h-5 text-[#e8b923] fill-[#e8b923]" />
@@ -710,58 +734,55 @@ export function CoachLandingPage() {
               transition={{ duration: 0.6, delay: 0.1 }}
             >
               <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-                      <th className="text-left p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2]">Feature</th>
-                      <th className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] text-center w-24">Skool</th>
-                      <th className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] text-center w-24">Circle</th>
-                      <th className="p-4 text-center w-24">
-                        <Image
-                          src="/logo.jpg"
-                          alt="GrowthAddicts"
-                          width={32}
-                          height={32}
-                          className="mx-auto rounded-lg"
-                        />
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {COMPARISON.map((row, i) => (
-                      <tr key={i} className="border-b border-[#e1ddd8]/30 dark:border-[#262b35]/30 last:border-0">
-                        <td className="p-4 font-sans text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8]">{row.feature}</td>
-                        <td className="p-4 text-center">
-                          {row.skool ? (
-                            <Check className="w-5 h-5 text-emerald-500 mx-auto" />
-                          ) : (
-                            <X className="w-5 h-5 text-[#c5bfb8] dark:text-[#3d4452] mx-auto" />
-                          )}
-                        </td>
-                        <td className="p-4 text-center">
-                          {row.circle ? (
-                            <Check className="w-5 h-5 text-emerald-500 mx-auto" />
-                          ) : (
-                            <X className="w-5 h-5 text-[#c5bfb8] dark:text-[#3d4452] mx-auto" />
-                          )}
-                        </td>
-                        <td className="p-4 text-center bg-brand-accent/5 dark:bg-brand-accent/10">
-                          {row.ga ? (
-                            <Check className="w-5 h-5 text-brand-accent mx-auto" />
-                          ) : (
-                            <X className="w-5 h-5 text-[#c5bfb8] dark:text-[#3d4452] mx-auto" />
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                    <tr className="bg-[#f3f1ef] dark:bg-[#1e222a]">
-                      <td className="p-4 font-albert text-[14px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">Starting price</td>
-                      <td className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] text-center">$99/mo</td>
-                      <td className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] text-center">$89/mo</td>
-                      <td className="p-4 font-albert text-[16px] font-bold text-brand-accent text-center bg-brand-accent/5 dark:bg-brand-accent/10">$49/mo</td>
-                    </tr>
-                  </tbody>
-                </table>
+                {/* Header row */}
+                <div className="flex border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+                  <div className="flex-1 text-left p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2]">Feature</div>
+                  <div className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] text-center w-20 sm:w-24 order-2 sm:order-1">Skool</div>
+                  <div className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] text-center w-20 sm:w-24 order-3 sm:order-2">Circle</div>
+                  <div className="p-4 text-center w-20 sm:w-24 order-1 sm:order-3">
+                    <Image
+                      src="/logo.jpg"
+                      alt="GrowthAddicts"
+                      width={32}
+                      height={32}
+                      className="mx-auto rounded-lg"
+                    />
+                  </div>
+                </div>
+                {/* Data rows */}
+                {COMPARISON.map((row, i) => (
+                  <div key={i} className="flex border-b border-[#e1ddd8]/30 dark:border-[#262b35]/30 last:border-0">
+                    <div className="flex-1 p-4 font-sans text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8]">{row.feature}</div>
+                    <div className="p-4 text-center w-20 sm:w-24 order-2 sm:order-1">
+                      {row.skool ? (
+                        <Check className="w-5 h-5 text-emerald-500 mx-auto" />
+                      ) : (
+                        <X className="w-5 h-5 text-[#c5bfb8] dark:text-[#3d4452] mx-auto" />
+                      )}
+                    </div>
+                    <div className="p-4 text-center w-20 sm:w-24 order-3 sm:order-2">
+                      {row.circle ? (
+                        <Check className="w-5 h-5 text-emerald-500 mx-auto" />
+                      ) : (
+                        <X className="w-5 h-5 text-[#c5bfb8] dark:text-[#3d4452] mx-auto" />
+                      )}
+                    </div>
+                    <div className="p-4 text-center w-20 sm:w-24 bg-brand-accent/5 dark:bg-brand-accent/10 order-1 sm:order-3">
+                      {row.ga ? (
+                        <Check className="w-5 h-5 text-brand-accent mx-auto" />
+                      ) : (
+                        <X className="w-5 h-5 text-[#c5bfb8] dark:text-[#3d4452] mx-auto" />
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {/* Pricing row */}
+                <div className="flex bg-[#f3f1ef] dark:bg-[#1e222a]">
+                  <div className="flex-1 p-4 font-albert text-[14px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">Starting price</div>
+                  <div className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] text-center w-20 sm:w-24 order-2 sm:order-1">$99/mo</div>
+                  <div className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] text-center w-20 sm:w-24 order-3 sm:order-2">$89/mo</div>
+                  <div className="p-4 font-albert text-[16px] font-bold text-brand-accent text-center w-20 sm:w-24 bg-brand-accent/5 dark:bg-brand-accent/10 order-1 sm:order-3">$49/mo</div>
+                </div>
               </div>
             </motion.div>
           </div>

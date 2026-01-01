@@ -43,8 +43,8 @@ function ConfettiPiece({ index }: { index: number }) {
  * Commitment/Success Page
  * 
  * DEPRECATED: This page is kept for backward compatibility.
- * The new flow goes: goal -> transformation -> plan -> Stripe checkout
- * Users who somehow land here will be redirected to the transformation page.
+ * The new flow goes: goal -> support-needs -> celebration -> home/feed
+ * Users who somehow land here will be redirected to the plan page.
  */
 
 export default function CommitmentPage() {
@@ -53,10 +53,10 @@ export default function CommitmentPage() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
 
-  // Redirect to transformation page (new flow)
+  // Redirect to plan page (new flow)
   useEffect(() => {
     if (isLoaded && user) {
-      router.replace('/onboarding/transformation');
+      router.replace('/onboarding/plan');
     }
   }, [isLoaded, user, router]);
 
@@ -65,9 +65,9 @@ export default function CommitmentPage() {
     setShowConfetti(true);
     setIsNavigating(true);
 
-    // Redirect to transformation page instead of completing onboarding
+    // Redirect to plan page
     setTimeout(() => {
-      router.push('/onboarding/transformation');
+      router.push('/onboarding/plan');
     }, 1500);
   }, [router]);
 

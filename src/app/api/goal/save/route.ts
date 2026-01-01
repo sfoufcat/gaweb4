@@ -79,7 +79,7 @@ export async function POST(req: Request) {
         goalHistory: goalHistory,
         goalCompleted: false,
         goalProgress: 0,
-        onboardingStatus: 'goal_impact',
+        onboardingStatus: 'support_needs', // Skip goal-impact, go directly to support-needs
         updatedAt: now,
       });
     } else {
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
           goalSetAt: now,
           goalIsAISuggested: isAISuggested || false,
           goalHistory: goalHistory,
-          onboardingStatus: 'goal_impact',
+          onboardingStatus: 'support_needs', // Skip goal-impact, go directly to support-needs
           updatedAt: now,
         },
         { merge: true }

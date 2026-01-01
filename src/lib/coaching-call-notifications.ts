@@ -213,7 +213,8 @@ async function sendCoachingCallNotification({
   if (!user) return;
 
   const userTimezone = user.timezone || 'UTC';
-  const organizationId = user.primaryOrganizationId;
+  // Fallback to organizationId for users enrolled via funnel (which sets organizationId, not primaryOrganizationId)
+  const organizationId = user.primaryOrganizationId || user.organizationId;
   const callTime = formatCallTimeForDisplay(callDateTime, callTimezone);
   const userTime = formatCallTimeInUserTimezone(callDateTime, userTimezone);
 
