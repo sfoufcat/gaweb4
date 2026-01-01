@@ -999,7 +999,9 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
                         Want to use a different account?{' '}
                         <button 
                           onClick={async () => {
-                            await signOut();
+                            // Sign out and stay on current page
+                            // Use '/' as redirect since we're on the landing page
+                            await signOut({ redirectUrl: '/' });
                             setStep('signup');
                           }}
                           className="text-brand-accent hover:underline"

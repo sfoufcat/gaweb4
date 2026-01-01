@@ -40,15 +40,14 @@ export function LayoutModeSync() {
     
     const isFullscreenPage = 
       isMarketingDomain ||  // Marketing domain is always fullscreen
+      pathname === '/' ||  // Landing page (CoachLandingPage)
       pathname?.startsWith('/onboarding') ||
       pathname?.startsWith('/start') ||
       pathname?.startsWith('/checkin') ||
       pathname?.startsWith('/join') ||
       pathname?.startsWith('/sign-in') ||
-      pathname?.startsWith('/marketplace') ||
       pathname?.startsWith('/coach/onboarding') ||
       pathname?.startsWith('/coach/welcome') ||
-      pathname === '/coaches' ||
       pathname === '/upgrade-premium/form' ||
       pathname === '/get-coach/form' ||
       pathname?.startsWith('/invite') ||

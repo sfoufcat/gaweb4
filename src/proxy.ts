@@ -789,6 +789,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     searchParams.get('fromOnboarding') === 'true';
   
   const isFullscreenPage = 
+    pathname === '/' || // Landing page (CoachLandingPage)
     pathname.startsWith('/onboarding') ||
     pathname.startsWith('/start') ||
     pathname.startsWith('/checkin') ||
@@ -796,8 +797,6 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     pathname.startsWith('/sign-in') ||
     pathname.startsWith('/coach/onboarding') ||
     pathname.startsWith('/coach/welcome') ||
-    pathname === '/marketplace' ||
-    pathname === '/coaches' ||
     pathname === '/upgrade-premium/form' ||
     pathname === '/get-coach/form' ||
     pathname.startsWith('/invite') ||
