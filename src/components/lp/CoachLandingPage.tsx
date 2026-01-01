@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useUser } from '@clerk/nextjs';
 import {
   ArrowRight,
   Check,
@@ -22,6 +23,7 @@ import {
 } from 'lucide-react';
 import { LinedGradientBackground } from '@/components/ui/lined-gradient-background';
 import { CoachQuizModal } from './CoachQuizModal';
+import { CoachOnboardingOverlay } from '@/components/marketplace';
 
 const LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af';
 
@@ -180,11 +182,40 @@ const testimonialSlideVariants = {
 };
 
 export function CoachLandingPage() {
+  const { user, isLoaded } = useUser();
   const [quizOpen, setQuizOpen] = useState(false);
   const [testimonialIndex, setTestimonialIndex] = useState(0);
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right'>('left');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [coachOnboardingState, setCoachOnboardingState] = useState<'needs_profile' | 'needs_plan' | null>(null);
   const heroRef = useRef<HTMLDivElement>(null);
+
+  // Check coach onboarding state if user is logged in
+  useEffect(() => {
+    if (!isLoaded || !user) {
+      setCoachOnboardingState(null);
+      return;
+    }
+
+    const checkOnboardingState = async () => {
+      try {
+        const res = await fetch('/api/coach/onboarding-state');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.state === 'needs_profile' || data.state === 'needs_plan') {
+            setCoachOnboardingState(data.state);
+          } else {
+            setCoachOnboardingState(null);
+          }
+        }
+      } catch {
+        // Silently fail - don't show overlay if we can't check
+        setCoachOnboardingState(null);
+      }
+    };
+
+    checkOnboardingState();
+  }, [isLoaded, user]);
 
   // Auto-rotate testimonials
   useEffect(() => {
@@ -720,6 +751,11 @@ export function CoachLandingPage() {
                   />
                 ))}
               </div>
+              
+              {/* Disclaimer */}
+              <p className="text-center mt-6 text-[12px] text-[#a7a39e] dark:text-[#7d8190]">
+                *These testimonials are illustrative examples and do not represent actual customers.
+              </p>
             </div>
           </div>
         </section>
@@ -1015,6 +1051,11 @@ export function CoachLandingPage() {
 
       {/* Quiz Modal */}
       <CoachQuizModal isOpen={quizOpen} onClose={() => setQuizOpen(false)} />
+
+      {/* Coach Onboarding Overlay - shows for coaches who started but haven't completed signup */}
+      {coachOnboardingState && (
+        <CoachOnboardingOverlay state={coachOnboardingState} />
+      )}
     </>
   );
 }
