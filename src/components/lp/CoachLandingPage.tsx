@@ -217,7 +217,7 @@ export function CoachLandingPage() {
                   />
                 </div>
                 <span className="font-albert text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-tight">
-                  GrowthAddicts
+                  Growth Addicts
                 </span>
               </Link>
 
@@ -369,7 +369,7 @@ export function CoachLandingPage() {
                   <div className="flex-1 flex justify-center">
                     <div className="px-4 py-1.5 bg-white dark:bg-[#262b35] rounded-lg">
                       <span className="font-mono text-[12px] text-[#5f5a55] dark:text-[#b2b6c2]">
-                        yourname.growthaddicts.com/coach
+                        yourname.com/coach
                       </span>
                     </div>
                   </div>
@@ -936,7 +936,7 @@ export function CoachLandingPage() {
                   />
                 </div>
                 <span className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                  GrowthAddicts
+                  Growth Addicts
                 </span>
               </div>
               
@@ -947,7 +947,7 @@ export function CoachLandingPage() {
               </div>
               
               <p className="font-sans text-[13px] text-[#a7a39e] dark:text-[#7d8190]">
-                © 2025 GrowthAddicts. Built for coaches who get results.
+                © 2025 Growth Addicts. Built for coaches who get results.
               </p>
             </div>
           </div>

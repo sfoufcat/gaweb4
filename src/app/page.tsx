@@ -1,30 +1,44 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { CoachLandingPage } from '@/components/lp/CoachLandingPage';
+import { DashboardPage } from '@/components/dashboard/DashboardPage';
 
 /**
- * Homepage - Landing Page for Scaling Coaches
+ * Homepage - Dynamic based on domain
  * 
- * This page targets coaches with 5-50 clients who are frustrated with
- * Skool/Circle and looking for an accountability-first platform.
- * 
- * Features:
- * - Full-width layout (no sidebar)
- * - Quiz-based signup flow
- * - Light/dark mode support
- * - Responsive design
+ * - Marketing domain (growthaddicts.com): Shows CoachLandingPage
+ * - Tenant domains (*.growthaddicts.com): Shows Dashboard
  */
 export default function HomePage() {
-  // Force fullscreen layout mode - hide sidebar
+  const [isMarketingDomain, setIsMarketingDomain] = useState<boolean | null>(null);
+
   useEffect(() => {
-    document.body.setAttribute('data-layout', 'fullscreen');
+    const hostname = window.location.hostname.toLowerCase();
+    // Only show landing page on actual marketing domain
+    // Localhost and tenant subdomains should show dashboard
+    const isMarketing = 
+      hostname === 'growthaddicts.com' || 
+      hostname === 'www.growthaddicts.com';
     
-    // Cleanup on unmount - let next page handle its layout
-    return () => {
-      // Don't restore - let the next page's LayoutModeSync set the correct value
-    };
+    setIsMarketingDomain(isMarketing);
+    
+    // Set layout mode based on domain
+    if (isMarketing) {
+      document.body.setAttribute('data-layout', 'fullscreen');
+    }
   }, []);
 
-  return <CoachLandingPage />;
+  // Show nothing while determining domain
+  if (isMarketingDomain === null) {
+    return null;
+  }
+
+  // Marketing domain: Show landing page
+  if (isMarketingDomain) {
+    return <CoachLandingPage />;
+  }
+
+  // Tenant domain: Show dashboard
+  return <DashboardPage />;
 }

@@ -31,7 +31,7 @@ interface CoachQuizModalProps {
   onClose: () => void;
 }
 
-type QuizStep = 'why' | 'clients' | 'frustration' | 'match' | 'signup' | 'verification' | 'creating' | 'existing_coach';
+type QuizStep = 'why' | 'clients' | 'frustration' | 'impact' | 'match' | 'signup' | 'verification' | 'creating' | 'existing_coach';
 
 type ClientCount = '0-5' | '5-20' | '20-50' | '50+' | null;
 
@@ -50,6 +50,23 @@ const FRUSTRATION_OPTIONS: { id: Frustration; label: string }[] = [
   { id: 'group_loses_feel', label: 'Group programs lose the 1:1 feel' },
 ];
 
+type ImpactFeature = 
+  | 'track_progress'
+  | 'squad_accountability'
+  | 'daily_habits'
+  | 'engagement_visibility'
+  | 'automated_delivery'
+  | 'personal_group';
+
+const IMPACT_OPTIONS: { id: ImpactFeature; label: string }[] = [
+  { id: 'track_progress', label: 'Tracking client progress automatically' },
+  { id: 'squad_accountability', label: 'Squad accountability groups' },
+  { id: 'daily_habits', label: 'Daily habits & check-ins' },
+  { id: 'engagement_visibility', label: 'Seeing who\'s actually engaged' },
+  { id: 'automated_delivery', label: 'Automated program delivery' },
+  { id: 'personal_group', label: 'Group coaching that feels personal' },
+];
+
 const CLIENT_OPTIONS: { value: ClientCount; label: string; sublabel: string }[] = [
   { value: '0-5', label: 'Just starting', sublabel: '0-5 clients' },
   { value: '5-20', label: 'Building momentum', sublabel: '5-20 clients' },
@@ -66,6 +83,7 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
   const [step, setStep] = useState<QuizStep>('why');
   const [clientCount, setClientCount] = useState<ClientCount>(null);
   const [frustrations, setFrustrations] = useState<Set<Frustration>>(new Set());
+  const [impactFeatures, setImpactFeatures] = useState<Set<ImpactFeature>>(new Set());
   
   // Signup state
   const [error, setError] = useState<string | null>(null);
@@ -114,16 +132,30 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
     });
   };
 
+  const toggleImpactFeature = (id: ImpactFeature) => {
+    setImpactFeatures(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   const handleNext = () => {
     if (step === 'why') setStep('clients');
     else if (step === 'clients' && clientCount) setStep('frustration');
-    else if (step === 'frustration' && frustrations.size > 0) setStep('match');
+    else if (step === 'frustration' && frustrations.size > 0) setStep('impact');
+    else if (step === 'impact' && impactFeatures.size > 0) setStep('match');
   };
 
   const handleBack = () => {
     if (step === 'clients') setStep('why');
     else if (step === 'frustration') setStep('clients');
-    else if (step === 'match') setStep('frustration');
+    else if (step === 'impact') setStep('frustration');
+    else if (step === 'match') setStep('impact');
     else if (step === 'signup') setStep('match');
     else if (step === 'verification') setStep('signup');
   };
@@ -270,7 +302,7 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
   };
 
   // Calculate total steps for progress bar (quiz steps only, signup is separate flow)
-  const quizSteps = ['why', 'clients', 'frustration', 'match'];
+  const quizSteps = ['why', 'clients', 'frustration', 'impact', 'match'];
   const isQuizStep = quizSteps.includes(step);
   const stepIndex = quizSteps.indexOf(step);
 
@@ -279,7 +311,7 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
     {
       icon: BarChart3,
       title: 'See who\'s doing the work',
-      description: 'Alignment scores show exactly which clients are engaged—no more guessing',
+      description: 'Alignment scores show exactly which clients are engaged: no more guessing',
     },
     {
       icon: Target,
@@ -559,13 +591,84 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
                       disabled={frustrations.size === 0}
                       className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#d4a61d] hover:to-[#c09819] text-[#2c2520] rounded-full font-sans font-bold text-[16px] transition-all hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-[#e8b923]/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                     >
+                      Continue
+                      <ArrowRight className="w-5 h-5" />
+                    </button>
+                  </motion.div>
+                )}
+
+                {/* Step 4: Impact Features */}
+                {step === 'impact' && (
+                  <motion.div
+                    key="impact"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="p-6"
+                  >
+                    <button
+                      onClick={handleBack}
+                      className="flex items-center gap-1 text-[#5f5a55] dark:text-[#b2b6c2] font-sans text-sm hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] transition-colors mb-4"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      Back
+                    </button>
+                    
+                    <div className="text-center mb-6">
+                      <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Sparkles className="w-7 h-7 text-white" />
+                      </div>
+                      <h2 className="font-albert text-[26px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1px]">
+                        What would make the biggest impact?
+                      </h2>
+                      <p className="font-sans text-[15px] text-[#5f5a55] dark:text-[#b2b6c2] mt-2">
+                        Select all that apply
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-3 mb-8">
+                      {IMPACT_OPTIONS.map((option) => {
+                        const isSelected = impactFeatures.has(option.id);
+                        return (
+                          <button
+                            key={option.id}
+                            onClick={() => toggleImpactFeature(option.id)}
+                            className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${
+                              isSelected
+                                ? 'border-brand-accent bg-brand-accent/5 dark:bg-brand-accent/10'
+                                : 'border-[#e1ddd8] dark:border-[#313746] hover:border-[#c5bfb8] dark:hover:border-[#3d4452]'
+                            }`}
+                          >
+                            <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                              isSelected
+                                ? 'border-brand-accent bg-brand-accent'
+                                : 'border-[#c5bfb8] dark:border-[#3d4452]'
+                            }`}>
+                              {isSelected && (
+                                <Check className="w-4 h-4 text-white" />
+                              )}
+                            </div>
+                            <p className="font-sans text-[15px] text-[#1a1a1a] dark:text-[#f5f5f8]">
+                              {option.label}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    <button
+                      onClick={handleNext}
+                      disabled={impactFeatures.size === 0}
+                      className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#d4a61d] hover:to-[#c09819] text-[#2c2520] rounded-full font-sans font-bold text-[16px] transition-all hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-[#e8b923]/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    >
                       See my results
                       <ArrowRight className="w-5 h-5" />
                     </button>
                   </motion.div>
                 )}
 
-                {/* Step 4: Match */}
+                {/* Step 5: Match */}
                 {step === 'match' && (
                   <motion.div
                     key="match"
