@@ -30,14 +30,15 @@ const IMPACT_LABELS: Record<string, string> = {
  * Supports multi-org: coaches can create multiple organizations.
  * 
  * Body (optional):
- * - quizData: { clientCount, frustrations: string[], impactFeatures: string[] }
+ * - quizData: { clientCount, frustrations: string[], impactFeatures: string[], referralCode?: string }
  * 
  * Steps:
  * 1. Verify user is authenticated
  * 2. Create new organization with defaults (supports multiple orgs per coach)
  * 3. Set user's role to 'coach' and orgRole to 'super_coach'
  * 4. Initialize onboarding state to 'needs_profile'
- * 5. Queue abandoned cart emails with quiz data for personalization
+ * 5. Track referral if referral code is present
+ * 6. Queue abandoned cart emails with quiz data for personalization
  */
 export async function POST(req: Request) {
   try {
@@ -47,7 +48,8 @@ export async function POST(req: Request) {
     let quizData: { 
       clientCount?: string; 
       frustrations?: string[]; 
-      impactFeatures?: string[] 
+      impactFeatures?: string[];
+      referralCode?: string;
     } | undefined;
     
     try {
@@ -106,8 +108,38 @@ export async function POST(req: Request) {
     
     console.log(`[API_CREATE_ORG] Created organization ${organizationId} for user ${userId} (isFirstOrg: ${isFirstOrg})`);
     
-    // Queue abandoned cart emails (will be cancelled when they select a plan)
     const email = user.emailAddresses[0]?.emailAddress;
+    
+    // Track referral if referral code is present
+    if (quizData?.referralCode && email) {
+      try {
+        const referralResponse = await fetch(
+          new URL('/api/coach-referral/track', process.env.NEXT_PUBLIC_APP_URL || 'https://growthaddicts.com').toString(),
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              referralCode: quizData.referralCode,
+              referredEmail: email,
+              referredUserId: userId,
+              referredOrgId: organizationId,
+            }),
+          }
+        );
+        
+        if (referralResponse.ok) {
+          const referralResult = await referralResponse.json();
+          console.log(`[API_CREATE_ORG] Tracked referral for ${email}: ${referralResult.referralId || 'already tracked'}`);
+        } else {
+          console.warn(`[API_CREATE_ORG] Failed to track referral: ${referralResponse.status}`);
+        }
+      } catch (referralErr) {
+        console.warn('[API_CREATE_ORG] Failed to track referral:', referralErr);
+        // Don't fail org creation if referral tracking fails
+      }
+    }
+    
+    // Queue abandoned cart emails (will be cancelled when they select a plan)
     if (email) {
       try {
         // Build email variables from quiz data

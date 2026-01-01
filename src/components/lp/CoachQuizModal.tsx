@@ -334,7 +334,11 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
     setIsLoading(true);
     
     try {
-      // Send quiz data for personalized abandoned cart emails
+      // Get referral code from URL if present
+      const urlParams = new URLSearchParams(window.location.search);
+      const referralCode = urlParams.get('ref') || urlParams.get('referral');
+      
+      // Send quiz data for personalized abandoned cart emails and referral tracking
       const response = await fetch('/api/coach/create-organization', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -343,6 +347,7 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
             clientCount,
             frustrations: Array.from(frustrations),
             impactFeatures: Array.from(impactFeatures),
+            referralCode: referralCode || undefined,
           },
         }),
       });

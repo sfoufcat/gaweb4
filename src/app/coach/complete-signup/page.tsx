@@ -76,7 +76,7 @@ export default function CompleteSignupPage() {
           // Don't block signup on quiz save failure
         }
         
-        // Create organization with quiz data for personalized emails
+        // Create organization with quiz data for personalized emails and referral tracking
         const response = await fetch('/api/coach/create-organization', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -85,6 +85,7 @@ export default function CompleteSignupPage() {
               clientCount: parsedQuizData.clientCount,
               frustrations: parsedQuizData.frustrations,
               impactFeatures: parsedQuizData.impactFeatures,
+              referralCode: parsedQuizData.referralCode,
             } : undefined,
           }),
         });
