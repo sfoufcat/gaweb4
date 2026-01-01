@@ -1605,3 +1605,17 @@ div[class*="LoadingIndicator"],
   --tw-ring-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 30%, transparent) !important;
 }
 
+/* ===========================================
+   Landing Page Animations
+   =========================================== */
+
+/* Shimmer animation for gradient text */
+@keyframes shimmer {
+  0%, 100% {
+    background-position: 0% center;
+  }
+  50% {
+    background-position: 100% center;
+  }
+}
+

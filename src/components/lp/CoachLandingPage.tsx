@@ -29,10 +29,10 @@ const LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.fi
 const DASHBOARD_SCREENSHOT = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2Fdashboard-preview.png?alt=media';
 
 const TRUST_LOGOS = [
-  { name: 'ICF', abbrev: 'ICF' },
-  { name: 'iPEC', abbrev: 'iPEC' },
-  { name: 'CTI', abbrev: 'CTI' },
-  { name: 'Health Coach Institute', abbrev: 'HCI' },
+  { name: 'ICF', logo: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/landers%2Ficf.png?alt=media' },
+  { name: 'iPEC', logo: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/landers%2Fipec.png?alt=media' },
+  { name: 'CTI', logo: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/landers%2Fcti.png?alt=media' },
+  { name: 'Health Coach Institute', logo: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/landers%2Fhci.png?alt=media' },
 ];
 
 const TESTIMONIALS = [
@@ -242,33 +242,83 @@ export function CoachLandingPage() {
 
         {/* Hero Section */}
         <section ref={heroRef} className="relative pt-16 sm:pt-24 pb-20 overflow-hidden">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          {/* Animated floating shapes */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <motion.div
+              className="absolute top-20 left-[15%] w-4 h-4 rounded-full bg-brand-accent/30"
+              animate={{ y: [0, -20, 0], rotate: [0, 180, 360] }}
+              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute top-40 right-[20%] w-3 h-3 rounded-full bg-emerald-400/40"
+              animate={{ y: [0, 25, 0], scale: [1, 1.2, 1] }}
+              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+            />
+            <motion.div
+              className="absolute bottom-40 left-[10%] w-6 h-6 rounded-lg bg-purple-400/20 rotate-45"
+              animate={{ y: [0, -30, 0], rotate: [45, 90, 45] }}
+              transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+            />
+            <motion.div
+              className="absolute top-60 right-[10%] w-5 h-5 rounded-lg bg-cyan-400/25"
+              animate={{ y: [0, 20, 0], x: [0, 10, 0] }}
+              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+            />
+            <motion.div
+              className="absolute bottom-60 right-[25%] w-2 h-2 rounded-full bg-rose-400/40"
+              animate={{ y: [0, -15, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+            />
+          </div>
+
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-full mb-8 shadow-sm">
+            <motion.div 
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-full mb-8 shadow-sm"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
               <Star className="w-4 h-4 text-[#e8b923]" />
               <span className="font-sans text-[13px] text-[#5f5a55] dark:text-[#b2b6c2]">
                 Trusted by 500+ coaches worldwide
               </span>
-            </div>
+            </motion.div>
             
             {/* Headline */}
-            <h1 className="font-albert text-[42px] sm:text-[56px] lg:text-[72px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-2px] leading-[1.05] mb-6">
+            <motion.h1 
+              className="font-albert text-[42px] sm:text-[56px] lg:text-[72px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-2px] leading-[1.05] mb-6"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
               Your Clients Consume.<br />
-              <span className="bg-gradient-to-r from-brand-accent via-[#c08a5c] to-brand-accent bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-brand-accent via-[#d4a61d] to-[#c08a5c] bg-clip-text text-transparent bg-[length:200%_auto]" style={{ animation: 'shimmer 3s ease-in-out infinite' }}>
                 They Don't Transform.
               </span>
-            </h1>
+            </motion.h1>
             
-            <p className="font-sans text-[18px] sm:text-[20px] text-[#5f5a55] dark:text-[#b2b6c2] max-w-2xl mx-auto mb-10 leading-relaxed">
+            <motion.p 
+              className="font-sans text-[18px] sm:text-[20px] text-[#5f5a55] dark:text-[#b2b6c2] max-w-2xl mx-auto mb-10 leading-relaxed"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
               Growth Addicts is the only coaching platform where clients don't just watch—they <strong className="text-[#1a1a1a] dark:text-[#f5f5f8]">do</strong>. Track habits, daily commitments, and accountability scores. Finally prove your coaching works.
-            </p>
+            </motion.p>
             
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
+            <motion.div 
+              className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+            >
               <button
                 onClick={handleCTA}
-                className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#d4a61d] hover:to-[#c09819] text-[#2c2520] rounded-full font-albert text-[17px] font-bold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-[#e8b923]/30"
+                className="group relative flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#d4a61d] hover:to-[#c09819] text-[#2c2520] rounded-full font-albert text-[17px] font-bold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-[#e8b923]/30 overflow-hidden"
               >
+                <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                 Start 7-Day Trial
                 <ArrowRight className="w-5 h-5" />
               </button>
@@ -279,35 +329,56 @@ export function CoachLandingPage() {
                 <Play className="w-5 h-5" />
                 See it in action (2min)
               </a>
-            </div>
+            </motion.div>
             
-            <p className="font-sans text-[13px] text-[#a7a39e] dark:text-[#7d8190]">
+            <motion.p 
+              className="font-sans text-[13px] text-[#a7a39e] dark:text-[#7d8190]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+            >
               Credit card required • Cancel anytime • Set up in 10 minutes
-            </p>
+            </motion.p>
             
-            {/* Trust badges */}
-            <div className="mt-12 flex flex-wrap items-center justify-center gap-4 sm:gap-6">
+            {/* Trust badges - actual logos in grayscale */}
+            <div className="mt-12 flex flex-wrap items-center justify-center gap-8 sm:gap-12">
               <span className="font-sans text-[12px] text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wider">
                 Trusted by coaches from:
               </span>
               {TRUST_LOGOS.map((logo) => (
                 <div 
                   key={logo.name} 
-                  className="px-4 py-2 bg-white dark:bg-[#1e222a] rounded-lg border border-[#e1ddd8] dark:border-[#313746] shadow-sm"
+                  className="h-8 sm:h-10 opacity-60 hover:opacity-100 transition-opacity"
                 >
-                  <span className="font-albert text-[14px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    {logo.abbrev}
-                  </span>
+                  <Image
+                    src={logo.logo}
+                    alt={logo.name}
+                    width={120}
+                    height={40}
+                    className="h-full w-auto object-contain grayscale dark:invert dark:brightness-200"
+                    unoptimized
+                  />
                 </div>
               ))}
             </div>
           </div>
           
-          {/* Dashboard Preview */}
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-16">
-            <div className="relative">
+          {/* Dashboard Preview - 3D perspective animation */}
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-16" style={{ perspective: '2000px' }}>
+            <motion.div 
+              className="relative"
+              initial={{ rotateX: 25, opacity: 0, y: 60 }}
+              whileInView={{ rotateX: 0, opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+              style={{ transformStyle: 'preserve-3d' }}
+            >
               {/* Gradient glow behind */}
               <div className="absolute inset-0 bg-gradient-to-r from-brand-accent/20 via-[#e8b923]/10 to-brand-accent/20 blur-3xl -z-10 scale-95" />
+              
+              {/* Floating decorative elements */}
+              <div className="absolute -top-8 -right-8 w-24 h-24 bg-gradient-to-br from-[#e8b923]/20 to-transparent rounded-full blur-2xl" />
+              <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-gradient-to-tr from-brand-accent/15 to-transparent rounded-full blur-2xl" />
               
               {/* Screenshot container */}
               <div className="bg-white dark:bg-[#171b22] rounded-2xl sm:rounded-3xl shadow-2xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 overflow-hidden">
@@ -340,83 +411,109 @@ export function CoachLandingPage() {
                   />
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </section>
 
         {/* Problem Section */}
-        <section className="py-20 sm:py-28 bg-gradient-to-b from-white via-[#fdfcfb] to-white dark:from-[#0f1218] dark:via-[#12161e] dark:to-[#0f1218]">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-white/50 dark:bg-[#0f1218]/50 backdrop-blur-sm rounded-[2rem] p-8 sm:p-12 border border-[#e1ddd8]/30 dark:border-[#262b35]/30">
-              <div className="text-center mb-16">
-                <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
-                  You've Tried the Alternatives.
-                </h2>
-                <p className="font-sans text-[17px] text-[#5f5a55] dark:text-[#b2b6c2]">
-                  Community isn't accountability. Here's what you're probably experiencing:
+        <section className="py-20 sm:py-28 relative overflow-hidden">
+          {/* Decorative background elements */}
+          <div className="absolute top-20 left-10 w-72 h-72 bg-rose-200/20 dark:bg-rose-900/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-brand-accent/10 rounded-full blur-3xl" />
+          
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+            <motion.div 
+              className="text-center mb-16"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
+                You've Tried the Alternatives.
+              </h2>
+              <p className="font-sans text-[17px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                Community isn't accountability. Here's what you're probably experiencing:
+              </p>
+            </motion.div>
+            
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Skool/Circle */}
+              <motion.div 
+                className="bg-white dark:bg-[#171b22] rounded-2xl p-8 border border-[#e1ddd8]/50 dark:border-[#262b35]/50 shadow-lg shadow-rose-500/5"
+                initial={{ opacity: 0, x: -30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+              >
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/50 flex items-center justify-center">
+                    <X className="w-5 h-5 text-rose-500" />
+                  </div>
+                  <h3 className="font-albert text-[20px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    Skool / Circle
+                  </h3>
+                </div>
+                <ul className="space-y-4">
+                  {[
+                    'Community is "active" but clients aren\'t changing',
+                    '60%+ are lurkers who never post',
+                    'You can\'t track who\'s actually implementing',
+                    'No way to prove ROI when they ask "is this working?"',
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <X className="w-4 h-4 text-rose-500 mt-1 flex-shrink-0" />
+                      <span className="font-sans text-[15px] text-[#5f5a55] dark:text-[#b2b6c2]">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+              
+              {/* Notion/Docs */}
+              <motion.div 
+                className="bg-white dark:bg-[#171b22] rounded-2xl p-8 border border-[#e1ddd8]/50 dark:border-[#262b35]/50 shadow-lg shadow-rose-500/5"
+                initial={{ opacity: 0, x: 30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/50 flex items-center justify-center">
+                    <X className="w-5 h-5 text-rose-500" />
+                  </div>
+                  <h3 className="font-albert text-[20px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    Notion / Google Docs
+                  </h3>
+                </div>
+                <ul className="space-y-4">
+                  {[
+                    'You built it yourself. It\'s a mess.',
+                    'Clients "forget" to update it',
+                    'No notifications, no accountability, no streaks',
+                    'Looks unprofessional—like you\'re winging it',
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <X className="w-4 h-4 text-rose-500 mt-1 flex-shrink-0" />
+                      <span className="font-sans text-[15px] text-[#5f5a55] dark:text-[#b2b6c2]">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            </div>
+            
+            <motion.div 
+              className="mt-12 text-center"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
+              <div className="inline-block px-8 py-5 bg-gradient-to-r from-brand-accent/10 via-[#e8b923]/5 to-brand-accent/10 dark:from-brand-accent/20 dark:via-[#e8b923]/10 dark:to-brand-accent/20 rounded-2xl border border-brand-accent/20">
+                <p className="font-albert text-[20px] sm:text-[22px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  The problem isn't your clients. <span className="text-brand-accent font-bold">It's your tools.</span>
                 </p>
               </div>
-              
-              <div className="grid md:grid-cols-2 gap-6">
-                {/* Skool/Circle */}
-                <div className="bg-white dark:bg-[#171b22] rounded-2xl p-8 border border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/50 flex items-center justify-center">
-                      <X className="w-5 h-5 text-rose-500" />
-                    </div>
-                    <h3 className="font-albert text-[20px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                      Skool / Circle
-                    </h3>
-                  </div>
-                  <ul className="space-y-4">
-                    {[
-                      'Community is "active" but clients aren\'t changing',
-                      '60%+ are lurkers who never post',
-                      'You can\'t track who\'s actually implementing',
-                      'No way to prove ROI when they ask "is this working?"',
-                    ].map((item, i) => (
-                      <li key={i} className="flex items-start gap-3">
-                        <X className="w-4 h-4 text-rose-500 mt-1 flex-shrink-0" />
-                        <span className="font-sans text-[15px] text-[#5f5a55] dark:text-[#b2b6c2]">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                
-                {/* Notion/Docs */}
-                <div className="bg-white dark:bg-[#171b22] rounded-2xl p-8 border border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/50 flex items-center justify-center">
-                      <X className="w-5 h-5 text-rose-500" />
-                    </div>
-                    <h3 className="font-albert text-[20px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                      Notion / Google Docs
-                    </h3>
-                  </div>
-                  <ul className="space-y-4">
-                    {[
-                      'You built it yourself. It\'s a mess.',
-                      'Clients "forget" to update it',
-                      'No notifications, no accountability, no streaks',
-                      'Looks unprofessional—like you\'re winging it',
-                    ].map((item, i) => (
-                      <li key={i} className="flex items-start gap-3">
-                        <X className="w-4 h-4 text-rose-500 mt-1 flex-shrink-0" />
-                        <span className="font-sans text-[15px] text-[#5f5a55] dark:text-[#b2b6c2]">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-              
-              <div className="mt-12 text-center">
-                <div className="inline-block px-8 py-5 bg-gradient-to-r from-brand-accent/10 via-[#e8b923]/5 to-brand-accent/10 dark:from-brand-accent/20 dark:via-[#e8b923]/10 dark:to-brand-accent/20 rounded-2xl border border-brand-accent/20">
-                  <p className="font-albert text-[20px] sm:text-[22px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                    The problem isn't your clients. <span className="text-brand-accent font-bold">It's your tools.</span>
-                  </p>
-                </div>
-              </div>
-            </div>
+            </motion.div>
           </div>
         </section>
 
@@ -493,36 +590,49 @@ export function CoachLandingPage() {
         </section>
 
         {/* Features Section */}
-        <section id="features" className="py-20 sm:py-28 bg-gradient-to-b from-white via-[#fdfcfb] to-white dark:from-[#0f1218] dark:via-[#12161e] dark:to-[#0f1218]">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-white/50 dark:bg-[#0f1218]/50 backdrop-blur-sm rounded-[2rem] p-8 sm:p-12 border border-[#e1ddd8]/30 dark:border-[#262b35]/30">
-              <div className="text-center mb-16">
-                <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
-                  Everything You Need to Scale
-                </h2>
-                <p className="font-sans text-[17px] text-[#5f5a55] dark:text-[#b2b6c2]">
-                  Built specifically for coaches who want client transformation, not just community
-                </p>
-              </div>
-              
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {FEATURES.map((feature, i) => (
-                  <div
-                    key={i}
-                    className="bg-white dark:bg-[#171b22] rounded-2xl p-6 border border-[#e1ddd8]/50 dark:border-[#262b35]/50 hover:shadow-lg hover:border-brand-accent/20 transition-all"
-                  >
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-4`}>
-                      <feature.icon className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="font-albert text-[18px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                      {feature.title}
-                    </h3>
-                    <p className="font-sans text-[14px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed">
-                      {feature.description}
-                    </p>
+        <section id="features" className="py-20 sm:py-28 relative overflow-hidden">
+          {/* Animated gradient background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-[#faf8f6] via-white to-[#f8f6f3] dark:from-[#0f1218] dark:via-[#12161e] dark:to-[#0f1218]" />
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-gradient-to-br from-purple-200/30 to-transparent dark:from-purple-900/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-gradient-to-tl from-brand-accent/20 to-transparent rounded-full blur-3xl" />
+          
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+            <motion.div 
+              className="text-center mb-16"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
+                Everything You Need to Scale
+              </h2>
+              <p className="font-sans text-[17px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                Built specifically for coaches who want client transformation, not just community
+              </p>
+            </motion.div>
+            
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {FEATURES.map((feature, i) => (
+                <motion.div
+                  key={i}
+                  className="group bg-white dark:bg-[#171b22] rounded-2xl p-6 border border-[#e1ddd8]/50 dark:border-[#262b35]/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: i * 0.08 }}
+                >
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                    <feature.icon className="w-6 h-6 text-white" />
                   </div>
-                ))}
-              </div>
+                  <h3 className="font-albert text-[18px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                    {feature.title}
+                  </h3>
+                  <p className="font-sans text-[14px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed">
+                    {feature.description}
+                  </p>
+                </motion.div>
+              ))}
             </div>
           </div>
         </section>
@@ -586,19 +696,34 @@ export function CoachLandingPage() {
         </section>
 
         {/* Comparison Table */}
-        <section className="py-20 sm:py-28 bg-gradient-to-b from-white via-[#fdfcfb] to-white dark:from-[#0f1218] dark:via-[#12161e] dark:to-[#0f1218]">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-white/50 dark:bg-[#0f1218]/50 backdrop-blur-sm rounded-[2rem] p-8 sm:p-12 border border-[#e1ddd8]/30 dark:border-[#262b35]/30">
-              <div className="text-center mb-12">
-                <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
-                  Why Coaches Switch
-                </h2>
-                <p className="font-sans text-[17px] text-[#5f5a55] dark:text-[#b2b6c2]">
-                  They track community. We track transformation.
-                </p>
-              </div>
-              
-              <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 overflow-hidden">
+        <section className="py-20 sm:py-28 relative overflow-hidden">
+          {/* Background decorations */}
+          <div className="absolute top-1/2 left-0 w-64 h-64 bg-emerald-200/20 dark:bg-emerald-900/10 rounded-full blur-3xl -translate-y-1/2" />
+          <div className="absolute top-1/3 right-0 w-80 h-80 bg-brand-accent/15 rounded-full blur-3xl" />
+          
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+            <motion.div 
+              className="text-center mb-12"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
+                Why Coaches Switch
+              </h2>
+              <p className="font-sans text-[17px] text-[#5f5a55] dark:text-[#b2b6c2]">
+                They track community. We track transformation.
+              </p>
+            </motion.div>
+            
+            <motion.div 
+              className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 overflow-hidden shadow-xl"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -645,8 +770,7 @@ export function CoachLandingPage() {
                   </tbody>
                 </table>
               </div>
-            </div>
-            </div>
+            </motion.div>
           </div>
         </section>
 
@@ -722,21 +846,34 @@ export function CoachLandingPage() {
         </section>
 
         {/* FAQ Section */}
-        <section id="faq" className="py-20 sm:py-28 bg-gradient-to-b from-white via-[#fdfcfb] to-white dark:from-[#0f1218] dark:via-[#12161e] dark:to-[#0f1218]">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-white/50 dark:bg-[#0f1218]/50 backdrop-blur-sm rounded-[2rem] p-8 sm:p-12 border border-[#e1ddd8]/30 dark:border-[#262b35]/30">
-              <div className="text-center mb-12">
-                <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
-                  Questions Coaches Ask
-                </h2>
-              </div>
-              
-              <div className="space-y-4">
-                {FAQ.map((item, i) => (
-                  <div
-                    key={i}
-                    className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 overflow-hidden"
-                  >
+        <section id="faq" className="py-20 sm:py-28 relative overflow-hidden">
+          {/* Background decorations */}
+          <div className="absolute top-1/4 right-10 w-64 h-64 bg-cyan-200/20 dark:bg-cyan-900/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-1/4 left-10 w-72 h-72 bg-brand-accent/15 rounded-full blur-3xl" />
+          
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+            <motion.div 
+              className="text-center mb-12"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
+                Questions Coaches Ask
+              </h2>
+            </motion.div>
+            
+            <div className="space-y-4">
+              {FAQ.map((item, i) => (
+                <motion.div
+                  key={i}
+                  className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: i * 0.05 }}
+                >
                   <button
                     onClick={() => setOpenFaq(openFaq === i ? null : i)}
                     className="w-full flex items-center justify-between p-5 text-left"
@@ -763,9 +900,8 @@ export function CoachLandingPage() {
                       </motion.div>
                     )}
                   </AnimatePresence>
-                  </div>
-                ))}
-              </div>
+                </motion.div>
+              ))}
             </div>
           </div>
         </section>
