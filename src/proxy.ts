@@ -678,6 +678,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     
     // Only allow public/marketing routes on marketing domain
     const isAllowedRoute = 
+      pathname === '/' ||                       // Landing page (CoachLandingPage)
       pathname.startsWith('/join') ||           // Funnel system
       pathname.startsWith('/sign-in') ||        // Auth
       pathname.startsWith('/sign-up') ||        // Auth
