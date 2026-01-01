@@ -666,25 +666,14 @@ export const proxy = clerkMiddleware(async (auth, request) => {
   // DOMAIN-SPECIFIC ROUTING
   // ==========================================================================
   
-  // Marketing domain: Show marketplace as landing page
+  // Marketing domain: Show CoachLandingPage at root
   // The main domain is reserved for marketing only - no app features
   // Users must go to tenant domains or app.growthaddicts.com for the app
   if (isMarketingDomain(hostname)) {
-    // Redirect /marketplace to / (canonical URL - avoid duplicate content)
+    // Root path shows CoachLandingPage directly (no rewrite needed - page.tsx is the landing page)
+    // /marketplace is the member dashboard - redirect to sign-in if accessed on marketing domain
     if (pathname === '/marketplace') {
-      return NextResponse.redirect(new URL('/', request.url), 301);
-    }
-    
-    // Rewrite / to /marketplace (show marketplace content at root URL)
-    if (pathname === '/') {
-      const url = request.nextUrl.clone();
-      url.pathname = '/marketplace';
-      // Set fullscreen layout mode on REQUEST headers so server components can read it
-      const requestHeaders = new Headers(request.headers);
-      requestHeaders.set('x-layout-mode', 'fullscreen');
-      return NextResponse.rewrite(url, {
-        request: { headers: requestHeaders }
-      });
+      return NextResponse.redirect(new URL('/sign-in', request.url), 302);
     }
     
     // Only allow public/marketing routes on marketing domain
