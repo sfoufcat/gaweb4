@@ -1,17 +1,15 @@
-/**
- * Testimonial Request Cron Job
- * 
- * Checks for coaches who signed up 14 days ago and queues testimonial request emails.
- * Runs daily at 10 AM UTC.
- * 
- * Configure in vercel.json:
- * {
- *   "crons": [{
- *     "path": "/api/cron/testimonial-requests",
- *     "schedule": "0 10 * * *"
- *   }]
- * }
- */
+// Testimonial Request Cron Job
+// 
+// Checks for coaches who signed up 14 days ago and queues testimonial request emails.
+// Runs daily at 10 AM UTC.
+// 
+// Configure in vercel.json:
+// {
+//   "crons": [{
+//     "path": "/api/cron/testimonial-requests",
+//     "schedule": "0 10 * * *"
+//   }]
+// }
 
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';

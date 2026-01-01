@@ -1,15 +1,13 @@
-/**
- * Process Email Queue Cron Job
- * 
- * This endpoint is called by Vercel Cron to process pending emails.
- * Configure in vercel.json:
- * {
- *   "crons": [{
- *     "path": "/api/cron/process-email-queue",
- *     "schedule": "*/15 * * * *"
- *   }]
- * }
- */
+// Process Email Queue Cron Job
+// 
+// This endpoint is called by Vercel Cron to process pending emails.
+// Configure in vercel.json:
+// {
+//   "crons": [{
+//     "path": "/api/cron/process-email-queue",
+//     "schedule": "*/15 * * * *"
+//   }]
+// }
 
 import { NextResponse } from 'next/server';
 import { processEmailQueue, initializeEmailFlows } from '@/lib/email-automation';
