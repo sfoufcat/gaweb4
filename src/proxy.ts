@@ -787,7 +787,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     searchParams.get('fromOnboarding') === 'true';
   
   const isFullscreenPage = 
-    pathname === '/' || // Landing page (CoachLandingPage)
+    (pathname === '/' && isMarketingDomain(hostname)) || // Only fullscreen on marketing domain root
     pathname.startsWith('/onboarding') ||
     pathname.startsWith('/start') ||
     pathname.startsWith('/checkin') ||

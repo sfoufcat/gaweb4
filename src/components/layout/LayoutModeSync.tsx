@@ -39,8 +39,7 @@ export function LayoutModeSync() {
       searchParams.get('fromOnboarding') === 'true';
     
     const isFullscreenPage = 
-      isMarketingDomain ||  // Marketing domain is always fullscreen
-      pathname === '/' ||  // Landing page (CoachLandingPage)
+      (pathname === '/' && isMarketingDomain) ||  // Only fullscreen on marketing domain root
       pathname?.startsWith('/onboarding') ||
       pathname?.startsWith('/start') ||
       pathname?.startsWith('/checkin') ||
