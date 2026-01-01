@@ -278,8 +278,9 @@ export async function POST(req: Request) {
       firstName: clerkUser.firstName || '',
       lastName: clerkUser.lastName || '',
       imageUrl: clerkUser.imageUrl || '',
-      // Add to organization
-      organizationId: session.organizationId,
+      // Add to organization (set both fields for compatibility)
+      primaryOrganizationId: session.organizationId,
+      organizationId: session.organizationId, // Deprecated, kept for backward compatibility
       // Program enrollment reference
       currentProgramEnrollmentId: enrollmentRef.id,
       currentProgramId: session.programId,

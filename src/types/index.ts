@@ -219,6 +219,8 @@ export interface FirebaseUser extends ClerkUser {
   
   // Organization - synced from Clerk webhook
   primaryOrganizationId?: string; // User's primary organization ID
+  /** @deprecated Use primaryOrganizationId instead - kept for backward compatibility with funnel enrollments */
+  organizationId?: string;
   identity?: string;
   identitySetAt?: string;
   identityHistory?: IdentityHistoryEntry[];
