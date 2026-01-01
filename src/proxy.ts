@@ -698,32 +698,40 @@ export const proxy = clerkMiddleware(async (auth, request) => {
       pathname.startsWith('/_next/') ||         // Next.js assets
       pathname.startsWith('/static/');          // Static assets
     
+    // For allowed routes on marketing domain, return early (skip auth checks)
+    // Set fullscreen layout mode for marketing pages
+    if (isAllowedRoute) {
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set('x-layout-mode', 'fullscreen');
+      return NextResponse.next({
+        request: { headers: requestHeaders }
+      });
+    }
+    
     // Handle non-allowed routes on marketing domain
     // IMPORTANT: Do NOT redirect to app.growthaddicts.com - that's for super_admins only!
     // Instead, redirect to appropriate location based on user state
-    if (!isAllowedRoute) {
-      const { userId, sessionClaims } = await auth();
-      const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
-      
-      // Super admins can go to app.growthaddicts.com
-      if (userId && publicMetadata?.role === 'super_admin') {
-        console.log(`[PROXY] Marketing domain: super_admin ${userId} accessing ${pathname}, redirecting to app.growthaddicts.com`);
-        return NextResponse.redirect(`https://app.growthaddicts.com${pathname}`, 302);
-      }
-      
-      // Authenticated users - send to onboarding profile page
-      // The onboarding page will check their state and redirect to subdomain if needed
-      if (userId) {
-        console.log(`[PROXY] Marketing domain: authenticated user ${userId} accessing ${pathname}, redirecting to onboarding`);
-        return NextResponse.redirect(new URL('/coach/onboarding/profile', request.url), 302);
-      }
-      
-      // Not authenticated - send to sign-in with return URL
-      console.log(`[PROXY] Marketing domain: unauthenticated access to ${pathname}, redirecting to sign-in`);
-      const signInUrl = new URL('/sign-in', request.url);
-      signInUrl.searchParams.set('redirect_url', pathname);
-      return NextResponse.redirect(signInUrl, 302);
+    const { userId, sessionClaims } = await auth();
+    const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata | undefined;
+    
+    // Super admins can go to app.growthaddicts.com
+    if (userId && publicMetadata?.role === 'super_admin') {
+      console.log(`[PROXY] Marketing domain: super_admin ${userId} accessing ${pathname}, redirecting to app.growthaddicts.com`);
+      return NextResponse.redirect(`https://app.growthaddicts.com${pathname}`, 302);
     }
+    
+    // Authenticated users - send to onboarding profile page
+    // The onboarding page will check their state and redirect to subdomain if needed
+    if (userId) {
+      console.log(`[PROXY] Marketing domain: authenticated user ${userId} accessing ${pathname}, redirecting to onboarding`);
+      return NextResponse.redirect(new URL('/coach/onboarding/profile', request.url), 302);
+    }
+    
+    // Not authenticated - send to sign-in with return URL
+    console.log(`[PROXY] Marketing domain: unauthenticated access to ${pathname}, redirecting to sign-in`);
+    const signInUrl = new URL('/sign-in', request.url);
+    signInUrl.searchParams.set('redirect_url', pathname);
+    return NextResponse.redirect(signInUrl, 302);
   }
   
   // Platform admin domain: Restrict to super_admins only
