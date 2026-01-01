@@ -1711,16 +1711,6 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "quiz_leads",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
           "fieldPath": "convertedAt",
           "order": "ASCENDING"
         },
