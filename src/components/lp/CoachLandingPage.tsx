@@ -29,10 +29,10 @@ const LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.fi
 const DASHBOARD_SCREENSHOT = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2Fdashboard-preview.png?alt=media';
 
 const TRUST_LOGOS = [
-  { name: 'ICF', logo: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/landers%2Ficf.png?alt=media' },
-  { name: 'iPEC', logo: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/landers%2Fipec.png?alt=media' },
-  { name: 'CTI', logo: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/landers%2Fcti.png?alt=media' },
-  { name: 'Health Coach Institute', logo: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/landers%2Fhci.png?alt=media' },
+  { name: 'ICF', logo: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/landers%2Flogo1.png?alt=media&token=7334b9b8-3373-4916-83ec-df92eb5e9332' },
+  { name: 'iPEC', logo: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/landers%2Flogo2.png?alt=media&token=fac36442-711e-4e77-a089-f6b27c5cc74b' },
+  { name: 'CTI', logo: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/landers%2Flogo3.png?alt=media&token=51e99040-6b73-4c0e-9436-50bc5aeda615' },
+  { name: 'Health Coach Institute', logo: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/landers%2Flogo4.png?alt=media&token=5efc6eb5-6642-47a1-b83a-b98e6341be14' },
 ];
 
 const TESTIMONIALS = [
@@ -242,33 +242,10 @@ export function CoachLandingPage() {
 
         {/* Hero Section */}
         <section ref={heroRef} className="relative pt-16 sm:pt-24 pb-20 overflow-hidden">
-          {/* Animated floating shapes */}
+          {/* Subtle gradient orbs - large, soft, stationary */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <motion.div
-              className="absolute top-20 left-[15%] w-4 h-4 rounded-full bg-brand-accent/30"
-              animate={{ y: [0, -20, 0], rotate: [0, 180, 360] }}
-              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-            />
-            <motion.div
-              className="absolute top-40 right-[20%] w-3 h-3 rounded-full bg-emerald-400/40"
-              animate={{ y: [0, 25, 0], scale: [1, 1.2, 1] }}
-              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            />
-            <motion.div
-              className="absolute bottom-40 left-[10%] w-6 h-6 rounded-lg bg-purple-400/20 rotate-45"
-              animate={{ y: [0, -30, 0], rotate: [45, 90, 45] }}
-              transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-            />
-            <motion.div
-              className="absolute top-60 right-[10%] w-5 h-5 rounded-lg bg-cyan-400/25"
-              animate={{ y: [0, 20, 0], x: [0, 10, 0] }}
-              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-            />
-            <motion.div
-              className="absolute bottom-60 right-[25%] w-2 h-2 rounded-full bg-rose-400/40"
-              animate={{ y: [0, -15, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
-            />
+            <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-gradient-to-br from-brand-accent/8 via-[#e8b923]/5 to-transparent rounded-full blur-3xl" />
+            <div className="absolute -bottom-20 -left-40 w-[400px] h-[400px] bg-gradient-to-tr from-emerald-400/8 via-cyan-400/5 to-transparent rounded-full blur-3xl" />
           </div>
 
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
