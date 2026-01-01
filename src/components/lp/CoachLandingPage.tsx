@@ -710,7 +710,15 @@ export function CoachLandingPage() {
                       <th className="text-left p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2]">Feature</th>
                       <th className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] text-center w-24">Skool</th>
                       <th className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] text-center w-24">Circle</th>
-                      <th className="p-4 font-albert text-[14px] font-semibold text-brand-accent text-center w-32">GrowthAddicts</th>
+                      <th className="p-4 text-center w-24">
+                        <Image
+                          src="/logo.jpg"
+                          alt="GrowthAddicts"
+                          width={32}
+                          height={32}
+                          className="mx-auto rounded-lg"
+                        />
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
