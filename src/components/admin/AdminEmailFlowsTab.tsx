@@ -12,9 +12,14 @@ import {
   ChevronRight,
   Loader2,
   Send,
+  Pencil,
+  X,
+  Save,
+  Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import type { EmailFlow, AutomatedEmailTemplate, EmailFlowStats } from '@/types';
 
 interface FlowWithTemplates extends EmailFlow {
@@ -24,6 +29,37 @@ interface FlowWithTemplates extends EmailFlow {
 
 interface QueueStats {
   pending: number;
+}
+
+// Sample variables for preview
+const SAMPLE_VARIABLES: Record<string, string> = {
+  firstName: 'Sarah',
+  email: 'sarah@example.com',
+  ctaUrl: 'https://growthaddicts.com/signup',
+  quizClientCount: '25-50',
+  quizFrustrations: 'Manual check-ins, No visibility into engagement',
+  quizImpactFeatures: 'Tracking client progress, Squad accountability groups',
+};
+
+// Available template variables
+const TEMPLATE_VARIABLES = [
+  { key: '{{firstName}}', description: "Recipient's first name" },
+  { key: '{{email}}', description: "Recipient's email" },
+  { key: '{{ctaUrl}}', description: 'Call-to-action URL' },
+  { key: '{{quizClientCount}}', description: 'From quiz: client count range' },
+  { key: '{{quizFrustrations}}', description: 'From quiz: frustrations list' },
+  { key: '{{quizImpactFeatures}}', description: 'From quiz: desired features' },
+];
+
+/**
+ * Replace template variables with sample values for preview
+ */
+function replaceVariables(content: string): string {
+  let result = content;
+  for (const [key, value] of Object.entries(SAMPLE_VARIABLES)) {
+    result = result.replace(new RegExp(`{{${key}}}`, 'g'), value);
+  }
+  return result;
 }
 
 /**
@@ -38,6 +74,14 @@ export function AdminEmailFlowsTab() {
   const [error, setError] = useState<string | null>(null);
   const [expandedFlows, setExpandedFlows] = useState<Set<string>>(new Set());
   const [updating, setUpdating] = useState<string | null>(null);
+  
+  // Modal state
+  const [selectedTemplate, setSelectedTemplate] = useState<AutomatedEmailTemplate | null>(null);
+  const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
+  const [modalMode, setModalMode] = useState<'preview' | 'edit'>('preview');
+  const [editSubject, setEditSubject] = useState('');
+  const [editHtmlContent, setEditHtmlContent] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const fetchFlows = useCallback(async () => {
     try {
@@ -132,6 +176,73 @@ export function AdminEmailFlowsTab() {
       console.error('Error updating template:', err);
     } finally {
       setUpdating(null);
+    }
+  };
+
+  const openPreview = (template: AutomatedEmailTemplate, flowId: string) => {
+    setSelectedTemplate(template);
+    setSelectedFlowId(flowId);
+    setModalMode('preview');
+  };
+
+  const openEdit = (template: AutomatedEmailTemplate, flowId: string) => {
+    setSelectedTemplate(template);
+    setSelectedFlowId(flowId);
+    setEditSubject(template.subject);
+    setEditHtmlContent(template.htmlContent);
+    setModalMode('edit');
+  };
+
+  const closeModal = () => {
+    setSelectedTemplate(null);
+    setSelectedFlowId(null);
+    setEditSubject('');
+    setEditHtmlContent('');
+  };
+
+  const handleSave = async () => {
+    if (!selectedTemplate || !selectedFlowId) return;
+    
+    try {
+      setSaving(true);
+      
+      const response = await fetch('/api/admin/email-flows', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          templateId: selectedTemplate.id,
+          updates: {
+            subject: editSubject,
+            htmlContent: editHtmlContent,
+          },
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save template');
+      }
+      
+      // Update local state
+      setFlows(prev => prev.map(flow => {
+        if (flow.id === selectedFlowId) {
+          return {
+            ...flow,
+            templates: flow.templates.map(t => 
+              t.id === selectedTemplate.id 
+                ? { ...t, subject: editSubject, htmlContent: editHtmlContent } 
+                : t
+            ),
+          };
+        }
+        return flow;
+      }));
+      
+      closeModal();
+    } catch (err) {
+      console.error('Error saving template:', err);
+      alert('Failed to save template');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -269,16 +380,40 @@ export function AdminEmailFlowsTab() {
                             <h4 className="font-albert font-medium text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8]">
                               {template.name}
                             </h4>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Clock className="w-3 h-3 text-[#8a8580]" />
-                              <span className="font-sans text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                                Send after {formatDelay(template.delayMinutes)}
+                            <div className="flex items-center gap-3 mt-1">
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-[#8a8580]" />
+                                <span className="font-sans text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                                  Send after {formatDelay(template.delayMinutes)}
+                                </span>
+                              </div>
+                              <span className="text-[#5f5a55] dark:text-[#b2b6c2]">•</span>
+                              <span className="font-sans text-xs text-[#5f5a55] dark:text-[#b2b6c2] truncate max-w-[200px]">
+                                {template.subject}
                               </span>
                             </div>
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
+                          {/* Preview Button */}
+                          <button
+                            onClick={() => openPreview(template, flow.id)}
+                            className="p-2 rounded-lg hover:bg-[#faf8f6] dark:hover:bg-[#11141b] text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent transition-colors"
+                            title="Preview email"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          
+                          {/* Edit Button */}
+                          <button
+                            onClick={() => openEdit(template, flow.id)}
+                            className="p-2 rounded-lg hover:bg-[#faf8f6] dark:hover:bg-[#11141b] text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent transition-colors"
+                            title="Edit email"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          
                           <span className={`px-2 py-1 rounded text-xs font-semibold ${
                             template.enabled 
                               ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
@@ -309,7 +444,168 @@ export function AdminEmailFlowsTab() {
           </div>
         )}
       </div>
+
+      {/* Preview/Edit Modal */}
+      {selectedTemplate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={closeModal}
+          />
+
+          {/* Modal */}
+          <div className="relative bg-white dark:bg-[#171b22] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-[#e1ddd8] dark:border-[#262b35]">
+              <div>
+                <h2 className="font-albert text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                  {modalMode === 'preview' ? 'Email Preview' : 'Edit Email'}
+                </h2>
+                <p className="font-sans text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
+                  {selectedTemplate.name}
+                </p>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                {modalMode === 'preview' && (
+                  <Button
+                    onClick={() => {
+                      setEditSubject(selectedTemplate.subject);
+                      setEditHtmlContent(selectedTemplate.htmlContent);
+                      setModalMode('edit');
+                    }}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </Button>
+                )}
+                
+                {modalMode === 'edit' && (
+                  <>
+                    <Button
+                      onClick={() => setModalMode('preview')}
+                      variant="outline"
+                      className="gap-2"
+                    >
+                      <Eye className="w-4 h-4" />
+                      Preview
+                    </Button>
+                    <Button
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="gap-2 bg-brand-accent hover:bg-[#8b6847]"
+                    >
+                      {saving ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Save className="w-4 h-4" />
+                      )}
+                      Save
+                    </Button>
+                  </>
+                )}
+                
+                <button
+                  onClick={closeModal}
+                  className="p-2 rounded-lg hover:bg-[#faf8f6] dark:hover:bg-[#262b35] text-[#5f5a55] dark:text-[#b2b6c2]"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {modalMode === 'preview' ? (
+                /* Preview Mode */
+                <div className="space-y-4">
+                  {/* Subject Preview */}
+                  <div className="bg-[#faf8f6] dark:bg-[#0a0c10] rounded-xl p-4">
+                    <div className="font-sans text-xs text-[#8a8580] mb-1">Subject</div>
+                    <div className="font-albert font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                      {replaceVariables(selectedTemplate.subject)}
+                    </div>
+                  </div>
+                  
+                  {/* Email Preview */}
+                  <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+                    <div className="bg-[#faf8f6] dark:bg-[#0a0c10] px-4 py-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                      <span className="font-sans text-xs text-[#8a8580]">Email Body</span>
+                    </div>
+                    <div 
+                      className="p-4 bg-white dark:bg-[#171b22]"
+                      dangerouslySetInnerHTML={{ 
+                        __html: replaceVariables(selectedTemplate.htmlContent) 
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* Edit Mode */
+                <div className="space-y-6">
+                  {/* Variable Reference */}
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl p-4">
+                    <div className="flex items-start gap-3">
+                      <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                      <div>
+                        <h4 className="font-albert font-semibold text-sm text-blue-900 dark:text-blue-100 mb-2">
+                          Available Variables
+                        </h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          {TEMPLATE_VARIABLES.map(v => (
+                            <div key={v.key} className="font-sans text-xs">
+                              <code className="bg-blue-100 dark:bg-blue-900/40 px-1.5 py-0.5 rounded text-blue-700 dark:text-blue-300">
+                                {v.key}
+                              </code>
+                              <span className="text-blue-700 dark:text-blue-300 ml-2">
+                                {v.description}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Subject Input */}
+                  <div>
+                    <label className="block font-sans text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                      Subject Line
+                    </label>
+                    <input
+                      type="text"
+                      value={editSubject}
+                      onChange={(e) => setEditSubject(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#0a0c10] text-[#1a1a1a] dark:text-[#f5f5f8] font-sans focus:outline-none focus:ring-2 focus:ring-brand-accent/20 focus:border-brand-accent"
+                      placeholder="Email subject..."
+                    />
+                  </div>
+                  
+                  {/* HTML Content Editor */}
+                  <div>
+                    <label className="block font-sans text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+                      Email Content
+                    </label>
+                    <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
+                      <RichTextEditor
+                        initialContent={editHtmlContent}
+                        placeholder="Write your email content..."
+                        onChange={({ html }) => setEditHtmlContent(html)}
+                        minHeight="300px"
+                        maxHeight="500px"
+                        autoFocus={false}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

@@ -122,13 +122,43 @@ export async function GET(request: Request) {
           continue;
         }
         
+        // Try to get quiz data for personalization
+        const emailVariables: Record<string, string> = {
+          firstName: firstName || 'there',
+        };
+        
+        // Look up quiz lead data for this email
+        try {
+          const quizLeadSnapshot = await adminDb
+            .collection('quiz_leads')
+            .where('email', '==', email)
+            .limit(1)
+            .get();
+          
+          if (!quizLeadSnapshot.empty) {
+            const quizLead = quizLeadSnapshot.docs[0].data();
+            if (quizLead.clientCount) {
+              emailVariables.quizClientCount = quizLead.clientCount;
+            }
+            if (quizLead.frustrations && Array.isArray(quizLead.frustrations) && quizLead.frustrations.length > 0) {
+              emailVariables.quizFrustrations = quizLead.frustrations.slice(0, 2).join(', ');
+            }
+            if (quizLead.impactFeatures && Array.isArray(quizLead.impactFeatures) && quizLead.impactFeatures.length > 0) {
+              emailVariables.quizImpactFeatures = quizLead.impactFeatures.slice(0, 2).join(', ');
+            }
+          }
+        } catch (quizErr) {
+          console.warn(`[TESTIMONIAL_CRON] Failed to fetch quiz data for ${email}:`, quizErr);
+          // Continue without quiz data
+        }
+        
         // Queue the testimonial request email
         const result = await queueEmailsForTrigger(
           'day_14',
           email,
           subscription.userId,
           subscription.organizationId,
-          { firstName: firstName || 'there' }
+          emailVariables
         );
         
         if (result.success && result.queuedCount > 0) {

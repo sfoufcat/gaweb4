@@ -24,6 +24,7 @@ import {
   hasPermission,
   formatLimitValue,
 } from '@/lib/coach-permissions';
+import { CoachReferralCard } from './CoachReferralCard';
 
 // =============================================================================
 // TYPES
@@ -468,6 +469,9 @@ export function CoachPlanTab() {
           </div>
         </div>
       )}
+
+      {/* Coach Referral Program */}
+      <CoachReferralCard />
 
       {/* Manual Billing Info Modal */}
       {showManualBillingModal && (

@@ -42,21 +42,29 @@ export default function CompleteSignupPage() {
         setStatus('creating');
         
         // Try to save quiz data from localStorage (if present from OAuth flow)
+        let parsedQuizData: { 
+          clientCount?: string; 
+          frustrations?: string[]; 
+          impactFeatures?: string[];
+          referralCode?: string;
+          source?: string;
+        } | null = null;
+        
         try {
           const storedQuizData = localStorage.getItem('ga_quiz_data');
           if (storedQuizData && user?.primaryEmailAddress?.emailAddress) {
-            const quizData = JSON.parse(storedQuizData);
+            parsedQuizData = JSON.parse(storedQuizData);
             await fetch('/api/quiz-leads', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 email: user.primaryEmailAddress.emailAddress,
                 name: user.fullName || undefined,
-                clientCount: quizData.clientCount || '',
-                frustrations: quizData.frustrations || [],
-                impactFeatures: quizData.impactFeatures || [],
-                referralCode: quizData.referralCode,
-                source: quizData.source,
+                clientCount: parsedQuizData?.clientCount || '',
+                frustrations: parsedQuizData?.frustrations || [],
+                impactFeatures: parsedQuizData?.impactFeatures || [],
+                referralCode: parsedQuizData?.referralCode,
+                source: parsedQuizData?.source,
               }),
             });
             // Clear stored quiz data
@@ -68,10 +76,17 @@ export default function CompleteSignupPage() {
           // Don't block signup on quiz save failure
         }
         
+        // Create organization with quiz data for personalized emails
         const response = await fetch('/api/coach/create-organization', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
+          body: JSON.stringify({
+            quizData: parsedQuizData ? {
+              clientCount: parsedQuizData.clientCount,
+              frustrations: parsedQuizData.frustrations,
+              impactFeatures: parsedQuizData.impactFeatures,
+            } : undefined,
+          }),
         });
         
         const data = await response.json();

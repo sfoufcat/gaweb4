@@ -4,21 +4,58 @@ import { createOrganizationForCoach, ClerkPublicMetadataWithOrg } from '@/lib/cl
 import { adminDb } from '@/lib/firebase-admin';
 import { queueEmailsForTrigger } from '@/lib/email-automation';
 
+// Map quiz frustration IDs to readable text
+const FRUSTRATION_LABELS: Record<string, string> = {
+  manual_checkins: 'Manual check-ins',
+  no_visibility: 'No visibility into engagement',
+  spreadsheets: 'Managing spreadsheets',
+  client_ghosting: 'Clients ghosting',
+  scaling_hard: 'Hard to scale',
+};
+
+// Map quiz impact feature IDs to readable text
+const IMPACT_LABELS: Record<string, string> = {
+  tracking: 'Tracking client progress automatically',
+  squads: 'Squad accountability groups',
+  habits: 'Daily habits & check-ins',
+  engagement: 'Seeing who\'s actually engaged',
+  automation: 'Automated program delivery',
+  group: 'Group coaching that feels personal',
+};
+
 /**
  * POST /api/coach/create-organization
  * 
  * Creates a new Clerk Organization for a coach.
  * Supports multi-org: coaches can create multiple organizations.
  * 
+ * Body (optional):
+ * - quizData: { clientCount, frustrations: string[], impactFeatures: string[] }
+ * 
  * Steps:
  * 1. Verify user is authenticated
  * 2. Create new organization with defaults (supports multiple orgs per coach)
  * 3. Set user's role to 'coach' and orgRole to 'super_coach'
  * 4. Initialize onboarding state to 'needs_profile'
+ * 5. Queue abandoned cart emails with quiz data for personalization
  */
 export async function POST(req: Request) {
   try {
     const { userId } = await auth();
+    
+    // Parse optional quiz data from body
+    let quizData: { 
+      clientCount?: string; 
+      frustrations?: string[]; 
+      impactFeatures?: string[] 
+    } | undefined;
+    
+    try {
+      const body = await req.json();
+      quizData = body?.quizData;
+    } catch {
+      // No body or invalid JSON - that's fine
+    }
     
     if (!userId) {
       return NextResponse.json(
@@ -73,14 +110,40 @@ export async function POST(req: Request) {
     const email = user.emailAddresses[0]?.emailAddress;
     if (email) {
       try {
+        // Build email variables from quiz data
+        const emailVariables: Record<string, string> = {
+          firstName: user.firstName || 'there',
+        };
+        
+        // Add quiz data for personalized emails
+        if (quizData) {
+          if (quizData.clientCount) {
+            emailVariables.quizClientCount = quizData.clientCount;
+          }
+          if (quizData.frustrations && quizData.frustrations.length > 0) {
+            // Convert frustration IDs to readable text
+            const frustrationTexts = quizData.frustrations
+              .map(f => FRUSTRATION_LABELS[f] || f)
+              .slice(0, 2); // Limit to 2 for readability
+            emailVariables.quizFrustrations = frustrationTexts.join(', ');
+          }
+          if (quizData.impactFeatures && quizData.impactFeatures.length > 0) {
+            // Convert impact feature IDs to readable text
+            const impactTexts = quizData.impactFeatures
+              .map(f => IMPACT_LABELS[f] || f)
+              .slice(0, 2); // Limit to 2 for readability
+            emailVariables.quizImpactFeatures = impactTexts.join(', ');
+          }
+        }
+        
         await queueEmailsForTrigger(
           'signup_no_plan',
           email,
           userId,
           organizationId,
-          { firstName: user.firstName || 'there' }
+          emailVariables
         );
-        console.log(`[API_CREATE_ORG] Queued abandoned cart emails for ${email}`);
+        console.log(`[API_CREATE_ORG] Queued abandoned cart emails for ${email} with quiz data:`, quizData ? 'yes' : 'no');
       } catch (emailErr) {
         console.warn('[API_CREATE_ORG] Failed to queue emails:', emailErr);
         // Don't fail org creation if email queueing fails

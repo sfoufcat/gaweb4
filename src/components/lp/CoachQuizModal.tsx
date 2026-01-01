@@ -334,10 +334,17 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
     setIsLoading(true);
     
     try {
+      // Send quiz data for personalized abandoned cart emails
       const response = await fetch('/api/coach/create-organization', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify({
+          quizData: {
+            clientCount,
+            frustrations: Array.from(frustrations),
+            impactFeatures: Array.from(impactFeatures),
+          },
+        }),
       });
       
       const data = await response.json();

@@ -22,11 +22,11 @@ import type {
 // =============================================================================
 
 const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'updatedAt'>[] = [
-  // Abandoned Cart Flow
+  // Abandoned Cart Flow - Personalized with Quiz Data
   {
     flowId: 'abandoned_cart',
     name: 'Abandoned Cart - 2 Hours',
-    subject: 'Your coaching platform is waiting...',
+    subject: '{{firstName}}, about those {{quizClientCount}} clients...',
     htmlContent: `
 <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
   <img src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af" alt="GrowthAddicts" style="width: 48px; height: 48px; border-radius: 12px; margin-bottom: 24px;">
@@ -34,15 +34,19 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
   <h1 style="font-size: 24px; color: #1a1a1a; margin-bottom: 16px;">Hey {{firstName}},</h1>
   
   <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
-    You started setting up your coaching platform but didn't finish. No worries – your progress is saved.
+    You mentioned you're coaching <strong>{{quizClientCount}} clients</strong> and dealing with <strong>{{quizFrustrations}}</strong>.
   </p>
   
   <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
-    Pick up where you left off and get your first program live in 10 minutes.
+    That's exactly why we built GrowthAddicts. You wanted help with <strong>{{quizImpactFeatures}}</strong> – and that's all set up and waiting for you.
+  </p>
+  
+  <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
+    Your platform is 90% ready. Just pick a plan and you're live in 10 minutes.
   </p>
   
   <a href="{{ctaUrl}}" style="display: inline-block; background: #a68b5b; color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px;">
-    Continue Setup →
+    Finish Setup →
   </a>
   
   <p style="font-size: 14px; color: #8a8580; margin-top: 32px;">
@@ -57,22 +61,30 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
   {
     flowId: 'abandoned_cart',
     name: 'Abandoned Cart - 24 Hours',
-    subject: 'Your clients are waiting',
+    subject: 'Still struggling with {{quizFrustrations}}?',
     htmlContent: `
 <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
   <img src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af" alt="GrowthAddicts" style="width: 48px; height: 48px; border-radius: 12px; margin-bottom: 24px;">
   
-  <h1 style="font-size: 24px; color: #1a1a1a; margin-bottom: 16px;">{{firstName}}, quick question:</h1>
+  <h1 style="font-size: 24px; color: #1a1a1a; margin-bottom: 16px;">{{firstName}}, let me be direct:</h1>
   
   <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
-    What's holding you back from launching your coaching platform?
+    You said <strong>{{quizFrustrations}}</strong> was holding you back. Every day you wait is another day your {{quizClientCount}} clients aren't getting the accountability they need.
+  </p>
+  
+  <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
+    Here's what coaches like you are doing with GrowthAddicts:
   </p>
   
   <ul style="font-size: 16px; color: #5f5a55; line-height: 1.8; margin-bottom: 24px; padding-left: 20px;">
-    <li>Not sure if it's right for you? <strong>Try it free for 7 days.</strong></li>
-    <li>Technical concerns? <strong>We set up everything for you.</strong></li>
-    <li>Already using something else? <strong>We help you migrate.</strong></li>
+    <li><strong>Alignment scores</strong> show exactly who's engaged (no more guessing)</li>
+    <li><strong>Squad groups</strong> create peer accountability that sticks</li>
+    <li><strong>Automated check-ins</strong> replace manual follow-ups</li>
   </ul>
+  
+  <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
+    You wanted <strong>{{quizImpactFeatures}}</strong>. It's all there, ready to go.
+  </p>
   
   <a href="{{ctaUrl}}" style="display: inline-block; background: #a68b5b; color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px;">
     Start Free Trial →
@@ -90,7 +102,7 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
   {
     flowId: 'abandoned_cart',
     name: 'Abandoned Cart - 72 Hours',
-    subject: 'Last chance: Your coaching platform awaits',
+    subject: 'Last email about your {{quizClientCount}} clients',
     htmlContent: `
 <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
   <img src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af" alt="GrowthAddicts" style="width: 48px; height: 48px; border-radius: 12px; margin-bottom: 24px;">
@@ -98,15 +110,23 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
   <h1 style="font-size: 24px; color: #1a1a1a; margin-bottom: 16px;">{{firstName}}, this is my last email</h1>
   
   <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
-    I noticed you started creating your coaching platform but haven't finished. I won't bug you again after this.
+    I won't bug you again after this. But I wanted to leave you with one thought:
+  </p>
+  
+  <p style="font-size: 18px; color: #1a1a1a; line-height: 1.6; margin-bottom: 24px; font-style: italic; border-left: 4px solid #a68b5b; padding-left: 16px;">
+    "The difference between coaches who scale and coaches who burn out isn't talent. It's systems."
   </p>
   
   <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
-    But before I go – coaches who use GrowthAddicts see <strong>40% higher client retention</strong> because they can finally track who's doing the work.
+    You're managing <strong>{{quizClientCount}} clients</strong>. You told me you struggle with <strong>{{quizFrustrations}}</strong>. That's not sustainable.
   </p>
   
   <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
-    If accountability and engagement tracking matters to your business, give it a shot.
+    Coaches who use GrowthAddicts see <strong>40% higher client retention</strong> because they can finally track who's doing the work – and who needs attention before they drop off.
+  </p>
+  
+  <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
+    The platform you started setting up is still there. 7-day free trial, cancel anytime.
   </p>
   
   <a href="{{ctaUrl}}" style="display: inline-block; background: #a68b5b; color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px;">
@@ -127,7 +147,7 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
   {
     flowId: 'testimonial_request',
     name: 'Testimonial Request - Day 14',
-    subject: 'How\'s GrowthAddicts working for you?',
+    subject: 'How\'s GrowthAddicts working for your {{quizClientCount}} clients?',
     htmlContent: `
 <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
   <img src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af" alt="GrowthAddicts" style="width: 48px; height: 48px; border-radius: 12px; margin-bottom: 24px;">
@@ -135,11 +155,11 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
   <h1 style="font-size: 24px; color: #1a1a1a; margin-bottom: 16px;">Hey {{firstName}}!</h1>
   
   <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
-    You've been using GrowthAddicts for 2 weeks now. How's it going?
+    Two weeks ago, you told me you were struggling with <strong>{{quizFrustrations}}</strong>. How's that going now?
   </p>
   
   <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
-    If you're loving the platform, I'd be incredibly grateful if you could share a quick testimonial. It helps other coaches discover us.
+    If GrowthAddicts has made a difference for you and your {{quizClientCount}} clients, I'd be incredibly grateful if you could share a quick testimonial. It helps other coaches discover us.
   </p>
   
   <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
@@ -147,7 +167,7 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
   </p>
   
   <p style="font-size: 16px; color: #5f5a55; line-height: 1.6; margin-bottom: 24px;">
-    <strong>Not loving it?</strong> Reply and tell me why. I personally read every response and want to make GrowthAddicts better.
+    <strong>Not loving it?</strong> Reply and tell me why. I personally read every response and want to make GrowthAddicts better for coaches like you.
   </p>
   
   <p style="font-size: 14px; color: #8a8580; margin-top: 32px;">
