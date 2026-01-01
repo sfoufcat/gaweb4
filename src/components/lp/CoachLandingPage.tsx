@@ -269,7 +269,7 @@ export function CoachLandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
-              Finally. Coaching<br />
+              Finally, Coaching<br />
               <span className="bg-gradient-to-r from-brand-accent via-[#d4a61d] to-[#c08a5c] bg-clip-text text-transparent bg-[length:200%_auto]" style={{ animation: 'shimmer 3s ease-in-out infinite' }}>
                 You Can Prove Works.
               </span>
@@ -281,7 +281,7 @@ export function CoachLandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              GrowthAddicts is the only coaching platform where clients don't just watch—they <strong className="text-[#1a1a1a] dark:text-[#f5f5f8]">do</strong>. Track habits, daily commitments, and accountability scores. Finally prove your coaching works.
+              GrowthAddicts is the only coaching platform where clients don't just watch - they <strong className="text-[#1a1a1a] dark:text-[#f5f5f8]">do</strong>. Track habits, daily commitments, and accountability scores. Finally prove your coaching works.
             </motion.p>
             
             {/* CTA Buttons */}
