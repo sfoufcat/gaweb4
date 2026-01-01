@@ -52,7 +52,7 @@ export async function GET(req: Request) {
 
     const snapshot = await query.get();
 
-    let flows = snapshot.docs.map(doc => {
+    let flows: { id: string; name: string; type: CheckInFlowType; description?: string; enabled: boolean; stepCount: number }[] = snapshot.docs.map(doc => {
       const data = doc.data() as Omit<OrgCheckInFlow, 'id'>;
       return {
         id: doc.id,
