@@ -167,6 +167,7 @@ const FAQ = [
 export function CoachLandingPage() {
   const [quizOpen, setQuizOpen] = useState(false);
   const [testimonialIndex, setTestimonialIndex] = useState(0);
+  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right'>('left');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const heroRef = useRef<HTMLDivElement>(null);
 
@@ -283,10 +284,10 @@ export function CoachLandingPage() {
               transition={{ duration: 0.6, delay: 0.2 }}
             >
               <p className="font-sans text-[18px] sm:text-[20px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed">
-                GrowthAddicts is the only coaching platform where clients don't just watch - they <strong className="text-[#1a1a1a] dark:text-[#f5f5f8]">do</strong>.
-                <br className="hidden sm:inline" />
-                <span className="sm:hidden"> </span>
-                Track habits, daily commitments, and accountability scores. Finally prove your coaching works.
+                <span>GrowthAddicts is the only coaching platform where clients don't just watch - they <strong className="text-[#1a1a1a] dark:text-[#f5f5f8]">do</strong>.</span>
+                <span className="block h-3 sm:hidden" />
+                <span className="hidden sm:inline"> </span>
+                <span>Track habits, daily commitments, and accountability scores. Finally prove your coaching works.</span>
               </p>
             </motion.div>
             
@@ -643,23 +644,26 @@ export function CoachLandingPage() {
             </div>
             
             <div className="relative overflow-hidden touch-pan-y">
-              <AnimatePresence mode="wait">
+              <AnimatePresence initial={false} mode="popLayout" custom={swipeDirection}>
                 <motion.div
                   key={testimonialIndex}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.3 }}
+                  custom={swipeDirection}
+                  initial={(dir) => ({ x: dir === 'left' ? 300 : -300, opacity: 0 })}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={(dir) => ({ x: dir === 'left' ? -300 : 300, opacity: 0 })}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                   drag="x"
                   dragConstraints={{ left: 0, right: 0 }}
-                  dragElastic={0.2}
+                  dragElastic={0.15}
                   onDragEnd={(_, info) => {
                     const swipeThreshold = 50;
                     if (info.offset.x < -swipeThreshold) {
                       // Swiped left - go to next
+                      setSwipeDirection('left');
                       setTestimonialIndex((prev) => (prev + 1) % TESTIMONIALS.length);
                     } else if (info.offset.x > swipeThreshold) {
                       // Swiped right - go to previous
+                      setSwipeDirection('right');
                       setTestimonialIndex((prev) => (prev - 1 + TESTIMONIALS.length) % TESTIMONIALS.length);
                     }
                   }}
@@ -735,17 +739,17 @@ export function CoachLandingPage() {
             >
               <div className="overflow-x-auto">
                 {/* Header row */}
-                <div className="flex border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+                <div className="flex items-center border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
                   <div className="flex-1 text-left p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2]">Feature</div>
-                  <div className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] text-center w-20 sm:w-24 order-2 sm:order-1">Skool</div>
-                  <div className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] text-center w-20 sm:w-24 order-3 sm:order-2">Circle</div>
-                  <div className="p-4 text-center w-20 sm:w-24 order-1 sm:order-3">
+                  <div className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] flex items-center justify-center w-20 sm:w-24 order-2 sm:order-1">Skool</div>
+                  <div className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] flex items-center justify-center w-20 sm:w-24 order-3 sm:order-2">Circle</div>
+                  <div className="p-4 flex items-center justify-center w-20 sm:w-24 order-1 sm:order-3">
                     <Image
                       src="/logo.jpg"
                       alt="GrowthAddicts"
                       width={32}
                       height={32}
-                      className="mx-auto rounded-lg"
+                      className="rounded-lg"
                     />
                   </div>
                 </div>
