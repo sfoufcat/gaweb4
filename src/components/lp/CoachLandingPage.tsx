@@ -269,9 +269,9 @@ export function CoachLandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
-              Your Clients Consume.<br />
+              Finally. Coaching<br />
               <span className="bg-gradient-to-r from-brand-accent via-[#d4a61d] to-[#c08a5c] bg-clip-text text-transparent bg-[length:200%_auto]" style={{ animation: 'shimmer 3s ease-in-out infinite' }}>
-                They Don't Transform.
+                You Can Prove Works.
               </span>
             </motion.h1>
             
@@ -393,7 +393,7 @@ export function CoachLandingPage() {
         </section>
 
         {/* Problem Section */}
-        <section className="py-20 sm:py-28 relative overflow-hidden">
+        <section className="py-12 sm:py-16 relative overflow-hidden">
           {/* Decorative background elements */}
           <div className="absolute top-20 left-10 w-72 h-72 bg-rose-200/20 dark:bg-rose-900/10 rounded-full blur-3xl" />
           <div className="absolute bottom-20 right-10 w-96 h-96 bg-brand-accent/10 rounded-full blur-3xl" />
@@ -495,7 +495,7 @@ export function CoachLandingPage() {
         </section>
 
         {/* Solution Section */}
-        <section className="py-20 sm:py-28">
+        <section className="py-12 sm:py-16">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
               Finally. Accountability That Scales.
@@ -567,7 +567,7 @@ export function CoachLandingPage() {
         </section>
 
         {/* Features Section */}
-        <section id="features" className="py-20 sm:py-28 relative overflow-hidden">
+        <section id="features" className="py-12 sm:py-16 relative overflow-hidden">
           {/* Animated gradient background */}
           <div className="absolute inset-0 bg-gradient-to-br from-[#faf8f6] via-white to-[#f8f6f3] dark:from-[#0f1218] dark:via-[#12161e] dark:to-[#0f1218]" />
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-gradient-to-br from-purple-200/30 to-transparent dark:from-purple-900/20 rounded-full blur-3xl" />
@@ -615,7 +615,7 @@ export function CoachLandingPage() {
         </section>
 
         {/* Testimonials Section */}
-        <section className="py-20 sm:py-28">
+        <section className="py-12 sm:py-16">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
               <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
@@ -673,7 +673,7 @@ export function CoachLandingPage() {
         </section>
 
         {/* Comparison Table */}
-        <section className="py-20 sm:py-28 relative overflow-hidden">
+        <section className="py-12 sm:py-16 relative overflow-hidden">
           {/* Background decorations */}
           <div className="absolute top-1/2 left-0 w-64 h-64 bg-emerald-200/20 dark:bg-emerald-900/10 rounded-full blur-3xl -translate-y-1/2" />
           <div className="absolute top-1/3 right-0 w-80 h-80 bg-brand-accent/15 rounded-full blur-3xl" />
@@ -752,7 +752,7 @@ export function CoachLandingPage() {
         </section>
 
         {/* Pricing Section */}
-        <section id="pricing" className="py-20 sm:py-28">
+        <section id="pricing" className="py-12 sm:py-16">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
               <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
@@ -823,7 +823,7 @@ export function CoachLandingPage() {
         </section>
 
         {/* FAQ Section */}
-        <section id="faq" className="py-20 sm:py-28 relative overflow-hidden">
+        <section id="faq" className="py-12 sm:py-16 relative overflow-hidden">
           {/* Background decorations */}
           <div className="absolute top-1/4 right-10 w-64 h-64 bg-cyan-200/20 dark:bg-cyan-900/10 rounded-full blur-3xl" />
           <div className="absolute bottom-1/4 left-10 w-72 h-72 bg-brand-accent/15 rounded-full blur-3xl" />
@@ -884,7 +884,7 @@ export function CoachLandingPage() {
         </section>
 
         {/* Final CTA Section */}
-        <section className="py-20 sm:py-28">
+        <section className="py-12 sm:py-16">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="bg-gradient-to-br from-[#1a1a1a] via-[#2c2520] to-[#1a1a1a] dark:from-[#0f1218] dark:via-[#171b22] dark:to-[#0f1218] rounded-3xl py-16 sm:py-20 px-8 sm:px-12 lg:px-16 relative overflow-hidden">
               {/* Decorative elements */}

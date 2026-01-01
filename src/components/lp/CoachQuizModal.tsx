@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useSignUp } from '@clerk/nextjs';
+import { useUser, useSignUp, useClerk } from '@clerk/nextjs';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -61,6 +61,7 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
   const router = useRouter();
   const { user, isLoaded: userLoaded } = useUser();
   const { signUp, isLoaded: signUpLoaded, setActive } = useSignUp();
+  const { signOut } = useClerk();
   
   const [step, setStep] = useState<QuizStep>('why');
   const [clientCount, setClientCount] = useState<ClientCount>(null);
@@ -369,8 +370,14 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
                     className="p-6"
                   >
                     <div className="text-center mb-6">
-                      <div className="w-14 h-14 bg-gradient-to-br from-brand-accent to-[#8c6245] rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <Sparkles className="w-7 h-7 text-white" />
+                      <div className="w-14 h-14 rounded-2xl overflow-hidden mx-auto mb-4 relative">
+                        <Image
+                          src={LOGO_URL}
+                          alt="Growth Addicts"
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
                       </div>
                       <h2 className="font-albert text-[26px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1px]">
                         Why Growth Addicts?
@@ -989,10 +996,16 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
                       </button>
                       
                       <p className="text-center font-sans text-[12px] text-[#a7a39e] dark:text-[#7d8190] pt-2">
-                        Want to create another program?{' '}
-                        <a href="mailto:support@growthaddicts.com" className="text-brand-accent hover:underline">
-                          Contact us
-                        </a>
+                        Want to use a different account?{' '}
+                        <button 
+                          onClick={async () => {
+                            await signOut();
+                            setStep('signup');
+                          }}
+                          className="text-brand-accent hover:underline"
+                        >
+                          Log out
+                        </button>
                       </p>
                     </div>
                   </motion.div>
