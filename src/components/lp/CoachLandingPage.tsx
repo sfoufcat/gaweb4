@@ -164,6 +164,21 @@ const FAQ = [
   },
 ];
 
+const testimonialSlideVariants = {
+  enter: (direction: 'left' | 'right') => ({
+    x: direction === 'left' ? 300 : -300,
+    opacity: 0,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+  },
+  exit: (direction: 'left' | 'right') => ({
+    x: direction === 'left' ? -300 : 300,
+    opacity: 0,
+  }),
+};
+
 export function CoachLandingPage() {
   const [quizOpen, setQuizOpen] = useState(false);
   const [testimonialIndex, setTestimonialIndex] = useState(0);
@@ -648,9 +663,10 @@ export function CoachLandingPage() {
                 <motion.div
                   key={testimonialIndex}
                   custom={swipeDirection}
-                  initial={(dir) => ({ x: dir === 'left' ? 300 : -300, opacity: 0 })}
-                  animate={{ x: 0, opacity: 1 }}
-                  exit={(dir) => ({ x: dir === 'left' ? -300 : 300, opacity: 0 })}
+                  variants={testimonialSlideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
                   transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                   drag="x"
                   dragConstraints={{ left: 0, right: 0 }}
