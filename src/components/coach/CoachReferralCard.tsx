@@ -153,8 +153,7 @@ export function CoachReferralCard() {
             <Button
               onClick={() => copyToClipboard(data.code, 'code')}
               variant="outline"
-              size="icon"
-              className="h-12 w-12 rounded-xl"
+              className="h-12 w-12 min-w-12 p-0 rounded-xl"
             >
               {copied === 'code' ? (
                 <Check className="w-5 h-5 text-green-500" />
@@ -177,8 +176,7 @@ export function CoachReferralCard() {
             <Button
               onClick={() => copyToClipboard(data.referralUrl, 'url')}
               variant="outline"
-              size="icon"
-              className="h-12 w-12 rounded-xl"
+              className="h-12 w-12 min-w-12 p-0 rounded-xl"
             >
               {copied === 'url' ? (
                 <Check className="w-5 h-5 text-green-500" />
