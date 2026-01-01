@@ -202,8 +202,8 @@ export function CoachLandingPage() {
 
       <div className="min-h-screen relative">
         {/* Header */}
-        <header className="sticky top-0 z-40 bg-[#faf8f6]/80 dark:bg-[#05070b]/80 backdrop-blur-xl border-b border-[#e1ddd8]/30 dark:border-[#262b35]/30">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <header className="sticky top-0 z-40 mx-2 sm:mx-0 mt-2 sm:mt-0 rounded-2xl sm:rounded-none bg-[#faf8f6]/80 dark:bg-[#05070b]/80 backdrop-blur-xl border border-[#e1ddd8]/30 dark:border-[#262b35]/30 sm:border-b sm:border-t-0 sm:border-x-0">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
             <div className="flex items-center justify-between">
               {/* Logo */}
               <Link href="/" className="flex items-center gap-3">
@@ -216,7 +216,7 @@ export function CoachLandingPage() {
                     unoptimized
                   />
                 </div>
-                <span className="font-albert text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-tight">
+                <span className="hidden sm:inline font-albert text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-tight">
                   GrowthAddicts
                 </span>
               </Link>
@@ -231,9 +231,10 @@ export function CoachLandingPage() {
               {/* CTA */}
               <button
                 onClick={handleCTA}
-                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] text-[#2c2520] rounded-full font-albert text-sm font-semibold hover:opacity-90 transition-opacity shadow-lg shadow-[#e8b923]/20"
+                className="flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] text-[#2c2520] rounded-full font-albert text-sm font-semibold hover:opacity-90 transition-opacity shadow-lg shadow-[#e8b923]/20"
               >
-                Start free trial
+                <span className="sm:hidden">Try Free</span>
+                <span className="hidden sm:inline">Start free trial</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -275,14 +276,19 @@ export function CoachLandingPage() {
               </span>
             </motion.h1>
             
-            <motion.p 
-              className="font-sans text-[18px] sm:text-[20px] text-[#5f5a55] dark:text-[#b2b6c2] max-w-2xl mx-auto mb-10 leading-relaxed"
+            <motion.div 
+              className="max-w-2xl mx-auto mb-10"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              GrowthAddicts is the only coaching platform where clients don't just watch - they <strong className="text-[#1a1a1a] dark:text-[#f5f5f8]">do</strong>. Track habits, daily commitments, and accountability scores. Finally prove your coaching works.
-            </motion.p>
+              <p className="font-sans text-[18px] sm:text-[20px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed mb-4">
+                GrowthAddicts is the only coaching platform where clients don't just watch - they <strong className="text-[#1a1a1a] dark:text-[#f5f5f8]">do</strong>.
+              </p>
+              <p className="font-sans text-[18px] sm:text-[20px] text-[#5f5a55] dark:text-[#b2b6c2] leading-relaxed">
+                Track habits, daily commitments, and accountability scores. Finally prove your coaching works.
+              </p>
+            </motion.div>
             
             {/* CTA Buttons */}
             <motion.div 
@@ -314,7 +320,7 @@ export function CoachLandingPage() {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.4 }}
             >
-              Credit card required • Cancel anytime • Set up in 10 minutes
+              Cancel anytime • Set up in 10 minutes
             </motion.p>
             
             {/* Trust badges - actual logos in grayscale */}
@@ -769,7 +775,7 @@ export function CoachLandingPage() {
                 Simple Pricing. No Surprises.
               </h2>
               <p className="font-sans text-[17px] text-[#5f5a55] dark:text-[#b2b6c2]">
-                7-day free trial on all plans • Credit card required
+                7-day free trial on all plans
               </p>
             </div>
             
@@ -905,7 +911,8 @@ export function CoachLandingPage() {
               
               <div className="max-w-3xl mx-auto text-center relative">
                 <h2 className="font-albert text-[32px] sm:text-[44px] lg:text-[52px] font-bold text-white tracking-[-2px] leading-[1.1] mb-6">
-                  Your Clients Are Waiting<br />
+                  Your Clients Are Waiting{' '}
+                  <span className="hidden sm:inline"><br /></span>
                   <span className="bg-gradient-to-r from-[#e8b923] via-[#f0c940] to-[#e8b923] bg-clip-text text-transparent">
                     to Be Held Accountable.
                   </span>
@@ -917,14 +924,15 @@ export function CoachLandingPage() {
                 
                 <button
                   onClick={handleCTA}
-                  className="inline-flex items-center gap-2 px-10 py-5 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#f0c940] hover:to-[#e8b923] text-[#2c2520] rounded-full font-albert text-[18px] font-bold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-[#e8b923]/30"
+                  className="inline-flex items-center gap-2 px-8 sm:px-10 py-4 sm:py-5 bg-gradient-to-r from-[#e8b923] to-[#d4a61d] hover:from-[#f0c940] hover:to-[#e8b923] text-[#2c2520] rounded-full font-albert text-[16px] sm:text-[18px] font-bold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-[#e8b923]/30"
                 >
-                  Start Your 7-Day Trial
+                  <span className="sm:hidden">Start Your Trial</span>
+                  <span className="hidden sm:inline">Start Your 7-Day Trial</span>
                   <ArrowRight className="w-5 h-5" />
                 </button>
                 
                 <p className="font-sans text-[13px] text-[#7d8190] mt-6">
-                  Credit card required • Cancel anytime • Set up in 10 minutes
+                  Cancel anytime • Set up in 10 minutes
                 </p>
               </div>
             </div>
