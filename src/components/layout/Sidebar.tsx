@@ -11,6 +11,7 @@ import { DEFAULT_MENU_ICONS } from '@/types';
 import { useChatUnreadCounts } from '@/hooks/useChatUnreadCounts';
 import { useBrandingValues, useFeedEnabled, useEmptyStateBehaviors } from '@/contexts/BrandingContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import { OrganizationSwitcher } from './OrganizationSwitcher';
 import { useMyPrograms } from '@/hooks/useMyPrograms';
 import { useSquad } from '@/hooks/useSquad';
@@ -51,7 +52,24 @@ function useScrollDirection() {
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { sessionClaims, isLoaded, isSignedIn, userId } = useAuth();
+  const { sessionClaims: authClaims, isLoaded: authLoaded, isSignedIn: authSignedIn, userId: authUserId } = useAuth();
+  const { isDemoSite } = useDemoMode();
+
+  // Override auth state if in demo mode
+  const isSignedIn = isDemoSite || authSignedIn;
+  const isLoaded = isDemoSite || authLoaded;
+  const userId = isDemoSite ? 'demo-user-1' : authUserId;
+
+  // Mock session claims for demo user to simulate coach/admin access
+  const sessionClaims = isDemoSite ? {
+    publicMetadata: {
+      role: 'coach',
+      orgRole: 'super_coach',
+      coachingStatus: 'active',
+      coaching: true
+    }
+  } : authClaims;
+
   const { totalUnread } = useChatUnreadCounts();
   const { scrollDirection, isAtTop } = useScrollDirection();
   const { logoUrl, horizontalLogoUrl, logoUrlDark, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, menuOrder, isDefault, accentLightIsDark, accentDarkIsDark } = useBrandingValues();

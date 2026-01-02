@@ -20,6 +20,8 @@ import { GATracker } from "@/components/analytics/GATracker";
 import { getServerBranding } from "@/lib/branding-server";
 import { SWRProvider } from "@/lib/swr-provider";
 import { DEFAULT_LOGO_URL, DEFAULT_THEME } from "@/types";
+import { DemoModeProvider } from "@/contexts/DemoModeContext";
+import { DemoSessionProvider } from "@/contexts/DemoSessionContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -146,55 +148,59 @@ export default async function RootLayout({
           data-layout={layoutMode}
           suppressHydrationWarning
         >
-          {/* Client-side sync for body data-layout attribute (safety net for hydration/navigation) */}
-          <Suspense fallback={null}>
-            <LayoutModeSync />
-          </Suspense>
-          
-          <ThemeProvider initialOrgDefaultTheme={ssrBranding.branding.defaultTheme || DEFAULT_THEME}>
-          <SWRProvider>
-          <BrandingProvider 
-            initialBranding={ssrBranding.branding}
-            initialCoachingPromo={ssrBranding.coachingPromo}
-            initialIsDefault={ssrBranding.isDefault}
-            initialFeedEnabled={ssrBranding.feedEnabled}
-            initialProgramEmptyStateBehavior={ssrBranding.programEmptyStateBehavior}
-            initialSquadEmptyStateBehavior={ssrBranding.squadEmptyStateBehavior}
-          >
-          <SquadProvider>
-          <OrganizationProvider>
-            <StreamChatProvider>
-              <StreamVideoProvider>
-                <Suspense fallback={null}>
-                  <ConditionalSidebar layoutMode={layoutMode} />
-                </Suspense>
-                
-                {/* Main Content Wrapper - Adjusted for narrower sidebar */}
-                <Suspense fallback={null}>
-                  <ConditionalMain>
-                    <PageTransition>
-                      {children}
-                    </PageTransition>
-                  </ConditionalMain>
-                </Suspense>
-                
-                {/* Global incoming call handler */}
-                <IncomingCallHandler />
-                
-                {/* Sync user's timezone from browser (handles traveling users) */}
-                <TimezoneSync />
-                
-                {/* Google Analytics tracking (org-specific) */}
-                <Suspense fallback={null}>
-                  <GATracker />
-                </Suspense>
-              </StreamVideoProvider>
-            </StreamChatProvider>
-          </OrganizationProvider>
-          </SquadProvider>
-          </BrandingProvider>
-          </SWRProvider>
-          </ThemeProvider>
+          <DemoModeProvider>
+            <DemoSessionProvider>
+              {/* Client-side sync for body data-layout attribute (safety net for hydration/navigation) */}
+              <Suspense fallback={null}>
+                <LayoutModeSync />
+              </Suspense>
+              
+              <ThemeProvider initialOrgDefaultTheme={ssrBranding.branding.defaultTheme || DEFAULT_THEME}>
+              <SWRProvider>
+              <BrandingProvider 
+                initialBranding={ssrBranding.branding}
+                initialCoachingPromo={ssrBranding.coachingPromo}
+                initialIsDefault={ssrBranding.isDefault}
+                initialFeedEnabled={ssrBranding.feedEnabled}
+                initialProgramEmptyStateBehavior={ssrBranding.programEmptyStateBehavior}
+                initialSquadEmptyStateBehavior={ssrBranding.squadEmptyStateBehavior}
+              >
+              <SquadProvider>
+              <OrganizationProvider>
+                <StreamChatProvider>
+                  <StreamVideoProvider>
+                    <Suspense fallback={null}>
+                      <ConditionalSidebar layoutMode={layoutMode} />
+                    </Suspense>
+                    
+                    {/* Main Content Wrapper - Adjusted for narrower sidebar */}
+                    <Suspense fallback={null}>
+                      <ConditionalMain>
+                        <PageTransition>
+                          {children}
+                        </PageTransition>
+                      </ConditionalMain>
+                    </Suspense>
+                    
+                    {/* Global incoming call handler */}
+                    <IncomingCallHandler />
+                    
+                    {/* Sync user's timezone from browser (handles traveling users) */}
+                    <TimezoneSync />
+                    
+                    {/* Google Analytics tracking (org-specific) */}
+                    <Suspense fallback={null}>
+                      <GATracker />
+                    </Suspense>
+                  </StreamVideoProvider>
+                </StreamChatProvider>
+              </OrganizationProvider>
+              </SquadProvider>
+              </BrandingProvider>
+              </SWRProvider>
+              </ThemeProvider>
+            </DemoSessionProvider>
+          </DemoModeProvider>
         </body>
       </html>
     </ClerkThemeProvider>

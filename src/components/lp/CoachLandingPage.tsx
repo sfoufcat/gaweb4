@@ -32,7 +32,12 @@ const LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.fi
 const DASHBOARD_SCREENSHOT = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2Fdashboard-preview.png?alt=media';
 
 const TRUST_LOGOS = [
-  { name: 'ICF', logo: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/landers%2Flogo1.png?alt=media&token=7334b9b8-3373-4916-83ec-df92eb5e9332' },
+  { 
+    name: 'ICF', 
+    logo: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/landers%2Flogo1.png?alt=media&token=7334b9b8-3373-4916-83ec-df92eb5e9332',
+    // Special handling for white background logo
+    className: 'h-full w-auto object-contain grayscale mix-blend-multiply dark:mix-blend-screen dark:invert'
+  },
   { name: 'iPEC', logo: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/landers%2Flogo2.png?alt=media&token=fac36442-711e-4e77-a089-f6b27c5cc74b' },
   { name: 'CTI', logo: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/landers%2Flogo3.png?alt=media&token=51e99040-6b73-4c0e-9436-50bc5aeda615' },
   { name: 'Health Coach Institute', logo: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/landers%2Flogo4.png?alt=media&token=5efc6eb5-6642-47a1-b83a-b98e6341be14' },
@@ -405,7 +410,7 @@ export function CoachLandingPage() {
                       alt={logo.name}
                       width={120}
                       height={40}
-                      className="h-full w-auto object-contain grayscale dark:brightness-0 dark:invert"
+                      className={logo.className || "h-full w-auto object-contain grayscale dark:brightness-0 dark:invert"}
                       unoptimized
                     />
                   </div>

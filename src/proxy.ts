@@ -573,9 +573,21 @@ export const proxy = clerkMiddleware(async (auth, request) => {
       '/_next',
       '/static',
       '/favicon.ico',
+      '/home',
+      '/program',
+      '/squad',
+      '/discover',
+      '/chat',
+      '/feed',
+      '/api/feed', // For feed functionality
+      '/api/chat', // For chat functionality
+      '/api/program', // For program functionality
     ];
+
+    // Allow image extensions
+    const isImageRequest = /\.(png|jpg|jpeg|gif|svg|webp|ico)$/i.test(pathname);
     
-    const isAllowedDemoRoute = allowedDemoRoutes.some(route => pathname.startsWith(route));
+    const isAllowedDemoRoute = allowedDemoRoutes.some(route => pathname.startsWith(route)) || isImageRequest;
     
     if (isAllowedDemoRoute) {
       return NextResponse.next({

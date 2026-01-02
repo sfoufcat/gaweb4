@@ -6,10 +6,9 @@ import { useAuth, useOrganization } from '@clerk/nextjs';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { ClientDetailView, CustomizeBrandingTab, ChannelManagementTab, PaymentFailedBanner } from '@/components/coach';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, AlertCircle, Users, Eye, EyeOff, Lock } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Users } from 'lucide-react';
 import type { ClerkPublicMetadata, OrgRole, ProgramCohort, CoachSubscription } from '@/types';
-import { DemoModeProvider, useDemoMode } from '@/contexts/DemoModeContext';
-import { DemoSessionProvider } from '@/contexts/DemoSessionContext';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 // Admin components for expanded coach dashboard
 import { AdminUsersTab, type ColumnKey } from '@/components/admin/AdminUsersTab';
@@ -95,55 +94,9 @@ function SchedulingTab() {
 }
 
 /**
- * Demo Mode Toggle Component
- * Shows a toggle button to enable/disable demo mode with fake client data.
- * On demo.growthaddicts.com, shows a locked "Demo Site" badge instead.
+ * Coach Dashboard Page
  */
-function DemoModeToggle() {
-  const { isDemoMode, isLocked, toggleDemoMode } = useDemoMode();
-  
-  // On demo site, show locked badge instead of toggle
-  if (isLocked) {
-    return (
-      <div
-        className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium font-albert bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 dark:from-purple-900/30 dark:to-pink-900/30 dark:text-purple-300 ring-2 ring-purple-400 dark:ring-purple-600"
-        title="You are on the demo site - all data is temporary"
-      >
-        <Lock className="w-4 h-4" />
-        <span>Demo Site</span>
-      </div>
-    );
-  }
-  
-  return (
-    <button
-      onClick={toggleDemoMode}
-      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium font-albert transition-all ${
-        isDemoMode
-          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 ring-2 ring-purple-400 dark:ring-purple-600'
-          : 'bg-[#f5f3f0] text-[#5f5a55] dark:bg-[#262b35] dark:text-[#b2b6c2] hover:bg-[#ebe7e2] dark:hover:bg-[#313746]'
-      }`}
-      title={isDemoMode ? 'Exit demo mode' : 'Enter demo mode with fake clients'}
-    >
-      {isDemoMode ? (
-        <>
-          <EyeOff className="w-4 h-4" />
-          <span className="hidden sm:inline">Exit Demo</span>
-        </>
-      ) : (
-        <>
-          <Eye className="w-4 h-4" />
-          <span className="hidden sm:inline">Demo Mode</span>
-        </>
-      )}
-    </button>
-  );
-}
-
-/**
- * Coach Page Content (wrapped by DemoModeProvider)
- */
-function CoachPageContent() {
+export default function CoachPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { sessionClaims, isLoaded } = useAuth();
@@ -403,8 +356,7 @@ function CoachPageContent() {
               </p>
             </div>
             
-            {/* Demo Mode Toggle */}
-            <DemoModeToggle />
+            {/* Demo Mode Toggle - removed as requested */}
           </div>
         </div>
 
@@ -711,24 +663,5 @@ function CoachPageContent() {
         </Tabs>
       </div>
     </div>
-  );
-}
-
-/**
- * Coach Dashboard Page
- * Wrapped with DemoModeProvider and DemoSessionProvider for demo mode functionality.
- * 
- * On demo.growthaddicts.com:
- * - Auth is bypassed (no Clerk required)
- * - Demo mode is locked on
- * - All data is session-isolated (each tab has its own demo data)
- */
-export default function CoachPage() {
-  return (
-    <DemoModeProvider>
-      <DemoSessionProvider>
-        <CoachPageContent />
-      </DemoSessionProvider>
-    </DemoModeProvider>
   );
 }
