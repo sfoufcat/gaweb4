@@ -482,7 +482,7 @@ export function SquadFormDialog({
           </AlertDialogTitle>
           {!squad && (
             <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-              Masterminds are perfect for evergreen groups, ongoing communities, or paid peer groups that don&apos;t follow a fixed program schedule.
+              Squads are perfect for evergreen groups, ongoing communities, or paid peer groups that don&apos;t follow a fixed program schedule.
             </p>
           )}
         </AlertDialogHeader>
@@ -503,7 +503,7 @@ export function SquadFormDialog({
                     This squad is in grace period
                   </h3>
                   <p className="text-xs text-amber-700 dark:text-amber-300 font-albert mt-0.5">
-                    The linked program has ended. Convert to a mastermind to keep members connected.
+                    The linked program has ended. Convert to a standalone squad to keep members connected.
                   </p>
                   <Button
                     type="button"
@@ -511,7 +511,7 @@ export function SquadFormDialog({
                     disabled={converting}
                     className="mt-2 bg-amber-600 hover:bg-amber-700 text-white text-xs px-3 py-1 h-auto"
                   >
-                    {converting ? 'Converting...' : 'Convert to Mastermind'}
+                    {converting ? 'Converting...' : 'Convert to Squad'}
                   </Button>
                 </div>
               </div>
@@ -529,10 +529,10 @@ export function SquadFormDialog({
                 </div>
                 <div>
                   <h3 className="font-albert font-semibold text-sm text-green-800 dark:text-green-200">
-                    Converted to mastermind!
+                    Converted to standalone squad!
                   </h3>
                   <p className="text-xs text-green-700 dark:text-green-300 font-albert">
-                    This squad is now a mastermind.
+                    This squad is now a standalone squad.
                   </p>
                 </div>
               </div>

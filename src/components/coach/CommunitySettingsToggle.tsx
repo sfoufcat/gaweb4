@@ -78,10 +78,10 @@ export function CommunitySettingsToggle() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-[15px] text-[#1a1a1a] dark:text-[#faf8f6]">
-            Auto-convert communities to masterminds
+            Auto-convert communities to squads
           </h3>
           <p className="text-[13px] text-[#8a857f] mt-0.5">
-            When a program cohort ends, automatically convert its communities to masterminds
+            When a program cohort ends, automatically convert its communities to squads
           </p>
         </div>
 

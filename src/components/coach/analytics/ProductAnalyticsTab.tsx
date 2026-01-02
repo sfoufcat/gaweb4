@@ -281,7 +281,7 @@ export function ProductAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Pr
                         <div>
                           <h4 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] text-sm">{squad.name}</h4>
                           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                            {squad.type === 'program' ? `${squad.programName}` : 'Mastermind'}
+                            {squad.type === 'program' ? `${squad.programName}` : 'Squad'}
                           </p>
                         </div>
                         <div className="text-right">

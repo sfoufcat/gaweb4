@@ -132,6 +132,12 @@ function parseHost(hostname: string): ParsedHost {
     return { type: 'platform', hostname: normalizedHost };
   }
   
+  // Vercel deployment URLs should be treated as platform
+  // This allows cron jobs and preview deployments to work
+  if (normalizedHost.endsWith('.vercel.app')) {
+    return { type: 'platform', hostname: normalizedHost };
+  }
+  
   // Check for subdomain of the base domain
   const subdomainPattern = new RegExp(`^([a-z0-9-]+)\\.${BASE_DOMAIN.replace('.', '\\.')}$`);
   const subdomainMatch = normalizedHost.match(subdomainPattern);

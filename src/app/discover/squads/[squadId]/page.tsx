@@ -456,7 +456,7 @@ export default function SquadDetailPage() {
             style={{ backgroundColor: hexToRgba(accentLight, 0.9) }}
           >
             <Users className="w-3.5 h-3.5" />
-            Mastermind
+            Squad
           </span>
         </div>
       </div>
@@ -480,7 +480,7 @@ export default function SquadDetailPage() {
                   className="font-albert text-[13px] font-semibold"
                   style={{ color: accentLight }}
                 >
-                  {squad.subscriptionEnabled ? 'Membership Mastermind' : 'Mastermind'}
+                  {squad.subscriptionEnabled ? 'Membership Squad' : 'Squad'}
                 </span>
               </div>
 
@@ -533,7 +533,7 @@ export default function SquadDetailPage() {
                       {squad.coachName}
                     </div>
                     <div className="text-[13px] text-text-secondary font-albert">
-                      Mastermind Lead
+                      Squad Lead
                     </div>
                   </div>
                 </div>
@@ -640,7 +640,7 @@ export default function SquadDetailPage() {
                       className="font-albert text-[13px] font-semibold"
                       style={{ color: accentLight }}
                     >
-                      {squad.subscriptionEnabled ? 'Membership' : 'Mastermind'}
+                      {squad.subscriptionEnabled ? 'Membership' : 'Squad'}
                     </span>
                   </div>
                 </div>
@@ -665,7 +665,7 @@ export default function SquadDetailPage() {
                   style={{ background: `linear-gradient(to right, ${hexToRgba(accentLight, 0.08)}, ${hexToRgba(accentDark, 0.08)})` }}
                 >
                   <p className="font-albert text-[14px] text-text-primary">
-                    <span className="font-semibold">Evergreen</span> mastermind — join anytime
+                    <span className="font-semibold">Evergreen</span> squad — join anytime
                   </p>
                 </div>
 
@@ -724,7 +724,7 @@ export default function SquadDetailPage() {
                       boxShadow: `0 8px 20px -4px ${hexToRgba(accentLight, 0.3)}`
                     }}
                   >
-                    Go to My Mastermind
+                    Go to My Squad
                     <ChevronRight className="w-5 h-5 ml-2" />
                   </Button>
                 )}
@@ -883,10 +883,10 @@ export default function SquadDetailPage() {
         >
           <div className="max-w-[600px] mx-auto px-4 text-center">
             <h2 className="font-albert text-[24px] sm:text-[28px] font-semibold text-white mb-3 tracking-[-1px]">
-              Ready to join the mastermind?
+              Ready to join the squad?
             </h2>
             <p className="font-albert text-[15px] text-white/70 mb-6">
-              {memberCount ? `Join ${memberCount}+ members` : 'Join other members'} who are already part of this mastermind.
+              {memberCount ? `Join ${memberCount}+ members` : 'Join other members'} who are already part of this squad.
             </p>
             <Button
               onClick={handleJoin}

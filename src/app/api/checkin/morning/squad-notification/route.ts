@@ -35,8 +35,11 @@ export async function POST(_request: Request) {
       .where('userId', '==', userId)
       .get();
 
+    console.log(`[SQUAD_NOTIFICATION] Found ${membershipSnapshot.size} squad memberships for user ${userId}`);
+
     if (membershipSnapshot.empty) {
       // User is not in any squad - this is fine, just return
+      console.log(`[SQUAD_NOTIFICATION] User ${userId} has no squad memberships in squadMembers collection`);
       return NextResponse.json({ 
         success: true, 
         noSquad: true,
@@ -109,7 +112,12 @@ export async function POST(_request: Request) {
 
         // Get the squad document
         const squadDoc = await adminDb.collection('squads').doc(squadId).get();
-        const squadName = squadDoc.exists ? squadDoc.data()?.name || 'Unknown Squad' : 'Unknown Squad';
+        const squadData = squadDoc.data();
+        const squadName = squadDoc.exists ? squadData?.name || 'Unknown Squad' : 'Unknown Squad';
+        const isStandaloneSquad = !squadData?.programId;
+        const hasChatChannel = !!squadData?.chatChannelId;
+        
+        console.log(`[SQUAD_NOTIFICATION] Processing squad ${squadId} (${squadName}): isStandalone=${isStandaloneSquad}, hasChatChannel=${hasChatChannel}, programId=${squadData?.programId || 'none'}`);
 
         if (existingNotification.exists) {
           results.push({
@@ -131,9 +139,10 @@ export async function POST(_request: Request) {
           continue;
         }
 
-        const chatChannelId = squadDoc.data()?.chatChannelId;
+        const chatChannelId = squadData?.chatChannelId;
 
         if (!chatChannelId) {
+          console.log(`[SQUAD_NOTIFICATION] Skipping squad ${squadId} (${squadName}): NO CHAT CHANNEL - isStandalone=${isStandaloneSquad}`);
           results.push({
             squadId,
             squadName,
@@ -188,14 +197,18 @@ export async function POST(_request: Request) {
 
     const sentCount = results.filter(r => r.sent).length;
     const alreadySentCount = results.filter(r => r.alreadySent).length;
-    const errorCount = results.filter(r => r.error || r.noChannel).length;
+    const noChannelCount = results.filter(r => r.noChannel).length;
+    const errorCount = results.filter(r => r.error).length;
+
+    console.log(`[SQUAD_NOTIFICATION] Summary for user ${userId}: total=${results.length}, sent=${sentCount}, alreadySent=${alreadySentCount}, noChannel=${noChannelCount}, errors=${errorCount}`);
 
     return NextResponse.json({ 
       success: true,
-      message: `Notifications processed for ${results.length} squad(s): ${sentCount} sent, ${alreadySentCount} already sent, ${errorCount} skipped`,
+      message: `Notifications processed for ${results.length} squad(s): ${sentCount} sent, ${alreadySentCount} already sent, ${noChannelCount} no channel, ${errorCount} errors`,
       squadCount: results.length,
       sentCount,
       alreadySentCount,
+      noChannelCount,
       errorCount,
       results,
     });

@@ -115,25 +115,31 @@ const COMPARISON = [
 const PRICING = [
   {
     name: 'Starter',
-    price: 49,
-    description: 'Perfect for coaches just starting',
-    features: ['Up to 15 clients', 'All core features', '2 programs', '3 squads', 'Stripe payments', 'Custom branding'],
+    monthlyPrice: 49,
+    annualPrice: 29,
+    description: 'Perfect for coaches just starting out',
+    stats: { clients: 15, programs: 2, squads: 3 },
+    features: ['Check-ins + accountability', 'Tasks + habits', 'Chat + video calls', 'Stripe payments'],
     cta: 'Start free trial',
     popular: false,
   },
   {
     name: 'Pro',
-    price: 129,
+    monthlyPrice: 129,
+    annualPrice: 76,
     description: 'For growing coaching businesses',
-    features: ['Up to 150 clients', 'Everything in Starter', '10 programs', '25 squads', 'Custom domain', 'AI features', 'Advanced analytics'],
+    stats: { clients: 150, programs: 10, squads: 25 },
+    features: ['Everything in Starter, plus:', 'Custom domain', 'Email white labeling', 'Advanced funnel steps', 'Upsells + downsells'],
     cta: 'Start free trial',
     popular: true,
   },
   {
     name: 'Scale',
-    price: 299,
-    description: 'For established operations',
-    features: ['Up to 500 clients', 'Everything in Pro', '50 programs', '100 squads', 'API access', 'Priority support'],
+    monthlyPrice: 299,
+    annualPrice: 176,
+    description: 'For established coaching operations',
+    stats: { clients: 500, programs: 50, squads: 100 },
+    features: ['Everything in Pro, plus:', 'Team roles + permissions', 'Multi-coach support', 'AI Builder / AI Helper', 'Priority support'],
     cta: 'Start free trial',
     popular: false,
   },
@@ -188,6 +194,7 @@ export function CoachLandingPage() {
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right'>('left');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [coachOnboardingState, setCoachOnboardingState] = useState<'needs_profile' | 'needs_plan' | null>(null);
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('annual');
   const heroRef = useRef<HTMLDivElement>(null);
 
   // Check coach onboarding state if user is logged in
@@ -847,13 +854,44 @@ export function CoachLandingPage() {
         {/* Pricing Section */}
         <section id="pricing" className="py-12 sm:py-16">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
+            <div className="text-center mb-8">
               <h2 className="font-albert text-[32px] sm:text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-1.5px] mb-4">
                 Simple Pricing. No Surprises.
               </h2>
               <p className="font-sans text-[17px] text-[#5f5a55] dark:text-[#b2b6c2]">
                 7-day free trial on all plans
               </p>
+            </div>
+            
+            {/* Monthly/Annual Toggle */}
+            <div className="flex justify-center mb-10">
+              <div className="inline-flex items-center bg-white dark:bg-[#171b22] rounded-full p-1 border border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+                <button
+                  onClick={() => setBillingPeriod('annual')}
+                  className={`px-5 py-2.5 rounded-full font-albert text-[14px] font-medium transition-all ${
+                    billingPeriod === 'annual'
+                      ? 'bg-[#1a1a1a] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a]'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                  }`}
+                >
+                  Annual
+                </button>
+                <button
+                  onClick={() => setBillingPeriod('monthly')}
+                  className={`px-5 py-2.5 rounded-full font-albert text-[14px] font-medium transition-all ${
+                    billingPeriod === 'monthly'
+                      ? 'bg-[#1a1a1a] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a]'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                  }`}
+                >
+                  Monthly
+                </button>
+                {billingPeriod === 'annual' && (
+                  <span className="ml-2 mr-1 px-2.5 py-1 bg-emerald-500 text-white font-albert text-[11px] font-bold rounded-full uppercase">
+                    Save 41%
+                  </span>
+                )}
+              </div>
             </div>
             
             <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
@@ -874,7 +912,7 @@ export function CoachLandingPage() {
                     </div>
                   )}
                   
-                  <div className="text-center mb-6">
+                  <div className="mb-6">
                     <h3 className="font-albert text-[22px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mb-1">
                       {plan.name}
                     </h3>
@@ -883,11 +921,48 @@ export function CoachLandingPage() {
                     </p>
                   </div>
                   
-                  <div className="text-center mb-6">
-                    <span className="font-albert text-[48px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                      ${plan.price}
+                  {/* Price */}
+                  <div className="mb-2">
+                    <span className="font-albert text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                      ${billingPeriod === 'annual' ? plan.annualPrice : plan.monthlyPrice}
                     </span>
                     <span className="font-sans text-[16px] text-[#5f5a55] dark:text-[#b2b6c2]">/month</span>
+                  </div>
+                  
+                  {/* Trial info */}
+                  <div className="mb-6">
+                    <p className="font-sans text-[14px] font-semibold text-red-500">Free for 7 days</p>
+                    <p className="font-sans text-[12px] text-[#a7a39e] dark:text-[#7d8190]">
+                      Billed {billingPeriod === 'annual' ? 'annually' : 'monthly'} after trial
+                    </p>
+                  </div>
+                  
+                  {/* Stats row */}
+                  <div className="grid grid-cols-3 gap-2 mb-6 py-4 border-y border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+                    <div className="text-center">
+                      <div className="font-albert text-[20px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                        {plan.stats.clients}
+                      </div>
+                      <div className="font-sans text-[11px] text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wide">
+                        Clients
+                      </div>
+                    </div>
+                    <div className="text-center border-x border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+                      <div className="font-albert text-[20px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                        {plan.stats.programs}
+                      </div>
+                      <div className="font-sans text-[11px] text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wide">
+                        Programs
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="font-albert text-[20px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                        {plan.stats.squads}
+                      </div>
+                      <div className="font-sans text-[11px] text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wide">
+                        Squads
+                      </div>
+                    </div>
                   </div>
                   
                   <ul className="space-y-3 mb-8">

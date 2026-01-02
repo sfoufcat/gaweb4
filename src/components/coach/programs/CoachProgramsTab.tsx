@@ -2870,11 +2870,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                             onChange={() => setCohortFormData({ ...cohortFormData, convertSquadsToCommunity: true })}
                             className="text-brand-accent"
                           />
-                          Convert to mastermind
+                          Convert to squad
                         </label>
                       </div>
                       <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1 font-albert">
-                        Masterminds remain active for alumni to stay connected
+                        Squads remain active for alumni to stay connected
                       </p>
                     </div>
 

@@ -226,7 +226,7 @@ export function SquadView({ squadId, showCoachBadge = false }: SquadViewProps) {
                 Program ending soon
               </h3>
               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
-                This squad is in grace period. Convert to a mastermind to keep members connected after the program ends.
+                This squad is in grace period. Convert to a standalone squad to keep members connected after the program ends.
               </p>
               <button
                 onClick={handleConvertToCommunity}
@@ -236,7 +236,7 @@ export function SquadView({ squadId, showCoachBadge = false }: SquadViewProps) {
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
-                {converting ? 'Converting...' : 'Convert to Mastermind'}
+                {converting ? 'Converting...' : 'Convert to Squad'}
               </button>
             </div>
           </div>
@@ -254,10 +254,10 @@ export function SquadView({ squadId, showCoachBadge = false }: SquadViewProps) {
             </div>
             <div>
               <h3 className="font-albert font-semibold text-green-800 dark:text-green-200">
-                Squad converted to mastermind!
+                Squad converted to standalone squad!
               </h3>
               <p className="text-sm text-green-700 dark:text-green-300 font-albert">
-                Members can continue connecting in this mastermind.
+                Members can continue connecting in this squad.
               </p>
             </div>
           </div>

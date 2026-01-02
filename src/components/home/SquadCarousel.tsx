@@ -20,7 +20,7 @@ interface SquadCarouselProps {
   isCoach?: boolean;
 }
 
-export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTitle = 'My Cohort', squadTerm = 'Mastermind', isCoach = false }: SquadCarouselProps) {
+export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTitle = 'My Cohort', squadTerm = 'Squad', isCoach = false }: SquadCarouselProps) {
   // Lowercase version for use in sentences
   const squadTermLower = squadTerm.toLowerCase();
   const scrollRef = useRef<HTMLDivElement>(null);

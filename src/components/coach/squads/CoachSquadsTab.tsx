@@ -570,7 +570,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
               Squads
             </h2>
             <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1">
-              Manage your masterminds and communities
+              Manage your squads and communities
             </p>
           </div>
           <Button
@@ -612,7 +612,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                   : 'bg-[#faf8f6] dark:bg-[#11141b] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#171b22]'
               }`}
             >
-              Masterminds ({standaloneCount})
+              Squads ({standaloneCount})
             </button>
             
             {/* Program Squads with sub-filters */}
@@ -668,7 +668,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
             </h3>
             <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1 mb-4">
               {squads.length === 0 
-                ? 'Create your first mastermind'
+                ? 'Create your first squad'
                 : 'Try selecting a different filter or create a new squad'
               }
             </p>

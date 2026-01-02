@@ -2392,7 +2392,7 @@ export const DEFAULT_LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gaw
 
 export const DEFAULT_MENU_TITLES: OrgMenuTitles = {
   home: 'Home',
-  squad: 'Mastermind',
+  squad: 'Squad',
   program: 'Program',
   feed: 'Feed',      // Social feed
   learn: 'Discover', // Renamed from "Learn" to "Discover"

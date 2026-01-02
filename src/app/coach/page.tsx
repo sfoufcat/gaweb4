@@ -318,8 +318,8 @@ export default function CoachPage() {
                     <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-0.5">
                       {item.daysUntilClose} day{item.daysUntilClose !== 1 ? 's' : ''} until squads close.
                       {item.convertSquadsToCommunity 
-                        ? ' Squads will be converted to masterminds.'
-                        : ' Convert to mastermind to keep members connected?'}
+                        ? ' Squads will be converted to standalone squads.'
+                        : ' Convert to standalone squad to keep members connected?'}
                     </p>
                     {/* Show squads that can be converted */}
                     {!item.convertSquadsToCommunity && item.squads.length > 0 && (
