@@ -132,7 +132,7 @@ async function sendWebhook<T = unknown>(
     await updateDeliveryLog(logRef, {
       status: 'delivered',
       httpStatus: response.status,
-      deliveredAt: FieldValue.serverTimestamp(),
+      deliveredAt: FieldValue.serverTimestamp() as unknown as string,
     });
 
     await updateSyncStatus(orgId, integrationId, 'success');
@@ -346,7 +346,7 @@ async function retryWebhook(
     await updateDeliveryLog(logRef, {
       status: 'delivered',
       httpStatus: response.status,
-      deliveredAt: FieldValue.serverTimestamp(),
+      deliveredAt: FieldValue.serverTimestamp() as unknown as string,
     });
 
     await updateSyncStatus(orgId, integrationId, 'success');

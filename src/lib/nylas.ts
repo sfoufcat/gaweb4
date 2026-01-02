@@ -211,9 +211,9 @@ export async function createEvent(
       participants: event.participants?.map(p => ({
         email: p.email,
         name: p.name,
-      })),
+      })) as any,
       conferencing: event.conferencing ? {
-        provider: event.conferencing.provider,
+        provider: event.conferencing.provider as any,
         autocreate: {},
       } : undefined,
     },
@@ -222,7 +222,7 @@ export async function createEvent(
   return {
     id: response.data.id,
     htmlLink: response.data.htmlLink,
-    conferenceUrl: response.data.conferencing?.details?.url,
+    conferenceUrl: (response.data.conferencing as any)?.details?.url,
   };
 }
 

@@ -16,7 +16,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { ReferralWithDetails, ReferralStatus } from '@/types';
+import type { ReferralWithDetails, ReferralStatus, ReferralRewardType } from '@/types';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { generateDemoReferrals } from '@/lib/demo-data';
 
@@ -110,26 +110,30 @@ export function CoachReferralsTab() {
   // Use demo data when in demo mode
   const displayReferrals: ReferralWithDetails[] = useMemo(() => {
     if (isDemoMode) {
+      const nowIso = new Date().toISOString();
       let filtered = demoData.referrals.map(dr => ({
         id: dr.id,
+        organizationId: 'demo-org',
         referrerId: dr.referrerId,
+        referredUserId: dr.referredId || '',
+        funnelId: 'demo-funnel',
+        flowSessionId: 'demo-session',
         referrerName: dr.referrerName,
         referrerEmail: dr.referrerEmail,
         referrerImageUrl: dr.referrerImageUrl,
-        referredId: dr.referredId,
-        referredName: dr.referredName,
-        referredEmail: dr.referredEmail,
-        referredImageUrl: dr.referredImageUrl,
+        referredUserName: dr.referredName,
+        referredUserEmail: dr.referredEmail,
+        referredUserImageUrl: dr.referredImageUrl,
         programId: dr.programId,
         programName: dr.programName,
         squadId: dr.squadId,
         squadName: dr.squadName,
         status: dr.status as ReferralStatus,
-        rewardType: dr.rewardType,
-        rewardValue: dr.rewardValue,
+        rewardType: dr.rewardType as ReferralRewardType | undefined,
         createdAt: dr.createdAt,
+        updatedAt: nowIso,
         completedAt: dr.completedAt,
-        rewardedAt: dr.rewardedAt,
+        rewardGrantedAt: dr.rewardedAt,
       }));
       
       // Apply status filter

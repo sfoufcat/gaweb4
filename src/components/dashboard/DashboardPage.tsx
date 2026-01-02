@@ -162,7 +162,7 @@ export function DashboardPage() {
   const { squad, members, isLoading: squadLoading } = useSquadContext();
   
   // Get customizable menu titles
-  const { mySquad: mySquadTitle, squad: squadTerm } = useMenuTitles();
+  const { mySquad: mySquadTitle, squad: squadTerm, coach: coachTitle } = useMenuTitles();
   
   // Check if current user is a coach (global role or org-level role)
   // Used to show coach-specific CTAs in Program and Mastermind sections
@@ -1782,7 +1782,7 @@ export function DashboardPage() {
       {!isCoachUser && (dashboardSquads?.premium?.squad?.hasCoach || dashboardSquads?.standard?.squad?.hasCoach) && (
         <div className="mt-6">
           <RequestCallCard 
-            coachName={menuTitles?.coach || 'Coach'}
+            coachName={coachTitle || 'Coach'}
           />
         </div>
       )}

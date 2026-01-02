@@ -184,6 +184,8 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
         programType: ds.programType,
         isPublic: ds.isPublic,
         priceInCents: ds.priceInCents,
+        avatarUrl: '',
+        coachId: 'demo-coach',
       }));
     }
     return squads;
@@ -212,14 +214,15 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
     if (isDemoMode) {
       const demoMembers = generateDemoSquadMembers(squadId, 12);
       setSquadMembers(demoMembers.map((dm: DemoSquadMember) => ({
-        odataId: dm.odataId,
-        odataUserId: dm.odataUserId,
-        odataSquadId: dm.odataSquadId,
-        role: dm.role,
+        id: dm.odataId,
+        squadId: dm.odataSquadId,
+        userId: dm.odataUserId,
+        roleInSquad: dm.role as 'admin' | 'member',
+        firstName: dm.name.split(' ')[0] || '',
+        lastName: dm.name.split(' ')[1] || '',
+        imageUrl: dm.imageUrl,
         email: dm.email,
         name: dm.name,
-        imageUrl: dm.imageUrl,
-        joinedAt: dm.joinedAt,
       } as MemberWithUser)));
       setLoadingMembers(false);
       return;
@@ -395,19 +398,20 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
     
     // In demo mode, remove from session store
     if (isDemoMode) {
-      demoSession.removeSquadMember(selectedSquad.id, removeConfirmMember.odataId || '');
+      demoSession.removeSquadMember(selectedSquad.id, removeConfirmMember.id || '');
       setRemoveConfirmMember(null);
       // Refresh demo members
       const updatedMembers = demoSession.getSquadMembers(selectedSquad.id);
       setSquadMembers(updatedMembers.map((dm) => ({
-        odataId: dm.odataId,
-        odataUserId: dm.odataUserId,
-        odataSquadId: dm.odataSquadId,
-        role: dm.role,
+        id: dm.odataId,
+        squadId: dm.odataSquadId,
+        userId: dm.odataUserId,
+        roleInSquad: dm.role as 'admin' | 'member',
+        firstName: dm.name.split(' ')[0] || '',
+        lastName: dm.name.split(' ')[1] || '',
+        imageUrl: dm.imageUrl,
         email: dm.email,
         name: dm.name,
-        imageUrl: dm.imageUrl,
-        joinedAt: dm.joinedAt,
       } as MemberWithUser)));
       return;
     }

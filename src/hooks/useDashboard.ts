@@ -44,6 +44,22 @@ export interface DashboardData {
       show: boolean;
       programId: string | null;
       programName: string | null;
+      programDays?: number | null;
+      completionConfig?: {
+        hasUpsell?: boolean;
+        upsellProgramId?: string;
+        feedbackEnabled?: boolean;
+        celebrationMessage?: string;
+      };
+      upsellProgram?: {
+        id: string;
+        name: string;
+        description: string;
+        coverImageUrl?: string;
+        priceInCents: number;
+        currency: string;
+        lengthDays: number;
+      } | null;
     };
   };
   programEnrollments: {
@@ -67,7 +83,7 @@ const initialData: DashboardData = {
     morning: null,
     evening: null,
     weekly: null,
-    program: { show: false, programId: null, programName: null },
+    program: { show: false, programId: null, programName: null, programDays: null, completionConfig: undefined, upsellProgram: null },
   },
   programEnrollments: { active: [], upcoming: [] },
   squads: {

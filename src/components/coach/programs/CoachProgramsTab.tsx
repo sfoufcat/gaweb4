@@ -329,7 +329,11 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         summary: dd.summary,
         dailyPrompt: dd.dailyPrompt,
         tasks: dd.tasks.map(t => ({ label: t.label, type: t.type, isPrimary: t.isPrimary, estimatedMinutes: t.estimatedMinutes, notes: t.notes })),
-        habits: dd.habits.map(h => ({ title: h.title, description: h.description, frequency: h.frequency })),
+        habits: dd.habits.map(h => ({ 
+          title: h.title, 
+          description: h.description, 
+          frequency: (h.frequency === 'weekly' ? 'weekday' : h.frequency) as 'daily' | 'weekday' | 'custom',
+        })),
         createdAt: now,
         updatedAt: now,
       }));
@@ -337,12 +341,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       const cohorts: ProgramCohort[] = sessionCohorts.map(dc => ({
         id: dc.id,
         programId: dc.programId,
+        organizationId: 'demo-org',
         name: dc.name,
         startDate: dc.startDate,
         endDate: dc.endDate,
-        maxParticipants: dc.maxParticipants,
-        enrolledCount: dc.enrolledCount,
-        isActive: dc.isActive,
+        enrollmentOpen: dc.isActive ?? true,
+        maxEnrollment: dc.maxParticipants ?? undefined,
+        currentEnrollment: dc.enrolledCount ?? 0,
+        status: dc.isActive ? 'active' as const : 'upcoming' as const,
         createdAt: now,
         updatedAt: now,
       }));
@@ -1124,15 +1130,20 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       demoSession.deleteProgramCohort(selectedProgram.id, deleteConfirmCohort.id);
       // Refresh cohorts
       const updatedCohorts = demoSession.getProgramCohorts(selectedProgram.id);
+      const nowIso = new Date().toISOString();
       setProgramCohorts(updatedCohorts.map(dc => ({
         id: dc.id,
         programId: dc.programId,
+        organizationId: 'demo-org',
         name: dc.name,
         startDate: dc.startDate,
         endDate: dc.endDate,
-        maxParticipants: dc.maxParticipants,
-        enrolledCount: dc.enrolledCount,
-        isActive: dc.isActive,
+        enrollmentOpen: dc.isActive ?? true,
+        maxEnrollment: dc.maxParticipants ?? undefined,
+        currentEnrollment: dc.enrolledCount ?? 0,
+        status: dc.isActive ? 'active' as const : 'upcoming' as const,
+        createdAt: nowIso,
+        updatedAt: nowIso,
       })));
       setDeleteConfirmCohort(null);
       return;
@@ -3370,16 +3381,16 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               lengthDays: newProgram.durationDays,
               priceInCents: newProgram.priceInCents,
               currency: 'USD',
+              isActive: true,
               isPublished: newProgram.isPublished,
               organizationId: 'demo-org',
               createdAt: newProgram.createdAt,
               updatedAt: newProgram.updatedAt,
-              enrolledCount: newProgram.enrolledCount,
-              activeEnrollments: newProgram.activeEnrollments,
-              completedEnrollments: newProgram.completedEnrollments,
-              totalRevenue: newProgram.totalRevenue,
+              totalEnrollments: newProgram.enrolledCount ?? 0,
+              activeEnrollments: newProgram.activeEnrollments ?? 0,
             });
             const sessionDays = demoSession.getProgramDays(programId);
+            const nowIso = new Date().toISOString();
             setProgramDays(sessionDays.map(dd => ({
               id: dd.id,
               programId: dd.programId,
@@ -3388,7 +3399,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               summary: dd.summary,
               dailyPrompt: dd.dailyPrompt,
               tasks: dd.tasks.map(t => ({ label: t.label, type: t.type, isPrimary: t.isPrimary, estimatedMinutes: t.estimatedMinutes, notes: t.notes })),
-              habits: dd.habits.map(h => ({ title: h.title, description: h.description, frequency: h.frequency })),
+              habits: dd.habits.map(h => ({ 
+                title: h.title, 
+                description: h.description, 
+                frequency: (h.frequency === 'weekly' ? 'weekday' : h.frequency) as 'daily' | 'weekday' | 'custom',
+              })),
+              createdAt: nowIso,
+              updatedAt: nowIso,
             })));
             setProgramCohorts([]);
             setViewMode('days');
