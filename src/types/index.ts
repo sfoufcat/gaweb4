@@ -262,6 +262,7 @@ export interface FirebaseUser extends ClerkUser {
   // Coaching (separate from membership billing)
   coaching?: CoachingInfo; // Coaching subscription info
   coachId?: string | null; // Assigned coach's user ID
+  coachingStatus?: CoachingStatus; // Detailed coaching status (synced from org_membership)
   
   // Email tracking for onboarding flows
   quizStarted?: boolean; // True when user starts the quiz
@@ -4034,6 +4035,30 @@ export interface UnifiedEvent {
   instanceDate?: string;      // For generated instances, the specific date (YYYY-MM-DD)
   
   // ═══════════════════════════════════════════════════════════════════════════
+  // SCHEDULING (for 1-on-1 coaching calls with propose/accept flow)
+  // ═══════════════════════════════════════════════════════════════════════════
+  schedulingStatus?: SchedulingStatus;
+  proposedBy?: string;              // userId who proposed the call
+  proposedTimes?: ProposedTime[];   // Alternative times offered by either party
+  respondBy?: string;               // ISO deadline for response
+  schedulingNotes?: string;         // Optional notes with the proposal
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRICING (for paid coaching calls)
+  // ═══════════════════════════════════════════════════════════════════════════
+  isPaid?: boolean;
+  priceInCents?: number;
+  paymentIntentId?: string;         // Stripe payment intent ID
+  paidAt?: string;                  // When payment was completed
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NYLAS SYNC (external calendar integration)
+  // ═══════════════════════════════════════════════════════════════════════════
+  nylasEventId?: string;            // ID in Nylas/external calendar
+  syncedToNylas?: boolean;          // Whether event has been synced to external cal
+  nylasCalendarId?: string;         // Which calendar it was synced to
+  
+  // ═══════════════════════════════════════════════════════════════════════════
   // HOST
   // ═══════════════════════════════════════════════════════════════════════════
   createdByUserId: string;
@@ -4622,4 +4647,169 @@ export interface EmailFlowStats {
   clickRate: number;                  // Percentage
   lastUpdated: string;
 }
+
+// =============================================================================
+// SCHEDULING SYSTEM
+// =============================================================================
+
+/**
+ * Scheduling Status - Lifecycle state of a scheduled call
+ */
+export type SchedulingStatus = 
+  | 'proposed'          // Coach or client has proposed a time
+  | 'pending_response'  // Waiting for other party to respond
+  | 'counter_proposed'  // Other party proposed alternative times
+  | 'confirmed'         // Both parties agreed, call is scheduled
+  | 'declined'          // Proposal was declined
+  | 'cancelled'         // Confirmed call was cancelled
+  | 'rescheduled';      // Call was moved to a new time
+
+/**
+ * ProposedTime - A proposed time slot for a call
+ */
+export interface ProposedTime {
+  id: string;                    // Unique ID for this proposal
+  startDateTime: string;         // ISO 8601 UTC
+  endDateTime: string;           // ISO 8601 UTC
+  proposedBy: string;            // userId who proposed this time
+  proposedAt: string;            // ISO timestamp when proposed
+  status: 'pending' | 'accepted' | 'declined';
+}
+
+/**
+ * TimeSlot - A time range within a day (for availability)
+ */
+export interface TimeSlot {
+  start: string;  // "09:00" (HH:mm format)
+  end: string;    // "17:00" (HH:mm format)
+}
+
+/**
+ * BlockedSlot - A specific blocked time period
+ */
+export interface BlockedSlot {
+  id: string;
+  start: string;        // ISO datetime
+  end: string;          // ISO datetime
+  reason?: string;      // Optional reason for blocking
+  recurring?: boolean;  // Whether this repeats weekly
+}
+
+/**
+ * WeeklySchedule - Availability for each day of the week
+ * Keys are day numbers: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+ */
+export type WeeklySchedule = {
+  [day: number]: TimeSlot[];
+};
+
+/**
+ * CoachAvailability - Coach's availability settings for scheduling
+ * Stored in Firestore 'coach_availability/{odId}'
+ */
+export interface CoachAvailability {
+  odId: string;                     // Organization ID (Clerk org)
+  coachUserId: string;              // The coach's user ID
+  
+  // Weekly recurring schedule
+  weeklySchedule: WeeklySchedule;
+  
+  // Specific blocked times (vacations, appointments, etc.)
+  blockedSlots: BlockedSlot[];
+  
+  // Settings
+  defaultDuration: number;          // Default call duration in minutes (30, 45, 60)
+  bufferBetweenCalls: number;       // Minutes buffer between calls
+  timezone: string;                 // Coach's timezone (IANA format)
+  advanceBookingDays: number;       // How far in advance clients can book (default 30)
+  minNoticeHours: number;           // Minimum hours notice for booking (default 24)
+  
+  // Nylas integration
+  nylasGrantId?: string;            // Nylas grant ID for this coach
+  connectedCalendarId?: string;     // Which calendar is synced
+  connectedCalendarName?: string;   // Display name of connected calendar
+  syncExternalBusy: boolean;        // Block times from external calendar
+  pushEventsToCalendar: boolean;    // Push scheduled calls to external calendar
+  
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * CallPricingModel - How calls are priced
+ */
+export type CallPricingModel = 'free' | 'per_call' | 'credits' | 'both';
+
+/**
+ * CoachCallSettings - Coach's settings for client call requests
+ * Stored as part of organization settings or coach profile
+ */
+export interface CoachCallSettings {
+  allowClientRequests: boolean;     // Whether clients can request calls
+  pricingModel: CallPricingModel;
+  pricePerCallCents?: number;       // Price in cents for per-call pricing
+  creditsIncludedMonthly?: number;  // Number of free calls per month (for credits model)
+  
+  // Display settings
+  callRequestButtonLabel?: string;  // Custom label for request button
+  callRequestDescription?: string;  // Description shown to clients
+  
+  // Notification preferences
+  notifyOnRequest: boolean;         // Email coach on new requests
+  autoDeclineIfNoResponse: boolean; // Auto-decline after X days
+  autoDeclineDays?: number;         // Days before auto-decline
+}
+
+/**
+ * NylasGrant - Stores Nylas OAuth grant information
+ * Stored in Firestore 'nylas_grants/{odId}_{userId}'
+ */
+export interface NylasGrant {
+  id: string;                       // Format: `${odId}_${userId}`
+  odId: string;                     // Organization ID
+  userId: string;                   // User ID
+  grantId: string;                  // Nylas grant ID
+  email: string;                    // Email associated with the grant
+  provider: 'google' | 'microsoft' | 'icloud';
+  calendarId?: string;              // Selected calendar ID
+  calendarName?: string;            // Selected calendar name
+  scopes: string[];                 // Granted OAuth scopes
+  accessTokenExpiresAt?: string;    // When access token expires
+  isActive: boolean;                // Whether grant is still valid
+  lastSyncAt?: string;              // Last successful sync
+  syncError?: string;               // Last sync error message
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * UserCallCredits - Tracks call credits for users
+ * Stored in Firestore 'user_call_credits/{odId}_{userId}'
+ */
+export interface UserCallCredits {
+  id: string;                       // Format: `${odId}_${userId}`
+  odId: string;
+  userId: string;
+  creditsRemaining: number;         // Current credits balance
+  creditsUsedThisMonth: number;     // Credits used in current billing period
+  monthlyAllowance: number;         // Monthly credit allowance
+  billingPeriodStart: string;       // ISO date of current period start
+  billingPeriodEnd: string;         // ISO date of current period end
+  lastUpdated: string;
+}
+
+/**
+ * SchedulingNotificationType - Types of scheduling-related notifications
+ */
+export type SchedulingNotificationType =
+  | 'call_proposed'                 // Coach proposed a call
+  | 'call_requested'                // Client requested a call
+  | 'call_accepted'                 // Proposal was accepted
+  | 'call_declined'                 // Proposal was declined
+  | 'call_counter_proposed'         // Counter-proposal made
+  | 'call_cancelled'                // Scheduled call was cancelled
+  | 'call_rescheduled'              // Call was rescheduled
+  | 'call_reminder_24h'             // 24 hour reminder
+  | 'call_reminder_1h'              // 1 hour reminder
+  | 'response_deadline_approaching'; // Deadline to respond approaching
 
