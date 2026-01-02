@@ -126,6 +126,8 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
             useCount: 12,
             expiresAt: null,
             isActive: true,
+            organizationId: 'demo-org',
+            createdBy: 'demo-coach',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           },
@@ -142,10 +144,12 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
             useCount: 45,
             expiresAt: new Date(Date.now() + 86400000 * 30).toISOString(),
             isActive: true,
+            organizationId: 'demo-org',
+            createdBy: 'demo-coach',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           }
-        ] as DiscountCode[]);
+        ]);
         setLoading(false);
         return;
       }

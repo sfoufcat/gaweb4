@@ -74,7 +74,6 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
            coachId: 'demo-coach',
            coachingPlan: 'monthly' as CoachingPlanType,
            startDate: dc.joinedAt,
-           status: 'active' as const,
            focusAreas: ['Goal Setting', 'Habit Building'],
            resources: [],
            privateNotes: [],
@@ -95,7 +94,11 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
            },
            actionItems: [],
            sessionHistory: [],
-           nextCall: null
+           nextCall: {
+             datetime: null,
+             timezone: 'UTC',
+             location: 'chat'
+           }
         }));
         setClients(demoClients);
         setLoading(false);

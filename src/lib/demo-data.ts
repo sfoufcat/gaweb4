@@ -1396,7 +1396,7 @@ export function generateDemoCheckInFlows(): DemoCheckInFlow[] {
       type: step.type,
       title: step.title,
       description: step.description,
-      options: step.options,
+      options: 'options' in step ? step.options : undefined,
       required: step.required ?? true,
     }));
     

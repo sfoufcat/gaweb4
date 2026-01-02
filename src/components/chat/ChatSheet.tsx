@@ -18,7 +18,7 @@ import type { Channel as StreamChannel } from 'stream-chat';
 import { CustomMessage } from '@/components/chat/CustomMessage';
 import { CustomMessageInput } from '@/components/chat/CustomMessageInput';
 import { useCoachingPromo } from '@/contexts/BrandingContext';
-import { useTheme } from 'next-themes';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // Import Stream Chat CSS
 import 'stream-chat-react/dist/css/v2/index.css';
@@ -54,7 +54,7 @@ export function ChatSheet({ isOpen, onClose }: ChatSheetProps) {
   const [view, setView] = useState<'list' | 'channel'>('list');
   const [selectedChannel, setSelectedChannel] = useState<StreamChannel | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
-  const { resolvedTheme } = useTheme();
+  const { theme } = useTheme();
   
   // Coaching promo data
   const coachingPromo = useCoachingPromo();
@@ -296,7 +296,7 @@ export function ChatSheet({ isOpen, onClose }: ChatSheetProps) {
         </div>
 
         {client && isConnected ? (
-          <Chat client={client} theme={resolvedTheme === 'dark' ? 'str-chat__theme-dark' : 'str-chat__theme-light'}>
+          <Chat client={client} theme={theme === 'dark' ? 'str-chat__theme-dark' : 'str-chat__theme-light'}>
             {/* Views Container - handles animation */}
             <div className="flex-1 flex flex-col min-h-0 relative overflow-hidden">
               {/* Channel List View */}
