@@ -789,7 +789,7 @@ function SheetContent({
   selectedBumpIds,
   setSelectedBumpIds,
   isDemoMode,
-  setShowDemoMessage,
+  openSignupModal,
 }: {
   content: ContentPurchaseSheetProps['content'];
   step: PurchaseStep;
@@ -806,7 +806,7 @@ function SheetContent({
   selectedBumpIds: string[];
   setSelectedBumpIds: (ids: string[]) => void;
   isDemoMode: boolean;
-  setShowDemoMessage: (show: boolean) => void;
+  openSignupModal: () => void;
 }) {
   const router = useRouter();
   const { isSignedIn } = useAuth();
@@ -1298,7 +1298,7 @@ export function ContentPurchaseSheet({
       selectedBumpIds={selectedBumpIds}
       setSelectedBumpIds={setSelectedBumpIds}
       isDemoMode={isDemoMode}
-      setShowDemoMessage={setShowDemoMessage}
+      openSignupModal={openSignupModal}
     />
   );
   
