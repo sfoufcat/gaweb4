@@ -320,6 +320,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       const sessionDays = demoSession.getProgramDays(programId);
       const sessionCohorts = demoSession.getProgramCohorts(programId);
       
+      const now = new Date().toISOString();
       const days: ProgramDay[] = sessionDays.map(dd => ({
         id: dd.id,
         programId: dd.programId,
@@ -329,6 +330,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         dailyPrompt: dd.dailyPrompt,
         tasks: dd.tasks.map(t => ({ label: t.label, type: t.type, isPrimary: t.isPrimary, estimatedMinutes: t.estimatedMinutes, notes: t.notes })),
         habits: dd.habits.map(h => ({ title: h.title, description: h.description, frequency: h.frequency })),
+        createdAt: now,
+        updatedAt: now,
       }));
       
       const cohorts: ProgramCohort[] = sessionCohorts.map(dc => ({
@@ -340,6 +343,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         maxParticipants: dc.maxParticipants,
         enrolledCount: dc.enrolledCount,
         isActive: dc.isActive,
+        createdAt: now,
+        updatedAt: now,
       }));
       
       setProgramDays(days);
