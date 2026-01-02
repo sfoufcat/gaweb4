@@ -16,7 +16,8 @@ import { HabitCheckInModal } from '@/components/habits/HabitCheckInModal';
 import { DailyFocusSection } from '@/components/tasks/DailyFocusSection';
 import { StoryAvatar } from '@/components/stories/StoryAvatar';
 import { AlignmentGauge } from '@/components/alignment';
-import { NotificationBell } from '@/components/notifications';
+import { NotificationBell, NotificationIconButton } from '@/components/notifications';
+import { ChatIconButton } from '@/components/chat/ChatIconButton';
 import { ThemeToggle } from '@/components/theme';
 import { ProgramCheckInModal, type ProgramCheckInData, type UpsellProgramInfo } from '@/components/programs/ProgramCheckInModal';
 import type { ProgramCompletionConfig } from '@/types';
@@ -1415,10 +1416,10 @@ export function DashboardPage() {
             </Link>
           </div>
 
-          {/* Calendar + Notification Bell + Alignment Score + Theme Toggle (desktop only) */}
+          {/* Calendar + Notification Bell + Alignment Score + Theme Toggle */}
           <div className="flex items-center gap-2">
             <CalendarButton />
-            <NotificationBell />
+            <NotificationBell className="hidden lg:block" />
             <div data-tour="streak">
             <AlignmentGauge
               alignment={alignment}
@@ -1432,13 +1433,17 @@ export function DashboardPage() {
           </div>
         </div>
 
-        {/* Date + Theme Toggle (mobile only) */}
+        {/* Date + Icons (mobile only) */}
         <div className="flex items-center justify-between lg:justify-start">
           <p className="font-sans text-[12px] text-text-secondary leading-[1.2]">
             {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
           </p>
-          {/* Mobile: horizontal theme toggle */}
-          <ThemeToggle horizontal className="lg:hidden" />
+          {/* Mobile: notification, chat, and theme toggle icons */}
+          <div className="flex items-center gap-2 lg:hidden">
+            <NotificationIconButton />
+            <ChatIconButton />
+            <ThemeToggle horizontal />
+          </div>
         </div>
 
         {/* Main Headline - Dynamic based on time + state */}

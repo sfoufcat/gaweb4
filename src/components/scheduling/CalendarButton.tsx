@@ -72,11 +72,11 @@ export function CalendarButton({ className = '' }: CalendarButtonProps) {
   const badgeText = pendingCount > 9 ? '9+' : pendingCount.toString();
 
   return (
-    <div className="relative">
+    <div className={`relative ${className}`}>
       {/* Calendar Button - Styled like NotificationBell / AlignmentGauge */}
       <button
         onClick={handleOpen}
-        className={`bg-[#f3f1ef] dark:bg-[#181d28] rounded-[40px] p-2 flex items-center justify-center hover:bg-[#e9e5e0] dark:hover:bg-[#272d38] transition-colors ${className}`}
+        className="bg-[#f3f1ef] dark:bg-[#181d28] rounded-[40px] p-2 flex items-center justify-center hover:bg-[#e9e5e0] dark:hover:bg-[#272d38] transition-colors"
         style={{ width: 62, height: 62 }}
         aria-label={`Calendar${pendingCount > 0 ? ` (${pendingCount} pending)` : ''}`}
       >

@@ -21,6 +21,7 @@ import {
   Clock,
   Star,
   Play,
+  ExternalLink,
 } from 'lucide-react';
 import { LinedGradientBackground } from '@/components/ui/lined-gradient-background';
 import { CoachQuizModal } from './CoachQuizModal';
@@ -377,11 +378,13 @@ export function CoachLandingPage() {
                 <ArrowRight className="w-5 h-5" />
               </button>
               <a
-                href="#demo"
+                href="https://demo.growthaddicts.com"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex items-center gap-2 px-6 py-4 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] font-albert text-[16px] font-medium transition-colors"
               >
-                <Play className="w-5 h-5" />
-                See it in action (2min)
+                See it in action
+                <ExternalLink className="w-4 h-4" />
               </a>
             </motion.div>
             

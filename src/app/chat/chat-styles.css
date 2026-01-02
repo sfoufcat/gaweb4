@@ -1095,3 +1095,62 @@ html.dark .poll-vote-btn:not(:disabled):hover {
 html.dark .str-chat__message-attachment--audio {
   background: #8c7a6d;
 }
+
+/* ============================================
+   ChatSheet (Mobile Slide-up) Styles
+   ============================================ */
+
+/* Ensure Window takes full height in ChatSheet */
+.str-chat__channel,
+.str-chat__main-panel,
+.str-chat__window {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ChatSheet specific overrides */
+.str-chat__window {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Message list container in ChatSheet */
+.str-chat__message-list-scroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* ChatSheet message list wrapper */
+.chat-sheet-message-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.chat-sheet-message-list .str-chat__list {
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Ensure input stays at bottom */
+.str-chat__input-flat {
+  flex-shrink: 0;
+}
+
+/* Fix Stream Chat's window height in ChatSheet context */
+.str-chat__window .str-chat__list-notifications {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.str-chat__window .str-chat__list-notifications .str-chat__list {
+  flex: 1;
+  overflow-y: auto;
+}

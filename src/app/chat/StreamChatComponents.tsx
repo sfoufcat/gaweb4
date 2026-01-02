@@ -1716,7 +1716,7 @@ export default function StreamChatComponents({ client, user, initialChannelId }:
 
   return (
     <div 
-      className="fixed top-0 left-0 right-0 lg:left-64 flex flex-col bg-[#faf8f6] dark:bg-[#05070b] pb-[85px] lg:pb-0"
+      className="fixed top-0 left-0 right-0 lg:left-[72px] flex flex-col bg-[#faf8f6] dark:bg-[#05070b] pb-[85px] lg:pb-0"
       style={{ 
         height: '100dvh',
         // Fallback for browsers that don't support dvh

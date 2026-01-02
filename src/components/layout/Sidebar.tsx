@@ -255,8 +255,13 @@ export function Sidebar() {
     navItems = [...navItems, adminNavItem];
   }
 
-  // Filter nav items for mobile - hide Editor and Coach Dashboard for admins/superadmins
+  // Filter nav items for mobile - hide Editor, Coach Dashboard, and Chat
+  // Chat is now accessed via ChatIconButton in the header (ChatSheet slide-up)
   const mobileNavItems = navItems.filter(item => {
+    // Hide Chat on mobile - accessed via ChatSheet slide-up from header
+    if (item.path === '/chat') {
+      return false;
+    }
     if (showAdminPanel) {
       // Hide Coach Dashboard (/coach) and Editor (/editor) on mobile for admins
       if (item.path === '/coach' || item.path === '/editor') {
@@ -269,15 +274,32 @@ export function Sidebar() {
   // Only show sidebar if NOT in onboarding
   if (pathname.startsWith('/onboarding')) return null;
 
+  // Instagram-style collapsed sidebar when on /chat page
+  const isCollapsed = pathname === '/chat' || pathname.startsWith('/chat/');
+
   return (
     <>
       {/* Desktop Sidebar - Apple Liquid Glass Style */}
       {/* Uses CSS variables for branding colors when preview mode or custom branding is active */}
-      <aside className="hidden lg:flex flex-col w-64 fixed left-0 top-0 bottom-0 z-40 sidebar-branded backdrop-blur-xl border-r border-[#e1ddd8]/50 dark:border-[#272d38]/50 px-6 py-8">
+      {/* Collapses to icons only when on /chat (Instagram DM style) */}
+      <aside className={`hidden lg:flex flex-col fixed left-0 top-0 bottom-0 z-40 sidebar-branded backdrop-blur-xl border-r border-[#e1ddd8]/50 dark:border-[#272d38]/50 transition-all duration-300 ease-in-out ${isCollapsed ? 'w-[72px] px-3 py-6' : 'w-64 px-6 py-8'}`}>
         {/* Logo - Shows horizontal logo if available, otherwise square logo + title */}
+        {/* In collapsed mode, only show square logo centered */}
         <Link href="/">
-          <div className="flex items-center gap-2.5 mb-12 cursor-pointer group">
-            {horizontalLogoUrl ? (
+          <div className={`flex items-center cursor-pointer group ${isCollapsed ? 'justify-center mb-6' : 'gap-2.5 mb-12'}`}>
+            {isCollapsed ? (
+              /* Collapsed: Just the square logo */
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-all overflow-hidden relative bg-white dark:bg-white/10">
+                <Image 
+                  src={logoUrl}
+                  alt={`${appTitle} Logo`}
+                  fill
+                  className={`object-cover rounded-2xl ${
+                    theme === 'dark' && !logoUrlDark ? 'invert' : ''
+                  }`}
+                />
+              </div>
+            ) : horizontalLogoUrl ? (
               /* Horizontal logo - replaces square logo + title */
               <div className="h-10 max-w-[200px] relative overflow-hidden">
                 <Image 
@@ -310,15 +332,21 @@ export function Sidebar() {
         </Link>
 
         {/* Nav - More rounded, glass-like with accent color */}
-        <nav className="flex-1 space-y-1.5">
+        {/* In collapsed mode, show only icons centered */}
+        <nav className={`flex-1 ${isCollapsed ? 'space-y-1' : 'space-y-1.5'}`}>
           {navItems.map((item) => (
             <Link 
               key={item.path}
               href={item.path}
               onMouseEnter={() => router.prefetch(item.path)}
               data-tour={(item as { dataTour?: string }).dataTour}
+              title={isCollapsed ? item.name : undefined}
               className={`
-                flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 relative
+                flex items-center transition-all duration-300 relative
+                ${isCollapsed 
+                  ? 'justify-center w-12 h-12 mx-auto rounded-xl' 
+                  : 'gap-3 px-4 py-3 rounded-2xl'
+                }
                 ${isActive(item.path) 
                   ? 'sidebar-active-item backdrop-blur-sm font-semibold shadow-sm' 
                   : 'text-[#5f5a55] dark:text-[#b5b0ab] hover:bg-[#faf8f6]/60 dark:hover:bg-[#181d28]/60 hover:backdrop-blur-sm hover:text-[#1a1a1a] dark:hover:text-[#faf8f6]'
@@ -329,36 +357,55 @@ export function Sidebar() {
               } : undefined}
             >
               <span 
-                className={`transition-colors ${isActive(item.path) ? 'sidebar-active-icon' : 'text-[#a7a39e] dark:text-[#787470]'}`}
+                className={`relative transition-colors ${isActive(item.path) ? 'sidebar-active-icon' : 'text-[#a7a39e] dark:text-[#787470]'}`}
                 style={isActive(item.path) && !isDefault ? {
                   color: colors.accentLight,
                 } : undefined}
               >
                 {item.icon}
+                {/* Unread badge for Chat - positioned on icon in collapsed mode */}
+                {isCollapsed && item.path === '/chat' && totalUnread > 0 && (
+                  <span 
+                    className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-albert font-semibold"
+                    style={{
+                      backgroundColor: !isDefault ? currentAccentColor : (theme === 'dark' ? '#b8896a' : '#a07855'),
+                      color: currentAccentIsDark ? '#ffffff' : '#1a1a1a',
+                    }}
+                  >
+                    {totalUnread > 9 ? '9+' : totalUnread}
+                  </span>
+                )}
               </span>
-              <span className="font-albert text-[15px]">{item.name}</span>
-              {/* Unread badge for Chat */}
-              {item.path === '/chat' && totalUnread > 0 && (
-                <span 
-                  className="ml-auto flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-albert font-semibold"
-                  style={{
-                    backgroundColor: !isDefault ? currentAccentColor : (theme === 'dark' ? '#b8896a' : '#a07855'),
-                    color: currentAccentIsDark ? '#ffffff' : '#1a1a1a',
-                  }}
-                >
-                  {totalUnread > 9 ? '9+' : totalUnread}
-                </span>
+              {/* Hide text in collapsed mode */}
+              {!isCollapsed && (
+                <>
+                  <span className="font-albert text-[15px]">{item.name}</span>
+                  {/* Unread badge for Chat - inline in expanded mode */}
+                  {item.path === '/chat' && totalUnread > 0 && (
+                    <span 
+                      className="ml-auto flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-albert font-semibold"
+                      style={{
+                        backgroundColor: !isDefault ? currentAccentColor : (theme === 'dark' ? '#b8896a' : '#a07855'),
+                        color: currentAccentIsDark ? '#ffffff' : '#1a1a1a',
+                      }}
+                    >
+                      {totalUnread > 9 ? '9+' : totalUnread}
+                    </span>
+                  )}
+                </>
               )}
             </Link>
           ))}
         </nav>
 
         {/* Account with Clerk UserButton - Rounded glass style */}
-        <div className="mt-auto pt-6 border-t border-[#e1ddd8]/50 dark:border-[#272d38]/50 space-y-2">
-          {/* Organization Switcher - only shows when user has multiple orgs */}
-          <div className="px-2">
-            <OrganizationSwitcher />
-          </div>
+        <div className={`mt-auto pt-6 border-t border-[#e1ddd8]/50 dark:border-[#272d38]/50 ${isCollapsed ? 'space-y-1' : 'space-y-2'}`}>
+          {/* Organization Switcher - only shows when user has multiple orgs and not collapsed */}
+          {!isCollapsed && (
+            <div className="px-2">
+              <OrganizationSwitcher />
+            </div>
+          )}
           
           <div 
             onClick={(e) => {
@@ -368,7 +415,8 @@ export function Sidebar() {
                 button.click();
               }
             }}
-            className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-[#faf8f6]/60 dark:hover:bg-[#181d28]/60 hover:backdrop-blur-sm transition-all duration-300 cursor-pointer"
+            title={isCollapsed ? 'My Account' : undefined}
+            className={`flex items-center rounded-2xl hover:bg-[#faf8f6]/60 dark:hover:bg-[#181d28]/60 hover:backdrop-blur-sm transition-all duration-300 cursor-pointer ${isCollapsed ? 'justify-center p-2' : 'gap-3 px-4 py-3'}`}
           >
             <UserButton 
               appearance={{
@@ -378,7 +426,9 @@ export function Sidebar() {
                 }
               }}
             />
-            <span className="font-albert text-[15px] text-[#5f5a55] dark:text-[#b5b0ab]">My Account</span>
+            {!isCollapsed && (
+              <span className="font-albert text-[15px] text-[#5f5a55] dark:text-[#b5b0ab]">My Account</span>
+            )}
           </div>
         </div>
       </aside>

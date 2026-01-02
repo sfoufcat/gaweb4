@@ -56,21 +56,23 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
   // Loading state
   if (isLoading) {
     return (
-      <div 
-        className={`bg-[#f3f1ef] dark:bg-[#181d28] rounded-[40px] p-2 flex items-center justify-center ${className}`}
-        style={{ width: 62, height: 62 }}
-      >
-        <div className="w-[50px] h-[50px] rounded-full bg-[#e1ddd8] dark:bg-[#272d38] animate-pulse" />
+      <div className={className}>
+        <div 
+          className="bg-[#f3f1ef] dark:bg-[#181d28] rounded-[40px] p-2 flex items-center justify-center"
+          style={{ width: 62, height: 62 }}
+        >
+          <div className="w-[50px] h-[50px] rounded-full bg-[#e1ddd8] dark:bg-[#272d38] animate-pulse" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="relative">
+    <div className={`relative ${className}`}>
       {/* Bell Button - Styled like AlignmentGauge */}
       <button
         onClick={handleOpen}
-        className={`bg-[#f3f1ef] dark:bg-[#181d28] rounded-[40px] p-2 flex items-center justify-center hover:bg-[#e9e5e0] dark:hover:bg-[#272d38] transition-colors ${className}`}
+        className="bg-[#f3f1ef] dark:bg-[#181d28] rounded-[40px] p-2 flex items-center justify-center hover:bg-[#e9e5e0] dark:hover:bg-[#272d38] transition-colors"
         style={{ width: 62, height: 62 }}
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
       >

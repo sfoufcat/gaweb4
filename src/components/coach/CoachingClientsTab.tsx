@@ -68,11 +68,18 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
       if (isDemoMode) {
         // Map demo clients to CoachingClientWithUser
         const demoClients = demoSession.clients.map(dc => ({
-           id: dc.userId,
+           id: `demo-org_${dc.userId}`,
+           userId: dc.userId,
+           organizationId: 'demo-org',
            coachId: 'demo-coach',
            coachingPlan: 'monthly' as CoachingPlanType,
            startDate: dc.joinedAt,
            status: 'active' as const,
+           focusAreas: ['Goal Setting', 'Habit Building'],
+           resources: [],
+           privateNotes: [],
+           createdAt: dc.joinedAt,
+           updatedAt: dc.joinedAt,
            user: {
              id: dc.userId,
              firstName: dc.name.split(' ')[0],
