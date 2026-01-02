@@ -32,6 +32,24 @@ const EMAIL_TYPES: EmailTypeConfig[] = [
     canDisable: true,
   },
   {
+    key: 'morningReminderEnabled',
+    label: 'Morning Reminder',
+    description: 'Daily morning check-in reminder for members',
+    canDisable: true,
+  },
+  {
+    key: 'eveningReminderEnabled',
+    label: 'Evening Reminder',
+    description: 'Daily evening reflection reminder for members',
+    canDisable: true,
+  },
+  {
+    key: 'weeklyReminderEnabled',
+    label: 'Weekly Reminder',
+    description: 'Weekly reflection and progress reminder for members',
+    canDisable: true,
+  },
+  {
     key: 'paymentFailedEnabled',
     label: 'Payment Failed',
     description: 'Notification when subscription payment fails (coach only)',
@@ -43,6 +61,9 @@ const DEFAULT_PREFERENCES: CoachEmailPreferences = {
   verificationEnabled: true,
   welcomeEnabled: true,
   abandonedCartEnabled: true,
+  morningReminderEnabled: true,
+  eveningReminderEnabled: true,
+  weeklyReminderEnabled: true,
   paymentFailedEnabled: true,
 };
 

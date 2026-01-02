@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -20,6 +20,22 @@ import {
   Pencil,
   User,
   Users,
+  Flame,
+  Heart,
+  Activity,
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle,
+  TrendingUp,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  Sun,
+  Moon,
+  BarChart3,
+  GraduationCap,
+  Send,
+  Loader2,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -37,6 +53,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SendDMModal, type DMRecipient } from '@/components/coach/SendDMModal';
 import type { 
   ClientCoachingData, 
   FirebaseUser, 
@@ -46,6 +63,8 @@ import type {
   CoachingResource,
   CoachPrivateNotes,
   CoachingStatus,
+  GoalHistoryEntry,
+  IdentityHistoryEntry,
 } from '@/types';
 import {
   formatTierName,
@@ -76,11 +95,34 @@ const COMMON_TIMEZONES = [
 
 const LOCATION_PRESETS = ['Chat', 'Zoom', 'Google Meet', 'Microsoft Teams'];
 
+// Emotional state colors for sentiment graph
+const EMOTIONAL_STATE_COLORS: Record<string, { bg: string; text: string; value: number }> = {
+  energized: { bg: 'bg-emerald-500', text: 'text-emerald-500', value: 5 },
+  confident: { bg: 'bg-green-500', text: 'text-green-500', value: 4 },
+  neutral: { bg: 'bg-amber-500', text: 'text-amber-500', value: 3 },
+  uncertain: { bg: 'bg-orange-500', text: 'text-orange-500', value: 2 },
+  stuck: { bg: 'bg-red-500', text: 'text-red-500', value: 1 },
+  // Evening states
+  great_day: { bg: 'bg-emerald-500', text: 'text-emerald-500', value: 5 },
+  good_day: { bg: 'bg-green-500', text: 'text-green-500', value: 4 },
+  steady: { bg: 'bg-amber-500', text: 'text-amber-500', value: 3 },
+  mixed: { bg: 'bg-orange-500', text: 'text-orange-500', value: 2 },
+  tough_day: { bg: 'bg-red-500', text: 'text-red-500', value: 1 },
+};
+
+// Activity status colors
+const ACTIVITY_STATUS_COLORS: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
+  thriving: { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400', icon: <Heart className="w-3.5 h-3.5" /> },
+  active: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400', icon: <Activity className="w-3.5 h-3.5" /> },
+  inactive: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400', icon: <AlertCircle className="w-3.5 h-3.5" /> },
+};
+
 interface ClientDetailViewProps {
   clientId: string;
   onBack: () => void;
 }
 
+// Extended user data with comprehensive fields
 interface UserData {
   id: string;
   firstName?: string;
@@ -92,13 +134,93 @@ interface UserData {
   timezone?: string;
   goal?: string;
   goalProgress?: number;
+  goalTargetDate?: string;
+  goalSetAt?: string;
+  identity?: string;
+  goalHistory?: GoalHistoryEntry[];
+  identityHistory?: IdentityHistoryEntry[];
   // Multi-squad support
   squadIds?: string[];
-  standardSquadId?: string | null; // Legacy
+  standardSquadId?: string | null;
   premiumSquadId?: string | null;
   tier?: string;
   coachingStatus?: string;
   coaching?: boolean;
+}
+
+// Comprehensive data types
+interface ClientTask {
+  id: string;
+  title: string;
+  status: string;
+  listType: string;
+  date: string;
+  completedAt?: string;
+  createdAt: string;
+}
+
+interface ClientHabit {
+  id: string;
+  text: string;
+  frequencyType: string;
+  frequencyValue: number | number[];
+  progress: {
+    currentCount: number;
+    lastCompletedDate: string | null;
+    completionDates: string[];
+  };
+  status?: string;
+  createdAt: string;
+}
+
+interface ClientMorningCheckin {
+  id: string;
+  date: string;
+  emotionalState: string;
+  userThought?: string;
+  aiReframe?: string;
+  completedAt?: string;
+}
+
+interface ClientEveningCheckin {
+  id: string;
+  date: string;
+  emotionalState: string;
+  reflectionText?: string;
+  tasksCompleted: number;
+  tasksTotal: number;
+  completedAt?: string;
+}
+
+interface ClientWeeklyCheckin {
+  id: string;
+  date: string;
+  onTrackStatus: string;
+  progress: number;
+  previousProgress: number;
+  whatWentWell?: string;
+  biggestObstacles?: string;
+  nextWeekPlan?: string;
+  publicFocus?: string;
+  completedAt?: string;
+}
+
+interface ClientProgramEnrollment {
+  id: string;
+  programId: string;
+  programName: string;
+  status: string;
+  progress: number;
+  startedAt: string;
+  completedAt?: string;
+}
+
+interface ClientActivityScore {
+  status: 'thriving' | 'active' | 'inactive';
+  atRisk: boolean;
+  lastActivityAt: string | null;
+  daysActiveInPeriod: number;
+  primarySignal: string | null;
 }
 
 interface SquadInfo {
@@ -109,9 +231,15 @@ interface SquadInfo {
 /**
  * ClientDetailView
  * 
- * Unified detail view for a client showing:
- * 1. Main Details section (track, squad, notes)
- * 2. One-on-One section (coaching features or "no coaching" message)
+ * Comprehensive client profile showing:
+ * 1. Header with activity score and quick actions
+ * 2. Goal and Identity section
+ * 3. Progress timeline with tasks and habits
+ * 4. Sentiment graph
+ * 5. Check-ins (Morning/Evening/Weekly)
+ * 6. Programs enrollment
+ * 7. One-on-One coaching features
+ * 8. Coach notes
  */
 export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   const router = useRouter();
@@ -126,12 +254,41 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   
+  // Comprehensive data states
+  const [tasks, setTasks] = useState<ClientTask[]>([]);
+  const [habits, setHabits] = useState<ClientHabit[]>([]);
+  const [morningCheckins, setMorningCheckins] = useState<ClientMorningCheckin[]>([]);
+  const [eveningCheckins, setEveningCheckins] = useState<ClientEveningCheckin[]>([]);
+  const [weeklyCheckins, setWeeklyCheckins] = useState<ClientWeeklyCheckin[]>([]);
+  const [programEnrollments, setProgramEnrollments] = useState<ClientProgramEnrollment[]>([]);
+  const [activityScore, setActivityScore] = useState<ClientActivityScore | null>(null);
+  const [streak, setStreak] = useState(0);
+  
+  // UI states
+  const [showPastPrograms, setShowPastPrograms] = useState(false);
+  const [checkinTab, setCheckinTab] = useState<'morning' | 'evening' | 'weekly'>('morning');
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    goal: true,
+    progress: true,
+    sentiment: true,
+    tasks: false,
+    habits: false,
+    checkins: true,
+    programs: true,
+    coaching: true,
+    notes: true,
+  });
+  
+  // DM Modal state
+  const [showDMModal, setShowDMModal] = useState(false);
+  
   // Squad update state
   const [updatingSquad, setUpdatingSquad] = useState(false);
 
   // Coach notes about user (stored separately from coaching data)
   const [coachNotes, setCoachNotes] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
+  const [notesSaved, setNotesSaved] = useState(false);
 
   // Edit states for coaching features
   const [focusAreas, setFocusAreas] = useState<string[]>([]);
@@ -170,101 +327,92 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   const [plannedTopics, setPlannedTopics] = useState('');
   const [savingPrivateNotes, setSavingPrivateNotes] = useState(false);
 
+  // Toggle section expansion
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Fetch user data and coaching data in parallel
-      const [userResponse, coachingResponse] = await Promise.all([
-        fetch(`/api/user/${clientId}`),
-        fetch(`/api/coaching/clients/${clientId}`),
-      ]);
+      // Fetch comprehensive coaching data
+      const coachingResponse = await fetch(`/api/coaching/clients/${clientId}?comprehensive=true`);
 
-      // Handle user data
-      let fetchedUser: UserData | null = null;
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
-        fetchedUser = userData.user;
-        setUser(fetchedUser);
-      } else {
-        // Try to get basic info from org-users if user endpoint fails
-        const orgUsersResponse = await fetch('/api/coach/org-users');
-        if (orgUsersResponse.ok) {
-          const orgUsersData = await orgUsersResponse.json();
-          const foundUser = orgUsersData.users?.find((u: UserData) => u.id === clientId);
-          if (foundUser) {
-            fetchedUser = foundUser;
-            setUser(foundUser);
-          }
-        }
+      if (!coachingResponse.ok) {
+        throw new Error('Failed to fetch client data');
       }
 
-      // Determine if user has ACTIVE coaching based on their status, not document existence
-      // This prevents showing coaching UI for users who had coaching data created but no active subscription
+      const data = await coachingResponse.json();
+      
+      // Set user data
+      const fetchedUser = data.user;
+      setUser(fetchedUser);
+      
+      // Set coaching data
+      setCoachingData(data.data);
+      setCoach(data.coach);
+      
+      // Set comprehensive data
+      setTasks(data.tasks || []);
+      setHabits(data.habits || []);
+      setMorningCheckins(data.morningCheckins || []);
+      setEveningCheckins(data.eveningCheckins || []);
+      setWeeklyCheckins(data.weeklyCheckins || []);
+      setProgramEnrollments(data.programEnrollments || []);
+      setActivityScore(data.activityScore || null);
+      setCoachNotes(data.coachNotes || '');
+      setStreak(data.streak || 0);
+      
+      // Determine if user has ACTIVE coaching
       const userHasActiveCoaching = 
         fetchedUser?.coachingStatus === 'active' || 
         fetchedUser?.coaching === true;
+      setHasCoaching(userHasActiveCoaching);
 
-      // Handle coaching data - still load it if it exists, but only enable editing if user has active coaching
-      if (coachingResponse.ok) {
-        const data = await coachingResponse.json();
-        setCoachingData(data.data);
-        setCoach(data.coach);
-        // Only set hasCoaching=true if user actually has active coaching subscription
-        setHasCoaching(userHasActiveCoaching);
-
-        // Initialize edit states (only matters if hasCoaching is true)
-        if (data.data && userHasActiveCoaching) {
-          setFocusAreas(data.data.focusAreas || []);
-          setActionItems(data.data.actionItems || []);
-          setResources(data.data.resources || []);
-          setPrivateNotes(data.data.privateNotes || []);
+      // Initialize edit states for coaching features
+      if (data.data && userHasActiveCoaching) {
+        setFocusAreas(data.data.focusAreas || []);
+        setActionItems(data.data.actionItems || []);
+        setResources(data.data.resources || []);
+        setPrivateNotes(data.data.privateNotes || []);
+        
+        // Initialize call modal with existing data
+        if (data.data.nextCall?.datetime) {
+          const callDateObj = new Date(data.data.nextCall.datetime);
+          const tz = data.data.nextCall.timezone || 'America/New_York';
           
-          // Initialize call modal with existing data
-          if (data.data.nextCall?.datetime) {
-            const callDateObj = new Date(data.data.nextCall.datetime);
-            const tz = data.data.nextCall.timezone || 'America/New_York';
-            
-            const dateFormatter = new Intl.DateTimeFormat('en-CA', {
-              timeZone: tz,
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-            });
-            setCallDate(dateFormatter.format(callDateObj));
-            
-            const timeFormatter = new Intl.DateTimeFormat('en-US', {
-              timeZone: tz,
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false,
-            });
-            const timeParts = timeFormatter.formatToParts(callDateObj);
-            const hour = timeParts.find(p => p.type === 'hour')?.value || '10';
-            const minute = timeParts.find(p => p.type === 'minute')?.value || '00';
-            setCallTime(`${hour}:${minute}`);
-            
-            setCallTimezone(tz);
-            
-            const loc = data.data.nextCall.location || 'Chat';
-            if (LOCATION_PRESETS.includes(loc)) {
-              setCallLocation(loc);
-              setUseCustomLocation(false);
-            } else {
-              setUseCustomLocation(true);
-              setCustomLocation(loc);
-            }
+          const dateFormatter = new Intl.DateTimeFormat('en-CA', {
+            timeZone: tz,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          });
+          setCallDate(dateFormatter.format(callDateObj));
+          
+          const timeFormatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: tz,
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          });
+          const timeParts = timeFormatter.formatToParts(callDateObj);
+          const hour = timeParts.find(p => p.type === 'hour')?.value || '10';
+          const minute = timeParts.find(p => p.type === 'minute')?.value || '00';
+          setCallTime(`${hour}:${minute}`);
+          
+          setCallTimezone(tz);
+          
+          const loc = data.data.nextCall.location || 'Chat';
+          if (LOCATION_PRESETS.includes(loc)) {
+            setCallLocation(loc);
+            setUseCustomLocation(false);
+          } else {
+            setUseCustomLocation(true);
+            setCustomLocation(loc);
           }
         }
-      } else if (coachingResponse.status === 404) {
-        // No coaching data document exists
-        setHasCoaching(false);
-        setCoachingData(null);
-      } else {
-        // Some other error - still continue but log it
-        console.warn('Failed to fetch coaching data:', coachingResponse.status);
-        setHasCoaching(false);
       }
 
       // Fetch squads for display/selection
@@ -699,6 +847,96 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
     return squadNames.length > 0 ? squadNames.join(', ') : 'None';
   };
 
+  // Save coach notes about this client
+  const handleSaveCoachNotes = async () => {
+    try {
+      setSavingNotes(true);
+      setNotesSaved(false);
+      
+      const response = await fetch('/api/coach/client-notes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId,
+          notes: coachNotes,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save notes');
+      }
+
+      setNotesSaved(true);
+      setTimeout(() => setNotesSaved(false), 2000);
+    } catch (err) {
+      console.error('Error saving notes:', err);
+      setError('Failed to save notes');
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
+  // Calculate completed tasks stats
+  const completedTasksToday = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return tasks.filter(t => t.status === 'completed' && t.date === today).length;
+  }, [tasks]);
+
+  const totalCompletedTasks = useMemo(() => {
+    return tasks.filter(t => t.status === 'completed').length;
+  }, [tasks]);
+
+  // Calculate task completion rate (last 7 days)
+  const taskCompletionRate = useMemo(() => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+    
+    const recentTasks = tasks.filter(t => t.date >= sevenDaysAgoStr);
+    if (recentTasks.length === 0) return 0;
+    
+    const completed = recentTasks.filter(t => t.status === 'completed').length;
+    return Math.round((completed / recentTasks.length) * 100);
+  }, [tasks]);
+
+  // Get sentiment data for graph (last 7 days)
+  const sentimentData = useMemo(() => {
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      
+      const morningCheckin = morningCheckins.find(c => c.date === dateStr);
+      const eveningCheckin = eveningCheckins.find(c => c.date === dateStr);
+      
+      last7Days.push({
+        date: dateStr,
+        dayLabel: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        morning: morningCheckin?.emotionalState || null,
+        evening: eveningCheckin?.emotionalState || null,
+      });
+    }
+    return last7Days;
+  }, [morningCheckins, eveningCheckins]);
+
+  // Filter programs by status
+  const currentPrograms = useMemo(() => {
+    return programEnrollments.filter(p => p.status === 'active' || p.status === 'in_progress');
+  }, [programEnrollments]);
+
+  const pastPrograms = useMemo(() => {
+    return programEnrollments.filter(p => p.status === 'completed' || p.status === 'cancelled');
+  }, [programEnrollments]);
+
+  // DM recipient for modal
+  const dmRecipient: DMRecipient | null = user ? {
+    userId: user.id,
+    name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User',
+    email: user.email || '',
+    avatarUrl: user.avatarUrl || user.imageUrl,
+  } : null;
+
   const minDate = new Date().toISOString().split('T')[0];
   const displayName = user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Unknown User';
   const userTier = (user?.tier || 'free') as 'free' | 'standard' | 'premium';
@@ -763,9 +1001,9 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
 
   return (
     <div className="space-y-6">
-      {/* Client Header */}
+      {/* Client Header with Activity Status */}
       <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-3xl p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+        <div className="flex flex-col sm:flex-row sm:items-start gap-5">
           {/* Avatar */}
           <div className="shrink-0">
             {user?.imageUrl || user?.avatarUrl ? (
@@ -785,10 +1023,25 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
           </div>
           
           {/* Client Info */}
-          <div className="flex-1">
-            <h2 className="font-albert text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
-              {displayName}
-            </h2>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-3 mb-1">
+              <h2 className="font-albert text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
+                {displayName}
+              </h2>
+              {/* Activity Status Badge */}
+              {activityScore && (
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium font-albert ${ACTIVITY_STATUS_COLORS[activityScore.status]?.bg} ${ACTIVITY_STATUS_COLORS[activityScore.status]?.text}`}>
+                  {ACTIVITY_STATUS_COLORS[activityScore.status]?.icon}
+                  {activityScore.status.charAt(0).toUpperCase() + activityScore.status.slice(1)}
+                </span>
+              )}
+              {activityScore?.atRisk && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium font-albert bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  At Risk
+                </span>
+              )}
+            </div>
             <p className="font-albert text-[15px] text-[#5f5a55] dark:text-[#b2b6c2]">{user?.email}</p>
             {user?.timezone && (
               <p className="font-albert text-sm text-[#8c8c8c] dark:text-[#7d8190] mt-1">
@@ -796,149 +1049,612 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
               </p>
             )}
             
-            {/* Badges */}
-            <div className="flex flex-wrap gap-2 mt-2">
+            {/* Badges Row */}
+            <div className="flex flex-wrap gap-2 mt-3">
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium font-albert ${getTierBadgeColor(userTier)}`}>
                 {formatTierName(userTier)}
               </span>
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium font-albert ${getCoachingStatusBadgeColor(coachingStatus as CoachingStatus)}`}>
                 {formatCoachingStatus(coachingStatus as CoachingStatus)}
               </span>
+              {streak > 0 && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium font-albert bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                  <Flame className="w-3.5 h-3.5" />
+                  {streak} day streak
+                </span>
+              )}
             </div>
-            
-            {/* Client's Goal */}
-            {user?.goal && (
-              <div className="mt-3 p-3 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
-                <p className="font-albert text-xs text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-1">
-                  Current Goal
-                </p>
-                <p className="font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8]">{user.goal}</p>
-                {user.goalProgress !== undefined && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <div className="flex-1 h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-brand-accent rounded-full"
-                        style={{ width: `${user.goalProgress}%` }}
-                      />
-                    </div>
-                    <span className="font-albert text-xs text-[#5f5a55] dark:text-[#b2b6c2]">{user.goalProgress}%</span>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
-          {/* Actions */}
-          <div className="flex flex-col gap-2 shrink-0">
+          {/* Quick Actions */}
+          <div className="flex flex-wrap sm:flex-col gap-2 shrink-0">
+            <button
+              onClick={() => setShowDMModal(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-accent hover:bg-brand-accent/90 rounded-full font-albert text-[14px] font-medium text-white transition-colors"
+            >
+              <Send className="w-4 h-4" />
+              Send DM
+            </button>
             {hasCoaching && coachingData?.chatChannelId && (
               <button
                 onClick={handleGoToChat}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent dark:hover:bg-brand-accent/90 rounded-full font-albert text-[14px] font-medium text-white transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#11141b] hover:bg-[#e9e5e0] dark:hover:bg-[#171b22] rounded-full font-albert text-[14px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] transition-colors"
               >
                 <MessageCircle className="w-4 h-4" />
-                Message
+                Chat
               </button>
             )}
             {hasCoaching && (
               <button
-                onClick={handleOpenNotesModal}
+                onClick={() => setShowCallModal(true)}
                 className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#11141b] hover:bg-[#e9e5e0] dark:hover:bg-[#171b22] rounded-full font-albert text-[14px] font-medium text-[#1a1a1a] dark:text-[#f5f5f8] transition-colors"
               >
-                <FileText className="w-4 h-4" />
-                Private Notes
+                <Calendar className="w-4 h-4" />
+                Schedule Call
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Main Details Section */}
-      <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <User className="w-5 h-5 text-brand-accent" />
-          <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
-            Main Details
-          </h3>
-        </div>
-
-        <div className="space-y-4">
-          {/* Squad - Multi-squad support with tags */}
-          <div className="py-2 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-albert text-[14px] text-[#5f5a55] dark:text-[#b2b6c2]">Squads</span>
-            </div>
-            {(() => {
-              const userSquadIds = user?.squadIds || (user?.standardSquadId ? [user.standardSquadId] : []);
-              const availableSquads = squads.filter(s => !userSquadIds.includes(s.id));
-              
-              return (
-                <div className={`flex flex-wrap gap-2 items-center ${updatingSquad ? 'opacity-50 pointer-events-none' : ''}`}>
-                  {/* Squad tags */}
-                  {userSquadIds.map((squadId) => {
-                    const squad = squads.find(s => s.id === squadId);
-                    return (
-                      <span
-                        key={squadId}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand-accent/10 text-brand-accent rounded-full text-[13px] font-medium font-albert"
-                      >
-                        {squad?.name || 'Unknown'}
-                        <button
-                          onClick={() => handleRemoveFromSquad(squadId)}
-                          className="hover:bg-brand-accent/20 dark:hover:bg-brand-accent/20 rounded-full p-0.5 transition-colors"
-                          title={`Remove from ${squad?.name || 'squad'}`}
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </span>
-                    );
-                  })}
-                  
-                  {/* Add squad dropdown */}
-                  {availableSquads.length > 0 && (
-                    <Select
-                      value=""
-                      onValueChange={(squadId) => handleAddToSquad(squadId)}
-                    >
-                      <SelectTrigger className="w-auto h-7 px-2 py-0 border-dashed border-[#e1ddd8] dark:border-[#262b35] bg-transparent hover:bg-[#faf8f6] dark:hover:bg-[#11141b] text-[13px]">
-                        <Plus className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] mr-1" />
-                        <span className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">Add to squad</span>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableSquads.map((squad) => (
-                          <SelectItem key={squad.id} value={squad.id} className="font-albert text-sm">
-                            {squad.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  
-                  {/* Show "None" if no squads and no available squads */}
-                  {userSquadIds.length === 0 && availableSquads.length === 0 && (
-                    <span className="text-[#8c8c8c] dark:text-[#7d8190] text-sm font-albert">No squads available</span>
-                  )}
-                  {userSquadIds.length === 0 && availableSquads.length > 0 && (
-                    <span className="text-[#8c8c8c] dark:text-[#7d8190] text-xs font-albert">Not in any squad</span>
-                  )}
-                </div>
-              );
-            })()}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Flame className="w-4 h-4 text-orange-500" />
+            <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Streak</span>
           </div>
+          <p className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{streak} days</p>
+        </div>
+        <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <CheckCircle className="w-4 h-4 text-emerald-500" />
+            <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Tasks Done</span>
+          </div>
+          <p className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{totalCompletedTasks}</p>
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">{completedTasksToday} today</p>
+        </div>
+        <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp className="w-4 h-4 text-blue-500" />
+            <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Completion Rate</span>
+          </div>
+          <p className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{taskCompletionRate}%</p>
+          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">Last 7 days</p>
+        </div>
+        <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Target className="w-4 h-4 text-purple-500" />
+            <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Goal Progress</span>
+          </div>
+          <p className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{user?.goalProgress || 0}%</p>
+        </div>
+      </div>
 
-          {/* Notes about user */}
-          <div>
-            <label className="block font-albert text-[14px] text-[#5f5a55] dark:text-[#b2b6c2] mb-2">
-              Notes about this client
-            </label>
+      {/* Goal and Identity Section */}
+      <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
+        <button
+          onClick={() => toggleSection('goal')}
+          className="w-full flex items-center justify-between p-5 hover:bg-[#faf8f6]/50 dark:hover:bg-[#11141b]/50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Target className="w-5 h-5 text-brand-accent" />
+            <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
+              Goal & Identity
+            </h3>
+          </div>
+          {expandedSections.goal ? <ChevronUp className="w-5 h-5 text-[#5f5a55]" /> : <ChevronDown className="w-5 h-5 text-[#5f5a55]" />}
+        </button>
+        {expandedSections.goal && (
+          <div className="px-5 pb-5 space-y-4">
+            {/* Current Goal */}
+            {user?.goal ? (
+              <div className="p-4 bg-gradient-to-br from-brand-accent/5 to-[#8c6245]/5 dark:from-[#b8896a]/10 dark:to-brand-accent/5 rounded-xl border border-brand-accent/20">
+                <p className="font-albert text-xs text-brand-accent uppercase tracking-wider mb-2 font-medium">Current Goal</p>
+                <p className="font-albert text-[15px] text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">{user.goal}</p>
+                {user.goalTargetDate && (
+                  <p className="font-albert text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-2">
+                    Target: {new Date(user.goalTargetDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  </p>
+                )}
+                {user.goalProgress !== undefined && (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Progress</span>
+                      <span className="text-xs font-medium text-brand-accent font-albert">{user.goalProgress}%</span>
+                    </div>
+                    <div className="h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-brand-accent to-[#8c6245] rounded-full transition-all duration-500"
+                        style={{ width: `${user.goalProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl text-center">
+                <Target className="w-8 h-8 text-[#c4bfb9] dark:text-[#7d8190] mx-auto mb-2" />
+                <p className="font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2]">No goal set yet</p>
+              </div>
+            )}
+
+            {/* Identity */}
+            {user?.identity && (
+              <div className="p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
+                <p className="font-albert text-xs text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-2">Identity Statement</p>
+                <p className="font-albert text-[15px] text-[#1a1a1a] dark:text-[#f5f5f8] italic">"{user.identity}"</p>
+              </div>
+            )}
+
+            {/* Goal History */}
+            {user?.goalHistory && user.goalHistory.length > 0 && (
+              <div>
+                <p className="font-albert text-xs text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider mb-2">Past Goals</p>
+                <div className="space-y-2">
+                  {user.goalHistory.slice(0, 3).map((entry, idx) => (
+                    <div key={idx} className="flex items-center gap-3 p-3 bg-[#faf8f6] dark:bg-[#11141b] rounded-lg">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${entry.completedAt ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-[#e1ddd8] dark:bg-[#262b35]'}`}>
+                        {entry.completedAt ? (
+                          <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        ) : (
+                          <Target className="w-4 h-4 text-[#8c8c8c] dark:text-[#7d8190]" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">{entry.goal}</p>
+                        <p className="font-albert text-xs text-[#8c8c8c] dark:text-[#7d8190]">
+                          {entry.completedAt ? 'Completed' : 'Archived'} • {entry.progress}% progress
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Sentiment Graph Section */}
+      <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
+        <button
+          onClick={() => toggleSection('sentiment')}
+          className="w-full flex items-center justify-between p-5 hover:bg-[#faf8f6]/50 dark:hover:bg-[#11141b]/50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-brand-accent" />
+            <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
+              Mood Over Time
+            </h3>
+          </div>
+          {expandedSections.sentiment ? <ChevronUp className="w-5 h-5 text-[#5f5a55]" /> : <ChevronDown className="w-5 h-5 text-[#5f5a55]" />}
+        </button>
+        {expandedSections.sentiment && (
+          <div className="px-5 pb-5">
+            <div className="flex items-end justify-between gap-2 h-32">
+              {sentimentData.map((day, idx) => {
+                const morningValue = day.morning ? EMOTIONAL_STATE_COLORS[day.morning]?.value || 3 : 0;
+                const eveningValue = day.evening ? EMOTIONAL_STATE_COLORS[day.evening]?.value || 3 : 0;
+                const morningHeight = morningValue ? (morningValue / 5) * 100 : 0;
+                const eveningHeight = eveningValue ? (eveningValue / 5) * 100 : 0;
+                
+                return (
+                  <div key={idx} className="flex-1 flex flex-col items-center gap-1">
+                    <div className="flex gap-1 h-24 items-end">
+                      {/* Morning bar */}
+                      <div className="w-3 relative group">
+                        {morningValue > 0 && (
+                          <>
+                            <div 
+                              className={`w-full rounded-t transition-all ${EMOTIONAL_STATE_COLORS[day.morning!]?.bg || 'bg-gray-300'}`}
+                              style={{ height: `${morningHeight}%` }}
+                            />
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-[#1a1a1a] text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                              AM: {day.morning}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      {/* Evening bar */}
+                      <div className="w-3 relative group">
+                        {eveningValue > 0 && (
+                          <>
+                            <div 
+                              className={`w-full rounded-t transition-all ${EMOTIONAL_STATE_COLORS[day.evening!]?.bg || 'bg-gray-300'}`}
+                              style={{ height: `${eveningHeight}%` }}
+                            />
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-[#1a1a1a] text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                              PM: {day.evening}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-[#8c8c8c] dark:text-[#7d8190] font-albert">{day.dayLabel}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex items-center justify-center gap-4 mt-4">
+              <div className="flex items-center gap-1.5">
+                <Sun className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Morning</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Moon className="w-3.5 h-3.5 text-indigo-500" />
+                <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Evening</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Check-ins Section */}
+      <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
+        <button
+          onClick={() => toggleSection('checkins')}
+          className="w-full flex items-center justify-between p-5 hover:bg-[#faf8f6]/50 dark:hover:bg-[#11141b]/50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-brand-accent" />
+            <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
+              Check-ins
+            </h3>
+          </div>
+          {expandedSections.checkins ? <ChevronUp className="w-5 h-5 text-[#5f5a55]" /> : <ChevronDown className="w-5 h-5 text-[#5f5a55]" />}
+        </button>
+        {expandedSections.checkins && (
+          <div className="px-5 pb-5">
+            {/* Tab buttons */}
+            <div className="flex gap-2 mb-4">
+              {(['morning', 'evening', 'weekly'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setCheckinTab(tab)}
+                  className={`px-4 py-2 rounded-lg font-albert text-sm font-medium transition-colors ${
+                    checkinTab === tab
+                      ? 'bg-brand-accent text-white'
+                      : 'bg-[#f3f1ef] dark:bg-[#11141b] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#e9e5e0] dark:hover:bg-[#171b22]'
+                  }`}
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  <span className="ml-1.5 text-xs opacity-70">
+                    ({tab === 'morning' ? morningCheckins.length : tab === 'evening' ? eveningCheckins.length : weeklyCheckins.length})
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Tab content */}
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {checkinTab === 'morning' && (
+                morningCheckins.length > 0 ? (
+                  morningCheckins.map((checkin) => (
+                    <div key={checkin.id} className="p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                          {new Date(checkin.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${EMOTIONAL_STATE_COLORS[checkin.emotionalState]?.bg} ${EMOTIONAL_STATE_COLORS[checkin.emotionalState]?.text}`}>
+                          {checkin.emotionalState.replace('_', ' ')}
+                        </span>
+                      </div>
+                      {checkin.userThought && (
+                        <div className="mb-2">
+                          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-1">Thought:</p>
+                          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">{checkin.userThought}</p>
+                        </div>
+                      )}
+                      {checkin.aiReframe && (
+                        <div className="p-3 bg-white dark:bg-[#171b22] rounded-lg border border-brand-accent/20">
+                          <p className="text-xs text-brand-accent font-albert mb-1 font-medium">AI Reframe:</p>
+                          <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{checkin.aiReframe}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-center py-8 text-[#5f5a55] dark:text-[#b2b6c2] font-albert">No morning check-ins yet</p>
+                )
+              )}
+
+              {checkinTab === 'evening' && (
+                eveningCheckins.length > 0 ? (
+                  eveningCheckins.map((checkin) => (
+                    <div key={checkin.id} className="p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                          {new Date(checkin.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${EMOTIONAL_STATE_COLORS[checkin.emotionalState]?.bg} ${EMOTIONAL_STATE_COLORS[checkin.emotionalState]?.text}`}>
+                          {checkin.emotionalState.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <CheckCircle className="w-4 h-4 text-emerald-500" />
+                        <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                          {checkin.tasksCompleted}/{checkin.tasksTotal} tasks completed
+                        </span>
+                      </div>
+                      {checkin.reflectionText && (
+                        <div className="p-3 bg-white dark:bg-[#171b22] rounded-lg">
+                          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-1">Reflection:</p>
+                          <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{checkin.reflectionText}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-center py-8 text-[#5f5a55] dark:text-[#b2b6c2] font-albert">No evening check-ins yet</p>
+                )
+              )}
+
+              {checkinTab === 'weekly' && (
+                weeklyCheckins.length > 0 ? (
+                  weeklyCheckins.map((checkin) => (
+                    <div key={checkin.id} className="p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                          Week of {new Date(checkin.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          checkin.onTrackStatus === 'on_track' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                          checkin.onTrackStatus === 'slightly_behind' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                        }`}>
+                          {checkin.onTrackStatus.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-brand-accent rounded-full"
+                            style={{ width: `${checkin.progress}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">{checkin.progress}%</span>
+                      </div>
+                      {checkin.whatWentWell && (
+                        <div>
+                          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-1">What went well:</p>
+                          <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{checkin.whatWentWell}</p>
+                        </div>
+                      )}
+                      {checkin.biggestObstacles && (
+                        <div>
+                          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-1">Obstacles:</p>
+                          <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{checkin.biggestObstacles}</p>
+                        </div>
+                      )}
+                      {checkin.nextWeekPlan && (
+                        <div>
+                          <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert mb-1">Next week plan:</p>
+                          <p className="text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">{checkin.nextWeekPlan}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-center py-8 text-[#5f5a55] dark:text-[#b2b6c2] font-albert">No weekly check-ins yet</p>
+                )
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Programs Section */}
+      <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
+        <button
+          onClick={() => toggleSection('programs')}
+          className="w-full flex items-center justify-between p-5 hover:bg-[#faf8f6]/50 dark:hover:bg-[#11141b]/50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <GraduationCap className="w-5 h-5 text-brand-accent" />
+            <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
+              Programs
+            </h3>
+            <span className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">({programEnrollments.length})</span>
+          </div>
+          {expandedSections.programs ? <ChevronUp className="w-5 h-5 text-[#5f5a55]" /> : <ChevronDown className="w-5 h-5 text-[#5f5a55]" />}
+        </button>
+        {expandedSections.programs && (
+          <div className="px-5 pb-5">
+            {/* Toggle for past programs */}
+            {pastPrograms.length > 0 && (
+              <div className="flex items-center justify-end mb-3">
+                <button
+                  onClick={() => setShowPastPrograms(!showPastPrograms)}
+                  className="text-sm text-brand-accent hover:underline font-albert"
+                >
+                  {showPastPrograms ? 'Hide past programs' : `Show past programs (${pastPrograms.length})`}
+                </button>
+              </div>
+            )}
+
+            {/* Current Programs */}
+            {currentPrograms.length > 0 ? (
+              <div className="space-y-3">
+                {currentPrograms.map((enrollment) => (
+                  <div key={enrollment.id} className="p-4 bg-gradient-to-br from-brand-accent/5 to-[#8c6245]/5 dark:from-[#b8896a]/10 dark:to-brand-accent/5 rounded-xl border border-brand-accent/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">{enrollment.programName}</span>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                        Active
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-brand-accent rounded-full"
+                          style={{ width: `${enrollment.progress}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">{enrollment.progress}%</span>
+                    </div>
+                    <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] mt-2 font-albert">
+                      Started {new Date(enrollment.startedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center py-4 text-[#5f5a55] dark:text-[#b2b6c2] font-albert">No active programs</p>
+            )}
+
+            {/* Past Programs */}
+            {showPastPrograms && pastPrograms.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-[#e1ddd8]/50 dark:border-[#262b35]/50 space-y-3">
+                <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] uppercase tracking-wider font-albert mb-2">Past Programs</p>
+                {pastPrograms.map((enrollment) => (
+                  <div key={enrollment.id} className="p-4 bg-[#faf8f6] dark:bg-[#11141b] rounded-xl">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-albert text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">{enrollment.programName}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        enrollment.status === 'completed' 
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                          : 'bg-[#e1ddd8] text-[#5f5a55] dark:bg-[#262b35] dark:text-[#b2b6c2]'
+                      }`}>
+                        {enrollment.status === 'completed' ? 'Completed' : 'Cancelled'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                      {enrollment.completedAt 
+                        ? `Completed ${new Date(enrollment.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                        : `Started ${new Date(enrollment.startedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                      }
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Coach Notes Section */}
+      <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
+        <button
+          onClick={() => toggleSection('notes')}
+          className="w-full flex items-center justify-between p-5 hover:bg-[#faf8f6]/50 dark:hover:bg-[#11141b]/50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <FileText className="w-5 h-5 text-brand-accent" />
+            <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
+              Notes About This Client
+            </h3>
+          </div>
+          {expandedSections.notes ? <ChevronUp className="w-5 h-5 text-[#5f5a55]" /> : <ChevronDown className="w-5 h-5 text-[#5f5a55]" />}
+        </button>
+        {expandedSections.notes && (
+          <div className="px-5 pb-5">
             <textarea
               value={coachNotes}
               onChange={(e) => setCoachNotes(e.target.value)}
               placeholder="Add notes about this client..."
-              rows={3}
-              className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30 resize-none"
+              rows={4}
+              className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent/30 resize-none"
             />
+            <div className="flex items-center justify-between mt-3">
+              <p className="text-xs text-[#8c8c8c] dark:text-[#7d8190] font-albert">
+                Only you can see these notes
+              </p>
+              <div className="flex items-center gap-2">
+                {notesSaved && (
+                  <span className="text-xs text-emerald-600 dark:text-emerald-400 font-albert flex items-center gap-1">
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    Saved
+                  </span>
+                )}
+                <button
+                  onClick={handleSaveCoachNotes}
+                  disabled={savingNotes}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-brand-accent hover:bg-brand-accent/90 rounded-lg font-albert text-sm font-medium text-white transition-colors disabled:opacity-50"
+                >
+                  {savingNotes ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Save Notes
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
+        )}
+      </div>
+
+      {/* Squad Assignment Section */}
+      <div className="bg-white/80 dark:bg-[#171b22]/80 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-5 shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <Users className="w-5 h-5 text-brand-accent" />
+          <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
+            Squad Membership
+          </h3>
         </div>
+
+        {(() => {
+          const userSquadIds = user?.squadIds || (user?.standardSquadId ? [user.standardSquadId] : []);
+          const availableSquads = squads.filter(s => !userSquadIds.includes(s.id));
+          
+          return (
+            <div className={`flex flex-wrap gap-2 items-center ${updatingSquad ? 'opacity-50 pointer-events-none' : ''}`}>
+              {/* Squad tags */}
+              {userSquadIds.map((squadId) => {
+                const squad = squads.find(s => s.id === squadId);
+                return (
+                  <span
+                    key={squadId}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-accent/10 text-brand-accent rounded-full text-[13px] font-medium font-albert"
+                  >
+                    {squad?.name || 'Unknown'}
+                    <button
+                      onClick={() => handleRemoveFromSquad(squadId)}
+                      className="hover:bg-brand-accent/20 dark:hover:bg-brand-accent/20 rounded-full p-0.5 transition-colors"
+                      title={`Remove from ${squad?.name || 'squad'}`}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                );
+              })}
+              
+              {/* Add squad dropdown */}
+              {availableSquads.length > 0 && (
+                <Select
+                  value=""
+                  onValueChange={(squadId) => handleAddToSquad(squadId)}
+                >
+                  <SelectTrigger className="w-auto h-8 px-3 py-0 border-dashed border-[#e1ddd8] dark:border-[#262b35] bg-transparent hover:bg-[#faf8f6] dark:hover:bg-[#11141b] text-[13px]">
+                    <Plus className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2] mr-1" />
+                    <span className="font-albert text-[#5f5a55] dark:text-[#b2b6c2]">Add to squad</span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSquads.map((squad) => (
+                      <SelectItem key={squad.id} value={squad.id} className="font-albert text-sm">
+                        {squad.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              
+              {/* Show "None" if no squads and no available squads */}
+              {userSquadIds.length === 0 && availableSquads.length === 0 && (
+                <span className="text-[#8c8c8c] dark:text-[#7d8190] text-sm font-albert">No squads available</span>
+              )}
+              {userSquadIds.length === 0 && availableSquads.length > 0 && (
+                <span className="text-[#8c8c8c] dark:text-[#7d8190] text-xs font-albert">Not in any squad</span>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* One-on-One Coaching Section */}
@@ -1493,6 +2209,14 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Send DM Modal */}
+      {showDMModal && dmRecipient && (
+        <SendDMModal
+          recipients={[dmRecipient]}
+          onClose={() => setShowDMModal(false)}
+        />
+      )}
     </div>
   );
 }

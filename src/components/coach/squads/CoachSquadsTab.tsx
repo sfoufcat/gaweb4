@@ -26,6 +26,7 @@ import { AIHelperModal } from '@/components/ai';
 import type { LandingPageDraft, ProgramContentDraft, AIGenerationContext } from '@/lib/ai/types';
 import { ReferralConfigForm } from '@/components/coach/referrals';
 import { SquadFormDialog } from '@/components/admin/SquadFormDialog';
+import { SquadView } from '@/components/squad/SquadView';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LimitReachedModal, useLimitCheck } from '@/components/coach';
 import { useDemoMode } from '@/contexts/DemoModeContext';
@@ -84,8 +85,8 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
   // Squad filter
   const [squadFilter, setSquadFilter] = useState<SquadFilterType>('all');
   
-  // View mode: 'list' | 'members' | 'landing' | 'referrals'
-  const [viewMode, setViewMode] = useState<'list' | 'members' | 'landing' | 'referrals'>('list');
+  // View mode: 'list' | 'members' | 'squad-view' | 'landing' | 'referrals'
+  const [viewMode, setViewMode] = useState<'list' | 'members' | 'squad-view' | 'landing' | 'referrals'>('list');
   
   // Members state
   const [squadMembers, setSquadMembers] = useState<MemberWithUser[]>([]);
@@ -1021,6 +1022,17 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
           Members
         </button>
         <button
+          onClick={() => setViewMode('squad-view')}
+          className={`px-3 py-1.5 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
+            viewMode === 'squad-view'
+              ? 'bg-brand-accent/10 text-brand-accent'
+              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#faf8f6] dark:hover:bg-white/5'
+          }`}
+        >
+          <Eye className="w-3.5 h-3.5" />
+          Squad View
+        </button>
+        <button
           onClick={() => setViewMode('landing')}
           className={`px-3 py-1.5 rounded-lg text-sm font-albert flex items-center gap-1.5 ${
             viewMode === 'landing'
@@ -1165,6 +1177,16 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
               ))}
             </div>
           )}
+        </div>
+      ) : viewMode === 'squad-view' ? (
+        // Squad View - Shows the squad as members see it
+        <div>
+          <div className="mb-4">
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+              View the squad as members see it - stories, calls, stats, and more
+            </p>
+          </div>
+          <SquadView squadId={selectedSquad.id} showCoachBadge={true} />
         </div>
       ) : viewMode === 'landing' ? (
         // Landing Page Editor

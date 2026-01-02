@@ -2,13 +2,43 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Calendar, ChevronRight, UserPlus, RefreshCw } from 'lucide-react';
+import { Calendar, ChevronRight, UserPlus, RefreshCw, Heart, Activity, AlertCircle, AlertTriangle } from 'lucide-react';
 import type { ClientCoachingData, FirebaseUser, CoachingPlanType } from '@/types';
 import { InviteClientsDialog } from './InviteClientsDialog';
 
+interface ClientActivityScore {
+  status: 'thriving' | 'active' | 'inactive';
+  atRisk: boolean;
+  lastActivityAt: string | null;
+  daysActiveInPeriod: number;
+}
+
 interface CoachingClientWithUser extends ClientCoachingData {
   user?: Partial<FirebaseUser>;
+  activityScore?: ClientActivityScore;
 }
+
+// Activity status colors and icons
+const ACTIVITY_STATUS_CONFIG: Record<string, { bg: string; text: string; icon: React.ReactNode; label: string }> = {
+  thriving: { 
+    bg: 'bg-emerald-100 dark:bg-emerald-900/30', 
+    text: 'text-emerald-700 dark:text-emerald-400', 
+    icon: <Heart className="w-3 h-3" />,
+    label: 'Thriving'
+  },
+  active: { 
+    bg: 'bg-amber-100 dark:bg-amber-900/30', 
+    text: 'text-amber-700 dark:text-amber-400', 
+    icon: <Activity className="w-3 h-3" />,
+    label: 'Active'
+  },
+  inactive: { 
+    bg: 'bg-red-100 dark:bg-red-900/30', 
+    text: 'text-red-700 dark:text-red-400', 
+    icon: <AlertCircle className="w-3 h-3" />,
+    label: 'Inactive'
+  },
+};
 
 interface CoachingClientsTabProps {
   onSelectClient: (clientId: string) => void;
@@ -201,10 +231,28 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
 
             {/* Client Info */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <p className="font-albert font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
                   {client.user?.firstName} {client.user?.lastName}
                 </p>
+                {/* Activity Status Badge */}
+                {client.activityScore && (
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium font-albert ${
+                    ACTIVITY_STATUS_CONFIG[client.activityScore.status]?.bg
+                  } ${
+                    ACTIVITY_STATUS_CONFIG[client.activityScore.status]?.text
+                  }`}>
+                    {ACTIVITY_STATUS_CONFIG[client.activityScore.status]?.icon}
+                    {ACTIVITY_STATUS_CONFIG[client.activityScore.status]?.label}
+                  </span>
+                )}
+                {/* At Risk Badge */}
+                {client.activityScore?.atRisk && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium font-albert bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">
+                    <AlertTriangle className="w-3 h-3" />
+                    At Risk
+                  </span>
+                )}
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium font-albert ${
                   client.coachingPlan === 'quarterly' 
                     ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' 
