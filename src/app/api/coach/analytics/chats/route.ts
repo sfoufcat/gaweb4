@@ -19,6 +19,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { getStreamServerClient } from '@/lib/stream-server';
 import { getOrgChannels } from '@/lib/org-channels';
+import { withDemoMode } from '@/lib/demo-api';
 import type { Squad } from '@/types';
 
 interface ChannelStats {
@@ -41,6 +42,10 @@ interface DailyChatStats {
 
 export async function GET(request: NextRequest) {
   try {
+    // Demo mode: return demo data
+    const demoData = await withDemoMode('analytics-chats');
+    if (demoData) return demoData;
+    
     const { organizationId } = await requireCoachWithOrg();
     const { searchParams } = new URL(request.url);
     

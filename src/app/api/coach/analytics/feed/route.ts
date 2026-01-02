@@ -19,6 +19,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { getOrgPosts } from '@/lib/stream-feeds';
+import { withDemoMode } from '@/lib/demo-api';
 import type { OrgMembership } from '@/types';
 
 interface PostActivity {
@@ -52,6 +53,10 @@ interface DailyStats {
 
 export async function GET(request: NextRequest) {
   try {
+    // Demo mode: return demo data
+    const demoData = await withDemoMode('analytics-feed');
+    if (demoData) return demoData;
+    
     const { organizationId } = await requireCoachWithOrg();
     const { searchParams } = new URL(request.url);
     

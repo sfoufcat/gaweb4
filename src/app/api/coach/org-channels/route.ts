@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { getStreamServerClient } from '@/lib/stream-server';
+import { withDemoMode, demoNotAvailable } from '@/lib/demo-api';
 import {
   getOrgChannels,
   createOrgChannel,
@@ -14,6 +15,10 @@ import {
  */
 export async function GET() {
   try {
+    // Demo mode: return demo data
+    const demoData = await withDemoMode('org-channels');
+    if (demoData) return demoData;
+    
     const { organizationId } = await requireCoachWithOrg();
 
     const channels = await getOrgChannels(organizationId);
@@ -57,6 +62,10 @@ export async function GET() {
  */
 export async function POST(req: Request) {
   try {
+    // Demo mode: block write operations
+    const demoData = await withDemoMode('org-channels');
+    if (demoData) return demoNotAvailable('Creating channels');
+    
     const { organizationId, userId } = await requireCoachWithOrg();
 
     const body = await req.json();

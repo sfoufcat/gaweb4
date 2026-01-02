@@ -86,12 +86,12 @@ export function Sidebar() {
   const { programEmptyStateBehavior, squadEmptyStateBehavior } = useEmptyStateBehaviors();
   
   // Navigation visibility logic:
-  // - Program: Show if user has enrollments, OR coach config says show discover page
-  // - Squad: Show if user has standalone squad (not program-attached), OR coach config says show discover page
-  // - Feed: Show if feed is enabled for the org (from SSR for instant rendering)
-  const showProgramNav = hasEnrollments || programEmptyStateBehavior === 'discover';
-  const showSquadNav = hasStandaloneSquad || squadEmptyStateBehavior === 'discover';
-  const showFeedNav = feedEnabled;
+  // - Program: Show if user has enrollments, OR coach config says show discover page, OR demo mode
+  // - Squad: Show if user has standalone squad (not program-attached), OR coach config says show discover page, OR demo mode
+  // - Feed: Show if feed is enabled for the org (from SSR for instant rendering), OR demo mode
+  const showProgramNav = isDemoSite || hasEnrollments || programEmptyStateBehavior === 'discover';
+  const showSquadNav = isDemoSite || hasStandaloneSquad || squadEmptyStateBehavior === 'discover';
+  const showFeedNav = isDemoSite || feedEnabled;
   
   const isActive = (path: string) => pathname === path;
   

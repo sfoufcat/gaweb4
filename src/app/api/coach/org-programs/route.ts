@@ -10,10 +10,15 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg, TenantRequiredError } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
 import { requireOrgAuthAndEntitlements, getOrgProgramCount, isEntitlementError, getEntitlementErrorStatus } from '@/lib/billing/server-enforcement';
+import { withDemoMode, demoNotAvailable } from '@/lib/demo-api';
 import type { Program, ProgramType, ProgramHabitTemplate, ProgramWithStats, ProgramFeature, ProgramTestimonial, ProgramFAQ } from '@/types';
 
 export async function GET(request: NextRequest) {
   try {
+    // Demo mode: return demo data
+    const demoData = await withDemoMode('org-programs');
+    if (demoData) return demoData;
+    
     const { organizationId } = await requireCoachWithOrg();
     const { searchParams } = new URL(request.url);
     
@@ -116,6 +121,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Demo mode: block write operations
+    const demoData = await withDemoMode('org-programs');
+    if (demoData) return demoNotAvailable('Creating programs');
+    
     // Get current program count for limit check
     const { organizationId } = await requireCoachWithOrg();
     const currentProgramCount = await getOrgProgramCount(organizationId);

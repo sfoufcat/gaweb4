@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
+import { withDemoMode, demoNotAvailable } from '@/lib/demo-api';
 import type { CoachAvailability, WeeklySchedule, BlockedSlot, TimeSlot } from '@/types';
 
 /**
@@ -10,6 +11,10 @@ import type { CoachAvailability, WeeklySchedule, BlockedSlot, TimeSlot } from '@
  */
 export async function GET() {
   try {
+    // Demo mode: return demo data
+    const demoData = await withDemoMode('availability');
+    if (demoData) return demoData;
+    
     const { userId, organizationId } = await requireCoachWithOrg();
 
     // Get availability document for this org
@@ -63,6 +68,10 @@ export async function GET() {
  */
 export async function PUT(request: NextRequest) {
   try {
+    // Demo mode: block write operations
+    const demoData = await withDemoMode('availability');
+    if (demoData) return demoNotAvailable('Updating availability settings');
+    
     const { userId, organizationId } = await requireCoachWithOrg();
     const body = await request.json();
 

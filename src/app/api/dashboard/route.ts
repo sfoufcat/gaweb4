@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { isDemoRequest, withDemoMode, demoResponse } from '@/lib/demo-api';
+import { generateDemoUserProfile } from '@/lib/demo-data';
 import type { Task, Habit, Program, ProgramCohort, ProgramEnrollment, Squad, SquadMember } from '@/types';
 
 /**
@@ -66,6 +68,81 @@ interface EnrollmentWithDetails extends ProgramEnrollment {
 
 export async function GET(request: Request) {
   try {
+    // Demo mode: return demo dashboard data
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const profile = generateDemoUserProfile();
+      const today = new Date().toISOString().split('T')[0];
+      const weekId = getWeekId();
+      
+      return demoResponse({
+        user: {
+          id: profile.id,
+          email: profile.email,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          imageUrl: profile.imageUrl,
+        },
+        habits: profile.habits.map(h => ({
+          id: h.id,
+          title: h.title,
+          streak: h.streak,
+          completedDates: h.completedToday ? [today] : [],
+          isActive: true,
+        })),
+        tasks: {
+          focus: profile.todaysTasks.map(t => ({
+            id: t.id,
+            label: t.label,
+            completed: t.completed,
+            isPrimary: t.isPrimary,
+            date: today,
+          })),
+          backlog: [],
+        },
+        checkIns: {
+          morning: null,
+          evening: null,
+          weekly: null,
+          program: { show: false, programId: null, programName: null, programDays: null },
+        },
+        programEnrollments: {
+          active: profile.currentProgram ? [{
+            id: 'demo-enrollment-1',
+            programId: profile.currentProgram.id,
+            program: {
+              id: profile.currentProgram.id,
+              name: profile.currentProgram.name,
+              type: 'group',
+              lengthDays: profile.currentProgram.totalDays,
+            },
+            progress: {
+              currentDay: profile.currentProgram.currentDay,
+              totalDays: profile.currentProgram.totalDays,
+              percentComplete: profile.currentProgram.progress,
+              daysRemaining: profile.currentProgram.totalDays - profile.currentProgram.currentDay,
+            },
+            status: 'active',
+          }] : [],
+          upcoming: [],
+        },
+        squads: {
+          premium: { squad: null, members: [] },
+          standard: profile.squad ? {
+            squad: {
+              id: profile.squad.id,
+              name: profile.squad.name,
+              memberCount: profile.squad.memberCount,
+            },
+            members: [],
+          } : { squad: null, members: [] },
+        },
+        date: today,
+        weekId,
+        organizationId: 'demo-org',
+      });
+    }
+    
     const { userId } = await auth();
 
     if (!userId) {

@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { FieldValue } from 'firebase-admin/firestore';
+import { withDemoMode, demoNotAvailable } from '@/lib/demo-api';
 import type { DiscountCode } from '@/types';
 
 /**
@@ -16,6 +17,10 @@ import type { DiscountCode } from '@/types';
  */
 export async function GET(request: NextRequest) {
   try {
+    // Demo mode: return demo data
+    const demoData = await withDemoMode('discount-codes');
+    if (demoData) return demoData;
+    
     const { organizationId } = await requireCoachWithOrg();
     const { searchParams } = new URL(request.url);
     
@@ -80,6 +85,10 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Demo mode: block write operations
+    const demoData = await withDemoMode('discount-codes');
+    if (demoData) return demoNotAvailable('Creating discount codes');
+    
     const { userId, organizationId } = await requireCoachWithOrg();
     const body = await request.json();
 

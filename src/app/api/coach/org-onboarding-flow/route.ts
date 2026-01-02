@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg, TenantRequiredError } from '@/lib/admin-utils-clerk';
+import { withDemoMode, demoNotAvailable } from '@/lib/demo-api';
 import type { OrgOnboardingFlow } from '@/types';
 
 /**
@@ -10,6 +11,10 @@ import type { OrgOnboardingFlow } from '@/types';
  */
 export async function GET() {
   try {
+    // Demo mode: return demo data
+    const demoData = await withDemoMode('org-onboarding-flow');
+    if (demoData) return demoData;
+    
     const { organizationId } = await requireCoachWithOrg();
 
     // Get the onboarding flow for this org (should only be one)
@@ -65,6 +70,10 @@ export async function GET() {
  */
 export async function POST(req: Request) {
   try {
+    // Demo mode: block write operations
+    const demoData = await withDemoMode('org-onboarding-flow');
+    if (demoData) return demoNotAvailable('Creating onboarding flows');
+    
     const { organizationId, userId } = await requireCoachWithOrg();
 
     const body = await req.json();
@@ -140,6 +149,10 @@ export async function POST(req: Request) {
  */
 export async function PUT(req: Request) {
   try {
+    // Demo mode: block write operations
+    const demoData = await withDemoMode('org-onboarding-flow');
+    if (demoData) return demoNotAvailable('Updating onboarding flows');
+    
     const { organizationId, userId } = await requireCoachWithOrg();
 
     const body = await req.json();

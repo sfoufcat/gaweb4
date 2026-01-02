@@ -1332,3 +1332,676 @@ export function generateDemoFunnelAnalytics(): {
   };
 }
 
+// ============================================================================
+// CHECK-IN FLOWS
+// ============================================================================
+
+export interface DemoCheckInStep {
+  id: string;
+  flowId: string;
+  stepIndex: number;
+  type: 'question' | 'rating' | 'text' | 'multiple_choice';
+  title: string;
+  description?: string;
+  options?: string[];
+  required: boolean;
+}
+
+export interface DemoCheckInFlow {
+  id: string;
+  name: string;
+  description: string;
+  isActive: boolean;
+  frequency: 'daily' | 'weekly' | 'custom';
+  steps: DemoCheckInStep[];
+  responseCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const CHECKIN_FLOW_TEMPLATES = [
+  {
+    name: 'Daily Reflection',
+    description: 'Quick daily check-in to track progress and mood',
+    frequency: 'daily' as const,
+    steps: [
+      { type: 'rating' as const, title: 'How are you feeling today?', description: 'Rate your overall energy level' },
+      { type: 'text' as const, title: 'What\'s your main focus for today?', required: true },
+      { type: 'multiple_choice' as const, title: 'Did you complete yesterday\'s goals?', options: ['Yes, all of them', 'Most of them', 'Some of them', 'Not yet'] },
+    ],
+  },
+  {
+    name: 'Weekly Review',
+    description: 'End-of-week reflection on wins and challenges',
+    frequency: 'weekly' as const,
+    steps: [
+      { type: 'text' as const, title: 'What were your biggest wins this week?', required: true },
+      { type: 'text' as const, title: 'What challenges did you face?', required: false },
+      { type: 'rating' as const, title: 'How satisfied are you with your progress?', description: '1 = Not at all, 10 = Extremely' },
+      { type: 'text' as const, title: 'What will you focus on next week?', required: true },
+    ],
+  },
+];
+
+export function generateDemoCheckInFlows(): DemoCheckInFlow[] {
+  const random = seededRandom(1200);
+  const flows: DemoCheckInFlow[] = [];
+  
+  CHECKIN_FLOW_TEMPLATES.forEach((template, i) => {
+    const flowId = `demo-checkin-flow-${i + 1}`;
+    const steps: DemoCheckInStep[] = template.steps.map((step, j) => ({
+      id: `demo-checkin-step-${i + 1}-${j + 1}`,
+      flowId,
+      stepIndex: j,
+      type: step.type,
+      title: step.title,
+      description: step.description,
+      options: step.options,
+      required: step.required ?? true,
+    }));
+    
+    flows.push({
+      id: flowId,
+      name: template.name,
+      description: template.description,
+      isActive: i === 0, // First one is active
+      frequency: template.frequency,
+      steps,
+      responseCount: 50 + Math.floor(random() * 150),
+      createdAt: randomPastDate(90).toISOString(),
+      updatedAt: randomPastDate(7).toISOString(),
+    });
+  });
+  
+  return flows;
+}
+
+// ============================================================================
+// ONBOARDING FLOW
+// ============================================================================
+
+export interface DemoOnboardingStep {
+  id: string;
+  stepIndex: number;
+  type: 'welcome' | 'profile' | 'goals' | 'preferences' | 'complete';
+  title: string;
+  description: string;
+  isRequired: boolean;
+}
+
+export interface DemoOnboardingFlow {
+  id: string;
+  name: string;
+  isActive: boolean;
+  steps: DemoOnboardingStep[];
+  completionCount: number;
+  averageCompletionTime: number; // in minutes
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function generateDemoOnboardingFlow(): DemoOnboardingFlow {
+  const random = seededRandom(1300);
+  const flowId = 'demo-onboarding-flow-1';
+  
+  const steps: DemoOnboardingStep[] = [
+    { id: `${flowId}-step-1`, stepIndex: 0, type: 'welcome', title: 'Welcome!', description: 'Let\'s get you set up for success', isRequired: true },
+    { id: `${flowId}-step-2`, stepIndex: 1, type: 'profile', title: 'Complete Your Profile', description: 'Tell us a bit about yourself', isRequired: true },
+    { id: `${flowId}-step-3`, stepIndex: 2, type: 'goals', title: 'Set Your Goals', description: 'What do you want to achieve?', isRequired: true },
+    { id: `${flowId}-step-4`, stepIndex: 3, type: 'preferences', title: 'Preferences', description: 'Customize your experience', isRequired: false },
+    { id: `${flowId}-step-5`, stepIndex: 4, type: 'complete', title: 'You\'re All Set!', description: 'Ready to start your journey', isRequired: true },
+  ];
+  
+  return {
+    id: flowId,
+    name: 'New Member Onboarding',
+    isActive: true,
+    steps,
+    completionCount: 45 + Math.floor(random() * 30),
+    averageCompletionTime: 5 + Math.floor(random() * 5),
+    createdAt: randomPastDate(180).toISOString(),
+    updatedAt: randomPastDate(14).toISOString(),
+  };
+}
+
+// ============================================================================
+// CHANNELS
+// ============================================================================
+
+export interface DemoChannel {
+  id: string;
+  name: string;
+  description?: string;
+  type: 'general' | 'squad' | 'program' | 'announcements' | 'support';
+  squadId?: string;
+  squadName?: string;
+  programId?: string;
+  programName?: string;
+  memberCount: number;
+  messageCount: number;
+  isDefault: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function generateDemoChannels(): DemoChannel[] {
+  const random = seededRandom(1400);
+  const channels: DemoChannel[] = [];
+  
+  // Default channels
+  channels.push({
+    id: 'demo-channel-general',
+    name: 'General',
+    description: 'General discussion for all members',
+    type: 'general',
+    memberCount: 45,
+    messageCount: 320 + Math.floor(random() * 200),
+    isDefault: true,
+    sortOrder: 0,
+    createdAt: randomPastDate(180).toISOString(),
+    updatedAt: randomPastDate(1).toISOString(),
+  });
+  
+  channels.push({
+    id: 'demo-channel-announcements',
+    name: 'Announcements',
+    description: 'Important updates and announcements',
+    type: 'announcements',
+    memberCount: 45,
+    messageCount: 25 + Math.floor(random() * 15),
+    isDefault: true,
+    sortOrder: 1,
+    createdAt: randomPastDate(180).toISOString(),
+    updatedAt: randomPastDate(7).toISOString(),
+  });
+  
+  channels.push({
+    id: 'demo-channel-support',
+    name: 'Support',
+    description: 'Get help and ask questions',
+    type: 'support',
+    memberCount: 45,
+    messageCount: 85 + Math.floor(random() * 50),
+    isDefault: true,
+    sortOrder: 2,
+    createdAt: randomPastDate(180).toISOString(),
+    updatedAt: randomPastDate(2).toISOString(),
+  });
+  
+  // Squad channels
+  SQUAD_NAMES.slice(0, 3).forEach((squad, i) => {
+    channels.push({
+      id: `demo-channel-squad-${i + 1}`,
+      name: squad.name,
+      description: `Private channel for ${squad.name} members`,
+      type: 'squad',
+      squadId: `demo-squad-${i + 1}`,
+      squadName: squad.name,
+      memberCount: 10 + Math.floor(random() * 15),
+      messageCount: 100 + Math.floor(random() * 200),
+      isDefault: false,
+      sortOrder: 10 + i,
+      createdAt: randomPastDate(90).toISOString(),
+      updatedAt: randomPastDate(3).toISOString(),
+    });
+  });
+  
+  return channels;
+}
+
+// ============================================================================
+// DISCOUNT CODES
+// ============================================================================
+
+export interface DemoDiscountCode {
+  id: string;
+  code: string;
+  description: string;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+  targetType: 'all' | 'program' | 'squad';
+  targetId?: string;
+  targetName?: string;
+  usageLimit?: number;
+  usageCount: number;
+  expiresAt?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function generateDemoDiscountCodes(): DemoDiscountCode[] {
+  const random = seededRandom(1500);
+  const codes: DemoDiscountCode[] = [];
+  
+  const codeTemplates = [
+    { code: 'WELCOME20', description: 'New member discount', discountType: 'percentage' as const, discountValue: 20, targetType: 'all' as const },
+    { code: 'TRANSFORM50', description: '50% off 30-Day Transformation', discountType: 'percentage' as const, discountValue: 50, targetType: 'program' as const, targetId: 'demo-prog-1', targetName: '30-Day Transformation' },
+    { code: 'SAVE100', description: '$100 off any program', discountType: 'fixed' as const, discountValue: 10000, targetType: 'all' as const },
+    { code: 'SQUAD25', description: '25% off squad membership', discountType: 'percentage' as const, discountValue: 25, targetType: 'squad' as const },
+    { code: 'EARLYBIRD', description: 'Early bird special', discountType: 'percentage' as const, discountValue: 30, targetType: 'all' as const },
+  ];
+  
+  codeTemplates.forEach((template, i) => {
+    const usageLimit = random() < 0.7 ? 50 + Math.floor(random() * 100) : undefined;
+    const usageCount = usageLimit ? Math.floor(random() * usageLimit * 0.6) : Math.floor(random() * 30);
+    const hasExpiry = random() < 0.5;
+    
+    codes.push({
+      id: `demo-discount-${i + 1}`,
+      code: template.code,
+      description: template.description,
+      discountType: template.discountType,
+      discountValue: template.discountValue,
+      targetType: template.targetType,
+      targetId: template.targetId,
+      targetName: template.targetName,
+      usageLimit,
+      usageCount,
+      expiresAt: hasExpiry ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : undefined,
+      isActive: i < 4, // First 4 are active
+      createdAt: randomPastDate(60).toISOString(),
+      updatedAt: randomPastDate(7).toISOString(),
+    });
+  });
+  
+  return codes;
+}
+
+// ============================================================================
+// BRANDING / CUSTOMIZATION
+// ============================================================================
+
+export interface DemoBranding {
+  logoUrl: string;
+  horizontalLogoUrl?: string;
+  faviconUrl?: string;
+  appTitle: string;
+  colors: {
+    accentLight: string;
+    accentDark: string;
+    sidebarLight?: string;
+    sidebarDark?: string;
+  };
+  customDomain?: string;
+  socialLinks: {
+    website?: string;
+    instagram?: string;
+    twitter?: string;
+    youtube?: string;
+  };
+}
+
+export function generateDemoBranding(): DemoBranding {
+  return {
+    logoUrl: 'https://ui-avatars.com/api/?name=Demo+Coach&background=a07855&color=fff&size=128&bold=true',
+    appTitle: 'Demo Coaching',
+    colors: {
+      accentLight: '#a07855',
+      accentDark: '#b8896a',
+    },
+    socialLinks: {
+      website: 'https://example.com',
+      instagram: 'https://instagram.com/democoach',
+    },
+  };
+}
+
+// ============================================================================
+// SUBSCRIPTION
+// ============================================================================
+
+export interface DemoSubscription {
+  id: string;
+  status: 'active' | 'past_due' | 'canceled' | 'trialing';
+  plan: 'starter' | 'growth' | 'scale';
+  planName: string;
+  pricePerMonth: number;
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  cancelAtPeriodEnd: boolean;
+  features: string[];
+}
+
+export function generateDemoSubscription(): DemoSubscription {
+  return {
+    id: 'demo-subscription-1',
+    status: 'active',
+    plan: 'growth',
+    planName: 'Growth Plan',
+    pricePerMonth: 9900, // $99/month
+    currentPeriodStart: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+    currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+    cancelAtPeriodEnd: false,
+    features: [
+      'Unlimited clients',
+      'Unlimited programs',
+      'Custom branding',
+      'Analytics dashboard',
+      'Priority support',
+    ],
+  };
+}
+
+// ============================================================================
+// SCHEDULING / AVAILABILITY
+// ============================================================================
+
+export interface DemoTimeSlot {
+  dayOfWeek: number; // 0 = Sunday, 6 = Saturday
+  startTime: string; // HH:mm format
+  endTime: string;
+  isActive: boolean;
+}
+
+export interface DemoBooking {
+  id: string;
+  clientId: string;
+  clientName: string;
+  clientEmail: string;
+  clientImageUrl: string;
+  startTime: string;
+  endTime: string;
+  status: 'confirmed' | 'pending' | 'canceled';
+  type: '1:1 Coaching' | 'Discovery Call' | 'Strategy Session';
+  notes?: string;
+}
+
+export interface DemoSchedulingData {
+  availability: DemoTimeSlot[];
+  bookings: DemoBooking[];
+  timezone: string;
+  bufferMinutes: number;
+  maxAdvanceDays: number;
+}
+
+export function generateDemoScheduling(): DemoSchedulingData {
+  const random = seededRandom(1600);
+  
+  // Default availability: Mon-Fri 9am-5pm
+  const availability: DemoTimeSlot[] = [];
+  for (let day = 1; day <= 5; day++) {
+    availability.push({
+      dayOfWeek: day,
+      startTime: '09:00',
+      endTime: '17:00',
+      isActive: true,
+    });
+  }
+  
+  // Generate some bookings
+  const bookings: DemoBooking[] = [];
+  const bookingTypes: DemoBooking['type'][] = ['1:1 Coaching', 'Discovery Call', 'Strategy Session'];
+  
+  for (let i = 0; i < 8; i++) {
+    const daysFromNow = Math.floor(random() * 14) - 3; // -3 to +11 days
+    const hour = 9 + Math.floor(random() * 8); // 9am to 4pm
+    const startTime = new Date();
+    startTime.setDate(startTime.getDate() + daysFromNow);
+    startTime.setHours(hour, 0, 0, 0);
+    
+    const endTime = new Date(startTime);
+    endTime.setMinutes(endTime.getMinutes() + 60);
+    
+    const firstName = FIRST_NAMES[Math.floor(random() * FIRST_NAMES.length)];
+    const lastName = LAST_NAMES[Math.floor(random() * LAST_NAMES.length)];
+    
+    bookings.push({
+      id: `demo-booking-${i + 1}`,
+      clientId: `demo-user-${i + 1}`,
+      clientName: `${firstName} ${lastName}`,
+      clientEmail: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
+      clientImageUrl: generateAvatarUrl(`${firstName} ${lastName}`),
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+      status: daysFromNow < 0 ? 'confirmed' : (random() < 0.8 ? 'confirmed' : 'pending'),
+      type: bookingTypes[Math.floor(random() * bookingTypes.length)],
+    });
+  }
+  
+  // Sort by start time
+  bookings.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+  
+  return {
+    availability,
+    bookings,
+    timezone: 'America/New_York',
+    bufferMinutes: 15,
+    maxAdvanceDays: 60,
+  };
+}
+
+// ============================================================================
+// DISCOVER CONTENT (Articles, Courses, Events)
+// ============================================================================
+
+export interface DemoDiscoverItem {
+  id: string;
+  type: 'article' | 'course' | 'event' | 'download';
+  title: string;
+  description: string;
+  imageUrl: string;
+  author: string;
+  publishedAt: string;
+  readTime?: number; // minutes
+  isPublished: boolean;
+  isPremium: boolean;
+}
+
+export function generateDemoDiscoverContent(): DemoDiscoverItem[] {
+  const random = seededRandom(1700);
+  const items: DemoDiscoverItem[] = [];
+  
+  const contentTemplates = [
+    { type: 'article' as const, title: '10 Habits of Highly Successful People', description: 'Discover the daily habits that drive success', readTime: 8 },
+    { type: 'article' as const, title: 'The Power of Morning Routines', description: 'How to start your day with intention', readTime: 5 },
+    { type: 'course' as const, title: 'Goal Setting Masterclass', description: 'A comprehensive guide to setting and achieving your goals', isPremium: true },
+    { type: 'course' as const, title: 'Productivity Fundamentals', description: 'Learn to manage your time and energy effectively' },
+    { type: 'event' as const, title: 'Live Q&A: Ask Me Anything', description: 'Join us for a live coaching session' },
+    { type: 'event' as const, title: 'Monthly Mastermind', description: 'Connect with fellow members and share wins' },
+    { type: 'download' as const, title: 'Goal Planning Worksheet', description: 'A printable worksheet to plan your goals' },
+    { type: 'download' as const, title: 'Weekly Review Template', description: 'Track your progress with this template' },
+  ];
+  
+  contentTemplates.forEach((template, i) => {
+    items.push({
+      id: `demo-discover-${i + 1}`,
+      type: template.type,
+      title: template.title,
+      description: template.description,
+      imageUrl: `https://picsum.photos/seed/${i + 100}/800/400`,
+      author: 'Demo Coach',
+      publishedAt: randomPastDate(60).toISOString(),
+      readTime: template.readTime,
+      isPublished: true,
+      isPremium: template.isPremium || false,
+    });
+  });
+  
+  return items;
+}
+
+// ============================================================================
+// FEED POSTS (For demo user experience)
+// ============================================================================
+
+export interface DemoFeedPost {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorImageUrl: string;
+  content: string;
+  imageUrl?: string;
+  likeCount: number;
+  commentCount: number;
+  createdAt: string;
+  isPinned: boolean;
+}
+
+export function generateDemoFeedPosts(): DemoFeedPost[] {
+  const random = seededRandom(1800);
+  const posts: DemoFeedPost[] = [];
+  
+  const postContents = [
+    { content: '🎉 Just hit my 30-day streak! Consistency really is key. What\'s your current streak?', likes: 24, comments: 8 },
+    { content: 'Morning reflection: Today I\'m grateful for this community. Your support means everything! 💪', likes: 45, comments: 12 },
+    { content: 'Finished the Goal Setting Masterclass! Mind = blown 🤯 Highly recommend it to everyone here.', likes: 38, comments: 15 },
+    { content: 'Quick tip: Start your day with your most important task. Don\'t check email first thing!', likes: 56, comments: 9 },
+    { content: 'Week 2 of my transformation journey complete. The daily check-ins are keeping me accountable!', likes: 31, comments: 7 },
+    { content: 'Anyone else doing the morning meditation habit? It\'s been a game changer for my focus.', likes: 29, comments: 18 },
+  ];
+  
+  // Add coach announcement
+  posts.push({
+    id: 'demo-post-coach',
+    authorId: 'demo-coach-user',
+    authorName: 'Demo Coach',
+    authorImageUrl: 'https://ui-avatars.com/api/?name=Demo+Coach&background=a07855&color=fff&size=128&bold=true',
+    content: '📣 Exciting news! We\'re launching a new program next month - "Business Growth Intensive". Early bird registration opens next week. Stay tuned!',
+    likeCount: 67,
+    commentCount: 23,
+    createdAt: randomPastDate(2).toISOString(),
+    isPinned: true,
+  });
+  
+  // Add member posts
+  postContents.forEach((template, i) => {
+    const firstName = FIRST_NAMES[Math.floor(random() * FIRST_NAMES.length)];
+    const lastName = LAST_NAMES[Math.floor(random() * LAST_NAMES.length)];
+    const fullName = `${firstName} ${lastName}`;
+    
+    posts.push({
+      id: `demo-post-${i + 1}`,
+      authorId: `demo-user-${i + 1}`,
+      authorName: fullName,
+      authorImageUrl: generateAvatarUrl(fullName),
+      content: template.content,
+      imageUrl: random() < 0.2 ? `https://picsum.photos/seed/${i + 200}/600/400` : undefined,
+      likeCount: template.likes + Math.floor(random() * 10),
+      commentCount: template.comments + Math.floor(random() * 5),
+      createdAt: randomPastDate(7 - i).toISOString(),
+      isPinned: false,
+    });
+  });
+  
+  return posts;
+}
+
+// ============================================================================
+// DEMO USER (For user-facing pages in demo mode)
+// ============================================================================
+
+export interface DemoUserProfile {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  name: string;
+  imageUrl: string;
+  bio: string;
+  location: string;
+  joinedAt: string;
+  streak: number;
+  totalTasksCompleted: number;
+  currentProgram?: {
+    id: string;
+    name: string;
+    currentDay: number;
+    totalDays: number;
+    progress: number;
+  };
+  squad?: {
+    id: string;
+    name: string;
+    memberCount: number;
+  };
+  goals: {
+    id: string;
+    title: string;
+    progress: number;
+    deadline?: string;
+  }[];
+  habits: {
+    id: string;
+    title: string;
+    streak: number;
+    completedToday: boolean;
+  }[];
+  todaysTasks: {
+    id: string;
+    label: string;
+    completed: boolean;
+    isPrimary: boolean;
+  }[];
+}
+
+export function generateDemoUserProfile(): DemoUserProfile {
+  const random = seededRandom(1900);
+  
+  return {
+    id: 'demo-user-viewer',
+    email: 'alex.morgan@example.com',
+    firstName: 'Alex',
+    lastName: 'Morgan',
+    name: 'Alex Morgan',
+    imageUrl: generateAvatarUrl('Alex Morgan'),
+    bio: 'Entrepreneur on a journey of personal growth. Building better habits one day at a time.',
+    location: 'San Francisco, CA',
+    joinedAt: randomPastDate(45).toISOString(),
+    streak: 12,
+    totalTasksCompleted: 87,
+    currentProgram: {
+      id: 'demo-prog-1',
+      name: '30-Day Transformation',
+      currentDay: 12,
+      totalDays: 30,
+      progress: 40,
+    },
+    squad: {
+      id: 'demo-squad-1',
+      name: 'Alpha Achievers',
+      memberCount: 18,
+    },
+    goals: [
+      { id: 'goal-1', title: 'Build a morning routine', progress: 70, deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'goal-2', title: 'Read 12 books this year', progress: 42 },
+      { id: 'goal-3', title: 'Launch my side project', progress: 25, deadline: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString() },
+    ],
+    habits: [
+      { id: 'habit-1', title: 'Morning Meditation', streak: 12, completedToday: true },
+      { id: 'habit-2', title: 'Exercise', streak: 8, completedToday: false },
+      { id: 'habit-3', title: 'Journaling', streak: 5, completedToday: true },
+      { id: 'habit-4', title: 'Read 30 minutes', streak: 15, completedToday: false },
+    ],
+    todaysTasks: [
+      { id: 'task-1', label: 'Complete Day 12 lesson', completed: true, isPrimary: true },
+      { id: 'task-2', label: 'Post progress update in squad', completed: false, isPrimary: false },
+      { id: 'task-3', label: 'Review weekly goals', completed: false, isPrimary: false },
+      { id: 'task-4', label: 'Schedule 1:1 coaching call', completed: true, isPrimary: false },
+    ],
+  };
+}
+
+// ============================================================================
+// FEATURE REQUESTS (for support tab)
+// ============================================================================
+
+export interface DemoFeatureRequest {
+  id: string;
+  title: string;
+  description: string;
+  status: 'open' | 'in_progress' | 'completed' | 'declined';
+  votes: number;
+  createdAt: string;
+}
+
+export function generateDemoFeatureRequests(): DemoFeatureRequest[] {
+  return [
+    { id: 'fr-1', title: 'Mobile app', description: 'Native iOS and Android apps', status: 'in_progress', votes: 156, createdAt: randomPastDate(60).toISOString() },
+    { id: 'fr-2', title: 'Calendar integration', description: 'Sync with Google Calendar and Outlook', status: 'completed', votes: 89, createdAt: randomPastDate(90).toISOString() },
+    { id: 'fr-3', title: 'Custom email templates', description: 'Ability to customize automated emails', status: 'open', votes: 67, createdAt: randomPastDate(30).toISOString() },
+    { id: 'fr-4', title: 'Advanced analytics', description: 'More detailed reporting and insights', status: 'open', votes: 45, createdAt: randomPastDate(14).toISOString() },
+  ];
+}
+

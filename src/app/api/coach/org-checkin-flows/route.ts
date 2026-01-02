@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg, TenantRequiredError } from '@/lib/admin-utils-clerk';
+import { withDemoMode, demoNotAvailable } from '@/lib/demo-api';
 import type { OrgCheckInFlow, CheckInFlowType, CheckInFlowTemplate, FlowDisplayConfig, FlowShowConditions } from '@/types';
 
 /**
@@ -12,6 +13,10 @@ import type { OrgCheckInFlow, CheckInFlowType, CheckInFlowTemplate, FlowDisplayC
  */
 export async function GET(req: Request) {
   try {
+    // Demo mode: return demo data
+    const demoData = await withDemoMode('org-checkin-flows');
+    if (demoData) return demoData;
+    
     const { organizationId } = await requireCoachWithOrg();
 
     const { searchParams } = new URL(req.url);
@@ -129,6 +134,10 @@ export async function GET(req: Request) {
  */
 export async function POST(req: Request) {
   try {
+    // Demo mode: block write operations
+    const demoData = await withDemoMode('org-checkin-flows');
+    if (demoData) return demoNotAvailable('Creating check-in flows');
+    
     const { organizationId, userId } = await requireCoachWithOrg();
 
     const body = await req.json();

@@ -16,6 +16,8 @@ import { NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { isDemoRequest, demoResponse } from '@/lib/demo-api';
+import { generateDemoUserProfile, generateDemoSquadMembers } from '@/lib/demo-data';
 import type { 
   Program, 
   ProgramEnrollment, 
@@ -69,6 +71,62 @@ function calculateCurrentDayIndex(startDate: string, totalDays: number): number 
 
 export async function GET() {
   try {
+    // Demo mode: return demo program enrollment
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const profile = generateDemoUserProfile();
+      const squadMembers = profile.squad ? generateDemoSquadMembers(profile.squad.id, 5) : [];
+      
+      return demoResponse({
+        success: true,
+        enrollments: profile.currentProgram ? [{
+          enrollment: {
+            id: 'demo-enrollment-1',
+            userId: profile.id,
+            programId: profile.currentProgram.id,
+            organizationId: 'demo-org',
+            status: 'active',
+            startDate: new Date(Date.now() - profile.currentProgram.currentDay * 24 * 60 * 60 * 1000).toISOString(),
+            createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          program: {
+            id: profile.currentProgram.id,
+            name: profile.currentProgram.name,
+            description: 'Transform your life with daily guided actions and community support.',
+            type: 'group',
+            lengthDays: profile.currentProgram.totalDays,
+            coachName: 'Demo Coach',
+            coachImageUrl: 'https://ui-avatars.com/api/?name=Demo+Coach&background=a07855&color=fff&size=128&bold=true',
+          },
+          cohort: {
+            id: 'demo-cohort-1',
+            name: 'Winter 2025',
+            programId: profile.currentProgram.id,
+            startDate: new Date(Date.now() - profile.currentProgram.currentDay * 24 * 60 * 60 * 1000).toISOString(),
+            endDate: new Date(Date.now() + (profile.currentProgram.totalDays - profile.currentProgram.currentDay) * 24 * 60 * 60 * 1000).toISOString(),
+          },
+          squad: profile.squad ? {
+            id: profile.squad.id,
+            name: profile.squad.name,
+            memberCount: profile.squad.memberCount,
+          } : null,
+          squadMembers: squadMembers.slice(0, 5).map(m => ({
+            id: m.odataUserId,
+            firstName: m.firstName,
+            lastName: m.lastName,
+            imageUrl: m.imageUrl,
+          })),
+          progress: {
+            currentDay: profile.currentProgram.currentDay,
+            totalDays: profile.currentProgram.totalDays,
+            percentage: profile.currentProgram.progress,
+          },
+        }] : [],
+        isPlatformMode: false,
+      });
+    }
+    
     const { userId } = await auth();
 
     if (!userId) {

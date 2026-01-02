@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { getStreamServerClient } from '@/lib/stream-server';
 import { requireOrgAuthAndEntitlements, getOrgSquadCount, isEntitlementError, getEntitlementErrorStatus } from '@/lib/billing/server-enforcement';
+import { withDemoMode, demoNotAvailable } from '@/lib/demo-api';
 import type { Squad, SquadVisibility } from '@/types';
 
 interface SquadWithDetails extends Squad {
@@ -22,6 +23,10 @@ interface SquadWithDetails extends Squad {
  */
 export async function GET() {
   try {
+    // Demo mode: return demo data
+    const demoData = await withDemoMode('org-squads');
+    if (demoData) return demoData;
+    
     // Check authorization and get organizationId
     const { organizationId } = await requireCoachWithOrg();
 
@@ -247,6 +252,10 @@ function generateSlug(name: string): string {
  */
 export async function POST(req: Request) {
   try {
+    // Demo mode: block write operations
+    const demoData = await withDemoMode('org-squads');
+    if (demoData) return demoNotAvailable('Creating squads');
+    
     // Check authorization and get organizationId
     const { userId, organizationId } = await requireCoachWithOrg();
     

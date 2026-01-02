@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
+import { withDemoMode } from '@/lib/demo-api';
 import type { CoachSubscription, OrgSettings, CoachTier } from '@/types';
 import { TIER_PRICING, getLimit, getUsagePercent } from '@/lib/coach-permissions';
 
@@ -15,6 +16,10 @@ import { TIER_PRICING, getLimit, getUsagePercent } from '@/lib/coach-permissions
  */
 export async function GET() {
   try {
+    // Demo mode: return demo data
+    const demoData = await withDemoMode('subscription');
+    if (demoData) return demoData;
+    
     const { organizationId } = await requireCoachWithOrg();
 
     // Get org settings to find subscription

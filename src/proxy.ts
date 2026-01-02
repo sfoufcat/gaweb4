@@ -579,9 +579,18 @@ export const proxy = clerkMiddleware(async (auth, request) => {
       '/discover',
       '/chat',
       '/feed',
-      '/api/feed', // For feed functionality
-      '/api/chat', // For chat functionality
-      '/api/program', // For program functionality
+      '/profile',
+      '/api/feed',      // For feed functionality
+      '/api/chat',      // For chat functionality  
+      '/api/program',   // For program functionality
+      '/api/squad',     // For squad functionality
+      '/api/discover',  // For discover content
+      '/api/user',      // For user profile/dashboard
+      '/api/habits',    // For habits
+      '/api/tasks',     // For tasks
+      '/api/goals',     // For goals
+      '/api/branding',  // For branding/theming
+      '/api/edge-config', // For tenant config
     ];
 
     // Allow image extensions

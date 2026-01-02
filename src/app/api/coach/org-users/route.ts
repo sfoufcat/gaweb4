@@ -2,6 +2,7 @@ import { clerkClient, auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg, ClerkPublicMetadata } from '@/lib/admin-utils-clerk';
+import { withDemoMode, demoNotAvailable } from '@/lib/demo-api';
 import type { UserRole, UserTier, UserTrack, CoachingStatus, OrgRole, OrgMembership, ProgramType } from '@/types';
 
 interface FirebaseUserData {
@@ -54,6 +55,10 @@ interface UserProgramEnrollment {
  */
 export async function GET() {
   try {
+    // Demo mode: return demo data
+    const demoData = await withDemoMode('org-users');
+    if (demoData) return demoData;
+    
     // Check authorization and get organizationId
     const { organizationId } = await requireCoachWithOrg();
 
@@ -414,6 +419,12 @@ export async function GET() {
  */
 export async function POST(request: Request) {
   try {
+    // Demo mode: block write operations
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      return demoNotAvailable('Adding users');
+    }
+    
     const { organizationId, userId: coachUserId } = await requireCoachWithOrg();
     const body = await request.json();
     

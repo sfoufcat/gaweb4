@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
+import { withDemoMode } from '@/lib/demo-api';
 import type { ProgramCohort, Squad, Program } from '@/types';
 
 interface EndingCohortWithDetails {
@@ -32,6 +33,10 @@ interface EndingCohortWithDetails {
 
 export async function GET(request: NextRequest) {
   try {
+    // Demo mode: return empty (no ending cohorts in demo)
+    const demoData = await withDemoMode('ending-cohorts');
+    if (demoData) return demoData;
+    
     const { organizationId } = await requireCoachWithOrg();
 
     const now = new Date();

@@ -19,6 +19,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
+import { withDemoMode } from '@/lib/demo-api';
 import type { Funnel, FlowSession, FunnelStep } from '@/types';
 
 interface FunnelStepAnalytics {
@@ -66,6 +67,10 @@ interface FunnelAnalytics {
 
 export async function GET(request: NextRequest) {
   try {
+    // Demo mode: return demo data
+    const demoData = await withDemoMode('analytics-funnels');
+    if (demoData) return demoData;
+    
     const { organizationId } = await requireCoachWithOrg();
     const { searchParams } = new URL(request.url);
     

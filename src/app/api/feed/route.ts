@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { adminDb } from '@/lib/firebase-admin';
+import { isDemoRequest, demoResponse, demoNotAvailable } from '@/lib/demo-api';
+import { generateDemoFeedPosts } from '@/lib/demo-data';
 
 /**
  * GET /api/feed
@@ -12,6 +14,29 @@ import { adminDb } from '@/lib/firebase-admin';
  */
 export async function GET(request: NextRequest) {
   try {
+    // Demo mode: return demo feed posts
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const posts = generateDemoFeedPosts();
+      return demoResponse({
+        posts: posts.map(p => ({
+          id: p.id,
+          authorId: p.authorId,
+          authorName: p.authorName,
+          authorImageUrl: p.authorImageUrl,
+          content: p.content,
+          imageUrl: p.imageUrl,
+          createdAt: p.createdAt,
+          likeCount: p.likeCount,
+          commentCount: p.commentCount,
+          isPinned: p.isPinned,
+          isLiked: false,
+        })),
+        hasMore: false,
+        nextCursor: null,
+      });
+    }
+    
     const { userId } = await auth();
 
     if (!userId) {
@@ -200,6 +225,12 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Demo mode: block write operations
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      return demoNotAvailable('Creating posts');
+    }
+    
     const { userId } = await auth();
 
     if (!userId) {

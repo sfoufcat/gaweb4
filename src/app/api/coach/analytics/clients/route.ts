@@ -24,6 +24,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { batchResolveActivity } from '@/lib/analytics';
+import { withDemoMode } from '@/lib/demo-api';
 import type { HealthStatus } from '@/lib/analytics/constants';
 
 interface ClientActivityData {
@@ -45,6 +46,10 @@ interface ClientActivityData {
 
 export async function GET(request: NextRequest) {
   try {
+    // Demo mode: return demo data
+    const demoData = await withDemoMode('analytics-clients');
+    if (demoData) return demoData;
+    
     const { organizationId } = await requireCoachWithOrg();
     const { searchParams } = new URL(request.url);
     

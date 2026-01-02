@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import type { DiscountCode, DiscountType, DiscountApplicableTo, Program, Squad } from '@/types';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 interface DiscountCodesTabProps {
   apiBasePath?: string;
@@ -18,6 +19,7 @@ interface SelectableItem {
 }
 
 export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: DiscountCodesTabProps) {
+  const { isDemoMode } = useDemoMode();
   const [discountCodes, setDiscountCodes] = useState<DiscountCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +72,19 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
   const fetchProgramsAndSquads = useCallback(async () => {
     try {
       setLoadingItems(true);
+      if (isDemoMode) {
+        setAvailablePrograms([
+          { id: 'demo-prog-1', name: '30-Day Transformation' } as Program,
+          { id: 'demo-prog-2', name: 'Content Creator Accelerator' } as Program
+        ]);
+        setAvailableSquads([
+          { id: 'demo-squad-1', name: 'Alpha Achievers' } as Squad,
+          { id: 'demo-squad-2', name: 'Growth Warriors' } as Squad
+        ]);
+        setLoadingItems(false);
+        return;
+      }
+
       const [programsRes, squadsRes] = await Promise.all([
         fetch('/api/coach/org-programs'),
         fetch('/api/coach/squads'),
@@ -89,12 +104,51 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
     } finally {
       setLoadingItems(false);
     }
-  }, []);
+  }, [isDemoMode]);
 
   const fetchDiscountCodes = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
+
+      if (isDemoMode) {
+        setDiscountCodes([
+          {
+            id: 'demo-code-1',
+            code: 'WELCOME20',
+            name: 'New Client Welcome',
+            type: 'percentage',
+            value: 20,
+            applicableTo: 'all',
+            programIds: [],
+            squadIds: [],
+            maxUses: 100,
+            useCount: 12,
+            expiresAt: null,
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: 'demo-code-2',
+            code: 'SUMMER50',
+            name: 'Summer Sale',
+            type: 'fixed',
+            value: 5000, // $50.00
+            applicableTo: 'programs',
+            programIds: [],
+            squadIds: [],
+            maxUses: 50,
+            useCount: 45,
+            expiresAt: new Date(Date.now() + 86400000 * 30).toISOString(),
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
+        ] as DiscountCode[]);
+        setLoading(false);
+        return;
+      }
 
       const response = await fetch(apiBasePath);
       if (!response.ok) {
@@ -109,7 +163,7 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
     } finally {
       setLoading(false);
     }
-  }, [apiBasePath]);
+  }, [apiBasePath, isDemoMode]);
 
   useEffect(() => {
     fetchDiscountCodes();

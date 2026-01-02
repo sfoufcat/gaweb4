@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { Calendar, ChevronRight, UserPlus, RefreshCw, Heart, Activity, AlertCircle, AlertTriangle } from 'lucide-react';
 import type { ClientCoachingData, FirebaseUser, CoachingPlanType } from '@/types';
 import { InviteClientsDialog } from './InviteClientsDialog';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { useDemoSession } from '@/contexts/DemoSessionContext';
 
 interface ClientActivityScore {
   status: 'thriving' | 'active' | 'inactive';
@@ -51,6 +53,8 @@ interface CoachingClientsTabProps {
  * Displayed in the Coach Dashboard.
  */
 export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) {
+  const { isDemoMode } = useDemoMode();
+  const demoSession = useDemoSession();
   const [clients, setClients] = useState<CoachingClientWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +64,36 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
     try {
       setLoading(true);
       setError(null);
+
+      if (isDemoMode) {
+        // Map demo clients to CoachingClientWithUser
+        const demoClients = demoSession.clients.map(dc => ({
+           id: dc.userId,
+           coachId: 'demo-coach',
+           coachingPlan: 'monthly' as CoachingPlanType,
+           startDate: dc.joinedAt,
+           status: 'active' as const,
+           user: {
+             id: dc.userId,
+             firstName: dc.name.split(' ')[0],
+             lastName: dc.name.split(' ').slice(1).join(' '),
+             email: dc.email,
+             imageUrl: dc.avatarUrl
+           },
+           activityScore: {
+             status: dc.status as 'thriving' | 'active' | 'inactive',
+             atRisk: dc.atRisk,
+             lastActivityAt: dc.lastActivityAt,
+             daysActiveInPeriod: dc.daysActiveInPeriod
+           },
+           actionItems: [],
+           sessionHistory: [],
+           nextCall: null
+        }));
+        setClients(demoClients);
+        setLoading(false);
+        return;
+      }
 
       const response = await fetch('/api/coaching/clients');
       if (!response.ok) {

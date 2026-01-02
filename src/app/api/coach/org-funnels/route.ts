@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg, TenantRequiredError } from '@/lib/admin-utils-clerk';
 import { requirePlanLimit, isEntitlementError, getEntitlementErrorStatus } from '@/lib/billing/server-enforcement';
+import { withDemoMode, demoNotAvailable } from '@/lib/demo-api';
 import type { Funnel, FunnelTargetType, FunnelContentType, FunnelTrackingConfig } from '@/types';
 
 /**
@@ -17,6 +18,10 @@ import type { Funnel, FunnelTargetType, FunnelContentType, FunnelTrackingConfig 
  */
 export async function GET(req: Request) {
   try {
+    // Demo mode: return demo data
+    const demoData = await withDemoMode('org-funnels');
+    if (demoData) return demoData;
+    
     const { organizationId } = await requireCoachWithOrg();
 
     const { searchParams } = new URL(req.url);
@@ -88,6 +93,10 @@ export async function GET(req: Request) {
  */
 export async function POST(req: Request) {
   try {
+    // Demo mode: block write operations
+    const demoData = await withDemoMode('org-funnels');
+    if (demoData) return demoNotAvailable('Creating funnels');
+    
     const { organizationId } = await requireCoachWithOrg();
     
     // Enforce funnel limit based on plan

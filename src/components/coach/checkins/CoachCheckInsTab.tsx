@@ -39,6 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 type ViewMode = 'list' | 'editing';
 
@@ -65,6 +66,7 @@ const FLOW_TYPE_LABELS: Record<CheckInFlowType, string> = {
 };
 
 export function CoachCheckInsTab() {
+  const { isDemoMode } = useDemoMode();
   const [flows, setFlows] = useState<OrgCheckInFlow[]>([]);
   const [templates, setTemplates] = useState<CheckInFlowTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -95,6 +97,50 @@ export function CoachCheckInsTab() {
     try {
       setIsLoading(true);
       setTenantRequired(null);
+      
+      if (isDemoMode) {
+        setFlows([
+          {
+            id: 'demo-flow-1',
+            name: 'Morning Check-in',
+            type: 'morning',
+            description: 'Start your day with intention',
+            isSystemDefault: true,
+            enabled: true,
+            stepCount: 3,
+            organizationId: 'demo-org',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: 'demo-flow-2',
+            name: 'Evening Reflection',
+            type: 'evening',
+            description: 'Review your progress',
+            isSystemDefault: true,
+            enabled: true,
+            stepCount: 4,
+            organizationId: 'demo-org',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: 'demo-flow-3',
+            name: 'Weekly Review',
+            type: 'weekly',
+            description: 'Plan for the week ahead',
+            isSystemDefault: true,
+            enabled: false,
+            stepCount: 6,
+            organizationId: 'demo-org',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
+        ] as OrgCheckInFlow[]);
+        setIsLoading(false);
+        return;
+      }
+
       const response = await fetch('/api/coach/org-checkin-flows');
       
       // Check for tenant_required error

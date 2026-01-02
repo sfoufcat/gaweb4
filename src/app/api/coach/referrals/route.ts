@@ -8,10 +8,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { clerkClient } from '@clerk/nextjs/server';
 import { requireCoachWithOrg, TenantRequiredError } from '@/lib/admin-utils-clerk';
+import { withDemoMode } from '@/lib/demo-api';
 import type { Referral, ReferralWithDetails, Program, Squad } from '@/types';
 
 export async function GET(request: NextRequest) {
   try {
+    // Demo mode: return demo data
+    const demoData = await withDemoMode('referrals');
+    if (demoData) return demoData;
+    
     const { organizationId } = await requireCoachWithOrg();
     const { searchParams } = new URL(request.url);
     

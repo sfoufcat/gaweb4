@@ -17,6 +17,7 @@ import {
 import type { OrgOnboardingFlow } from '@/types';
 import { OnboardingFlowEditor } from './OnboardingFlowEditor';
 import { OnboardingResponsesView } from './OnboardingResponsesView';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 type ViewMode = 'overview' | 'editing' | 'responses';
 
@@ -30,6 +31,7 @@ type ViewMode = 'overview' | 'editing' | 'responses';
  * - View user responses to the onboarding questions
  */
 export function CoachOnboardingFlowTab() {
+  const { isDemoMode } = useDemoMode();
   const [flow, setFlow] = useState<OrgOnboardingFlow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +49,23 @@ export function CoachOnboardingFlowTab() {
     try {
       setIsLoading(true);
       setTenantRequired(null);
+      
+      if (isDemoMode) {
+        setFlow({
+          id: 'demo-flow',
+          name: 'Welcome Quiz',
+          description: 'Demo onboarding flow',
+          enabled: true,
+          stepCount: 5,
+          organizationId: 'demo-org',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        } as OrgOnboardingFlow);
+        setResponseCount(12);
+        setIsLoading(false);
+        return;
+      }
+
       const response = await fetch('/api/coach/org-onboarding-flow');
       
       // Check for tenant_required error

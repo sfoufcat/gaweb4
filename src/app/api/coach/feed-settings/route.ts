@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { adminDb } from '@/lib/firebase-admin';
 import { syncTenantToEdgeConfig, buildTenantConfigData, setTenantByCustomDomain, type TenantBrandingData } from '@/lib/tenant-edge-config';
+import { withDemoMode } from '@/lib/demo-api';
 import type { OrgBranding, OrgCustomDomain } from '@/types';
 import { DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_ORDER } from '@/types';
 
@@ -11,6 +12,10 @@ import { DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_BRANDING_COLORS, DEFAU
  */
 export async function GET() {
   try {
+    // Demo mode: return demo data
+    const demoData = await withDemoMode('feed-settings');
+    if (demoData) return demoData;
+    
     const { organizationId } = await requireCoachWithOrg();
 
     const settingsDoc = await adminDb.collection('org_settings').doc(organizationId).get();
