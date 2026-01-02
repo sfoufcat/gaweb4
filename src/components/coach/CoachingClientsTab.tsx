@@ -7,7 +7,6 @@ import type { ClientCoachingData, FirebaseUser, CoachingPlanType } from '@/types
 import { InviteClientsDialog } from './InviteClientsDialog';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
-import { DemoSignupModal, useDemoSignupModal } from '@/components/demo/DemoSignupModal';
 
 interface ClientActivityScore {
   status: 'thriving' | 'active' | 'inactive';
@@ -54,19 +53,17 @@ interface CoachingClientsTabProps {
  * Displayed in the Coach Dashboard.
  */
 export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) {
-  const { isDemoMode } = useDemoMode();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   const demoSession = useDemoSession();
   const [clients, setClients] = useState<CoachingClientWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   
-  // Demo signup modal
-  const { isOpen: isSignupModalOpen, action: signupModalAction, showModal: showSignupModal, hideModal: hideSignupModal } = useDemoSignupModal();
 
   const handleAddNewClients = () => {
     if (isDemoMode) {
-      showSignupModal('add new clients');
+      openSignupModal();
       return;
     }
     setShowInviteDialog(true);
@@ -217,11 +214,6 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
           isOpen={showInviteDialog}
           onClose={() => setShowInviteDialog(false)}
         />
-        <DemoSignupModal
-          isOpen={isSignupModalOpen}
-          onClose={hideSignupModal}
-          action={signupModalAction}
-        />
       </>
     );
   }
@@ -261,13 +253,6 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
       <InviteClientsDialog
         isOpen={showInviteDialog}
         onClose={() => setShowInviteDialog(false)}
-      />
-      
-      {/* Demo Signup Modal */}
-      <DemoSignupModal
-        isOpen={isSignupModalOpen}
-        onClose={hideSignupModal}
-        action={signupModalAction}
       />
 
       {/* Clients List */}

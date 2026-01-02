@@ -26,7 +26,6 @@ import type { OrgChannel, OrgChannelType, OrgCoachingPromo, CoachingPromoDestina
 import type { Program, Funnel } from '@/types';
 import { MediaUpload } from '@/components/admin/MediaUpload';
 import { useDemoMode } from '@/contexts/DemoModeContext';
-import { DemoSignupModal, useDemoSignupModal } from '@/components/demo/DemoSignupModal';
 
 // Icon map for channel types
 const CHANNEL_ICONS: Record<string, React.ReactNode> = {
@@ -764,8 +763,7 @@ function EditCoachingPromoModal({ promo, defaultCoachImageUrl, isOpen, onClose, 
  * - Delete channels
  */
 export function ChannelManagementTab() {
-  const { isDemoMode } = useDemoMode();
-  const { isOpen: isSignupModalOpen, action: signupModalAction, showModal: showSignupModal, hideModal: hideSignupModal } = useDemoSignupModal();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   
   const [channels, setChannels] = useState<OrgChannel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1014,7 +1012,7 @@ export function ChannelManagementTab() {
           <button
             onClick={() => {
               if (isDemoMode) {
-                showSignupModal('add channels');
+                openSignupModal();
                 return;
               }
               setIsAddingNew(true);
@@ -1092,7 +1090,7 @@ export function ChannelManagementTab() {
                 <button
                   onClick={() => {
                     if (isDemoMode) {
-                      showSignupModal('edit channels');
+                      openSignupModal();
                       return;
                     }
                     setEditingChannel(channel);
@@ -1104,7 +1102,7 @@ export function ChannelManagementTab() {
                 <button
                   onClick={() => {
                     if (isDemoMode) {
-                      showSignupModal('delete channels');
+                      openSignupModal();
                       return;
                     }
                     setDeletingChannel(channel);
@@ -1175,7 +1173,7 @@ export function ChannelManagementTab() {
               <button
                 onClick={() => {
                   if (isDemoMode) {
-                    showSignupModal('edit coaching promo');
+                    openSignupModal();
                     return;
                   }
                   setEditingPromo(true);
@@ -1221,13 +1219,6 @@ export function ChannelManagementTab() {
         isOpen={editingPromo}
         onClose={() => setEditingPromo(false)}
         onSave={handlePromoSave}
-      />
-
-      {/* Demo Signup Modal */}
-      <DemoSignupModal
-        isOpen={isSignupModalOpen}
-        onClose={hideSignupModal}
-        action={signupModalAction}
       />
     </div>
   );

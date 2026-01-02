@@ -7,7 +7,6 @@ import { useBrandingValues } from '@/contexts/BrandingContext';
 import { useCreateStory } from '@/hooks/useUserStories';
 import { DiscardConfirmationModal } from './ConfirmationModal';
 import { useDemoMode } from '@/contexts/DemoModeContext';
-import { DemoSignupModal } from '@/components/demo/DemoSignupModal';
 
 interface CreateStoryModalProps {
   isOpen: boolean;
@@ -29,7 +28,7 @@ export function CreateStoryModal({
   const { user } = useUser();
   const { colors, isDefault } = useBrandingValues();
   const { createStory, isCreating, error: createError } = useCreateStory();
-  const { isDemoMode } = useDemoMode();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [isVideo, setIsVideo] = useState(false);
@@ -37,7 +36,6 @@ export function CreateStoryModal({
   const [isUploading, setIsUploading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showDiscardModal, setShowDiscardModal] = useState(false);
-  const [showDemoModal, setShowDemoModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const accentColor = colors.accentLight || 'var(--brand-accent-light)';
@@ -45,10 +43,11 @@ export function CreateStoryModal({
   
   // In demo mode, show signup modal instead of file picker
   useEffect(() => {
-    if (isOpen && isDemoMode && !showDemoModal) {
-      setShowDemoModal(true);
+    if (isOpen && isDemoMode) {
+      openSignupModal();
+      onClose();
     }
-  }, [isOpen, isDemoMode, showDemoModal]);
+  }, [isOpen, isDemoMode, openSignupModal, onClose]);
 
   // Auto-open file picker when modal opens
   useEffect(() => {
@@ -337,22 +336,6 @@ export function CreateStoryModal({
         onClose={() => setShowDiscardModal(false)}
         onConfirm={handleConfirmDiscard}
         itemName="story"
-      />
-      
-      {/* Demo signup modal */}
-      <DemoSignupModal
-        isOpen={showDemoModal}
-        onClose={() => {
-          setShowDemoModal(false);
-          onClose();
-        }}
-        action="create stories"
-        featureHighlights={[
-          'Share your daily progress',
-          'Post photos and videos',
-          'Build accountability with peers',
-          'Celebrate your wins',
-        ]}
       />
     </>
   );

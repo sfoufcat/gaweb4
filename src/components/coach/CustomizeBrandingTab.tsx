@@ -16,7 +16,6 @@ import { AlignmentActivitiesSettings } from './AlignmentActivitiesSettings';
 import { GlobalPixelsSettings } from './GlobalPixelsSettings';
 import { MarketplaceSettings } from './MarketplaceSettings';
 import { useDemoMode } from '@/contexts/DemoModeContext';
-import { DemoSignupModal, useDemoSignupModal } from '@/components/demo/DemoSignupModal';
 import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus, OrgEmailDefaults, OrgSystemNotifications, MenuItemKey, CoachEmailPreferences } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_EMAIL_SETTINGS, DEFAULT_EMAIL_DEFAULTS, DEFAULT_SYSTEM_NOTIFICATIONS, DEFAULT_COACH_EMAIL_PREFERENCES, validateSubdomain } from '@/types';
 import { IconPicker } from './IconPicker';
@@ -164,8 +163,7 @@ const SUBTABS: { id: CustomizeSubtab; label: string; icon: React.ReactNode }[] =
 
 export function CustomizeBrandingTab() {
   const { setPreviewMode, isPreviewMode, refetch } = useBranding();
-  const { isDemoMode } = useDemoMode();
-  const { isOpen: isSignupModalOpen, action: signupModalAction, showModal: showSignupModal, hideModal: hideSignupModal } = useDemoSignupModal();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   
   // Subtab state
   const [activeSubtab, setActiveSubtab] = useState<CustomizeSubtab>('branding');
@@ -1260,7 +1258,7 @@ export function CustomizeBrandingTab() {
   // Save branding
   const handleSave = async () => {
     if (isDemoMode) {
-      showSignupModal('save branding changes');
+      openSignupModal();
       return;
     }
     try {
@@ -3094,12 +3092,6 @@ export function CustomizeBrandingTab() {
         </div>
       )}
 
-      {/* Demo Signup Modal */}
-      <DemoSignupModal
-        isOpen={isSignupModalOpen}
-        onClose={hideSignupModal}
-        action={signupModalAction}
-      />
     </div>
   );
 }

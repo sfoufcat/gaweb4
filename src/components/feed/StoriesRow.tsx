@@ -9,7 +9,6 @@ import { useStoryViewStatus, useStoryViewTracking, generateStoryContentData } fr
 import { prefetchStories } from '@/hooks/useStoryPrefetch';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { DEMO_USER } from '@/lib/demo-utils';
-import { DemoSignupModal } from '@/components/demo/DemoSignupModal';
 
 // Ring colors matching StoryAvatar
 const RING_COLORS = {
@@ -103,8 +102,7 @@ export function StoriesRow({
   onViewStory,
 }: StoriesRowProps) {
   const { user: clerkUser } = useUser();
-  const { isDemoMode } = useDemoMode();
-  const [showDemoModal, setShowDemoModal] = useState(false);
+  const { isDemoMode, openSignupModal } = useDemoMode();
   
   // Use demo user data when in demo mode
   const user = useMemo(() => {
@@ -202,7 +200,7 @@ export function StoriesRow({
       // No story - clicking avatar also creates
       // In demo mode, show signup modal instead
       if (isDemoMode) {
-        setShowDemoModal(true);
+        openSignupModal();
         return;
       }
       onCreateStory?.();
@@ -318,19 +316,7 @@ export function StoriesRow({
           onViewStory={onViewStory}
         />
       ))}
-      
-      {/* Demo signup modal */}
-      <DemoSignupModal
-        isOpen={showDemoModal}
-        onClose={() => setShowDemoModal(false)}
-        action="create stories"
-        featureHighlights={[
-          'Share your daily progress',
-          'Post photos and videos',
-          'Build accountability with peers',
-          'Celebrate your wins',
-        ]}
-      />
+
     </>
   );
 }

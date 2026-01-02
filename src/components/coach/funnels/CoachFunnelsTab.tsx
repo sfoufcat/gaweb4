@@ -48,7 +48,6 @@ import { LimitReachedModal, useLimitCheck } from '@/components/coach';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
 import { generateDemoFunnels } from '@/lib/demo-data';
-import { DemoSignupModal, useDemoSignupModal } from '@/components/demo/DemoSignupModal';
 
 type ViewMode = 'list' | 'editing';
 
@@ -77,9 +76,8 @@ const CONTENT_TYPE_OPTIONS: { value: FunnelContentType; label: string; icon: Rea
 ];
 
 export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
-  const { isDemoMode } = useDemoMode();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   const demoSession = useDemoSession();
-  const { isOpen: isSignupModalOpen, action: signupModalAction, showModal: showSignupModal, hideModal: hideSignupModal } = useDemoSignupModal();
   
   const [funnels, setFunnels] = useState<Funnel[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -294,7 +292,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
 
   const handleToggleActive = async (funnel: Funnel) => {
     if (isDemoMode) {
-      showSignupModal('toggle funnel status');
+      openSignupModal();
       return;
     }
     try {
@@ -312,7 +310,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
 
   const handleSetDefault = async (funnel: Funnel) => {
     if (isDemoMode) {
-      showSignupModal('set default funnel');
+      openSignupModal();
       return;
     }
     try {
@@ -330,7 +328,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
 
   const handleDelete = (funnel: Funnel) => {
     if (isDemoMode) {
-      showSignupModal('delete funnel');
+      openSignupModal();
       return;
     }
     setFunnelToDelete(funnel);
@@ -363,7 +361,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
 
   const handleEditDetails = (funnel: Funnel) => {
     if (isDemoMode) {
-      showSignupModal('edit funnel');
+      openSignupModal();
       return;
     }
     setFunnelToEdit(funnel);
@@ -372,7 +370,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
 
   const handleEditSteps = (funnel: Funnel) => {
     if (isDemoMode) {
-      showSignupModal('edit funnel steps');
+      openSignupModal();
       return;
     }
     setEditingFunnelId(funnel.id);
@@ -552,7 +550,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
         <button
           onClick={() => {
             if (isDemoMode) {
-              showSignupModal('create funnels');
+              openSignupModal();
               return;
             }
             // Check funnel limit per target before opening modal
@@ -953,12 +951,6 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
       {/* Limit Reached Modal */}
       <LimitReachedModal {...modalProps} />
 
-      {/* Demo Signup Modal */}
-      <DemoSignupModal
-        isOpen={isSignupModalOpen}
-        onClose={hideSignupModal}
-        action={signupModalAction}
-      />
     </div>
   );
 }

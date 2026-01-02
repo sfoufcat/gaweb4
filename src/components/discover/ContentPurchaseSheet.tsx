@@ -49,7 +49,6 @@ import {
 import type { PurchasableContentType } from '@/types/discover';
 import type { OrderBumpConfig, OrderBump } from '@/types';
 import { OrderBumpList, calculateBumpTotal } from '@/components/checkout';
-import { DemoSignupModal } from '@/components/demo/DemoSignupModal';
 
 // Saved payment method type
 interface SavedPaymentMethod {
@@ -825,9 +824,9 @@ function SheetContent({
   }, []);
 
   const handleStartPurchase = async () => {
-    // Demo mode: show demo message instead of real purchase flow
+    // Demo mode: show signup modal instead of real purchase flow
     if (isDemoMode) {
-      setShowDemoMessage(true);
+      openSignupModal();
       return;
     }
     
@@ -1155,7 +1154,7 @@ export function ContentPurchaseSheet({
   onPurchaseComplete,
 }: ContentPurchaseSheetProps) {
   const { isSignedIn } = useAuth();
-  const { isDemoMode } = useDemoMode();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   const [step, setStep] = useState<PurchaseStep>('preview');
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [connectedAccountId, setConnectedAccountId] = useState<string | null>(null);
@@ -1165,7 +1164,6 @@ export function ContentPurchaseSheet({
   const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(content.organizationId || null);
   const [selectedBumpIds, setSelectedBumpIds] = useState<string[]>([]);
-  const [showDemoMessage, setShowDemoMessage] = useState(false);
   
   // Detect desktop vs mobile to render only one component
   const isDesktop = useMediaQuery('(min-width: 1024px)');
@@ -1304,27 +1302,11 @@ export function ContentPurchaseSheet({
     />
   );
   
-  // Demo mode signup modal
-  const demoSignupModal = (
-    <DemoSignupModal
-      isOpen={showDemoMessage}
-      onClose={() => setShowDemoMessage(false)}
-      action={`unlock "${content.title}"`}
-      featureHighlights={[
-        'Access premium courses & content',
-        'Join exclusive communities',
-        'Get personalized coaching',
-        '14-day free trial, cancel anytime',
-      ]}
-    />
-  );
 
   // Desktop: Dialog (larger size)
   if (isDesktop) {
     return (
-      <>
-        {demoSignupModal}
-        <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={onOpenChange}>
           <DialogContent className="max-w-lg max-h-[85vh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl" hideCloseButton>
             <DialogHeader className="sr-only">
               <DialogTitle>{content.title}</DialogTitle>
@@ -1336,15 +1318,12 @@ export function ContentPurchaseSheet({
             </div>
           </DialogContent>
         </Dialog>
-      </>
     );
   }
   
   // Mobile: Drawer
   return (
-    <>
-      {demoSignupModal}
-      <Drawer open={open} onOpenChange={onOpenChange}>
+    <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="max-h-[90vh]">
           <DrawerHeader className="sr-only">
             <DrawerTitle>{content.title}</DrawerTitle>
@@ -1355,6 +1334,5 @@ export function ContentPurchaseSheet({
           </div>
         </DrawerContent>
       </Drawer>
-    </>
   );
 }

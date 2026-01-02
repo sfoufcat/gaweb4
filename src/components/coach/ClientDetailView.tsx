@@ -56,7 +56,6 @@ import {
 import { SendDMModal, type DMRecipient } from '@/components/coach/SendDMModal';
 import { ScheduleCallModal } from '@/components/scheduling';
 import { useDemoMode } from '@/contexts/DemoModeContext';
-import { DemoSignupModal, useDemoSignupModal } from '@/components/demo/DemoSignupModal';
 import type { 
   ClientCoachingData, 
   FirebaseUser, 
@@ -246,10 +245,8 @@ interface SquadInfo {
  */
 export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   const router = useRouter();
-  const { isDemoMode } = useDemoMode();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   
-  // Demo signup modal
-  const { isOpen: isSignupModalOpen, action: signupModalAction, showModal: showSignupModal, hideModal: hideSignupModal } = useDemoSignupModal();
   
   // Data states
   const [user, setUser] = useState<UserData | null>(null);
@@ -449,7 +446,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   // Add user to a squad (proper multi-squad support)
   const handleAddToSquad = async (squadId: string) => {
     if (isDemoMode) {
-      showSignupModal('add client to squad');
+      openSignupModal();
       return;
     }
     try {
@@ -488,7 +485,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   // Remove user from a squad (proper multi-squad support)
   const handleRemoveFromSquad = async (squadId: string) => {
     if (isDemoMode) {
-      showSignupModal('remove client from squad');
+      openSignupModal();
       return;
     }
     try {
@@ -527,7 +524,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   // Save coaching data changes
   const handleSaveCoachingChanges = async () => {
     if (isDemoMode) {
-      showSignupModal('save changes');
+      openSignupModal();
       return;
     }
     if (!coachingData || !hasCoaching) return;
@@ -562,7 +559,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   // Schedule or update call (uses unified events API)
   const handleScheduleCall = async () => {
     if (isDemoMode) {
-      showSignupModal('schedule a call');
+      openSignupModal();
       setShowCallModal(false);
       return;
     }
@@ -645,7 +642,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   // Delete scheduled call
   const handleDeleteCall = async () => {
     if (isDemoMode) {
-      showSignupModal('delete scheduled call');
+      openSignupModal();
       return;
     }
     if (!hasCoaching) return;
@@ -734,7 +731,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   // Add session history entry
   const handleAddSession = async () => {
     if (isDemoMode) {
-      showSignupModal('add session history');
+      openSignupModal();
       setShowSessionModal(false);
       return;
     }
@@ -784,7 +781,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   // Save private notes
   const handleSavePrivateNotes = async () => {
     if (isDemoMode) {
-      showSignupModal('save notes');
+      openSignupModal();
       setShowNotesModal(false);
       return;
     }
@@ -847,7 +844,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   // Go to chat
   const handleGoToChat = () => {
     if (isDemoMode) {
-      showSignupModal('message this client');
+      openSignupModal();
       return;
     }
     if (coachingData?.chatChannelId) {
@@ -892,7 +889,7 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   // Save coach notes about this client
   const handleSaveCoachNotes = async () => {
     if (isDemoMode) {
-      showSignupModal('save notes');
+      openSignupModal();
       return;
     }
     try {
@@ -2138,12 +2135,6 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
         />
       )}
 
-      {/* Demo Signup Modal */}
-      <DemoSignupModal
-        isOpen={isSignupModalOpen}
-        onClose={hideSignupModal}
-        action={signupModalAction}
-      />
     </div>
   );
 }

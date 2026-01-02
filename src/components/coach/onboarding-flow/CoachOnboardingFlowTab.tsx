@@ -18,7 +18,6 @@ import type { OrgOnboardingFlow } from '@/types';
 import { OnboardingFlowEditor } from './OnboardingFlowEditor';
 import { OnboardingResponsesView } from './OnboardingResponsesView';
 import { useDemoMode } from '@/contexts/DemoModeContext';
-import { DemoSignupModal, useDemoSignupModal } from '@/components/demo/DemoSignupModal';
 
 type ViewMode = 'overview' | 'editing' | 'responses';
 
@@ -32,8 +31,7 @@ type ViewMode = 'overview' | 'editing' | 'responses';
  * - View user responses to the onboarding questions
  */
 export function CoachOnboardingFlowTab() {
-  const { isDemoMode } = useDemoMode();
-  const { isOpen: isSignupModalOpen, action: signupModalAction, showModal: showSignupModal, hideModal: hideSignupModal } = useDemoSignupModal();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   const [flow, setFlow] = useState<OrgOnboardingFlow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -101,7 +99,7 @@ export function CoachOnboardingFlowTab() {
 
   const handleToggleEnabled = async () => {
     if (isDemoMode) {
-      showSignupModal('toggle onboarding flow');
+      openSignupModal();
       return;
     }
     if (!flow) return;
@@ -124,7 +122,7 @@ export function CoachOnboardingFlowTab() {
 
   const handleCreateFlow = async () => {
     if (isDemoMode) {
-      showSignupModal('create onboarding flow');
+      openSignupModal();
       return;
     }
     try {
@@ -325,7 +323,7 @@ export function CoachOnboardingFlowTab() {
                 <button
                   onClick={() => {
                     if (isDemoMode) {
-                      showSignupModal('edit onboarding steps');
+                      openSignupModal();
                       return;
                     }
                     setViewMode('editing');
@@ -413,12 +411,6 @@ export function CoachOnboardingFlowTab() {
         </>
       )}
 
-      {/* Demo Signup Modal */}
-      <DemoSignupModal
-        isOpen={isSignupModalOpen}
-        onClose={hideSignupModal}
-        action={signupModalAction}
-      />
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { DEMO_USER } from '@/lib/demo-utils';
-import { DemoSignupModal } from '@/components/demo/DemoSignupModal';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import { MessageSquare, Send, Search, Phone, Video, MoreVertical, Smile, Paperclip, Check, CheckCheck } from 'lucide-react';
 
 interface DemoMessage {
@@ -202,14 +202,14 @@ export default function DemoChatComponents() {
   const [selectedConversation, setSelectedConversation] = useState<DemoConversation | null>(conversations[0]);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showSignupModal, setShowSignupModal] = useState(false);
   const [showMobileList, setShowMobileList] = useState(true);
+  const { openSignupModal } = useDemoMode();
 
   const handleSendMessage = () => {
     if (!messageInput.trim()) return;
     
     // Show signup modal instead of actually sending
-    setShowSignupModal(true);
+    openSignupModal();
     setMessageInput('');
   };
 
@@ -340,13 +340,13 @@ export default function DemoChatComponents() {
               </div>
               <div className="flex items-center gap-1">
                 <button 
-                  onClick={() => setShowSignupModal(true)}
+                  onClick={() => openSignupModal()}
                   className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] text-gray-600 dark:text-gray-400"
                 >
                   <Phone className="w-5 h-5" />
                 </button>
                 <button 
-                  onClick={() => setShowSignupModal(true)}
+                  onClick={() => openSignupModal()}
                   className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] text-gray-600 dark:text-gray-400"
                 >
                   <Video className="w-5 h-5" />
@@ -403,7 +403,7 @@ export default function DemoChatComponents() {
             <div className="p-4 border-t border-[#e1ddd8] dark:border-[#262b35] bg-[#faf8f6] dark:bg-[#05070b]">
               <div className="flex items-end gap-3">
                 <button 
-                  onClick={() => setShowSignupModal(true)}
+                  onClick={() => openSignupModal()}
                   className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] text-gray-500"
                 >
                   <Paperclip className="w-5 h-5" />
@@ -425,7 +425,7 @@ export default function DemoChatComponents() {
                   />
                 </div>
                 <button 
-                  onClick={() => setShowSignupModal(true)}
+                  onClick={() => openSignupModal()}
                   className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] text-gray-500"
                 >
                   <Smile className="w-5 h-5" />
@@ -456,13 +456,6 @@ export default function DemoChatComponents() {
           </div>
         )}
       </div>
-
-      {/* Signup Modal */}
-      <DemoSignupModal
-        isOpen={showSignupModal}
-        onClose={() => setShowSignupModal(false)}
-        action="send messages"
-      />
     </div>
   );
 }

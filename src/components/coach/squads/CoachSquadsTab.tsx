@@ -32,7 +32,6 @@ import { LimitReachedModal, useLimitCheck } from '@/components/coach';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
 import { generateDemoSquadsWithStats, generateDemoSquadMembers, type DemoSquadWithStats, type DemoSquadMember } from '@/lib/demo-data';
-import { DemoSignupModal, useDemoSignupModal } from '@/components/demo/DemoSignupModal';
 
 // Squad with computed stats and program info
 interface SquadWithStats extends Squad {
@@ -75,7 +74,7 @@ interface LandingPageFormData {
 }
 
 export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachSquadsTabProps) {
-  const { isDemoMode } = useDemoMode();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   const demoSession = useDemoSession();
   
   const [squads, setSquads] = useState<SquadWithStats[]>([]);
@@ -112,8 +111,6 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
   const [currentTier, setCurrentTier] = useState<CoachTier>('starter');
   const { checkLimit, showLimitModal, modalProps } = useLimitCheck(currentTier);
   
-  // Demo signup modal
-  const { isOpen: isSignupModalOpen, action: signupModalAction, showModal: showSignupModal, hideModal: hideSignupModal } = useDemoSignupModal();
   
   // Demo data (memoized)
   const demoSquads = useMemo(() => generateDemoSquadsWithStats(), []);
@@ -358,7 +355,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
     e.stopPropagation();
     // In demo mode, show signup modal instead of allowing edit
     if (isDemoMode) {
-      showSignupModal('edit this squad');
+      openSignupModal();
       return;
     }
     setEditingSquad(squad);
@@ -1436,12 +1433,6 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
       {/* Limit Reached Modal */}
       <LimitReachedModal {...modalProps} />
 
-      {/* Demo Signup Modal */}
-      <DemoSignupModal
-        isOpen={isSignupModalOpen}
-        onClose={hideSignupModal}
-        action={signupModalAction}
-      />
     </div>
   );
 }

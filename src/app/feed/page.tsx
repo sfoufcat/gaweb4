@@ -22,13 +22,12 @@ import { PostSettingsModal } from '@/components/feed/PostSettingsModal';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { DEMO_USER } from '@/lib/demo-utils';
-import { DemoSignupModal } from '@/components/demo/DemoSignupModal';
 import type { UserRole, OrgRole } from '@/types';
 
 export default function FeedPage() {
   const { user: clerkUser } = useUser();
   const { sessionClaims } = useAuth();
-  const { isDemoMode } = useDemoMode();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   
   // In demo mode, use mock user data
   const user = useMemo(() => {
@@ -92,7 +91,6 @@ export default function FeedPage() {
 
   const [showCreatePostModal, setShowCreatePostModal] = useState(false);
   const [showCreateStoryModal, setShowCreateStoryModal] = useState(false);
-  const [showDemoPostModal, setShowDemoPostModal] = useState(false);
   const [editingPost, setEditingPost] = useState<FeedPost | null>(null);
   const [settingsPost, setSettingsPost] = useState<FeedPost | null>(null);
   const [selectedPostForShare, setSelectedPostForShare] = useState<string | null>(null);
@@ -100,10 +98,10 @@ export default function FeedPage() {
   const [selectedPostForView, setSelectedPostForView] = useState<string | null>(null);
   const [selectedStoryStartIndex, setSelectedStoryStartIndex] = useState<number | null>(null);
   
-  // Handler for creating post - shows demo modal in demo mode
+  // Handler for creating post - shows signup modal in demo mode
   const handleCreatePost = useCallback(() => {
     if (isDemoMode) {
-      setShowDemoPostModal(true);
+      openSignupModal();
       return;
     }
     setShowCreatePostModal(true);
@@ -530,19 +528,6 @@ export default function FeedPage() {
           currentUser={currentUserInfo}
         />
       )}
-      
-      {/* Demo signup modal for post creation */}
-      <DemoSignupModal
-        isOpen={showDemoPostModal}
-        onClose={() => setShowDemoPostModal(false)}
-        action="create posts"
-        featureHighlights={[
-          'Share updates with your community',
-          'Post images and videos',
-          'Build accountability with peers',
-          'Get support from your coach',
-        ]}
-      />
     </div>
   );
 }

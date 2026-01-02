@@ -40,7 +40,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useDemoMode } from '@/contexts/DemoModeContext';
-import { DemoSignupModal, useDemoSignupModal } from '@/components/demo/DemoSignupModal';
 
 type ViewMode = 'list' | 'editing';
 
@@ -67,8 +66,7 @@ const FLOW_TYPE_LABELS: Record<CheckInFlowType, string> = {
 };
 
 export function CoachCheckInsTab() {
-  const { isDemoMode } = useDemoMode();
-  const { isOpen: isSignupModalOpen, action: signupModalAction, showModal: showSignupModal, hideModal: hideSignupModal } = useDemoSignupModal();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   const [flows, setFlows] = useState<OrgCheckInFlow[]>([]);
   const [templates, setTemplates] = useState<CheckInFlowTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -187,7 +185,7 @@ export function CoachCheckInsTab() {
 
   const handleToggleEnabled = async (flow: OrgCheckInFlow) => {
     if (isDemoMode) {
-      showSignupModal('toggle check-in flow');
+      openSignupModal();
       return;
     }
     try {
@@ -205,7 +203,7 @@ export function CoachCheckInsTab() {
 
   const handleDelete = (flow: OrgCheckInFlow) => {
     if (isDemoMode) {
-      showSignupModal('delete check-in flow');
+      openSignupModal();
       return;
     }
     if (flow.isSystemDefault) {
@@ -235,7 +233,7 @@ export function CoachCheckInsTab() {
 
   const handleDuplicate = async (flow: OrgCheckInFlow) => {
     if (isDemoMode) {
-      showSignupModal('duplicate check-in flow');
+      openSignupModal();
       return;
     }
     try {
@@ -265,7 +263,7 @@ export function CoachCheckInsTab() {
 
   const handleResetToDefault = (flow: OrgCheckInFlow) => {
     if (isDemoMode) {
-      showSignupModal('reset check-in flow');
+      openSignupModal();
       return;
     }
     if (!flow.isSystemDefault) {
@@ -297,7 +295,7 @@ export function CoachCheckInsTab() {
 
   const handleEditDetails = (flow: OrgCheckInFlow) => {
     if (isDemoMode) {
-      showSignupModal('edit check-in flow');
+      openSignupModal();
       return;
     }
     setFlowToEdit(flow);
@@ -306,7 +304,7 @@ export function CoachCheckInsTab() {
 
   const handleEditSteps = (flow: OrgCheckInFlow) => {
     if (isDemoMode) {
-      showSignupModal('edit check-in steps');
+      openSignupModal();
       return;
     }
     setEditingFlowId(flow.id);
@@ -381,7 +379,7 @@ export function CoachCheckInsTab() {
         <button
           onClick={() => {
             if (isDemoMode) {
-              showSignupModal('create check-in flows');
+              openSignupModal();
               return;
             }
             setShowCreateDialog(true);
@@ -596,12 +594,6 @@ export function CoachCheckInsTab() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Demo Signup Modal */}
-      <DemoSignupModal
-        isOpen={isSignupModalOpen}
-        onClose={hideSignupModal}
-        action={signupModalAction}
-      />
     </div>
   );
 }

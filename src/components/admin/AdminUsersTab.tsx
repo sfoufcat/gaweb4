@@ -55,7 +55,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { InviteClientsDialog } from '@/components/coach/InviteClientsDialog';
-import { useDemoSignupModal, DemoSignupModal } from '@/components/demo/DemoSignupModal';
 
 // Program enrollment info returned from API
 interface UserProgramEnrollment {
@@ -204,12 +203,9 @@ export function AdminUsersTab({
   const isOrgScopedApi = apiEndpointProp?.includes('/api/coach/org-users');
   
   // Demo mode - only active for coach dashboard context
-  const { isDemoMode } = useDemoMode();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   const isCoachContext = isOrgScopedApi || apiEndpointProp?.includes('/api/coach/');
   const showDemoData = isDemoMode && isCoachContext;
-  
-  // Demo signup modal
-  const { isOpen: isSignupModalOpen, action: signupModalAction, showModal: showSignupModal, hideModal: hideSignupModal } = useDemoSignupModal();
   
   // Generate demo data (memoized)
   const demoUsers = useMemo(() => generateDemoUsers(18), []);
@@ -813,7 +809,7 @@ export function AdminUsersTab({
                   <Button
                     onClick={() => {
                       if (isDemoMode) {
-                        showSignupModal('add new clients');
+                        openSignupModal();
                         return;
                       }
                       setShowInviteDialog(true);
@@ -831,7 +827,7 @@ export function AdminUsersTab({
         </div>
 
         {/* Bulk Actions Toolbar */}
-        {selectedUserIds.size > 0 && isOrgScopedApi && !readOnly && !showDemoData && (
+        {selectedUserIds.size > 0 && isOrgScopedApi && !readOnly && (
           <div className="px-6 py-3 bg-brand-accent/10 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50 flex items-center gap-4 flex-wrap">
             <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">
               {selectedUserIds.size} user{selectedUserIds.size !== 1 ? 's' : ''} selected
@@ -840,6 +836,10 @@ export function AdminUsersTab({
             {/* Message Selected Button */}
             <button
               onClick={() => {
+                if (isDemoMode) {
+                  openSignupModal();
+                  return;
+                }
                 const recipients: DMRecipient[] = displayUsers
                   .filter(u => selectedUserIds.has(u.id))
                   .map(u => ({
@@ -861,7 +861,13 @@ export function AdminUsersTab({
               <span className="font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2]">Add to Squad:</span>
               <Select
                 value=""
-                onValueChange={(squadId) => handleBulkAddToSquad(squadId)}
+                onValueChange={(squadId) => {
+                  if (isDemoMode) {
+                    openSignupModal();
+                    return;
+                  }
+                  handleBulkAddToSquad(squadId);
+                }}
                 disabled={bulkUpdating}
               >
                 <SelectTrigger className={`w-[150px] font-albert text-sm h-8 ${bulkUpdating ? 'opacity-50' : ''}`}>
@@ -1479,13 +1485,6 @@ export function AdminUsersTab({
           }}
         />
       )}
-      
-      {/* Demo Signup Modal */}
-      <DemoSignupModal
-        isOpen={isSignupModalOpen}
-        onClose={hideSignupModal}
-        action={signupModalAction}
-      />
     </>
   );
 }
