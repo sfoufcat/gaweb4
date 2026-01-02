@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { notifyCallAccepted, notifyCallDeclined, notifyCallCounterProposed } from '@/lib/scheduling-notifications';
 import type { UnifiedEvent, ProposedTime, SchedulingStatus, EventScheduledJob, EventJobType } from '@/types';
 
 /**
@@ -174,8 +175,19 @@ export async function POST(request: NextRequest) {
     const updatedDoc = await eventRef.get();
     const updatedEvent = updatedDoc.data() as UnifiedEvent;
 
-    // TODO: Send notification about response
-    // This will be implemented in the notifications phase
+    // Send notification about response
+    try {
+      if (action === 'accept') {
+        await notifyCallAccepted(updatedEvent, userId);
+      } else if (action === 'decline') {
+        await notifyCallDeclined(updatedEvent, userId);
+      } else if (action === 'counter') {
+        await notifyCallCounterProposed(updatedEvent, userId);
+      }
+    } catch (notifyErr) {
+      console.error('[SCHEDULING_RESPOND] Failed to send notification:', notifyErr);
+      // Don't fail the request if notification fails
+    }
 
     return NextResponse.json({
       event: updatedEvent,

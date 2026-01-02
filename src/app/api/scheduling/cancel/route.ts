@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { notifyCallCancelled } from '@/lib/scheduling-notifications';
 import type { UnifiedEvent } from '@/types';
 
 /**
@@ -84,8 +85,13 @@ export async function POST(request: NextRequest) {
     });
     await batch.commit();
 
-    // TODO: Send cancellation notification to other participant
-    // This will be implemented in the notifications phase
+    // Send cancellation notification to other participants
+    try {
+      await notifyCallCancelled(event, userId, reason);
+    } catch (notifyErr) {
+      console.error('[SCHEDULING_CANCEL] Failed to send notification:', notifyErr);
+      // Don't fail the request if notification fails
+    }
 
     return NextResponse.json({
       success: true,

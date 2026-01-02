@@ -36,6 +36,7 @@ import { useAvailablePrograms } from '@/hooks/useAvailablePrograms';
 import { ProgramCarousel } from '@/components/home/ProgramCarousel';
 import { SquadCarousel } from '@/components/home/SquadCarousel';
 import { WelcomeTour } from '@/components/coach/onboarding';
+import { RequestCallCard, CalendarButton } from '@/components/scheduling';
 
 /**
  * Homepage / Dashboard
@@ -1414,8 +1415,9 @@ export function DashboardPage() {
             </Link>
           </div>
 
-          {/* Notification Bell + Alignment Score + Theme Toggle (desktop only) */}
+          {/* Calendar + Notification Bell + Alignment Score + Theme Toggle (desktop only) */}
           <div className="flex items-center gap-2">
+            <CalendarButton />
             <NotificationBell />
             <div data-tour="streak">
             <AlignmentGauge
@@ -1775,6 +1777,15 @@ export function DashboardPage() {
           isCoach={isCoachUser}
         />
       </div>
+
+      {/* Request Call with Coach - Only show if user has a squad with a coach */}
+      {!isCoachUser && (dashboardSquads?.premium?.squad?.hasCoach || dashboardSquads?.standard?.squad?.hasCoach) && (
+        <div className="mt-6">
+          <RequestCallCard 
+            coachName={menuTitles?.coach || 'Coach'}
+          />
+        </div>
+      )}
 
       {/* Habit Check-In Modal */}
       {selectedHabit && (

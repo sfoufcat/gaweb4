@@ -27,7 +27,7 @@ import { DiscountCodesTab } from '@/components/coach/DiscountCodesTab';
 import { AnalyticsDashboard } from '@/components/coach/analytics';
 import { CoachSupportTab } from '@/components/coach/support';
 import { FeatureTour } from '@/components/coach/onboarding';
-import { AvailabilityEditor } from '@/components/scheduling';
+import { AvailabilityEditor, CalendarView } from '@/components/scheduling';
 
 /**
  * Coach Dashboard Page
@@ -48,6 +48,51 @@ const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'referrals', 'a
 // Columns for Coach Dashboard (excludes 'tier' - tiers are not used in coach context)
 // Uses 'programs' column instead of 'coaching' to show enrolled programs with (1:1)/(Group) prefixes
 const COACH_DASHBOARD_COLUMNS: ColumnKey[] = ['select', 'avatar', 'name', 'email', 'role', 'squad', 'programs', 'invitedBy', 'invitedAt', 'created', 'actions'];
+
+/**
+ * Scheduling Tab Component
+ * Contains Calendar View and Availability Settings with sub-navigation
+ */
+function SchedulingTab() {
+  const [activeSubTab, setActiveSubTab] = useState<'calendar' | 'availability'>('calendar');
+
+  return (
+    <div className="space-y-6">
+      {/* Sub-navigation */}
+      <div className="flex gap-2 p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-xl w-fit">
+        <button
+          onClick={() => setActiveSubTab('calendar')}
+          className={`px-4 py-2 rounded-lg font-albert font-medium text-sm transition-colors ${
+            activeSubTab === 'calendar'
+              ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+          }`}
+        >
+          Calendar
+        </button>
+        <button
+          onClick={() => setActiveSubTab('availability')}
+          className={`px-4 py-2 rounded-lg font-albert font-medium text-sm transition-colors ${
+            activeSubTab === 'availability'
+              ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+          }`}
+        >
+          Availability Settings
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
+        {activeSubTab === 'calendar' ? (
+          <CalendarView mode="coach" />
+        ) : (
+          <AvailabilityEditor />
+        )}
+      </div>
+    </div>
+  );
+}
 
 /**
  * Demo Mode Toggle Component
@@ -646,9 +691,7 @@ function CoachPageContent() {
 
           {/* Scheduling Tab */}
           <TabsContent value="scheduling">
-            <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
-              <AvailabilityEditor />
-            </div>
+            <SchedulingTab />
           </TabsContent>
 
           {/* Customize Branding Tab */}

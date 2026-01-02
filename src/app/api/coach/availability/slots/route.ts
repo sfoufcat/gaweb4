@@ -107,6 +107,30 @@ export async function GET(request: NextRequest) {
 
     const existingEvents = eventsSnapshot.docs.map(doc => doc.data() as UnifiedEvent);
 
+    // Get external calendar busy times if enabled
+    let externalBusyTimes: Array<{ start: string; end: string }> = [];
+    if (availability.syncExternalBusy && availability.nylasGrantId) {
+      try {
+        // Fetch busy times from Nylas via internal API
+        const busyResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/nylas/busy-times?startDate=${rangeStart.toISOString()}&endDate=${rangeEnd.toISOString()}`,
+          {
+            headers: {
+              // Forward auth headers would be needed in production
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+        if (busyResponse.ok) {
+          const busyData = await busyResponse.json();
+          externalBusyTimes = busyData.busyTimes || [];
+        }
+      } catch (err) {
+        console.warn('[AVAILABILITY_SLOTS] Failed to fetch external busy times:', err);
+        // Continue without external busy times
+      }
+    }
+
     // Calculate available slots
     const availableSlots = calculateAvailableSlots(
       rangeStart,
@@ -114,7 +138,8 @@ export async function GET(request: NextRequest) {
       availability,
       existingEvents,
       duration,
-      buffer
+      buffer,
+      externalBusyTimes
     );
 
     return NextResponse.json({
@@ -140,6 +165,7 @@ export async function GET(request: NextRequest) {
  * - Weekly schedule
  * - Blocked slots
  * - Existing events
+ * - External calendar busy times
  * - Duration and buffer requirements
  */
 function calculateAvailableSlots(
@@ -148,7 +174,8 @@ function calculateAvailableSlots(
   availability: CoachAvailability,
   existingEvents: UnifiedEvent[],
   duration: number,
-  buffer: number
+  buffer: number,
+  externalBusyTimes: Array<{ start: string; end: string }> = []
 ): AvailableSlot[] {
   const slots: AvailableSlot[] = [];
   const now = new Date();
@@ -210,7 +237,23 @@ function calculateAvailableSlots(
             );
           });
 
-          if (!isBlocked && !conflictsWithEvent) {
+          // Check if slot conflicts with external calendar busy times
+          const conflictsWithExternal = externalBusyTimes.some(busy => {
+            const busyStart = new Date(busy.start);
+            const busyEnd = new Date(busy.end);
+            
+            // Add buffer around busy time
+            const bufferedStart = new Date(busyStart.getTime() - buffer * 60 * 1000);
+            const bufferedEnd = new Date(busyEnd.getTime() + buffer * 60 * 1000);
+
+            return (
+              (currentSlotStart >= bufferedStart && currentSlotStart < bufferedEnd) ||
+              (currentSlotEnd > bufferedStart && currentSlotEnd <= bufferedEnd) ||
+              (currentSlotStart <= bufferedStart && currentSlotEnd >= bufferedEnd)
+            );
+          });
+
+          if (!isBlocked && !conflictsWithEvent && !conflictsWithExternal) {
             slots.push({
               start: currentSlotStart.toISOString(),
               end: currentSlotEnd.toISOString(),

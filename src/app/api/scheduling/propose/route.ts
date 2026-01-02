@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
+import { notifyCallProposed } from '@/lib/scheduling-notifications';
 import type { UnifiedEvent, ProposedTime, SchedulingStatus } from '@/types';
-import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * POST /api/scheduling/propose
@@ -166,8 +166,13 @@ export async function POST(request: NextRequest) {
 
     await eventRef.set(eventData);
 
-    // TODO: Send notification to client about proposed call
-    // This will be implemented in the notifications phase
+    // Send notification to client about proposed call
+    try {
+      await notifyCallProposed(eventData, clientId);
+    } catch (notifyErr) {
+      console.error('[SCHEDULING_PROPOSE] Failed to send notification:', notifyErr);
+      // Don't fail the request if notification fails
+    }
 
     return NextResponse.json({
       event: eventData,

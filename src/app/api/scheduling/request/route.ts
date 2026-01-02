@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { notifyCallRequested } from '@/lib/scheduling-notifications';
 import type { UnifiedEvent, ProposedTime, CoachCallSettings } from '@/types';
 
 /**
@@ -198,8 +199,13 @@ export async function POST(request: NextRequest) {
 
     await eventRef.set(eventData);
 
-    // TODO: Send notification to coach about call request
-    // This will be implemented in the notifications phase
+    // Send notification to coach about call request
+    try {
+      await notifyCallRequested(eventData, coachId);
+    } catch (notifyErr) {
+      console.error('[SCHEDULING_REQUEST] Failed to send notification:', notifyErr);
+      // Don't fail the request if notification fails
+    }
 
     return NextResponse.json({
       event: eventData,
