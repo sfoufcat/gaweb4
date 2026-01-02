@@ -1179,10 +1179,24 @@ function ChatContent({
   const handleChannelSelect = useCallback(async (channelId: string) => {
     try {
       console.log('Selecting channel:', channelId);
-      const channel = client.channel('messaging', channelId);
-      await channel.watch();
-      setActiveChannel(channel);
-      onMobileViewChange('channel');
+      // Query for the channel to ensure it's properly initialized with all state
+      // Using queryChannels instead of client.channel() ensures we get the full channel state
+      const channels = await client.queryChannels(
+        { type: 'messaging', id: channelId },
+        {},
+        { limit: 1, state: true, watch: true }
+      );
+      
+      if (channels.length > 0) {
+        setActiveChannel(channels[0]);
+        onMobileViewChange('channel');
+      } else {
+        // Fallback: create and watch if not found (e.g., new channel)
+        const channel = client.channel('messaging', channelId);
+        await channel.watch();
+        setActiveChannel(channel);
+        onMobileViewChange('channel');
+      }
     } catch (error) {
       console.error('Failed to switch to channel:', channelId, error);
     }

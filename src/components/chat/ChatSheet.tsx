@@ -55,6 +55,7 @@ export function ChatSheet({ isOpen, onClose }: ChatSheetProps) {
   const [selectedChannel, setSelectedChannel] = useState<StreamChannel | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const { theme } = useTheme();
+  const [activeTab, setActiveTab] = useState<'main' | 'direct'>('main');
   
   // Coaching promo data
   const coachingPromo = useCoachingPromo();
@@ -257,6 +258,27 @@ export function ChatSheet({ isOpen, onClose }: ChatSheetProps) {
     });
   }, [channels]);
 
+  // Filter channels into main (squad, global, coaching) vs direct (DMs)
+  const mainChannels = useMemo(() => {
+    return sortedChannels.filter(c => c.type !== 'dm');
+  }, [sortedChannels]);
+
+  const directChannels = useMemo(() => {
+    return sortedChannels.filter(c => c.type === 'dm');
+  }, [sortedChannels]);
+
+  // Calculate unread counts per tab
+  const mainUnread = useMemo(() => {
+    return mainChannels.reduce((sum, c) => sum + c.unread, 0);
+  }, [mainChannels]);
+
+  const directUnread = useMemo(() => {
+    return directChannels.reduce((sum, c) => sum + c.unread, 0);
+  }, [directChannels]);
+
+  // Get filtered channels based on active tab
+  const filteredChannels = activeTab === 'main' ? mainChannels : directChannels;
+
   // Get selected channel name for header
   const selectedChannelName = useMemo(() => {
     if (!selectedChannel) return '';
@@ -319,6 +341,57 @@ export function ChatSheet({ isOpen, onClose }: ChatSheetProps) {
                   </button>
                 </div>
 
+                {/* Main/Direct Tabs */}
+                <div className="px-5 pb-3 flex-shrink-0">
+                  <div className="bg-[#f3f1ef] dark:bg-[#11141b] rounded-[32px] p-1.5 flex gap-1.5">
+                    {/* Main Tab */}
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('main')}
+                      className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-[24px] transition-all ${
+                        activeTab === 'main'
+                          ? 'bg-white dark:bg-[#171b22] shadow-sm'
+                          : ''
+                      }`}
+                    >
+                      <Users className={`w-4 h-4 ${activeTab === 'main' ? 'text-text-primary' : 'text-text-muted'}`} />
+                      <span className={`font-albert text-[14px] font-semibold ${
+                        activeTab === 'main' ? 'text-text-primary' : 'text-text-muted'
+                      }`}>
+                        Main
+                      </span>
+                      {mainUnread > 0 && (
+                        <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand-accent text-white text-[10px] font-semibold">
+                          {mainUnread > 9 ? '9+' : mainUnread}
+                        </span>
+                      )}
+                    </button>
+                    
+                    {/* Direct Tab */}
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('direct')}
+                      className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-[24px] transition-all ${
+                        activeTab === 'direct'
+                          ? 'bg-white dark:bg-[#171b22] shadow-sm'
+                          : ''
+                      }`}
+                    >
+                      <MessageCircle className={`w-4 h-4 ${activeTab === 'direct' ? 'text-text-primary' : 'text-text-muted'}`} />
+                      <span className={`font-albert text-[14px] font-semibold ${
+                        activeTab === 'direct' ? 'text-text-primary' : 'text-text-muted'
+                      }`}>
+                        Direct
+                      </span>
+                      {directUnread > 0 && (
+                        <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand-accent text-white text-[10px] font-semibold">
+                          {directUnread > 9 ? '9+' : directUnread}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
                 {/* Channel List */}
                 <div className="flex-1 overflow-y-auto pb-safe">
                   {isLoading ? (
@@ -334,23 +407,30 @@ export function ChatSheet({ isOpen, onClose }: ChatSheetProps) {
                         </div>
                       ))}
                     </div>
-                  ) : channels.length === 0 ? (
-                    // Empty state
+                  ) : filteredChannels.length === 0 ? (
+                    // Empty state - different message based on tab
                     <div className="py-12 px-5 text-center">
                       <div className="w-14 h-14 bg-[#f3f1ef] dark:bg-[#272d38] rounded-full flex items-center justify-center mx-auto mb-4">
-                        <MessageCircle className="w-7 h-7 text-text-muted" />
+                        {activeTab === 'main' ? (
+                          <Users className="w-7 h-7 text-text-muted" />
+                        ) : (
+                          <MessageCircle className="w-7 h-7 text-text-muted" />
+                        )}
                       </div>
                       <p className="font-sans text-[15px] text-text-secondary">
-                        No messages yet
+                        {activeTab === 'main' ? 'No group chats yet' : 'No direct messages yet'}
                       </p>
                       <p className="font-sans text-[13px] text-text-muted mt-1">
-                        Start a conversation with your squad or coach
+                        {activeTab === 'main' 
+                          ? 'Join a squad to start chatting with your group'
+                          : 'Start a conversation from someone\'s profile'
+                        }
                       </p>
                     </div>
                   ) : (
                     // Channel list
                     <div>
-                      {sortedChannels.map((channelPreview) => (
+                      {filteredChannels.map((channelPreview) => (
                         <button
                           key={channelPreview.id}
                           onClick={() => handleChannelClick(channelPreview.channel)}
