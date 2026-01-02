@@ -1934,15 +1934,17 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
       </div>
 
       {/* Call Scheduling Modal */}
-      <ScheduleCallModal
-        isOpen={showCallModal}
-        onClose={() => setShowCallModal(false)}
-        clientId={user.id}
-        clientName={user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName || 'Client'}
-        onSuccess={() => {
-          // Could refresh coaching data here if needed
-        }}
-      />
+      {user && (
+        <ScheduleCallModal
+          isOpen={showCallModal}
+          onClose={() => setShowCallModal(false)}
+          clientId={user.id}
+          clientName={user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName || 'Client'}
+          onSuccess={() => {
+            // Could refresh coaching data here if needed
+          }}
+        />
+      )}
 
       {/* Add Session Modal */}
       <AlertDialog open={showSessionModal} onOpenChange={setShowSessionModal}>
