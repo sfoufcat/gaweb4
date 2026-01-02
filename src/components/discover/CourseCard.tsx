@@ -11,6 +11,17 @@ interface CourseCardProps {
   course: DiscoverCourse;
 }
 
+// Format price from cents
+function formatPrice(cents: number, currency = 'usd') {
+  const amount = cents / 100;
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency.toUpperCase(),
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
 export function CourseCard({ course }: CourseCardProps) {
   const [showPurchaseSheet, setShowPurchaseSheet] = useState(false);
   const isFree = !course.priceInCents || course.priceInCents === 0;
@@ -55,6 +66,15 @@ export function CourseCard({ course }: CourseCardProps) {
             className="absolute top-2 right-2"
           />
         )}
+
+        {/* Price badge - only for paid content */}
+        {!isFree && course.priceInCents && (
+          <div className="absolute bottom-2 right-2 bg-white/95 dark:bg-[#171b22]/95 backdrop-blur-sm rounded-lg px-2 py-1 shadow-sm">
+            <span className="font-albert font-bold text-sm text-text-primary dark:text-[#f5f5f8]">
+              {formatPrice(course.priceInCents, course.currency)}
+            </span>
+          </div>
+        )}
       </div>
       
       {/* Content */}
@@ -94,6 +114,9 @@ export function CourseCard({ course }: CourseCardProps) {
             coverImageUrl: course.coverImageUrl,
             priceInCents: course.priceInCents || 0,
             currency: course.currency,
+            coachName: (course as DiscoverCourse & { coachName?: string }).coachName,
+            coachImageUrl: (course as DiscoverCourse & { coachImageUrl?: string }).coachImageUrl,
+            keyOutcomes: course.keyOutcomes,
           }}
         />
       </>

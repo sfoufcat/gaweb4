@@ -40,6 +40,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DemoSignupModal, useDemoSignupModal } from '@/components/demo/DemoSignupModal';
 
 type ViewMode = 'list' | 'editing';
 
@@ -67,6 +68,7 @@ const FLOW_TYPE_LABELS: Record<CheckInFlowType, string> = {
 
 export function CoachCheckInsTab() {
   const { isDemoMode } = useDemoMode();
+  const { isOpen: isSignupModalOpen, action: signupModalAction, showModal: showSignupModal, hideModal: hideSignupModal } = useDemoSignupModal();
   const [flows, setFlows] = useState<OrgCheckInFlow[]>([]);
   const [templates, setTemplates] = useState<CheckInFlowTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -184,6 +186,10 @@ export function CoachCheckInsTab() {
   }, [fetchFlows, fetchTemplates]);
 
   const handleToggleEnabled = async (flow: OrgCheckInFlow) => {
+    if (isDemoMode) {
+      showSignupModal('toggle check-in flow');
+      return;
+    }
     try {
       const response = await fetch(`/api/coach/org-checkin-flows/${flow.id}`, {
         method: 'PUT',
@@ -198,6 +204,10 @@ export function CoachCheckInsTab() {
   };
 
   const handleDelete = (flow: OrgCheckInFlow) => {
+    if (isDemoMode) {
+      showSignupModal('delete check-in flow');
+      return;
+    }
     if (flow.isSystemDefault) {
       alert('System default flows cannot be deleted. You can disable them instead.');
       return;
@@ -224,6 +234,10 @@ export function CoachCheckInsTab() {
   };
 
   const handleDuplicate = async (flow: OrgCheckInFlow) => {
+    if (isDemoMode) {
+      showSignupModal('duplicate check-in flow');
+      return;
+    }
     try {
       const response = await fetch('/api/coach/org-checkin-flows', {
         method: 'POST',
@@ -250,6 +264,10 @@ export function CoachCheckInsTab() {
   };
 
   const handleResetToDefault = (flow: OrgCheckInFlow) => {
+    if (isDemoMode) {
+      showSignupModal('reset check-in flow');
+      return;
+    }
     if (!flow.isSystemDefault) {
       alert('Only system default flows can be reset to the original template.');
       return;
@@ -278,11 +296,19 @@ export function CoachCheckInsTab() {
   };
 
   const handleEditDetails = (flow: OrgCheckInFlow) => {
+    if (isDemoMode) {
+      showSignupModal('edit check-in flow');
+      return;
+    }
     setFlowToEdit(flow);
     setShowEditDialog(true);
   };
 
   const handleEditSteps = (flow: OrgCheckInFlow) => {
+    if (isDemoMode) {
+      showSignupModal('edit check-in steps');
+      return;
+    }
     setEditingFlowId(flow.id);
     setViewMode('editing');
   };
@@ -353,7 +379,13 @@ export function CoachCheckInsTab() {
           </p>
         </div>
         <button
-          onClick={() => setShowCreateDialog(true)}
+          onClick={() => {
+            if (isDemoMode) {
+              showSignupModal('create check-in flows');
+              return;
+            }
+            setShowCreateDialog(true);
+          }}
           className="flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors"
         >
           <Plus className="w-4 h-4" />
@@ -563,6 +595,13 @@ export function CoachCheckInsTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Demo Signup Modal */}
+      <DemoSignupModal
+        isOpen={isSignupModalOpen}
+        onClose={hideSignupModal}
+        action={signupModalAction}
+      />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { isFridayInTimezone, DEFAULT_TIMEZONE } from '@/lib/timezone';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { updateLastActivity } from '@/lib/analytics/lastActivity';
 import type { Task, EveningCheckIn, EveningEmotionalState } from '@/types';
+import { isDemoRequest, demoResponse } from '@/lib/demo-api';
 
 // Task snapshot stored in evening check-in
 interface TaskSnapshot {
@@ -27,6 +28,24 @@ function getEveningCheckInDocId(organizationId: string, userId: string, date: st
 // MULTI-TENANCY: Fetches check-in for current organization (with legacy fallback)
 export async function GET(request: NextRequest) {
   try {
+    // Demo mode: return demo evening check-in
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      return demoResponse({ 
+        checkIn: {
+          id: 'demo-evening-checkin',
+          date: new Date().toISOString().split('T')[0],
+          emotionalState: 'grateful',
+          tasksCompleted: 4,
+          tasksTotal: 5,
+          wins: ['Completed meditation', 'Finished project milestone'],
+          gratitude: ['Great day', 'Productive work', 'Supportive team'],
+          reflection: 'Today was a good day for progress.',
+          createdAt: new Date().toISOString(),
+        }
+      });
+    }
+
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -67,6 +86,21 @@ export async function GET(request: NextRequest) {
 // MULTI-TENANCY: Creates check-in scoped to current organization (with legacy fallback)
 export async function POST(request: NextRequest) {
   try {
+    // Demo mode: return mock check-in
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      return demoResponse({ 
+        checkIn: {
+          id: 'demo-evening-checkin',
+          date: new Date().toISOString().split('T')[0],
+          emotionalState: 'neutral',
+          tasksCompleted: 0,
+          tasksTotal: 0,
+          createdAt: new Date().toISOString(),
+        }
+      });
+    }
+
     const { userId, sessionClaims } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -179,6 +213,21 @@ export async function POST(request: NextRequest) {
 // MULTI-TENANCY: Updates check-in scoped to current organization (with legacy fallback)
 export async function PATCH(request: NextRequest) {
   try {
+    // Demo mode: simulate success
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const updates = await request.json();
+      return demoResponse({ 
+        success: true,
+        checkIn: {
+          id: 'demo-evening-checkin',
+          date: new Date().toISOString().split('T')[0],
+          ...updates,
+          updatedAt: new Date().toISOString(),
+        }
+      });
+    }
+
     const { userId, sessionClaims } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

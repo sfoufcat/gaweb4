@@ -217,6 +217,7 @@ export function InlineComments({
                 width={28}
                 height={28}
                 className="w-full h-full object-cover"
+                unoptimized
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-[#5f5a55]">
@@ -301,6 +302,7 @@ export function InlineComments({
                 width={28}
                 height={28}
                 className="w-full h-full object-cover"
+                unoptimized
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-[#5f5a55]">
@@ -426,6 +428,7 @@ function CommentItem({
             width={28}
             height={28}
             className="w-full h-full object-cover"
+            unoptimized
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-[#5f5a55] dark:text-[#b5b0ab]">

@@ -112,7 +112,8 @@ export function Sidebar() {
   const showAdminPanel = isAdmin(role);
   const showCoachDashboard = canAccessCoachDashboard(role, orgRole);
   const showEditorPanel = canAccessEditorSection(role);
-  const showMyCoach = hasCoaching || isSuperAdmin(role);
+  // Hide "My Coach" menu in demo mode - it's for coaching subscribers only
+  const showMyCoach = !isDemoSite && (hasCoaching || isSuperAdmin(role));
 
   // DEBUG: Log session claims and role
   useEffect(() => {

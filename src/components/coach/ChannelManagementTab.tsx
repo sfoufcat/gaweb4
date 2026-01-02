@@ -25,6 +25,8 @@ import Image from 'next/image';
 import type { OrgChannel, OrgChannelType, OrgCoachingPromo, CoachingPromoDestinationType } from '@/lib/org-channels';
 import type { Program, Funnel } from '@/types';
 import { MediaUpload } from '@/components/admin/MediaUpload';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DemoSignupModal, useDemoSignupModal } from '@/components/demo/DemoSignupModal';
 
 // Icon map for channel types
 const CHANNEL_ICONS: Record<string, React.ReactNode> = {
@@ -762,6 +764,9 @@ function EditCoachingPromoModal({ promo, defaultCoachImageUrl, isOpen, onClose, 
  * - Delete channels
  */
 export function ChannelManagementTab() {
+  const { isDemoMode } = useDemoMode();
+  const { isOpen: isSignupModalOpen, action: signupModalAction, showModal: showSignupModal, hideModal: hideSignupModal } = useDemoSignupModal();
+  
   const [channels, setChannels] = useState<OrgChannel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1007,11 +1012,18 @@ export function ChannelManagementTab() {
             </p>
           </div>
           <button
-            onClick={() => setIsAddingNew(true)}
-            className="px-4 py-2 rounded-xl bg-brand-accent font-albert font-medium text-brand-accent-foreground hover:bg-brand-accent/90 transition-colors inline-flex items-center gap-2"
+            onClick={() => {
+              if (isDemoMode) {
+                showSignupModal('add channels');
+                return;
+              }
+              setIsAddingNew(true);
+            }}
+            className="p-2.5 sm:px-4 sm:py-2 rounded-xl bg-brand-accent font-albert font-medium text-brand-accent-foreground hover:bg-brand-accent/90 transition-colors inline-flex items-center gap-0 sm:gap-2"
+            title="Add Channel"
           >
             <Plus className="w-4 h-4" />
-            Add Channel
+            <span className="hidden sm:inline">Add Channel</span>
           </button>
         </div>
 
@@ -1078,13 +1090,25 @@ export function ChannelManagementTab() {
               {/* Actions */}
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button
-                  onClick={() => setEditingChannel(channel)}
+                  onClick={() => {
+                    if (isDemoMode) {
+                      showSignupModal('edit channels');
+                      return;
+                    }
+                    setEditingChannel(channel);
+                  }}
                   className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#171b22] transition-colors text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent"
                 >
                   <Pencil className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => setDeletingChannel(channel)}
+                  onClick={() => {
+                    if (isDemoMode) {
+                      showSignupModal('delete channels');
+                      return;
+                    }
+                    setDeletingChannel(channel);
+                  }}
                   className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-[#5f5a55] dark:text-[#b2b6c2] hover:text-red-600"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -1149,7 +1173,13 @@ export function ChannelManagementTab() {
               
               {/* Edit Button */}
               <button
-                onClick={() => setEditingPromo(true)}
+                onClick={() => {
+                  if (isDemoMode) {
+                    showSignupModal('edit coaching promo');
+                    return;
+                  }
+                  setEditingPromo(true);
+                }}
                 className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#171b22] transition-colors text-[#5f5a55] dark:text-[#b2b6c2] hover:text-brand-accent flex-shrink-0"
               >
                 <Pencil className="w-4 h-4" />
@@ -1191,6 +1221,13 @@ export function ChannelManagementTab() {
         isOpen={editingPromo}
         onClose={() => setEditingPromo(false)}
         onSave={handlePromoSave}
+      />
+
+      {/* Demo Signup Modal */}
+      <DemoSignupModal
+        isOpen={isSignupModalOpen}
+        onClose={hideSignupModal}
+        action={signupModalAction}
       />
     </div>
   );

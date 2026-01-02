@@ -6,11 +6,13 @@ import { useUser } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
 import { useTasks } from '@/hooks/useTasks';
 import { useEveningCheckIn } from '@/hooks/useEveningCheckIn';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import { Check, X } from 'lucide-react';
 
 export default function EveningStartPage() {
   const router = useRouter();
   const { isLoaded } = useUser();
+  const { isDemoMode } = useDemoMode();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Get today's date
@@ -20,17 +22,33 @@ export default function EveningStartPage() {
   const { focusTasks, isLoading: tasksLoading } = useTasks({ date: today });
   const { startCheckIn } = useEveningCheckIn();
   
+  // Demo tasks for the UI
+  const demoTasks = useMemo(() => isDemoMode ? [
+    { id: 'demo-1', title: 'Morning meditation', status: 'completed' },
+    { id: 'demo-2', title: 'Review project goals', status: 'completed' },
+    { id: 'demo-3', title: 'Complete workout', status: 'completed' },
+    { id: 'demo-4', title: 'Read for 30 minutes', status: 'completed' },
+    { id: 'demo-5', title: 'Plan tomorrow', status: 'pending' },
+  ] : [], [isDemoMode]);
+  
+  // Use demo tasks or real tasks
+  const displayTasks = isDemoMode ? demoTasks : focusTasks;
+  
   // Calculate task completion
-  const completedTasks = focusTasks.filter(t => t.status === 'completed');
-  const allTasksCompleted = focusTasks.length > 0 && completedTasks.length === focusTasks.length;
+  const completedCount = displayTasks.filter(t => t.status === 'completed').length;
+  const totalTasks = displayTasks.length;
+  const allTasksCompleted = totalTasks > 0 && completedCount === totalTasks;
   
   const handleContinue = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
     try {
-      // Start evening check-in with task stats
-      await startCheckIn(completedTasks.length, focusTasks.length);
+      // In demo mode, skip API calls but still navigate
+      if (!isDemoMode) {
+        // Start evening check-in with task stats
+        await startCheckIn(completedCount, totalTasks);
+      }
       
       // Navigate to evaluate step
       router.push('/checkin/evening/evaluate');
@@ -40,10 +58,12 @@ export default function EveningStartPage() {
     }
   };
 
-  if (!isLoaded || tasksLoading) {
+  // In demo mode, skip the Clerk loading check
+  const isLoading = isDemoMode ? tasksLoading : (!isLoaded || tasksLoading);
+  if (isLoading) {
     return (
-      <div className="fixed inset-0 bg-[#faf8f6] flex items-center justify-center z-[9999]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a1a1a]" />
+      <div className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] flex items-center justify-center z-[9999]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a1a1a] dark:border-white" />
       </div>
     );
   }
@@ -53,13 +73,13 @@ export default function EveningStartPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
-      className="fixed inset-0 z-[9999] bg-[#faf8f6] flex flex-col overflow-hidden"
+      className="fixed inset-0 z-[9999] bg-[#faf8f6] dark:bg-[#05070b] flex flex-col overflow-hidden"
     >
       {/* Close button header */}
       <div className="flex items-center justify-end px-6 pt-6 pb-2">
         <button
           onClick={() => router.push('/')}
-          className="p-2 -mr-2 text-[#5f5a55] hover:text-[#1a1a1a] transition-colors"
+          className="p-2 -mr-2 text-[#5f5a55] dark:text-[#a0a0a0] hover:text-[#1a1a1a] dark:hover:text-white transition-colors"
           aria-label="Close"
         >
           <X className="w-6 h-6" />
@@ -70,7 +90,7 @@ export default function EveningStartPage() {
       <div className="flex-1 flex flex-col md:items-center md:justify-center px-6 overflow-y-auto">
         <div className="w-full max-w-[480px] mx-auto flex-1 md:flex-initial flex flex-col">
           {/* Header */}
-          <p className="font-albert text-[20px] md:text-[28px] font-medium text-[#5f5a55] tracking-[-1.5px] leading-[1.3] mb-4 md:mb-8 text-center">
+          <p className="font-albert text-[20px] md:text-[28px] font-medium text-[#5f5a55] dark:text-[#a0a0a0] tracking-[-1.5px] leading-[1.3] mb-4 md:mb-8 text-center">
             Close your day
           </p>
 
@@ -81,12 +101,12 @@ export default function EveningStartPage() {
 
           {/* Title and description based on completion state */}
           <div className="text-center mb-6 md:mb-10">
-            <h1 className="font-albert text-[22px] md:text-[28px] font-medium text-[#1a1a1a] tracking-[-1.5px] leading-[1.3] mb-3 md:mb-6">
+            <h1 className="font-albert text-[22px] md:text-[28px] font-medium text-[#1a1a1a] dark:text-white tracking-[-1.5px] leading-[1.3] mb-3 md:mb-6">
               {allTasksCompleted 
                 ? 'Well done today' 
                 : 'You did what you could today'}
             </h1>
-            <p className="font-sans text-[16px] md:text-[20px] text-[#1a1a1a] tracking-[-0.4px] leading-[1.4] max-w-[420px] mx-auto">
+            <p className="font-sans text-[16px] md:text-[20px] text-[#1a1a1a] dark:text-white/90 tracking-[-0.4px] leading-[1.4] max-w-[420px] mx-auto">
               {allTasksCompleted 
                 ? 'You showed up and moved things forward. Even small wins build big change.'
                 : "Progress isn't always linear — and that's okay. What matters is that you showed up with intention."}
@@ -95,19 +115,19 @@ export default function EveningStartPage() {
 
           {/* Task List */}
           <div className="flex flex-col gap-[6px] w-full mb-6">
-            {focusTasks.map((task) => {
+            {displayTasks.map((task) => {
               const isCompleted = task.status === 'completed';
               return (
                 <div
                   key={task.id}
-                  className="bg-[#f3f1ef] rounded-[14px] md:rounded-[20px] px-4 py-3 flex items-center gap-3"
+                  className="bg-[#f3f1ef] dark:bg-[#1a1f28] rounded-[14px] md:rounded-[20px] px-4 py-3 flex items-center gap-3"
                 >
                   {/* Checkbox indicator */}
                   <div 
                     className={`w-5 h-5 md:w-7 md:h-7 rounded-[5px] md:rounded-[6px] flex items-center justify-center border-2 flex-shrink-0 ${
                       isCompleted 
                         ? 'bg-brand-accent border-brand-accent' 
-                        : 'border-[#d4d0cc] bg-transparent'
+                        : 'border-[#d4d0cc] dark:border-[#3a3f48] bg-transparent'
                     }`}
                   >
                     {isCompleted && (
@@ -119,8 +139,8 @@ export default function EveningStartPage() {
                   <span 
                     className={`font-albert text-[16px] md:text-[18px] font-semibold tracking-[-0.8px] leading-[1.3] flex-1 ${
                       isCompleted 
-                        ? 'line-through text-[#8a857f]' 
-                        : 'text-[#1a1a1a]'
+                        ? 'line-through text-[#8a857f] dark:text-[#6a6560]' 
+                        : 'text-[#1a1a1a] dark:text-white'
                     }`}
                   >
                     {task.title}
@@ -129,9 +149,9 @@ export default function EveningStartPage() {
               );
             })}
 
-            {focusTasks.length === 0 && (
-              <div className="bg-[#f3f1ef] rounded-[14px] md:rounded-[20px] px-4 py-4 text-center">
-                <p className="font-sans text-[15px] md:text-[17px] text-[#5f5a55]">
+            {displayTasks.length === 0 && (
+              <div className="bg-[#f3f1ef] dark:bg-[#1a1f28] rounded-[14px] md:rounded-[20px] px-4 py-4 text-center">
+                <p className="font-sans text-[15px] md:text-[17px] text-[#5f5a55] dark:text-[#a0a0a0]">
                   No focus tasks for today
                 </p>
               </div>

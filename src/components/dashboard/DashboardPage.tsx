@@ -17,7 +17,7 @@ import { DailyFocusSection } from '@/components/tasks/DailyFocusSection';
 import { StoryAvatar } from '@/components/stories/StoryAvatar';
 import { AlignmentGauge } from '@/components/alignment';
 import { NotificationBell, NotificationIconButton } from '@/components/notifications';
-import { ChatIconButton } from '@/components/chat/ChatIconButton';
+import { ChatButton } from '@/components/chat/ChatButton';
 import { ThemeToggle } from '@/components/theme';
 import { ProgramCheckInModal, type ProgramCheckInData, type UpsellProgramInfo } from '@/components/programs/ProgramCheckInModal';
 import type { ProgramCompletionConfig } from '@/types';
@@ -37,7 +37,9 @@ import { useAvailablePrograms } from '@/hooks/useAvailablePrograms';
 import { ProgramCarousel } from '@/components/home/ProgramCarousel';
 import { SquadCarousel } from '@/components/home/SquadCarousel';
 import { WelcomeTour } from '@/components/coach/onboarding';
-import { RequestCallCard, CalendarButton } from '@/components/scheduling';
+import { RequestCallCard, CalendarButton, CalendarIconButton } from '@/components/scheduling';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DEMO_USER } from '@/lib/demo-utils';
 
 /**
  * Homepage / Dashboard
@@ -48,8 +50,29 @@ import { RequestCallCard, CalendarButton } from '@/components/scheduling';
 export function DashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, isLoaded } = useUser();
+  const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
+  const { isDemoMode } = useDemoMode();
   const [mounted, setMounted] = useState(false);
+  
+  // In demo mode, use mock user data
+  const user = useMemo(() => {
+    if (isDemoMode) {
+      return {
+        id: DEMO_USER.id,
+        firstName: DEMO_USER.firstName,
+        lastName: DEMO_USER.lastName,
+        imageUrl: DEMO_USER.imageUrl,
+        publicMetadata: {
+          role: 'user',
+          billingStatus: 'active',
+        },
+      };
+    }
+    return clerkUser;
+  }, [isDemoMode, clerkUser]);
+  
+  // In demo mode, skip waiting for Clerk
+  const isLoaded = isDemoMode || clerkLoaded;
   
   // Coach welcome tour state
   const [showWelcomeTour, setShowWelcomeTour] = useState(false);
@@ -548,6 +571,21 @@ export function DashboardPage() {
         return;
       }
       
+      // Demo mode: set demo data immediately without API calls
+      if (isDemoMode) {
+        setUserGoal({
+          goal: 'Build a morning routine and exercise 5 days a week',
+          targetDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
+          progress: { percentage: 65 }
+        });
+        setUserMission('Become the best version of myself through consistent daily habits');
+        setUserCreatedAt(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+        setHasCompletedHomeTutorial(true);
+        setTutorialDataLoaded(true);
+        setLoading(false);
+        return;
+      }
+      
       try {
         // SELF-HEALING: Sync billing status with Stripe and Clerk
         // This ensures we have the latest subscription status even if webhooks failed
@@ -739,7 +777,7 @@ export function DashboardPage() {
     if (isLoaded) {
       fetchUserData();
     }
-  }, [user, isLoaded, router]);
+  }, [user, isLoaded, router, isDemoMode]);
 
   if (!isLoaded || !mounted) {
     return null;
@@ -827,13 +865,13 @@ export function DashboardPage() {
   // Check if habit is completed today
   const isCompletedToday = (habit: Habit) => {
     const today = new Date().toISOString().split('T')[0];
-    return habit.progress.completionDates.includes(today);
+    return habit.progress?.completionDates?.includes(today) || false;
   };
 
   // Check if habit is skipped today
   const isSkippedToday = (habit: Habit) => {
     const today = new Date().toISOString().split('T')[0];
-    return habit.progress.skipDates?.includes(today) || false;
+    return habit.progress?.skipDates?.includes(today) || false;
   };
 
   // Check if habit should show today based on frequency
@@ -951,7 +989,7 @@ export function DashboardPage() {
   // ============================================================================
   
   // Card type definitions for dynamic ordering
-  type CardType = 'prompt' | 'goal' | 'discover' | 'status' | 'welcome' | 'track' | 'program_checkin';
+  type CardType = 'prompt' | 'goal' | 'discover' | 'status' | 'welcome' | 'track' | 'program_checkin' | 'quote';
   
   // Determine the prompt card content (morning/evening/weekly)
   const renderPromptCard = (isMobile: boolean) => {
@@ -1066,35 +1104,79 @@ export function DashboardPage() {
   };
   
   // Goal card (handles goal/no goal/recently achieved/loading states)
+  // isMobile = true for carousel (full-width cards), false for grid view
   const renderGoalCard = (isMobile: boolean) => {
     const baseClasses = isMobile
       ? "w-[calc(100vw-32px)] flex-shrink-0 snap-center h-[200px] rounded-[32px] overflow-hidden relative"
       : "h-[200px] rounded-[32px] overflow-hidden relative cursor-pointer hover:scale-[1.02] transition-transform";
     
     if (userGoal) {
+      // Carousel view (isMobile=true): Horizontal layout with circular progress (has full width)
+      // Grid view (isMobile=false): Vertical layout with linear progress bar (space-efficient)
+      if (isMobile) {
+        // Carousel: Keep horizontal layout with circle
+        return (
+          <Link key="goal" href="/goal" className={`${baseClasses} bg-gradient-to-br from-gray-700 to-gray-900 p-6`}>
+            <div className="absolute inset-0 bg-black/55" />
+            <div className="relative z-10 h-full flex items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <p className="font-sans text-[11px] text-white/90 leading-[1.2] mb-1.5">
+                  My goal
+                </p>
+                <p className="font-albert text-[22px] text-white leading-[1.2] tracking-[-1.2px] mb-1.5 line-clamp-2">
+                  {capitalizeFirstLetter(userGoal.goal || '')}
+                </p>
+                <p className="font-sans text-[12px] text-white/60 leading-[1.2]">
+                  {goalDaysLeft !== null && goalDaysLeft >= 0 ? `${goalDaysLeft} days left` : 'Goal date passed'}
+                </p>
+              </div>
+              <div className="relative w-[90px] h-[90px] flex-shrink-0">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="8" />
+                  <circle cx="50" cy="50" r="40" fill="none" stroke="white" strokeWidth="8" strokeDasharray={`${(goalProgress / 100) * 251.2} 251.2`} strokeLinecap="round" />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+                  <span className="font-albert text-[16px] font-semibold tracking-[-1px]">{Math.round(goalProgress)}%</span>
+                  <span className="font-sans text-[11px] text-white/60">complete</span>
+                </div>
+              </div>
+            </div>
+          </Link>
+        );
+      }
+      
+      // Grid view: Vertical layout with linear progress bar
       return (
-        <Link key="goal" href="/goal" className={`${baseClasses} bg-gradient-to-br from-gray-700 to-gray-900 p-6`}>
+        <Link key="goal" href="/goal" className={`${baseClasses} bg-gradient-to-br from-gray-700 to-gray-900 p-5`}>
           <div className="absolute inset-0 bg-black/55" />
-          <div className="relative z-10 h-full flex items-center justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <p className={`font-sans ${isMobile ? 'text-[11px]' : 'text-[12px]'} text-white/90 leading-[1.2] mb-1.5`}>
+          <div className="relative z-10 h-full flex flex-col justify-between">
+            {/* Top: Label + Title */}
+            <div>
+              <p className="font-sans text-[11px] text-white/80 leading-[1.2] mb-1 uppercase tracking-wider">
                 My goal
               </p>
-              <p className={`font-albert ${isMobile ? 'text-[20px]' : 'text-[24px]'} text-white leading-[1.25] tracking-[-1.2px] mb-1.5`}>
+              <p className="font-albert text-[20px] text-white leading-[1.2] tracking-[-1px] line-clamp-3">
                 {capitalizeFirstLetter(userGoal.goal || '')}
               </p>
-              <p className={`font-sans ${isMobile ? 'text-[12px]' : 'text-[14px]'} text-white/60 leading-[1.2]`}>
-                {goalDaysLeft !== null && goalDaysLeft >= 0 ? `${goalDaysLeft} days left` : 'Goal date passed'}
-              </p>
             </div>
-            <div className={`relative ${isMobile ? 'w-[90px] h-[90px]' : 'w-[100px] h-[100px]'} flex-shrink-0`}>
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="8" />
-                <circle cx="50" cy="50" r="40" fill="none" stroke="white" strokeWidth="8" strokeDasharray={`${(goalProgress / 100) * 251.2} 251.2`} strokeLinecap="round" />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-                <span className={`font-albert ${isMobile ? 'text-[16px]' : 'text-[18px]'} font-semibold tracking-[-1px]`}>{Math.round(goalProgress)}%</span>
-                <span className={`font-sans ${isMobile ? 'text-[11px]' : 'text-[12px]'} text-white/60`}>complete</span>
+            
+            {/* Bottom: Progress bar + stats */}
+            <div>
+              {/* Progress bar */}
+              <div className="h-2 bg-white/20 rounded-full overflow-hidden mb-2">
+                <div 
+                  className="h-full bg-white rounded-full transition-all duration-500"
+                  style={{ width: `${goalProgress}%` }}
+                />
+              </div>
+              {/* Stats row */}
+              <div className="flex items-center justify-between">
+                <span className="font-sans text-[12px] text-white/60">
+                  {goalDaysLeft !== null && goalDaysLeft >= 0 ? `${goalDaysLeft} days left` : 'Goal date passed'}
+                </span>
+                <span className="font-albert text-[14px] text-white font-semibold">
+                  {Math.round(goalProgress)}%
+                </span>
               </div>
             </div>
           </div>
@@ -1106,14 +1188,14 @@ export function DashboardPage() {
       return (
         <Link key="goal" href="/onboarding/goal" className={`${baseClasses} bg-gradient-to-br from-amber-500 to-amber-700 flex flex-col justify-center items-center cursor-pointer`}>
           <div className="absolute inset-0 bg-black/10" />
-          <div className="relative z-10 text-center">
-            <p className={`font-albert ${isMobile ? 'text-[18px]' : 'text-[22px]'} text-white leading-[1.2] tracking-[-1.2px] font-medium mb-1`}>
+          <div className="relative z-10 text-center px-4">
+            <p className="font-albert text-[18px] text-white leading-[1.2] tracking-[-1.2px] font-medium mb-1">
               🎉 You achieved:
             </p>
-            <p className={`font-sans ${isMobile ? 'text-[14px]' : 'text-[16px]'} text-white leading-[1.3] font-medium mb-3 px-2`}>
+            <p className="font-sans text-[14px] text-white leading-[1.3] font-medium mb-3 px-2 line-clamp-2">
               {capitalizeFirstLetter(recentlyAchievedGoal.goal)}
             </p>
-            <span className={`px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full font-sans ${isMobile ? 'text-[12px]' : 'text-[14px]'} text-white font-medium`}>
+            <span className="px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full font-sans text-[12px] text-white font-medium">
               Set a new goal →
             </span>
           </div>
@@ -1123,11 +1205,12 @@ export function DashboardPage() {
     
     if (loading || (isMorningWindow() && checkInLoading) || (isEveningWindow() && eveningCheckInLoading)) {
       return (
-        <div key="goal" className={`${baseClasses} bg-gradient-to-br from-gray-700 to-gray-900 p-6 flex flex-col justify-center items-center`}>
+        <div key="goal" className={`${baseClasses} bg-gradient-to-br from-gray-700 to-gray-900 p-5 flex flex-col justify-center items-center`}>
           <div className="absolute inset-0 bg-black/55" />
-          <div className="relative z-10">
-            <div className={`animate-pulse ${isMobile ? 'w-24' : 'w-20'} h-4 bg-white/20 rounded mb-2 mx-auto`} />
-            <div className={`animate-pulse ${isMobile ? 'w-32' : 'w-40'} h-6 bg-white/20 rounded mx-auto`} />
+          <div className="relative z-10 w-full">
+            <div className="animate-pulse w-16 h-3 bg-white/20 rounded mb-2" />
+            <div className="animate-pulse w-full h-5 bg-white/20 rounded mb-1" />
+            <div className="animate-pulse w-3/4 h-5 bg-white/20 rounded" />
           </div>
         </div>
       );
@@ -1135,16 +1218,16 @@ export function DashboardPage() {
     
     // No goal set
     return (
-      <Link key="goal" href="/onboarding/goal" className={`${baseClasses} bg-gradient-to-br from-gray-700 to-gray-900 p-6 flex flex-col justify-center items-center cursor-pointer`}>
+      <Link key="goal" href="/onboarding/goal" className={`${baseClasses} bg-gradient-to-br from-gray-700 to-gray-900 p-5 flex flex-col justify-center cursor-pointer`}>
         <div className="absolute inset-0 bg-black/55" />
-        <div className="relative z-10 text-center">
-          <p className={`font-sans ${isMobile ? 'text-[11px]' : 'text-[12px]'} text-white/90 leading-[1.2] mb-1.5`}>
+        <div className="relative z-10">
+          <p className="font-sans text-[11px] text-white/80 leading-[1.2] mb-1 uppercase tracking-wider">
             My goal
           </p>
-          <p className={`font-albert ${isMobile ? 'text-[18px]' : 'text-[24px]'} text-white leading-[1.3] tracking-[-1.2px] mb-3`}>
+          <p className="font-albert text-[20px] text-white leading-[1.2] tracking-[-1px] mb-4">
             Set a new goal
           </p>
-          <span className={`px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full font-sans ${isMobile ? 'text-[12px]' : 'text-[14px]'} text-white font-medium`}>
+          <span className="inline-block px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full font-sans text-[12px] text-white font-medium">
             Get started →
           </span>
         </div>
@@ -1309,6 +1392,11 @@ export function DashboardPage() {
   
   // Determine card order based on current state
   const getCardOrder = (): CardType[] => {
+    // DEMO MODE: Show prompt, goal, and quote cards
+    if (isDemoMode) {
+      return ['prompt', 'goal', 'quote'];
+    }
+    
     // PROGRAM CHECK-IN TAKES PRIORITY
     // If user has pending program check-in, show it first
     if (showProgramCheckIn) {
@@ -1341,6 +1429,57 @@ export function DashboardPage() {
     return ['goal', 'track', 'discover'];
   };
   
+  // Render quote card for demo mode
+  const renderQuoteCard = (isMobile: boolean): React.ReactNode => {
+    // Mobile: Redesigned cleaner layout
+    if (isMobile) {
+      return (
+        <div 
+          key="quote-card"
+          className="w-[calc(100vw-32px)] flex-shrink-0 snap-center h-[180px] rounded-[24px] overflow-hidden relative bg-gradient-to-br from-amber-500 via-orange-500 to-orange-600"
+        >
+          {/* Subtle texture overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+          
+          {/* Content */}
+          <div className="relative z-10 h-full flex flex-col justify-center px-5 py-4">
+            {/* Quote icon */}
+            <LucideIcons.Quote className="w-6 h-6 text-white/40 mb-2" />
+            
+            {/* Quote text */}
+            <p className="font-albert text-[17px] font-medium text-white leading-[1.35] tracking-[-0.3px]">
+              &ldquo;The only way to do great work is to love what you do.&rdquo;
+            </p>
+            
+            {/* Author */}
+            <p className="font-albert text-[13px] text-white/70 mt-2">
+              — Steve Jobs
+            </p>
+          </div>
+        </div>
+      );
+    }
+    
+    // Desktop: Keep original centered design
+    return (
+      <div 
+        key="quote-card"
+        className="h-[200px] rounded-[32px] overflow-hidden relative p-6 flex flex-col items-center justify-center bg-gradient-to-br from-amber-500 to-orange-600"
+      >
+        <div className="absolute inset-0 bg-black/10" />
+        <div className="relative z-10 text-center px-6">
+          <span className="text-[28px] mb-3 block">💭</span>
+          <p className="text-[18px] font-albert font-medium text-white leading-[1.4] mb-2">
+            &ldquo;The only way to do great work is to love what you do.&rdquo;
+          </p>
+          <p className="font-albert text-[14px] text-white/80">
+            — Steve Jobs
+          </p>
+        </div>
+      </div>
+    );
+  };
+  
   // Render a card by type
   const renderCard = (cardType: CardType, isMobile: boolean): React.ReactNode => {
     switch (cardType) {
@@ -1358,6 +1497,8 @@ export function DashboardPage() {
         return renderTrackPromptCard(isMobile);
       case 'program_checkin':
         return renderProgramCheckInCard(isMobile);
+      case 'quote':
+        return renderQuoteCard(isMobile);
       default:
         return null;
     }
@@ -1380,7 +1521,7 @@ export function DashboardPage() {
       <div className="space-y-3 mb-6">
         <div className="flex items-center justify-between">
           {/* User Profile - Avatar opens story, text links to profile */}
-          <div data-tour="profile-header" className="bg-[#f3f1ef] dark:bg-[#181d28] rounded-[40px] p-1 flex items-center gap-3 pr-4">
+          <div data-tour="profile-header" className="bg-[#f3f1ef] dark:bg-[#181d28] rounded-[40px] p-1 flex items-center gap-2 sm:gap-3 pr-2 sm:pr-4 max-w-[65%] sm:max-w-none">
             {/* Story Avatar - Opens story player when clicked */}
             <StoryAvatar
               user={{
@@ -1406,11 +1547,11 @@ export function DashboardPage() {
               size="md"
             />
             {/* Profile Link */}
-            <Link href="/profile" className="text-left hover:opacity-80 transition-opacity">
-              <p className="font-albert text-[18px] font-semibold text-text-primary leading-[1.3] tracking-[-1px]">
+            <Link href="/profile" className="text-left hover:opacity-80 transition-opacity min-w-0">
+              <p className="font-albert text-[14px] sm:text-[18px] font-semibold text-text-primary leading-[1.3] tracking-[-1px] truncate">
                 Hi {user.firstName},
               </p>
-              <p className="font-albert text-[18px] font-normal text-text-primary leading-[1.3] tracking-[-1px]">
+              <p className="font-albert text-[14px] sm:text-[18px] font-normal text-text-primary leading-[1.3] tracking-[-1px] truncate">
                 {greeting}!
               </p>
             </Link>
@@ -1418,7 +1559,8 @@ export function DashboardPage() {
 
           {/* Calendar + Notification Bell + Alignment Score + Theme Toggle */}
           <div className="flex items-center gap-2">
-            <CalendarButton />
+            <CalendarButton className="hidden lg:block" />
+            <ChatButton className="lg:hidden" />
             <NotificationBell className="hidden lg:block" />
             <div data-tour="streak">
             <AlignmentGauge
@@ -1438,10 +1580,10 @@ export function DashboardPage() {
           <p className="font-sans text-[12px] text-text-secondary leading-[1.2]">
             {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
           </p>
-          {/* Mobile: notification, chat, and theme toggle icons */}
+          {/* Mobile: notification, calendar, and theme toggle icons */}
           <div className="flex items-center gap-2 lg:hidden">
             <NotificationIconButton />
-            <ChatIconButton />
+            <CalendarIconButton />
             <ThemeToggle horizontal />
           </div>
         </div>
@@ -1465,7 +1607,7 @@ export function DashboardPage() {
         {carouselDataLoading ? (
           <>
             {/* Mobile: Skeleton Carousel */}
-            <div className="lg:hidden overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div className="md:hidden overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               <div className="flex gap-3" style={{ width: 'max-content' }}>
                 {[0, 1, 2].map((i) => (
                   <div key={i} className="w-[calc(100vw-32px)] flex-shrink-0 snap-center h-[200px] rounded-[32px] bg-surface animate-pulse">
@@ -1479,13 +1621,13 @@ export function DashboardPage() {
               </div>
             </div>
             {/* Mobile: Skeleton Dots */}
-            <div className="lg:hidden flex justify-center gap-2 mt-3">
+            <div className="md:hidden flex justify-center gap-2 mt-3">
               {[0, 1, 2].map((i) => (
                 <div key={i} className={`h-2 rounded-full bg-text-primary/20 ${i === 0 ? 'w-6' : 'w-2'}`} />
               ))}
             </div>
-            {/* Desktop: Skeleton Grid */}
-            <div className="hidden lg:grid lg:grid-cols-3 gap-4">
+            {/* Tablet/Desktop: Skeleton Grid */}
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[0, 1, 2].map((i) => (
                 <div key={i} className="h-[200px] rounded-[32px] bg-surface animate-pulse">
                   <div className="h-full flex flex-col justify-center items-center px-6">
@@ -1503,7 +1645,7 @@ export function DashboardPage() {
         <div 
           ref={carouselRef}
           onScroll={handleCarouselScroll}
-          className="lg:hidden overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4" 
+          className="md:hidden overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4" 
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           <div className="flex gap-3" style={{ width: 'max-content' }}>
@@ -1513,7 +1655,7 @@ export function DashboardPage() {
         </div>
 
         {/* Carousel Dots - Mobile only */}
-        <div className="lg:hidden flex justify-center gap-2 mt-3">
+        <div className="md:hidden flex justify-center gap-2 mt-3">
           {[0, 1, 2].map((index) => (
             <button
               key={index}
@@ -1528,8 +1670,8 @@ export function DashboardPage() {
           ))}
         </div>
 
-        {/* Desktop: 3-Column Grid */}
-        <div className="hidden lg:grid lg:grid-cols-3 gap-4">
+        {/* Tablet/Desktop: 2/3-Column Grid */}
+        <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Dynamic cards based on state */}
           {cardOrder.map((cardType) => renderCard(cardType, false))}
         </div>

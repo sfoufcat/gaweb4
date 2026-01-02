@@ -16,6 +16,8 @@ import { StandardSquadCallCard } from '@/components/squad/StandardSquadCallCard'
 import { NextSquadCallCard, type CoachInfo } from '@/components/squad/NextSquadCallCard';
 import { SquadDiscovery } from '@/components/squad/SquadDiscovery';
 import { useMenuTitles } from '@/contexts/BrandingContext';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DEMO_USER } from '@/lib/demo-utils';
 import type { ReferralConfig } from '@/types';
 
 /**
@@ -39,8 +41,22 @@ import type { ReferralConfig } from '@/types';
 type TabType = 'squad' | 'stats';
 
 export default function StandaloneSquadPage() {
-  const { user, isLoaded: userLoaded } = useUser();
+  const { user: clerkUser, isLoaded: userLoaded } = useUser();
   const { squad: squadTitle, squadLower } = useMenuTitles();
+  const { isDemoMode } = useDemoMode();
+  
+  // In demo mode, use mock user data
+  const user = useMemo(() => {
+    if (isDemoMode) {
+      return {
+        id: DEMO_USER.id,
+        firstName: DEMO_USER.firstName,
+        lastName: DEMO_USER.lastName,
+        imageUrl: DEMO_USER.imageUrl,
+      };
+    }
+    return clerkUser;
+  }, [isDemoMode, clerkUser]);
   
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('squad');
@@ -140,8 +156,8 @@ export default function StandaloneSquadPage() {
     fetchReferralConfig();
   }, [squad?.programId]);
 
-  // Loading state
-  if (!mounted || !userLoaded || isLoading) {
+  // Loading state - in demo mode, skip waiting for Clerk user to load
+  if (!mounted || (!isDemoMode && !userLoaded) || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-text-primary" />

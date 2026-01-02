@@ -2,6 +2,46 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { adminDb } from '@/lib/firebase-admin';
+import { isDemoRequest, demoResponse } from '@/lib/demo-api';
+import { generateAvatarUrl } from '@/lib/demo-data';
+
+// Demo story users configuration
+const DEMO_STORY_MEMBERS = [
+  { id: 'demo-coach-user', firstName: 'Adam', lastName: 'Coach', hasGoal: true, hasTasks: true, hasDayClosed: true, userPostCount: 1 },
+  { id: 'demo-member-1', firstName: 'Sarah', lastName: 'Miller', hasGoal: true, hasTasks: true, hasDayClosed: true, userPostCount: 1 },
+  { id: 'demo-member-2', firstName: 'Michael', lastName: 'Chen', hasGoal: true, hasTasks: true, hasDayClosed: false, userPostCount: 0 },
+  { id: 'demo-member-3', firstName: 'Emma', lastName: 'Thompson', hasGoal: true, hasTasks: true, hasDayClosed: true, userPostCount: 1 },
+  { id: 'demo-member-4', firstName: 'James', lastName: 'Wilson', hasGoal: true, hasTasks: false, hasDayClosed: false, userPostCount: 0 },
+  { id: 'demo-member-5', firstName: 'Lisa', lastName: 'Park', hasGoal: true, hasTasks: true, hasDayClosed: true, userPostCount: 0 },
+];
+
+function generateDemoStoryStatuses() {
+  const statuses: Record<string, StoryStatus> = {};
+  const memberIds: string[] = [];
+  
+  for (const member of DEMO_STORY_MEMBERS) {
+    const fullName = `${member.firstName} ${member.lastName}`;
+    memberIds.push(member.id);
+    
+    statuses[member.id] = {
+      hasStory: member.hasGoal || member.hasTasks || member.hasDayClosed || member.userPostCount > 0,
+      hasDayClosed: member.hasDayClosed,
+      hasWeekClosed: false,
+      hasTasks: member.hasTasks,
+      hasGoal: member.hasGoal,
+      taskCount: member.hasTasks ? 3 : 0,
+      userStoryCount: member.userPostCount,
+      hasUserStory: member.userPostCount > 0,
+      user: {
+        firstName: member.firstName,
+        lastName: member.lastName,
+        imageUrl: generateAvatarUrl(fullName),
+      },
+    };
+  }
+  
+  return { statuses, memberIds };
+}
 
 /**
  * POST /api/stories/batch
@@ -43,6 +83,12 @@ interface StoryStatus {
 
 export async function POST(request: NextRequest) {
   try {
+    // Demo mode: return mock story statuses
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      return demoResponse(generateDemoStoryStatuses());
+    }
+    
     const { userId: currentUserId } = await auth();
 
     if (!currentUserId) {

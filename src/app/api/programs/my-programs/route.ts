@@ -17,7 +17,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { isDemoRequest, demoResponse } from '@/lib/demo-api';
-import { generateDemoUserProfile, generateDemoSquadMembers } from '@/lib/demo-data';
+import { generateDemoUserProfile, generateDemoProgramSquadMembers } from '@/lib/demo-data';
 import type { 
   Program, 
   ProgramEnrollment, 
@@ -71,58 +71,80 @@ function calculateCurrentDayIndex(startDate: string, totalDays: number): number 
 
 export async function GET() {
   try {
-    // Demo mode: return demo program enrollment
+    // Demo mode: return demo program enrollments (both group and individual)
     const isDemo = await isDemoRequest();
     if (isDemo) {
       const profile = generateDemoUserProfile();
-      const squadMembers = profile.squad ? generateDemoSquadMembers(profile.squad.id, 5) : [];
+      // Generate 17 members for program squad (different from standalone squad members)
+      const programSquadMembers = profile.squad ? generateDemoProgramSquadMembers(profile.squad.id, 17) : [];
       
-      return demoResponse({
-        success: true,
-        enrollments: profile.currentProgram ? [{
+      // Build enrollments from profile.programs array
+      const enrollments = profile.programs.map((prog, index) => {
+        const isGroupProgram = prog.type === 'group';
+        
+        return {
           enrollment: {
-            id: 'demo-enrollment-1',
+            id: `demo-enrollment-${index + 1}`,
             userId: profile.id,
-            programId: profile.currentProgram.id,
+            programId: prog.id,
             organizationId: 'demo-org',
             status: 'active',
-            startDate: new Date(Date.now() - profile.currentProgram.currentDay * 24 * 60 * 60 * 1000).toISOString(),
+            startedAt: new Date(Date.now() - prog.currentDay * 24 * 60 * 60 * 1000).toISOString(),
+            startDate: new Date(Date.now() - prog.currentDay * 24 * 60 * 60 * 1000).toISOString(),
             createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
             updatedAt: new Date().toISOString(),
           },
           program: {
-            id: profile.currentProgram.id,
-            name: profile.currentProgram.name,
-            description: 'Transform your life with daily guided actions and community support.',
-            type: 'group',
-            lengthDays: profile.currentProgram.totalDays,
-            coachName: 'Demo Coach',
-            coachImageUrl: 'https://ui-avatars.com/api/?name=Demo+Coach&background=a07855&color=fff&size=128&bold=true',
+            id: prog.id,
+            name: prog.name,
+            description: isGroupProgram 
+              ? 'Transform your life with daily guided actions and community support.'
+              : 'One-on-one coaching to accelerate your business and personal growth.',
+            type: prog.type,
+            lengthDays: prog.totalDays,
+            coverImageUrl: prog.coverImageUrl,
+            coachName: 'Coach Adam',
+            coachImageUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face',
+            // Individual programs can have client community
+            clientCommunityEnabled: prog.type === 'individual',
+            clientCommunitySquadId: prog.type === 'individual' ? 'demo-community-squad' : undefined,
           },
-          cohort: {
-            id: 'demo-cohort-1',
+          cohort: isGroupProgram ? {
+            id: `demo-cohort-${index + 1}`,
             name: 'Winter 2025',
-            programId: profile.currentProgram.id,
-            startDate: new Date(Date.now() - profile.currentProgram.currentDay * 24 * 60 * 60 * 1000).toISOString(),
-            endDate: new Date(Date.now() + (profile.currentProgram.totalDays - profile.currentProgram.currentDay) * 24 * 60 * 60 * 1000).toISOString(),
-          },
-          squad: profile.squad ? {
+            programId: prog.id,
+            startDate: new Date(Date.now() - prog.currentDay * 24 * 60 * 60 * 1000).toISOString(),
+            endDate: new Date(Date.now() + (prog.totalDays - prog.currentDay) * 24 * 60 * 60 * 1000).toISOString(),
+          } : null,
+          // Squad only for group programs - with 17 members
+          squad: isGroupProgram && profile.squad ? {
             id: profile.squad.id,
             name: profile.squad.name,
-            memberCount: profile.squad.memberCount,
+            avatarUrl: profile.squad.avatarUrl || 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=200&h=200&fit=crop',
+            coachId: null,
+            createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+            updatedAt: new Date().toISOString(),
+            // Add memberIds array with 17 member IDs for count display
+            memberIds: programSquadMembers.map(m => m.odataUserId),
           } : null,
-          squadMembers: squadMembers.slice(0, 5).map(m => ({
+          // First 5 members for avatar display (different from standalone squad)
+          squadMembers: isGroupProgram ? programSquadMembers.slice(0, 5).map(m => ({
             id: m.odataUserId,
             firstName: m.firstName,
             lastName: m.lastName,
             imageUrl: m.imageUrl,
-          })),
+          })) : [],
           progress: {
-            currentDay: profile.currentProgram.currentDay,
-            totalDays: profile.currentProgram.totalDays,
-            percentage: profile.currentProgram.progress,
+            currentDay: prog.currentDay,
+            totalDays: prog.totalDays,
+            percentage: prog.progress,
           },
-        }] : [],
+        };
+      });
+      
+      return demoResponse({
+        success: true,
+        enrollments,
         isPlatformMode: false,
       });
     }

@@ -1,6 +1,9 @@
 'use client';
 
+import { useMemo } from 'react';
 import useSWR from 'swr';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { generateDemoDiscoverContent } from '@/lib/demo-data';
 import type { DiscoverCourse, DiscoverArticle, DiscoverEvent } from '@/types/discover';
 
 /**
@@ -67,10 +70,34 @@ export interface UseProgramContentReturn {
  * @param programId - The program ID to fetch content for (null to skip fetching)
  */
 export function useProgramContent(programId: string | null): UseProgramContentReturn {
+  const { isDemoMode } = useDemoMode();
+  
+  // Demo mode: return demo content directly
+  const demoContent = useMemo(() => {
+    if (!isDemoMode) return null;
+    const content = generateDemoDiscoverContent();
+    // Filter content by type since generateDemoDiscoverContent returns a flat array
+    const courses = content.filter(item => item.type === 'course').slice(0, 3);
+    const articles = content.filter(item => item.type === 'article').slice(0, 3);
+    return {
+      courses: courses as unknown as DiscoverCourse[],
+      articles: articles as unknown as DiscoverArticle[],
+      events: [] as DiscoverEvent[],
+      links: [
+        { id: 'link-1', title: 'Getting Started Guide', url: 'https://example.com/guide', description: 'Learn the basics' },
+        { id: 'link-2', title: 'Community Resources', url: 'https://example.com/resources', description: 'Helpful community resources' },
+      ] as ProgramLink[],
+      downloads: [
+        { id: 'dl-1', title: 'Workbook PDF', fileUrl: 'https://example.com/workbook.pdf', fileType: 'pdf', fileSize: '2.5 MB' },
+      ] as ProgramDownload[],
+      days: [] as ProgramDay[],
+    };
+  }, [isDemoMode]);
+  
   const cacheKey = programId ? `/api/programs/${programId}/content` : null;
   
   const { data, error, isLoading, mutate } = useSWR<ProgramContentResponse>(
-    cacheKey,
+    isDemoMode ? null : cacheKey,
     async (url: string) => {
       const response = await fetch(url);
       if (!response.ok) {
@@ -88,6 +115,21 @@ export function useProgramContent(programId: string | null): UseProgramContentRe
       keepPreviousData: true,
     }
   );
+
+  // Demo mode: return demo content
+  if (isDemoMode && demoContent) {
+    return {
+      courses: demoContent.courses,
+      articles: demoContent.articles,
+      events: demoContent.events,
+      links: demoContent.links,
+      downloads: demoContent.downloads,
+      days: demoContent.days,
+      isLoading: false,
+      error: null,
+      refresh: async () => {},
+    };
+  }
 
   return {
     courses: data?.courses ?? [],

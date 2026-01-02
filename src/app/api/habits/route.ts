@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { withDemoMode, isDemoRequest, demoNotAvailable } from '@/lib/demo-api';
 import type { CreateHabitRequest, Habit } from '@/types';
 
 /**
@@ -11,6 +12,10 @@ import type { CreateHabitRequest, Habit } from '@/types';
  */
 export async function GET() {
   try {
+    // Demo mode: return demo habits
+    const demoResponse = await withDemoMode('user-habits');
+    if (demoResponse) return demoResponse;
+
     const { userId } = await auth();
     
     if (!userId) {
@@ -77,6 +82,12 @@ export async function GET() {
  */
 export async function POST(req: Request) {
   try {
+    // Demo mode: block write operations
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      return demoNotAvailable('Creating habits');
+    }
+
     const { userId, sessionClaims } = await auth();
     console.log('[Habits API] POST - User ID:', userId);
     

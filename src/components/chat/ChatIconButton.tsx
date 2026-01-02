@@ -17,7 +17,7 @@ interface ChatIconButtonProps {
  * Shows unread badge and opens ChatSheet on tap.
  */
 export function ChatIconButton({ className = '' }: ChatIconButtonProps) {
-  const { totalUnread, isConnected } = useChatUnreadCounts();
+  const { totalUnread } = useChatUnreadCounts();
   const [isOpen, setIsOpen] = useState(false);
 
   const handleOpen = () => {
@@ -35,14 +35,12 @@ export function ChatIconButton({ className = '' }: ChatIconButtonProps) {
     <>
       <button
         onClick={handleOpen}
-        disabled={!isConnected}
         className={`
           relative h-[28px] w-[28px] rounded-full
           bg-[#f3f1ef] dark:bg-[#181d28]
           flex items-center justify-center
           hover:bg-[#e9e5e0] dark:hover:bg-[#272d38]
           transition-colors
-          disabled:opacity-50
           ${className}
         `}
         aria-label={`Chat${totalUnread > 0 ? ` (${totalUnread} unread)` : ''}`}

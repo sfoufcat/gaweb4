@@ -14,6 +14,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { isDemoRequest, demoResponse } from '@/lib/demo-api';
+import { generateDemoProgramsWithStats } from '@/lib/demo-data';
 import type { Program, ProgramCohort, ProgramEnrollment } from '@/types';
 
 interface DiscoverProgram extends Program {
@@ -35,6 +37,48 @@ interface DiscoverProgram extends Program {
 
 export async function GET(request: NextRequest) {
   try {
+    // Demo mode: return demo programs
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const demoPrograms = generateDemoProgramsWithStats();
+      const formattedPrograms = demoPrograms.map(p => ({
+        id: p.id,
+        organizationId: 'demo-org',
+        name: p.name,
+        slug: p.slug,
+        description: p.description,
+        coverImageUrl: p.coverImageUrl,
+        type: p.type,
+        lengthDays: p.durationDays,
+        priceInCents: p.priceInCents,
+        isPublished: p.isPublished,
+        isActive: true,
+        coachName: 'Coach Adam',
+        coachImageUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face',
+        nextCohort: p.type === 'group' ? {
+          id: `${p.id}-cohort-1`,
+          name: 'Spring 2025',
+          startDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+          spotsRemaining: 8,
+        } : null,
+        userEnrollment: null,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+      }));
+      
+      const groupPrograms = formattedPrograms.filter(p => p.type === 'group');
+      const individualPrograms = formattedPrograms.filter(p => p.type === 'individual');
+      
+      return demoResponse({
+        groupPrograms,
+        individualPrograms,
+        enrollmentConstraints: {
+          canEnrollInGroup: true,
+          canEnrollInIndividual: true,
+        },
+      });
+    }
+    
     const { userId } = await auth();
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') as 'group' | 'individual' | null;

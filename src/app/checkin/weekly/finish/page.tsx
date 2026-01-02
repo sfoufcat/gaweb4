@@ -6,6 +6,7 @@ import { useUser } from '@clerk/nextjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, X } from 'lucide-react';
 import { useWeeklyReflection } from '@/hooks/useWeeklyReflection';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 // Liquid blob animation component
 const LiquidCelebration = ({ onComplete }: { onComplete: () => void }) => {
@@ -141,6 +142,7 @@ export default function FinishPage() {
   const searchParams = useSearchParams();
   const { isLoaded } = useUser();
   const { checkIn, isLoading, markGoalComplete } = useWeeklyReflection();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -162,16 +164,26 @@ export default function FinishPage() {
   }, []);
 
   const handleCelebrationComplete = useCallback(() => {
+    // In demo mode, show signup modal after check-in completion
+    if (isDemoMode) {
+      openSignupModal();
+    }
     router.push('/');
-  }, [router]);
+  }, [router, isDemoMode, openSignupModal]);
 
   const handleCreateNewGoal = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     
     try {
-      // Navigate to goal onboarding to create new goal
-      router.push('/onboarding/goal');
+      // In demo mode, show signup modal instead of navigating to goal creation
+      if (isDemoMode) {
+        openSignupModal();
+        router.push('/');
+      } else {
+        // Navigate to goal onboarding to create new goal
+        router.push('/onboarding/goal');
+      }
     } catch (error) {
       console.error('Error navigating:', error);
       setIsSubmitting(false);
@@ -179,6 +191,10 @@ export default function FinishPage() {
   };
 
   const handleSkipForNow = () => {
+    // In demo mode, show signup modal after check-in completion
+    if (isDemoMode) {
+      openSignupModal();
+    }
     router.push('/');
   };
 
@@ -187,9 +203,9 @@ export default function FinishPage() {
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="fixed inset-0 bg-[#faf8f6] flex items-center justify-center z-[9999]"
+        className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] flex items-center justify-center z-[9999]"
       >
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a1a1a]" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a1a1a] dark:border-white" />
       </motion.div>
     );
   }
@@ -201,20 +217,20 @@ export default function FinishPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="fixed inset-0 z-[9999] bg-[#faf8f6] flex flex-col overflow-hidden"
+        className="fixed inset-0 z-[9999] bg-[#faf8f6] dark:bg-[#05070b] flex flex-col overflow-hidden"
       >
         {/* Header with back and close buttons */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4">
           <button
             onClick={() => router.push('/checkin/weekly/evaluate')}
-            className="p-2 -ml-2 text-[#1a1a1a] hover:text-[#5f5a55] transition-colors"
+            className="p-2 -ml-2 text-[#1a1a1a] dark:text-white hover:text-[#5f5a55] dark:hover:text-[#a0a0a0] transition-colors"
             aria-label="Back"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
           <button
             onClick={() => router.push('/')}
-            className="p-2 -mr-2 text-[#5f5a55] hover:text-[#1a1a1a] transition-colors"
+            className="p-2 -mr-2 text-[#5f5a55] dark:text-[#a0a0a0] hover:text-[#1a1a1a] dark:hover:text-white transition-colors"
             aria-label="Close"
           >
             <X className="w-6 h-6" />
@@ -230,12 +246,12 @@ export default function FinishPage() {
             </div>
 
             {/* Title */}
-            <h1 className="font-albert text-[28px] md:text-[36px] text-[#1a1a1a] tracking-[-2px] leading-[1.2] mb-6">
+            <h1 className="font-albert text-[28px] md:text-[36px] text-[#1a1a1a] dark:text-white tracking-[-2px] leading-[1.2] mb-6">
               Goal achieved — well done!
             </h1>
 
             {/* Description */}
-            <div className="font-albert text-[20px] md:text-[24px] font-medium text-[#1a1a1a] tracking-[-1px] md:tracking-[-1.5px] leading-[1.4] space-y-4">
+            <div className="font-albert text-[20px] md:text-[24px] font-medium text-[#1a1a1a] dark:text-white tracking-[-1px] md:tracking-[-1.5px] leading-[1.4] space-y-4">
               <p>
                 You reached your goal — that&apos;s a milestone worth celebrating.
               </p>
@@ -257,7 +273,7 @@ export default function FinishPage() {
           <button
             onClick={handleCreateNewGoal}
             disabled={isSubmitting}
-            className="w-full max-w-[400px] mx-auto block bg-[#2c2520] text-white py-4 rounded-full font-sans text-[16px] font-bold tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+            className="w-full max-w-[400px] mx-auto block bg-[#2c2520] dark:bg-white text-white dark:text-[#1a1a1a] py-4 rounded-full font-sans text-[16px] font-bold tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
           >
             {isSubmitting ? 'Loading...' : 'Create new goal'}
           </button>
@@ -265,7 +281,7 @@ export default function FinishPage() {
           <button
             onClick={handleSkipForNow}
             disabled={isSubmitting}
-            className="w-full max-w-[400px] mx-auto block bg-white border border-[rgba(215,210,204,0.5)] text-[#2c2520] py-4 rounded-full font-sans text-[16px] font-bold tracking-[-0.5px] hover:bg-[#f3f1ef] transition-all disabled:opacity-50"
+            className="w-full max-w-[400px] mx-auto block bg-white dark:bg-[#171b22] border border-[rgba(215,210,204,0.5)] dark:border-[#3a3f48] text-[#2c2520] dark:text-white py-4 rounded-full font-sans text-[16px] font-bold tracking-[-0.5px] hover:bg-[#f3f1ef] dark:hover:bg-[#1d222b] transition-all disabled:opacity-50"
           >
             Skip for now
           </button>
@@ -288,20 +304,20 @@ export default function FinishPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: isClosing ? 0.3 : 1 }}
         transition={{ duration: 0.5 }}
-        className="fixed inset-0 z-[9999] bg-[#faf8f6] flex flex-col overflow-hidden"
+        className="fixed inset-0 z-[9999] bg-[#faf8f6] dark:bg-[#05070b] flex flex-col overflow-hidden"
       >
         {/* Header with back and close buttons */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4">
           <button
             onClick={() => router.push('/checkin/weekly/focus')}
-            className="p-2 -ml-2 text-[#1a1a1a] hover:text-[#5f5a55] transition-colors"
+            className="p-2 -ml-2 text-[#1a1a1a] dark:text-white hover:text-[#5f5a55] dark:hover:text-[#a0a0a0] transition-colors"
             aria-label="Back"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
           <button
             onClick={() => router.push('/')}
-            className="p-2 -mr-2 text-[#5f5a55] hover:text-[#1a1a1a] transition-colors"
+            className="p-2 -mr-2 text-[#5f5a55] dark:text-[#a0a0a0] hover:text-[#1a1a1a] dark:hover:text-white transition-colors"
             aria-label="Close"
           >
             <X className="w-6 h-6" />
@@ -322,12 +338,12 @@ export default function FinishPage() {
             </motion.div>
 
             {/* Title */}
-            <h1 className="font-albert text-[28px] md:text-[36px] text-[#1a1a1a] tracking-[-2px] leading-[1.2] mb-6">
+            <h1 className="font-albert text-[28px] md:text-[36px] text-[#1a1a1a] dark:text-white tracking-[-2px] leading-[1.2] mb-6">
               Great work reflecting on your week!
             </h1>
 
             {/* Description */}
-            <p className="font-albert text-[20px] md:text-[24px] font-medium text-[#1a1a1a] tracking-[-1px] md:tracking-[-1.5px] leading-[1.4] mb-8 md:mb-10">
+            <p className="font-albert text-[20px] md:text-[24px] font-medium text-[#1a1a1a] dark:text-white tracking-[-1px] md:tracking-[-1.5px] leading-[1.4] mb-8 md:mb-10">
               Small steps lead to big wins—let&apos;s make next week even better.
             </p>
 
@@ -335,7 +351,7 @@ export default function FinishPage() {
             <button
               onClick={handleCloseWeek}
               disabled={isClosing}
-              className="w-full max-w-[400px] mx-auto block bg-[#2c2520] text-white py-4 rounded-full font-sans text-[16px] font-bold tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+              className="w-full max-w-[400px] mx-auto block bg-[#2c2520] dark:bg-white text-white dark:text-[#1a1a1a] py-4 rounded-full font-sans text-[16px] font-bold tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
             >
               {isClosing ? 'Closing...' : 'Close my week'}
             </button>
@@ -345,6 +361,3 @@ export default function FinishPage() {
     </>
   );
 }
-
-
-

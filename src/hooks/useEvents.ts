@@ -8,8 +8,10 @@
  */
 
 import useSWR from 'swr';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { generateDemoEvents } from '@/lib/demo-data';
 import type { UnifiedEvent, EventType, EventScope, EventStatus } from '@/types';
 
 // SWR fetcher
@@ -71,6 +73,16 @@ export interface UseEventsResult {
 // ============================================================================
 
 export function useEvents(filters: EventFilters = {}): UseEventsResult {
+  const { isDemoMode } = useDemoMode();
+  
+  // Demo mode: return demo events directly without API call
+  const demoEvents = useMemo(() => {
+    if (!isDemoMode) return null;
+    const events = generateDemoEvents();
+    // Cast to UnifiedEvent[] - demo events have compatible structure
+    return events as unknown as UnifiedEvent[];
+  }, [isDemoMode]);
+  
   // Build query string
   const params = new URLSearchParams();
   
@@ -86,8 +98,9 @@ export function useEvents(filters: EventFilters = {}): UseEventsResult {
   const queryString = params.toString();
   const url = `/api/events${queryString ? `?${queryString}` : ''}`;
 
+  // Skip API call in demo mode
   const { data, error, isLoading, mutate } = useSWR<{ events: UnifiedEvent[] }>(
-    url,
+    isDemoMode ? null : url,
     fetcher,
     {
       revalidateOnFocus: false,
@@ -95,8 +108,20 @@ export function useEvents(filters: EventFilters = {}): UseEventsResult {
   );
 
   const refresh = useCallback(async () => {
-    await mutate();
-  }, [mutate]);
+    if (!isDemoMode) {
+      await mutate();
+    }
+  }, [mutate, isDemoMode]);
+
+  // In demo mode, return demo events
+  if (isDemoMode) {
+    return {
+      events: demoEvents ?? [],
+      loading: false,
+      error: null,
+      refresh,
+    };
+  }
 
   return {
     events: data?.events ?? [],
@@ -112,6 +137,21 @@ export function useEvents(filters: EventFilters = {}): UseEventsResult {
 
 export function useEvent(eventId: string | null): UseEventResult {
   const { user } = useUser();
+  const { isDemoMode } = useDemoMode();
+  
+  // Demo mode: return demo event directly
+  const demoEventData = useMemo(() => {
+    if (!isDemoMode || !eventId) return null;
+    const events = generateDemoEvents();
+    const event = events.find(e => e.id === eventId) || events[0];
+    return {
+      event: event as unknown as UnifiedEvent,
+      attendees: [] as EventAttendee[],
+      totalAttendees: 8,
+      isJoined: false,
+      userVote: null as 'yes' | 'no' | null,
+    };
+  }, [isDemoMode, eventId]);
   
   const { data, error, isLoading, mutate } = useSWR<{
     event: UnifiedEvent;
@@ -120,7 +160,7 @@ export function useEvent(eventId: string | null): UseEventResult {
     isJoined: boolean;
     userVote: 'yes' | 'no' | null;
   }>(
-    eventId ? `/api/events/${eventId}` : null,
+    isDemoMode ? null : (eventId ? `/api/events/${eventId}` : null),
     fetcher,
     {
       revalidateOnFocus: false,
@@ -242,8 +282,29 @@ export function useEvent(eventId: string | null): UseEventResult {
   }, [eventId, data, mutate]);
 
   const refresh = useCallback(async () => {
-    await mutate();
-  }, [mutate]);
+    if (!isDemoMode) {
+      await mutate();
+    }
+  }, [mutate, isDemoMode]);
+
+  // Demo mode: return demo event data
+  if (isDemoMode && demoEventData) {
+    return {
+      event: demoEventData.event,
+      loading: false,
+      error: null,
+      attendees: demoEventData.attendees,
+      totalAttendees: demoEventData.totalAttendees,
+      isJoined: demoEventData.isJoined,
+      userVote: demoEventData.userVote,
+      isJoining: false,
+      isVoting: false,
+      joinEvent: async () => {},
+      leaveEvent: async () => {},
+      vote: async () => {},
+      refresh,
+    };
+  }
 
   return {
     event: data?.event ?? null,
@@ -267,6 +328,16 @@ export function useEvent(eventId: string | null): UseEventResult {
 // ============================================================================
 
 export function useProgramEvents(programId: string | null, options: { upcoming?: boolean; limit?: number } = {}): UseEventsResult {
+  const { isDemoMode } = useDemoMode();
+  
+  // Demo mode: return demo events filtered by programId
+  const demoEvents = useMemo(() => {
+    if (!isDemoMode) return null;
+    const events = generateDemoEvents();
+    const filtered = programId ? events.filter(e => e.programId === programId || e.programId === 'demo-prog-2') : events;
+    return filtered.slice(0, options.limit || 10) as unknown as UnifiedEvent[];
+  }, [isDemoMode, programId, options.limit]);
+  
   const params = new URLSearchParams();
   if (options.upcoming !== undefined) params.set('upcoming', String(options.upcoming));
   if (options.limit) params.set('limit', String(options.limit));
@@ -277,7 +348,7 @@ export function useProgramEvents(programId: string | null, options: { upcoming?:
     : null;
 
   const { data, error, isLoading, mutate } = useSWR<{ events: UnifiedEvent[] }>(
-    url,
+    isDemoMode ? null : url,
     fetcher,
     {
       revalidateOnFocus: false,
@@ -285,8 +356,19 @@ export function useProgramEvents(programId: string | null, options: { upcoming?:
   );
 
   const refresh = useCallback(async () => {
-    await mutate();
-  }, [mutate]);
+    if (!isDemoMode) {
+      await mutate();
+    }
+  }, [mutate, isDemoMode]);
+
+  if (isDemoMode) {
+    return {
+      events: demoEvents ?? [],
+      loading: false,
+      error: null,
+      refresh,
+    };
+  }
 
   return {
     events: data?.events ?? [],
@@ -301,6 +383,16 @@ export function useProgramEvents(programId: string | null, options: { upcoming?:
 // ============================================================================
 
 export function useSquadEvents(squadId: string | null, options: { upcoming?: boolean; limit?: number } = {}): UseEventsResult {
+  const { isDemoMode } = useDemoMode();
+  
+  // Demo mode: return demo events filtered by squadId
+  const demoEvents = useMemo(() => {
+    if (!isDemoMode) return null;
+    const events = generateDemoEvents();
+    const filtered = squadId ? events.filter(e => e.squadId === squadId || e.squadId === 'demo-squad-1') : events;
+    return filtered.slice(0, options.limit || 10) as unknown as UnifiedEvent[];
+  }, [isDemoMode, squadId, options.limit]);
+  
   const filters: EventFilters = {
     squadId: squadId || undefined,
     upcoming: options.upcoming ?? true,
@@ -319,7 +411,7 @@ export function useSquadEvents(squadId: string | null, options: { upcoming?: boo
   const url = squadId ? `/api/events?${queryString}` : null;
 
   const { data, error, isLoading, mutate } = useSWR<{ events: UnifiedEvent[] }>(
-    url,
+    isDemoMode ? null : url,
     fetcher,
     {
       revalidateOnFocus: false,
@@ -327,8 +419,19 @@ export function useSquadEvents(squadId: string | null, options: { upcoming?: boo
   );
 
   const refresh = useCallback(async () => {
-    await mutate();
-  }, [mutate]);
+    if (!isDemoMode) {
+      await mutate();
+    }
+  }, [mutate, isDemoMode]);
+
+  if (isDemoMode) {
+    return {
+      events: demoEvents ?? [],
+      loading: false,
+      error: null,
+      refresh,
+    };
+  }
 
   return {
     events: data?.events ?? [],

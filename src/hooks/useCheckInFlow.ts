@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { OrgCheckInFlow, CheckInStep, CheckInFlowType } from '@/types';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 interface UseCheckInFlowOptions {
   type?: CheckInFlowType;
@@ -99,11 +100,23 @@ export function useCheckInFlow({ type, flowId }: UseCheckInFlowOptions): UseChec
  * Hook to check which check-in flows are available/enabled for the user
  */
 export function useAvailableCheckIns() {
+  const { isDemoMode } = useDemoMode();
   const [flows, setFlows] = useState<Pick<OrgCheckInFlow, 'id' | 'name' | 'type' | 'description' | 'enabled' | 'stepCount'>[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchFlows = useCallback(async () => {
+    // Demo mode: return demo check-in flows
+    if (isDemoMode) {
+      setFlows([
+        { id: 'demo-morning', name: 'Morning Check-In', type: 'morning' as CheckInFlowType, description: 'Start your day with intention', enabled: true, stepCount: 4 },
+        { id: 'demo-evening', name: 'Evening Reflection', type: 'evening' as CheckInFlowType, description: 'Reflect on your day', enabled: true, stepCount: 3 },
+        { id: 'demo-weekly', name: 'Weekly Review', type: 'weekly' as CheckInFlowType, description: 'Review your week', enabled: true, stepCount: 5 },
+      ]);
+      setIsLoading(false);
+      return;
+    }
+    
     try {
       setIsLoading(true);
       const response = await fetch('/api/checkin/flows?enabledOnly=true', {
@@ -124,7 +137,7 @@ export function useAvailableCheckIns() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isDemoMode]);
 
   useEffect(() => {
     fetchFlows();

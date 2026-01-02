@@ -7,6 +7,8 @@ import {
 } from '@/lib/notifications';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import type { Notification } from '@/types';
+import { isDemoRequest, demoResponse, demoNotAvailable } from '@/lib/demo-api';
+import { generateDemoNotifications } from '@/lib/demo-data';
 
 /**
  * GET /api/notifications
@@ -20,6 +22,19 @@ import type { Notification } from '@/types';
  */
 export async function GET(request: NextRequest) {
   try {
+    // Demo mode: return demo notifications
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const { searchParams } = new URL(request.url);
+      const unreadOnly = searchParams.get('unreadOnly') === 'true';
+      let notifications = generateDemoNotifications();
+      if (unreadOnly) {
+        notifications = notifications.filter(n => !n.read);
+      }
+      const unreadCount = notifications.filter(n => !n.read).length;
+      return demoResponse({ notifications, unreadCount });
+    }
+
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -94,6 +109,12 @@ export async function GET(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
+    // Demo mode: simulate success but don't actually update
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      return demoResponse({ success: true, markedCount: 0 });
+    }
+
     const { userId, sessionClaims } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -164,6 +185,12 @@ export async function PATCH(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
+    // Demo mode: simulate success but don't actually delete
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      return demoResponse({ success: true });
+    }
+
     const { userId, sessionClaims } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

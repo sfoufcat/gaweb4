@@ -2,6 +2,7 @@
 
 import useSWR from 'swr';
 import { useUser } from '@clerk/nextjs';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import type { 
   Program, 
   ProgramEnrollment, 
@@ -85,8 +86,11 @@ export interface UseMyProgramsReturn {
  */
 export function useMyPrograms(): UseMyProgramsReturn {
   const { user, isLoaded } = useUser();
+  const { isDemoMode } = useDemoMode();
   
-  const cacheKey = user ? '/api/programs/my-programs' : null;
+  // In demo mode, always fetch (API will return demo data)
+  // Otherwise, only fetch when user is logged in
+  const cacheKey = isDemoMode || user ? '/api/programs/my-programs' : null;
   
   const { data, error, isLoading, mutate } = useSWR<MyProgramsResponse>(
     cacheKey,
@@ -133,7 +137,8 @@ export function useMyPrograms(): UseMyProgramsReturn {
     isPlatformMode,
     
     // Only show loading on INITIAL fetch (when no data exists)
-    isLoading: !isLoaded || (isLoading && !data),
+    // In demo mode, skip waiting for Clerk user to load
+    isLoading: (!isDemoMode && !isLoaded) || (isLoading && !data),
     error: error?.message ?? null,
     refresh: async () => { await mutate(); },
   };

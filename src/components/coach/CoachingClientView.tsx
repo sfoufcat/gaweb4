@@ -29,6 +29,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DemoSignupModal, useDemoSignupModal } from '@/components/demo/DemoSignupModal';
 import type { 
   ClientCoachingData, 
   FirebaseUser, 
@@ -79,6 +81,10 @@ interface CoachingClientViewProps {
  */
 export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps) {
   const router = useRouter();
+  const { isDemoMode } = useDemoMode();
+  
+  // Demo signup modal
+  const { isOpen: isSignupModalOpen, action: signupModalAction, showModal: showSignupModal, hideModal: hideSignupModal } = useDemoSignupModal();
   
   // Data states
   const [coachingData, setCoachingData] = useState<ClientCoachingData | null>(null);
@@ -199,6 +205,10 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
 
   // Save focus areas and action items
   const handleSaveChanges = async () => {
+    if (isDemoMode) {
+      showSignupModal('save changes');
+      return;
+    }
     if (!coachingData) return;
 
     try {
@@ -231,6 +241,11 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
 
   // Schedule or update call (uses unified events API)
   const handleScheduleCall = async () => {
+    if (isDemoMode) {
+      showSignupModal('schedule a call');
+      setShowCallModal(false);
+      return;
+    }
     if (!callDate || !callTime) return;
 
     try {
@@ -394,6 +409,11 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
 
   // Add session history entry
   const handleAddSession = async () => {
+    if (isDemoMode) {
+      showSignupModal('add session history');
+      setShowSessionModal(false);
+      return;
+    }
     if (!sessionTitle.trim() || !sessionDate) return;
 
     try {
@@ -439,6 +459,11 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
 
   // Save private notes
   const handleSaveNotes = async () => {
+    if (isDemoMode) {
+      showSignupModal('save notes');
+      setShowNotesModal(false);
+      return;
+    }
     try {
       setSavingNotes(true);
       const now = new Date().toISOString();
@@ -496,6 +521,10 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
 
   // Go to chat
   const handleGoToChat = () => {
+    if (isDemoMode) {
+      showSignupModal('message this client');
+      return;
+    }
     if (coachingData?.chatChannelId) {
       router.push(`/chat?channel=${coachingData.chatChannelId}`);
     }
@@ -1212,6 +1241,13 @@ export function CoachingClientView({ clientId, onBack }: CoachingClientViewProps
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Demo Signup Modal */}
+      <DemoSignupModal
+        isOpen={isSignupModalOpen}
+        onClose={hideSignupModal}
+        action={signupModalAction}
+      />
     </div>
   );
 }

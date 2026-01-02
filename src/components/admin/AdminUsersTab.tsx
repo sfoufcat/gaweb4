@@ -55,6 +55,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { InviteClientsDialog } from '@/components/coach/InviteClientsDialog';
+import { useDemoSignupModal, DemoSignupModal } from '@/components/demo/DemoSignupModal';
 
 // Program enrollment info returned from API
 interface UserProgramEnrollment {
@@ -206,6 +207,9 @@ export function AdminUsersTab({
   const { isDemoMode } = useDemoMode();
   const isCoachContext = isOrgScopedApi || apiEndpointProp?.includes('/api/coach/');
   const showDemoData = isDemoMode && isCoachContext;
+  
+  // Demo signup modal
+  const { isOpen: isSignupModalOpen, action: signupModalAction, showModal: showSignupModal, hideModal: hideSignupModal } = useDemoSignupModal();
   
   // Generate demo data (memoized)
   const demoUsers = useMemo(() => generateDemoUsers(18), []);
@@ -807,11 +811,18 @@ export function AdminUsersTab({
                 {/* Add Clients Button */}
                 {showInviteButton && (
                   <Button
-                    onClick={() => setShowInviteDialog(true)}
-                    className="flex-1 sm:flex-none bg-brand-accent hover:bg-brand-accent/90 active:bg-[#7a5639] dark:bg-brand-accent dark:hover:bg-brand-accent/90 dark:active:bg-[#96714d] text-white font-albert"
+                    onClick={() => {
+                      if (isDemoMode) {
+                        showSignupModal('add new clients');
+                        return;
+                      }
+                      setShowInviteDialog(true);
+                    }}
+                    className="bg-brand-accent hover:bg-brand-accent/90 active:bg-[#7a5639] dark:bg-brand-accent dark:hover:bg-brand-accent/90 dark:active:bg-[#96714d] text-white font-albert"
+                    title="Add New Clients"
                   >
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Add New Clients
+                    <UserPlus className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Add New Clients</span>
                   </Button>
                 )}
               </div>
@@ -952,6 +963,7 @@ export function AdminUsersTab({
                             width={40}
                             height={40}
                             className="w-10 h-10 rounded-full object-cover"
+                            unoptimized
                           />
                         ) : (
                           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-accent to-[#8c6245] flex items-center justify-center text-white font-bold">
@@ -1467,6 +1479,13 @@ export function AdminUsersTab({
           }}
         />
       )}
+      
+      {/* Demo Signup Modal */}
+      <DemoSignupModal
+        isOpen={isSignupModalOpen}
+        onClose={hideSignupModal}
+        action={signupModalAction}
+      />
     </>
   );
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
+import { isDemoRequest, demoNotAvailable } from '@/lib/demo-api';
 import type { CoachSubscription, OrgSettings } from '@/types';
 
 // Lazy initialization of Stripe
@@ -21,6 +22,12 @@ function getStripeClient(): Stripe {
  */
 export async function POST() {
   try {
+    // Demo mode: block portal access
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      return demoNotAvailable('Managing subscription');
+    }
+    
     const { organizationId } = await requireCoachWithOrg();
 
     // Get subscription directly by organizationId (primary lookup)

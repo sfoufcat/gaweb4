@@ -18,6 +18,7 @@ import type { OrgOnboardingFlow } from '@/types';
 import { OnboardingFlowEditor } from './OnboardingFlowEditor';
 import { OnboardingResponsesView } from './OnboardingResponsesView';
 import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DemoSignupModal, useDemoSignupModal } from '@/components/demo/DemoSignupModal';
 
 type ViewMode = 'overview' | 'editing' | 'responses';
 
@@ -32,6 +33,7 @@ type ViewMode = 'overview' | 'editing' | 'responses';
  */
 export function CoachOnboardingFlowTab() {
   const { isDemoMode } = useDemoMode();
+  const { isOpen: isSignupModalOpen, action: signupModalAction, showModal: showSignupModal, hideModal: hideSignupModal } = useDemoSignupModal();
   const [flow, setFlow] = useState<OrgOnboardingFlow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -98,6 +100,10 @@ export function CoachOnboardingFlowTab() {
   }, [fetchFlow]);
 
   const handleToggleEnabled = async () => {
+    if (isDemoMode) {
+      showSignupModal('toggle onboarding flow');
+      return;
+    }
     if (!flow) return;
     
     setIsToggling(true);
@@ -117,6 +123,10 @@ export function CoachOnboardingFlowTab() {
   };
 
   const handleCreateFlow = async () => {
+    if (isDemoMode) {
+      showSignupModal('create onboarding flow');
+      return;
+    }
     try {
       setIsLoading(true);
       const response = await fetch('/api/coach/org-onboarding-flow', {
@@ -313,7 +323,13 @@ export function CoachOnboardingFlowTab() {
               {/* Actions */}
               <div className="p-4 bg-[#faf8f6] dark:bg-[#11141b] flex flex-wrap gap-3">
                 <button
-                  onClick={() => setViewMode('editing')}
+                  onClick={() => {
+                    if (isDemoMode) {
+                      showSignupModal('edit onboarding steps');
+                      return;
+                    }
+                    setViewMode('editing');
+                  }}
                   className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg text-text-primary dark:text-[#f5f5f8] hover:border-brand-accent dark:hover:border-brand-accent transition-colors"
                 >
                   <Pencil className="w-4 h-4" />
@@ -396,6 +412,13 @@ export function CoachOnboardingFlowTab() {
           </div>
         </>
       )}
+
+      {/* Demo Signup Modal */}
+      <DemoSignupModal
+        isOpen={isSignupModalOpen}
+        onClose={hideSignupModal}
+        action={signupModalAction}
+      />
     </div>
   );
 }

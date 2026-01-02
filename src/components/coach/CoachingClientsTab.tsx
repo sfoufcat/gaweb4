@@ -7,6 +7,7 @@ import type { ClientCoachingData, FirebaseUser, CoachingPlanType } from '@/types
 import { InviteClientsDialog } from './InviteClientsDialog';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
+import { DemoSignupModal, useDemoSignupModal } from '@/components/demo/DemoSignupModal';
 
 interface ClientActivityScore {
   status: 'thriving' | 'active' | 'inactive';
@@ -59,6 +60,17 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
+  
+  // Demo signup modal
+  const { isOpen: isSignupModalOpen, action: signupModalAction, showModal: showSignupModal, hideModal: hideSignupModal } = useDemoSignupModal();
+
+  const handleAddNewClients = () => {
+    if (isDemoMode) {
+      showSignupModal('add new clients');
+      return;
+    }
+    setShowInviteDialog(true);
+  };
 
   const fetchClients = async () => {
     try {
@@ -194,7 +206,7 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
             Start by inviting clients to join your program.
           </p>
           <button
-            onClick={() => setShowInviteDialog(true)}
+            onClick={handleAddNewClients}
             className="px-6 py-3 bg-brand-accent text-brand-accent-foreground rounded-xl hover:bg-brand-accent/90 font-albert font-medium transition-colors inline-flex items-center gap-2"
           >
             <UserPlus className="w-5 h-5" />
@@ -204,6 +216,11 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
         <InviteClientsDialog
           isOpen={showInviteDialog}
           onClose={() => setShowInviteDialog(false)}
+        />
+        <DemoSignupModal
+          isOpen={isSignupModalOpen}
+          onClose={hideSignupModal}
+          action={signupModalAction}
         />
       </>
     );
@@ -230,11 +247,12 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
             <RefreshCw className="w-5 h-5" />
           </button>
           <button
-            onClick={() => setShowInviteDialog(true)}
-            className="px-4 py-2 bg-brand-accent text-brand-accent-foreground text-sm rounded-lg hover:bg-brand-accent/90 font-albert font-medium transition-colors flex items-center gap-2"
+            onClick={handleAddNewClients}
+            className="p-2.5 sm:px-4 sm:py-2 bg-brand-accent text-brand-accent-foreground text-sm rounded-lg hover:bg-brand-accent/90 font-albert font-medium transition-colors flex items-center gap-0 sm:gap-2"
+            title="Add New Clients"
           >
             <UserPlus className="w-4 h-4" />
-            Add New Clients
+            <span className="hidden sm:inline">Add New Clients</span>
           </button>
         </div>
       </div>
@@ -243,6 +261,13 @@ export function CoachingClientsTab({ onSelectClient }: CoachingClientsTabProps) 
       <InviteClientsDialog
         isOpen={showInviteDialog}
         onClose={() => setShowInviteDialog(false)}
+      />
+      
+      {/* Demo Signup Modal */}
+      <DemoSignupModal
+        isOpen={isSignupModalOpen}
+        onClose={hideSignupModal}
+        action={signupModalAction}
       />
 
       {/* Clients List */}

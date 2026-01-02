@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Task, CreateTaskRequest, UpdateTaskRequest } from '@/types';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 interface UseTasksOptions {
   date: string; // ISO date (YYYY-MM-DD)
@@ -20,12 +21,81 @@ interface UseTasksReturn {
 }
 
 export function useTasks({ date }: UseTasksOptions): UseTasksReturn {
+  const { isDemoMode } = useDemoMode();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Demo tasks for demo mode
+  const demoTasks: Task[] = useMemo(() => {
+    if (!isDemoMode) return [];
+    
+    return [
+      {
+        id: 'demo-task-1',
+        userId: 'demo-user',
+        organizationId: 'demo-org',
+        title: 'Complete morning workout routine 💪',
+        status: 'completed',
+        listType: 'focus' as const,
+        order: 0,
+        date,
+        isPrivate: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      },
+      {
+        id: 'demo-task-2',
+        userId: 'demo-user',
+        organizationId: 'demo-org',
+        title: 'Review weekly goals and progress',
+        status: 'pending',
+        listType: 'focus' as const,
+        order: 1,
+        date,
+        isPrivate: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'demo-task-3',
+        userId: 'demo-user',
+        organizationId: 'demo-org',
+        title: 'Read 20 pages of current book 📚',
+        status: 'pending',
+        listType: 'focus' as const,
+        order: 2,
+        date,
+        isPrivate: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'demo-task-4',
+        userId: 'demo-user',
+        organizationId: 'demo-org',
+        title: 'Prepare healthy meal plan for tomorrow',
+        status: 'pending',
+        listType: 'backlog' as const,
+        order: 0,
+        date,
+        isPrivate: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+  }, [isDemoMode, date]);
+
   // Fetch tasks for the specified date
   const fetchTasks = useCallback(async () => {
+    // Demo mode: use demo tasks
+    if (isDemoMode) {
+      setTasks(demoTasks);
+      setIsLoading(false);
+      return;
+    }
+    
     setIsLoading(true);
     setError(null);
 
@@ -45,7 +115,7 @@ export function useTasks({ date }: UseTasksOptions): UseTasksReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [date]);
+  }, [date, isDemoMode, demoTasks]);
 
   useEffect(() => {
     fetchTasks();

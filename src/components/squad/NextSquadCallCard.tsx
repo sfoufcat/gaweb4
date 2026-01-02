@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import useSWR from 'swr';
 import { Calendar, MessageCircle, Download, Pencil } from 'lucide-react';
 import type { Squad, UnifiedEvent } from '@/types';
 import { SquadCallEditForm } from './SquadCallEditForm';
+import { useChatSheet } from '@/contexts/ChatSheetContext';
 
 /**
  * NextSquadCallCard Component
@@ -96,8 +97,18 @@ function getUserTimezone(): string {
 
 export function NextSquadCallCard({ squad, isCoach = false, onCallUpdated, coachInfo }: NextSquadCallCardProps) {
   const router = useRouter();
+  const { openChatSheet } = useChatSheet();
   const [showEditModal, setShowEditModal] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const userTimezone = getUserTimezone();
+  
+  // Detect mobile for chat sheet vs navigation
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   
   // Only show for squads with a coach
   const hasCoach = !!squad.coachId;
@@ -158,7 +169,13 @@ export function NextSquadCallCard({ squad, isCoach = false, onCallUpdated, coach
   
   const handleGoToChat = () => {
     if (squad.chatChannelId) {
-      router.push(`/chat?channel=${squad.chatChannelId}`);
+      if (isMobile) {
+        // On mobile, open chat sheet slideup
+        openChatSheet(squad.chatChannelId);
+      } else {
+        // On desktop, navigate to full chat page
+        router.push(`/chat?channel=${squad.chatChannelId}`);
+      }
     }
   };
   

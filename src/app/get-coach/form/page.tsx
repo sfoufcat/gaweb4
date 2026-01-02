@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 /**
  * Coaching Intake Form Page
@@ -61,6 +62,14 @@ export default function CoachingIntakeFormPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoaded } = useUser();
+  const { isDemoMode } = useDemoMode();
+  
+  // Redirect away from form in demo mode
+  useEffect(() => {
+    if (isDemoMode) {
+      router.replace('/');
+    }
+  }, [isDemoMode, router]);
   
   // Get plan from URL or default to monthly
   const planParam = searchParams.get('plan') as PlanType | null;
@@ -79,6 +88,11 @@ export default function CoachingIntakeFormPage() {
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  
+  // Show nothing while redirecting in demo mode
+  if (isDemoMode) {
+    return null;
+  }
 
   // Fetch user profile to check for existing phone number
   useEffect(() => {

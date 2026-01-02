@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 export default function EditGoalPage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [archiving, setArchiving] = useState(false);
@@ -226,6 +228,12 @@ export default function EditGoalPage() {
 
   // Save/Archive handlers
   const handleSave = async () => {
+    // In demo mode, open the signup modal instead of saving
+    if (isDemoMode) {
+      openSignupModal();
+      return;
+    }
+    
     if (!goalTitle.trim() || !targetDate) return;
 
     const finalProgress = Math.round(displayProgress / 5) * 5;

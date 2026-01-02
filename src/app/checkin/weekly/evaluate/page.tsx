@@ -6,11 +6,13 @@ import { useUser } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
 import { ChevronLeft, X } from 'lucide-react';
 import { useWeeklyReflection } from '@/hooks/useWeeklyReflection';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import { format } from 'date-fns';
 
 export default function WeeklyEvaluatePage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
+  const { isDemoMode } = useDemoMode();
   const { checkIn, isLoading, updateProgress } = useWeeklyReflection();
   
   const [displayProgress, setDisplayProgress] = useState(50);
@@ -32,6 +34,18 @@ export default function WeeklyEvaluatePage() {
 
   // Fetch goal data
   useEffect(() => {
+    // In demo mode, use mock goal data
+    if (isDemoMode) {
+      setGoalData({
+        goal: 'Launch my online course and reach 1000 students',
+        targetDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      });
+      setDisplayProgress(75);
+      progressRef.current = 75;
+      lastTickValue.current = 75;
+      return;
+    }
+    
     async function fetchGoal() {
       try {
         const response = await fetch('/api/user/me');
@@ -56,7 +70,7 @@ export default function WeeklyEvaluatePage() {
     if (isLoaded && user) {
       fetchGoal();
     }
-  }, [isLoaded, user]);
+  }, [isLoaded, user, isDemoMode]);
 
   // Initialize with check-in data
   useEffect(() => {
@@ -225,7 +239,10 @@ export default function WeeklyEvaluatePage() {
     const finalProgress = Math.round(displayProgress / 5) * 5;
 
     try {
-      await updateProgress(finalProgress);
+      // In demo mode, skip API call
+      if (!isDemoMode) {
+        await updateProgress(finalProgress);
+      }
       
       // If progress is 100%, go to goal achieved screen
       if (finalProgress >= 100) {
@@ -263,9 +280,9 @@ export default function WeeklyEvaluatePage() {
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="fixed inset-0 bg-[#faf8f6] flex items-center justify-center z-[9999]"
+        className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] flex items-center justify-center z-[9999]"
       >
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a1a1a]" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a1a1a] dark:border-white" />
       </motion.div>
     );
   }
@@ -275,20 +292,20 @@ export default function WeeklyEvaluatePage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="fixed inset-0 z-[9999] bg-[#faf8f6] flex flex-col overflow-hidden"
+      className="fixed inset-0 z-[9999] bg-[#faf8f6] dark:bg-[#05070b] flex flex-col overflow-hidden"
     >
       {/* Header with back and close buttons */}
       <div className="flex items-center justify-between px-6 pt-6 pb-4">
         <button
           onClick={() => router.push('/checkin/weekly/checkin')}
-          className="p-2 -ml-2 text-[#1a1a1a] hover:text-[#5f5a55] transition-colors"
+          className="p-2 -ml-2 text-[#1a1a1a] dark:text-white hover:text-[#5f5a55] dark:hover:text-[#a0a0a0] transition-colors"
           aria-label="Back"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
         <button
           onClick={() => router.push('/')}
-          className="p-2 -mr-2 text-[#5f5a55] hover:text-[#1a1a1a] transition-colors"
+          className="p-2 -mr-2 text-[#5f5a55] dark:text-[#a0a0a0] hover:text-[#1a1a1a] dark:hover:text-white transition-colors"
           aria-label="Close"
         >
           <X className="w-6 h-6" />
@@ -299,23 +316,20 @@ export default function WeeklyEvaluatePage() {
       <div className="flex-1 flex flex-col md:items-center md:justify-center px-6 overflow-y-auto">
         <div className="w-full max-w-[400px] mx-auto flex-1 md:flex-initial flex flex-col">
           {/* Header */}
-          <h1 className="font-albert text-[26px] md:text-[36px] text-[#1a1a1a] tracking-[-2px] leading-[1.2] mb-4 md:mb-6">
+          <h1 className="font-albert text-[26px] md:text-[36px] text-[#1a1a1a] dark:text-white tracking-[-2px] leading-[1.2] mb-4 md:mb-6">
             How are you progressing toward your goal?
           </h1>
 
           {/* Goal Display Card - Rose/Pink gradient like Figma */}
           {goalData && (
             <div 
-              className="rounded-[20px] p-6 md:p-7 mb-4 md:mb-6 text-center aspect-[5/3] md:aspect-auto flex flex-col items-center justify-center"
-              style={{
-                background: 'linear-gradient(180deg, rgba(232, 218, 210, 0.9) 0%, rgba(218, 195, 185, 0.95) 100%)',
-              }}
+              className="rounded-[20px] p-6 md:p-7 mb-4 md:mb-6 text-center aspect-[5/3] md:aspect-auto flex flex-col items-center justify-center bg-gradient-to-b from-[rgba(232,218,210,0.9)] to-[rgba(218,195,185,0.95)] dark:from-[rgba(60,50,45,0.9)] dark:to-[rgba(50,40,35,0.95)]"
             >
-              <p className="font-albert text-[24px] md:text-[36px] font-medium text-[#1a1a1a] tracking-[-1.5px] leading-[1.2] mb-2">
+              <p className="font-albert text-[24px] md:text-[36px] font-medium text-[#1a1a1a] dark:text-white tracking-[-1.5px] leading-[1.2] mb-2">
                 {goalData.goal}
               </p>
               {goalData.targetDate && (
-                <p className="font-sans text-[13px] md:text-[14px] text-[#5f5a55] tracking-[-0.3px] leading-[1.2]">
+                <p className="font-sans text-[13px] md:text-[14px] text-[#5f5a55] dark:text-[#a0a0a0] tracking-[-0.3px] leading-[1.2]">
                   {formatTargetDate(goalData.targetDate)}
                 </p>
               )}
@@ -323,13 +337,13 @@ export default function WeeklyEvaluatePage() {
           )}
 
           {/* Progress Label */}
-          <h2 className="font-sans text-[15px] md:text-[16px] text-[#5f5a55] tracking-[-0.3px] leading-[1.3] mb-2">
+          <h2 className="font-sans text-[15px] md:text-[16px] text-[#5f5a55] dark:text-[#a0a0a0] tracking-[-0.3px] leading-[1.3] mb-2">
             Rate your progress, %
           </h2>
           
           {/* Current Value */}
           <div className="text-center mb-3 md:mb-4">
-            <span className="font-albert font-medium text-[44px] md:text-[56px] text-[#1a1a1a] tracking-[-2px]">
+            <span className="font-albert font-medium text-[44px] md:text-[56px] text-[#1a1a1a] dark:text-white tracking-[-2px]">
               {Math.round(displayProgress / 5) * 5}
             </span>
           </div>
@@ -365,14 +379,14 @@ export default function WeeklyEvaluatePage() {
                       opacity,
                     }}
                   >
-                    <span className="font-sans text-[13px] md:text-[14px] text-[#a7a39e] mb-2">
+                    <span className="font-sans text-[13px] md:text-[14px] text-[#a7a39e] dark:text-[#7d8190] mb-2">
                       {value}
                     </span>
                     <div 
                       className={`rounded-full transition-all duration-100 ${
                         isSelected 
-                          ? 'h-8 md:h-10 w-[3px] bg-[#1a1a1a]' 
-                          : 'h-4 md:h-5 w-[2px] bg-[#a7a39e]'
+                          ? 'h-8 md:h-10 w-[3px] bg-[#1a1a1a] dark:bg-white' 
+                          : 'h-4 md:h-5 w-[2px] bg-[#a7a39e] dark:bg-[#7d8190]'
                       }`}
                     />
                   </div>
@@ -381,7 +395,7 @@ export default function WeeklyEvaluatePage() {
             </div>
           </div>
           
-          <p className="text-center text-[13px] md:text-[14px] text-[#a7a39e] mt-3 md:mt-4">
+          <p className="text-center text-[13px] md:text-[14px] text-[#a7a39e] dark:text-[#7d8190] mt-3 md:mt-4">
             Flick left or right
           </p>
 
@@ -393,7 +407,7 @@ export default function WeeklyEvaluatePage() {
             <button
               onClick={handleContinue}
               disabled={isSubmitting}
-              className="w-full max-w-[400px] mx-auto block bg-[#2c2520] text-white py-4 rounded-full font-sans text-[16px] font-bold tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+              className="w-full max-w-[400px] mx-auto block bg-[#2c2520] dark:bg-white text-white dark:text-[#1a1a1a] py-4 rounded-full font-sans text-[16px] font-bold tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
             >
               {isSubmitting ? 'Loading...' : isGoalComplete ? 'Mark goal complete' : 'Continue'}
             </button>
@@ -403,6 +417,3 @@ export default function WeeklyEvaluatePage() {
     </motion.div>
   );
 }
-
-
-

@@ -1,8 +1,10 @@
 'use client';
 
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
 import type { StorySlide } from '@/components/stories/StoryPlayer';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DEMO_USER } from '@/lib/demo-utils';
 
 const STORAGE_KEY = 'ga_story_views_v2'; // v2 for new format with component values
 const SLIDE_STORAGE_KEY = 'ga_story_slides_viewed';
@@ -65,7 +67,13 @@ function getISOWeekNumber(date: Date): number {
  */
 export function useStoryViewTracking() {
   const { user } = useUser();
-  const viewerId = user?.id;
+  const { isDemoMode } = useDemoMode();
+  
+  // In demo mode, use demo user ID for tracking
+  const viewerId = useMemo(() => {
+    if (isDemoMode) return DEMO_USER.id;
+    return user?.id;
+  }, [isDemoMode, user?.id]);
 
   /**
    * Get all stored view records from localStorage
@@ -375,7 +383,13 @@ export function useStoryViewStatus(
   currentData?: StoryContentData | string // Accept either full data or just hash for backwards compat
 ): boolean {
   const { user } = useUser();
-  const viewerId = user?.id;
+  const { isDemoMode } = useDemoMode();
+  
+  // In demo mode, use demo user ID for tracking
+  const viewerId = useMemo(() => {
+    if (isDemoMode) return DEMO_USER.id;
+    return user?.id;
+  }, [isDemoMode, user?.id]);
   
   const [hasViewed, setHasViewed] = useState(false);
   

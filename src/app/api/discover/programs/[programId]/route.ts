@@ -10,6 +10,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { isDemoRequest, demoResponse } from '@/lib/demo-api';
+import { getDemoPrograms } from '@/lib/demo-data';
 import type { Program, ProgramCohort, ProgramEnrollment, ProgramDay, OrgBranding } from '@/types';
 import { DEFAULT_BRANDING_COLORS } from '@/types';
 
@@ -24,8 +26,67 @@ export async function GET(
   { params }: { params: Promise<{ programId: string }> }
 ) {
   try {
-    const { userId } = await auth();
     const { programId } = await params;
+    
+    // Demo mode: return demo program
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const demoPrograms = getDemoPrograms();
+      const program = demoPrograms.find(p => p.id === programId) || demoPrograms[0];
+      
+      return demoResponse({
+        program: {
+          id: program.id,
+          name: program.name,
+          description: program.description,
+          coverImageUrl: program.coverImageUrl,
+          type: program.type,
+          priceInCents: program.priceInCents,
+          lengthDays: program.lengthDays,
+          isPublished: true,
+          isActive: true,
+          organizationId: 'demo-org',
+          coachName: 'Coach Adam',
+          coachImageUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face',
+          features: [
+            { icon: 'video', title: 'HD Video Content', description: 'Professional training videos' },
+            { icon: 'users', title: 'Community Access', description: 'Connect with peers' },
+            { icon: 'message-circle', title: '1:1 Support', description: 'Direct coach access' },
+          ],
+          testimonials: [
+            { author: 'Sarah M.', text: 'This program changed my life!', rating: 5, imageUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face' },
+            { author: 'John D.', text: 'Highly recommend for anyone serious about growth.', rating: 5, imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face' },
+          ],
+          faqs: [
+            { question: 'How long is the program?', answer: `The program runs for ${program.lengthDays} days.` },
+            { question: 'Is there a money-back guarantee?', answer: 'Yes, we offer a 30-day satisfaction guarantee.' },
+          ],
+        },
+        cohorts: program.type === 'group' ? [{
+          id: 'demo-cohort-1',
+          name: 'Spring 2025',
+          startDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+          endDate: new Date(Date.now() + (14 + program.lengthDays) * 24 * 60 * 60 * 1000).toISOString(),
+          maxParticipants: 20,
+          spotsRemaining: 8,
+          isAvailableToUser: true,
+        }] : [],
+        enrollment: null,
+        canEnroll: true,
+        totalEnrollments: 42,
+        enrolledMemberAvatars: [
+          'https://ui-avatars.com/api/?name=User+1&background=6bb3a0&color=fff',
+          'https://ui-avatars.com/api/?name=User+2&background=9b6bb3&color=fff',
+          'https://ui-avatars.com/api/?name=User+3&background=b36b6b&color=fff',
+        ],
+        branding: {
+          accentLight: '#a07855',
+          accentDark: '#b8896a',
+        },
+      });
+    }
+    
+    const { userId } = await auth();
 
     // Get program
     const programDoc = await adminDb.collection('programs').doc(programId).get();

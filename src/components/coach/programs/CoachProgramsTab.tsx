@@ -19,6 +19,7 @@ import { LimitReachedModal, useLimitCheck } from '@/components/coach';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
 import { generateDemoProgramsWithStats, generateDemoProgramDays, generateDemoProgramCohorts } from '@/lib/demo-data';
+import { DemoSignupModal, useDemoSignupModal } from '@/components/demo/DemoSignupModal';
 
 // Enrollment with user info
 interface EnrollmentWithUser extends ProgramEnrollment {
@@ -94,6 +95,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   // Plan tier for limit checking
   const [currentTier, setCurrentTier] = useState<CoachTier>('starter');
   const { checkLimit, showLimitModal, modalProps } = useLimitCheck(currentTier);
+  
+  // Demo signup modal
+  const { isOpen: isSignupModalOpen, action: signupModalAction, showModal: showSignupModal, hideModal: hideSignupModal } = useDemoSignupModal();
   
   // Collapsible section state
   const [isCoverImageExpanded, setIsCoverImageExpanded] = useState(false);
@@ -588,6 +592,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   }, [selectedDayIndex, selectedProgram]);
 
   const handleOpenProgramModal = (program?: Program) => {
+    // In demo mode, show signup modal instead of allowing edit for existing programs
+    if (isDemoMode && program) {
+      showSignupModal('edit this program');
+      return;
+    }
+    
     // Fetch coaches when modal opens
     fetchCoaches();
     // Clear any previous sync result
@@ -661,6 +671,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   };
 
   const handleOpenCohortModal = (cohort?: ProgramCohort) => {
+    // In demo mode, show signup modal instead of allowing edit for existing cohorts
+    if (isDemoMode && cohort) {
+      showSignupModal('edit this cohort');
+      return;
+    }
+    
     if (cohort) {
       setEditingCohort(cohort);
       setCohortFormData({
@@ -3455,6 +3471,13 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
       {/* Limit Reached Modal */}
       <LimitReachedModal {...modalProps} />
+
+      {/* Demo Signup Modal */}
+      <DemoSignupModal
+        isOpen={isSignupModalOpen}
+        onClose={hideSignupModal}
+        action={signupModalAction}
+      />
     </>
   );
 }

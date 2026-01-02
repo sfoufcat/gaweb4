@@ -1,12 +1,15 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import { useUser } from '@clerk/nextjs';
 import { StoryAvatar } from '@/components/stories/StoryAvatar';
 import { useCurrentUserHasStory, type FeedStoryUser } from '@/hooks/useFeedStories';
 import { useStoryViewStatus, useStoryViewTracking, generateStoryContentData } from '@/hooks/useStoryViewTracking';
 import { prefetchStories } from '@/hooks/useStoryPrefetch';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DEMO_USER } from '@/lib/demo-utils';
+import { DemoSignupModal } from '@/components/demo/DemoSignupModal';
 
 // Ring colors matching StoryAvatar
 const RING_COLORS = {
@@ -99,7 +102,23 @@ export function StoriesRow({
   onCreateStory,
   onViewStory,
 }: StoriesRowProps) {
-  const { user } = useUser();
+  const { user: clerkUser } = useUser();
+  const { isDemoMode } = useDemoMode();
+  const [showDemoModal, setShowDemoModal] = useState(false);
+  
+  // Use demo user data when in demo mode
+  const user = useMemo(() => {
+    if (isDemoMode) {
+      return {
+        id: DEMO_USER.id,
+        firstName: DEMO_USER.firstName,
+        lastName: DEMO_USER.lastName,
+        imageUrl: DEMO_USER.imageUrl,
+      };
+    }
+    return clerkUser;
+  }, [isDemoMode, clerkUser]);
+  
   const currentUserStatus = useCurrentUserHasStory();
   const { markStoryAsViewed } = useStoryViewTracking();
   const hasPrefetchedRef = useRef(false);
@@ -181,6 +200,11 @@ export function StoriesRow({
       onViewStory?.(user.id);
     } else {
       // No story - clicking avatar also creates
+      // In demo mode, show signup modal instead
+      if (isDemoMode) {
+        setShowDemoModal(true);
+        return;
+      }
       onCreateStory?.();
     }
   };
@@ -188,35 +212,80 @@ export function StoriesRow({
   // Handle clicking the plus icon (ALWAYS create story)
   const handlePlusClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent parent button click
+    // In demo mode, show signup modal instead
+    if (isDemoMode) {
+      setShowDemoModal(true);
+      return;
+    }
     onCreateStory?.();
   };
 
   return (
     <>
-      {/* Your Story - Custom button with add (+) icon */}
-      <button
-        onClick={handleAvatarClick}
-        className="flex flex-col items-center gap-1.5 flex-shrink-0 group"
-      >
+      {/* Your Story - Container with clickable avatar and separate plus button */}
+      <div className="flex flex-col items-center gap-1.5 flex-shrink-0 group">
         <div className="relative">
-          {/* Avatar with story ring (solid color like home) if has stories, dashed border otherwise */}
-          {currentUserStatus.hasStory && !currentUserStatus.isLoading ? (
-            // Has stories - show solid color ring matching home tab
-            <div className="relative w-14 h-14">
-              {/* Ring */}
-              <div 
-                className="absolute -inset-0.5 rounded-full border-[2.5px]"
-                style={{ borderColor: getCurrentUserRingColor() }}
-              />
-              {/* Avatar */}
-              <div className="w-14 h-14 rounded-full overflow-hidden bg-earth-200">
+          {/* Clickable avatar area - opens story viewer if has story */}
+          <button
+            onClick={handleAvatarClick}
+            className="block"
+            aria-label={currentUserStatus.hasStory ? "View your story" : "Add to story"}
+          >
+            {/* Avatar with story ring (solid color like home) if has stories, dashed border otherwise */}
+            {currentUserStatus.hasStory && !currentUserStatus.isLoading ? (
+              // Has stories - show solid color ring matching home tab
+              <div className="relative w-14 h-14">
+                {/* Ring */}
+                <div 
+                  className="absolute -inset-0.5 rounded-full border-[2.5px]"
+                  style={{ borderColor: getCurrentUserRingColor() }}
+                />
+                {/* Avatar */}
+                <div className="w-14 h-14 rounded-full overflow-hidden bg-earth-200">
+                  {user?.imageUrl ? (
+                    <Image
+                      src={user.imageUrl}
+                      alt="Your story"
+                      width={56}
+                      height={56}
+                      className="w-full h-full object-cover"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-sm font-bold text-earth-700">
+                      {(user?.firstName?.[0] || '')}{(user?.lastName?.[0] || '')}
+                    </div>
+                  )}
+                </div>
+                {/* Check badge if has tasks */}
+                {currentUserStatus.hasTasks && (
+                  <div 
+                    className="absolute w-5 h-5 -bottom-0.5 -right-0.5 rounded-full flex items-center justify-center border-2 border-white shadow-sm z-10"
+                    style={{ backgroundColor: getCurrentUserRingColor() }}
+                  >
+                    <svg 
+                      className="w-3 h-3 text-white"
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      strokeWidth={3} 
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+            ) : (
+              // No stories - clean avatar with subtle hover ring
+              <div className="w-14 h-14 rounded-full overflow-hidden bg-earth-200 dark:bg-[#262b35] border-2 border-earth-200 dark:border-[#262b35] group-hover:border-earth-400 dark:group-hover:border-[#5a6070] transition-all">
                 {user?.imageUrl ? (
                   <Image
                     src={user.imageUrl}
                     alt="Your story"
                     width={56}
                     height={56}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
+                    unoptimized
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-sm font-bold text-earth-700">
@@ -224,42 +293,8 @@ export function StoriesRow({
                   </div>
                 )}
               </div>
-              {/* Check badge if has tasks */}
-              {currentUserStatus.hasTasks && (
-                <div 
-                  className="absolute w-5 h-5 -bottom-0.5 -right-0.5 rounded-full flex items-center justify-center border-2 border-white shadow-sm z-10"
-                  style={{ backgroundColor: getCurrentUserRingColor() }}
-                >
-                  <svg 
-                    className="w-3 h-3 text-white"
-                    fill="none" 
-                    viewBox="0 0 24 24" 
-                    strokeWidth={3} 
-                    stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                  </svg>
-                </div>
-              )}
-            </div>
-          ) : (
-            // No stories - clean avatar with subtle hover ring
-            <div className="w-14 h-14 rounded-full overflow-hidden bg-earth-200 dark:bg-[#262b35] border-2 border-earth-200 dark:border-[#262b35] group-hover:border-earth-400 dark:group-hover:border-[#5a6070] transition-all">
-              {user?.imageUrl ? (
-                <Image
-                  src={user.imageUrl}
-                  alt="Your story"
-                  width={56}
-                  height={56}
-                  className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-sm font-bold text-earth-700">
-                  {(user?.firstName?.[0] || '')}{(user?.lastName?.[0] || '')}
-                </div>
-              )}
-            </div>
-          )}
+            )}
+          </button>
           {/* Plus icon for adding story - ALWAYS opens create modal */}
           <button
             onClick={handlePlusClick}
@@ -273,7 +308,7 @@ export function StoriesRow({
           </button>
         </div>
         <span className="text-xs text-text-secondary font-medium">Your Story</span>
-      </button>
+      </div>
 
       {/* Other users' stories - using FeedStoryAvatar for viewed tracking */}
       {usersWithStories.map((storyUser) => (
@@ -283,6 +318,19 @@ export function StoriesRow({
           onViewStory={onViewStory}
         />
       ))}
+      
+      {/* Demo signup modal */}
+      <DemoSignupModal
+        isOpen={showDemoModal}
+        onClose={() => setShowDemoModal(false)}
+        action="create stories"
+        featureHighlights={[
+          'Share your daily progress',
+          'Post photos and videos',
+          'Build accountability with peers',
+          'Celebrate your wins',
+        ]}
+      />
     </>
   );
 }

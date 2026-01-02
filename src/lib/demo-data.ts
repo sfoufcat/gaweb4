@@ -25,19 +25,51 @@ const LAST_NAMES = [
   'King', 'Wright', 'Scott', 'Torres', 'Nguyen', 'Hill', 'Flores', 'Green'
 ];
 
-// Demo programs
+// Demo programs with cover images
 const DEMO_PROGRAMS = [
-  { id: 'demo-prog-1', name: '30-Day Transformation' },
-  { id: 'demo-prog-2', name: 'Content Creator Accelerator' },
-  { id: 'demo-prog-3', name: 'Business Growth Intensive' },
-  { id: 'demo-prog-4', name: 'Mindset Mastery' },
+  { 
+    id: 'demo-prog-1', 
+    name: '30-Day Transformation',
+    description: 'Transform your life in 30 days with daily guided actions.',
+    coverImageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&h=450&fit=crop',
+    type: 'individual' as const,
+    priceInCents: 29700,
+    lengthDays: 30,
+  },
+  { 
+    id: 'demo-prog-2', 
+    name: 'Content Creator Accelerator',
+    description: 'Build your personal brand and grow your audience.',
+    coverImageUrl: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&h=450&fit=crop',
+    type: 'group' as const,
+    priceInCents: 49700,
+    lengthDays: 60,
+  },
+  { 
+    id: 'demo-prog-3', 
+    name: 'Business Growth Intensive',
+    description: 'Scale your business with proven strategies.',
+    coverImageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=450&fit=crop',
+    type: 'individual' as const,
+    priceInCents: 99700,
+    lengthDays: 90,
+  },
+  { 
+    id: 'demo-prog-4', 
+    name: 'Mindset Mastery',
+    description: 'Develop an unstoppable mindset for success.',
+    coverImageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&h=450&fit=crop',
+    type: 'group' as const,
+    priceInCents: 19700,
+    lengthDays: 21,
+  },
 ];
 
-// Demo squads
+// Demo squads - at least one standalone (no programId)
 const DEMO_SQUADS = [
-  { id: 'demo-squad-1', name: 'Alpha Achievers' },
-  { id: 'demo-squad-2', name: 'Growth Warriors' },
-  { id: 'demo-squad-3', name: 'Peak Performers' },
+  { id: 'demo-squad-1', name: 'Alpha Achievers', programId: 'demo-prog-2', coverImageUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&h=450&fit=crop' },
+  { id: 'demo-squad-2', name: 'Growth Warriors', programId: undefined, coverImageUrl: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&h=450&fit=crop' }, // Standalone squad
+  { id: 'demo-squad-3', name: 'Peak Performers', programId: 'demo-prog-4', coverImageUrl: 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=800&h=450&fit=crop' },
 ];
 
 // Primary signals
@@ -96,12 +128,111 @@ function randomPastDate(maxDaysAgo: number): Date {
   return new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
 }
 
+// Real photo avatars for demo users (from Unsplash)
+// Organized by first name to enable first-name-based lookup
+const DEMO_AVATARS: Record<string, string> = {
+  // Full names that might be generated
+  'Sarah Miller': 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face',
+  'Michael Chen': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+  'Emma Thompson': 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
+  'James Wilson': 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+  'Lisa Park': 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&h=150&fit=crop&crop=face',
+  'Luke Anderson': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
+  'Caleb King': 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&crop=face',
+  'Avery Allen': 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face',
+  'Olivia Johnson': 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face',
+  'William Brown': 'https://images.unsplash.com/photo-1463453091185-61582044d556?w=150&h=150&fit=crop&crop=face',
+  'Sophia Garcia': 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=150&h=150&fit=crop&crop=face',
+  'Benjamin Davis': 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&h=150&fit=crop&crop=face',
+  'Isabella Martinez': 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&h=150&fit=crop&crop=face',
+  'Alexander Lee': 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150&h=150&fit=crop&crop=face',
+  'Mia Rodriguez': 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=150&h=150&fit=crop&crop=face',
+  'Henry Nguyen': 'https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=150&h=150&fit=crop&crop=face',
+  'Charlotte Lopez': 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=150&h=150&fit=crop&crop=face',
+  'Daniel Gonzalez': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
+  'David Gonzalez': 'https://images.unsplash.com/photo-1506277886164-e25aa3f4ef7f?w=150&h=150&fit=crop&crop=face',
+  'Alex Morgan': 'https://images.unsplash.com/photo-1552058544-f2b08422138a?w=150&h=150&fit=crop&crop=face',
+  'Coach Adam': 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face',
+  // Additional generated names for demo clients
+  'David White': 'https://images.unsplash.com/photo-1599566150163-29194dcabd36?w=150&h=150&fit=crop&crop=face',
+  'Sofia Williams': 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&h=150&fit=crop&crop=face',
+  'Caleb Rodriguez': 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&h=150&fit=crop&crop=face',
+  'Michael Green': 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=150&h=150&fit=crop&crop=face',
+  'Harper Allen': 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&h=150&fit=crop&crop=face',
+  'Joseph White': 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&h=150&fit=crop&crop=face',
+  'Olivia Martin': 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face',
+  'Benjamin Perez': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+  'Olivia Gonzalez': 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
+  'Lucas Davis': 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&crop=face',
+  'Amelia Brown': 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face',
+  'David Rodriguez': 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+};
+
+// First name to avatar mapping for fallback when full name not found
+const FIRST_NAME_AVATARS: Record<string, string> = {
+  'Sarah': 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face',
+  'Michael': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+  'Emma': 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
+  'James': 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+  'Olivia': 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face',
+  'William': 'https://images.unsplash.com/photo-1463453091185-61582044d556?w=150&h=150&fit=crop&crop=face',
+  'Sophia': 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=150&h=150&fit=crop&crop=face',
+  'Benjamin': 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&h=150&fit=crop&crop=face',
+  'Isabella': 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&h=150&fit=crop&crop=face',
+  'Lucas': 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&crop=face',
+  'Mia': 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=150&h=150&fit=crop&crop=face',
+  'Henry': 'https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=150&h=150&fit=crop&crop=face',
+  'Charlotte': 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=150&h=150&fit=crop&crop=face',
+  'Alexander': 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150&h=150&fit=crop&crop=face',
+  'Amelia': 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face',
+  'Daniel': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
+  'Harper': 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&h=150&fit=crop&crop=face',
+  'Matthew': 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=150&h=150&fit=crop&crop=face',
+  'Evelyn': 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&h=150&fit=crop&crop=face',
+  'David': 'https://images.unsplash.com/photo-1599566150163-29194dcabd36?w=150&h=150&fit=crop&crop=face',
+  'Abigail': 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&h=150&fit=crop&crop=face',
+  'Joseph': 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&h=150&fit=crop&crop=face',
+  'Emily': 'https://images.unsplash.com/photo-1589571894960-20bbe2828d0a?w=150&h=150&fit=crop&crop=face',
+  'Samuel': 'https://images.unsplash.com/photo-1557862921-37829c790f19?w=150&h=150&fit=crop&crop=face',
+  'Elizabeth': 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=150&h=150&fit=crop&crop=face',
+  'Sebastian': 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&h=150&fit=crop&crop=face',
+  'Sofia': 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face',
+  'Jack': 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face',
+  'Avery': 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face',
+  'Owen': 'https://images.unsplash.com/photo-1542178243-bc20204b769f?w=150&h=150&fit=crop&crop=face',
+  'Ella': 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face',
+  'Ryan': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+  'Madison': 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=150&h=150&fit=crop&crop=face',
+  'Nathan': 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&h=150&fit=crop&crop=face',
+  'Scarlett': 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&h=150&fit=crop&crop=face',
+  'Caleb': 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&crop=face',
+  'Victoria': 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=150&h=150&fit=crop&crop=face',
+  'Isaac': 'https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=150&h=150&fit=crop&crop=face',
+  'Aria': 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=150&h=150&fit=crop&crop=face',
+  'Luke': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
+};
+
 /**
- * Generate avatar URL using ui-avatars.com
+ * Generate avatar URL using real photos for known demo names
+ * Falls back to ui-avatars.com for unknown names
+ * Exported for use in demo mode components
  */
-function generateAvatarUrl(name: string): string {
+export function generateAvatarUrl(name: string): string {
+  // Return real photo if available for full name
+  if (DEMO_AVATARS[name]) {
+    return DEMO_AVATARS[name];
+  }
+  
+  // Try first name lookup for real photos
+  const firstName = name.split(' ')[0];
+  if (FIRST_NAME_AVATARS[firstName]) {
+    return FIRST_NAME_AVATARS[firstName];
+  }
+  
+  // Generate consistent color based on name (not random)
   const colors = ['a07855', '7c9885', '6b7db3', 'b36b6b', '9b6bb3', '6bb3a0'];
-  const color = colors[Math.floor(Math.random() * colors.length)];
+  const colorIndex = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+  const color = colors[colorIndex];
   const encodedName = encodeURIComponent(name);
   return `https://ui-avatars.com/api/?name=${encodedName}&background=${color}&color=fff&size=128&bold=true`;
 }
@@ -292,6 +423,8 @@ export interface DemoSquadWithStats {
   name: string;
   slug: string;
   description?: string;
+  avatarUrl?: string;
+  coverImageUrl?: string;
   memberCount: number;
   programId?: string;
   programName?: string;
@@ -313,14 +446,23 @@ export interface DemoSquadMember {
   imageUrl: string;
   joinedAt: string;
   role: 'member' | 'admin';
+  // Alignment/streak data
+  streak?: number;
+  alignment?: {
+    score: number;
+    trend: 'up' | 'down' | 'stable';
+  };
+  // Story data
+  hasStory?: boolean;
+  hasDayClosed?: boolean;
 }
 
 const SQUAD_NAMES = [
-  { name: 'Alpha Achievers', slug: 'alpha-achievers' },
-  { name: 'Growth Warriors', slug: 'growth-warriors' },
-  { name: 'Peak Performers', slug: 'peak-performers' },
-  { name: 'Momentum Masters', slug: 'momentum-masters' },
-  { name: 'Vision Builders', slug: 'vision-builders' },
+  { name: 'Alpha Achievers', slug: 'alpha-achievers', avatarUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=200&h=200&fit=crop', coverImageUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&h=450&fit=crop' },
+  { name: 'Growth Warriors', slug: 'growth-warriors', avatarUrl: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=200&h=200&fit=crop', coverImageUrl: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&h=450&fit=crop' },
+  { name: 'Peak Performers', slug: 'peak-performers', avatarUrl: 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=200&h=200&fit=crop', coverImageUrl: 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=800&h=450&fit=crop' },
+  { name: 'Momentum Masters', slug: 'momentum-masters', avatarUrl: 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=200&h=200&fit=crop', coverImageUrl: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&h=450&fit=crop' },
+  { name: 'Vision Builders', slug: 'vision-builders', avatarUrl: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=200&h=200&fit=crop', coverImageUrl: 'https://images.unsplash.com/photo-1553877522-43269d4ea984?w=800&h=450&fit=crop' },
 ];
 
 const SQUAD_DESCRIPTIONS = [
@@ -345,6 +487,8 @@ export function generateDemoSquadsWithStats(): DemoSquadWithStats[] {
       name: squadInfo.name,
       slug: squadInfo.slug,
       description: SQUAD_DESCRIPTIONS[i],
+      avatarUrl: squadInfo.avatarUrl,
+      coverImageUrl: squadInfo.coverImageUrl,
       memberCount: 8 + Math.floor(random() * 20), // 8-27 members
       programId: program?.id,
       programName: program?.name,
@@ -363,6 +507,8 @@ export function generateDemoSquadMembers(squadId: string, count: number = 12): D
   const random = seededRandom(parseInt(squadId.replace(/\D/g, '')) || 50);
   const members: DemoSquadMember[] = [];
   
+  const trends: ('up' | 'down' | 'stable')[] = ['up', 'stable', 'up', 'down', 'stable'];
+  
   for (let i = 0; i < count; i++) {
     const firstNameIndex = Math.floor(random() * FIRST_NAMES.length);
     const lastNameIndex = Math.floor(random() * LAST_NAMES.length);
@@ -370,9 +516,19 @@ export function generateDemoSquadMembers(squadId: string, count: number = 12): D
     const lastName = LAST_NAMES[lastNameIndex];
     const fullName = `${firstName} ${lastName}`;
     
+    // Generate streak between 1-15, with squad target of 4
+    const streak = Math.floor(random() * 15) + 1;
+    // Generate alignment score from discrete values only
+    const alignmentValues = [0, 25, 50, 75, 100];
+    const alignmentScore = alignmentValues[Math.floor(random() * alignmentValues.length)];
+    
+    // Use demo-member-X IDs that match story API (1-5 have predefined stories)
+    const memberId = i < 5 ? `demo-member-${i + 1}` : `demo-user-${i + 1}`;
+    const hasStoryForMember = i < 5 ? true : random() > 0.4; // First 5 always have stories
+    
     members.push({
       odataId: `demo-member-${squadId}-${i + 1}`,
-      odataUserId: `demo-user-${i + 1}`,
+      odataUserId: memberId,
       odataSquadId: squadId,
       email: generateEmail(firstName, lastName, i),
       name: fullName,
@@ -381,6 +537,64 @@ export function generateDemoSquadMembers(squadId: string, count: number = 12): D
       imageUrl: generateAvatarUrl(fullName),
       joinedAt: randomPastDate(90).toISOString(),
       role: i === 0 ? 'admin' : 'member',
+      streak: streak,
+      alignment: {
+        score: alignmentScore,
+        trend: trends[i % trends.length],
+      },
+      hasStory: hasStoryForMember,
+      hasDayClosed: i < 5 ? [true, false, true, false, true][i] : random() > 0.5
+    });
+  }
+  
+  return members;
+}
+
+/**
+ * Generate demo squad members specifically for PROGRAM squads
+ * Uses a different seed offset to ensure different members than standalone squads
+ */
+export function generateDemoProgramSquadMembers(squadId: string, count: number = 12): DemoSquadMember[] {
+  // Use a different seed offset (+ 1000) to get completely different names
+  const random = seededRandom((parseInt(squadId.replace(/\D/g, '')) || 50) + 1000);
+  const members: DemoSquadMember[] = [];
+  
+  const trends: ('up' | 'down' | 'stable')[] = ['up', 'stable', 'up', 'down', 'stable'];
+  
+  for (let i = 0; i < count; i++) {
+    // Offset the name indices to get different combinations
+    const firstNameIndex = (Math.floor(random() * FIRST_NAMES.length) + 20) % FIRST_NAMES.length;
+    const lastNameIndex = (Math.floor(random() * LAST_NAMES.length) + 15) % LAST_NAMES.length;
+    const firstName = FIRST_NAMES[firstNameIndex];
+    const lastName = LAST_NAMES[lastNameIndex];
+    const fullName = `${firstName} ${lastName}`;
+    
+    const streak = Math.floor(random() * 15) + 1;
+    const alignmentValues = [0, 25, 50, 75, 100];
+    const alignmentScore = alignmentValues[Math.floor(random() * alignmentValues.length)];
+    
+    // Use program-specific member IDs
+    const memberId = `demo-prog-member-${i + 1}`;
+    const hasStoryForMember = i < 5 ? true : random() > 0.4;
+    
+    members.push({
+      odataId: `demo-prog-member-${squadId}-${i + 1}`,
+      odataUserId: memberId,
+      odataSquadId: squadId,
+      email: generateEmail(firstName, lastName, i + 100),
+      name: fullName,
+      firstName,
+      lastName,
+      imageUrl: generateAvatarUrl(fullName),
+      joinedAt: randomPastDate(60).toISOString(),
+      role: i === 0 ? 'admin' : 'member',
+      streak: streak,
+      alignment: {
+        score: alignmentScore,
+        trend: trends[i % trends.length],
+      },
+      hasStory: hasStoryForMember,
+      hasDayClosed: i < 5 ? [true, false, true, false, true][i] : random() > 0.5
     });
   }
   
@@ -396,6 +610,7 @@ export interface DemoProgramWithStats {
   name: string;
   slug: string;
   description: string;
+  coverImageUrl?: string;
   type: 'group' | 'individual';
   durationDays: number;
   priceInCents: number;
@@ -451,6 +666,7 @@ const PROGRAM_DATA = [
     name: '30-Day Transformation',
     slug: '30-day-transformation',
     description: 'Transform your life in 30 days with daily guided actions.',
+    coverImageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&h=450&fit=crop',
     durationDays: 30,
     priceInCents: 29700,
   },
@@ -458,6 +674,7 @@ const PROGRAM_DATA = [
     name: 'Content Creator Accelerator',
     slug: 'content-creator-accelerator',
     description: 'Build your personal brand and grow your audience.',
+    coverImageUrl: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&h=450&fit=crop',
     durationDays: 60,
     priceInCents: 49700,
   },
@@ -465,6 +682,7 @@ const PROGRAM_DATA = [
     name: 'Business Growth Intensive',
     slug: 'business-growth-intensive',
     description: 'Scale your business with proven strategies.',
+    coverImageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=450&fit=crop',
     durationDays: 90,
     priceInCents: 99700,
   },
@@ -472,6 +690,7 @@ const PROGRAM_DATA = [
     name: 'Mindset Mastery',
     slug: 'mindset-mastery',
     description: 'Develop an unstoppable mindset for success.',
+    coverImageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&h=450&fit=crop',
     durationDays: 21,
     priceInCents: 19700,
   },
@@ -516,6 +735,7 @@ export function generateDemoProgramsWithStats(): DemoProgramWithStats[] {
       name: prog.name,
       slug: prog.slug,
       description: prog.description,
+      coverImageUrl: prog.coverImageUrl,
       type: random() < 0.7 ? 'group' : 'individual',
       durationDays: prog.durationDays,
       priceInCents: prog.priceInCents,
@@ -1635,15 +1855,15 @@ export interface DemoBranding {
 
 export function generateDemoBranding(): DemoBranding {
   return {
-    logoUrl: 'https://ui-avatars.com/api/?name=Demo+Coach&background=a07855&color=fff&size=128&bold=true',
-    appTitle: 'Demo Coaching',
+    logoUrl: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af',
+    appTitle: 'Growth Addicts',
     colors: {
       accentLight: '#a07855',
       accentDark: '#b8896a',
     },
     socialLinks: {
-      website: 'https://example.com',
-      instagram: 'https://instagram.com/democoach',
+      website: 'https://growthaddicts.com',
+      instagram: 'https://instagram.com/growthaddicts',
     },
   };
 }
@@ -1781,23 +2001,65 @@ export interface DemoDiscoverItem {
   type: 'article' | 'course' | 'event' | 'download';
   title: string;
   description: string;
+  shortDescription?: string;
   imageUrl: string;
   author: string;
+  authorImageUrl?: string;
   publishedAt: string;
   readTime?: number; // minutes
   isPublished: boolean;
   isPremium: boolean;
+  priceInCents?: number; // For paid content
+  currency?: string;
+  category?: string;
+  level?: string;
+  // Landing page content for gated courses
+  keyOutcomes?: string[];
+  features?: { title: string; description?: string; icon?: string }[];
+  testimonials?: { name: string; title?: string; quote: string; rating?: number }[];
+  faqs?: { question: string; answer: string }[];
+  purchaseType?: 'popup' | 'landing_page';
 }
 
 export function generateDemoDiscoverContent(): DemoDiscoverItem[] {
-  const random = seededRandom(1700);
   const items: DemoDiscoverItem[] = [];
   
   const contentTemplates = [
-    { type: 'article' as const, title: '10 Habits of Highly Successful People', description: 'Discover the daily habits that drive success', readTime: 8 },
-    { type: 'article' as const, title: 'The Power of Morning Routines', description: 'How to start your day with intention', readTime: 5 },
-    { type: 'course' as const, title: 'Goal Setting Masterclass', description: 'A comprehensive guide to setting and achieving your goals', isPremium: true },
-    { type: 'course' as const, title: 'Productivity Fundamentals', description: 'Learn to manage your time and energy effectively' },
+    { type: 'article' as const, title: '10 Habits of Highly Successful People', description: 'Discover the daily habits that drive success', readTime: 8, category: 'Mindset' },
+    { type: 'article' as const, title: 'The Power of Morning Routines', description: 'How to start your day with intention', readTime: 5, category: 'Productivity' },
+    { 
+      type: 'course' as const, 
+      title: 'Goal Setting Masterclass', 
+      description: 'A comprehensive guide to setting and achieving your goals. Transform your dreams into actionable plans with proven frameworks.',
+      shortDescription: 'Master the art of goal setting with proven frameworks used by top achievers.',
+      isPremium: true, 
+      priceInCents: 4900,
+      currency: 'usd',
+      category: 'Personal Growth',
+      level: 'All Levels',
+      purchaseType: 'popup' as const,
+      keyOutcomes: [
+        'Create crystal-clear goals aligned with your values',
+        'Build a proven action plan to achieve any goal',
+        'Overcome procrastination and stay motivated',
+        'Track progress and celebrate wins along the way',
+      ],
+      features: [
+        { title: '8 Video Lessons', description: 'Step-by-step guidance through each phase', icon: 'video' },
+        { title: 'Workbook Included', description: 'Downloadable exercises and templates', icon: 'book' },
+        { title: 'Lifetime Access', description: 'Learn at your own pace, forever', icon: 'check-circle' },
+        { title: 'Community Support', description: 'Connect with fellow goal-setters', icon: 'message-circle' },
+      ],
+      testimonials: [
+        { name: 'Sarah M.', title: 'Entrepreneur', quote: 'This course completely changed how I approach my goals. I\'ve achieved more in 3 months than the entire past year!', rating: 5 },
+        { name: 'James T.', title: 'Marketing Director', quote: 'The frameworks are practical and actionable. Highly recommend for anyone serious about growth.', rating: 5 },
+      ],
+      faqs: [
+        { question: 'How long do I have access?', answer: 'You get lifetime access to all course materials, including any future updates.' },
+        { question: 'Is there a guarantee?', answer: 'Yes! If you\'re not satisfied within 30 days, we\'ll give you a full refund.' },
+      ],
+    },
+    { type: 'course' as const, title: 'Productivity Fundamentals', description: 'Learn to manage your time and energy effectively', category: 'Productivity', level: 'Beginner' },
     { type: 'event' as const, title: 'Live Q&A: Ask Me Anything', description: 'Join us for a live coaching session' },
     { type: 'event' as const, title: 'Monthly Mastermind', description: 'Connect with fellow members and share wins' },
     { type: 'download' as const, title: 'Goal Planning Worksheet', description: 'A printable worksheet to plan your goals' },
@@ -1810,12 +2072,25 @@ export function generateDemoDiscoverContent(): DemoDiscoverItem[] {
       type: template.type,
       title: template.title,
       description: template.description,
-      imageUrl: `https://picsum.photos/seed/${i + 100}/800/400`,
-      author: 'Demo Coach',
+      shortDescription: (template as { shortDescription?: string }).shortDescription,
+      imageUrl: template.type === 'course' && template.title === 'Goal Setting Masterclass'
+        ? 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=800&h=400&fit=crop'
+        : `https://picsum.photos/seed/${i + 100}/800/400`,
+      author: 'Coach Adam',
+      authorImageUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face',
       publishedAt: randomPastDate(60).toISOString(),
-      readTime: template.readTime,
+      readTime: (template as { readTime?: number }).readTime,
       isPublished: true,
-      isPremium: template.isPremium || false,
+      isPremium: (template as { isPremium?: boolean }).isPremium || false,
+      priceInCents: (template as { priceInCents?: number }).priceInCents,
+      currency: (template as { currency?: string }).currency,
+      category: (template as { category?: string }).category,
+      level: (template as { level?: string }).level,
+      keyOutcomes: (template as { keyOutcomes?: string[] }).keyOutcomes,
+      features: (template as { features?: { title: string; description?: string; icon?: string }[] }).features,
+      testimonials: (template as { testimonials?: { name: string; title?: string; quote: string; rating?: number }[] }).testimonials,
+      faqs: (template as { faqs?: { question: string; answer: string }[] }).faqs,
+      purchaseType: (template as { purchaseType?: 'popup' | 'landing_page' }).purchaseType,
     });
   });
   
@@ -1856,8 +2131,8 @@ export function generateDemoFeedPosts(): DemoFeedPost[] {
   posts.push({
     id: 'demo-post-coach',
     authorId: 'demo-coach-user',
-    authorName: 'Demo Coach',
-    authorImageUrl: 'https://ui-avatars.com/api/?name=Demo+Coach&background=a07855&color=fff&size=128&bold=true',
+    authorName: 'Coach Adam',
+    authorImageUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face',
     content: '📣 Exciting news! We\'re launching a new program next month - "Business Growth Intensive". Early bird registration opens next week. Stay tuned!',
     likeCount: 67,
     commentCount: 23,
@@ -1911,10 +2186,22 @@ export interface DemoUserProfile {
     totalDays: number;
     progress: number;
   };
+  // Multiple program enrollments (group + 1:1)
+  programs: {
+    id: string;
+    name: string;
+    type: 'group' | 'individual';
+    currentDay: number;
+    totalDays: number;
+    progress: number;
+    coverImageUrl?: string;
+  }[];
   squad?: {
     id: string;
     name: string;
     memberCount: number;
+    avatarUrl?: string;
+    chatChannelId?: string;
   };
   goals: {
     id: string;
@@ -1949,7 +2236,7 @@ export function generateDemoUserProfile(): DemoUserProfile {
     bio: 'Entrepreneur on a journey of personal growth. Building better habits one day at a time.',
     location: 'San Francisco, CA',
     joinedAt: randomPastDate(45).toISOString(),
-    streak: 12,
+    streak: 5,
     totalTasksCompleted: 87,
     currentProgram: {
       id: 'demo-prog-1',
@@ -1958,10 +2245,34 @@ export function generateDemoUserProfile(): DemoUserProfile {
       totalDays: 30,
       progress: 40,
     },
+    // Multiple program enrollments (group + 1:1)
+    programs: [
+      {
+        id: 'demo-prog-1',
+        name: '30-Day Transformation',
+        type: 'group',
+        currentDay: 12,
+        totalDays: 30,
+        progress: 40,
+        coverImageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&h=450&fit=crop',
+      },
+      {
+        id: 'demo-prog-3',
+        name: 'Business Growth Intensive',
+        type: 'individual',
+        currentDay: 5,
+        totalDays: 90,
+        progress: 6,
+        coverImageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=450&fit=crop',
+      },
+    ],
+    // Use standalone squad (demo-squad-2 has no programId)
     squad: {
-      id: 'demo-squad-1',
-      name: 'Alpha Achievers',
+      id: 'demo-squad-2',
+      name: 'Growth Warriors',
       memberCount: 18,
+      avatarUrl: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=200&h=200&fit=crop',
+      chatChannelId: 'demo-channel-squad-2',
     },
     goals: [
       { id: 'goal-1', title: 'Build a morning routine', progress: 70, deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() },
@@ -2002,6 +2313,396 @@ export function generateDemoFeatureRequests(): DemoFeatureRequest[] {
     { id: 'fr-2', title: 'Calendar integration', description: 'Sync with Google Calendar and Outlook', status: 'completed', votes: 89, createdAt: randomPastDate(90).toISOString() },
     { id: 'fr-3', title: 'Custom email templates', description: 'Ability to customize automated emails', status: 'open', votes: 67, createdAt: randomPastDate(30).toISOString() },
     { id: 'fr-4', title: 'Advanced analytics', description: 'More detailed reporting and insights', status: 'open', votes: 45, createdAt: randomPastDate(14).toISOString() },
+  ];
+}
+
+// ============================================================================
+// DEMO EVENTS / CALENDAR
+// ============================================================================
+
+export interface DemoEvent {
+  id: string;
+  title: string;
+  description?: string;
+  startDateTime: string;
+  endDateTime?: string;
+  startTime?: string;
+  endTime?: string;
+  timezone: string;
+  durationMinutes: number;
+  locationType: 'online' | 'in_person' | 'chat';
+  locationLabel: string;
+  meetingLink?: string;
+  coverImageUrl?: string;
+  eventType: 'workshop' | 'community_event' | 'squad_call' | 'coaching_1on1';
+  scope: 'global' | 'organization' | 'program' | 'squad' | 'private';
+  participantModel: 'open' | 'invite_only' | 'approval';
+  approvalType: 'none' | 'host' | 'voting';
+  status: 'confirmed' | 'live' | 'completed';
+  organizationId: string;
+  createdBy: string;
+  hostName: string;
+  hostImageUrl: string;
+  rsvpCount: number;
+  maxAttendees?: number;
+  createdAt: string;
+  updatedAt: string;
+  programId?: string;
+  squadId?: string;
+}
+
+export function generateDemoEvents(): DemoEvent[] {
+  const now = new Date();
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  
+  // Helper to create future date
+  const futureDate = (daysFromNow: number, hours: number = 10, minutes: number = 0) => {
+    const date = new Date(now);
+    date.setDate(date.getDate() + daysFromNow);
+    date.setHours(hours, minutes, 0, 0);
+    return date.toISOString();
+  };
+  
+  return [
+    {
+      id: 'demo-event-1',
+      title: 'Weekly Group Coaching Call',
+      description: 'Join us for our weekly group coaching session. We\'ll discuss progress, share wins, and work through challenges together.',
+      startDateTime: futureDate(2, 14, 0),
+      endDateTime: futureDate(2, 15, 0),
+      startTime: '14:00',
+      endTime: '15:00',
+      timezone,
+      durationMinutes: 60,
+      locationType: 'online',
+      locationLabel: 'Zoom Meeting',
+      meetingLink: 'https://zoom.us/j/demo123456',
+      coverImageUrl: 'https://images.unsplash.com/photo-1531545514256-d18697064064?w=800&h=400&fit=crop',
+      eventType: 'squad_call',
+      scope: 'squad',
+      participantModel: 'open',
+      approvalType: 'none',
+      status: 'confirmed',
+      organizationId: 'demo-org',
+      createdBy: 'demo-coach-user',
+      hostName: 'Coach Adam',
+      hostImageUrl: generateAvatarUrl('Coach Adam'),
+      rsvpCount: 8,
+      maxAttendees: 20,
+      createdAt: randomPastDate(30).toISOString(),
+      updatedAt: randomPastDate(5).toISOString(),
+      squadId: 'demo-squad-1',
+    },
+    {
+      id: 'demo-event-2',
+      title: 'Mindset Workshop: Overcoming Limiting Beliefs',
+      description: 'A deep-dive workshop on identifying and overcoming the beliefs that hold you back from success.',
+      startDateTime: futureDate(5, 11, 0),
+      endDateTime: futureDate(5, 13, 0),
+      startTime: '11:00',
+      endTime: '13:00',
+      timezone,
+      durationMinutes: 120,
+      locationType: 'online',
+      locationLabel: 'Live Webinar',
+      meetingLink: 'https://zoom.us/j/demo789012',
+      coverImageUrl: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&h=400&fit=crop',
+      eventType: 'workshop',
+      scope: 'organization',
+      participantModel: 'open',
+      approvalType: 'none',
+      status: 'confirmed',
+      organizationId: 'demo-org',
+      createdBy: 'demo-coach-user',
+      hostName: 'Coach Adam',
+      hostImageUrl: generateAvatarUrl('Coach Adam'),
+      rsvpCount: 24,
+      maxAttendees: 50,
+      createdAt: randomPastDate(14).toISOString(),
+      updatedAt: randomPastDate(2).toISOString(),
+      programId: 'demo-prog-2',
+    },
+    {
+      id: 'demo-event-3',
+      title: '1:1 Coaching Session',
+      description: 'Personal coaching session to discuss your goals and progress.',
+      startDateTime: futureDate(1, 16, 30),
+      endDateTime: futureDate(1, 17, 30),
+      startTime: '16:30',
+      endTime: '17:30',
+      timezone,
+      durationMinutes: 60,
+      locationType: 'online',
+      locationLabel: 'Video Call',
+      meetingLink: 'https://meet.google.com/demo-abc-xyz',
+      coverImageUrl: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=800&h=400&fit=crop',
+      eventType: 'coaching_1on1',
+      scope: 'private',
+      participantModel: 'invite_only',
+      approvalType: 'none',
+      status: 'confirmed',
+      organizationId: 'demo-org',
+      createdBy: 'demo-coach-user',
+      hostName: 'Coach Adam',
+      hostImageUrl: generateAvatarUrl('Coach Adam'),
+      rsvpCount: 1,
+      createdAt: randomPastDate(7).toISOString(),
+      updatedAt: randomPastDate(1).toISOString(),
+    },
+    {
+      id: 'demo-event-4',
+      title: 'Community Mastermind Session',
+      description: 'Connect with fellow community members, share insights, and get feedback on your projects.',
+      startDateTime: futureDate(7, 10, 0),
+      endDateTime: futureDate(7, 11, 30),
+      startTime: '10:00',
+      endTime: '11:30',
+      timezone,
+      durationMinutes: 90,
+      locationType: 'online',
+      locationLabel: 'Zoom Meeting',
+      meetingLink: 'https://zoom.us/j/demo456789',
+      coverImageUrl: 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=800&h=400&fit=crop',
+      eventType: 'community_event',
+      scope: 'organization',
+      participantModel: 'open',
+      approvalType: 'none',
+      status: 'confirmed',
+      organizationId: 'demo-org',
+      createdBy: 'demo-coach-user',
+      hostName: 'Coach Adam',
+      hostImageUrl: generateAvatarUrl('Coach Adam'),
+      rsvpCount: 15,
+      maxAttendees: 30,
+      createdAt: randomPastDate(21).toISOString(),
+      updatedAt: randomPastDate(3).toISOString(),
+    },
+    {
+      id: 'demo-event-5',
+      title: 'Goal Setting & Planning Workshop',
+      description: 'Set powerful goals for the month ahead and create actionable plans to achieve them.',
+      startDateTime: futureDate(10, 15, 0),
+      endDateTime: futureDate(10, 16, 30),
+      startTime: '15:00',
+      endTime: '16:30',
+      timezone,
+      durationMinutes: 90,
+      locationType: 'online',
+      locationLabel: 'Live Workshop',
+      meetingLink: 'https://zoom.us/j/demo111222',
+      coverImageUrl: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=800&h=400&fit=crop',
+      eventType: 'workshop',
+      scope: 'organization',
+      participantModel: 'open',
+      approvalType: 'none',
+      status: 'confirmed',
+      organizationId: 'demo-org',
+      createdBy: 'demo-coach-user',
+      hostName: 'Coach Adam',
+      hostImageUrl: generateAvatarUrl('Coach Adam'),
+      rsvpCount: 18,
+      maxAttendees: 40,
+      createdAt: randomPastDate(10).toISOString(),
+      updatedAt: randomPastDate(1).toISOString(),
+    },
+  ];
+}
+
+// ============================================================================
+// CALENDAR EVENTS (For scheduling/calendar view)
+// ============================================================================
+
+export interface DemoCalendarEvent {
+  id: string;
+  title: string;
+  description?: string;
+  startDateTime: string;
+  endDateTime: string;
+  timezone: string;
+  eventType: string;
+  locationType: 'online' | 'in_person' | 'chat';
+  locationLabel?: string;
+  meetingLink?: string;
+  status: 'confirmed' | 'proposed' | 'cancelled';
+  hostId: string;
+  hostName: string;
+  hostImageUrl: string;
+  attendees?: { id: string; name: string; imageUrl: string; status: string }[];
+  organizationId: string;
+}
+
+/**
+ * Generate demo calendar events for the calendar view
+ * Events are spread across the given date range
+ */
+export function generateDemoCalendarEvents(startDateStr?: string | null, endDateStr?: string | null): DemoCalendarEvent[] {
+  const now = new Date();
+  const startDate = startDateStr ? new Date(startDateStr) : new Date(now.getFullYear(), now.getMonth(), 1);
+  const endDate = endDateStr ? new Date(endDateStr) : new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  
+  const events: DemoCalendarEvent[] = [];
+  
+  // Generate events for the date range
+  const eventTemplates = [
+    { title: 'Weekly Group Coaching', type: 'squad_call', duration: 60, time: '14:00' },
+    { title: '1:1 Coaching Session', type: 'coaching_1on1', duration: 45, time: '10:00' },
+    { title: 'Mindset Workshop', type: 'workshop', duration: 90, time: '11:00' },
+    { title: 'Community Q&A', type: 'community_event', duration: 60, time: '16:00' },
+    { title: 'Morning Accountability Call', type: 'squad_call', duration: 30, time: '08:00' },
+  ];
+  
+  const attendeeNames = ['Sarah Miller', 'Michael Chen', 'Emma Thompson', 'James Wilson', 'Lisa Park'];
+  
+  // Add events throughout the date range
+  let eventId = 1;
+  const currentDate = new Date(startDate);
+  
+  while (currentDate <= endDate) {
+    // Add 1-2 events per weekday
+    const dayOfWeek = currentDate.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Skip weekends
+      const numEvents = 1 + Math.floor(Math.random() * 2);
+      const usedTimes = new Set<string>();
+      
+      for (let i = 0; i < numEvents; i++) {
+        const template = eventTemplates[Math.floor(Math.random() * eventTemplates.length)];
+        
+        // Avoid same time on same day
+        if (usedTimes.has(template.time)) continue;
+        usedTimes.add(template.time);
+        
+        const [hours, minutes] = template.time.split(':').map(Number);
+        const eventStart = new Date(currentDate);
+        eventStart.setHours(hours, minutes, 0, 0);
+        
+        const eventEnd = new Date(eventStart);
+        eventEnd.setMinutes(eventEnd.getMinutes() + template.duration);
+        
+        // Generate attendees for the event
+        const numAttendees = Math.floor(Math.random() * 4) + 1;
+        const attendees = attendeeNames.slice(0, numAttendees).map((name, idx) => ({
+          id: `demo-attendee-${idx + 1}`,
+          name,
+          imageUrl: generateAvatarUrl(name),
+          status: 'confirmed',
+        }));
+        
+        events.push({
+          id: `demo-cal-event-${eventId++}`,
+          title: template.title,
+          description: `Demo ${template.title.toLowerCase()} event`,
+          startDateTime: eventStart.toISOString(),
+          endDateTime: eventEnd.toISOString(),
+          timezone,
+          eventType: template.type,
+          locationType: 'online',
+          locationLabel: 'Zoom',
+          meetingLink: 'https://zoom.us/j/demo123',
+          status: 'confirmed',
+          hostId: 'demo-coach-user',
+          hostName: 'Coach Adam',
+          hostImageUrl: generateAvatarUrl('Coach Adam'),
+          attendees,
+          organizationId: 'demo-org',
+        });
+      }
+    }
+    
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  return events;
+}
+
+// ============================================================================
+// NOTIFICATIONS (For notification bell)
+// ============================================================================
+
+export interface DemoNotification {
+  id: string;
+  type: 'message' | 'task_reminder' | 'event_reminder' | 'achievement' | 'squad_activity' | 'comment' | 'like';
+  title: string;
+  body: string;
+  imageUrl?: string;
+  link?: string;
+  read: boolean;
+  createdAt: string;
+}
+
+/**
+ * Generate demo notifications for the notification bell
+ */
+export function generateDemoNotifications(): DemoNotification[] {
+  const now = new Date();
+  
+  return [
+    {
+      id: 'demo-notif-1',
+      type: 'event_reminder',
+      title: 'Upcoming: Weekly Group Coaching',
+      body: 'Your coaching session starts in 30 minutes',
+      imageUrl: generateAvatarUrl('Coach Adam'),
+      link: '/calendar',
+      read: false,
+      createdAt: new Date(now.getTime() - 30 * 60 * 1000).toISOString(),
+    },
+    {
+      id: 'demo-notif-2',
+      type: 'achievement',
+      title: '🎉 7-Day Streak!',
+      body: "Congratulations! You've completed tasks for 7 days in a row",
+      read: false,
+      createdAt: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: 'demo-notif-3',
+      type: 'message',
+      title: 'New message from Sarah Miller',
+      body: 'Thank you so much for the session today!',
+      imageUrl: generateAvatarUrl('Sarah Miller'),
+      link: '/chat',
+      read: false,
+      createdAt: new Date(now.getTime() - 3 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: 'demo-notif-4',
+      type: 'squad_activity',
+      title: 'Michael Chen completed a task',
+      body: 'In Momentum Masters squad',
+      imageUrl: generateAvatarUrl('Michael Chen'),
+      link: '/squad',
+      read: true,
+      createdAt: new Date(now.getTime() - 5 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: 'demo-notif-5',
+      type: 'like',
+      title: 'Emma Thompson liked your post',
+      body: 'In the community feed',
+      imageUrl: generateAvatarUrl('Emma Thompson'),
+      link: '/feed',
+      read: true,
+      createdAt: new Date(now.getTime() - 8 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: 'demo-notif-6',
+      type: 'comment',
+      title: 'James Wilson commented on your post',
+      body: '"Great progress! Keep it up!"',
+      imageUrl: generateAvatarUrl('James Wilson'),
+      link: '/feed',
+      read: true,
+      createdAt: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: 'demo-notif-7',
+      type: 'task_reminder',
+      title: 'Daily Focus Reminder',
+      body: "Don't forget to complete your morning meditation",
+      read: true,
+      createdAt: new Date(now.getTime() - 26 * 60 * 60 * 1000).toISOString(),
+    },
   ];
 }
 

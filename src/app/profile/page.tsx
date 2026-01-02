@@ -15,6 +15,8 @@ import { ProfileEditForm } from '@/components/profile/ProfileEditForm';
 import { SettingsDrawer } from '@/components/profile/SettingsDrawer';
 import { ProfileSkeleton } from '@/components/profile/ProfileSkeleton';
 import { openOrCreateDirectChat } from '@/lib/chat';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DEMO_USER } from '@/lib/demo-utils';
 
 /**
  * Profile Page
@@ -41,6 +43,7 @@ export default function ProfilePage() {
   const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   
   const [userData, setUserData] = useState<UserData | null>(null);
   const [habits, setHabits] = useState<Habit[]>([]);
@@ -54,11 +57,17 @@ export default function ProfilePage() {
 
   // Check if we're in edit mode, viewing another user, or from onboarding
   useEffect(() => {
+    // In demo mode, don't allow edit mode - redirect to profile view and show modal
+    if (isDemoMode && searchParams.get('edit') === 'true') {
+      router.replace('/profile');
+      openSignupModal();
+      return;
+    }
     setIsEditMode(searchParams.get('edit') === 'true');
     setViewingUserId(searchParams.get('userId'));
     setFromOnboarding(searchParams.get('fromOnboarding') === 'true');
     setReturnTo(searchParams.get('returnTo'));
-  }, [searchParams]);
+  }, [searchParams, isDemoMode, router, openSignupModal]);
 
   // Fetch email preferences when settings drawer opens
   useEffect(() => {
@@ -82,6 +91,83 @@ export default function ProfilePage() {
   // Fetch user data
   useEffect(() => {
     async function fetchData() {
+      // Demo mode: use mock data
+      if (isDemoMode) {
+        const demoUserData: UserData = {
+          user: {
+            id: DEMO_USER.id,
+            clerkId: DEMO_USER.id,
+            email: DEMO_USER.email,
+            firstName: DEMO_USER.firstName,
+            lastName: DEMO_USER.lastName,
+            displayName: `${DEMO_USER.firstName} ${DEMO_USER.lastName}`,
+            imageUrl: DEMO_USER.imageUrl,
+            bio: 'Passionate about personal growth and helping others achieve their goals. Currently focused on building better habits and staying aligned with my purpose.',
+            shortBio: 'Growth enthusiast | Habit builder',
+            location: 'San Francisco, CA',
+            pronouns: 'they/them',
+            track: 'content_creator',
+            organizationId: 'demo-org',
+            goalProgress: 75,
+            createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+            updatedAt: new Date().toISOString(),
+          } as FirebaseUser,
+          goal: {
+            goal: 'Launch my online course and reach 1000 students',
+            targetDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            progress: {
+              percentage: 75,
+            },
+          },
+          isOwnProfile: true,
+        };
+        setUserData(demoUserData);
+        setHabits([
+          {
+            id: 'demo-habit-1',
+            userId: DEMO_USER.id,
+            organizationId: 'demo-org',
+            text: 'Morning meditation',
+            frequencyType: 'daily',
+            frequencyValue: 1,
+            reminder: null,
+            targetRepetitions: null,
+            progress: {
+              currentCount: 12,
+              completionDates: [],
+              lastCompletedDate: new Date().toISOString().split('T')[0],
+              skipDates: [],
+            },
+            archived: false,
+            status: 'active',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          {
+            id: 'demo-habit-2',
+            userId: DEMO_USER.id,
+            organizationId: 'demo-org',
+            text: 'Read 20 pages',
+            frequencyType: 'daily',
+            frequencyValue: 1,
+            reminder: null,
+            targetRepetitions: null,
+            progress: {
+              currentCount: 8,
+              completionDates: [],
+              lastCompletedDate: new Date().toISOString().split('T')[0],
+              skipDates: [],
+            },
+            archived: false,
+            status: 'active',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ]);
+        setLoading(false);
+        return;
+      }
+      
       if (!clerkUser) {
         setLoading(false);
         return;
@@ -123,13 +209,13 @@ export default function ProfilePage() {
       }
     }
 
-    if (clerkLoaded) {
+    if (isDemoMode || clerkLoaded) {
       fetchData();
     }
-  }, [clerkUser, clerkLoaded, viewingUserId]);
+  }, [clerkUser, clerkLoaded, viewingUserId, isDemoMode]);
 
-  // Show skeleton while loading
-  if (!clerkLoaded || loading) {
+  // Show skeleton while loading (skip for demo mode which loads instantly)
+  if (!isDemoMode && (!clerkLoaded || loading)) {
     // Determine if we should show edit skeleton based on query params
     const showEditSkeleton = typeof window !== 'undefined' && 
       new URLSearchParams(window.location.search).get('edit') === 'true';
@@ -151,7 +237,16 @@ export default function ProfilePage() {
     );
   }
 
-  if (!clerkUser) {
+  // Still loading in demo mode
+  if (isDemoMode && loading) {
+    return (
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
+        <ProfileSkeleton variant="view" />
+      </div>
+    );
+  }
+
+  if (!isDemoMode && !clerkUser) {
     router.push('/sign-in');
     return null;
   }
@@ -318,11 +413,23 @@ export default function ProfilePage() {
         <>
           <ProfileHeader
             user={userData.user}
-            userId={viewingUserId || clerkUser?.id || ''}
+            userId={viewingUserId || clerkUser?.id || DEMO_USER.id}
             clerkUser={clerkUser}
             isOwnProfile={isOwnProfile}
-            onEditClick={() => router.push('/profile?edit=true')}
-            onSettingsClick={() => setIsSettingsOpen(true)}
+            onEditClick={() => {
+              if (isDemoMode) {
+                openSignupModal();
+              } else {
+                router.push('/profile?edit=true');
+              }
+            }}
+            onSettingsClick={() => {
+              if (isDemoMode) {
+                openSignupModal();
+              } else {
+                setIsSettingsOpen(true);
+              }
+            }}
             onMessageClick={handleMessageClick}
           />
 

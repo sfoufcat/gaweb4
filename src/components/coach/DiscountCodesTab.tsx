@@ -7,6 +7,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import type { DiscountCode, DiscountType, DiscountApplicableTo, Program, Squad } from '@/types';
 import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DemoSignupModal, useDemoSignupModal } from '@/components/demo/DemoSignupModal';
 
 interface DiscountCodesTabProps {
   apiBasePath?: string;
@@ -20,6 +21,7 @@ interface SelectableItem {
 
 export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: DiscountCodesTabProps) {
   const { isDemoMode } = useDemoMode();
+  const { isOpen: isSignupModalOpen, action: signupModalAction, showModal: showSignupModal, hideModal: hideSignupModal } = useDemoSignupModal();
   const [discountCodes, setDiscountCodes] = useState<DiscountCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -187,6 +189,10 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
   }, []);
 
   const handleOpenModal = (code?: DiscountCode) => {
+    if (isDemoMode) {
+      showSignupModal(code ? 'edit discount codes' : 'create discount codes');
+      return;
+    }
     if (code) {
       setEditingCode(code);
       setFormData({
@@ -225,6 +231,11 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
   };
 
   const handleSave = async () => {
+    if (isDemoMode) {
+      showSignupModal('save discount code');
+      setIsModalOpen(false);
+      return;
+    }
     try {
       setSaving(true);
       setFormError(null);
@@ -270,6 +281,11 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
   };
 
   const handleDelete = async () => {
+    if (isDemoMode) {
+      showSignupModal('delete discount code');
+      setDeleteConfirm(null);
+      return;
+    }
     if (!deleteConfirm) return;
     
     try {
@@ -995,6 +1011,13 @@ export function DiscountCodesTab({ apiBasePath = '/api/coach/discount-codes' }: 
           </div>
         </Dialog>
       </Transition>
+
+      {/* Demo Signup Modal */}
+      <DemoSignupModal
+        isOpen={isSignupModalOpen}
+        onClose={hideSignupModal}
+        action={signupModalAction}
+      />
     </div>
   );
 }

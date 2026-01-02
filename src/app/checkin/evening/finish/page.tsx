@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
 import { useEveningCheckIn } from '@/hooks/useEveningCheckIn';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 /**
  * Confetti Piece Component
@@ -40,6 +41,7 @@ function ConfettiPiece({ index }: { index: number }) {
 export default function EveningFinishPage() {
   const router = useRouter();
   const { isLoaded } = useUser();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   const [showConfetti, setShowConfetti] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const { completeCheckIn } = useEveningCheckIn();
@@ -50,28 +52,34 @@ export default function EveningFinishPage() {
     setIsNavigating(true);
 
     try {
-      // Mark evening check-in as completed
-      await completeCheckIn();
-      
-      // Move all focus tasks to backlog so user can use them tomorrow
-      await fetch('/api/tasks/move-to-backlog', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
+      // In demo mode, skip API calls
+      if (!isDemoMode) {
+        // Mark evening check-in as completed
+        await completeCheckIn();
+        
+        // Move all focus tasks to backlog so user can use them tomorrow
+        await fetch('/api/tasks/move-to-backlog', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
     } catch (error) {
       console.error('Failed to complete evening check-in:', error);
     }
     
-    // Wait for confetti to play, then navigate
+    // Wait for confetti to play, then navigate and show modal in demo mode
     setTimeout(() => {
+      if (isDemoMode) {
+        openSignupModal();
+      }
       router.push('/');
     }, 1500);
-  }, [router, completeCheckIn]);
+  }, [router, completeCheckIn, isDemoMode, openSignupModal]);
 
   if (!isLoaded) {
     return (
-      <div className="fixed inset-0 bg-[#faf8f6] flex items-center justify-center z-[9999]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a1a1a]" />
+      <div className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] flex items-center justify-center z-[9999]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a1a1a] dark:border-white" />
       </div>
     );
   }
@@ -84,7 +92,7 @@ export default function EveningFinishPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
-      className="fixed inset-0 z-[9999] bg-[#faf8f6] flex flex-col overflow-hidden"
+      className="fixed inset-0 z-[9999] bg-[#faf8f6] dark:bg-[#05070b] flex flex-col overflow-hidden"
     >
       {/* Confetti Layer */}
       {showConfetti && (
@@ -99,12 +107,12 @@ export default function EveningFinishPage() {
       <div className="flex-1 flex items-center justify-center px-6 py-8">
         <div className="w-full max-w-[480px] lg:max-w-[560px] mx-auto text-center">
           {/* Title */}
-          <h1 className="font-albert text-[40px] md:text-[52px] lg:text-[64px] text-[#1a1a1a] tracking-[-2px] leading-[1.2] mb-6 md:mb-8">
+          <h1 className="font-albert text-[40px] md:text-[52px] lg:text-[64px] text-[#1a1a1a] dark:text-white tracking-[-2px] leading-[1.2] mb-6 md:mb-8">
             Day closed ✨
           </h1>
 
           {/* Description */}
-          <p className="font-albert text-[22px] md:text-[26px] lg:text-[28px] font-medium text-[#5f5a55] tracking-[-1.5px] leading-[1.4] max-w-[400px] mx-auto mb-10 md:mb-12">
+          <p className="font-albert text-[22px] md:text-[26px] lg:text-[28px] font-medium text-[#5f5a55] dark:text-[#a0a0a0] tracking-[-1.5px] leading-[1.4] max-w-[400px] mx-auto mb-10 md:mb-12">
             Rest, reset, and come back tomorrow with fresh energy.
           </p>
 
@@ -122,7 +130,7 @@ export default function EveningFinishPage() {
       {/* Back button */}
       <button
         onClick={() => router.back()}
-        className="absolute top-6 left-6 p-2 text-[#5f5a55] hover:text-[#1a1a1a] transition-colors"
+        className="absolute top-6 left-6 p-2 text-[#5f5a55] dark:text-[#a0a0a0] hover:text-[#1a1a1a] dark:hover:text-white transition-colors"
         aria-label="Back"
       >
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

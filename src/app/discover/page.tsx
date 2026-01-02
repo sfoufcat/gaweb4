@@ -440,7 +440,7 @@ export default function DiscoverPage() {
               {selectedProgramType === 'group' ? (
                 availableGroupPrograms.length > 0 ? (
                   availableGroupPrograms.map((program) => (
-                    <ProgramCard key={program.id} program={program} />
+                    <ProgramCard key={program.id} program={program} fullWidth={false} />
                   ))
                 ) : (
                   <p className="text-text-muted text-sm font-sans py-4">
@@ -450,7 +450,7 @@ export default function DiscoverPage() {
               ) : (
                 availableIndividualPrograms.length > 0 ? (
                   availableIndividualPrograms.map((program) => (
-                    <ProgramCard key={program.id} program={program} />
+                    <ProgramCard key={program.id} program={program} fullWidth={false} />
                   ))
                 ) : (
                   <p className="text-text-muted text-sm font-sans py-4">
@@ -472,7 +472,7 @@ export default function DiscoverPage() {
             {/* Horizontal scrollable list */}
             <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
               {publicSquads.map((squad) => (
-                <SquadCard key={squad.id} squad={squad} />
+                <SquadCard key={squad.id} squad={squad} fullWidth={false} />
               ))}
             </div>
           </div>

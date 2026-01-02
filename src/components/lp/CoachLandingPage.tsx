@@ -383,7 +383,7 @@ export function CoachLandingPage() {
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 px-6 py-4 text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8] font-albert text-[16px] font-medium transition-colors"
               >
-                See it in action
+                Visit live demo
                 <ExternalLink className="w-4 h-4" />
               </a>
             </motion.div>
@@ -886,7 +886,6 @@ export function CoachLandingPage() {
             {/* Monthly/Annual Toggle */}
             <div className="flex justify-center mb-10">
               <motion.div 
-                layout
                 transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                 className="inline-flex items-center bg-white dark:bg-[#171b22] rounded-full p-1 border border-[#e1ddd8]/50 dark:border-[#262b35]/50"
               >

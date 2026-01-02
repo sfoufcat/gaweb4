@@ -6,7 +6,9 @@ export const dynamic = 'force-dynamic';
 import { useUser } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
 import { useStreamChatClient } from '@/contexts/StreamChatContext';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import StreamChatComponents from './StreamChatComponents';
+import DemoChatComponents from './DemoChatComponents';
 
 // Loading skeleton component - uses app's brown/beige theme
 function ChatLoadingSkeleton() {
@@ -82,9 +84,15 @@ export default function ChatPage() {
   const { user, isLoaded } = useUser();
   const searchParams = useSearchParams();
   const { client, isConnected, isConnecting } = useStreamChatClient();
+  const { isDemoMode } = useDemoMode();
   
   // Get channel ID from URL params (for direct navigation to a specific channel)
   const initialChannelId = searchParams.get('channel');
+
+  // Demo mode: show mock chat interface
+  if (isDemoMode) {
+    return <DemoChatComponents />;
+  }
 
   // Show skeleton while:
   // 1. Clerk is loading user

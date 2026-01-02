@@ -6,6 +6,8 @@ import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
 import type { DailyReflection, WeeklyReflection, EmotionalState, EveningEmotionalState, ReflectionEmotionalState, EveningCheckIn } from '@/types';
 import { Calendar, CheckCircle2 } from 'lucide-react';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DEMO_USER } from '@/lib/demo-utils';
 
 type TabType = 'daily' | 'weekly';
 
@@ -49,7 +51,24 @@ const onTrackLabels = {
 
 export default function GoalPage() {
   const router = useRouter();
-  const { user, isLoaded } = useUser();
+  const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
+  const { isDemoMode } = useDemoMode();
+  
+  // In demo mode, use demo user
+  const user = useMemo(() => {
+    if (isDemoMode) {
+      return {
+        id: DEMO_USER.id,
+        firstName: DEMO_USER.firstName,
+        lastName: DEMO_USER.lastName,
+        imageUrl: DEMO_USER.imageUrl,
+      };
+    }
+    return clerkUser;
+  }, [isDemoMode, clerkUser]);
+  
+  const isLoaded = isDemoMode || clerkLoaded;
+  
   const [loading, setLoading] = useState(true);
   const [goal, setGoal] = useState<{
     goal: string;
@@ -95,6 +114,40 @@ export default function GoalPage() {
     async function fetchData() {
       if (!user) {
         setLoading(false);
+        return;
+      }
+
+      // Demo mode: set demo goal and reflections
+      if (isDemoMode) {
+        setGoal({
+          goal: 'Build a morning routine and exercise 5 days a week',
+          targetDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
+          progress: 65,
+        });
+        
+        // Generate demo reflections
+        const demoReflections: DailyReflection[] = Array.from({ length: 7 }, (_, i) => {
+          const date = new Date();
+          date.setDate(date.getDate() - i);
+          return {
+            id: `demo-reflection-${i}`,
+            userId: DEMO_USER.id,
+            organizationId: 'demo-org',
+            goalId: 'demo-goal-1',
+            date: date.toISOString().split('T')[0],
+            type: 'daily' as const,
+            emotionalState: (['confident', 'energized', 'steady', 'neutral'] as EmotionalState[])[i % 4],
+            tasksCompleted: 2 + (i % 3),
+            tasksTotal: 3 + (i % 2),
+            note: 'Made great progress on my morning routine. Woke up at 6 AM and completed workout.',
+            createdAt: date.toISOString(),
+            updatedAt: date.toISOString(),
+          };
+        });
+        setReflections(demoReflections);
+        setEveningCheckIn({ completedAt: new Date().toISOString() } as EveningCheckIn);
+        setLoading(false);
+        setReflectionsLoading(false);
         return;
       }
 
@@ -144,7 +197,7 @@ export default function GoalPage() {
     if (isLoaded) {
       fetchData();
     }
-  }, [user, isLoaded]);
+  }, [user, isLoaded, isDemoMode]);
 
   // Calculate days left
   const daysLeft = useMemo(() => {
@@ -197,14 +250,16 @@ export default function GoalPage() {
     );
   }
 
-  if (!user) {
+  if (!user && !isDemoMode) {
     router.push('/sign-in');
     return null;
   }
 
   if (!goal) {
-    // Redirect to goal setting page when there's no goal
-    router.push('/onboarding/goal');
+    if (!isDemoMode) {
+      // Redirect to goal setting page when there's no goal
+      router.push('/onboarding/goal');
+    }
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-text-primary" />

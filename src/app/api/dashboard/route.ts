@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { isDemoRequest, withDemoMode, demoResponse } from '@/lib/demo-api';
-import { generateDemoUserProfile } from '@/lib/demo-data';
+import { generateDemoUserProfile, generateDemoSquadMembers } from '@/lib/demo-data';
 import type { Task, Habit, Program, ProgramCohort, ProgramEnrollment, Squad, SquadMember } from '@/types';
 
 /**
@@ -85,10 +85,23 @@ export async function GET(request: Request) {
         },
         habits: profile.habits.map(h => ({
           id: h.id,
-          title: h.title,
-          streak: h.streak,
-          completedDates: h.completedToday ? [today] : [],
-          isActive: true,
+          text: h.title,
+          userId: profile.id,
+          organizationId: 'demo-org',
+          frequencyType: 'daily' as const,
+          frequencyValue: 1,
+          reminder: null,
+          targetRepetitions: null,
+          progress: {
+            currentCount: h.streak,
+            completionDates: h.completedToday ? [today] : [],
+            lastCompletedDate: h.completedToday ? today : null,
+            skipDates: [],
+          },
+          archived: false,
+          status: 'active' as const,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         })),
         tasks: {
           focus: profile.todaysTasks.map(t => ({
@@ -101,29 +114,39 @@ export async function GET(request: Request) {
           backlog: [],
         },
         checkIns: {
-          morning: null,
+          morning: {
+            id: 'demo-morning-checkin',
+            userId: profile.id,
+            organizationId: 'demo-org',
+            date: today,
+            emotionalState: 'confident',
+            completedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+            createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+            updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+          },
           evening: null,
           weekly: null,
           program: { show: false, programId: null, programName: null, programDays: null },
         },
         programEnrollments: {
-          active: profile.currentProgram ? [{
-            id: 'demo-enrollment-1',
-            programId: profile.currentProgram.id,
+          active: profile.programs.map((p, i) => ({
+            id: `demo-enrollment-${i + 1}`,
+            programId: p.id,
             program: {
-              id: profile.currentProgram.id,
-              name: profile.currentProgram.name,
-              type: 'group',
-              lengthDays: profile.currentProgram.totalDays,
+              id: p.id,
+              name: p.name,
+              type: p.type,
+              lengthDays: p.totalDays,
+              coverImageUrl: p.coverImageUrl,
             },
             progress: {
-              currentDay: profile.currentProgram.currentDay,
-              totalDays: profile.currentProgram.totalDays,
-              percentComplete: profile.currentProgram.progress,
-              daysRemaining: profile.currentProgram.totalDays - profile.currentProgram.currentDay,
+              currentDay: p.currentDay,
+              totalDays: p.totalDays,
+              percentComplete: p.progress,
+              daysRemaining: p.totalDays - p.currentDay,
             },
             status: 'active',
-          }] : [],
+          })),
           upcoming: [],
         },
         squads: {
@@ -132,9 +155,27 @@ export async function GET(request: Request) {
             squad: {
               id: profile.squad.id,
               name: profile.squad.name,
-              memberCount: profile.squad.memberCount,
+              avatarUrl: profile.squad.avatarUrl || 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=200&h=200&fit=crop',
+              chatChannelId: profile.squad.chatChannelId,
+              coachId: null,
+              createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+              updatedAt: new Date().toISOString(),
             },
-            members: [],
+            members: generateDemoSquadMembers(profile.squad.id, 5).map(m => ({
+              id: m.odataId,
+              odataId: m.odataId,
+              odataUserId: m.odataUserId,
+              odataSquadId: m.odataSquadId,
+              squadId: profile.squad!.id,
+              userId: m.odataUserId,
+              name: m.name,
+              firstName: m.firstName,
+              lastName: m.lastName,
+              imageUrl: m.imageUrl,
+              roleInSquad: m.role === 'admin' ? 'admin' : 'member',
+              createdAt: m.joinedAt,
+              updatedAt: m.joinedAt,
+            })),
           } : { squad: null, members: [] },
         },
         date: today,

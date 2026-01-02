@@ -22,6 +22,8 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { scheduleEventJobs } from '@/lib/event-notifications';
 import { generateRecurringInstances } from '@/lib/event-recurrence';
+import { isDemoRequest, demoResponse } from '@/lib/demo-api';
+import { generateDemoEvents } from '@/lib/demo-data';
 import type { UnifiedEvent, EventType, EventScope, EventStatus } from '@/types';
 
 // ============================================================================
@@ -30,6 +32,13 @@ import type { UnifiedEvent, EventType, EventScope, EventStatus } from '@/types';
 
 export async function GET(request: NextRequest) {
   try {
+    // Demo mode: return demo events
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const events = generateDemoEvents();
+      return demoResponse({ events });
+    }
+    
     const { userId } = await auth();
     
     if (!userId) {

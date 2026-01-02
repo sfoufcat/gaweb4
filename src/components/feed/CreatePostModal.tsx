@@ -6,6 +6,8 @@ import { useUser } from '@clerk/nextjs';
 import { DiscardConfirmationModal } from './ConfirmationModal';
 import { RichTextEditor } from '@/components/editor';
 import { PollComposer } from '@/components/chat/PollComposer';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DEMO_USER } from '@/lib/demo-utils';
 import type { FeedPost } from '@/hooks/useFeed';
 import type { PollFormData, ChatPollState } from '@/types/poll';
 
@@ -22,8 +24,19 @@ export function CreatePostModal({
   onClose,
   onPostCreated,
 }: CreatePostModalProps) {
-  const { user } = useUser();
+  const { user: clerkUser } = useUser();
+  const { isDemoMode } = useDemoMode();
+  
+  // In demo mode, use demo user data
+  const user = isDemoMode ? {
+    id: DEMO_USER.id,
+    firstName: DEMO_USER.firstName,
+    lastName: DEMO_USER.lastName,
+    imageUrl: DEMO_USER.imageUrl,
+  } : clerkUser;
+  
   const [content, setContent] = useState<{ json: object; html: string; text: string } | null>(null);
+  const [showDemoMessage, setShowDemoMessage] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -194,6 +207,12 @@ export function CreatePostModal({
   const handleSubmit = useCallback(async () => {
     if (!hasContent || isSubmitting) return;
 
+    // Demo mode: show message instead of posting
+    if (isDemoMode) {
+      setShowDemoMessage(true);
+      return;
+    }
+
     setIsSubmitting(true);
     setErrorMessage(null);
 
@@ -239,7 +258,7 @@ export function CreatePostModal({
     } finally {
       setIsSubmitting(false);
     }
-  }, [hasContent, isSubmitting, content, images, videoUrl, attachedPoll, onPostCreated, user, resetForm, onClose]);
+  }, [hasContent, isSubmitting, isDemoMode, content, images, videoUrl, attachedPoll, onPostCreated, user, resetForm, onClose]);
 
   if (!isOpen) return null;
 
@@ -505,6 +524,48 @@ export function CreatePostModal({
         onClose={() => setShowPollComposer(false)}
         onSubmit={handlePollSubmit}
       />
+
+      {/* Demo mode message modal */}
+      {showDemoMessage && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"
+            onClick={() => setShowDemoMessage(false)}
+          />
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 pointer-events-none">
+            <div 
+              className="bg-white dark:bg-[#171b22] rounded-2xl p-6 shadow-xl max-w-sm w-full pointer-events-auto animate-modal-zoom-in"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                  <span className="text-3xl">🚫</span>
+                </div>
+                <h3 className="font-albert text-[20px] font-semibold text-text-primary mb-2">
+                  Cannot Post in Demo Mode
+                </h3>
+                <p className="font-sans text-[15px] text-text-secondary mb-6">
+                  Creating posts is not available in demo mode. Sign up to start sharing with the community!
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowDemoMessage(false)}
+                    className="flex-1 px-4 py-2.5 rounded-xl font-semibold text-[15px] bg-[#f3f1ef] dark:bg-[#262b35] text-text-primary hover:bg-[#e9e5e0] dark:hover:bg-[#2d333d] transition-colors"
+                  >
+                    Got it
+                  </button>
+                  <a
+                    href="/signup"
+                    className="flex-1 px-4 py-2.5 rounded-xl font-semibold text-[15px] bg-brand-accent text-white hover:opacity-90 transition-opacity text-center"
+                  >
+                    Sign Up
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }

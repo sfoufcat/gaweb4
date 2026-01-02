@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { updateAlignmentForToday } from '@/lib/alignment';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { withDemoMode, isDemoRequest, demoNotAvailable } from '@/lib/demo-api';
 import type { Task, CreateTaskRequest, ClerkPublicMetadata } from '@/types';
 
 /**
@@ -12,6 +13,10 @@ import type { Task, CreateTaskRequest, ClerkPublicMetadata } from '@/types';
  */
 export async function GET(request: NextRequest) {
   try {
+    // Demo mode: return demo tasks
+    const demoResponse = await withDemoMode('user-tasks');
+    if (demoResponse) return demoResponse;
+
     const { userId, sessionClaims } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -184,6 +189,12 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Demo mode: block write operations
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      return demoNotAvailable('Creating tasks');
+    }
+
     const { userId, sessionClaims } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

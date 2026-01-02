@@ -10,9 +10,39 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { requirePlanLimit, isEntitlementError, getEntitlementErrorStatus } from '@/lib/billing/server-enforcement';
 import { FieldValue } from 'firebase-admin/firestore';
+import { isDemoRequest, demoResponse, demoNotAvailable } from '@/lib/demo-api';
+import { generateDemoDiscoverContent } from '@/lib/demo-data';
 
 export async function GET() {
   try {
+    // Demo mode: return demo articles
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const content = generateDemoDiscoverContent();
+      const articles = content
+        .filter(item => item.type === 'article')
+        .map(item => ({
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          content: `<p>${item.description}</p><p>This is demo content for the article "${item.title}". In a real implementation, this would contain the full article content with rich text, images, and more.</p>`,
+          coverImageUrl: item.imageUrl,
+          author: item.author,
+          publishedAt: item.publishedAt,
+          readTime: item.readTime || 5,
+          isPublished: item.isPublished,
+          isPremium: item.isPremium,
+          organizationId: 'demo-org',
+          createdAt: item.publishedAt,
+          updatedAt: item.publishedAt,
+        }));
+      return demoResponse({ 
+        articles,
+        totalCount: articles.length,
+        organizationId: 'demo-org',
+      });
+    }
+    
     const { organizationId } = await requireCoachWithOrg();
 
     console.log(`[COACH_ORG_ARTICLES] Fetching articles for organization: ${organizationId}`);
@@ -56,6 +86,12 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    // Demo mode: block write operations
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      return demoNotAvailable('Creating articles');
+    }
+    
     const { organizationId } = await requireCoachWithOrg();
     
     // Enforce content item limit based on plan

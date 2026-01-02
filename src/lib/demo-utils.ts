@@ -60,10 +60,10 @@ export function getDemoSessionId(): string {
 export const DEMO_USER = {
   id: 'demo-coach-user',
   email: 'coach@demo.growthaddicts.com',
-  firstName: 'Demo',
+  firstName: 'Adam',
   lastName: 'Coach',
-  name: 'Demo Coach',
-  imageUrl: 'https://ui-avatars.com/api/?name=Demo+Coach&background=a07855&color=fff&size=128&bold=true',
+  name: 'Coach Adam',
+  imageUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face',
   role: 'coach' as const,
   orgRole: 'super_coach' as const,
 };
@@ -75,6 +75,6 @@ export const DEMO_ORGANIZATION = {
   id: 'demo-org',
   name: 'Demo Coaching Business',
   slug: 'demo',
-  imageUrl: 'https://ui-avatars.com/api/?name=Demo&background=a07855&color=fff&size=128&bold=true',
+  imageUrl: 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=128&h=128&fit=crop&crop=center',
 };
 

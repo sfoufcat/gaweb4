@@ -9,6 +9,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { auth } from '@clerk/nextjs/server';
 import { FieldValue } from 'firebase-admin/firestore';
+import { isDemoRequest, demoResponse, demoNotAvailable } from '@/lib/demo-api';
+import { generateDemoEvents, generateAvatarUrl } from '@/lib/demo-data';
 import type { DiscoverEvent } from '@/types/discover';
 
 export async function GET(
@@ -16,8 +18,66 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
     const { id } = await params;
+    
+    // Demo mode: return demo event
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const events = generateDemoEvents();
+      const event = events.find(e => e.id === id) || events[0];
+      
+      // Generate mock attendees
+      const mockAttendees = [
+        { userId: 'demo-attendee-1', firstName: 'Sarah', lastName: 'Miller', avatarUrl: generateAvatarUrl('Sarah Miller') },
+        { userId: 'demo-attendee-2', firstName: 'Michael', lastName: 'Chen', avatarUrl: generateAvatarUrl('Michael Chen') },
+        { userId: 'demo-attendee-3', firstName: 'Emma', lastName: 'Thompson', avatarUrl: generateAvatarUrl('Emma Thompson') },
+      ];
+      
+      return demoResponse({
+        event: {
+          id: event.id,
+          title: event.title,
+          coverImageUrl: event.coverImageUrl || 'https://images.unsplash.com/photo-1531545514256-d18697064064?w=800&h=400&fit=crop',
+          date: event.startDateTime?.split('T')[0],
+          startTime: event.startTime,
+          endTime: event.endTime,
+          timezone: 'America/New_York',
+          startDateTime: event.startDateTime,
+          endDateTime: event.endDateTime,
+          durationMinutes: event.durationMinutes,
+          meetingLink: 'https://zoom.us/demo-meeting',
+          locationType: event.locationType,
+          locationLabel: event.locationLabel,
+          shortDescription: event.description,
+          longDescription: `${event.description}\n\nJoin us for this interactive session where you'll learn practical strategies and connect with like-minded individuals. Whether you're just starting out or looking to level up, this event has something for everyone.`,
+          bulletPoints: ['Interactive Q&A session', 'Practical exercises', 'Networking opportunities'],
+          additionalInfo: {},
+          zoomLink: 'https://zoom.us/demo-meeting',
+          recordingUrl: null,
+          hostName: 'Coach Adam',
+          hostAvatarUrl: generateAvatarUrl('Coach Adam'),
+          featured: false,
+          category: 'workshop',
+          organizationId: 'demo-org',
+          attendeeIds: ['demo-attendee-1', 'demo-attendee-2', 'demo-attendee-3'],
+          maxAttendees: 50,
+          createdAt: event.startDateTime,
+          updatedAt: event.startDateTime,
+          priceInCents: 0,
+          currency: 'usd',
+          isPublic: true,
+          coachName: 'Coach Adam',
+          coachImageUrl: generateAvatarUrl('Coach Adam'),
+        },
+        updates: [],
+        attendees: mockAttendees,
+        isJoined: true,
+        totalAttendees: 12,
+        isOwned: true,
+      });
+    }
+    
+    const { userId } = await auth();
     
     const eventDoc = await adminDb.collection('events').doc(id).get();
     
@@ -199,6 +259,12 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Demo mode: block write operations
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      return demoNotAvailable('RSVP to events');
+    }
+    
     const { userId } = await auth();
     
     if (!userId) {

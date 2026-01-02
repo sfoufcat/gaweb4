@@ -22,6 +22,7 @@ import { SWRProvider } from "@/lib/swr-provider";
 import { DEFAULT_LOGO_URL, DEFAULT_THEME } from "@/types";
 import { DemoModeProvider } from "@/contexts/DemoModeContext";
 import { DemoSessionProvider } from "@/contexts/DemoSessionContext";
+import { ChatSheetProvider } from "@/contexts/ChatSheetContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -169,29 +170,31 @@ export default async function RootLayout({
               <OrganizationProvider>
                 <StreamChatProvider>
                   <StreamVideoProvider>
-                    <Suspense fallback={null}>
-                      <ConditionalSidebar layoutMode={layoutMode} />
-                    </Suspense>
-                    
-                    {/* Main Content Wrapper - Adjusted for narrower sidebar */}
-                    <Suspense fallback={null}>
-                      <ConditionalMain>
-                        <PageTransition>
-                          {children}
-                        </PageTransition>
-                      </ConditionalMain>
-                    </Suspense>
-                    
-                    {/* Global incoming call handler */}
-                    <IncomingCallHandler />
-                    
-                    {/* Sync user's timezone from browser (handles traveling users) */}
-                    <TimezoneSync />
-                    
-                    {/* Google Analytics tracking (org-specific) */}
-                    <Suspense fallback={null}>
-                      <GATracker />
-                    </Suspense>
+                    <ChatSheetProvider>
+                      <Suspense fallback={null}>
+                        <ConditionalSidebar layoutMode={layoutMode} />
+                      </Suspense>
+                      
+                      {/* Main Content Wrapper - Adjusted for narrower sidebar */}
+                      <Suspense fallback={null}>
+                        <ConditionalMain>
+                          <PageTransition>
+                            {children}
+                          </PageTransition>
+                        </ConditionalMain>
+                      </Suspense>
+                      
+                      {/* Global incoming call handler */}
+                      <IncomingCallHandler />
+                      
+                      {/* Sync user's timezone from browser (handles traveling users) */}
+                      <TimezoneSync />
+                      
+                      {/* Google Analytics tracking (org-specific) */}
+                      <Suspense fallback={null}>
+                        <GATracker />
+                      </Suspense>
+                    </ChatSheetProvider>
                   </StreamVideoProvider>
                 </StreamChatProvider>
               </OrganizationProvider>

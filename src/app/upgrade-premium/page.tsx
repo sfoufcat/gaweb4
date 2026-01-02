@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useMenuTitles } from '@/contexts/BrandingContext';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 /**
  * Upgrade to Premium Page
@@ -18,6 +19,8 @@ import { useMenuTitles } from '@/contexts/BrandingContext';
 
 export default function UpgradePremiumPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'biannual'>('monthly');
   
   // Get customizable menu titles
@@ -226,20 +229,32 @@ export default function UpgradePremiumPage() {
                 </div>
 
                 {/* CTA Button */}
-                <Link 
-                  href={`/upgrade-premium/form?plan=${selectedPlan === 'monthly' ? 'monthly' : 'sixMonth'}${redirectParam}`}
+                <button 
+                  onClick={() => {
+                    if (isDemoMode) {
+                      openSignupModal();
+                    } else {
+                      router.push(`/upgrade-premium/form?plan=${selectedPlan === 'monthly' ? 'monthly' : 'sixMonth'}${redirectParam}`);
+                    }
+                  }}
                   className="block w-full bg-gradient-to-r from-[#FF8A65] to-[#FF6B6B] hover:from-[#FF7A55] hover:to-[#FF5B5B] text-white py-4 px-6 rounded-2xl font-albert text-[17px] font-semibold transition-all duration-200 mb-4 shadow-lg shadow-[#FF6B6B]/20 text-center"
                 >
                   Upgrade to Premium
-                </Link>
+                </button>
 
                 {/* Secondary action */}
-                <Link 
-                  href={`/upgrade-premium/form?plan=${selectedPlan === 'monthly' ? 'monthly' : 'sixMonth'}${redirectParam}`}
+                <button 
+                  onClick={() => {
+                    if (isDemoMode) {
+                      openSignupModal();
+                    } else {
+                      router.push(`/upgrade-premium/form?plan=${selectedPlan === 'monthly' ? 'monthly' : 'sixMonth'}${redirectParam}`);
+                    }
+                  }}
                   className="block w-full text-text-secondary hover:text-text-primary py-3 font-albert text-[15px] transition-colors duration-200 text-center"
                 >
                   Fill in your application form
-                </Link>
+                </button>
 
                 {/* Trust badges */}
                 <div className="flex items-center justify-center gap-4 mt-6 pt-6 border-t border-[#e1ddd8] dark:border-[#262b35]">

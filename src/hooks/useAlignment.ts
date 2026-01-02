@@ -1,8 +1,9 @@
 'use client';
 
 import useSWR from 'swr';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { UserAlignment, UserAlignmentSummary, AlignmentState } from '@/types';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 const ALIGNMENT_CACHE_KEY = '/api/alignment';
 
@@ -30,8 +31,40 @@ interface UseAlignmentReturn extends AlignmentState {
  * - Background revalidation for fresh data
  */
 export function useAlignment(): UseAlignmentReturn {
+  const { isDemoMode } = useDemoMode();
+  
+  // Demo alignment data with 100% alignment and streak of 12
+  const demoAlignment = useMemo((): AlignmentResponse => ({
+    alignment: {
+      id: 'demo-alignment',
+      userId: 'demo-user',
+      organizationId: 'demo-org',
+      date: new Date().toISOString().split('T')[0],
+      didMorningCheckin: true,
+      didSetTasks: true,
+      didInteractWithSquad: true,
+      hasActiveGoal: true,
+      didEveningCheckin: true,
+      didCompleteTasks: true,
+      didCompleteHabits: true,
+      alignmentScore: 100,
+      fullyAligned: true,
+      streakOnThisDay: 12,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    summary: {
+      id: 'demo-alignment-summary',
+      userId: 'demo-user',
+      organizationId: 'demo-org',
+      currentStreak: 12,
+      lastAlignedDate: new Date().toISOString().split('T')[0],
+      updatedAt: new Date().toISOString(),
+    },
+  }), []);
+  
   const { data, error, isLoading, mutate } = useSWR<AlignmentResponse>(
-    ALIGNMENT_CACHE_KEY,
+    isDemoMode ? null : ALIGNMENT_CACHE_KEY, // Skip API call in demo mode
     async (url: string) => {
       const response = await fetch(url);
       const responseData = await response.json();
@@ -48,8 +81,8 @@ export function useAlignment(): UseAlignmentReturn {
     }
   );
 
-  const alignment = data?.alignment ?? null;
-  const summary = data?.summary ?? null;
+  const alignment = isDemoMode ? demoAlignment.alignment : (data?.alignment ?? null);
+  const summary = isDemoMode ? demoAlignment.summary : (data?.summary ?? null);
 
   // Refresh alignment from server
   const refresh = useCallback(async () => {
@@ -117,8 +150,8 @@ export function useAlignment(): UseAlignmentReturn {
   return {
     alignment,
     summary,
-    isLoading: isLoading && !data,
-    error: error?.message ?? null,
+    isLoading: isDemoMode ? false : (isLoading && !data),
+    error: isDemoMode ? null : (error?.message ?? null),
     refresh,
     updateAlignment,
   };

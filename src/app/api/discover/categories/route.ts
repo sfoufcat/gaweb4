@@ -11,9 +11,23 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { isDemoRequest, demoResponse } from '@/lib/demo-api';
 
 export async function GET() {
   try {
+    // Demo mode: return demo categories
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      return demoResponse({
+        categories: [
+          { id: 'productivity', name: 'Productivity' },
+          { id: 'mindset', name: 'Mindset' },
+          { id: 'habits', name: 'Habits' },
+          { id: 'success', name: 'Success' },
+        ],
+      });
+    }
+    
     // Get the user's organization ID
     const organizationId = await getEffectiveOrgId();
 

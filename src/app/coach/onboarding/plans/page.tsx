@@ -362,7 +362,7 @@ export default function OnboardingPlansPage() {
   const isDark = theme === 'dark';
   
   const [selectedPlan, setSelectedPlan] = useState<CoachTier>('starter');
-  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('yearly');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -563,34 +563,59 @@ export default function OnboardingPlansPage() {
           </p>
           
           {/* Billing Period Switcher */}
-          <div className="inline-flex items-center bg-[#f5f3f0] dark:bg-[#262b35] rounded-full p-1">
-            <button
-              onClick={() => setBillingPeriod('monthly')}
-              className={`relative px-5 py-2 rounded-full font-sans text-[14px] font-medium transition-all duration-200 ${
-                billingPeriod === 'monthly'
-                  ? 'bg-white dark:bg-[#1a1e26] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-              }`}
-            >
-              Monthly
-            </button>
+          <div className="inline-flex items-center bg-[#f5f3f0] dark:bg-[#262b35] rounded-full p-1 border border-[#e1ddd8]/30 dark:border-[#313746]/30">
             <button
               onClick={() => setBillingPeriod('yearly')}
-              className={`relative px-5 py-2 rounded-full font-sans text-[14px] font-medium transition-all duration-200 flex items-center gap-2 ${
-                billingPeriod === 'yearly'
-                  ? 'bg-white dark:bg-[#1a1e26] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
-                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-              }`}
+              className="relative px-5 py-2.5 rounded-full font-sans text-[14px] font-medium transition-colors duration-200"
             >
-              Annual
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors ${
+              {billingPeriod === 'yearly' && (
+                <motion.div
+                  layoutId="onboarding-billing-pill"
+                  className="absolute inset-0 bg-white dark:bg-[#1a1e26] rounded-full shadow-sm"
+                  transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
+                />
+              )}
+              <span className={`relative z-10 ${
                 billingPeriod === 'yearly'
-                  ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                  : 'bg-emerald-100/70 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-500'
+                  ? 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
               }`}>
-                SAVE 41%
+                Annual
               </span>
             </button>
+            <button
+              onClick={() => setBillingPeriod('monthly')}
+              className="relative px-5 py-2.5 rounded-full font-sans text-[14px] font-medium transition-colors duration-200"
+            >
+              {billingPeriod === 'monthly' && (
+                <motion.div
+                  layoutId="onboarding-billing-pill"
+                  className="absolute inset-0 bg-white dark:bg-[#1a1e26] rounded-full shadow-sm"
+                  transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
+                />
+              )}
+              <span className={`relative z-10 ${
+                billingPeriod === 'monthly'
+                  ? 'text-[#1a1a1a] dark:text-[#f5f5f8]'
+                  : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+              }`}>
+                Monthly
+              </span>
+            </button>
+            <AnimatePresence mode="wait">
+              {billingPeriod === 'yearly' && (
+                <motion.span
+                  key="save-badge"
+                  initial={{ opacity: 0, scale: 0.8, width: 0, marginLeft: 0, marginRight: 0 }}
+                  animate={{ opacity: 1, scale: 1, width: 'auto', marginLeft: 8, marginRight: 4 }}
+                  exit={{ opacity: 0, scale: 0.8, width: 0, marginLeft: 0, marginRight: 0 }}
+                  transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                  className="px-2.5 py-1 bg-emerald-500 text-white font-sans text-[10px] font-bold rounded-full uppercase whitespace-nowrap overflow-hidden"
+                >
+                  Save 41%
+                </motion.span>
+              )}
+            </AnimatePresence>
           </div>
         </motion.div>
 

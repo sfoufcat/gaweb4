@@ -7,6 +7,8 @@ import { Pencil, Camera, X, ChevronDown } from 'lucide-react';
 import type { Squad, UserAlignment, UserAlignmentSummary } from '@/types';
 import { AlignmentGauge } from '@/components/alignment';
 import { SquadStreakSheet } from './SquadStreakSheet';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { useChatSheet } from '@/contexts/ChatSheetContext';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,6 +60,9 @@ export function SquadHeader({
   memberCountsBySquad,
 }: SquadHeaderProps) {
   const router = useRouter();
+  const { isDemoMode } = useDemoMode();
+  const { openChatSheet } = useChatSheet();
+  const [isMobile, setIsMobile] = useState(false);
   const [showSquadSheet, setShowSquadSheet] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showSquadSwitcher, setShowSquadSwitcher] = useState(false);
@@ -71,6 +76,14 @@ export function SquadHeader({
   
   // Check if we should show the squad switcher
   const hasMultipleSquads = standaloneSquads && standaloneSquads.length > 1;
+  
+  // Detect mobile for chat sheet vs navigation
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   
   // Close switcher when clicking outside
   useEffect(() => {
@@ -214,47 +227,59 @@ export function SquadHeader({
   }), [squad.id, squad.organizationId, squadStreak]);
 
   const handleMessageClick = () => {
-    if (squad.chatChannelId) {
-      router.push(`/chat?channel=${squad.chatChannelId}`);
+    if (isMobile) {
+      // On mobile, open chat sheet slideup
+      if (isDemoMode) {
+        openChatSheet(); // Demo mode - open without specific channel
+      } else if (squad.chatChannelId) {
+        openChatSheet(squad.chatChannelId);
+      }
+    } else {
+      // On desktop, navigate to full chat page
+      if (isDemoMode) {
+        router.push('/chat');
+      } else if (squad.chatChannelId) {
+        router.push(`/chat?channel=${squad.chatChannelId}`);
+      }
     }
   };
 
   return (
     <div className="flex items-center justify-between w-full">
       {/* Left: Squad Avatar + Name */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
         {/* Squad Avatar */}
-        <div className="w-[62px] h-[62px] rounded-full overflow-hidden bg-gradient-to-br from-[#F5E6A8] to-[#EDD96C] flex items-center justify-center shadow-sm">
+        <div className="w-[50px] h-[50px] sm:w-[62px] sm:h-[62px] rounded-full overflow-hidden bg-gradient-to-br from-[#F5E6A8] to-[#EDD96C] flex items-center justify-center shadow-sm flex-shrink-0">
           {squad.avatarUrl ? (
             <Image src={squad.avatarUrl} alt={squad.name} width={62} height={62} className="w-full h-full object-cover" />
           ) : (
-            <span className="font-albert font-bold text-xl text-[#4A5D54]">
+            <span className="font-albert font-bold text-lg sm:text-xl text-[#4A5D54]">
               {squad.name[0]}
             </span>
           )}
         </div>
 
         {/* Name + Subtitle + Edit Button + Squad Switcher */}
-        <div className="relative" ref={switcherRef}>
+        <div className="relative min-w-0" ref={switcherRef}>
           <div className="flex items-center gap-1.5">
             {hasMultipleSquads ? (
               // Clickable name with dropdown for multiple squads
               <button
                 onClick={() => setShowSquadSwitcher(!showSquadSwitcher)}
-                className="flex items-center gap-1 group"
+                className="flex items-center gap-1 group min-w-0"
               >
-                <h1 className="font-albert text-[24px] font-medium text-text-primary leading-[1.3] tracking-[-1.5px]">
+                <h1 className="font-albert text-[18px] sm:text-[24px] font-medium text-text-primary leading-[1.3] tracking-[-1.5px] truncate">
                   {squad.name}
                 </h1>
                 <ChevronDown 
-                  className={`w-5 h-5 text-text-secondary dark:text-[#7d8190] transition-transform ${
+                  className={`w-4 h-4 sm:w-5 sm:h-5 text-text-secondary dark:text-[#7d8190] transition-transform flex-shrink-0 ${
                     showSquadSwitcher ? 'rotate-180' : ''
                   }`} 
                 />
               </button>
             ) : (
               // Static name for single squad
-              <h1 className="font-albert text-[24px] font-medium text-text-primary leading-[1.3] tracking-[-1.5px]">
+              <h1 className="font-albert text-[18px] sm:text-[24px] font-medium text-text-primary leading-[1.3] tracking-[-1.5px] truncate">
                 {squad.name}
               </h1>
             )}
@@ -344,16 +369,16 @@ export function SquadHeader({
       </div>
 
       {/* Right: Message Icon + Squad Streak Gauge */}
-      <div className="flex items-center gap-3">
-        {/* Message Icon - sized to match AlignmentGauge (62x62) */}
-        {squad.chatChannelId && (
+      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+        {/* Message Icon - sized to match AlignmentGauge */}
+        {(squad.chatChannelId || isDemoMode) && (
           <button
             onClick={handleMessageClick}
-            className="w-[62px] h-[62px] rounded-full bg-[#f3f1ef] dark:bg-[#1e222a] flex items-center justify-center hover:bg-[#e9e5e0] dark:hover:bg-[#262b35] transition-colors"
+            className="w-[50px] h-[50px] sm:w-[62px] sm:h-[62px] rounded-full bg-[#f3f1ef] dark:bg-[#1e222a] flex items-center justify-center hover:bg-[#e9e5e0] dark:hover:bg-[#262b35] transition-colors"
             aria-label="Open squad chat"
           >
             <svg
-              className="w-7 h-7 text-text-primary dark:text-[#f5f5f8]"
+              className="w-6 h-6 sm:w-7 sm:h-7 text-text-primary dark:text-[#f5f5f8]"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -373,6 +398,7 @@ export function SquadHeader({
           alignment={mockAlignment}
           summary={mockSummary}
           size="sm"
+          responsive
           isLoading={isStatsLoading}
           onPress={() => setShowSquadSheet(true)}
         />

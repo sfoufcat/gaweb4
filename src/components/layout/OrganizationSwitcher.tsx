@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { ChevronDown, Check, Building2, ExternalLink } from 'lucide-react';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DEMO_ORGANIZATION } from '@/lib/demo-utils';
 
 interface TenantDomain {
   organizationId: string;
@@ -30,6 +32,7 @@ export function OrganizationSwitcher({ compact = false }: OrganizationSwitcherPr
   const [tenantDomains, setTenantDomains] = useState<TenantDomain[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { isDemoMode } = useDemoMode();
   
   // Determine current tenant from URL
   const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
@@ -53,6 +56,20 @@ export function OrganizationSwitcher({ compact = false }: OrganizationSwitcherPr
   // Fetch tenant domains on mount
   useEffect(() => {
     async function fetchTenantDomains() {
+      // Demo mode: use mock tenant data
+      if (isDemoMode) {
+        setTenantDomains([{
+          organizationId: DEMO_ORGANIZATION.id,
+          name: DEMO_ORGANIZATION.name,
+          subdomain: DEMO_ORGANIZATION.slug,
+          customDomain: null,
+          imageUrl: DEMO_ORGANIZATION.imageUrl,
+          tenantUrl: 'http://demo.localhost:3000',
+        }]);
+        setIsLoading(false);
+        return;
+      }
+
       try {
         const response = await fetch('/api/user/tenant-domains');
         if (!response.ok) throw new Error('Failed to fetch tenant domains');
@@ -67,7 +84,7 @@ export function OrganizationSwitcher({ compact = false }: OrganizationSwitcherPr
     }
     
     fetchTenantDomains();
-  }, []);
+  }, [isDemoMode]);
   
   // Close dropdown when clicking outside
   useEffect(() => {

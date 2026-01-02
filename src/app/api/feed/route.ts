@@ -19,19 +19,37 @@ export async function GET(request: NextRequest) {
     if (isDemo) {
       const posts = generateDemoFeedPosts();
       return demoResponse({
-        posts: posts.map(p => ({
-          id: p.id,
-          authorId: p.authorId,
-          authorName: p.authorName,
-          authorImageUrl: p.authorImageUrl,
-          content: p.content,
-          imageUrl: p.imageUrl,
-          createdAt: p.createdAt,
-          likeCount: p.likeCount,
-          commentCount: p.commentCount,
-          isPinned: p.isPinned,
-          isLiked: false,
-        })),
+        posts: posts.map(p => {
+          // Parse authorName into firstName and lastName
+          const nameParts = p.authorName.split(' ');
+          const firstName = nameParts[0] || 'User';
+          const lastName = nameParts.slice(1).join(' ') || '';
+          
+          return {
+            id: p.id,
+            authorId: p.authorId,
+            // FeedPost interface uses 'text' for the post content
+            text: p.content,
+            // Include images array if there's an image
+            images: p.imageUrl ? [p.imageUrl] : [],
+            createdAt: p.createdAt,
+            likeCount: p.likeCount,
+            commentCount: p.commentCount,
+            repostCount: 0,
+            bookmarkCount: 0,
+            hasLiked: false,
+            hasBookmarked: false,
+            pinnedToFeed: p.isPinned,
+            // FeedPost uses 'author' object, not separate fields
+            author: {
+              id: p.authorId,
+              firstName,
+              lastName,
+              imageUrl: p.authorImageUrl,
+              name: p.authorName,
+            },
+          };
+        }),
         hasMore: false,
         nextCursor: null,
       });

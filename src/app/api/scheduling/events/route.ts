@@ -2,6 +2,61 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import type { UnifiedEvent, EventType } from '@/types';
+import { isDemoRequest, demoResponse } from '@/lib/demo-api';
+import { generateDemoCalendarEvents } from '@/lib/demo-data';
+
+/**
+ * Compute startDateTime for events that use date + startTime format (discover events)
+ * Returns ISO string or null if cannot be computed
+ */
+function computeStartDateTime(event: UnifiedEvent): string | null {
+  // If startDateTime is already set, use it
+  if (event.startDateTime) return event.startDateTime;
+  
+  // Try to compute from date + startTime (discover events format)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const eventData = event as any;
+  if (eventData.date && eventData.startTime) {
+    try {
+      // Format: date="2026-01-04", startTime="10:00"
+      // Create datetime string and parse it
+      const dateTimeStr = `${eventData.date}T${eventData.startTime}:00`;
+      const computed = new Date(dateTimeStr);
+      
+      if (!isNaN(computed.getTime())) {
+        return computed.toISOString();
+      }
+    } catch (err) {
+      console.error('[SCHEDULING_EVENTS] Error computing startDateTime:', err);
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Compute endDateTime for events that use date + endTime format
+ */
+function computeEndDateTime(event: UnifiedEvent): string | null {
+  if (event.endDateTime) return event.endDateTime;
+  
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const eventData = event as any;
+  if (eventData.date && eventData.endTime) {
+    try {
+      const dateTimeStr = `${eventData.date}T${eventData.endTime}:00`;
+      const computed = new Date(dateTimeStr);
+      
+      if (!isNaN(computed.getTime())) {
+        return computed.toISOString();
+      }
+    } catch (err) {
+      console.error('[SCHEDULING_EVENTS] Error computing endDateTime:', err);
+    }
+  }
+  
+  return null;
+}
 
 /**
  * GET /api/scheduling/events
@@ -16,6 +71,16 @@ import type { UnifiedEvent, EventType } from '@/types';
  */
 export async function GET(request: NextRequest) {
   try {
+    // Demo mode: return demo calendar events
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const { searchParams } = new URL(request.url);
+      const startDate = searchParams.get('startDate');
+      const endDate = searchParams.get('endDate');
+      const events = generateDemoCalendarEvents(startDate, endDate);
+      return demoResponse({ events });
+    }
+
     const { userId, orgId } = await auth();
     
     if (!userId) {
@@ -51,31 +116,104 @@ export async function GET(request: NextRequest) {
     const types = typesParam ? typesParam.split(',') as EventType[] : undefined;
     const statuses = statusParam ? statusParam.split(',') : ['confirmed', 'proposed', 'pending_response', 'counter_proposed'];
 
-    // Build query
-    let query = adminDb
+    // Map to track events by ID (for deduplication)
+    const eventsMap = new Map<string, UnifiedEvent>();
+
+    // Query 1: Events with startDateTime in range (scheduling events)
+    const schedulingQuery = adminDb
       .collection('events')
       .where('startDateTime', '>=', rangeStart.toISOString())
       .where('startDateTime', '<=', rangeEnd.toISOString());
 
-    // Execute query and filter in memory for complex conditions
-    const snapshot = await query.get();
+    const schedulingSnapshot = await schedulingQuery.get();
     
-    let events = snapshot.docs.map(doc => doc.data() as UnifiedEvent);
+    for (const doc of schedulingSnapshot.docs) {
+      const event = { id: doc.id, ...doc.data() } as UnifiedEvent;
+      eventsMap.set(doc.id, event);
+    }
+
+    // Query 2: Events where user is an attendee (discover events user has joined)
+    // These may not have startDateTime set, so we query by attendeeIds
+    const attendeeQuery = adminDb
+      .collection('events')
+      .where('attendeeIds', 'array-contains', userId);
+
+    const attendeeSnapshot = await attendeeQuery.get();
+    
+    for (const doc of attendeeSnapshot.docs) {
+      // Skip if already in map
+      if (eventsMap.has(doc.id)) continue;
+      
+      const event = { id: doc.id, ...doc.data() } as UnifiedEvent;
+      
+      // Compute startDateTime if not present
+      const computedStartDateTime = computeStartDateTime(event);
+      if (computedStartDateTime) {
+        event.startDateTime = computedStartDateTime;
+        
+        // Compute endDateTime as well
+        const computedEndDateTime = computeEndDateTime(event);
+        if (computedEndDateTime) {
+          event.endDateTime = computedEndDateTime;
+        }
+        
+        // Check if within date range
+        const eventStart = new Date(computedStartDateTime);
+        if (eventStart >= rangeStart && eventStart <= rangeEnd) {
+          eventsMap.set(doc.id, event);
+        }
+      }
+    }
+
+    // Query 3: Events where user is host (in case they don't have startDateTime)
+    const hostQuery = adminDb
+      .collection('events')
+      .where('hostUserId', '==', userId);
+
+    const hostSnapshot = await hostQuery.get();
+    
+    for (const doc of hostSnapshot.docs) {
+      // Skip if already in map
+      if (eventsMap.has(doc.id)) continue;
+      
+      const event = { id: doc.id, ...doc.data() } as UnifiedEvent;
+      
+      // Compute startDateTime if not present
+      const computedStartDateTime = computeStartDateTime(event);
+      if (computedStartDateTime) {
+        event.startDateTime = computedStartDateTime;
+        
+        const computedEndDateTime = computeEndDateTime(event);
+        if (computedEndDateTime) {
+          event.endDateTime = computedEndDateTime;
+        }
+        
+        // Check if within date range
+        const eventStart = new Date(computedStartDateTime);
+        if (eventStart >= rangeStart && eventStart <= rangeEnd) {
+          eventsMap.set(doc.id, event);
+        }
+      }
+    }
+
+    // Convert map to array
+    let events = Array.from(eventsMap.values());
 
     // Filter by organization if in org context
     if (orgId) {
       events = events.filter(e => e.organizationId === orgId);
     }
 
-    // Filter by user participation
+    // Filter by user participation based on role
     events = events.filter(e => {
+      const attendeeIds = e.attendeeIds || [];
       if (roleParam === 'host') {
         return e.hostUserId === userId;
       } else if (roleParam === 'attendee') {
-        return e.attendeeIds.includes(userId) && e.hostUserId !== userId;
+        return attendeeIds.includes(userId) && e.hostUserId !== userId;
       } else {
         // 'all' - user is either host or attendee
-        return e.hostUserId === userId || e.attendeeIds.includes(userId);
+        return e.hostUserId === userId || attendeeIds.includes(userId);
       }
     });
 
@@ -84,20 +222,26 @@ export async function GET(request: NextRequest) {
       events = events.filter(e => types.includes(e.eventType));
     }
 
-    // Filter by status
+    // Filter by status - include discover events that don't have schedulingStatus
     if (statuses.length > 0) {
       events = events.filter(e => {
         // Check both schedulingStatus and regular status
         const schedulingMatch = e.schedulingStatus && statuses.includes(e.schedulingStatus);
-        const statusMatch = statuses.includes(e.status);
-        return schedulingMatch || statusMatch;
+        const statusMatch = e.status && statuses.includes(e.status);
+        
+        // Also include events without explicit status (discover events default to "confirmed")
+        const isDiscoverEvent = !e.schedulingStatus && !e.status;
+        
+        return schedulingMatch || statusMatch || isDiscoverEvent;
       });
     }
 
     // Sort by start time
-    events.sort((a, b) => 
-      new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime()
-    );
+    events.sort((a, b) => {
+      const aTime = a.startDateTime ? new Date(a.startDateTime).getTime() : 0;
+      const bTime = b.startDateTime ? new Date(b.startDateTime).getTime() : 0;
+      return aTime - bTime;
+    });
 
     return NextResponse.json({
       events,

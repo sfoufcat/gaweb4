@@ -561,13 +561,10 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     requestHeaders.set('x-demo-mode', 'true');
     requestHeaders.set('x-layout-mode', 'with-sidebar');
     
-    // For demo site, redirect root to /coach
-    if (pathname === '/') {
-      return NextResponse.redirect(new URL('/coach', request.url));
-    }
-    
     // Allow access to coach dashboard and related routes without auth
+    // Note: Root '/' now shows the user dashboard (DashboardPage)
     const allowedDemoRoutes = [
+      '/',      // User dashboard (homepage)
       '/coach',
       '/api/coach',  // Allow coach API routes (they'll return demo data)
       '/_next',
@@ -591,6 +588,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
       '/api/goals',     // For goals
       '/api/branding',  // For branding/theming
       '/api/edge-config', // For tenant config
+      '/api/events',    // For calendar events
     ];
 
     // Allow image extensions
@@ -599,13 +597,47 @@ export const proxy = clerkMiddleware(async (auth, request) => {
     const isAllowedDemoRoute = allowedDemoRoutes.some(route => pathname.startsWith(route)) || isImageRequest;
     
     if (isAllowedDemoRoute) {
-      return NextResponse.next({
+      const response = NextResponse.next({
         request: { headers: requestHeaders }
       });
+      
+      // Set demo tenant cookie so branding context gets demo-friendly values
+      const demoBrandingData = {
+        logoUrl: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af',
+        horizontalLogoUrl: null,
+        appTitle: 'Growth Addicts',
+        colors: {
+          accentLight: '#a07855',
+          accentDark: '#b8896a',
+        },
+        menuTitles: {},
+        menuIcons: {},
+        menuOrder: ['home', 'program', 'squad', 'feed', 'learn', 'chat', 'coach'],
+      };
+      const demoTenantCookie = {
+        orgId: 'demo-org',
+        subdomain: 'demo',
+        branding: demoBrandingData,
+        feedEnabled: true, // Enable feed for demo
+        coachingPromo: undefined,
+        programEmptyStateBehavior: 'discover',
+        squadEmptyStateBehavior: 'discover',
+        updatedAt: new Date().toISOString(),
+      };
+      
+      response.cookies.set('ga_tenant_context', JSON.stringify(demoTenantCookie), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24, // 24 hours
+      });
+      
+      return response;
     }
     
-    // For any other routes on demo site, redirect to /coach
-    return NextResponse.redirect(new URL('/coach', request.url));
+    // For any other routes on demo site, redirect to homepage
+    return NextResponse.redirect(new URL('/', request.url));
   }
   
   // ==========================================================================

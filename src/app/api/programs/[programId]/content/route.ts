@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { isDemoRequest, demoResponse } from '@/lib/demo-api';
 import type { DiscoverCourse, DiscoverArticle, DiscoverEvent } from '@/types/discover';
 
 /**
@@ -15,8 +16,137 @@ export async function GET(
   { params }: { params: Promise<{ programId: string }> }
 ) {
   try {
-    const { userId } = await auth();
     const { programId } = await params;
+
+    // Demo mode: return demo program content (different from Discover)
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      // Different articles than Discover
+      const demoArticles = [
+        {
+          id: 'demo-prog-article-1',
+          organizationId: 'demo-org',
+          title: 'Your 30-Day Transformation Roadmap',
+          content: '<p>A complete guide to maximizing your transformation journey.</p>',
+          coverImageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=400&fit=crop',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=200&fit=crop',
+          authorName: 'Coach Adam',
+          isPublished: true,
+          articleType: 'guide',
+          readingTimeMinutes: 12,
+          publishedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+        {
+          id: 'demo-prog-article-2',
+          organizationId: 'demo-org',
+          title: 'Building Momentum in Week 2',
+          content: '<p>How to keep your progress going strong in the second week.</p>',
+          coverImageUrl: 'https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=800&h=400&fit=crop',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=400&h=200&fit=crop',
+          authorName: 'Coach Adam',
+          isPublished: true,
+          articleType: 'insight',
+          readingTimeMinutes: 7,
+          publishedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+        {
+          id: 'demo-prog-article-3',
+          organizationId: 'demo-org',
+          title: 'Overcoming Plateaus',
+          content: '<p>Strategies for breaking through when progress stalls.</p>',
+          coverImageUrl: 'https://images.unsplash.com/photo-1551632811-561732d1e306?w=800&h=400&fit=crop',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1551632811-561732d1e306?w=400&h=200&fit=crop',
+          authorName: 'Coach Adam',
+          isPublished: true,
+          articleType: 'insight',
+          readingTimeMinutes: 5,
+          publishedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+      ];
+
+      // Different courses than Discover
+      const demoCourses = [
+        {
+          id: 'demo-prog-course-1',
+          organizationId: 'demo-org',
+          title: 'Foundation Essentials',
+          shortDescription: 'Master the basics that make transformation possible.',
+          longDescription: 'A comprehensive course on the fundamental principles of lasting change.',
+          coverImageUrl: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&h=400&fit=crop',
+          category: 'Fundamentals',
+          level: 'Beginner',
+          isPublished: true,
+          totalLessons: 6,
+          totalDurationMinutes: 90,
+        },
+        {
+          id: 'demo-prog-course-2',
+          organizationId: 'demo-org',
+          title: 'Advanced Mindset Techniques',
+          shortDescription: 'Unlock your mental potential with proven strategies.',
+          longDescription: 'Deep dive into advanced cognitive techniques for peak performance.',
+          coverImageUrl: 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800&h=400&fit=crop',
+          category: 'Mindset',
+          level: 'Advanced',
+          isPublished: true,
+          totalLessons: 8,
+          totalDurationMinutes: 120,
+        },
+      ];
+
+      // Program-specific events
+      const demoEvents = [
+        {
+          id: 'demo-prog-event-1',
+          organizationId: 'demo-org',
+          title: 'Week 2 Group Coaching Call',
+          shortDescription: 'Live Q&A and progress review with Coach Adam',
+          date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+          startTime: '14:00',
+          endTime: '15:00',
+          coverImageUrl: 'https://images.unsplash.com/photo-1543269865-cbf427effbad?w=800&h=400&fit=crop',
+          hostName: 'Coach Adam',
+        },
+      ];
+
+      // Demo program days for 3-day focus
+      const demoDays = [
+        {
+          dayIndex: 12,
+          tasks: [
+            { id: 'task-1', title: 'Complete morning reflection', type: 'task', isPrimary: true },
+            { id: 'task-2', title: 'Watch: Building Consistency', type: 'learning', isPrimary: false },
+            { id: 'task-3', title: 'Journal your wins', type: 'task', isPrimary: false },
+          ],
+        },
+        {
+          dayIndex: 13,
+          tasks: [
+            { id: 'task-4', title: 'Energy audit exercise', type: 'task', isPrimary: true },
+            { id: 'task-5', title: 'Read: Time Management Tips', type: 'learning', isPrimary: false },
+          ],
+        },
+        {
+          dayIndex: 14,
+          tasks: [
+            { id: 'task-6', title: 'Weekly planning session', type: 'task', isPrimary: true },
+            { id: 'task-7', title: 'Connect with squad member', type: 'task', isPrimary: false },
+          ],
+        },
+      ];
+
+      return demoResponse({
+        success: true,
+        courses: demoCourses,
+        articles: demoArticles,
+        events: demoEvents,
+        links: [],
+        downloads: [],
+        days: demoDays,
+      });
+    }
+
+    const { userId } = await auth();
 
     console.log(`[PROGRAM_CONTENT] Fetching content for program: ${programId}, user: ${userId}`);
 

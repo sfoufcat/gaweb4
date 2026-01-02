@@ -20,11 +20,29 @@ import { PostDetailModal } from '@/components/feed/PostDetailModal';
 import { StoryPlayerWrapper } from '@/components/feed/StoryPlayerWrapper';
 import { PostSettingsModal } from '@/components/feed/PostSettingsModal';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DEMO_USER } from '@/lib/demo-utils';
+import { DemoSignupModal } from '@/components/demo/DemoSignupModal';
 import type { UserRole, OrgRole } from '@/types';
 
 export default function FeedPage() {
-  const { user } = useUser();
+  const { user: clerkUser } = useUser();
   const { sessionClaims } = useAuth();
+  const { isDemoMode } = useDemoMode();
+  
+  // In demo mode, use mock user data
+  const user = useMemo(() => {
+    if (isDemoMode) {
+      return {
+        id: DEMO_USER.id,
+        firstName: DEMO_USER.firstName,
+        lastName: DEMO_USER.lastName,
+        imageUrl: DEMO_USER.imageUrl,
+        emailAddresses: [{ emailAddress: DEMO_USER.email }],
+      };
+    }
+    return clerkUser;
+  }, [isDemoMode, clerkUser]);
   const searchParams = useSearchParams();
   const router = useRouter();
   const postId = searchParams.get('post');
@@ -74,12 +92,22 @@ export default function FeedPage() {
 
   const [showCreatePostModal, setShowCreatePostModal] = useState(false);
   const [showCreateStoryModal, setShowCreateStoryModal] = useState(false);
+  const [showDemoPostModal, setShowDemoPostModal] = useState(false);
   const [editingPost, setEditingPost] = useState<FeedPost | null>(null);
   const [settingsPost, setSettingsPost] = useState<FeedPost | null>(null);
   const [selectedPostForShare, setSelectedPostForShare] = useState<string | null>(null);
   const [selectedPostForReport, setSelectedPostForReport] = useState<string | null>(null);
   const [selectedPostForView, setSelectedPostForView] = useState<string | null>(null);
   const [selectedStoryStartIndex, setSelectedStoryStartIndex] = useState<number | null>(null);
+  
+  // Handler for creating post - shows demo modal in demo mode
+  const handleCreatePost = useCallback(() => {
+    if (isDemoMode) {
+      setShowDemoPostModal(true);
+      return;
+    }
+    setShowCreatePostModal(true);
+  }, [isDemoMode]);
 
   const accentColor = colors.accentLight || 'var(--brand-accent-light)';
 
@@ -266,9 +294,9 @@ export default function FeedPage() {
 
       {/* Main Content with Sidebar */}
       <section className="px-4 py-4">
-        <div className="flex gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
           {/* Left: Main Feed */}
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0">
             {postId ? (
               // Single Post View
               <div className="space-y-4">
@@ -335,7 +363,7 @@ export default function FeedPage() {
                     onReport={handleReport}
                     onCommentAdded={incrementCommentCount}
                     onCommentDeleted={decrementCommentCount}
-                    onCreatePost={() => setShowCreatePostModal(true)}
+                    onCreatePost={handleCreatePost}
                     onOpenSettings={handleOpenSettings}
                   />
                 ) : null}
@@ -355,6 +383,7 @@ export default function FeedPage() {
                           width={40}
                           height={40}
                           className="w-full h-full object-cover"
+                          unoptimized
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-sm font-semibold text-[#5f5a55] dark:text-[#b5b0ab]">
@@ -365,7 +394,7 @@ export default function FeedPage() {
 
                     {/* Input placeholder button */}
                     <button
-                      onClick={() => setShowCreatePostModal(true)}
+                      onClick={handleCreatePost}
                       className="flex-1 text-left px-4 py-2.5 rounded-full bg-[#f5f3f0] dark:bg-[#1a1f2a] text-[15px] text-text-secondary hover:bg-[#ebe7e2] dark:hover:bg-[#262b35] transition-colors"
                     >
                       What&apos;s on your mind?
@@ -373,7 +402,7 @@ export default function FeedPage() {
 
                     {/* Quick image button */}
                     <button
-                      onClick={() => setShowCreatePostModal(true)}
+                      onClick={handleCreatePost}
                       className="p-2.5 rounded-full hover:bg-[#f5f3f0] dark:hover:bg-[#262b35] transition-colors"
                     >
                       <svg className="w-5 h-5 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -401,7 +430,7 @@ export default function FeedPage() {
                     onReport={handleReport}
                     onCommentAdded={incrementCommentCount}
                     onCommentDeleted={decrementCommentCount}
-                    onCreatePost={() => setShowCreatePostModal(true)}
+                    onCreatePost={handleCreatePost}
                     onOpenSettings={handleOpenSettings}
                   />
                 </div>
@@ -416,7 +445,7 @@ export default function FeedPage() {
 
       {/* Floating create button (mobile) */}
       <button
-        onClick={() => setShowCreatePostModal(true)}
+        onClick={handleCreatePost}
         className="fixed bottom-24 right-4 lg:hidden w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
         style={{ backgroundColor: accentColor }}
       >
@@ -501,6 +530,19 @@ export default function FeedPage() {
           currentUser={currentUserInfo}
         />
       )}
+      
+      {/* Demo signup modal for post creation */}
+      <DemoSignupModal
+        isOpen={showDemoPostModal}
+        onClose={() => setShowDemoPostModal(false)}
+        action="create posts"
+        featureHighlights={[
+          'Share updates with your community',
+          'Post images and videos',
+          'Build accountability with peers',
+          'Get support from your coach',
+        ]}
+      />
     </div>
   );
 }

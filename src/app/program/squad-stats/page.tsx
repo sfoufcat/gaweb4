@@ -11,6 +11,8 @@ import { useSquad } from '@/hooks/useSquad';
 import { SquadStats } from '@/components/squad/SquadStats';
 import { SquadStreakSheet } from '@/components/squad/SquadStreakSheet';
 import { useMenuTitles } from '@/contexts/BrandingContext';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DEMO_USER } from '@/lib/demo-utils';
 
 /**
  * Squad Stats Screen
@@ -29,10 +31,24 @@ import { useMenuTitles } from '@/contexts/BrandingContext';
  * - programId: program context for back navigation
  */
 export default function SquadStatsPage() {
-  const { user, isLoaded: userLoaded } = useUser();
+  const { user: clerkUser, isLoaded: userLoaded } = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { squad: squadTitle, squadLower } = useMenuTitles();
+  const { isDemoMode } = useDemoMode();
+  
+  // In demo mode, use mock user data
+  const user = useMemo(() => {
+    if (isDemoMode) {
+      return {
+        id: DEMO_USER.id,
+        firstName: DEMO_USER.firstName,
+        lastName: DEMO_USER.lastName,
+        imageUrl: DEMO_USER.imageUrl,
+      };
+    }
+    return clerkUser;
+  }, [isDemoMode, clerkUser]);
   
   // Get URL params for context
   const squadIdParam = searchParams.get('squadId');
@@ -82,10 +98,11 @@ export default function SquadStatsPage() {
   
   // Load stats data when component mounts
   useEffect(() => {
-    if (mounted && userLoaded && user) {
+    // In demo mode, skip waiting for Clerk user to load
+    if (mounted && (isDemoMode || (userLoaded && user))) {
       fetchStatsTabData();
     }
-  }, [mounted, userLoaded, user, fetchStatsTabData]);
+  }, [mounted, isDemoMode, userLoaded, user, fetchStatsTabData]);
   
   // Handle back navigation with proper context
   const handleBack = useCallback(() => {
@@ -98,8 +115,8 @@ export default function SquadStatsPage() {
     }
   }, [router, programIdParam]);
   
-  // Loading state
-  if (!mounted || !userLoaded || isLoading) {
+  // Loading state - in demo mode, skip waiting for Clerk user
+  if (!mounted || (!isDemoMode && !userLoaded) || isLoading) {
     return <SquadStatsLoading />;
   }
   

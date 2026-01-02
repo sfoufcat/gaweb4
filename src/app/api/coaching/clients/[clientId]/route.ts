@@ -4,6 +4,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { resolveActivity } from '@/lib/analytics/activity';
+import { isDemoRequest, demoResponse, demoNotAvailable } from '@/lib/demo-api';
+import { generateDemoClients, generateDemoUserProfile } from '@/lib/demo-data';
 import type { 
   ClientCoachingData, 
   UserRole, 
@@ -112,6 +114,148 @@ export async function GET(
 ) {
   try {
     const { clientId } = await params;
+    
+    // Demo mode: return demo client data
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const { clients } = generateDemoClients(18);
+      // Client ID format: "demo-org_demo-user-X", extract the userId part
+      const extractedUserId = clientId.includes('_') ? clientId.split('_').pop() : clientId;
+      const demoClient = clients.find(c => c.userId === extractedUserId) || clients[0];
+      
+      // Generate comprehensive demo data for this client
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      
+      // Demo tasks for last 7 days
+      const demoTasks = Array.from({ length: 20 }, (_, i) => {
+        const date = new Date(now.getTime() - (i % 7) * 24 * 60 * 60 * 1000);
+        return {
+          id: `demo-task-${i}`,
+          title: ['Complete morning reflection', 'Watch training video', 'Journal exercise', 'Practice new skill', 'Community check-in'][i % 5],
+          status: i < 12 ? 'completed' : 'pending',
+          listType: 'focus',
+          date: date.toISOString().split('T')[0],
+          completedAt: i < 12 ? date.toISOString() : undefined,
+          createdAt: date.toISOString(),
+        };
+      });
+      
+      // Demo habits
+      const demoHabits = [
+        { id: 'demo-habit-1', text: 'Morning Meditation', frequencyType: 'daily', frequencyValue: 1, progress: { currentCount: 8, lastCompletedDate: now.toISOString().split('T')[0], completionDates: [] }, createdAt: thirtyDaysAgo.toISOString() },
+        { id: 'demo-habit-2', text: 'Exercise', frequencyType: 'daily', frequencyValue: 1, progress: { currentCount: 5, lastCompletedDate: now.toISOString().split('T')[0], completionDates: [] }, createdAt: thirtyDaysAgo.toISOString() },
+        { id: 'demo-habit-3', text: 'Read 30 minutes', frequencyType: 'daily', frequencyValue: 1, progress: { currentCount: 12, lastCompletedDate: now.toISOString().split('T')[0], completionDates: [] }, createdAt: thirtyDaysAgo.toISOString() },
+      ];
+      
+      // Demo check-ins
+      const demoMorningCheckins = Array.from({ length: 14 }, (_, i) => {
+        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        return {
+          id: `demo-morning-${i}`,
+          date: date.toISOString().split('T')[0],
+          emotionalState: ['excited', 'focused', 'calm', 'motivated', 'energized'][i % 5],
+          userThought: 'Looking forward to making progress today!',
+          completedAt: date.toISOString(),
+        };
+      });
+      
+      const demoEveningCheckins = Array.from({ length: 14 }, (_, i) => {
+        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        return {
+          id: `demo-evening-${i}`,
+          date: date.toISOString().split('T')[0],
+          emotionalState: ['accomplished', 'grateful', 'satisfied', 'content'][i % 4],
+          tasksCompleted: 2 + (i % 3),
+          tasksTotal: 3 + (i % 2),
+          completedAt: date.toISOString(),
+        };
+      });
+      
+      const demoWeeklyCheckins = Array.from({ length: 4 }, (_, i) => {
+        const date = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000);
+        return {
+          id: `demo-weekly-${i}`,
+          date: date.toISOString().split('T')[0],
+          onTrackStatus: i === 0 ? 'on_track' : ['on_track', 'slightly_behind', 'ahead'][i % 3],
+          progress: 45 + i * 10,
+          previousProgress: 35 + i * 10,
+          whatWentWell: 'Made good progress on daily habits',
+          nextWeekPlan: 'Focus on consistency and deep work',
+          completedAt: date.toISOString(),
+        };
+      });
+      
+      // Demo program enrollment
+      const demoProgramEnrollments = demoClient.programId ? [{
+        id: 'demo-enrollment-1',
+        programId: demoClient.programId,
+        programName: demoClient.programName || '30-Day Transformation',
+        status: 'active',
+        progress: 40,
+        startedAt: thirtyDaysAgo.toISOString(),
+      }] : [];
+      
+      return demoResponse({
+        data: {
+          id: `demo-org_${clientId}`,
+          userId: clientId,
+          organizationId: 'demo-org',
+          coachId: 'demo-coach',
+          focusAreas: ['Goal Setting', 'Habit Building', 'Time Management'],
+          actionItems: [
+            { id: 'action-1', text: 'Complete morning routine checklist', completed: true, createdAt: thirtyDaysAgo.toISOString() },
+            { id: 'action-2', text: 'Schedule weekly review', completed: false, createdAt: thirtyDaysAgo.toISOString() },
+          ],
+          resources: [
+            { id: 'resource-1', title: 'Morning Routine Guide', url: '#', createdAt: thirtyDaysAgo.toISOString() },
+          ],
+          privateNotes: [],
+          sessionHistory: [
+            { id: 'session-1', date: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], title: 'Initial Strategy Session', summary: 'Discussed goals and created action plan.', takeaways: ['Set clear daily priorities', 'Build keystone habits'], createdAt: thirtyDaysAgo.toISOString(), updatedAt: thirtyDaysAgo.toISOString() },
+          ],
+          nextCall: null,
+          createdAt: thirtyDaysAgo.toISOString(),
+          updatedAt: now.toISOString(),
+        },
+        user: {
+          id: clientId,
+          firstName: demoClient.name.split(' ')[0],
+          lastName: demoClient.name.split(' ').slice(1).join(' '),
+          email: demoClient.email,
+          imageUrl: demoClient.avatarUrl,
+          avatarUrl: demoClient.avatarUrl,
+          goal: 'Build consistent habits and achieve my goals',
+          goalProgress: 45, // Number, not object
+          tier: 'standard',
+          coachingStatus: 'active',
+          coaching: true,
+        },
+        coach: {
+          id: 'demo-coach',
+          userId: 'demo-coach-user',
+          name: 'Coach Adam',
+          email: 'coach@demo.growthaddicts.com',
+          imageUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face',
+        },
+        tasks: demoTasks,
+        habits: demoHabits,
+        morningCheckins: demoMorningCheckins,
+        eveningCheckins: demoEveningCheckins,
+        weeklyCheckins: demoWeeklyCheckins,
+        programEnrollments: demoProgramEnrollments,
+        activityScore: {
+          status: demoClient.status,
+          atRisk: demoClient.atRisk,
+          lastActivityAt: demoClient.lastActivityAt,
+          daysActiveInPeriod: demoClient.daysActiveInPeriod,
+          primarySignal: demoClient.primarySignal,
+        },
+        coachNotes: 'Great progress this week! Client is showing strong commitment to their morning routine.',
+        streak: 8,
+      });
+    }
+    
     const { userId, sessionClaims } = await auth();
     const { searchParams } = new URL(request.url);
     const isComprehensive = searchParams.get('comprehensive') === 'true';
@@ -494,6 +638,12 @@ export async function PATCH(
   { params }: { params: Promise<{ clientId: string }> }
 ) {
   try {
+    // Demo mode: block write operations
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      return demoNotAvailable('Updating client data');
+    }
+    
     const { clientId } = await params;
     const { userId, sessionClaims } = await auth();
 

@@ -48,6 +48,7 @@ import { LimitReachedModal, useLimitCheck } from '@/components/coach';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
 import { generateDemoFunnels } from '@/lib/demo-data';
+import { DemoSignupModal, useDemoSignupModal } from '@/components/demo/DemoSignupModal';
 
 type ViewMode = 'list' | 'editing';
 
@@ -78,6 +79,7 @@ const CONTENT_TYPE_OPTIONS: { value: FunnelContentType; label: string; icon: Rea
 export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   const { isDemoMode } = useDemoMode();
   const demoSession = useDemoSession();
+  const { isOpen: isSignupModalOpen, action: signupModalAction, showModal: showSignupModal, hideModal: hideSignupModal } = useDemoSignupModal();
   
   const [funnels, setFunnels] = useState<Funnel[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -291,6 +293,10 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   }, [activeTab, selectedContentType, fetchContentItems]);
 
   const handleToggleActive = async (funnel: Funnel) => {
+    if (isDemoMode) {
+      showSignupModal('toggle funnel status');
+      return;
+    }
     try {
       const response = await fetch(`/api/coach/org-funnels/${funnel.id}`, {
         method: 'PUT',
@@ -305,6 +311,10 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   };
 
   const handleSetDefault = async (funnel: Funnel) => {
+    if (isDemoMode) {
+      showSignupModal('set default funnel');
+      return;
+    }
     try {
       const response = await fetch(`/api/coach/org-funnels/${funnel.id}`, {
         method: 'PUT',
@@ -319,6 +329,10 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   };
 
   const handleDelete = (funnel: Funnel) => {
+    if (isDemoMode) {
+      showSignupModal('delete funnel');
+      return;
+    }
     setFunnelToDelete(funnel);
   };
 
@@ -348,11 +362,19 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   };
 
   const handleEditDetails = (funnel: Funnel) => {
+    if (isDemoMode) {
+      showSignupModal('edit funnel');
+      return;
+    }
     setFunnelToEdit(funnel);
     setShowEditDialog(true);
   };
 
   const handleEditSteps = (funnel: Funnel) => {
+    if (isDemoMode) {
+      showSignupModal('edit funnel steps');
+      return;
+    }
     setEditingFunnelId(funnel.id);
     setViewMode('editing');
   };
@@ -527,22 +549,24 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
             Create and manage user acquisition funnels
           </p>
         </div>
-        {!isDemoMode && (
-          <button
-            onClick={() => {
-              // Check funnel limit per target before opening modal
-              if (checkLimit('max_funnels_per_target', displayFunnels.length)) {
-                showLimitModal('max_funnels_per_target', displayFunnels.length);
-                return;
-              }
-              setShowCreateDialog(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            New Funnel
-          </button>
-        )}
+        <button
+          onClick={() => {
+            if (isDemoMode) {
+              showSignupModal('create funnels');
+              return;
+            }
+            // Check funnel limit per target before opening modal
+            if (checkLimit('max_funnels_per_target', displayFunnels.length)) {
+              showLimitModal('max_funnels_per_target', displayFunnels.length);
+              return;
+            }
+            setShowCreateDialog(true);
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          New Funnel
+        </button>
       </div>
 
       {/* Target Type Tabs */}
@@ -928,6 +952,13 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
 
       {/* Limit Reached Modal */}
       <LimitReachedModal {...modalProps} />
+
+      {/* Demo Signup Modal */}
+      <DemoSignupModal
+        isOpen={isSignupModalOpen}
+        onClose={hideSignupModal}
+        action={signupModalAction}
+      />
     </div>
   );
 }

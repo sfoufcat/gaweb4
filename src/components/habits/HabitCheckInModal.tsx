@@ -29,10 +29,10 @@ export function HabitCheckInModal({ habit, isOpen, onClose, onComplete, onSkip }
       />
       
       {/* Modal Container - Bottom sheet on mobile, centered card on desktop */}
-      <div className="relative w-full max-w-[500px] md:mx-4 bg-white rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-300">
+      <div className="relative w-full max-w-[500px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-300">
         {/* Grabber - Only on mobile */}
         <div className="flex justify-center pt-3 pb-2 md:hidden">
-          <div className="w-9 h-1 bg-gray-300 rounded-full" />
+          <div className="w-9 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
         </div>
         
         {/* Close button - Desktop only */}
@@ -56,7 +56,7 @@ export function HabitCheckInModal({ habit, isOpen, onClose, onComplete, onSkip }
           </p>
           
           {/* Habit Card */}
-          <div className="bg-[#f3f1ef] rounded-[20px] p-4 flex items-center justify-between">
+          <div className="bg-[#f3f1ef] dark:bg-[#1a1f28] rounded-[20px] p-4 flex items-center justify-between">
             <p className="font-albert text-[16px] md:text-[18px] font-semibold tracking-[-1px] text-text-primary">
               {habit.text}
             </p>
@@ -76,7 +76,7 @@ export function HabitCheckInModal({ habit, isOpen, onClose, onComplete, onSkip }
         <div className="flex gap-3 px-6 pb-6 md:pb-8 pt-2">
           <button
             onClick={onSkip}
-            className="flex-1 py-3 md:py-4 px-4 rounded-full bg-white text-text-primary border border-[#d7d2cc]/50 font-sans font-bold text-[14px] md:text-[16px] tracking-[-0.5px] leading-[1.4] hover:bg-[#f3f1ef] transition-colors"
+            className="flex-1 py-3 md:py-4 px-4 rounded-full bg-white dark:bg-[#1a1f28] text-text-primary border border-[#d7d2cc]/50 dark:border-[#3a3f48] font-sans font-bold text-[14px] md:text-[16px] tracking-[-0.5px] leading-[1.4] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
           >
             Skip for today
           </button>

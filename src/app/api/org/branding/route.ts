@@ -5,6 +5,9 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg, TenantRequiredError } from '@/lib/admin-utils-clerk';
 import { syncTenantToEdgeConfig, setTenantByCustomDomain, buildTenantConfigData, type TenantBrandingData, type TenantSubscriptionData } from '@/lib/tenant-edge-config';
 import { regenerateDefaultLogo } from '@/lib/logo-generator';
+import { isDemoRequest, demoResponse, demoNotAvailable } from '@/lib/demo-api';
+import { generateDemoBranding } from '@/lib/demo-data';
+import { DEFAULT_MENU_ORDER as DEMO_MENU_ORDER, DEFAULT_MENU_TITLES as DEMO_MENU_TITLES, DEFAULT_MENU_ICONS as DEMO_MENU_ICONS } from '@/types';
 import type { OrgCustomDomain, LogoSource, MenuItemKey } from '@/types';
 import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgDefaultTheme, UserRole } from '@/types';
 import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_THEME } from '@/types';
@@ -49,6 +52,32 @@ interface TenantCookieData {
  */
 export async function GET(request: Request) {
   try {
+    // Demo mode: return demo branding
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const demoBrandingData = generateDemoBranding();
+      const now = new Date().toISOString();
+      return demoResponse({
+        branding: {
+          id: 'demo-branding',
+          organizationId: 'demo-org',
+          logoUrl: demoBrandingData.logoUrl,
+          logoUrlDark: null,
+          horizontalLogoUrl: demoBrandingData.horizontalLogoUrl || null,
+          horizontalLogoUrlDark: null,
+          appTitle: demoBrandingData.appTitle,
+          colors: demoBrandingData.colors,
+          menuTitles: DEMO_MENU_TITLES,
+          menuIcons: DEMO_MENU_ICONS,
+          menuOrder: DEMO_MENU_ORDER,
+          defaultTheme: 'system' as OrgDefaultTheme,
+          createdAt: now,
+          updatedAt: now,
+        },
+        isDefault: false,
+      });
+    }
+    
     // Parse query params
     const { searchParams } = new URL(request.url);
     const requestedOrgId = searchParams.get('orgId');
@@ -121,6 +150,12 @@ export async function GET(request: Request) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Demo mode: block write operations
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      return demoNotAvailable('Updating branding settings');
+    }
+    
     // Use requireCoachWithOrg which enforces tenant mode
     // Super admins are exempted and can access from platform domain
     let organizationId: string;

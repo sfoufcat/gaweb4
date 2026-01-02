@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { Calendar, MessageCircle, Download, Pencil, Check, X, Users } from 'lucide-react';
 import type { Squad, UnifiedEvent, EventVote } from '@/types';
 import { CallSuggestionModal } from './CallSuggestionModal';
+import { useChatSheet } from '@/contexts/ChatSheetContext';
 
 /**
  * StandardSquadCallCard Component
@@ -78,10 +79,20 @@ function getUserTimezone(): string {
 
 export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCallCardProps) {
   const router = useRouter();
+  const { openChatSheet } = useChatSheet();
   const [showSuggestModal, setShowSuggestModal] = useState(false);
   const [isVoting, setIsVoting] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const userTimezone = getUserTimezone();
+  
+  // Detect mobile for chat sheet vs navigation
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Fetch squad events using unified events API
   const { data, error, isLoading, mutate } = useSWR<EventDataResponse>(
@@ -176,7 +187,13 @@ export function StandardSquadCallCard({ squad, onCallUpdated }: StandardSquadCal
 
   const handleGoToChat = () => {
     if (squad.chatChannelId) {
-      router.push(`/chat?channel=${squad.chatChannelId}`);
+      if (isMobile) {
+        // On mobile, open chat sheet slideup
+        openChatSheet(squad.chatChannelId);
+      } else {
+        // On desktop, navigate to full chat page
+        router.push(`/chat?channel=${squad.chatChannelId}`);
+      }
     }
   };
 

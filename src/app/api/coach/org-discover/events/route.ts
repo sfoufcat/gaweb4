@@ -10,9 +10,34 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { requirePlanLimit, isEntitlementError, getEntitlementErrorStatus } from '@/lib/billing/server-enforcement';
 import { FieldValue } from 'firebase-admin/firestore';
+import { isDemoRequest, demoResponse, demoNotAvailable } from '@/lib/demo-api';
+import { generateDemoEvents } from '@/lib/demo-data';
 
 export async function GET() {
   try {
+    // Demo mode: return demo events
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const demoEvents = generateDemoEvents();
+      // Map demo events to include the 'date' and 'startTime' fields expected by the table
+      const events = demoEvents.map(event => ({
+        ...event,
+        // Extract date from startDateTime (format: YYYY-MM-DD)
+        date: event.startDateTime.split('T')[0],
+        // Extract start time (format: HH:MM)
+        startTime: new Date(event.startDateTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+        // Extract end time if available
+        endTime: event.endDateTime 
+          ? new Date(event.endDateTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+          : undefined,
+      }));
+      return demoResponse({ 
+        events,
+        totalCount: events.length,
+        organizationId: 'demo-org',
+      });
+    }
+    
     const { organizationId } = await requireCoachWithOrg();
 
     console.log(`[COACH_ORG_EVENTS] Fetching events for organization: ${organizationId}`);
@@ -68,6 +93,12 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    // Demo mode: block write operations
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      return demoNotAvailable('Creating events');
+    }
+    
     const { organizationId } = await requireCoachWithOrg();
     
     // Enforce content item limit based on plan

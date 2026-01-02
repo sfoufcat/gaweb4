@@ -8,6 +8,8 @@ import { useUser } from '@clerk/nextjs';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useMyPrograms } from '@/hooks/useMyPrograms';
 import { useMenuTitles } from '@/contexts/BrandingContext';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DEMO_USER } from '@/lib/demo-utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Components for different sections
@@ -36,9 +38,23 @@ import { ProgramSkeleton } from '@/components/program/ProgramSkeleton';
 type TabType = 'program' | 'squad';
 
 export default function ProgramHubPage() {
-  const { user, isLoaded: userLoaded } = useUser();
+  const { user: clerkUser, isLoaded: userLoaded } = useUser();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { isDemoMode } = useDemoMode();
+  
+  // In demo mode, use mock user data
+  const user = useMemo(() => {
+    if (isDemoMode) {
+      return {
+        id: DEMO_USER.id,
+        firstName: DEMO_USER.firstName,
+        lastName: DEMO_USER.lastName,
+        imageUrl: DEMO_USER.imageUrl,
+      };
+    }
+    return clerkUser;
+  }, [isDemoMode, clerkUser]);
   
   // Customizable menu titles
   const { squad: squadTitle, program: programTitle } = useMenuTitles();
@@ -141,7 +157,8 @@ export default function ProgramHubPage() {
   }, [selectedProgramId, enrollments]);
   
   // Loading state - show skeleton while loading
-  const isLoading = !userLoaded || !mounted || programsLoading;
+  // In demo mode, skip waiting for Clerk user to load
+  const isLoading = (!isDemoMode && !userLoaded) || !mounted || programsLoading;
   
   if (isLoading) {
     return (

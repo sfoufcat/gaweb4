@@ -319,6 +319,7 @@ export function StoryAvatar({
               width={64}
               height={64}
               className="w-full h-full object-cover"
+              unoptimized
             />
           ) : (
             <div className={`w-full h-full flex items-center justify-center text-earth-700 font-bold ${config.initials}`}>

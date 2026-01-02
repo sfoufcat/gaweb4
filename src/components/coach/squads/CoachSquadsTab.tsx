@@ -32,6 +32,7 @@ import { LimitReachedModal, useLimitCheck } from '@/components/coach';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
 import { generateDemoSquadsWithStats, generateDemoSquadMembers, type DemoSquadWithStats, type DemoSquadMember } from '@/lib/demo-data';
+import { DemoSignupModal, useDemoSignupModal } from '@/components/demo/DemoSignupModal';
 
 // Squad with computed stats and program info
 interface SquadWithStats extends Squad {
@@ -110,6 +111,9 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
   // Plan tier for limit checking
   const [currentTier, setCurrentTier] = useState<CoachTier>('starter');
   const { checkLimit, showLimitModal, modalProps } = useLimitCheck(currentTier);
+  
+  // Demo signup modal
+  const { isOpen: isSignupModalOpen, action: signupModalAction, showModal: showSignupModal, hideModal: hideSignupModal } = useDemoSignupModal();
   
   // Demo data (memoized)
   const demoSquads = useMemo(() => generateDemoSquadsWithStats(), []);
@@ -352,6 +356,11 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
 
   const handleEditSquad = (e: React.MouseEvent, squad: Squad) => {
     e.stopPropagation();
+    // In demo mode, show signup modal instead of allowing edit
+    if (isDemoMode) {
+      showSignupModal('edit this squad');
+      return;
+    }
     setEditingSquad(squad);
     setIsSquadModalOpen(true);
   };
@@ -794,65 +803,73 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
             {filteredSquads.map((squad) => (
               <div
                 key={squad.id}
-                className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 hover:border-brand-accent/50 transition-colors cursor-pointer group"
+                className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden hover:border-brand-accent/50 transition-colors cursor-pointer group"
                 onClick={() => handleSelectSquad(squad)}
               >
-                <div className="flex items-start gap-3">
-                  {squad.avatarUrl ? (
-                    <Image
-                      src={squad.avatarUrl}
+                {/* Cover Image */}
+                <div className="h-32 bg-gradient-to-br from-brand-accent/20 to-[#8c6245]/10 relative">
+                  {squad.coverImageUrl ? (
+                    <img 
+                      src={squad.coverImageUrl} 
                       alt={squad.name}
-                      width={48}
-                      height={48}
-                      className="w-12 h-12 rounded-lg object-cover"
+                      className="w-full h-full object-cover"
                     />
-                  ) : (
-                    <div className="w-12 h-12 rounded-lg bg-brand-accent/10 flex items-center justify-center">
-                      <Users className="w-6 h-6 text-brand-accent" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
-                        {squad.name}
-                      </h3>
-                      {squad.visibility === 'private' ? (
-                        <Lock className="w-3.5 h-3.5 text-[#5f5a55] dark:text-[#b2b6c2] flex-shrink-0" />
-                      ) : (
-                        <Globe className="w-3.5 h-3.5 text-[#5f5a55] dark:text-[#b2b6c2] flex-shrink-0" />
-                      )}
-                    </div>
-                    {squad.description && (
-                      <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert line-clamp-2 mt-1">
-                        {squad.description}
-                      </p>
-                    )}
-                    <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3.5 h-3.5" />
-                        {squad.memberCount || 0} members
+                  ) : squad.avatarUrl ? (
+                    <img 
+                      src={squad.avatarUrl} 
+                      alt={squad.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : null}
+                  <div className="absolute top-2 right-2 flex gap-1">
+                    {squad.visibility === 'private' ? (
+                      <span className="px-2 py-0.5 bg-gray-500/80 text-white text-xs rounded-full flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Private
                       </span>
-                      {squad.priceInCents && squad.priceInCents > 0 && (
-                        <span className="text-brand-accent font-medium">
-                          ${(squad.priceInCents / 100).toFixed(0)}
-                          {squad.subscriptionEnabled && `/${squad.billingInterval?.slice(0, 2)}`}
-                        </span>
-                      )}
-                    </div>
-                    {/* Program Badge */}
-                    {squad.programId && squad.programName && (
-                      <div className="mt-2">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${
-                          squad.programType === 'individual'
-                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                            : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                        }`}>
-                          {squad.programType === 'individual' ? '1:1' : 'Group'}: {squad.programName}
-                        </span>
-                      </div>
+                    ) : (
+                      <span className="px-2 py-0.5 bg-green-500/80 text-white text-xs rounded-full flex items-center gap-1">
+                        <Globe className="w-3 h-3" /> Public
+                      </span>
                     )}
                   </div>
-                  <ChevronRight className="w-5 h-5 text-[#d1ccc5] dark:text-[#7d8190] group-hover:text-brand-accent transition-colors flex-shrink-0" />
+                </div>
+                
+                {/* Info */}
+                <div className="p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
+                      {squad.name}
+                    </h3>
+                  </div>
+                  {squad.description && (
+                    <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert line-clamp-2 mb-2">
+                      {squad.description}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                    <span className="flex items-center gap-1">
+                      <Users className="w-3.5 h-3.5" />
+                      {squad.memberCount || 0} members
+                    </span>
+                    {squad.priceInCents && squad.priceInCents > 0 && (
+                      <span className="text-brand-accent font-medium">
+                        ${(squad.priceInCents / 100).toFixed(0)}
+                        {squad.subscriptionEnabled && `/${squad.billingInterval?.slice(0, 2)}`}
+                      </span>
+                    )}
+                  </div>
+                  {/* Program Badge */}
+                  {squad.programId && squad.programName && (
+                    <div className="mt-2">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${
+                        squad.programType === 'individual'
+                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                      }`}>
+                        {squad.programType === 'individual' ? '1:1' : 'Group'}: {squad.programName}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 
                 {/* Action buttons (show on hover) */}
@@ -1418,6 +1435,13 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
 
       {/* Limit Reached Modal */}
       <LimitReachedModal {...modalProps} />
+
+      {/* Demo Signup Modal */}
+      <DemoSignupModal
+        isOpen={isSignupModalOpen}
+        onClose={hideSignupModal}
+        action={signupModalAction}
+      />
     </div>
   );
 }

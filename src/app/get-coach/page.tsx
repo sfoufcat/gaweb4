@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 /**
  * Get Your Personal Coach Page
@@ -13,6 +15,20 @@ import Link from 'next/link';
 
 export default function PersonalCoachPage() {
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'quarterly'>('monthly');
+  const { isDemoMode } = useDemoMode();
+  const router = useRouter();
+  
+  // Redirect away from get-coach page in demo mode
+  useEffect(() => {
+    if (isDemoMode) {
+      router.replace('/');
+    }
+  }, [isDemoMode, router]);
+  
+  // Show nothing while redirecting in demo mode
+  if (isDemoMode) {
+    return null;
+  }
 
   return (
     <div className="flex-1 bg-[#faf8f6] dark:bg-[#05070b] flex flex-col">

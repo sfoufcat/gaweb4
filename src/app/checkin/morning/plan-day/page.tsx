@@ -28,6 +28,7 @@ import { GripVertical, Pencil, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTasks } from '@/hooks/useTasks';
 import { useDailyFocusLimit } from '@/hooks/useDailyFocusLimit';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import { TaskSheetDefine } from '@/components/tasks/TaskSheetDefine';
 import { CheckInPageWrapper } from '@/components/checkin/CheckInPageWrapper';
 import type { Task } from '@/types';
@@ -270,6 +271,7 @@ function SortableTaskItem({
 
 export default function PlanDayPage() {
   const router = useRouter();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   const today = new Date().toISOString().split('T')[0];
   const {
     focusTasks,
@@ -471,24 +473,27 @@ export default function PlanDayPage() {
     setIsSubmitting(true);
 
     try {
-      // Mark check-in as complete
-      await fetch('/api/checkin/morning', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          tasksPlanned: true,
-          completedAt: new Date().toISOString(),
-        }),
-      });
+      // In demo mode, skip API calls
+      if (!isDemoMode) {
+        // Mark check-in as complete
+        await fetch('/api/checkin/morning', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            tasksPlanned: true,
+            completedAt: new Date().toISOString(),
+          }),
+        });
 
-      // Send squad notification (fire and forget - don't block on errors)
-      fetch('/api/checkin/morning/squad-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      }).catch((error) => {
-        // Log but don't block the check-in flow
-        console.error('Squad notification failed:', error);
-      });
+        // Send squad notification (fire and forget - don't block on errors)
+        fetch('/api/checkin/morning/squad-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        }).catch((error) => {
+          // Log but don't block the check-in flow
+          console.error('Squad notification failed:', error);
+        });
+      }
 
       // Show rocket animation
       setShowRocketAnimation(true);
@@ -499,8 +504,12 @@ export default function PlanDayPage() {
   };
 
   const handleAnimationComplete = useCallback(() => {
+    // In demo mode, open signup modal after check-in completion
+    if (isDemoMode) {
+      openSignupModal();
+    }
     router.push('/');
-  }, [router]);
+  }, [router, isDemoMode, openSignupModal]);
 
   if (isLoading) {
     return (

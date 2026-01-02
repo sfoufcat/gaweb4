@@ -10,9 +10,33 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { isDemoRequest, demoResponse } from '@/lib/demo-api';
+import { generateDemoDiscoverContent } from '@/lib/demo-data';
 
 export async function GET() {
   try {
+    // Demo mode: return demo articles
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const demoContent = generateDemoDiscoverContent();
+      const demoArticles = demoContent.filter(c => c.type === 'article').map(a => ({
+        id: a.id,
+        organizationId: 'demo-org',
+        title: a.title,
+        description: a.description,
+        content: `<p>${a.description}</p><p>This is sample article content for the demo.</p>`,
+        coverImageUrl: a.imageUrl,
+        author: a.author,
+        isPublished: a.isPublished,
+        isPremium: a.isPremium,
+        readTime: a.readTime || 5,
+        publishedAt: a.publishedAt,
+        createdAt: a.publishedAt,
+        updatedAt: a.publishedAt,
+      }));
+      return demoResponse({ articles: demoArticles });
+    }
+    
     // MULTI-TENANCY: Get org from tenant domain (null on platform domain)
     const organizationId = await getEffectiveOrgId();
     

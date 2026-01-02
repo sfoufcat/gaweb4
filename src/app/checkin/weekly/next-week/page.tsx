@@ -132,9 +132,9 @@ export default function NextWeekPage() {
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="fixed inset-0 bg-[#faf8f6] flex items-center justify-center z-[9999]"
+        className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] flex items-center justify-center z-[9999]"
       >
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a1a1a]" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a1a1a] dark:border-white" />
       </motion.div>
     );
   }
@@ -144,20 +144,20 @@ export default function NextWeekPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="fixed inset-0 z-[9999] bg-[#faf8f6] flex flex-col overflow-hidden"
+      className="fixed inset-0 z-[9999] bg-[#faf8f6] dark:bg-[#05070b] flex flex-col overflow-hidden"
     >
       {/* Header with back and close buttons */}
       <div className="flex items-center justify-between px-6 pt-6 pb-2">
         <button
           onClick={() => router.push('/checkin/weekly/obstacles')}
-          className="p-2 -ml-2 text-[#1a1a1a] hover:text-[#5f5a55] transition-colors"
+          className="p-2 -ml-2 text-[#1a1a1a] dark:text-white hover:text-[#5f5a55] dark:hover:text-[#a0a0a0] transition-colors"
           aria-label="Back"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
         <button
           onClick={() => router.push('/')}
-          className="p-2 -mr-2 text-[#5f5a55] hover:text-[#1a1a1a] transition-colors"
+          className="p-2 -mr-2 text-[#5f5a55] dark:text-[#a0a0a0] hover:text-[#1a1a1a] dark:hover:text-white transition-colors"
           aria-label="Close"
         >
           <X className="w-6 h-6" />
@@ -168,7 +168,7 @@ export default function NextWeekPage() {
       <div className="flex-1 flex flex-col md:items-center md:justify-center px-6 overflow-y-auto">
         <div className="max-w-[550px] w-full flex-1 md:flex-initial flex flex-col">
           {/* Title */}
-          <h1 className="font-albert text-[32px] md:text-[44px] text-[#1a1a1a] tracking-[-2px] leading-[1.15] mb-6 md:mb-8">
+          <h1 className="font-albert text-[32px] md:text-[44px] text-[#1a1a1a] dark:text-white tracking-[-2px] leading-[1.15] mb-6 md:mb-8">
             What will you do differently next week?
           </h1>
 
@@ -177,7 +177,7 @@ export default function NextWeekPage() {
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Write your intentions for next week..."
-            className="w-full h-[120px] md:h-[150px] p-0 bg-transparent border-none resize-none font-sans text-[20px] md:text-[24px] text-[#1a1a1a] tracking-[-0.5px] leading-[1.4] placeholder:text-[#a7a39e] focus:outline-none"
+            className="w-full h-[120px] md:h-[150px] p-0 bg-transparent border-none resize-none font-sans text-[20px] md:text-[24px] text-[#1a1a1a] dark:text-white tracking-[-0.5px] leading-[1.4] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none"
             autoFocus
           />
 
@@ -188,8 +188,8 @@ export default function NextWeekPage() {
                 onClick={toggleListening}
                 className={`w-[56px] h-[56px] md:w-[64px] md:h-[64px] rounded-full border-2 flex items-center justify-center transition-all ${
                   isListening 
-                    ? 'bg-[#2c2520] border-[#2c2520] text-white animate-pulse' 
-                    : 'bg-white border-[#d4d0cc] text-[#8a857f] hover:border-[#2c2520] hover:text-[#2c2520]'
+                    ? 'bg-[#2c2520] dark:bg-[#b8896a] border-[#2c2520] dark:border-[#b8896a] text-white animate-pulse' 
+                    : 'bg-white dark:bg-[#171b22] border-[#d4d0cc] dark:border-[#3a3f48] text-[#8a857f] dark:text-[#7d8190] hover:border-[#2c2520] dark:hover:border-[#b8896a] hover:text-[#2c2520] dark:hover:text-[#b8896a]'
                 }`}
                 aria-label={isListening ? 'Stop recording' : 'Start recording'}
               >
@@ -200,7 +200,7 @@ export default function NextWeekPage() {
                 )}
               </button>
               {isListening && (
-                <p className="text-center font-sans text-[14px] text-[#5f5a55] mt-3">
+                <p className="text-center font-sans text-[14px] text-[#5f5a55] dark:text-[#a0a0a0] mt-3">
                   Listening... Tap to stop
                 </p>
               )}
@@ -217,8 +217,8 @@ export default function NextWeekPage() {
               disabled={isSubmitting || !text.trim()}
               className={`w-full max-w-[400px] mx-auto block py-4 md:py-5 rounded-full font-sans text-[16px] md:text-[18px] font-bold tracking-[-0.5px] shadow-[0px_8px_30px_0px_rgba(0,0,0,0.3)] transition-all ${
                 text.trim() && !isSubmitting
-                  ? 'bg-[#2c2520] text-white hover:scale-[1.02] active:scale-[0.98]'
-                  : 'bg-[#e1ddd8] text-[#a7a39e] cursor-not-allowed'
+                  ? 'bg-[#2c2520] dark:bg-white text-white dark:text-[#1a1a1a] hover:scale-[1.02] active:scale-[0.98]'
+                  : 'bg-[#e1ddd8] dark:bg-[#262b35] text-[#a7a39e] dark:text-[#7d8190] cursor-not-allowed'
               }`}
             >
               {isSubmitting ? 'Saving...' : 'Next'}

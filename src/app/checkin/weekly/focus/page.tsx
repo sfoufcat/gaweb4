@@ -87,9 +87,9 @@ export default function FocusPage() {
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="fixed inset-0 bg-[#faf8f6] flex items-center justify-center z-[9999]"
+        className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] flex items-center justify-center z-[9999]"
       >
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a1a1a]" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a1a1a] dark:border-white" />
       </motion.div>
     );
   }
@@ -99,20 +99,20 @@ export default function FocusPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="fixed inset-0 z-[9999] bg-[#faf8f6] flex flex-col overflow-hidden"
+      className="fixed inset-0 z-[9999] bg-[#faf8f6] dark:bg-[#05070b] flex flex-col overflow-hidden"
     >
       {/* Header with back and close buttons */}
       <div className="flex items-center justify-between px-6 pt-6 pb-2">
         <button
           onClick={() => router.push('/checkin/weekly/next-week')}
-          className="p-2 -ml-2 text-[#1a1a1a] hover:text-[#5f5a55] transition-colors"
+          className="p-2 -ml-2 text-[#1a1a1a] dark:text-white hover:text-[#5f5a55] dark:hover:text-[#a0a0a0] transition-colors"
           aria-label="Back"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
         <button
           onClick={() => router.push('/')}
-          className="p-2 -mr-2 text-[#5f5a55] hover:text-[#1a1a1a] transition-colors"
+          className="p-2 -mr-2 text-[#5f5a55] dark:text-[#a0a0a0] hover:text-[#1a1a1a] dark:hover:text-white transition-colors"
           aria-label="Close"
         >
           <X className="w-6 h-6" />
@@ -123,12 +123,12 @@ export default function FocusPage() {
       <div className="flex-1 flex flex-col md:items-center md:justify-center px-6 overflow-y-auto">
         <div className="max-w-[550px] w-full flex-1 md:flex-initial flex flex-col">
           {/* Header */}
-          <h1 className="font-albert text-[28px] md:text-[42px] text-[#1a1a1a] tracking-[-2px] leading-[1.2] mb-1">
+          <h1 className="font-albert text-[28px] md:text-[42px] text-[#1a1a1a] dark:text-white tracking-[-2px] leading-[1.2] mb-1">
             What&apos;s your focus for the next week?
           </h1>
           
           {/* Public badge */}
-          <p className="font-sans text-[14px] text-[#5f5a55] tracking-[-0.3px] leading-[1.2] mb-4 md:mb-6">
+          <p className="font-sans text-[14px] text-[#5f5a55] dark:text-[#a0a0a0] tracking-[-0.3px] leading-[1.2] mb-4 md:mb-6">
             (public)
           </p>
 
@@ -137,7 +137,7 @@ export default function FocusPage() {
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="This week I'm committing to finishing my portfolio draft and running three times..."
-            className="w-full h-[140px] md:h-[180px] p-0 bg-transparent border-none resize-none font-sans text-[18px] md:text-[24px] text-[#1a1a1a] tracking-[-0.5px] leading-[1.4] placeholder:text-[#a7a39e] focus:outline-none"
+            className="w-full h-[140px] md:h-[180px] p-0 bg-transparent border-none resize-none font-sans text-[18px] md:text-[24px] text-[#1a1a1a] dark:text-white tracking-[-0.5px] leading-[1.4] placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none"
             autoFocus
           />
 
@@ -149,15 +149,15 @@ export default function FocusPage() {
               transition={{ delay: 0.3 }}
               className="mt-4"
             >
-              <p className="font-sans text-[12px] text-[#5f5a55] mb-2">
+              <p className="font-sans text-[12px] text-[#5f5a55] dark:text-[#a0a0a0] mb-2">
                 {suggestion.trackName ? `${suggestion.trackName} suggestion for week ${suggestion.currentWeek}:` : 'Suggested focus:'}
               </p>
               <button
                 onClick={() => setText(suggestion.suggestion || '')}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-brand-accent/10 to-[#8c6245]/5 hover:from-brand-accent/20 hover:to-[#8c6245]/10 border border-brand-accent/20 rounded-full transition-all hover:scale-[1.02] active:scale-[0.98]"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-brand-accent/10 to-[#8c6245]/5 dark:from-brand-accent/20 dark:to-[#8c6245]/10 hover:from-brand-accent/20 hover:to-[#8c6245]/10 dark:hover:from-brand-accent/30 dark:hover:to-[#8c6245]/20 border border-brand-accent/20 dark:border-brand-accent/30 rounded-full transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
                 <Sparkles className="w-4 h-4 text-brand-accent" />
-                <span className="font-sans text-[14px] text-[#1a1a1a] font-medium">
+                <span className="font-sans text-[14px] text-[#1a1a1a] dark:text-white font-medium">
                   {suggestion.suggestion}
                 </span>
               </button>
@@ -174,8 +174,8 @@ export default function FocusPage() {
               disabled={isSubmitting || isSkipping || !text.trim()}
               className={`w-full max-w-[400px] mx-auto block py-4 md:py-5 rounded-full font-sans text-[16px] md:text-[18px] font-bold tracking-[-0.5px] shadow-[0px_8px_30px_0px_rgba(0,0,0,0.3)] transition-all ${
                 text.trim() && !isSubmitting && !isSkipping
-                  ? 'bg-[#2c2520] text-white hover:scale-[1.02] active:scale-[0.98]'
-                  : 'bg-[#e1ddd8] text-[#a7a39e] cursor-not-allowed'
+                  ? 'bg-[#2c2520] dark:bg-white text-white dark:text-[#1a1a1a] hover:scale-[1.02] active:scale-[0.98]'
+                  : 'bg-[#e1ddd8] dark:bg-[#262b35] text-[#a7a39e] dark:text-[#7d8190] cursor-not-allowed'
               }`}
             >
               {isSubmitting ? 'Sharing...' : 'Share my plan'}
@@ -184,7 +184,7 @@ export default function FocusPage() {
             <button
               onClick={handleSkip}
               disabled={isSubmitting || isSkipping}
-              className="w-full max-w-[400px] mx-auto block bg-white border border-[rgba(215,210,204,0.5)] text-[#2c2520] py-4 md:py-5 rounded-full font-sans text-[16px] md:text-[18px] font-bold tracking-[-0.5px] hover:bg-[#f3f1ef] transition-all disabled:opacity-50"
+              className="w-full max-w-[400px] mx-auto block bg-white dark:bg-[#171b22] border border-[rgba(215,210,204,0.5)] dark:border-[#3a3f48] text-[#2c2520] dark:text-white py-4 md:py-5 rounded-full font-sans text-[16px] md:text-[18px] font-bold tracking-[-0.5px] hover:bg-[#f3f1ef] dark:hover:bg-[#1d222b] transition-all disabled:opacity-50"
             >
               {isSkipping ? 'Skipping...' : 'Skip this time'}
             </button>
@@ -194,6 +194,3 @@ export default function FocusPage() {
     </motion.div>
   );
 }
-
-
-

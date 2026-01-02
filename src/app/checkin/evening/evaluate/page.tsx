@@ -101,8 +101,8 @@ export default function EveningEvaluatePage() {
 
   if (!isLoaded) {
     return (
-      <div className="fixed inset-0 bg-[#faf8f6] flex items-center justify-center z-[9999]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a1a1a]" />
+      <div className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] flex items-center justify-center z-[9999]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a1a1a] dark:border-white" />
       </div>
     );
   }
@@ -112,13 +112,13 @@ export default function EveningEvaluatePage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
-      className="fixed inset-0 z-[9999] bg-[#faf8f6] flex flex-col overflow-hidden"
+      className="fixed inset-0 z-[9999] bg-[#faf8f6] dark:bg-[#05070b] flex flex-col overflow-hidden"
     >
       {/* Back button - fixed top left */}
       <div className="px-6 pt-6 pb-2">
         <button
           onClick={() => router.back()}
-          className="p-2 -ml-2 text-[#1a1a1a] hover:text-[#5f5a55] transition-colors"
+          className="p-2 -ml-2 text-[#1a1a1a] dark:text-white hover:text-[#5f5a55] dark:hover:text-[#a0a0a0] transition-colors"
           aria-label="Back"
         >
           <ChevronLeft className="w-6 h-6" />
@@ -130,10 +130,10 @@ export default function EveningEvaluatePage() {
         <div className="w-full max-w-[480px] lg:max-w-[560px] mx-auto flex-1 md:flex-initial flex flex-col">
           {/* Header */}
           <div className="mb-4 md:mb-8">
-            <h1 className="font-albert text-[32px] md:text-[44px] text-[#1a1a1a] tracking-[-2px] leading-[1.15] mb-2">
+            <h1 className="font-albert text-[32px] md:text-[44px] text-[#1a1a1a] dark:text-white tracking-[-2px] leading-[1.15] mb-2">
               How did today feel?
             </h1>
-            <p className="font-sans text-[18px] md:text-[20px] text-[#5f5a55] tracking-[-0.4px] leading-[1.4]">
+            <p className="font-sans text-[18px] md:text-[20px] text-[#5f5a55] dark:text-[#a0a0a0] tracking-[-0.4px] leading-[1.4]">
               Choose the option that fits your experience.
             </p>
           </div>
@@ -179,14 +179,14 @@ export default function EveningEvaluatePage() {
                 />
                 {/* Gray overlay for unselected portion */}
                 <div 
-                  className="absolute top-0 bottom-0 right-0 bg-[#e1ddd8]"
+                  className="absolute top-0 bottom-0 right-0 bg-[#e1ddd8] dark:bg-[#2a2f38]"
                   style={{ left: `${thumbPosition}%` }}
                 />
               </div>
 
               {/* Thumb */}
               <div 
-                className="absolute top-[4px] w-[32px] h-[32px] rounded-full bg-[#f3f1ef] border-2 border-[#2c2520] shadow-lg transition-all duration-150 cursor-grab active:cursor-grabbing"
+                className="absolute top-[4px] w-[32px] h-[32px] rounded-full bg-[#f3f1ef] dark:bg-[#2a2f38] border-2 border-[#2c2520] dark:border-white shadow-lg transition-all duration-150 cursor-grab active:cursor-grabbing"
                 style={{ 
                   left: `${thumbPosition}%`,
                   transform: 'translateX(-50%)',
@@ -196,8 +196,8 @@ export default function EveningEvaluatePage() {
 
             {/* Labels */}
             <div className="flex justify-between mt-3 px-1">
-              <span className="font-sans text-[13px] md:text-[14px] text-[#5f5a55]">Tough</span>
-              <span className="font-sans text-[13px] md:text-[14px] text-[#5f5a55]">Amazing</span>
+              <span className="font-sans text-[13px] md:text-[14px] text-[#5f5a55] dark:text-[#a0a0a0]">Tough</span>
+              <span className="font-sans text-[13px] md:text-[14px] text-[#5f5a55] dark:text-[#a0a0a0]">Amazing</span>
             </div>
           </div>
 

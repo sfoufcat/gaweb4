@@ -8,6 +8,8 @@ import { BackButton, CopyLinkButton, AddToContentButton, RichContent, ContentLan
 import { Button } from '@/components/ui/button';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 import type { DiscoverCourse } from '@/types/discover';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { CoachQuizModal } from '@/components/lp/CoachQuizModal';
 
 interface CoursePageProps {
   params: Promise<{ id: string }>;
@@ -24,11 +26,13 @@ export default function CourseDetailPage({ params }: CoursePageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isSignedIn } = useAuth();
+  const { isDemoMode } = useDemoMode();
   
   const [data, setData] = useState<CourseDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPurchaseSheet, setShowPurchaseSheet] = useState(false);
+  const [showCoachQuizModal, setShowCoachQuizModal] = useState(false);
   
   const justPurchased = searchParams.get('purchased') === 'true';
 
@@ -280,6 +284,11 @@ export default function CourseDetailPage({ params }: CoursePageProps) {
 
             <Button
               onClick={() => {
+                // In demo mode, open coach signup modal instead
+                if (isDemoMode) {
+                  setShowCoachQuizModal(true);
+                  return;
+                }
                 if (!isSignedIn) {
                   router.push(`/sign-in?redirect=${encodeURIComponent(window.location.pathname)}`);
                   return;
@@ -288,7 +297,9 @@ export default function CourseDetailPage({ params }: CoursePageProps) {
               }}
               className="w-full py-3 bg-brand-accent hover:bg-brand-accent/90 text-white font-semibold rounded-xl"
             >
-              {!isSignedIn ? 'Sign in to purchase' : 'Purchase Course'}
+              {isDemoMode 
+                ? `Enroll ($${((course.priceInCents || 0) / 100).toFixed(0)})`
+                : !isSignedIn ? 'Sign in to purchase' : 'Purchase Course'}
             </Button>
           </div>
         </div>
@@ -313,6 +324,12 @@ export default function CourseDetailPage({ params }: CoursePageProps) {
           // Refetch to get updated access
           fetchCourse();
         }}
+      />
+
+      {/* Coach Signup Modal for Demo Mode */}
+      <CoachQuizModal
+        isOpen={showCoachQuizModal}
+        onClose={() => setShowCoachQuizModal(false)}
       />
     </div>
   );

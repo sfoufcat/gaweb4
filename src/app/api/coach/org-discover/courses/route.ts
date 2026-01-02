@@ -10,6 +10,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
 import { requirePlanLimit, isEntitlementError, getEntitlementErrorStatus } from '@/lib/billing/server-enforcement';
 import { FieldValue } from 'firebase-admin/firestore';
+import { isDemoRequest, demoResponse, demoNotAvailable } from '@/lib/demo-api';
+import { generateDemoDiscoverContent } from '@/lib/demo-data';
 
 interface CourseLesson {
   id?: string;
@@ -29,6 +31,54 @@ interface CourseModule {
 
 export async function GET() {
   try {
+    // Demo mode: return demo courses
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const content = generateDemoDiscoverContent();
+      const courses = content
+        .filter(item => item.type === 'course')
+        .map(item => ({
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          coverImageUrl: item.imageUrl,
+          author: item.author,
+          isPublished: item.isPublished,
+          isPremium: item.isPremium,
+          organizationId: 'demo-org',
+          modules: [
+            {
+              id: `${item.id}-mod-1`,
+              title: 'Introduction',
+              order: 0,
+              lessons: [
+                { id: `${item.id}-lesson-1`, title: 'Welcome to the course', durationMinutes: 5, order: 0 },
+                { id: `${item.id}-lesson-2`, title: 'How to get the most out of this course', durationMinutes: 10, order: 1 },
+              ],
+            },
+            {
+              id: `${item.id}-mod-2`,
+              title: 'Core Concepts',
+              order: 1,
+              lessons: [
+                { id: `${item.id}-lesson-3`, title: 'Key principles', durationMinutes: 15, order: 0 },
+                { id: `${item.id}-lesson-4`, title: 'Practical applications', durationMinutes: 20, order: 1 },
+              ],
+            },
+          ],
+          totalModules: 2,
+          totalLessons: 4,
+          totalDurationMinutes: 50,
+          createdAt: item.publishedAt,
+          updatedAt: item.publishedAt,
+        }));
+      return demoResponse({ 
+        courses,
+        totalCount: courses.length,
+        organizationId: 'demo-org',
+      });
+    }
+    
     const { organizationId } = await requireCoachWithOrg();
 
     console.log(`[COACH_ORG_COURSES] Fetching courses for organization: ${organizationId}`);
@@ -91,6 +141,12 @@ function computeCourseTotals(modules: CourseModule[]) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Demo mode: block write operations
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      return demoNotAvailable('Creating courses');
+    }
+    
     const { organizationId } = await requireCoachWithOrg();
     
     // Enforce content item limit based on plan

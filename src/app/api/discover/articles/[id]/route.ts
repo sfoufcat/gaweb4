@@ -7,6 +7,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { auth } from '@clerk/nextjs/server';
+import { isDemoRequest, demoResponse } from '@/lib/demo-api';
+import { generateDemoDiscoverContent, generateAvatarUrl } from '@/lib/demo-data';
 import type { DiscoverArticle } from '@/types/discover';
 
 export async function GET(
@@ -14,8 +16,45 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
     const { id } = await params;
+    
+    // Demo mode: return demo article
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const content = generateDemoDiscoverContent();
+      const articles = content.filter(item => item.type === 'article');
+      const article = articles.find(a => a.id === id) || articles[0];
+      
+      return demoResponse({
+        article: {
+          id: article.id,
+          title: article.title,
+          coverImageUrl: article.imageUrl,
+          thumbnailUrl: article.imageUrl,
+          content: `<h2>Introduction</h2><p>${article.description}</p><p>This is demo content for the article "${article.title}". In a real implementation, this would contain the full article content with rich text formatting, images, and detailed insights.</p><h2>Key Takeaways</h2><ul><li>Important point one</li><li>Important point two</li><li>Important point three</li></ul><h2>Conclusion</h2><p>Apply these insights to your daily routine and watch your results transform.</p>`,
+          authorId: 'demo-coach-user',
+          authorName: article.author,
+          authorTitle: 'Professional Coach',
+          authorAvatarUrl: generateAvatarUrl(article.author),
+          authorBio: 'Helping you achieve your goals through proven strategies and daily action.',
+          publishedAt: article.publishedAt,
+          readingTimeMinutes: article.readTime || 5,
+          category: 'growth',
+          articleType: 'long_form',
+          organizationId: 'demo-org',
+          featured: false,
+          trending: false,
+          createdAt: article.publishedAt,
+          updatedAt: article.publishedAt,
+          isPublic: !article.isPremium,
+          coachName: 'Coach Adam',
+          coachImageUrl: generateAvatarUrl('Coach Adam'),
+        },
+        isOwned: true, // In demo mode, user "owns" all content
+      });
+    }
+    
+    const { userId } = await auth();
     
     const articleDoc = await adminDb.collection('articles').doc(id).get();
     

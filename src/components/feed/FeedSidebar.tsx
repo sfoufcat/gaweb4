@@ -94,7 +94,7 @@ export function FeedSidebar({ onSelectPost }: FeedSidebarProps) {
   const showTrendingSection = !isLoadingTrending && trendingPosts.length > 0;
 
   return (
-    <aside className="hidden lg:block w-[340px] flex-shrink-0 space-y-6">
+    <aside className="hidden lg:block w-full space-y-6">
       {/* Pinned Posts Section - Only shows if there are pinned posts */}
       {showPinnedSection && (
         <div className="bg-white dark:bg-[#171b22] rounded-2xl border border-[#e8e4df] dark:border-[#262b35] overflow-hidden">

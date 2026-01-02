@@ -1062,6 +1062,7 @@ export interface Squad {
   name: string;
   slug?: string; // URL-friendly identifier for funnel join links
   avatarUrl: string;
+  coverImageUrl?: string; // Cover/hero image for squad card display
   description?: string; // Optional squad description
   visibility?: SquadVisibility; // "public" or "private" - defaults to "public" if not set
   timezone?: string; // IANA timezone e.g. "Europe/Amsterdam" - defaults to "UTC"

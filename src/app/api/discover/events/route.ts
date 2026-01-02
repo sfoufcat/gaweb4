@@ -15,6 +15,8 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { isDemoRequest, demoResponse } from '@/lib/demo-api';
+import { generateDemoDiscoverContent } from '@/lib/demo-data';
 
 // Scopes that should be shown in Discover
 const DISCOVER_ALLOWED_SCOPES = ['global', 'organization', undefined, null];
@@ -24,6 +26,36 @@ const DISCOVER_EXCLUDED_SCOPES = ['program', 'squad', 'private'];
 
 export async function GET() {
   try {
+    // Demo mode: return demo events
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const demoContent = generateDemoDiscoverContent();
+      // Event cover images for a professional look
+      const eventCoverImages = [
+        'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=400&fit=crop', // Conference room
+        'https://images.unsplash.com/photo-1591115765373-5207764f72e7?w=800&h=400&fit=crop', // Workshop setting
+        'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800&h=400&fit=crop', // Keynote speaker
+      ];
+      
+      const demoEvents = demoContent.filter(c => c.type === 'event').map((e, index) => ({
+        id: e.id,
+        organizationId: 'demo-org',
+        title: e.title,
+        shortDescription: e.description,
+        longDescription: e.description,
+        date: new Date(Date.now() + (7 + index * 7) * 24 * 60 * 60 * 1000).toISOString(), // 1-3 weeks from now
+        startTime: '10:00',
+        endTime: '11:30',
+        scope: 'organization',
+        meetingUrl: 'https://meet.example.com/demo',
+        coverImageUrl: eventCoverImages[index % eventCoverImages.length],
+        hostName: 'Coach Adam',
+        createdAt: e.publishedAt,
+        updatedAt: e.publishedAt,
+      }));
+      return demoResponse({ events: demoEvents });
+    }
+    
     // MULTI-TENANCY: Get org from tenant domain (null on platform domain)
     const organizationId = await getEffectiveOrgId();
     

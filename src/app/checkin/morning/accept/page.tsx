@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckInPageWrapper } from '@/components/checkin/CheckInPageWrapper';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import type { EmotionalState } from '@/types';
 
 // Dynamic headings based on emotional state
@@ -16,10 +17,18 @@ const HEADINGS: Partial<Record<EmotionalState, string>> = {
 
 export default function AcceptPage() {
   const router = useRouter();
+  const { isDemoMode } = useDemoMode();
   const [emotionalState, setEmotionalState] = useState<EmotionalState>('uncertain');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // In demo mode, use default state
+    if (isDemoMode) {
+      setEmotionalState('uncertain');
+      setIsLoading(false);
+      return;
+    }
+    
     // Fetch current check-in state
     const fetchCheckIn = async () => {
       try {
@@ -38,7 +47,7 @@ export default function AcceptPage() {
     };
 
     fetchCheckIn();
-  }, []);
+  }, [isDemoMode]);
 
   const handleContinue = () => {
     router.push('/checkin/morning/breath');
@@ -63,21 +72,21 @@ export default function AcceptPage() {
         <div className="flex-1 flex flex-col md:items-center md:justify-center px-6 pt-8 md:pt-0 w-full overflow-y-auto">
           <div className="max-w-[500px] w-full flex-1 md:flex-initial flex flex-col text-center">
             {/* Header */}
-            <h1 className="font-albert text-[32px] md:text-[42px] text-[#1a1a1a] tracking-[-2px] leading-[1.2] mb-8">
+            <h1 className="font-albert text-[32px] md:text-[42px] text-[#1a1a1a] dark:text-white tracking-[-2px] leading-[1.2] mb-8">
               {heading}
             </h1>
 
             {/* Content */}
             <div className="space-y-6">
-              <p className="font-sans text-[18px] md:text-[20px] text-[#1a1a1a] tracking-[-0.4px] leading-[1.4]">
+              <p className="font-sans text-[18px] md:text-[20px] text-[#1a1a1a] dark:text-white/90 tracking-[-0.4px] leading-[1.4]">
                 It&apos;s okay. Doubt is part of the journey, even for the most driven.
               </p>
 
-              <p className="font-sans text-[18px] md:text-[20px] text-[#1a1a1a] tracking-[-0.4px] leading-[1.4]">
+              <p className="font-sans text-[18px] md:text-[20px] text-[#1a1a1a] dark:text-white/90 tracking-[-0.4px] leading-[1.4]">
                 You don&apos;t need to push the feeling away. Just notice it, let it be, and remember:
               </p>
 
-              <p className="font-albert text-[22px] md:text-[26px] font-semibold text-[#1a1a1a] tracking-[-1px] leading-[1.3] mt-8">
+              <p className="font-albert text-[22px] md:text-[26px] font-semibold text-[#1a1a1a] dark:text-white tracking-[-1px] leading-[1.3] mt-8">
                 This moment doesn&apos;t define you or your potential.
               </p>
             </div>

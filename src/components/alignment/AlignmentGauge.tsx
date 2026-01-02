@@ -31,7 +31,9 @@ interface AlignmentGaugeProps {
   alignment: UserAlignment | null;
   summary: UserAlignmentSummary | null;
   isLoading?: boolean;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
+  /** When true, uses xs size on mobile and sm size on desktop */
+  responsive?: boolean;
   className?: string;
   onPress?: () => void; // Optional custom click handler (e.g., for squad gauge)
 }
@@ -49,6 +51,7 @@ export function AlignmentGauge({
   summary,
   isLoading = false,
   size = 'sm',
+  responsive = false,
   className = '',
   onPress,
 }: AlignmentGaugeProps) {
@@ -64,13 +67,17 @@ export function AlignmentGauge({
   };
 
   // Size configurations
+  // xs: 40px total (28 container + 12 padding) - matches w-10 h-10
+  // sm: 62px total (50 container + 12 padding) - matches w-[62px] h-[62px]
   const sizeConfig = {
+    xs: { container: 28, arc: 11, strokeWidth: 2, fontSize: 12, fireSize: 10 },
     sm: { container: 50, arc: 20, strokeWidth: 3, fontSize: 17, fireSize: 14 },
     md: { container: 100, arc: 40, strokeWidth: 4, fontSize: 35, fireSize: 28 },
     lg: { container: 120, arc: 48, strokeWidth: 5, fontSize: 39, fireSize: 32 },
   };
 
-  const config = sizeConfig[size];
+  // For responsive mode, we render with sm config but use CSS to scale on mobile
+  const config = sizeConfig[responsive ? 'sm' : size];
   const streak = summary?.currentStreak ?? 0;
   const score = alignment?.alignmentScore ?? 0;
 
@@ -111,13 +118,24 @@ export function AlignmentGauge({
   // Colors for the gradient
   const getGradientId = () => `gauge-gradient-${size}`;
 
+  // Responsive sizing classes (50px on mobile, 62px on desktop)
+  const responsiveContainerClass = responsive 
+    ? 'w-[50px] h-[50px] sm:w-[62px] sm:h-[62px]' 
+    : '';
+  const responsiveInnerClass = responsive 
+    ? 'w-[38px] h-[38px] sm:w-[50px] sm:h-[50px]' 
+    : '';
+
   if (isLoading) {
     return (
       <div 
-        className={`bg-[#f3f1ef] dark:bg-[#181d28] rounded-[40px] p-2 flex items-center justify-center ${className}`}
-        style={{ width: config.container + 12, height: config.container + 12 }}
+        className={`bg-[#f3f1ef] dark:bg-[#181d28] rounded-[40px] p-1.5 sm:p-2 flex items-center justify-center ${responsiveContainerClass} ${className}`}
+        style={responsive ? undefined : { width: config.container + 12, height: config.container + 12 }}
       >
-        <div className="animate-pulse bg-[#e1ddd8] dark:bg-[#272d38] rounded-full" style={{ width: config.container, height: config.container }} />
+        <div 
+          className={`animate-pulse bg-[#e1ddd8] dark:bg-[#272d38] rounded-full ${responsiveInnerClass}`} 
+          style={responsive ? undefined : { width: config.container, height: config.container }} 
+        />
       </div>
     );
   }
@@ -126,11 +144,14 @@ export function AlignmentGauge({
     <>
       <button
         onClick={handleClick}
-        className={`bg-[#f3f1ef] dark:bg-[#181d28] rounded-[40px] p-2 flex items-center justify-center hover:bg-[#e9e5e0] dark:hover:bg-[#272d38] transition-colors ${className}`}
-        style={{ width: config.container + 12, height: config.container + 12 }}
+        className={`bg-[#f3f1ef] dark:bg-[#181d28] rounded-[40px] p-[6px] sm:p-2 flex items-center justify-center hover:bg-[#e9e5e0] dark:hover:bg-[#272d38] transition-colors ${responsiveContainerClass} ${className}`}
+        style={responsive ? undefined : { width: config.container + 12, height: config.container + 12 }}
         aria-label={`Daily alignment: ${score}% complete, ${streak} day streak. Tap for details.`}
       >
-        <div className="relative" style={{ width: config.container, height: config.container }}>
+        <div 
+          className={`relative ${responsiveInnerClass}`} 
+          style={responsive ? undefined : { width: config.container, height: config.container }}
+        >
           {/* SVG Gauge */}
           <svg 
             className="w-full h-full" 
@@ -178,16 +199,23 @@ export function AlignmentGauge({
 
           {/* Center content */}
           <div 
-            className="absolute inset-0 flex flex-col items-center justify-center"
-            style={{ paddingTop: size === 'sm' ? 6 : 8 }}
+            className={`absolute inset-0 flex flex-col items-center justify-center ${responsive ? 'pt-1.5 sm:pt-1.5' : ''}`}
+            style={responsive ? undefined : { paddingTop: size === 'sm' || size === 'xs' ? 6 : 8 }}
           >
             <span 
-              className="font-geist font-medium text-text-primary leading-none"
-              style={{ fontSize: config.fontSize }}
+              className={`font-geist font-medium text-text-primary leading-none ${responsive ? 'text-[14px] sm:text-[17px]' : ''}`}
+              style={responsive ? undefined : { fontSize: config.fontSize }}
             >
               {streak}
             </span>
-            <FireIcon size={config.fireSize} className="mt-0.5" />
+            {responsive ? (
+              <>
+                <FireIcon size={12} className="mt-0.5 sm:hidden" />
+                <FireIcon size={14} className="mt-0.5 hidden sm:block" />
+              </>
+            ) : (
+              <FireIcon size={config.fireSize} className="mt-0.5" />
+            )}
           </div>
         </div>
       </button>

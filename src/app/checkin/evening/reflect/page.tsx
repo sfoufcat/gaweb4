@@ -159,8 +159,8 @@ export default function EveningReflectPage() {
 
   if (!isLoaded) {
     return (
-      <div className="fixed inset-0 bg-[#faf8f6] flex items-center justify-center z-[9999]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a1a1a]" />
+      <div className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] flex items-center justify-center z-[9999]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1a1a1a] dark:border-white" />
       </div>
     );
   }
@@ -170,13 +170,13 @@ export default function EveningReflectPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
-      className="fixed inset-0 z-[9999] bg-[#faf8f6] flex flex-col overflow-hidden"
+      className="fixed inset-0 z-[9999] bg-[#faf8f6] dark:bg-[#05070b] flex flex-col overflow-hidden"
     >
       {/* Back button - fixed top left */}
       <div className="px-6 pt-6 pb-2">
         <button
           onClick={() => router.back()}
-          className="p-2 -ml-2 text-[#1a1a1a] hover:text-[#5f5a55] transition-colors"
+          className="p-2 -ml-2 text-[#1a1a1a] dark:text-white hover:text-[#5f5a55] dark:hover:text-[#a0a0a0] transition-colors"
           aria-label="Back"
         >
           <ChevronLeft className="w-6 h-6" />
@@ -187,12 +187,12 @@ export default function EveningReflectPage() {
       <div className="flex-1 flex flex-col md:items-center md:justify-center px-6 overflow-y-auto">
         <div className="w-full max-w-[550px] mx-auto flex-1 md:flex-initial flex flex-col">
           {/* Title */}
-          <h1 className="font-albert text-[32px] md:text-[44px] text-[#1a1a1a] tracking-[-2px] leading-[1.15] mb-2">
+          <h1 className="font-albert text-[32px] md:text-[44px] text-[#1a1a1a] dark:text-white tracking-[-2px] leading-[1.15] mb-2">
             Anything you&apos;d like to reflect on?
           </h1>
           
           {/* Subtitle */}
-          <p className="font-albert text-[20px] md:text-[22px] font-medium text-[#5f5a55] tracking-[-1px] leading-[1.3] mb-6 md:mb-8">
+          <p className="font-albert text-[20px] md:text-[22px] font-medium text-[#5f5a55] dark:text-[#a0a0a0] tracking-[-1px] leading-[1.3] mb-6 md:mb-8">
             Write a quick note about today.
           </p>
 
@@ -201,7 +201,7 @@ export default function EveningReflectPage() {
             value={reflection}
             onChange={(e) => setReflection(e.target.value)}
             placeholder="What stood out today — something you learned, noticed, felt grateful for, or that helped you move forward…"
-            className="w-full h-[120px] md:h-[150px] p-0 bg-transparent border-none resize-none font-sans text-[20px] md:text-[24px] text-[#1a1a1a] tracking-[-0.5px] leading-[1.4] placeholder:text-[#a7a39e] focus:outline-none"
+            className="w-full h-[120px] md:h-[150px] p-0 bg-transparent border-none resize-none font-sans text-[20px] md:text-[24px] text-[#1a1a1a] dark:text-white tracking-[-0.5px] leading-[1.4] placeholder:text-[#a7a39e] dark:placeholder:text-[#6a6a6a] focus:outline-none"
           />
 
           {/* Microphone button - centered, close to input */}
@@ -212,7 +212,7 @@ export default function EveningReflectPage() {
                 className={`w-[56px] h-[56px] md:w-[64px] md:h-[64px] rounded-full border-2 flex items-center justify-center transition-all ${
                   isListening 
                     ? 'bg-[#2c2520] border-[#2c2520] text-white animate-pulse' 
-                    : 'bg-white border-[#d4d0cc] text-[#8a857f] hover:border-[#2c2520] hover:text-[#2c2520]'
+                    : 'bg-white dark:bg-[#1a1f28] border-[#d4d0cc] dark:border-[#3a3f48] text-[#8a857f] dark:text-[#a0a0a0] hover:border-[#2c2520] dark:hover:border-white hover:text-[#2c2520] dark:hover:text-white'
                 }`}
                 aria-label={isListening ? 'Stop recording' : 'Start recording'}
               >
@@ -223,7 +223,7 @@ export default function EveningReflectPage() {
                 )}
               </button>
               {isListening && (
-                <p className="text-center font-sans text-[14px] text-[#5f5a55] mt-3">
+                <p className="text-center font-sans text-[14px] text-[#5f5a55] dark:text-[#a0a0a0] mt-3">
                   Listening... Tap to stop
                 </p>
               )}
@@ -247,7 +247,7 @@ export default function EveningReflectPage() {
             {/* Skip button */}
             <button
               onClick={handleSkip}
-              className="w-full bg-white text-[#2c2520] py-4 md:py-5 rounded-full font-sans text-[16px] md:text-[17px] font-bold tracking-[-0.5px] border border-[rgba(215,210,204,0.5)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="w-full bg-white dark:bg-[#1a1f28] text-[#2c2520] dark:text-white py-4 md:py-5 rounded-full font-sans text-[16px] md:text-[17px] font-bold tracking-[-0.5px] border border-[rgba(215,210,204,0.5)] dark:border-[#3a3f48] hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
               Skip
             </button>

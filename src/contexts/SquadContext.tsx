@@ -2,11 +2,30 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { generateDemoSquadsWithStats, generateDemoSquadMembers } from '@/lib/demo-data';
 import type { Squad, SquadMember, SquadStats, ContributionDay } from '@/types';
 
 const SQUAD_CACHE_KEY = 'ga-squad-cache-v2';
 const CACHE_VERSION = 2;
 const CACHE_MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
+ * Generate mock contribution history for demo mode
+ */
+function generateDemoContributionHistory(days: number): ContributionDay[] {
+  const history: ContributionDay[] = [];
+  const today = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    history.push({
+      date: date.toISOString().split('T')[0],
+      completionRate: 40 + Math.floor(Math.random() * 55), // 40-94%
+    });
+  }
+  return history;
+}
 
 interface SquadCacheData {
   version: number;
@@ -166,6 +185,7 @@ interface SquadProviderProps {
  */
 export function SquadProvider({ children }: SquadProviderProps) {
   const { user, isLoaded } = useUser();
+  const { isDemoMode } = useDemoMode();
   const hasInitializedFromStorage = useRef(false);
   
   // Multi-squad state
@@ -257,10 +277,103 @@ export function SquadProvider({ children }: SquadProviderProps) {
   }, []);
 
   // Fetch squad data with staggered loading for instant UI
-  const fetchSquad = useCallback(async (userId: string) => {
+  const fetchSquad = useCallback(async (userId: string, isDemoMode: boolean = false) => {
     try {
       setIsLoading(true);
       setError(null);
+
+      // Demo mode: use generated demo squads
+      if (isDemoMode) {
+        const demoSquadsData = generateDemoSquadsWithStats();
+        // Convert to Squad format - include all 5 squads (first 3 are program-linked, last 2 are standalone)
+        const demoSquads: Squad[] = demoSquadsData.map((s, index) => ({
+          id: s.id,
+          name: s.name,
+          slug: s.slug,
+          description: s.description,
+          avatarUrl: s.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=a07855&color=fff&size=128&bold=true`,
+          organizationId: 'demo-org',
+          createdBy: 'demo-coach-user',
+          coachId: 'demo-coach-user',
+          hasCoach: true,
+          programId: s.programId,
+          visibility: 'private' as const,
+          type: 'manual' as const,
+          createdAt: s.createdAt,
+          updatedAt: s.updatedAt,
+          inviteCode: 'DEMO123',
+          // Demo streak and alignment for gauge display
+          streak: 5 + (index * 3) + Math.floor(Math.random() * 10), // 5-24 day streak
+          avgAlignment: 65 + (index * 5) + Math.floor(Math.random() * 15), // 65-94%
+        }));
+        
+        const demoMembersBySquad: Record<string, SquadMember[]> = {};
+        for (const squad of demoSquads) {
+          const rawMembers = generateDemoSquadMembers(squad.id, 8);
+          demoMembersBySquad[squad.id] = rawMembers.map(m => ({
+            odId: m.odataId,
+            odUserId: m.odataUserId,
+            odSquadId: m.odataSquadId,
+            odOrgId: 'demo-org',
+            odName: `demo-org_${m.odataUserId}_${m.odataSquadId}`,
+            odCreatedAt: m.joinedAt,
+            odUpdatedAt: m.joinedAt,
+            odHidden: false,
+            id: m.odataUserId,
+            odataUserId: m.odataUserId,
+            odataSquadId: m.odataSquadId,
+            squadId: squad.id,
+            userId: m.odataUserId,
+            createdAt: m.joinedAt,
+            updatedAt: m.joinedAt,
+            email: m.email,
+            firstName: m.firstName,
+            lastName: m.lastName,
+            imageUrl: m.imageUrl,
+            roleInSquad: m.role === 'admin' ? 'coach' as const : 'member' as const,
+            joinedAt: m.joinedAt,
+            alignment: { score: m.alignment?.score ?? 75, status: 'aligned' as const, checkIns: [], updatedAt: new Date().toISOString() },
+            // Add alignmentScore and streak for display in SquadMemberRow
+            alignmentScore: m.alignment?.score ?? 75,
+            streak: m.streak ?? 4,
+          }));
+        }
+        
+        // Generate mock SquadStats for each demo squad
+        const demoStatsBySquad: Record<string, SquadStats> = {};
+        for (const squad of demoSquads) {
+          demoStatsBySquad[squad.id] = {
+            avgAlignment: squad.avgAlignment ?? 75,
+            alignmentChange: Math.floor(Math.random() * 10) - 3, // -3 to +6
+            topPercentile: 10 + Math.floor(Math.random() * 20), // top 10-29%
+            contributionHistory: generateDemoContributionHistory(30), // Last 30 days
+          };
+        }
+        
+        const defaultActiveId = demoSquads[0]?.id || null;
+        const standaloneSquadsList = demoSquads.filter(s => !s.programId);
+        const defaultStandaloneId = standaloneSquadsList[0]?.id || null;
+        
+        globalSquadData = {
+          squads: demoSquads,
+          membersBySquad: demoMembersBySquad,
+          statsBySquad: demoStatsBySquad,
+          activeSquadId: defaultActiveId,
+          activeStandaloneSquadId: defaultStandaloneId,
+          fetchedForUserId: userId,
+          statsLoadedForSquads: new Set(demoSquads.map(s => s.id)), // Mark all as loaded
+          contributionDaysLoadedBySquad: Object.fromEntries(demoSquads.map(s => [s.id, 30])),
+          hasMoreContributionsBySquad: Object.fromEntries(demoSquads.map(s => [s.id, false])),
+        };
+        
+        setSquads(demoSquads);
+        setMembersBySquad(demoMembersBySquad);
+        setStatsBySquad(demoStatsBySquad);
+        setActiveSquadIdState(defaultActiveId);
+        setActiveStandaloneSquadIdState(defaultStandaloneId);
+        setIsLoading(false);
+        return;
+      }
 
       // STEP 1: Fast fetch without stats - renders page instantly with skeletons
       const fastResponse = await fetch('/api/squad/me?includeStats=false');
@@ -515,22 +628,23 @@ export function SquadProvider({ children }: SquadProviderProps) {
 
   // Manual refetch function
   const refetch = useCallback(async () => {
-    if (user?.id) {
+    if (user?.id || isDemoMode) {
       // Reset all stats loading state
       globalSquadData.statsLoadedForSquads = new Set();
       globalSquadData.contributionDaysLoadedBySquad = {};
       globalSquadData.hasMoreContributionsBySquad = {};
       setHasMoreContributions(true);
-      await fetchSquad(user.id);
+      await fetchSquad(user?.id || 'demo-user', isDemoMode);
     }
-  }, [user?.id, fetchSquad]);
+  }, [user?.id, isDemoMode, fetchSquad]);
 
   // Initial fetch when user is available
   useEffect(() => {
-    if (!isLoaded) return;
+    // In demo mode, skip waiting for Clerk to load
+    if (!isDemoMode && !isLoaded) return;
 
-    // No user = clear data
-    if (!user) {
+    // No user = clear data (but not in demo mode)
+    if (!user && !isDemoMode) {
       globalSquadData = {
         squads: [],
         membersBySquad: {},
@@ -552,8 +666,11 @@ export function SquadProvider({ children }: SquadProviderProps) {
       return;
     }
 
+    // In demo mode with no user, use demo user ID
+    const userId = user?.id || 'demo-user';
+
     // Already fetched for this user = use cached data
-    if (globalSquadData.fetchedForUserId === user.id) {
+    if (globalSquadData.fetchedForUserId === userId) {
       setSquads(globalSquadData.squads);
       setMembersBySquad(globalSquadData.membersBySquad);
       setStatsBySquad(globalSquadData.statsBySquad);
@@ -569,8 +686,8 @@ export function SquadProvider({ children }: SquadProviderProps) {
     }
 
     // Fetch for new user
-    fetchSquad(user.id);
-  }, [user, isLoaded, fetchSquad]);
+    fetchSquad(userId, isDemoMode);
+  }, [user, isLoaded, isDemoMode, fetchSquad]);
 
   return (
     <SquadContext.Provider value={{

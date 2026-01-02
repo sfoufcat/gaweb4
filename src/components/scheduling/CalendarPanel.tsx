@@ -95,7 +95,7 @@ export function CalendarPanel({
         </div>
 
         {/* Calendar Content */}
-        <div className="max-h-[450px] overflow-hidden">
+        <div className="max-h-[450px] overflow-y-auto">
           <CalendarContent compact />
         </div>
       </div>

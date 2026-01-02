@@ -55,6 +55,8 @@ import {
 } from '@/components/ui/select';
 import { SendDMModal, type DMRecipient } from '@/components/coach/SendDMModal';
 import { ScheduleCallModal } from '@/components/scheduling';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DemoSignupModal, useDemoSignupModal } from '@/components/demo/DemoSignupModal';
 import type { 
   ClientCoachingData, 
   FirebaseUser, 
@@ -244,6 +246,10 @@ interface SquadInfo {
  */
 export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
   const router = useRouter();
+  const { isDemoMode } = useDemoMode();
+  
+  // Demo signup modal
+  const { isOpen: isSignupModalOpen, action: signupModalAction, showModal: showSignupModal, hideModal: hideSignupModal } = useDemoSignupModal();
   
   // Data states
   const [user, setUser] = useState<UserData | null>(null);
@@ -442,6 +448,10 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
 
   // Add user to a squad (proper multi-squad support)
   const handleAddToSquad = async (squadId: string) => {
+    if (isDemoMode) {
+      showSignupModal('add client to squad');
+      return;
+    }
     try {
       setUpdatingSquad(true);
       
@@ -477,6 +487,10 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
 
   // Remove user from a squad (proper multi-squad support)
   const handleRemoveFromSquad = async (squadId: string) => {
+    if (isDemoMode) {
+      showSignupModal('remove client from squad');
+      return;
+    }
     try {
       setUpdatingSquad(true);
       
@@ -512,6 +526,10 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
 
   // Save coaching data changes
   const handleSaveCoachingChanges = async () => {
+    if (isDemoMode) {
+      showSignupModal('save changes');
+      return;
+    }
     if (!coachingData || !hasCoaching) return;
 
     try {
@@ -543,6 +561,11 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
 
   // Schedule or update call (uses unified events API)
   const handleScheduleCall = async () => {
+    if (isDemoMode) {
+      showSignupModal('schedule a call');
+      setShowCallModal(false);
+      return;
+    }
     if (!callDate || !callTime || !hasCoaching || !user) return;
 
     try {
@@ -621,6 +644,10 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
 
   // Delete scheduled call
   const handleDeleteCall = async () => {
+    if (isDemoMode) {
+      showSignupModal('delete scheduled call');
+      return;
+    }
     if (!hasCoaching) return;
 
     try {
@@ -706,6 +733,11 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
 
   // Add session history entry
   const handleAddSession = async () => {
+    if (isDemoMode) {
+      showSignupModal('add session history');
+      setShowSessionModal(false);
+      return;
+    }
     if (!sessionTitle.trim() || !sessionDate || !hasCoaching) return;
 
     try {
@@ -751,6 +783,11 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
 
   // Save private notes
   const handleSavePrivateNotes = async () => {
+    if (isDemoMode) {
+      showSignupModal('save notes');
+      setShowNotesModal(false);
+      return;
+    }
     if (!hasCoaching) return;
 
     try {
@@ -809,6 +846,10 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
 
   // Go to chat
   const handleGoToChat = () => {
+    if (isDemoMode) {
+      showSignupModal('message this client');
+      return;
+    }
     if (coachingData?.chatChannelId) {
       router.push(`/chat?channel=${coachingData.chatChannelId}`);
     }
@@ -850,6 +891,10 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
 
   // Save coach notes about this client
   const handleSaveCoachNotes = async () => {
+    if (isDemoMode) {
+      showSignupModal('save notes');
+      return;
+    }
     try {
       setSavingNotes(true);
       setNotesSaved(false);
@@ -2092,6 +2137,13 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
           onClose={() => setShowDMModal(false)}
         />
       )}
+
+      {/* Demo Signup Modal */}
+      <DemoSignupModal
+        isOpen={isSignupModalOpen}
+        onClose={hideSignupModal}
+        action={signupModalAction}
+      />
     </div>
   );
 }

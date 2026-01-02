@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import type { EmotionalState } from '@/types';
 
 const EMOTIONAL_STATES: EmotionalState[] = [
@@ -39,6 +40,7 @@ const STATE_BACKGROUNDS: Record<EmotionalState, string> = {
 export default function MorningCheckInStartPage() {
   const router = useRouter();
   const { isLoaded } = useUser();
+  const { isDemoMode } = useDemoMode();
   const [emotionalState, setEmotionalState] = useState<EmotionalState>('neutral');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -58,18 +60,21 @@ export default function MorningCheckInStartPage() {
     setIsSubmitting(true);
 
     try {
-      // Start check-in
-      await fetch('/api/checkin/morning', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
+      // In demo mode, skip API calls but still navigate
+      if (!isDemoMode) {
+        // Start check-in
+        await fetch('/api/checkin/morning', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
 
-      // Update emotional state
-      await fetch('/api/checkin/morning', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emotionalState }),
-      });
+        // Update emotional state
+        await fetch('/api/checkin/morning', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ emotionalState }),
+        });
+      }
 
       // Determine next step based on emotional state
       const skipReframe = emotionalState === 'confident' || emotionalState === 'energized';
@@ -107,7 +112,8 @@ export default function MorningCheckInStartPage() {
     };
   }, [isDragging]);
 
-  if (!isLoaded) {
+  // In demo mode, skip the Clerk loading check
+  if (!isLoaded && !isDemoMode) {
     return (
       <div className="fixed inset-0 bg-[#1a1a1a] flex items-center justify-center" style={{ minHeight: '100dvh' }}>
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white" />

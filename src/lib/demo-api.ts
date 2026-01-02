@@ -38,13 +38,26 @@ import {
 } from './demo-data';
 import { DEMO_USER, DEMO_ORGANIZATION } from './demo-utils';
 
+// Demo subdomains that should trigger demo mode
+const DEMO_SUBDOMAINS = ['demo.growthaddicts.com', 'demo.localhost'];
+
 /**
  * Check if the current request is from the demo site
+ * Checks both x-demo-mode header (set by middleware) and host header (for client-side fetches)
  */
 export async function isDemoRequest(): Promise<boolean> {
   try {
     const headersList = await headers();
-    return headersList.get('x-demo-mode') === 'true';
+    
+    // Check explicit demo mode header (set by middleware on initial page load)
+    if (headersList.get('x-demo-mode') === 'true') {
+      return true;
+    }
+    
+    // Also check host header for client-side API requests
+    // (these don't go through middleware, so won't have x-demo-mode header)
+    const host = headersList.get('host') || '';
+    return DEMO_SUBDOMAINS.some(demo => host === demo || host.startsWith(`${demo}:`));
   } catch {
     return false;
   }
@@ -451,6 +464,117 @@ export const demoHandlers = {
       squad: profile.squad,
       recentFeed: feedPosts,
       streak: profile.streak,
+    });
+  },
+  
+  'user-tasks': () => {
+    const profile = generateDemoUserProfile();
+    const tasks = profile.todaysTasks.map((task, index) => ({
+      id: `demo-task-${index}`,
+      userId: DEMO_USER.id,
+      organizationId: DEMO_ORGANIZATION.id,
+      title: task.label,
+      date: new Date().toISOString().split('T')[0],
+      status: task.completed ? 'completed' : 'pending',
+      listType: task.isPrimary ? 'focus' : 'backlog',
+      order: index,
+      isPrivate: false,
+      sourceType: 'user',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }));
+    return demoResponse({ tasks });
+  },
+  
+  'user-habits': () => {
+    const profile = generateDemoUserProfile();
+    const today = new Date().toISOString().split('T')[0];
+    const habits = profile.habits.map((habit, index) => ({
+      id: `demo-habit-${index}`,
+      userId: DEMO_USER.id,
+      organizationId: DEMO_ORGANIZATION.id,
+      text: habit.title,
+      frequencyType: 'daily' as const,
+      frequencyValue: 1,
+      reminder: null,
+      targetRepetitions: null,
+      progress: {
+        currentCount: habit.streak,
+        lastCompletedDate: habit.completedToday ? today : null,
+        completionDates: habit.completedToday ? [today] : [],
+        skipDates: [],
+      },
+      archived: false,
+      status: 'active' as const,
+      source: 'user' as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }));
+    return demoResponse({ habits });
+  },
+  
+  'user-goals': () => {
+    const profile = generateDemoUserProfile();
+    return demoResponse({ 
+      goals: profile.goals,
+      hasIdentity: true,
+      identity: {
+        futureIdentity: 'A confident, healthy, and focused individual who prioritizes well-being and personal growth.',
+        coreValues: ['Growth', 'Health', 'Balance', 'Connection'],
+      },
+    });
+  },
+  
+  'my-programs': () => {
+    const programs = getDemoPrograms();
+    const enrolledPrograms = programs.slice(0, 2).map(p => ({
+      ...p,
+      enrollmentId: `demo-enrollment-${p.id}`,
+      enrolledAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+      currentDay: 14,
+      completionRate: 67,
+      status: 'active',
+    }));
+    return demoResponse({ programs: enrolledPrograms });
+  },
+  
+  'my-squads': () => {
+    const squads = getDemoSquads();
+    const memberSquads = squads.slice(0, 2).map(s => ({
+      ...s,
+      membershipId: `demo-membership-${s.id}`,
+      joinedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+      role: 'member',
+    }));
+    return demoResponse({ squads: memberSquads });
+  },
+  
+  'org-discover-programs': () => {
+    const programs = getDemoPrograms().map(p => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      coverImageUrl: p.coverImageUrl,
+      type: p.type,
+      priceInCents: p.priceInCents,
+      lengthDays: p.lengthDays,
+      isPublished: true,
+      coachName: 'Coach Adam',
+      coachImageUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face',
+      nextCohortDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+      spotsLeft: 8,
+    }));
+    return demoResponse({ programs, totalCount: programs.length });
+  },
+  
+  'org-discover-categories': () => {
+    return demoResponse({
+      categories: [
+        { id: 'cat-1', name: 'Personal Growth', slug: 'personal-growth', itemCount: 12 },
+        { id: 'cat-2', name: 'Health & Wellness', slug: 'health-wellness', itemCount: 8 },
+        { id: 'cat-3', name: 'Productivity', slug: 'productivity', itemCount: 6 },
+        { id: 'cat-4', name: 'Mindfulness', slug: 'mindfulness', itemCount: 5 },
+      ],
     });
   },
 };

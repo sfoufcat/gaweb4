@@ -19,6 +19,8 @@ import { CustomMessage } from '@/components/chat/CustomMessage';
 import { CustomMessageInput } from '@/components/chat/CustomMessageInput';
 import { useCoachingPromo } from '@/contexts/BrandingContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { generateAvatarUrl } from '@/lib/demo-data';
 
 // Import Stream Chat CSS
 import 'stream-chat-react/dist/css/v2/index.css';
@@ -27,6 +29,8 @@ import '@/app/chat/chat-styles.css';
 interface ChatSheetProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Optional channel ID to auto-select when sheet opens */
+  initialChannelId?: string | null;
 }
 
 interface ChannelPreview {
@@ -46,7 +50,7 @@ interface ChannelPreview {
  * A slide-up sheet (~85% height) with full embedded chat experience.
  * Shows channel list first, then messages when channel selected.
  */
-export function ChatSheet({ isOpen, onClose }: ChatSheetProps) {
+export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const { client, isConnected } = useStreamChatClient();
   const [channels, setChannels] = useState<ChannelPreview[]>([]);
@@ -56,6 +60,9 @@ export function ChatSheet({ isOpen, onClose }: ChatSheetProps) {
   const [isAnimating, setIsAnimating] = useState(false);
   const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState<'main' | 'direct'>('main');
+  const { isDemoMode } = useDemoMode();
+  // Track if we've already auto-selected for the current initialChannelId
+  const [autoSelectedChannelId, setAutoSelectedChannelId] = useState<string | null>(null);
   
   // Coaching promo data
   const coachingPromo = useCoachingPromo();
@@ -64,6 +71,7 @@ export function ChatSheet({ isOpen, onClose }: ChatSheetProps) {
     destinationUrl: string | null;
     hasCoaching: boolean;
     hasActiveIndividualEnrollment: boolean;
+    imageUrl: string | null;
   } | null>(null);
 
   // Fetch coaching promo data
@@ -78,6 +86,7 @@ export function ChatSheet({ isOpen, onClose }: ChatSheetProps) {
               destinationUrl: data.destinationUrl || null,
               hasCoaching: data.hasCoaching || false,
               hasActiveIndividualEnrollment: data.hasActiveIndividualEnrollment || false,
+              imageUrl: data.promo?.imageUrl || null,
             });
           }
         })
@@ -227,6 +236,30 @@ export function ChatSheet({ isOpen, onClose }: ChatSheetProps) {
     }, 200);
   }, []);
 
+  // Auto-select channel if initialChannelId is provided
+  useEffect(() => {
+    if (!isOpen || !initialChannelId || !channels.length) return;
+    // Don't auto-select if we've already selected this channel
+    if (autoSelectedChannelId === initialChannelId) return;
+    
+    // Find the channel in our list
+    const channelToSelect = channels.find(c => c.id === initialChannelId);
+    if (channelToSelect) {
+      setAutoSelectedChannelId(initialChannelId);
+      handleChannelClick(channelToSelect.channel);
+    }
+  }, [isOpen, initialChannelId, channels, autoSelectedChannelId, handleChannelClick]);
+
+  // Reset auto-selected state when sheet closes
+  useEffect(() => {
+    if (!isOpen) {
+      setAutoSelectedChannelId(null);
+      // Reset to list view when closing
+      setView('list');
+      setSelectedChannel(null);
+    }
+  }, [isOpen]);
+
   // Get icon for channel type
   const getChannelIcon = (type: ChannelPreview['type'], channelId: string) => {
     if (channelId === ANNOUNCEMENTS_CHANNEL_ID) {
@@ -317,7 +350,10 @@ export function ChatSheet({ isOpen, onClose }: ChatSheetProps) {
           <div className="w-9 h-1 bg-gray-300 dark:bg-[#272d38] rounded-full" />
         </div>
 
-        {client && isConnected ? (
+        {isDemoMode ? (
+          // Demo mode: show mock chat interface
+          <DemoChatSheetContent onClose={onClose} />
+        ) : client && isConnected ? (
           <Chat client={client} theme={theme === 'dark' ? 'str-chat__theme-dark' : 'str-chat__theme-light'}>
             {/* Views Container - handles animation */}
             <div className="flex-1 flex flex-col min-h-0 relative overflow-hidden">
@@ -487,9 +523,9 @@ export function ChatSheet({ isOpen, onClose }: ChatSheetProps) {
                           className="block w-full px-5 py-4 mt-2 border-t border-[#e8e4df] dark:border-[#262b35]"
                         >
                           <div className="flex items-center gap-3">
-                            {coachingPromo.imageUrl ? (
+                            {promoData?.imageUrl ? (
                               <Image
-                                src={coachingPromo.imageUrl}
+                                src={promoData.imageUrl}
                                 alt="Personal Coach"
                                 width={48}
                                 height={48}
@@ -614,6 +650,303 @@ function ChatSheetMessageView({
             )}
           </Window>
         </Channel>
+      </div>
+    </div>
+  );
+}
+
+// Demo chat conversations
+const DEMO_CONVERSATIONS = [
+  {
+    id: 'announcements',
+    name: 'Announcements',
+    type: 'global' as const,
+    lastMessage: '🎉 Welcome to the demo! This is a preview of the chat feature.',
+    lastMessageTime: new Date(Date.now() - 1000 * 60 * 30), // 30 mins ago
+    unread: 0,
+  },
+  {
+    id: 'social-corner',
+    name: 'Social Corner',
+    type: 'global' as const,
+    lastMessage: "Anyone else trying the new meditation routine?",
+    lastMessageTime: new Date(Date.now() - 1000 * 60 * 45), // 45 mins ago
+    unread: 2,
+  },
+  {
+    id: 'share-wins',
+    name: 'Share Wins',
+    type: 'global' as const,
+    lastMessage: "🏆 Just hit my 30-day streak!",
+    lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
+    unread: 0,
+  },
+  {
+    id: 'squad-momentum',
+    name: 'Momentum Masters',
+    type: 'squad' as const,
+    lastMessage: "Great job everyone this week!",
+    lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 3), // 3 hours ago
+    unread: 1,
+  },
+  {
+    id: 'dm-sarah',
+    name: 'Sarah Miller',
+    type: 'dm' as const,
+    avatar: generateAvatarUrl('Sarah Miller'),
+    lastMessage: "Looking forward to our session tomorrow!",
+    lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 hours ago
+    unread: 0,
+  },
+  {
+    id: 'dm-michael',
+    name: 'Michael Chen',
+    type: 'dm' as const,
+    avatar: generateAvatarUrl('Michael Chen'),
+    lastMessage: "Thanks for the advice!",
+    lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
+    unread: 0,
+  },
+];
+
+const DEMO_MESSAGES = [
+  { id: '1', text: '👋 Welcome to the community chat!', isMe: false, time: new Date(Date.now() - 1000 * 60 * 60 * 2), sender: 'Coach Adam' },
+  { id: '2', text: 'This is a preview of the chat feature. In the full version, you can message your coach and connect with other members.', isMe: false, time: new Date(Date.now() - 1000 * 60 * 60 * 2), sender: 'Coach Adam' },
+  { id: '3', text: 'Feel free to explore!', isMe: false, time: new Date(Date.now() - 1000 * 60 * 30), sender: 'Coach Adam' },
+];
+
+// Demo Chat Sheet Content Component
+function DemoChatSheetContent({ onClose }: { onClose: () => void }) {
+  const [activeTab, setActiveTab] = useState<'main' | 'direct'>('main');
+  const [selectedConversation, setSelectedConversation] = useState<typeof DEMO_CONVERSATIONS[0] | null>(null);
+  const [showSignupModal, setShowSignupModal] = useState(false);
+
+  const mainConversations = DEMO_CONVERSATIONS.filter(c => c.type !== 'dm');
+  const directConversations = DEMO_CONVERSATIONS.filter(c => c.type === 'dm');
+  const filteredConversations = activeTab === 'main' ? mainConversations : directConversations;
+
+  const mainUnread = mainConversations.reduce((sum, c) => sum + c.unread, 0);
+  const directUnread = directConversations.reduce((sum, c) => sum + c.unread, 0);
+
+  const getChannelIcon = (type: 'dm' | 'squad' | 'global' | 'coaching') => {
+    if (type === 'global') return <Megaphone className="w-5 h-5 text-blue-500" />;
+    if (type === 'squad') return <Users className="w-5 h-5 text-brand-accent" />;
+    return <MessageCircle className="w-5 h-5 text-text-secondary" />;
+  };
+
+  const handleSendMessage = () => {
+    setShowSignupModal(true);
+  };
+
+  // Message view
+  if (selectedConversation) {
+    return (
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* Header */}
+        <div className="px-4 py-3 flex items-center gap-3 border-b border-[#e8e4df] dark:border-[#262b35] flex-shrink-0">
+          <button
+            onClick={() => setSelectedConversation(null)}
+            className="p-1.5 -ml-1.5 rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#272d38] transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5 text-text-primary" />
+          </button>
+          <h3 className="font-albert text-[16px] font-semibold text-text-primary truncate">
+            {selectedConversation.name}
+          </h3>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {DEMO_MESSAGES.map((msg) => (
+            <div key={msg.id} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] ${msg.isMe ? 'order-2' : ''}`}>
+                {!msg.isMe && (
+                  <p className="text-xs text-text-muted mb-1 ml-1">{msg.sender}</p>
+                )}
+                <div className={`px-4 py-2.5 rounded-2xl ${
+                  msg.isMe 
+                    ? 'bg-brand-accent text-white' 
+                    : 'bg-[#f3f1ef] dark:bg-[#272d38] text-text-primary'
+                }`}>
+                  <p className="text-[15px]">{msg.text}</p>
+                </div>
+                <p className="text-[11px] text-text-muted mt-1 ml-1">
+                  {formatDistanceToNow(msg.time, { addSuffix: true })}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Input */}
+        <div className="p-3 border-t border-[#e8e4df] dark:border-[#262b35] flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              placeholder="Type a message..."
+              className="flex-1 px-4 py-2.5 rounded-full bg-[#f3f1ef] dark:bg-[#272d38] text-text-primary placeholder:text-text-muted text-[15px] outline-none"
+              onFocus={handleSendMessage}
+            />
+            <button
+              onClick={handleSendMessage}
+              className="w-10 h-10 rounded-full bg-brand-accent text-white flex items-center justify-center"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Demo signup modal */}
+        {showSignupModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setShowSignupModal(false)} />
+            <div className="relative bg-white dark:bg-[#171b22] rounded-2xl p-6 max-w-sm w-full shadow-xl">
+              <button
+                onClick={() => setShowSignupModal(false)}
+                className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#272d38]"
+              >
+                <X className="w-5 h-5 text-text-muted" />
+              </button>
+              <div className="text-center">
+                <div className="w-12 h-12 bg-brand-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <MessageCircle className="w-6 h-6 text-brand-accent" />
+                </div>
+                <h3 className="font-albert text-lg font-semibold text-text-primary mb-2">
+                  Sending messages is disabled
+                </h3>
+                <p className="text-sm text-text-secondary mb-4">
+                  This is a demo preview. Sign up to message your coach and connect with the community.
+                </p>
+                <a
+                  href="https://growthaddicts.com"
+                  className="inline-block w-full py-2.5 px-4 bg-brand-accent text-white rounded-lg font-medium hover:opacity-90 transition-opacity"
+                >
+                  Get Started
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Channel list view
+  return (
+    <div className="flex-1 flex flex-col min-h-0">
+      {/* Demo banner */}
+      <div className="px-5 py-2 bg-brand-accent/10 border-b border-brand-accent/20 flex-shrink-0">
+        <p className="text-xs text-brand-accent font-medium text-center">
+          Demo Mode: Preview the chat experience
+        </p>
+      </div>
+
+      {/* Header */}
+      <div className="px-5 pb-3 pt-2 flex items-center justify-between flex-shrink-0">
+        <h2 className="font-albert text-[20px] font-semibold text-text-primary tracking-[-0.5px]">
+          Messages
+        </h2>
+        <button
+          onClick={onClose}
+          className="p-1.5 rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#272d38] transition-colors"
+        >
+          <X className="w-5 h-5 text-text-secondary" />
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="px-5 pb-3 flex-shrink-0">
+        <div className="bg-[#f3f1ef] dark:bg-[#11141b] rounded-[32px] p-1.5 flex gap-1.5">
+          <button
+            onClick={() => setActiveTab('main')}
+            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-[24px] transition-all ${
+              activeTab === 'main' ? 'bg-white dark:bg-[#171b22] shadow-sm' : ''
+            }`}
+          >
+            <Users className={`w-4 h-4 ${activeTab === 'main' ? 'text-text-primary' : 'text-text-muted'}`} />
+            <span className={`font-albert text-[14px] font-semibold ${activeTab === 'main' ? 'text-text-primary' : 'text-text-muted'}`}>
+              Main
+            </span>
+            {mainUnread > 0 && (
+              <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand-accent text-white text-[10px] font-semibold">
+                {mainUnread}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('direct')}
+            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-[24px] transition-all ${
+              activeTab === 'direct' ? 'bg-white dark:bg-[#171b22] shadow-sm' : ''
+            }`}
+          >
+            <MessageCircle className={`w-4 h-4 ${activeTab === 'direct' ? 'text-text-primary' : 'text-text-muted'}`} />
+            <span className={`font-albert text-[14px] font-semibold ${activeTab === 'direct' ? 'text-text-primary' : 'text-text-muted'}`}>
+              Direct
+            </span>
+            {directUnread > 0 && (
+              <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand-accent text-white text-[10px] font-semibold">
+                {directUnread}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Channel list */}
+      <div className="flex-1 overflow-y-auto pb-safe">
+        <div className="px-5 space-y-1">
+          {filteredConversations.map((conv) => (
+            <button
+              key={conv.id}
+              onClick={() => setSelectedConversation(conv)}
+              className="w-full flex items-center gap-3 py-3 px-3 rounded-xl hover:bg-[#f3f1ef] dark:hover:bg-[#272d38] transition-colors text-left"
+            >
+              {/* Avatar */}
+              <div className="relative flex-shrink-0">
+                {conv.type === 'dm' && conv.avatar ? (
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-earth-200">
+                    <Image
+                      src={conv.avatar}
+                      alt={conv.name}
+                      width={48}
+                      height={48}
+                      className="w-full h-full object-cover"
+                      unoptimized
+                    />
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-[#f3f1ef] dark:bg-[#272d38] flex items-center justify-center">
+                    {getChannelIcon(conv.type)}
+                  </div>
+                )}
+                {conv.unread > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand-accent text-white text-[10px] font-semibold">
+                    {conv.unread}
+                  </span>
+                )}
+              </div>
+
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-0.5">
+                  <p className={`font-albert text-[15px] truncate ${conv.unread > 0 ? 'font-semibold text-text-primary' : 'font-medium text-text-primary'}`}>
+                    {conv.name}
+                  </p>
+                  <span className="text-[12px] text-text-muted flex-shrink-0 ml-2">
+                    {formatDistanceToNow(conv.lastMessageTime, { addSuffix: false })}
+                  </span>
+                </div>
+                <p className={`text-[13px] truncate ${conv.unread > 0 ? 'text-text-secondary font-medium' : 'text-text-muted'}`}>
+                  {conv.lastMessage}
+                </p>
+              </div>
+
+              <ChevronRight className="w-4 h-4 text-text-muted flex-shrink-0" />
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

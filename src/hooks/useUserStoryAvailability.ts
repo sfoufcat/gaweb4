@@ -2,6 +2,7 @@ import { useMemo, useCallback } from 'react';
 import useSWR from 'swr';
 import type { Task } from '@/types';
 import { generateStoryContentHash } from './useStoryViewTracking';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 /**
  * Check if we're currently in the weekly reflection window (Fri, Sat, Sun)
@@ -103,6 +104,217 @@ const DEFAULT_DATA: UserStoryData = {
   eveningCheckIn: null,
   weeklyReflection: null,
   user: null,
+};
+
+// Helper to create a minimal Task object for demo
+function createDemoTask(id: string, title: string, status: 'pending' | 'completed'): Task {
+  return {
+    id,
+    userId: 'demo-user',
+    organizationId: 'demo-org',
+    title,
+    status,
+    listType: 'focus',
+    order: 0,
+    date: new Date().toISOString().split('T')[0],
+    isPrivate: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+// Demo mode mock story data for various users
+const DEMO_STORY_DATA: Record<string, UserStoryData> = {
+  'demo-user': {
+    hasActiveGoal: true,
+    hasTasksToday: true,
+    hasDayClosed: false,
+    hasWeekClosed: false,
+    hasUserPostedStories: false,
+    userPostedStories: [],
+    goal: {
+      title: 'Build consistent habits and achieve my goals',
+      targetDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+      progress: 65,
+    },
+    tasks: [
+      createDemoTask('t1', 'Complete morning workout', 'completed'),
+      createDemoTask('t2', 'Review weekly goals', 'completed'),
+      createDemoTask('t3', 'Read 20 pages of new book', 'pending'),
+    ],
+    completedTasks: [
+      createDemoTask('t1', 'Complete morning workout', 'completed'),
+      createDemoTask('t2', 'Review weekly goals', 'completed'),
+    ],
+    eveningCheckIn: null,
+    weeklyReflection: null,
+    user: { firstName: 'Demo', lastName: 'User', imageUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face' },
+  },
+  'demo-coach-user': {
+    hasActiveGoal: true,
+    hasTasksToday: true,
+    hasDayClosed: true,
+    hasWeekClosed: false,
+    hasUserPostedStories: true,
+    userPostedStories: [{
+      id: 'story-selfie-coach',
+      type: 'user_post',
+      authorId: 'demo-coach-user',
+      imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop',
+      caption: 'Great workout this morning! 💪 Time to conquer the day.',
+      expiresAt: new Date(Date.now() + 20 * 60 * 60 * 1000).toISOString(),
+      createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+    }],
+    goal: {
+      title: 'Help 100 clients achieve their goals',
+      targetDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+      progress: 65,
+    },
+    tasks: [
+      createDemoTask('t1', 'Review client progress reports', 'completed'),
+      createDemoTask('t2', 'Prepare coaching session materials', 'completed'),
+      createDemoTask('t3', 'Send weekly motivation emails', 'pending'),
+    ],
+    completedTasks: [
+      createDemoTask('t1', 'Review client progress reports', 'completed'),
+      createDemoTask('t2', 'Prepare coaching session materials', 'completed'),
+    ],
+    eveningCheckIn: { emotionalState: 'energized', tasksCompleted: 2, tasksTotal: 3 },
+    weeklyReflection: null,
+    user: { firstName: 'Adam', lastName: 'Coach', imageUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face' },
+  },
+  'demo-member-1': {
+    hasActiveGoal: true,
+    hasTasksToday: true,
+    hasDayClosed: true,
+    hasWeekClosed: false,
+    hasUserPostedStories: true,
+    userPostedStories: [{
+      id: 'story-selfie-sarah',
+      type: 'user_post',
+      authorId: 'demo-member-1',
+      imageUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=600&fit=crop',
+      caption: 'Crushing my goals one day at a time! 🎯',
+      expiresAt: new Date(Date.now() + 18 * 60 * 60 * 1000).toISOString(),
+      createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+    }],
+    goal: {
+      title: 'Build a successful coaching business',
+      targetDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+      progress: 45,
+    },
+    tasks: [
+      createDemoTask('t1', 'Morning meditation 10 min', 'completed'),
+      createDemoTask('t2', 'Work on business plan', 'completed'),
+      createDemoTask('t3', 'Network with 2 new contacts', 'pending'),
+    ],
+    completedTasks: [
+      createDemoTask('t1', 'Morning meditation 10 min', 'completed'),
+      createDemoTask('t2', 'Work on business plan', 'completed'),
+    ],
+    eveningCheckIn: { emotionalState: 'calm', tasksCompleted: 2, tasksTotal: 3 },
+    weeklyReflection: null,
+    user: { firstName: 'Sarah', lastName: 'Miller', imageUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face' },
+  },
+  'demo-member-2': {
+    hasActiveGoal: true,
+    hasTasksToday: true,
+    hasDayClosed: false,
+    hasWeekClosed: false,
+    hasUserPostedStories: false,
+    userPostedStories: [],
+    goal: {
+      title: 'Launch my SaaS product',
+      targetDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+      progress: 45,
+    },
+    tasks: [
+      createDemoTask('t1', 'Code landing page', 'completed'),
+      createDemoTask('t2', 'Set up payment integration', 'completed'),
+      createDemoTask('t3', 'Write launch email', 'completed'),
+      createDemoTask('t4', 'Test checkout flow', 'pending'),
+    ],
+    completedTasks: [],
+    eveningCheckIn: null,
+    weeklyReflection: null,
+    user: { firstName: 'Michael', lastName: 'Chen', imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face' },
+  },
+  'demo-member-3': {
+    hasActiveGoal: true,
+    hasTasksToday: true,
+    hasDayClosed: true,
+    hasWeekClosed: false,
+    hasUserPostedStories: true,
+    userPostedStories: [{
+      id: 'story-selfie-emma',
+      type: 'user_post',
+      authorId: 'demo-member-3',
+      imageUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=600&fit=crop',
+      caption: 'Another productive day in the books! 📚',
+      expiresAt: new Date(Date.now() + 16 * 60 * 60 * 1000).toISOString(),
+      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    }],
+    goal: {
+      title: 'Write my first book',
+      targetDate: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString(),
+      progress: 30,
+    },
+    tasks: [
+      createDemoTask('t1', 'Write 1000 words', 'completed'),
+      createDemoTask('t2', 'Research chapter 5', 'completed'),
+      createDemoTask('t3', 'Outline next chapter', 'pending'),
+    ],
+    completedTasks: [
+      createDemoTask('t1', 'Write 1000 words', 'completed'),
+      createDemoTask('t2', 'Research chapter 5', 'completed'),
+    ],
+    eveningCheckIn: { emotionalState: 'reflective', tasksCompleted: 2, tasksTotal: 3 },
+    weeklyReflection: null,
+    user: { firstName: 'Emma', lastName: 'Thompson', imageUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face' },
+  },
+  'demo-member-4': {
+    hasActiveGoal: true,
+    hasTasksToday: false,
+    hasDayClosed: false,
+    hasWeekClosed: false,
+    hasUserPostedStories: false,
+    userPostedStories: [],
+    goal: {
+      title: 'Run a marathon',
+      targetDate: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString(),
+      progress: 25,
+    },
+    tasks: [],
+    completedTasks: [],
+    eveningCheckIn: null,
+    weeklyReflection: null,
+    user: { firstName: 'James', lastName: 'Wilson', imageUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&crop=face' },
+  },
+  'demo-member-5': {
+    hasActiveGoal: true,
+    hasTasksToday: true,
+    hasDayClosed: true,
+    hasWeekClosed: false,
+    hasUserPostedStories: false,
+    userPostedStories: [],
+    goal: {
+      title: 'Learn a new language',
+      targetDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      progress: 15,
+    },
+    tasks: [
+      createDemoTask('t1', 'Duolingo lesson', 'completed'),
+      createDemoTask('t2', 'Practice speaking 15 min', 'completed'),
+      createDemoTask('t3', 'Watch foreign film', 'pending'),
+    ],
+    completedTasks: [
+      createDemoTask('t1', 'Duolingo lesson', 'completed'),
+      createDemoTask('t2', 'Practice speaking 15 min', 'completed'),
+    ],
+    eveningCheckIn: { emotionalState: 'motivated', tasksCompleted: 2, tasksTotal: 3 },
+    weeklyReflection: null,
+    user: { firstName: 'Lisa', lastName: 'Park', imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face' },
+  },
 };
 
 // =============================================================================
@@ -252,10 +464,13 @@ function transformStoryData(response: StoryDataResponse): UserStoryData {
  * - Instant loading from cache on return visits
  * - Background revalidation without showing loading states
  * - 30s stale time before refetching
+ * 
+ * In Demo Mode: Returns mock data without making network requests.
  */
 export function useCurrentUserStoryAvailability(): StoryAvailability {
+  const { isDemoMode } = useDemoMode();
   const today = new Date().toISOString().split('T')[0];
-  const cacheKey = `current-user-story-${today}`;
+  const cacheKey = isDemoMode ? null : `current-user-story-${today}`;
 
   const { data: rawData, error, isLoading, mutate } = useSWR<StoryDataResponse>(
     cacheKey,
@@ -263,11 +478,18 @@ export function useCurrentUserStoryAvailability(): StoryAvailability {
     SWR_CONFIG
   );
 
+  // In demo mode, use mock data for demo-user (the current user)
+  const demoData = useMemo(() => {
+    if (!isDemoMode) return null;
+    return DEMO_STORY_DATA['demo-user'] || DEFAULT_DATA;
+  }, [isDemoMode]);
+
   // Transform the raw data into UserStoryData
   const data = useMemo(() => {
+    if (isDemoMode && demoData) return demoData;
     if (!rawData) return DEFAULT_DATA;
     return transformStoryData(rawData);
-  }, [rawData]);
+  }, [isDemoMode, demoData, rawData]);
 
   // Calculate story availability - include user-posted stories
   const hasStory = data.hasActiveGoal || data.hasDayClosed || data.hasWeekClosed || data.hasUserPostedStories;
@@ -287,8 +509,9 @@ export function useCurrentUserStoryAvailability(): StoryAvailability {
   );
 
   const refetch = useCallback(async () => {
+    if (isDemoMode) return; // No-op in demo mode
     await mutate();
-  }, [mutate]);
+  }, [isDemoMode, mutate]);
 
   return {
     hasStory,
@@ -296,9 +519,9 @@ export function useCurrentUserStoryAvailability(): StoryAvailability {
     showCheck,
     contentHash,
     data,
-    // Only show loading on initial fetch without cached data
-    isLoading: isLoading && !rawData,
-    error: error?.message || null,
+    // In demo mode, never loading. Otherwise, only show loading on initial fetch
+    isLoading: isDemoMode ? false : (isLoading && !rawData),
+    error: isDemoMode ? null : (error?.message || null),
     refetch,
   };
 }
@@ -342,10 +565,14 @@ interface UserStoryApiResponse {
  * Used for squad members.
  * 
  * Uses SWR for caching with 30s stale time.
+ * 
+ * In Demo Mode: Returns mock data without making network requests.
  */
 export function useUserStoryAvailability(userId: string): StoryAvailability {
+  const { isDemoMode } = useDemoMode();
   const today = new Date().toISOString().split('T')[0];
-  const cacheKey = userId ? `user-story-${userId}-${today}` : null;
+  // In demo mode, don't fetch (return null key)
+  const cacheKey = (userId && !isDemoMode) ? `user-story-${userId}-${today}` : null;
 
   const { data: storyData, error, isLoading, mutate } = useSWR<UserStoryApiResponse>(
     cacheKey,
@@ -359,8 +586,17 @@ export function useUserStoryAvailability(userId: string): StoryAvailability {
     SWR_CONFIG
   );
 
+  // In demo mode, use mock data for the user ID
+  const demoData = useMemo(() => {
+    if (!isDemoMode || !userId) return null;
+    return DEMO_STORY_DATA[userId] || DEFAULT_DATA;
+  }, [isDemoMode, userId]);
+
   // Transform response to UserStoryData
   const data = useMemo((): UserStoryData => {
+    // Demo mode: use mock data
+    if (isDemoMode && demoData) return demoData;
+    
     if (!storyData) return DEFAULT_DATA;
 
     // Apply reflection window check - Week Closed story only visible Fri-Sun
@@ -381,7 +617,7 @@ export function useUserStoryAvailability(userId: string): StoryAvailability {
       weeklyReflection: storyData.weeklyReflection || null,
       user: storyData.user,
     };
-  }, [storyData]);
+  }, [isDemoMode, demoData, storyData]);
 
   // Calculate story availability - include user-posted stories
   const hasStory = data.hasActiveGoal || data.hasDayClosed || data.hasWeekClosed || data.hasUserPostedStories;
@@ -401,8 +637,9 @@ export function useUserStoryAvailability(userId: string): StoryAvailability {
   );
 
   const refetch = useCallback(async () => {
+    if (isDemoMode) return; // No-op in demo mode
     await mutate();
-  }, [mutate]);
+  }, [isDemoMode, mutate]);
 
   return {
     hasStory,
@@ -410,9 +647,9 @@ export function useUserStoryAvailability(userId: string): StoryAvailability {
     showCheck,
     contentHash,
     data,
-    // Only show loading on initial fetch without cached data
-    isLoading: isLoading && !storyData,
-    error: error?.message || null,
+    // In demo mode, never loading. Otherwise, only show loading on initial fetch
+    isLoading: isDemoMode ? false : (isLoading && !storyData),
+    error: isDemoMode ? null : (error?.message || null),
     refetch,
   };
 }

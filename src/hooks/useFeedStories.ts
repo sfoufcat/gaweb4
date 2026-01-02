@@ -6,6 +6,8 @@ import { useUser } from '@clerk/nextjs';
 import type { SquadMember } from '@/types';
 import { generateStoryContentHash } from './useStoryViewTracking';
 import { isInReflectionWindow, useCurrentUserStoryAvailability } from './useUserStoryAvailability';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { generateAvatarUrl } from '@/lib/demo-data';
 
 // =============================================================================
 // TYPES
@@ -126,6 +128,86 @@ export function useFeedStories(
   squadMembersOrOptions: SquadMember[] | UseFeedStoriesOptions
 ): UseFeedStoriesReturn {
   const { user } = useUser();
+  const { isDemoMode } = useDemoMode();
+
+  // Demo mode: return mock story users (excludes current user who appears as "Your Story")
+  const demoStoryUsers: FeedStoryUser[] = useMemo(() => {
+    if (!isDemoMode) return [];
+    
+    return [
+      // Demo users with stories (matching API user IDs)
+      {
+        id: 'demo-member-1',
+        firstName: 'Sarah',
+        lastName: 'Miller',
+        imageUrl: generateAvatarUrl('Sarah Miller'),
+        hasUnseenStory: true,
+        hasStory: true,
+        hasDayClosed: true,
+        hasWeekClosed: false,
+        hasTasks: true,
+        hasGoal: true,
+        contentHash: 'demo-sarah-story-hash',
+        taskCount: 3,
+        userPostCount: 1,
+      },
+      {
+        id: 'demo-member-2',
+        firstName: 'Michael',
+        lastName: 'Chen',
+        imageUrl: generateAvatarUrl('Michael Chen'),
+        hasUnseenStory: true,
+        hasStory: true,
+        hasDayClosed: false,
+        hasWeekClosed: false,
+        hasTasks: true,
+        hasGoal: true,
+        contentHash: 'demo-michael-story-hash',
+        taskCount: 3,
+        userPostCount: 0,
+      },
+      {
+        id: 'demo-member-3',
+        firstName: 'Emma',
+        lastName: 'Thompson',
+        imageUrl: generateAvatarUrl('Emma Thompson'),
+        hasUnseenStory: true,
+        hasStory: true,
+        hasDayClosed: true,
+        hasWeekClosed: false,
+        hasTasks: true,
+        hasGoal: true,
+        contentHash: 'demo-emma-story-hash',
+        taskCount: 3,
+        userPostCount: 1,
+      },
+      {
+        id: 'demo-member-5',
+        firstName: 'Lisa',
+        lastName: 'Park',
+        imageUrl: generateAvatarUrl('Lisa Park'),
+        hasUnseenStory: true,
+        hasStory: true,
+        hasDayClosed: true,
+        hasWeekClosed: false,
+        hasTasks: true,
+        hasGoal: true,
+        contentHash: 'demo-lisa-story-hash',
+        taskCount: 3,
+        userPostCount: 0,
+      },
+    ];
+  }, [isDemoMode]);
+
+  // Demo mode early return
+  if (isDemoMode) {
+    return {
+      storyUsers: demoStoryUsers,
+      isLoading: false,
+      error: null,
+      refetch: () => {},
+    };
+  }
 
   // Normalize input - support both legacy array and new options object
   const options: UseFeedStoriesOptions = Array.isArray(squadMembersOrOptions)

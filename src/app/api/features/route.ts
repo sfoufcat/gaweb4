@@ -12,6 +12,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
+import { isDemoRequest, demoResponse, demoNotAvailable } from '@/lib/demo-api';
+import { generateDemoFeatureRequests } from '@/lib/demo-data';
 import type { ClerkPublicMetadata, OrgRole, FeatureRequest, FeatureVote } from '@/types';
 
 // =============================================================================
@@ -20,6 +22,19 @@ import type { ClerkPublicMetadata, OrgRole, FeatureRequest, FeatureVote } from '
 
 export async function GET() {
   try {
+    // Demo mode: return demo feature requests
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const demoFeatures = generateDemoFeatureRequests();
+      return demoResponse({
+        inProgress: demoFeatures.filter(f => f.status === 'in_progress'),
+        suggested: demoFeatures.filter(f => f.status === 'open'),
+        completed: demoFeatures.filter(f => f.status === 'completed'),
+        userVotedFeatureIds: ['fr-1', 'fr-3'], // Mock voted features
+        totalCount: demoFeatures.length,
+      });
+    }
+    
     const { userId, sessionClaims } = await auth();
     
     if (!userId) {
@@ -94,6 +109,12 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    // Demo mode: block write operations
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      return demoNotAvailable('Submitting feature requests');
+    }
+    
     const { userId, sessionClaims } = await auth();
     
     if (!userId) {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import useSWR from 'swr';
 import type { FlowShowCondition, FlowShowConditions, FlowDisplayConfig } from '@/types';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 /**
  * Dynamic prompt flow returned from API
@@ -145,8 +146,10 @@ function evaluateShowConditions(
  * - Not already completed today
  */
 export function useDynamicPrompts() {
+  const { isDemoMode } = useDemoMode();
+  
   const { data, error, isLoading, mutate } = useSWR<DynamicPromptsResponse>(
-    '/api/homepage/dynamic-prompts',
+    isDemoMode ? null : '/api/homepage/dynamic-prompts', // Skip API call in demo mode
     fetcher,
     {
       revalidateOnFocus: false,
@@ -169,6 +172,11 @@ export function useDynamicPrompts() {
   
   // Filter flows based on conditions
   const activePrompts = useMemo((): ActiveDynamicPrompt[] => {
+    // Demo mode: return a motivational quote prompt
+    if (isDemoMode) {
+      return [];
+    }
+    
     if (!data?.flows || !data?.userState) {
       return [];
     }
@@ -184,11 +192,11 @@ export function useDynamicPrompts() {
         },
         url: `/checkin/flow/custom?flowId=${flow.id}`,
       }));
-  }, [data]);
+  }, [data, isDemoMode]);
   
   return {
     activePrompts,
-    isLoading,
+    isLoading: isDemoMode ? false : isLoading,
     error: error?.message ?? null,
     refetch: mutate,
     // Expose raw data for debugging

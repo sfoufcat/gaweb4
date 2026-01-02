@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Calendar, Clock, MapPin, Repeat, ChevronDown, ChevronUp, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, MapPin, Repeat, ChevronDown, ChevronUp, Image as ImageIcon, AlertCircle, Plus } from 'lucide-react';
 import type { DiscoverEvent } from '@/types/discover';
 import type { RecurrenceFrequency } from '@/types';
 import {
@@ -999,8 +999,10 @@ export function AdminEventsSection({ apiEndpoint = '/api/admin/discover/events' 
               <Button
                 onClick={() => { setEventToEdit(null); setIsFormOpen(true); }}
                 className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
+                title="Create Event"
               >
-                + Create Event
+                <Plus className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Create Event</span>
               </Button>
             </div>
           </div>

@@ -29,9 +29,11 @@ interface ProgramCardProgram {
 interface ProgramCardProps {
   program: ProgramCardProgram;
   variant?: 'default' | 'compact';
+  /** When true (default), card uses w-full for grid layouts. Set to false for horizontal scroll carousels. */
+  fullWidth?: boolean;
 }
 
-export function ProgramCard({ program, variant = 'default' }: ProgramCardProps) {
+export function ProgramCard({ program, variant = 'default', fullWidth = true }: ProgramCardProps) {
   const formatPrice = (cents: number) => {
     if (cents === 0) return 'Free';
     return `$${(cents / 100).toFixed(0)}`;
@@ -45,11 +47,14 @@ export function ProgramCard({ program, variant = 'default' }: ProgramCardProps) 
   const isEnrolled = !!program.userEnrollment;
   const isCompact = variant === 'compact';
 
+  // Width classes: fullWidth for grids, fixed width for carousels
+  const widthClass = fullWidth 
+    ? 'w-full' 
+    : isCompact ? 'w-[200px]' : 'w-[280px]';
+
   return (
     <Link href={`/discover/programs/${program.id}`}>
-      <div className={`bg-white/70 dark:bg-[#171b22] rounded-[20px] flex-shrink-0 hover:shadow-lg dark:hover:shadow-black/30 transition-all cursor-pointer overflow-hidden group ${
-        isCompact ? 'w-[200px]' : 'w-[280px]'
-      }`}>
+      <div className={`bg-white/70 dark:bg-[#171b22] rounded-[20px] flex-shrink-0 hover:shadow-lg dark:hover:shadow-black/30 transition-all cursor-pointer overflow-hidden group ${widthClass}`}>
         {/* Cover Image */}
         <div className={`relative w-full bg-gradient-to-br from-brand-accent/20 to-[#8c6245]/10 dark:from-brand-accent/10 dark:to-[#8c6245]/5 ${
           isCompact ? 'h-[100px]' : 'h-[140px]'
@@ -60,7 +65,7 @@ export function ProgramCard({ program, variant = 'default' }: ProgramCardProps) 
               alt={program.name}
               fill
               className="object-cover group-hover:scale-105 transition-transform duration-300"
-              sizes={isCompact ? "200px" : "280px"}
+              sizes={fullWidth ? "(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw" : isCompact ? "200px" : "280px"}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">

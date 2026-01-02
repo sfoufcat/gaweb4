@@ -83,7 +83,7 @@ export function CalendarSheet({
         </div>
 
         {/* Calendar Content */}
-        <div className="overflow-hidden pb-8" style={{ maxHeight: 'calc(85vh - 100px)' }}>
+        <div className="overflow-y-auto pb-8" style={{ maxHeight: 'calc(85vh - 100px)' }}>
           <CalendarContent compact />
         </div>
       </div>

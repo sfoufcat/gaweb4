@@ -260,6 +260,7 @@ export function CommentSheet({ postId, onClose }: CommentSheetProps) {
                 width={32}
                 height={32}
                 className="w-full h-full object-cover"
+                unoptimized
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-xs font-semibold text-[#5f5a55]">
@@ -374,6 +375,7 @@ function CommentItem({
             width={32}
             height={32}
             className="w-full h-full object-cover"
+            unoptimized
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-xs font-semibold text-[#5f5a55] dark:text-[#b5b0ab]">
