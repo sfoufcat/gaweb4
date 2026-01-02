@@ -182,18 +182,17 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
         name: df.name,
         slug: df.slug,
         targetType: df.targetType as FunnelTargetType,
-        targetId: df.targetId,
-        targetName: df.targetName,
+        programId: df.targetType === 'program' ? df.targetId ?? null : null,
+        squadId: df.targetType === 'squad' ? df.targetId ?? null : null,
+        contentType: df.targetType === 'content' ? 'course' as FunnelContentType : undefined,
+        contentId: df.targetType === 'content' ? df.targetId : undefined,
+        isDefault: false,
         isActive: df.isActive,
+        accessType: 'public' as const,
+        defaultPaymentStatus: 'required' as const,
+        stepCount: df.steps.length,
         createdAt: df.createdAt,
         updatedAt: df.updatedAt,
-        steps: df.steps.map(s => ({
-          id: s.id,
-          funnelId: s.funnelId,
-          stepIndex: s.stepIndex,
-          type: s.type,
-          title: s.title,
-        })),
       }));
       
       // Filter by target type

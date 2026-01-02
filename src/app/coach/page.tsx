@@ -27,6 +27,7 @@ import { DiscountCodesTab } from '@/components/coach/DiscountCodesTab';
 import { AnalyticsDashboard } from '@/components/coach/analytics';
 import { CoachSupportTab } from '@/components/coach/support';
 import { FeatureTour } from '@/components/coach/onboarding';
+import { AvailabilityEditor } from '@/components/scheduling';
 
 /**
  * Coach Dashboard Page
@@ -41,8 +42,8 @@ import { FeatureTour } from '@/components/coach/onboarding';
  */
 
 // Valid tab values
-type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'checkins' | 'onboarding' | 'channels' | 'customize' | 'plan' | 'support';
-const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'referrals', 'analytics', 'discounts', 'discover', 'upgrade-forms', 'coaching-forms', 'funnels', 'checkins', 'onboarding', 'channels', 'customize', 'plan', 'support'];
+type CoachTab = 'clients' | 'squads' | 'programs' | 'referrals' | 'analytics' | 'discounts' | 'discover' | 'upgrade-forms' | 'coaching-forms' | 'funnels' | 'checkins' | 'onboarding' | 'channels' | 'scheduling' | 'customize' | 'plan' | 'support';
+const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'referrals', 'analytics', 'discounts', 'discover', 'upgrade-forms', 'coaching-forms', 'funnels', 'checkins', 'onboarding', 'channels', 'scheduling', 'customize', 'plan', 'support'];
 
 // Columns for Coach Dashboard (excludes 'tier' - tiers are not used in coach context)
 // Uses 'programs' column instead of 'coaching' to show enrolled programs with (1:1)/(Group) prefixes
@@ -492,9 +493,15 @@ function CoachPageContent() {
                 </TabsTrigger>
               </>
             )}
-            {/* 10-11. Customize, Plan - full access only */}
+            {/* 10-12. Scheduling, Customize, Plan - full access only */}
             {!isLimitedOrgCoach && (
               <>
+                <TabsTrigger 
+                  value="scheduling"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
+                >
+                  Scheduling
+                </TabsTrigger>
                 <TabsTrigger 
                   value="customize"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-accent/10 data-[state=active]:to-[#8c6245]/5 data-[state=active]:text-[#1a1a1a] dark:data-[state=active]:from-[#b8896a]/10 dark:data-[state=active]:to-brand-accent/5 dark:data-[state=active]:text-[#f5f5f8] text-[#5f5a55] dark:text-[#b2b6c2] font-albert"
@@ -635,6 +642,13 @@ function CoachPageContent() {
           {/* Channels Tab */}
           <TabsContent value="channels">
             <ChannelManagementTab />
+          </TabsContent>
+
+          {/* Scheduling Tab */}
+          <TabsContent value="scheduling">
+            <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
+              <AvailabilityEditor />
+            </div>
           </TabsContent>
 
           {/* Customize Branding Tab */}
