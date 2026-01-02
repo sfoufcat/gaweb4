@@ -2,7 +2,7 @@ import { clerkClient, auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg, ClerkPublicMetadata } from '@/lib/admin-utils-clerk';
-import { withDemoMode, demoNotAvailable } from '@/lib/demo-api';
+import { withDemoMode, demoNotAvailable, isDemoRequest } from '@/lib/demo-api';
 import type { UserRole, UserTier, UserTrack, CoachingStatus, OrgRole, OrgMembership, ProgramType } from '@/types';
 
 interface FirebaseUserData {
