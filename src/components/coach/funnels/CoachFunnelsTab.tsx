@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, 
@@ -45,6 +45,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { LimitReachedModal, useLimitCheck } from '@/components/coach';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { useDemoSession } from '@/contexts/DemoSessionContext';
+import { generateDemoFunnels } from '@/lib/demo-data';
 
 type ViewMode = 'list' | 'editing';
 
@@ -73,6 +76,9 @@ const CONTENT_TYPE_OPTIONS: { value: FunnelContentType; label: string; icon: Rea
 ];
 
 export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
+  const { isDemoMode } = useDemoMode();
+  const demoSession = useDemoSession();
+  
   const [funnels, setFunnels] = useState<Funnel[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [squads, setSquads] = useState<Squad[]>([]);
@@ -85,6 +91,9 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Demo data (memoized)
+  const demoFunnels = useMemo(() => generateDemoFunnels(), []);
   
   // Tab state
   const [activeTab, setActiveTab] = useState<FunnelTargetType>('program');
@@ -117,6 +126,12 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   const { checkLimit, showLimitModal, modalProps } = useLimitCheck(currentTier);
 
   const fetchFunnels = useCallback(async () => {
+    // Skip API call in demo mode
+    if (isDemoMode) {
+      setIsLoading(false);
+      return;
+    }
+    
     try {
       setIsLoading(true);
       setTenantRequired(null);
@@ -156,7 +171,44 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [activeTab, selectedProgramId, selectedContentType]);
+  }, [activeTab, selectedProgramId, selectedContentType, isDemoMode]);
+  
+  // Use demo data when in demo mode (from session context for interactivity)
+  const displayFunnels: Funnel[] = useMemo(() => {
+    if (isDemoMode) {
+      let filtered = demoSession.funnels.map(df => ({
+        id: df.id,
+        organizationId: 'demo-org',
+        name: df.name,
+        slug: df.slug,
+        targetType: df.targetType as FunnelTargetType,
+        targetId: df.targetId,
+        targetName: df.targetName,
+        isActive: df.isActive,
+        createdAt: df.createdAt,
+        updatedAt: df.updatedAt,
+        steps: df.steps.map(s => ({
+          id: s.id,
+          funnelId: s.funnelId,
+          stepIndex: s.stepIndex,
+          type: s.type,
+          title: s.title,
+        })),
+      }));
+      
+      // Filter by target type
+      if (activeTab === 'program') {
+        filtered = filtered.filter(f => f.targetType === 'program');
+      } else if (activeTab === 'squad') {
+        filtered = filtered.filter(f => f.targetType === 'squad');
+      } else if (activeTab === 'content') {
+        filtered = filtered.filter(f => f.targetType === 'content');
+      }
+      
+      return filtered;
+    }
+    return funnels;
+  }, [isDemoMode, demoSession.funnels, funnels, activeTab]);
 
   const fetchPrograms = useCallback(async () => {
     try {
@@ -274,6 +326,13 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
   const confirmDelete = async () => {
     if (!funnelToDelete) return;
     
+    // In demo mode, delete from session store
+    if (isDemoMode) {
+      demoSession.deleteFunnel(funnelToDelete.id);
+      setFunnelToDelete(null);
+      return;
+    }
+    
     setIsDeleting(true);
     try {
       const response = await fetch(`/api/coach/org-funnels/${funnelToDelete.id}`, {
@@ -366,7 +425,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
 
   // If editing a funnel's steps, show the step editor
   if (viewMode === 'editing' && editingFunnelId) {
-    const editingFunnel = funnels.find(f => f.id === editingFunnelId);
+    const editingFunnel = displayFunnels.find(f => f.id === editingFunnelId);
     return (
       <div className="space-y-6">
         {/* Header */}
@@ -447,6 +506,21 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
       </AnimatePresence>
 
       {/* Header */}
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="px-4 py-3 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-xl flex items-center gap-3">
+          <Eye className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-purple-700 dark:text-purple-300 font-albert">
+              Demo Mode Active
+            </p>
+            <p className="text-xs text-purple-600 dark:text-purple-400 font-albert">
+              Showing sample funnel data for demonstration purposes
+            </p>
+          </div>
+        </div>
+      )}
+      
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-text-primary dark:text-[#f5f5f8]">Funnels</h2>
@@ -454,20 +528,22 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
             Create and manage user acquisition funnels
           </p>
         </div>
-        <button
-          onClick={() => {
-            // Check funnel limit per target before opening modal
-            if (checkLimit('max_funnels_per_target', funnels.length)) {
-              showLimitModal('max_funnels_per_target', funnels.length);
-              return;
-            }
-            setShowCreateDialog(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          New Funnel
-        </button>
+        {!isDemoMode && (
+          <button
+            onClick={() => {
+              // Check funnel limit per target before opening modal
+              if (checkLimit('max_funnels_per_target', displayFunnels.length)) {
+                showLimitModal('max_funnels_per_target', displayFunnels.length);
+                return;
+              }
+              setShowCreateDialog(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-lg hover:bg-brand-accent/90 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            New Funnel
+          </button>
+        )}
       </div>
 
       {/* Target Type Tabs */}
@@ -604,7 +680,7 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
       )}
 
       {/* Empty state */}
-      {!isLoading && !error && !tenantRequired && funnels.length === 0 && (
+      {!isLoading && !error && !tenantRequired && displayFunnels.length === 0 && !isDemoMode && (
         <div className="text-center py-12 bg-[#faf8f6] dark:bg-[#11141b] rounded-2xl border border-[#e1ddd8] dark:border-[#262b35]">
           <Layers className="w-12 h-12 text-text-muted dark:text-[#7f8694] mx-auto mb-4" />
           <h3 className="text-lg font-medium text-text-primary dark:text-[#f5f5f8] mb-2">
@@ -618,8 +694,8 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
           <button
             onClick={() => {
               // Check funnel limit per target before opening modal
-              if (checkLimit('max_funnels_per_target', funnels.length)) {
-                showLimitModal('max_funnels_per_target', funnels.length);
+              if (checkLimit('max_funnels_per_target', displayFunnels.length)) {
+                showLimitModal('max_funnels_per_target', displayFunnels.length);
                 return;
               }
               setShowCreateDialog(true);
@@ -632,9 +708,9 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
       )}
 
       {/* Funnels list */}
-      {!isLoading && !error && !tenantRequired && funnels.length > 0 && (
+      {!isLoading && !error && !tenantRequired && displayFunnels.length > 0 && (
         <div className="space-y-3">
-          {funnels.map(funnel => (
+          {displayFunnels.map(funnel => (
             <motion.div
               key={funnel.id}
               initial={{ opacity: 0, y: 10 }}
@@ -754,7 +830,31 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
           onClose={() => setShowCreateDialog(false)}
           onSaved={() => {
             setShowCreateDialog(false);
-            fetchFunnels();
+            if (!isDemoMode) fetchFunnels();
+          }}
+          demoMode={isDemoMode}
+          onDemoSave={(formData) => {
+            // Get target name based on type
+            let targetName = '';
+            if (formData.targetType === 'program') {
+              targetName = programs.find(p => p.id === formData.programId)?.name || 'Program';
+            } else if (formData.targetType === 'squad') {
+              targetName = squads.find(s => s.id === formData.squadId)?.name || 'Squad';
+            } else {
+              targetName = 'Content';
+            }
+            
+            demoSession.addFunnel({
+              name: formData.name,
+              slug: formData.slug,
+              targetType: formData.targetType,
+              targetId: formData.programId || formData.squadId || formData.contentId,
+              targetName,
+              isActive: true,
+              steps: [],
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            });
           }}
         />
       )}
@@ -773,7 +873,27 @@ export function CoachFunnelsTab({ programId }: CoachFunnelsTabProps) {
           onSaved={() => {
             setShowEditDialog(false);
             setFunnelToEdit(null);
-            fetchFunnels();
+            if (!isDemoMode) fetchFunnels();
+          }}
+          demoMode={isDemoMode}
+          onDemoSave={(formData) => {
+            let targetName = '';
+            if (formData.targetType === 'program') {
+              targetName = programs.find(p => p.id === formData.programId)?.name || 'Program';
+            } else if (formData.targetType === 'squad') {
+              targetName = squads.find(s => s.id === formData.squadId)?.name || 'Squad';
+            } else {
+              targetName = 'Content';
+            }
+            
+            demoSession.updateFunnel(funnelToEdit.id, {
+              name: formData.name,
+              slug: formData.slug,
+              targetType: formData.targetType,
+              targetId: formData.programId || formData.squadId || formData.contentId,
+              targetName,
+              updatedAt: new Date().toISOString(),
+            });
           }}
         />
       )}

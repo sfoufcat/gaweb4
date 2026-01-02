@@ -31,6 +31,17 @@ interface AvailableUser {
   role: string;
 }
 
+interface SquadFormData {
+  name: string;
+  slug: string;
+  description: string;
+  avatarUrl: string;
+  visibility: SquadVisibility;
+  timezone: string;
+  priceInCents: number | null;
+  coachId: string;
+}
+
 interface SquadFormDialogProps {
   squad: Squad | null; // null for create, Squad for edit
   open: boolean;
@@ -42,6 +53,10 @@ interface SquadFormDialogProps {
   coachesApiEndpoint?: string;
   /** Custom upload endpoint URL for squad images (defaults to /api/admin/upload-media) */
   uploadEndpoint?: string;
+  /** Demo mode - skip API calls and use onDemoSave instead */
+  demoMode?: boolean;
+  /** Called in demo mode instead of making API calls */
+  onDemoSave?: (data: SquadFormData, isEdit: boolean) => void;
 }
 
 // Popular timezones for quick selection
@@ -69,6 +84,8 @@ export function SquadFormDialog({
   apiBasePath = '/api/admin/squads',
   coachesApiEndpoint = '/api/admin/coaches',
   uploadEndpoint = '/api/admin/upload-media',
+  demoMode = false,
+  onDemoSave,
 }: SquadFormDialogProps) {
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
@@ -388,6 +405,23 @@ export function SquadFormDialog({
 
     if (!name.trim()) {
       alert('Squad name is required');
+      return;
+    }
+
+    // In demo mode, call the onDemoSave callback instead of making API calls
+    if (demoMode && onDemoSave) {
+      const formData: SquadFormData = {
+        name: name.trim(),
+        slug: slug.trim() || name.trim().toLowerCase().replace(/\s+/g, '-'),
+        description: description.trim(),
+        avatarUrl: avatarUrl.trim(),
+        visibility,
+        timezone,
+        priceInCents: priceInCents !== '' ? Number(priceInCents) : null,
+        coachId,
+      };
+      onDemoSave(formData, !!squad);
+      onSave();
       return;
     }
 

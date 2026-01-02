@@ -2,8 +2,11 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
-import { UserPlus, RefreshCw } from 'lucide-react';
+import { UserPlus, RefreshCw, Eye, MessageCircle, Send } from 'lucide-react';
 import { SquadManagerPopover } from './SquadManagerPopover';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { generateDemoUsers, getDemoSquads } from '@/lib/demo-data';
+import { SendDMModal, type DMRecipient } from '@/components/coach/SendDMModal';
 import type { UserRole, UserTier, CoachingStatus, OrgRole, Squad, ProgramType, CoachTier } from '@/types';
 import { validateSubdomain } from '@/types';
 import { 
@@ -189,16 +192,35 @@ export function AdminUsersTab({
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
   const [bulkUpdating, setBulkUpdating] = useState(false);
   
+  // DM Modal state
+  const [dmRecipients, setDmRecipients] = useState<DMRecipient[]>([]);
+  const [showDmModal, setShowDmModal] = useState(false);
+  
   // Detected org role from API response (used as fallback when prop isn't provided)
   const [detectedOrgRole, setDetectedOrgRole] = useState<OrgRole | undefined>(undefined);
   
   // Detect if using org-scoped API (coach dashboard)
   const isOrgScopedApi = apiEndpointProp?.includes('/api/coach/org-users');
   
+  // Demo mode - only active for coach dashboard context
+  const { isDemoMode } = useDemoMode();
+  const isCoachContext = isOrgScopedApi || apiEndpointProp?.includes('/api/coach/');
+  const showDemoData = isDemoMode && isCoachContext;
+  
+  // Generate demo data (memoized)
+  const demoUsers = useMemo(() => generateDemoUsers(18), []);
+  const demoSquadOptions = useMemo(() => getDemoSquads().map(s => ({ id: s.id, name: s.name })), []);
+  
   // Effective org role: use prop if provided, fallback to detected from API
   const effectiveOrgRole = currentUserOrgRole || detectedOrgRole;
 
   const fetchUsers = async () => {
+    // Skip API call in demo mode
+    if (showDemoData) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       setError(null);
@@ -227,11 +249,29 @@ export function AdminUsersTab({
   useEffect(() => {
     fetchUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [showDemoData]);
+  
+  // Use demo data when in demo mode
+  const displayUsers: ClerkAdminUser[] = useMemo(() => {
+    if (showDemoData) {
+      return demoUsers.map(u => ({
+        ...u,
+        role: u.role as UserRole,
+        orgRole: u.orgRole as OrgRole,
+        tier: u.tier as UserTier,
+        coachingStatus: u.coachingStatus as CoachingStatus,
+        updatedAt: u.updatedAt,
+      }));
+    }
+    return users;
+  }, [showDemoData, demoUsers, users]);
+  
+  // Use demo squads when in demo mode
+  const displaySquads = showDemoData ? demoSquadOptions : squads;
   
   // Fetch squads for org-scoped mode
   useEffect(() => {
-    if (!isOrgScopedApi) return;
+    if (!isOrgScopedApi || showDemoData) return;
     
     const fetchSquads = async () => {
       try {
@@ -247,21 +287,21 @@ export function AdminUsersTab({
     };
     
     fetchSquads();
-  }, [isOrgScopedApi]);
+  }, [isOrgScopedApi, showDemoData]);
 
   // Filter users based on search query
   const filteredUsers = useMemo(() => {
-    if (!searchQuery.trim()) return users;
+    if (!searchQuery.trim()) return displayUsers;
     
     const query = searchQuery.toLowerCase();
-    return users.filter(
+    return displayUsers.filter(
       (user) =>
         user.name.toLowerCase().includes(query) ||
         user.email.toLowerCase().includes(query) ||
         user.firstName.toLowerCase().includes(query) ||
         user.lastName.toLowerCase().includes(query)
     );
-  }, [users, searchQuery]);
+  }, [displayUsers, searchQuery]);
 
   const handleRoleChange = async (userId: string, currentRole: UserRole, newRole: UserRole) => {
     if (!canModifyUserRole(currentUserRole, currentRole, newRole)) {
@@ -691,6 +731,21 @@ export function AdminUsersTab({
 
   return (
     <>
+      {/* Demo Mode Banner */}
+      {showDemoData && (
+        <div className="mb-4 px-4 py-3 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-xl flex items-center gap-3">
+          <Eye className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-purple-700 dark:text-purple-300 font-albert">
+              Demo Mode Active
+            </p>
+            <p className="text-xs text-purple-600 dark:text-purple-400 font-albert">
+              Showing sample client data for demonstration purposes
+            </p>
+          </div>
+        </div>
+      )}
+      
       <div className="bg-white/60 dark:bg-[#171b22]/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
         {/* Header with search and actions */}
         <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]/50 dark:border-[#262b35]/50">
@@ -698,7 +753,7 @@ export function AdminUsersTab({
             <div>
               <h2 className="text-xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] dark:text-[#f5f5f8] font-albert">{headerTitle}</h2>
               <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] dark:text-[#b2b6c2] font-albert mt-1">
-                {filteredUsers.length} of {users.length} {headerTitle.toLowerCase()}{users.length !== 1 ? '' : ''}
+                {filteredUsers.length} of {displayUsers.length} {headerTitle.toLowerCase()}{displayUsers.length !== 1 ? '' : ''}
                 {searchQuery && ' matching search'}
               </p>
             </div>
@@ -765,11 +820,31 @@ export function AdminUsersTab({
         </div>
 
         {/* Bulk Actions Toolbar */}
-        {selectedUserIds.size > 0 && isOrgScopedApi && !readOnly && (
+        {selectedUserIds.size > 0 && isOrgScopedApi && !readOnly && !showDemoData && (
           <div className="px-6 py-3 bg-brand-accent/10 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50 flex items-center gap-4 flex-wrap">
             <span className="font-albert text-sm text-[#1a1a1a] dark:text-[#f5f5f8] font-medium">
               {selectedUserIds.size} user{selectedUserIds.size !== 1 ? 's' : ''} selected
             </span>
+            
+            {/* Message Selected Button */}
+            <button
+              onClick={() => {
+                const recipients: DMRecipient[] = displayUsers
+                  .filter(u => selectedUserIds.has(u.id))
+                  .map(u => ({
+                    userId: u.id,
+                    name: u.name,
+                    email: u.email,
+                    avatarUrl: u.imageUrl,
+                  }));
+                setDmRecipients(recipients);
+                setShowDmModal(true);
+              }}
+              className="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center gap-2 font-albert"
+            >
+              <Send className="w-4 h-4" />
+              Message ({selectedUserIds.size})
+            </button>
             
             <div className="flex items-center gap-2">
               <span className="font-albert text-sm text-[#5f5a55] dark:text-[#b2b6c2]">Add to Squad:</span>
@@ -782,7 +857,7 @@ export function AdminUsersTab({
                   <SelectValue placeholder="Select squad" />
                 </SelectTrigger>
                 <SelectContent>
-                  {squads.map((squad) => (
+                  {displaySquads.map((squad) => (
                     <SelectItem key={squad.id} value={squad.id} className="font-albert">
                       {squad.name}
                     </SelectItem>
@@ -1009,11 +1084,11 @@ export function AdminUsersTab({
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <SquadManagerPopover
                           userSquadIds={user.squadIds || (user.squadId ? [user.squadId] : [])}
-                          squads={squads}
+                          squads={displaySquads}
                           onAddSquad={(squadId) => handleAddToSquad(user.id, squadId)}
                           onRemoveSquad={(squadId) => handleRemoveFromSquad(user.id, squadId)}
-                          disabled={updatingSquadUserId === user.id}
-                          readOnly={!isOrgScopedApi || readOnly}
+                          disabled={updatingSquadUserId === user.id || showDemoData}
+                          readOnly={!isOrgScopedApi || readOnly || showDemoData}
                         />
                       </TableCell>
                     )}
@@ -1106,16 +1181,37 @@ export function AdminUsersTab({
                     {/* Actions */}
                     {showColumn('actions') && !readOnly && (
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                        {canDeleteThisUser && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setUserToDelete(user)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 font-albert"
-                          >
-                            Delete
-                          </Button>
-                        )}
+                        <div className="flex items-center justify-end gap-2">
+                          {/* Message Button - only in coach context */}
+                          {isCoachContext && !showDemoData && (
+                            <button
+                              onClick={() => {
+                                setDmRecipients([{
+                                  userId: user.id,
+                                  name: user.name,
+                                  email: user.email,
+                                  avatarUrl: user.imageUrl,
+                                }]);
+                                setShowDmModal(true);
+                              }}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                              title={`Message ${user.name}`}
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">Message</span>
+                            </button>
+                          )}
+                          {canDeleteThisUser && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setUserToDelete(user)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 font-albert"
+                            >
+                              Delete
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     )}
                   </TableRow>
@@ -1355,6 +1451,20 @@ export function AdminUsersTab({
         <InviteClientsDialog
           isOpen={showInviteDialog}
           onClose={() => setShowInviteDialog(false)}
+        />
+      )}
+      
+      {/* Send DM Modal */}
+      {showDmModal && dmRecipients.length > 0 && (
+        <SendDMModal
+          recipients={dmRecipients}
+          onClose={() => {
+            setShowDmModal(false);
+            setDmRecipients([]);
+          }}
+          onSuccess={(count) => {
+            console.log(`Successfully sent ${count} messages`);
+          }}
         />
       )}
     </>

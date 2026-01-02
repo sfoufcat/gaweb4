@@ -486,6 +486,36 @@ export async function PUT(
       updateData.showCurriculum = body.showCurriculum === true;
     }
 
+    // Handle completion config (upsell settings)
+    if (body.completionConfig !== undefined) {
+      const completionConfig: {
+        showConfetti?: boolean;
+        upsellProgramId?: string;
+        upsellHeadline?: string;
+        upsellDescription?: string;
+      } = {};
+      
+      // Show confetti (default true)
+      completionConfig.showConfetti = body.completionConfig.showConfetti !== false;
+      
+      // Upsell program (validate it exists and belongs to same org)
+      if (body.completionConfig.upsellProgramId) {
+        const upsellProgramDoc = await adminDb.collection('programs').doc(body.completionConfig.upsellProgramId).get();
+        if (upsellProgramDoc.exists && upsellProgramDoc.data()?.organizationId === organizationId) {
+          completionConfig.upsellProgramId = body.completionConfig.upsellProgramId;
+          completionConfig.upsellHeadline = body.completionConfig.upsellHeadline?.trim() || undefined;
+          completionConfig.upsellDescription = body.completionConfig.upsellDescription?.trim() || undefined;
+        }
+      }
+      
+      // Only set if there's meaningful config, otherwise remove it
+      if (completionConfig.upsellProgramId || completionConfig.showConfetti === false) {
+        updateData.completionConfig = completionConfig;
+      } else {
+        updateData.completionConfig = FieldValue.delete();
+      }
+    }
+
     await adminDb.collection('programs').doc(programId).update(updateData);
 
     console.log(`[COACH_ORG_PROGRAM_PUT] Updated program: ${programId} in org ${organizationId}`);

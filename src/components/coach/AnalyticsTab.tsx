@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
-import { TrendingUp, TrendingDown, Minus, Users, Activity, AlertCircle, Heart, ChevronRight, UserX } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Users, Activity, AlertCircle, Heart, ChevronRight, UserX, Eye } from 'lucide-react';
 import type { SquadAnalyticsSummary, SquadHealthStatus } from '@/types';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { generateDemoCommunityHealth } from '@/lib/demo-data';
 
 interface CommunitySummary {
   thriving: number;
@@ -17,6 +19,8 @@ interface AnalyticsTabProps {
 }
 
 export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: AnalyticsTabProps) {
+  const { isDemoMode } = useDemoMode();
+  
   const [communities, setCommunities] = useState<SquadAnalyticsSummary[]>([]);
   const [summary, setSummary] = useState<CommunitySummary>({ thriving: 0, active: 0, inactive: 0, total: 0 });
   const [loading, setLoading] = useState(true);
@@ -25,8 +29,17 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
   const [squadDetail, setSquadDetail] = useState<any>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [excludeAdmins, setExcludeAdmins] = useState(false);
+  
+  // Demo data (memoized)
+  const demoData = useMemo(() => generateDemoCommunityHealth(), []);
 
   const fetchCommunities = useCallback(async () => {
+    // Skip API call in demo mode
+    if (isDemoMode) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       setError(null);
@@ -50,7 +63,32 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
     } finally {
       setLoading(false);
     }
-  }, [apiBasePath, excludeAdmins]);
+  }, [apiBasePath, excludeAdmins, isDemoMode]);
+  
+  // Use demo data when in demo mode
+  const displayCommunities: SquadAnalyticsSummary[] = useMemo(() => {
+    if (isDemoMode) {
+      return demoData.communities.map(dc => ({
+        squadId: dc.squadId,
+        name: dc.name,
+        memberCount: dc.memberCount,
+        healthStatus: dc.healthStatus as SquadHealthStatus,
+        activeRate: dc.activeRate,
+        messageCount: dc.messageCount,
+        avgMessagesPerMember: dc.avgMessagesPerMember,
+        trend: dc.trend as 'up' | 'down' | 'stable',
+        lastActivityAt: dc.lastActivityAt,
+      }));
+    }
+    return communities;
+  }, [isDemoMode, demoData.communities, communities]);
+  
+  const displaySummary: CommunitySummary = useMemo(() => {
+    if (isDemoMode) {
+      return demoData.summary;
+    }
+    return summary;
+  }, [isDemoMode, demoData.summary, summary]);
 
   const fetchSquadDetail = useCallback(async (squadId: string) => {
     try {
@@ -160,6 +198,21 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
         </button>
       </div>
 
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="mb-4 px-4 py-3 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-xl flex items-center gap-3">
+          <Eye className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-purple-700 dark:text-purple-300 font-albert">
+              Demo Mode Active
+            </p>
+            <p className="text-xs text-purple-600 dark:text-purple-400 font-albert">
+              Showing sample community health data for demonstration purposes
+            </p>
+          </div>
+        </div>
+      )}
+      
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
@@ -168,7 +221,7 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Thriving</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {summary.thriving}
+            {displaySummary.thriving}
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">70%+ active members</p>
         </div>
@@ -179,7 +232,7 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Active</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {summary.active}
+            {displaySummary.active}
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">40-70% active members</p>
         </div>
@@ -190,7 +243,7 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Inactive</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {summary.inactive}
+            {displaySummary.inactive}
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Needs attention</p>
         </div>
@@ -201,14 +254,14 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Total</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {summary.total}
+            {displaySummary.total}
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Communities</p>
         </div>
       </div>
 
       {/* Communities List */}
-      {communities.length === 0 ? (
+      {displayCommunities.length === 0 && !isDemoMode ? (
         <div className="text-center py-12 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
           <Users className="w-12 h-12 text-[#5f5a55] mx-auto mb-3" />
           <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
@@ -227,7 +280,7 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
           </div>
           
           <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
-            {communities.map((community) => (
+            {displayCommunities.map((community) => (
               <div
                 key={community.squadId}
                 onClick={() => setSelectedSquadId(

@@ -210,25 +210,70 @@ export async function GET(request: Request) {
     // =========================================================================
     // PROCESS PROGRAM CHECK-IN STATUS
     // =========================================================================
-    let programCheckIn = { show: false, programId: null as string | null, programName: null as string | null };
+    interface ProgramCheckInInfo {
+      show: boolean;
+      programId: string | null;
+      programName: string | null;
+      programDays: number | null;
+      completionConfig?: {
+        showConfetti?: boolean;
+        upsellProgramId?: string;
+        upsellHeadline?: string;
+        upsellDescription?: string;
+      };
+      upsellProgram?: {
+        id: string;
+        name: string;
+        description: string;
+        coverImageUrl?: string;
+        priceInCents: number;
+        currency: string;
+        lengthDays: number;
+      };
+    }
     
-    if (baseUserData?.pendingProgramCheckIn) {
+    let programCheckIn: ProgramCheckInInfo = { 
+      show: false, 
+      programId: null, 
+      programName: null,
+      programDays: null,
+    };
+    
+    const shouldShowCheckIn = baseUserData?.pendingProgramCheckIn || 
+      (baseUserData?.programCheckInDismissedAt && 
+       ((new Date().getTime() - new Date(baseUserData.programCheckInDismissedAt).getTime()) / (1000 * 60 * 60)) < 24);
+    
+    if (shouldShowCheckIn && baseUserData?.lastCompletedProgramId) {
+      // Fetch the completed program to get its completionConfig
+      const completedProgramDoc = await adminDb.collection('programs').doc(baseUserData.lastCompletedProgramId).get();
+      const completedProgram = completedProgramDoc.exists ? completedProgramDoc.data() as Program : null;
+      
       programCheckIn = {
         show: true,
-        programId: baseUserData.lastCompletedProgramId || null,
-        programName: baseUserData.lastCompletedProgramName || null,
+        programId: baseUserData.lastCompletedProgramId,
+        programName: baseUserData.lastCompletedProgramName || completedProgram?.name || null,
+        programDays: completedProgram?.lengthDays || null,
+        completionConfig: completedProgram?.completionConfig,
       };
-    } else if (baseUserData?.programCheckInDismissedAt) {
-      const dismissedAt = new Date(baseUserData.programCheckInDismissedAt);
-      const now = new Date();
-      const hoursSinceDismissal = (now.getTime() - dismissedAt.getTime()) / (1000 * 60 * 60);
       
-      if (hoursSinceDismissal < 24) {
-        programCheckIn = {
-          show: true,
-          programId: baseUserData.lastCompletedProgramId || null,
-          programName: baseUserData.lastCompletedProgramName || null,
-        };
+      // If there's an upsell program configured, fetch its details
+      if (completedProgram?.completionConfig?.upsellProgramId) {
+        const upsellProgramDoc = await adminDb.collection('programs').doc(completedProgram.completionConfig.upsellProgramId).get();
+        if (upsellProgramDoc.exists) {
+          const upsellData = upsellProgramDoc.data() as Program;
+          // Only include if the upsell program is active
+          if (upsellData.isActive) {
+            programCheckIn.upsellProgram = {
+              id: upsellProgramDoc.id,
+              name: upsellData.name,
+              description: upsellData.description,
+              coverImageUrl: upsellData.coverImageUrl,
+              priceInCents: upsellData.priceInCents,
+              currency: upsellData.currency,
+              lengthDays: upsellData.lengthDays,
+            };
+          }
+        }
       }
     }
 

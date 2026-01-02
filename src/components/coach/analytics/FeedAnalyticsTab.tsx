@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   FileText, 
   Heart, 
@@ -11,7 +11,10 @@ import {
   AlertCircle,
   ChevronDown,
   ArrowUpDown,
+  Eye,
 } from 'lucide-react';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { generateDemoFeedAnalytics } from '@/lib/demo-data';
 
 interface PosterStats {
   userId: string;
@@ -46,6 +49,8 @@ type SortField = 'postCount' | 'lastPostAt' | 'totalEngagement';
 type SortDirection = 'asc' | 'desc';
 
 export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedAnalyticsTabProps) {
+  const { isDemoMode } = useDemoMode();
+  
   const [posters, setPosters] = useState<PosterStats[]>([]);
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
   const [summary, setSummary] = useState<FeedSummary>({
@@ -63,8 +68,17 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
   const [sortField, setSortField] = useState<SortField>('postCount');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [days, setDays] = useState(30);
+  
+  // Demo data (memoized)
+  const demoData = useMemo(() => generateDemoFeedAnalytics(), []);
 
   const fetchFeedStats = useCallback(async () => {
+    // Skip API call in demo mode
+    if (isDemoMode) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       setError(null);
@@ -95,7 +109,29 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
     } finally {
       setLoading(false);
     }
-  }, [apiBasePath, days]);
+  }, [apiBasePath, days, isDemoMode]);
+  
+  // Use demo data when in demo mode
+  const displayPosters: PosterStats[] = useMemo(() => {
+    if (isDemoMode) {
+      return demoData.posters;
+    }
+    return posters;
+  }, [isDemoMode, demoData.posters, posters]);
+  
+  const displayDailyStats: DailyStats[] = useMemo(() => {
+    if (isDemoMode) {
+      return demoData.dailyStats;
+    }
+    return dailyStats;
+  }, [isDemoMode, demoData.dailyStats, dailyStats]);
+  
+  const displaySummary: FeedSummary = useMemo(() => {
+    if (isDemoMode) {
+      return demoData.summary;
+    }
+    return summary;
+  }, [isDemoMode, demoData.summary, summary]);
 
   useEffect(() => {
     fetchFeedStats();
@@ -110,7 +146,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
     }
   };
 
-  const sortedPosters = [...posters].sort((a, b) => {
+  const sortedPosters = [...displayPosters].sort((a, b) => {
     let comparison = 0;
     
     switch (sortField) {
@@ -193,6 +229,21 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
         </div>
       </div>
 
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="mb-4 px-4 py-3 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-xl flex items-center gap-3">
+          <Eye className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-purple-700 dark:text-purple-300 font-albert">
+              Demo Mode Active
+            </p>
+            <p className="text-xs text-purple-600 dark:text-purple-400 font-albert">
+              Showing sample feed analytics for demonstration purposes
+            </p>
+          </div>
+        </div>
+      )}
+      
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '0ms' }}>
@@ -201,7 +252,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Posts</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {summary.totalPosts}
+            {displaySummary.totalPosts}
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">In period</p>
         </div>
@@ -212,10 +263,10 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Engagement</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {summary.totalEngagement}
+            {displaySummary.totalEngagement}
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
-            {summary.totalLikes} likes, {summary.totalComments} comments
+            {displaySummary.totalLikes} likes, {displaySummary.totalComments} comments
           </p>
         </div>
 
@@ -225,7 +276,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Active Posters</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {summary.activePosters}
+            {displaySummary.activePosters}
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Members posting</p>
         </div>
@@ -236,7 +287,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Avg Engagement</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {summary.avgEngagementPerPost}
+            {displaySummary.avgEngagementPerPost}
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Per post</p>
         </div>
@@ -253,7 +304,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
             <div className="flex items-center gap-3">
               <Users className="w-5 h-5 text-brand-accent" />
               <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Top Posters</h3>
-              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">({posters.length})</span>
+              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">({displayPosters.length})</span>
             </div>
             <ChevronDown className={`w-5 h-5 text-[#5f5a55] transition-transform duration-200 ${expandedSection === 'posters' ? 'rotate-180' : ''}`} />
           </button>
@@ -261,7 +312,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
           <div className={`border-t border-[#e1ddd8] dark:border-[#262b35] overflow-hidden transition-all duration-300 ease-out ${
             expandedSection === 'posters' ? 'max-h-[600px] opacity-100 overflow-y-auto' : 'max-h-0 opacity-0'
           }`}>
-            {posters.length === 0 ? (
+            {displayPosters.length === 0 ? (
               <div className="px-4 py-8 text-center text-[#5f5a55] dark:text-[#b2b6c2]">
                 No posts in this period
               </div>
@@ -356,7 +407,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
             <div className="flex items-center gap-3">
               <Calendar className="w-5 h-5 text-blue-500" />
               <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Daily Activity</h3>
-              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">({dailyStats.length} days)</span>
+              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">({displayDailyStats.length} days)</span>
             </div>
             <ChevronDown className={`w-5 h-5 text-[#5f5a55] transition-transform duration-200 ${expandedSection === 'daily' ? 'rotate-180' : ''}`} />
           </button>
@@ -364,13 +415,13 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
           <div className={`border-t border-[#e1ddd8] dark:border-[#262b35] overflow-hidden transition-all duration-300 ease-out ${
             expandedSection === 'daily' ? 'max-h-[600px] opacity-100 overflow-y-auto' : 'max-h-0 opacity-0'
           }`}>
-            {dailyStats.length === 0 ? (
+            {displayDailyStats.length === 0 ? (
               <div className="px-4 py-8 text-center text-[#5f5a55] dark:text-[#b2b6c2]">
                 No activity data available
               </div>
             ) : (
               <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
-                {dailyStats.map((day, index) => (
+                {displayDailyStats.map((day, index) => (
                   <div 
                     key={day.date} 
                     className="px-4 py-3 hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a] transition-colors"
@@ -400,7 +451,7 @@ export function FeedAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FeedA
                         <div 
                           className="h-full bg-brand-accent rounded-full transition-all duration-300"
                           style={{ 
-                            width: `${Math.min(100, (day.postCount / Math.max(1, Math.max(...dailyStats.map(d => d.postCount)))) * 100)}%` 
+                            width: `${Math.min(100, (day.postCount / Math.max(1, Math.max(...displayDailyStats.map(d => d.postCount)))) * 100)}%` 
                           }}
                         />
                       </div>

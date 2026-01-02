@@ -18,7 +18,8 @@ import { StoryAvatar } from '@/components/stories/StoryAvatar';
 import { AlignmentGauge } from '@/components/alignment';
 import { NotificationBell } from '@/components/notifications';
 import { ThemeToggle } from '@/components/theme';
-import { ProgramCheckInModal, type ProgramCheckInData } from '@/components/programs/ProgramCheckInModal';
+import { ProgramCheckInModal, type ProgramCheckInData, type UpsellProgramInfo } from '@/components/programs/ProgramCheckInModal';
+import type { ProgramCompletionConfig } from '@/types';
 import type { Habit, MorningCheckIn, EveningCheckIn, Task, GoalHistoryEntry } from '@/types';
 import Image from 'next/image';
 import { Calendar, Users, ChevronRight, ChevronDown, Trophy, BookOpen, User } from 'lucide-react';
@@ -61,7 +62,13 @@ export function DashboardPage() {
   
   // Program completion check-in state
   const [showProgramCheckIn, setShowProgramCheckIn] = useState(false);
-  const [programCheckInData, setProgramCheckInData] = useState<{ programId: string | null; programName: string | null } | null>(null);
+  const [programCheckInData, setProgramCheckInData] = useState<{ 
+    programId: string | null; 
+    programName: string | null;
+    programDays: number | null;
+    completionConfig?: ProgramCompletionConfig;
+    upsellProgram?: UpsellProgramInfo | null;
+  } | null>(null);
   const [showProgramCheckInModal, setShowProgramCheckInModal] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [showAllHabits, setShowAllHabits] = useState(false);
@@ -524,6 +531,9 @@ export function DashboardPage() {
       setProgramCheckInData({
         programId: dashboardCheckIns.program.programId,
         programName: dashboardCheckIns.program.programName,
+        programDays: dashboardCheckIns.program.programDays || null,
+        completionConfig: dashboardCheckIns.program.completionConfig,
+        upsellProgram: dashboardCheckIns.program.upsellProgram || null,
       });
       setShowProgramCheckInModal(true);
     }
@@ -1818,7 +1828,14 @@ export function DashboardPage() {
           }
         }}
         programName={programCheckInData?.programName || 'Program'}
-        programDays={30}
+        programDays={programCheckInData?.programDays || 30}
+        completionConfig={programCheckInData?.completionConfig}
+        upsellProgram={programCheckInData?.upsellProgram}
+        onUpsellPurchase={async (programId: string) => {
+          // Refresh dashboard data after successful upsell purchase
+          console.log('[DASHBOARD] Upsell purchase completed for program:', programId);
+          await refetchDashboard();
+        }}
       />
 
       {/* Program Completion Modal (legacy) */}

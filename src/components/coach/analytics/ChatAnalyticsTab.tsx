@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   MessageCircle, 
   Users, 
@@ -10,7 +10,10 @@ import {
   ChevronDown,
   ArrowUpDown,
   Hash,
+  Eye,
 } from 'lucide-react';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { generateDemoChatAnalytics } from '@/lib/demo-data';
 
 interface ChannelStats {
   channelId: string;
@@ -46,6 +49,8 @@ type SortField = 'messageCount' | 'lastMessageAt' | 'memberCount';
 type SortDirection = 'asc' | 'desc';
 
 export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatAnalyticsTabProps) {
+  const { isDemoMode } = useDemoMode();
+  
   const [channels, setChannels] = useState<ChannelStats[]>([]);
   const [dailyStats, setDailyStats] = useState<DailyChatStats[]>([]);
   const [summary, setSummary] = useState<ChatSummary>({
@@ -62,8 +67,17 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
   const [sortField, setSortField] = useState<SortField>('messageCount');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [days, setDays] = useState(30);
+  
+  // Demo data (memoized)
+  const demoData = useMemo(() => generateDemoChatAnalytics(), []);
 
   const fetchChatStats = useCallback(async () => {
+    // Skip API call in demo mode
+    if (isDemoMode) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       setError(null);
@@ -93,11 +107,33 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
     } finally {
       setLoading(false);
     }
-  }, [apiBasePath, days]);
+  }, [apiBasePath, days, isDemoMode]);
 
   useEffect(() => {
     fetchChatStats();
   }, [fetchChatStats]);
+  
+  // Use demo data when in demo mode
+  const displayChannels: ChannelStats[] = useMemo(() => {
+    if (isDemoMode) {
+      return demoData.channels;
+    }
+    return channels;
+  }, [isDemoMode, demoData.channels, channels]);
+  
+  const displayDailyStats: DailyChatStats[] = useMemo(() => {
+    if (isDemoMode) {
+      return demoData.dailyStats;
+    }
+    return dailyStats;
+  }, [isDemoMode, demoData.dailyStats, dailyStats]);
+  
+  const displaySummary: ChatSummary = useMemo(() => {
+    if (isDemoMode) {
+      return demoData.summary;
+    }
+    return summary;
+  }, [isDemoMode, demoData.summary, summary]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -108,7 +144,7 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
     }
   };
 
-  const sortedChannels = [...channels].sort((a, b) => {
+  const sortedChannels = [...displayChannels].sort((a, b) => {
     let comparison = 0;
     
     switch (sortField) {
@@ -191,6 +227,21 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
         </div>
       </div>
 
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="mb-4 px-4 py-3 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-xl flex items-center gap-3">
+          <Eye className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-purple-700 dark:text-purple-300 font-albert">
+              Demo Mode Active
+            </p>
+            <p className="text-xs text-purple-600 dark:text-purple-400 font-albert">
+              Showing sample chat analytics for demonstration purposes
+            </p>
+          </div>
+        </div>
+      )}
+      
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '0ms' }}>
@@ -199,9 +250,9 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Channels</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {summary.totalChannels}
+            {displaySummary.totalChannels}
           </div>
-          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">{summary.squadChannels} squad chats</p>
+          <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">{displaySummary.squadChannels} squad chats</p>
         </div>
 
         <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 animate-fadeIn" style={{ animationDelay: '50ms' }}>
@@ -210,7 +261,7 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Active</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {summary.activeChannels}
+            {displaySummary.activeChannels}
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">With messages</p>
         </div>
@@ -221,7 +272,7 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Messages</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {summary.totalMessages}
+            {displaySummary.totalMessages}
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Total in channels</p>
         </div>
@@ -232,7 +283,7 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Avg Messages</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {summary.avgMessagesPerChannel}
+            {displaySummary.avgMessagesPerChannel}
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Per channel</p>
         </div>
@@ -249,7 +300,7 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
             <div className="flex items-center gap-3">
               <Hash className="w-5 h-5 text-brand-accent" />
               <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Chat Channels</h3>
-              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">({channels.length})</span>
+              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">({displayChannels.length})</span>
             </div>
             <ChevronDown className={`w-5 h-5 text-[#5f5a55] transition-transform duration-200 ${expandedSection === 'channels' ? 'rotate-180' : ''}`} />
           </button>
@@ -257,7 +308,7 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
           <div className={`border-t border-[#e1ddd8] dark:border-[#262b35] overflow-hidden transition-all duration-300 ease-out ${
             expandedSection === 'channels' ? 'max-h-[600px] opacity-100 overflow-y-auto' : 'max-h-0 opacity-0'
           }`}>
-            {channels.length === 0 ? (
+            {displayChannels.length === 0 ? (
               <div className="px-4 py-8 text-center text-[#5f5a55] dark:text-[#b2b6c2]">
                 No chat channels found
               </div>
@@ -348,7 +399,7 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
             <div className="flex items-center gap-3">
               <Calendar className="w-5 h-5 text-blue-500" />
               <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Daily Activity</h3>
-              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">({dailyStats.length} days)</span>
+              <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">({displayDailyStats.length} days)</span>
             </div>
             <ChevronDown className={`w-5 h-5 text-[#5f5a55] transition-transform duration-200 ${expandedSection === 'daily' ? 'rotate-180' : ''}`} />
           </button>
@@ -356,13 +407,13 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
           <div className={`border-t border-[#e1ddd8] dark:border-[#262b35] overflow-hidden transition-all duration-300 ease-out ${
             expandedSection === 'daily' ? 'max-h-[600px] opacity-100 overflow-y-auto' : 'max-h-0 opacity-0'
           }`}>
-            {dailyStats.length === 0 ? (
+            {displayDailyStats.length === 0 ? (
               <div className="px-4 py-8 text-center text-[#5f5a55] dark:text-[#b2b6c2]">
                 No activity data available
               </div>
             ) : (
               <div className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
-                {dailyStats.map((day, index) => (
+                {displayDailyStats.map((day, index) => (
                   <div 
                     key={day.date} 
                     className="px-4 py-3 hover:bg-[#faf8f6] dark:hover:bg-[#1a1f2a] transition-colors"
@@ -392,7 +443,7 @@ export function ChatAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: ChatA
                         <div 
                           className="h-full bg-blue-500 rounded-full transition-all duration-300"
                           style={{ 
-                            width: `${Math.min(100, (day.activeChannels / Math.max(1, Math.max(...dailyStats.map(d => d.activeChannels)))) * 100)}%` 
+                            width: `${Math.min(100, (day.activeChannels / Math.max(1, Math.max(...displayDailyStats.map(d => d.activeChannels)))) * 100)}%` 
                           }}
                         />
                       </div>

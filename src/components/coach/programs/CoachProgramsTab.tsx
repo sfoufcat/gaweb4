@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import Image from 'next/image';
-import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig, CoachTier } from '@/types';
+import type { Program, ProgramDay, ProgramCohort, ProgramTaskTemplate, ProgramHabitTemplate, ProgramWithStats, ProgramEnrollment, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig, CoachTier, ProgramCompletionConfig } from '@/types';
 import { ProgramLandingPageEditor } from './ProgramLandingPageEditor';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2 } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy } from 'lucide-react';
 import { AIHelperModal } from '@/components/ai';
 import type { ProgramContentDraft, LandingPageDraft, AIGenerationContext } from '@/lib/ai/types';
 import { ReferralConfigForm } from '@/components/coach/referrals';
@@ -16,6 +16,9 @@ import { NewProgramModal } from './NewProgramModal';
 import { BrandedCheckbox } from '@/components/ui/checkbox';
 import { CoachSelector } from '@/components/coach/CoachSelector';
 import { LimitReachedModal, useLimitCheck } from '@/components/coach';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { useDemoSession } from '@/contexts/DemoSessionContext';
+import { generateDemoProgramsWithStats, generateDemoProgramDays, generateDemoProgramCohorts } from '@/lib/demo-data';
 
 // Enrollment with user info
 interface EnrollmentWithUser extends ProgramEnrollment {
@@ -45,6 +48,9 @@ interface CoachProgramsTabProps {
 type ProgramType = 'group' | 'individual';
 
 export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: CoachProgramsTabProps) {
+  const { isDemoMode } = useDemoMode();
+  const demoSession = useDemoSession();
+  
   const [programs, setPrograms] = useState<ProgramWithStats[]>([]);
   const [selectedProgram, setSelectedProgram] = useState<ProgramWithStats | null>(null);
   const [programDays, setProgramDays] = useState<ProgramDay[]>([]);
@@ -54,6 +60,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [loading, setLoading] = useState(true);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Demo data (memoized)
+  const demoPrograms = useMemo(() => generateDemoProgramsWithStats(), []);
   
   // Tenant required state - shown when accessing from platform domain
   const [tenantRequired, setTenantRequired] = useState<{
@@ -112,6 +121,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     includeWeekends: boolean;
     defaultStartDate: string;
     allowCustomStartDate: boolean;
+    completionConfig: ProgramCompletionConfig;
   }>({
     name: '',
     type: 'group',
@@ -134,6 +144,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     includeWeekends: true,
     defaultStartDate: '',
     allowCustomStartDate: true,
+    completionConfig: {
+      showConfetti: true,
+      upsellProgramId: undefined,
+      upsellHeadline: '',
+      upsellDescription: '',
+    },
   });
   
   // Available coaches for selection
@@ -218,6 +234,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [deleting, setDeleting] = useState(false);
 
   const fetchPrograms = useCallback(async () => {
+    // Skip API call in demo mode
+    if (isDemoMode) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       setError(null);
@@ -250,7 +272,32 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     } finally {
       setLoading(false);
     }
-  }, [apiBasePath]);
+  }, [apiBasePath, isDemoMode]);
+  
+  // Use demo data when in demo mode (from session context for interactivity)
+  const displayPrograms: ProgramWithStats[] = useMemo(() => {
+    if (isDemoMode) {
+      return demoSession.programs.map(dp => ({
+        id: dp.id,
+        name: dp.name,
+        slug: dp.slug,
+        description: dp.description,
+        type: dp.type,
+        lengthDays: dp.durationDays,
+        priceInCents: dp.priceInCents,
+        currency: 'USD',
+        isPublished: dp.isPublished,
+        organizationId: 'demo-org',
+        createdAt: dp.createdAt,
+        updatedAt: dp.updatedAt,
+        enrolledCount: dp.enrolledCount,
+        activeEnrollments: dp.activeEnrollments,
+        completedEnrollments: dp.completedEnrollments,
+        totalRevenue: dp.totalRevenue,
+      }));
+    }
+    return programs;
+  }, [isDemoMode, demoSession.programs, programs]);
 
   // Fetch available coaches for assignment
   const fetchCoaches = useCallback(async () => {
@@ -269,6 +316,54 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   }, []);
 
   const fetchProgramDetails = useCallback(async (programId: string) => {
+    // Use demo data in demo mode (from session context for interactivity)
+    if (isDemoMode) {
+      const sessionDays = demoSession.getProgramDays(programId);
+      const sessionCohorts = demoSession.getProgramCohorts(programId);
+      
+      const days: ProgramDay[] = sessionDays.map(dd => ({
+        id: dd.id,
+        programId: dd.programId,
+        dayIndex: dd.dayIndex,
+        title: dd.title,
+        summary: dd.summary,
+        dailyPrompt: dd.dailyPrompt,
+        tasks: dd.tasks.map(t => ({ label: t.label, type: t.type, isPrimary: t.isPrimary, estimatedMinutes: t.estimatedMinutes, notes: t.notes })),
+        habits: dd.habits.map(h => ({ title: h.title, description: h.description, frequency: h.frequency })),
+      }));
+      
+      const cohorts: ProgramCohort[] = sessionCohorts.map(dc => ({
+        id: dc.id,
+        programId: dc.programId,
+        name: dc.name,
+        startDate: dc.startDate,
+        endDate: dc.endDate,
+        maxParticipants: dc.maxParticipants,
+        enrolledCount: dc.enrolledCount,
+        isActive: dc.isActive,
+      }));
+      
+      setProgramDays(days);
+      setProgramCohorts(cohorts);
+      
+      // Load first day data
+      const day1 = days.find(d => d.dayIndex === 1);
+      if (day1) {
+        setDayFormData({
+          title: day1.title || '',
+          summary: day1.summary || '',
+          dailyPrompt: day1.dailyPrompt || '',
+          tasks: day1.tasks || [],
+          habits: day1.habits || [],
+        });
+      } else {
+        setDayFormData({ title: '', summary: '', dailyPrompt: '', tasks: [], habits: [] });
+      }
+      
+      setLoadingDetails(false);
+      return;
+    }
+    
     try {
       setLoadingDetails(true);
 
@@ -512,6 +607,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         includeWeekends: program.includeWeekends !== false,
         defaultStartDate: program.defaultStartDate || '',
         allowCustomStartDate: program.allowCustomStartDate !== false,
+        completionConfig: {
+          showConfetti: program.completionConfig?.showConfetti !== false,
+          upsellProgramId: program.completionConfig?.upsellProgramId || undefined,
+          upsellHeadline: program.completionConfig?.upsellHeadline || '',
+          upsellDescription: program.completionConfig?.upsellDescription || '',
+        },
       });
     } else {
       setEditingProgram(null);
@@ -537,6 +638,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         includeWeekends: true,
         defaultStartDate: '',
         allowCustomStartDate: true,
+        completionConfig: {
+          showConfetti: true,
+          upsellProgramId: undefined,
+          upsellHeadline: '',
+          upsellDescription: '',
+        },
       });
     }
     setSaveError(null);
@@ -966,6 +1073,17 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const handleDeleteProgram = async () => {
     if (!deleteConfirmProgram) return;
     
+    // In demo mode, delete from session store
+    if (isDemoMode) {
+      demoSession.deleteProgram(deleteConfirmProgram.id);
+      if (selectedProgram?.id === deleteConfirmProgram.id) {
+        setSelectedProgram(null);
+        setViewMode('list');
+      }
+      setDeleteConfirmProgram(null);
+      return;
+    }
+    
     try {
       setDeleting(true);
       
@@ -996,6 +1114,25 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
   const handleDeleteCohort = async () => {
     if (!deleteConfirmCohort || !selectedProgram) return;
+    
+    // In demo mode, delete from session store
+    if (isDemoMode) {
+      demoSession.deleteProgramCohort(selectedProgram.id, deleteConfirmCohort.id);
+      // Refresh cohorts
+      const updatedCohorts = demoSession.getProgramCohorts(selectedProgram.id);
+      setProgramCohorts(updatedCohorts.map(dc => ({
+        id: dc.id,
+        programId: dc.programId,
+        name: dc.name,
+        startDate: dc.startDate,
+        endDate: dc.endDate,
+        maxParticipants: dc.maxParticipants,
+        enrolledCount: dc.enrolledCount,
+        isActive: dc.isActive,
+      })));
+      setDeleteConfirmCohort(null);
+      return;
+    }
     
     try {
       setDeleting(true);
@@ -1171,6 +1308,21 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   return (
     <>
       <div className="min-h-[600px]">
+        {/* Demo Mode Banner */}
+        {isDemoMode && viewMode === 'list' && (
+          <div className="mb-4 px-4 py-3 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-xl flex items-center gap-3">
+            <Eye className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-purple-700 dark:text-purple-300 font-albert">
+                Demo Mode Active
+              </p>
+              <p className="text-xs text-purple-600 dark:text-purple-400 font-albert">
+                Showing sample program data for demonstration purposes
+              </p>
+            </div>
+          </div>
+        )}
+        
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           {viewMode === 'list' ? (
@@ -1183,20 +1335,22 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   Create and manage your coaching programs
                 </p>
               </div>
-              <Button 
-                onClick={() => {
-                  // Check program limit before opening modal
-                  if (checkLimit('max_programs', programs.length)) {
-                    showLimitModal('max_programs', programs.length);
-                    return;
-                  }
-                  setIsNewProgramModalOpen(true);
-                }}
-                className="bg-brand-accent hover:bg-brand-accent/90 text-white flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                New Program
-              </Button>
+              {!isDemoMode && (
+                <Button 
+                  onClick={() => {
+                    // Check program limit before opening modal
+                    if (checkLimit('max_programs', displayPrograms.length)) {
+                      showLimitModal('max_programs', displayPrograms.length);
+                      return;
+                    }
+                    setIsNewProgramModalOpen(true);
+                  }}
+                  className="bg-brand-accent hover:bg-brand-accent/90 text-white flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  New Program
+                </Button>
+              )}
             </>
           ) : (
             <>
@@ -1312,7 +1466,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         {viewMode === 'list' && !tenantRequired ? (
           // Programs List
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {programs.map((program) => (
+            {displayPrograms.map((program) => (
               <div
                 key={program.id}
                 className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden hover:shadow-lg transition-all cursor-pointer"
@@ -1429,7 +1583,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               </div>
             ))}
 
-            {programs.length === 0 && (
+            {displayPrograms.length === 0 && !isDemoMode && (
               <div className="col-span-full text-center py-12">
                 <div className="w-16 h-16 bg-brand-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <LayoutTemplate className="w-8 h-8 text-brand-accent" />
@@ -2694,6 +2848,104 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       )}
                     </div>
 
+                    {/* Completion Settings */}
+                    <div className="space-y-4 border-t border-[#e1ddd8] dark:border-[#262b35] pt-4">
+                      <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert flex items-center gap-2">
+                        <Trophy className="w-4 h-4 text-brand-accent" />
+                        Completion Settings
+                      </h4>
+                      <p className="text-xs text-[#a7a39e] dark:text-[#7d8190]">
+                        Configure what happens when a user completes this program
+                      </p>
+                      
+                      {/* Confetti toggle */}
+                      <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                        <BrandedCheckbox
+                          checked={programFormData.completionConfig.showConfetti !== false}
+                          onChange={(checked) => setProgramFormData({ 
+                            ...programFormData, 
+                            completionConfig: { ...programFormData.completionConfig, showConfetti: checked } 
+                          })}
+                        />
+                        <span 
+                          className="cursor-pointer" 
+                          onClick={() => setProgramFormData({ 
+                            ...programFormData, 
+                            completionConfig: { ...programFormData.completionConfig, showConfetti: !programFormData.completionConfig.showConfetti } 
+                          })}
+                        >
+                          Show confetti celebration
+                        </span>
+                      </div>
+                      
+                      {/* Upsell program selector */}
+                      <div>
+                        <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+                          Upsell Program (optional)
+                        </label>
+                        <select
+                          value={programFormData.completionConfig.upsellProgramId || ''}
+                          onChange={(e) => setProgramFormData({ 
+                            ...programFormData, 
+                            completionConfig: { 
+                              ...programFormData.completionConfig, 
+                              upsellProgramId: e.target.value || undefined 
+                            } 
+                          })}
+                          className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                        >
+                          <option value="">No upsell</option>
+                          {programs
+                            .filter(p => p.id !== editingProgram?.id && p.isActive)
+                            .map(p => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} ({p.priceInCents === 0 ? 'Free' : `$${(p.priceInCents / 100).toFixed(2)}`})
+                              </option>
+                            ))
+                          }
+                        </select>
+                        <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1">
+                          Offer another program when users complete this one
+                        </p>
+                      </div>
+                      
+                      {/* Custom headline & description (only show if upsell selected) */}
+                      {programFormData.completionConfig.upsellProgramId && (
+                        <>
+                          <div>
+                            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+                              Upsell Headline
+                            </label>
+                            <input
+                              type="text"
+                              value={programFormData.completionConfig.upsellHeadline || ''}
+                              onChange={(e) => setProgramFormData({ 
+                                ...programFormData, 
+                                completionConfig: { ...programFormData.completionConfig, upsellHeadline: e.target.value } 
+                              })}
+                              placeholder="Keep the momentum going!"
+                              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert mb-1">
+                              Upsell Description
+                            </label>
+                            <textarea
+                              value={programFormData.completionConfig.upsellDescription || ''}
+                              onChange={(e) => setProgramFormData({ 
+                                ...programFormData, 
+                                completionConfig: { ...programFormData.completionConfig, upsellDescription: e.target.value } 
+                              })}
+                              placeholder="Continue your journey with our advanced program..."
+                              rows={2}
+                              className="w-full px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert resize-none"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+
                     {/* Status checkboxes */}
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
@@ -3036,7 +3288,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         onCreateFromScratch={() => {
           setIsNewProgramModalOpen(false);
           setEditingProgram(null);
-          fetchCoaches();
+          if (!isDemoMode) fetchCoaches();
           setProgramFormData({
             name: '',
             type: 'group',
@@ -3059,10 +3311,17 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             includeWeekends: true,
             defaultStartDate: '',
             allowCustomStartDate: true,
+            completionConfig: {
+              showConfetti: true,
+              upsellProgramId: undefined,
+              upsellHeadline: '',
+              upsellDescription: '',
+            },
           });
           setIsProgramModalOpen(true);
         }}
         onProgramCreated={(programId) => {
+          if (isDemoMode) return; // Demo mode creates handled by onDemoCreate
           fetchPrograms();
           // Select the new program
           const selectProgram = async () => {
@@ -3076,6 +3335,61 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
             }
           };
           selectProgram();
+        }}
+        demoMode={isDemoMode}
+        onDemoCreate={(programData) => {
+          // Create program in demo session
+          const programId = demoSession.addProgram({
+            name: programData.name,
+            slug: programData.name.toLowerCase().replace(/\s+/g, '-'),
+            description: '',
+            type: programData.type,
+            durationDays: programData.duration,
+            priceInCents: 0,
+            isPublished: false,
+            enrolledCount: 0,
+            activeEnrollments: 0,
+            completedEnrollments: 0,
+            totalRevenue: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+          // Select the new program
+          const newProgram = demoSession.programs.find(p => p.id === programId);
+          if (newProgram) {
+            setSelectedProgram({
+              id: newProgram.id,
+              name: newProgram.name,
+              slug: newProgram.slug,
+              description: newProgram.description,
+              type: newProgram.type,
+              lengthDays: newProgram.durationDays,
+              priceInCents: newProgram.priceInCents,
+              currency: 'USD',
+              isPublished: newProgram.isPublished,
+              organizationId: 'demo-org',
+              createdAt: newProgram.createdAt,
+              updatedAt: newProgram.updatedAt,
+              enrolledCount: newProgram.enrolledCount,
+              activeEnrollments: newProgram.activeEnrollments,
+              completedEnrollments: newProgram.completedEnrollments,
+              totalRevenue: newProgram.totalRevenue,
+            });
+            const sessionDays = demoSession.getProgramDays(programId);
+            setProgramDays(sessionDays.map(dd => ({
+              id: dd.id,
+              programId: dd.programId,
+              dayIndex: dd.dayIndex,
+              title: dd.title,
+              summary: dd.summary,
+              dailyPrompt: dd.dailyPrompt,
+              tasks: dd.tasks.map(t => ({ label: t.label, type: t.type, isPrimary: t.isPrimary, estimatedMinutes: t.estimatedMinutes, notes: t.notes })),
+              habits: dd.habits.map(h => ({ title: h.title, description: h.description, frequency: h.frequency })),
+            })));
+            setProgramCohorts([]);
+            setViewMode('days');
+          }
+          setIsNewProgramModalOpen(false);
         }}
       />
       

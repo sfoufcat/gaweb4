@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Users, 
   Heart, 
@@ -9,10 +9,16 @@ import {
   AlertTriangle,
   Search,
   Calendar,
-  ChevronRight,
   RefreshCw,
+  Eye,
+  MessageCircle,
+  Send,
 } from 'lucide-react';
 import type { HealthStatus } from '@/lib/analytics/constants';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { useDemoSession } from '@/contexts/DemoSessionContext';
+import { generateDemoClients } from '@/lib/demo-data';
+import { SendDMModal, type DMRecipient } from '@/components/coach/SendDMModal';
 
 interface ClientData {
   userId: string;
@@ -45,6 +51,9 @@ interface ClientActivityTabProps {
 }
 
 export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: ClientActivityTabProps) {
+  const { isDemoMode } = useDemoMode();
+  const demoSession = useDemoSession();
+  
   const [clients, setClients] = useState<ClientData[]>([]);
   const [summary, setSummary] = useState<ClientSummary>({
     totalClients: 0,
@@ -59,8 +68,22 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'thriving' | 'active' | 'inactive' | 'at-risk'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // DM Modal state
+  const [dmRecipients, setDmRecipients] = useState<DMRecipient[]>([]);
+  const [showDmModal, setShowDmModal] = useState(false);
+
+  // Generate demo data (memoized to prevent re-generation)
+  const demoData = useMemo(() => generateDemoClients(18), []);
 
   const fetchClients = useCallback(async (isRefresh = false) => {
+    // Skip API call in demo mode
+    if (isDemoMode) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+    
     try {
       if (isRefresh) {
         setRefreshing(true);
@@ -96,15 +119,52 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
       setLoading(false);
       setRefreshing(false);
     }
-  }, [apiBasePath, statusFilter]);
+  }, [apiBasePath, statusFilter, isDemoMode]);
 
   const handleRefresh = () => {
+    if (isDemoMode) return; // No refresh in demo mode
     fetchClients(true);
   };
 
   useEffect(() => {
     fetchClients();
   }, [fetchClients]);
+  
+  // Use demo data when in demo mode (from session context for interactivity)
+  const displayClients: ClientData[] = useMemo(() => {
+    if (isDemoMode) {
+      // Apply status filter to session demo data
+      let filtered = demoSession.clients as ClientData[];
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'at-risk') {
+          filtered = filtered.filter(c => c.atRisk);
+        } else {
+          filtered = filtered.filter(c => c.status === statusFilter);
+        }
+      }
+      return filtered;
+    }
+    return clients;
+  }, [isDemoMode, demoSession.clients, clients, statusFilter]);
+  
+  const displaySummary: ClientSummary = useMemo(() => {
+    if (isDemoMode) {
+      // Compute summary from session clients
+      const sessionClients = demoSession.clients;
+      return {
+        totalClients: sessionClients.length,
+        thrivingCount: sessionClients.filter(c => c.status === 'thriving').length,
+        activeCount: sessionClients.filter(c => c.status === 'active').length,
+        inactiveCount: sessionClients.filter(c => c.status === 'inactive').length,
+        atRiskCount: sessionClients.filter(c => c.atRisk).length,
+        activeRate: Math.round(
+          (sessionClients.filter(c => c.status === 'thriving' || c.status === 'active').length / 
+           sessionClients.length) * 100
+        ) || 0,
+      };
+    }
+    return summary;
+  }, [isDemoMode, demoSession.clients, summary]);
 
   const getStatusColor = (status: HealthStatus) => {
     switch (status) {
@@ -147,8 +207,23 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
     return date.toLocaleDateString();
   };
 
+  // Open DM modal for a single client
+  const handleMessageClient = useCallback((client: ClientData) => {
+    if (isDemoMode) {
+      alert('DM functionality is disabled in demo mode');
+      return;
+    }
+    setDmRecipients([{
+      userId: client.userId,
+      name: client.name,
+      email: client.email,
+      avatarUrl: client.avatarUrl,
+    }]);
+    setShowDmModal(true);
+  }, [isDemoMode]);
+
   // Filter clients by search query
-  const filteredClients = clients.filter(client => {
+  const filteredClients = displayClients.filter(client => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -159,7 +234,29 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
     );
   });
 
-  if (loading) {
+  // Open DM modal for all filtered clients (bulk)
+  const handleMessageFiltered = useCallback(() => {
+    if (isDemoMode) {
+      alert('DM functionality is disabled in demo mode');
+      return;
+    }
+    const recipients: DMRecipient[] = filteredClients.map(client => ({
+      userId: client.userId,
+      name: client.name,
+      email: client.email,
+      avatarUrl: client.avatarUrl,
+    }));
+    setDmRecipients(recipients);
+    setShowDmModal(true);
+  }, [isDemoMode, filteredClients]);
+
+  // Close DM modal
+  const handleCloseDmModal = useCallback(() => {
+    setShowDmModal(false);
+    setDmRecipients([]);
+  }, []);
+
+  if (loading && !isDemoMode) {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -172,7 +269,7 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
     );
   }
 
-  if (error) {
+  if (error && !isDemoMode) {
     return (
       <div className="text-center py-12">
         <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
@@ -183,19 +280,36 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
 
   return (
     <div>
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="mb-4 px-4 py-3 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-xl flex items-center gap-3">
+          <Eye className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-purple-700 dark:text-purple-300 font-albert">
+              Demo Mode Active
+            </p>
+            <p className="text-xs text-purple-600 dark:text-purple-400 font-albert">
+              Showing sample client data for demonstration purposes
+            </p>
+          </div>
+        </div>
+      )}
+      
       {/* Header with Refresh Button */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
           Client Activity
         </h3>
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="px-4 py-2 rounded-lg text-sm font-medium bg-brand-accent text-white hover:bg-brand-accent/90 disabled:opacity-50 transition-colors flex items-center gap-2"
-        >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-          {refreshing ? 'Refreshing...' : 'Refresh'}
-        </button>
+        {!isDemoMode && (
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-brand-accent text-white hover:bg-brand-accent/90 disabled:opacity-50 transition-colors flex items-center gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+        )}
       </div>
 
       {/* Summary Cards */}
@@ -206,7 +320,7 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Total</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {summary.totalClients}
+            {displaySummary.totalClients}
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Clients</p>
         </div>
@@ -217,7 +331,7 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Thriving</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {summary.thrivingCount}
+            {displaySummary.thrivingCount}
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">4+ days active</p>
         </div>
@@ -228,7 +342,7 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Active</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {summary.activeCount}
+            {displaySummary.activeCount}
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Some activity</p>
         </div>
@@ -239,7 +353,7 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Inactive</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {summary.inactiveCount}
+            {displaySummary.inactiveCount}
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">No activity</p>
         </div>
@@ -250,7 +364,7 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">At Risk</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {summary.atRiskCount}
+            {displaySummary.atRiskCount}
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Declining</p>
         </div>
@@ -284,6 +398,17 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
             </button>
           ))}
         </div>
+        
+        {/* Bulk Message Button */}
+        {filteredClients.length > 0 && !isDemoMode && (
+          <button
+            onClick={handleMessageFiltered}
+            className="ml-auto px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center gap-2"
+          >
+            <Send className="w-4 h-4" />
+            Message {statusFilter !== 'all' ? statusFilter.replace('-', ' ') : 'All'} ({filteredClients.length})
+          </button>
+        )}
       </div>
 
       {/* Clients Table */}
@@ -309,6 +434,9 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
                   <th className="text-left px-4 py-3 text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wider">Primary Signal</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wider">Program</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wider">Squad</th>
+                  {!isDemoMode && (
+                    <th className="text-right px-4 py-3 text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2] uppercase tracking-wider">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#e1ddd8] dark:divide-[#262b35]">
@@ -368,6 +496,18 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
                         {client.squadName || '—'}
                       </span>
                     </td>
+                    {!isDemoMode && (
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => handleMessageClient(client)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                          title={`Message ${client.name}`}
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          Message
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -375,6 +515,17 @@ export function ClientActivityTab({ apiBasePath = '/api/coach/analytics' }: Clie
           </div>
         )}
       </div>
+      
+      {/* Send DM Modal */}
+      {showDmModal && dmRecipients.length > 0 && (
+        <SendDMModal
+          recipients={dmRecipients}
+          onClose={handleCloseDmModal}
+          onSuccess={(count) => {
+            console.log(`Successfully sent ${count} messages`);
+          }}
+        />
+      )}
     </div>
   );
 }

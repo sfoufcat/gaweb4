@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import type { Squad, SquadMember, ProgramFeature, ProgramTestimonial, ProgramFAQ, ReferralConfig, CoachTier } from '@/types';
 import { ProgramLandingPageEditor } from '../programs/ProgramLandingPageEditor';
@@ -19,7 +19,8 @@ import {
   ExternalLink,
   Copy,
   X,
-  Sparkles
+  Sparkles,
+  Eye
 } from 'lucide-react';
 import { AIHelperModal } from '@/components/ai';
 import type { LandingPageDraft, ProgramContentDraft, AIGenerationContext } from '@/lib/ai/types';
@@ -27,6 +28,9 @@ import { ReferralConfigForm } from '@/components/coach/referrals';
 import { SquadFormDialog } from '@/components/admin/SquadFormDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LimitReachedModal, useLimitCheck } from '@/components/coach';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { useDemoSession } from '@/contexts/DemoSessionContext';
+import { generateDemoSquadsWithStats, generateDemoSquadMembers, type DemoSquadWithStats, type DemoSquadMember } from '@/lib/demo-data';
 
 // Squad with computed stats and program info
 interface SquadWithStats extends Squad {
@@ -69,6 +73,9 @@ interface LandingPageFormData {
 }
 
 export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachSquadsTabProps) {
+  const { isDemoMode } = useDemoMode();
+  const demoSession = useDemoSession();
+  
   const [squads, setSquads] = useState<SquadWithStats[]>([]);
   const [selectedSquad, setSelectedSquad] = useState<SquadWithStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -103,6 +110,9 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
   const [currentTier, setCurrentTier] = useState<CoachTier>('starter');
   const { checkLimit, showLimitModal, modalProps } = useLimitCheck(currentTier);
   
+  // Demo data (memoized)
+  const demoSquads = useMemo(() => generateDemoSquadsWithStats(), []);
+  
   // Landing page form
   const [landingPageFormData, setLandingPageFormData] = useState<LandingPageFormData>({
     landingPageCoverImageUrl: '',
@@ -124,6 +134,12 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const fetchSquads = useCallback(async () => {
+    // Skip API call in demo mode
+    if (isDemoMode) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       setError(null);
@@ -143,11 +159,34 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
     } finally {
       setLoading(false);
     }
-  }, [apiBasePath]);
+  }, [apiBasePath, isDemoMode]);
 
   useEffect(() => {
     fetchSquads();
   }, [fetchSquads]);
+  
+  // Use demo data when in demo mode (from session context for interactivity)
+  const displaySquads: SquadWithStats[] = useMemo(() => {
+    if (isDemoMode) {
+      // Use session-isolated demo data for full CRUD support
+      return demoSession.squads.map((ds) => ({
+        id: ds.id,
+        name: ds.name,
+        slug: ds.slug,
+        description: ds.description,
+        organizationId: 'demo-org',
+        createdAt: ds.createdAt,
+        updatedAt: ds.updatedAt,
+        memberCount: ds.memberCount,
+        programId: ds.programId,
+        programName: ds.programName,
+        programType: ds.programType,
+        isPublic: ds.isPublic,
+        priceInCents: ds.priceInCents,
+      }));
+    }
+    return squads;
+  }, [isDemoMode, demoSession.squads, squads]);
 
   // Fetch current tier for limit checking
   useEffect(() => {
@@ -168,6 +207,23 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
   }, []);
 
   const fetchSquadMembers = useCallback(async (squadId: string) => {
+    // Use demo members in demo mode
+    if (isDemoMode) {
+      const demoMembers = generateDemoSquadMembers(squadId, 12);
+      setSquadMembers(demoMembers.map((dm: DemoSquadMember) => ({
+        odataId: dm.odataId,
+        odataUserId: dm.odataUserId,
+        odataSquadId: dm.odataSquadId,
+        role: dm.role,
+        email: dm.email,
+        name: dm.name,
+        imageUrl: dm.imageUrl,
+        joinedAt: dm.joinedAt,
+      } as MemberWithUser)));
+      setLoadingMembers(false);
+      return;
+    }
+    
     try {
       setLoadingMembers(true);
       const response = await fetch(`${apiBasePath}/${squadId}/members`);
@@ -184,7 +240,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
     } finally {
       setLoadingMembers(false);
     }
-  }, [apiBasePath]);
+  }, [apiBasePath, isDemoMode]);
 
   // Fetch members when switching to members view
   useEffect(() => {
@@ -299,6 +355,16 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
   const handleDeleteSquad = async () => {
     if (!deleteConfirmSquad) return;
     
+    // In demo mode, delete from session store
+    if (isDemoMode) {
+      demoSession.deleteSquad(deleteConfirmSquad.id);
+      setDeleteConfirmSquad(null);
+      if (selectedSquad?.id === deleteConfirmSquad.id) {
+        handleBackToList();
+      }
+      return;
+    }
+    
     try {
       setDeleting(true);
       const response = await fetch(`${apiBasePath}/${deleteConfirmSquad.id}`, {
@@ -325,6 +391,25 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
 
   const handleRemoveMember = async () => {
     if (!removeConfirmMember || !selectedSquad) return;
+    
+    // In demo mode, remove from session store
+    if (isDemoMode) {
+      demoSession.removeSquadMember(selectedSquad.id, removeConfirmMember.odataId || '');
+      setRemoveConfirmMember(null);
+      // Refresh demo members
+      const updatedMembers = demoSession.getSquadMembers(selectedSquad.id);
+      setSquadMembers(updatedMembers.map((dm) => ({
+        odataId: dm.odataId,
+        odataUserId: dm.odataUserId,
+        odataSquadId: dm.odataSquadId,
+        role: dm.role,
+        email: dm.email,
+        name: dm.name,
+        imageUrl: dm.imageUrl,
+        joinedAt: dm.joinedAt,
+      } as MemberWithUser)));
+      return;
+    }
     
     try {
       setRemovingMember(true);
@@ -537,7 +622,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
   }
 
   // Filter squads based on selected filter
-  const filteredSquads = squads.filter((squad) => {
+  const filteredSquads = displaySquads.filter((squad) => {
     switch (squadFilter) {
       case 'standalone':
         return !squad.programId;
@@ -554,15 +639,30 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
   });
 
   // Count squads for filter badges
-  const standaloneCount = squads.filter(s => !s.programId).length;
-  const programCount = squads.filter(s => !!s.programId).length;
-  const programGroupCount = squads.filter(s => !!s.programId && s.programType === 'group').length;
-  const programIndividualCount = squads.filter(s => !!s.programId && s.programType === 'individual').length;
+  const standaloneCount = displaySquads.filter(s => !s.programId).length;
+  const programCount = displaySquads.filter(s => !!s.programId).length;
+  const programGroupCount = displaySquads.filter(s => !!s.programId && s.programType === 'group').length;
+  const programIndividualCount = displaySquads.filter(s => !!s.programId && s.programType === 'individual').length;
 
   // List view
   if (viewMode === 'list' || !selectedSquad) {
     return (
       <div>
+        {/* Demo Mode Banner */}
+        {isDemoMode && (
+          <div className="mb-4 px-4 py-3 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-xl flex items-center gap-3">
+            <Eye className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-purple-700 dark:text-purple-300 font-albert">
+                Demo Mode Active
+              </p>
+              <p className="text-xs text-purple-600 dark:text-purple-400 font-albert">
+                Showing sample squad data for demonstration purposes
+              </p>
+            </div>
+          </div>
+        )}
+        
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -573,25 +673,27 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
               Manage your squads and communities
             </p>
           </div>
-          <Button
-            onClick={() => {
-              // Check squad limit before opening modal
-              if (checkLimit('max_squads', squads.length)) {
-                showLimitModal('max_squads', squads.length);
-                return;
-              }
-              setEditingSquad(null);
-              setIsSquadModalOpen(true);
-            }}
-            className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            New Squad
-          </Button>
+          {!isDemoMode && (
+            <Button
+              onClick={() => {
+                // Check squad limit before opening modal
+                if (checkLimit('max_squads', displaySquads.length)) {
+                  showLimitModal('max_squads', displaySquads.length);
+                  return;
+                }
+                setEditingSquad(null);
+                setIsSquadModalOpen(true);
+              }}
+              className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              New Squad
+            </Button>
+          )}
         </div>
 
         {/* Filter Tabs */}
-        {squads.length > 0 && (
+        {displaySquads.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 mb-6">
             {/* Main Filters */}
             <button
@@ -602,7 +704,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
                   : 'bg-[#faf8f6] dark:bg-[#11141b] text-[#5f5a55] dark:text-[#b2b6c2] hover:bg-[#f3f1ef] dark:hover:bg-[#171b22]'
               }`}
             >
-              All ({squads.length})
+              All ({displaySquads.length})
             </button>
             <button
               onClick={() => setSquadFilter('standalone')}
@@ -664,15 +766,15 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
           <div className="text-center py-12 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
             <Users className="w-12 h-12 text-[#d1ccc5] dark:text-[#7d8190] mx-auto mb-3" />
             <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-              {squads.length === 0 ? 'No squads yet' : 'No squads match this filter'}
+              {displaySquads.length === 0 ? 'No squads yet' : 'No squads match this filter'}
             </h3>
             <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert mt-1 mb-4">
-              {squads.length === 0 
+              {displaySquads.length === 0 
                 ? 'Create your first squad'
                 : 'Try selecting a different filter or create a new squad'
               }
             </p>
-            {squads.length === 0 && (
+            {displaySquads.length === 0 && !isDemoMode && (
               <Button
                 onClick={() => setIsSquadModalOpen(true)}
                 className="bg-brand-accent hover:bg-brand-accent/90 text-white font-albert"
@@ -816,6 +918,30 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
           apiBasePath={apiBasePath}
           coachesApiEndpoint="/api/coach/org-coaches"
           uploadEndpoint="/api/coach/org-upload-media"
+          demoMode={isDemoMode}
+          onDemoSave={(formData, isEdit) => {
+            if (isEdit && editingSquad) {
+              demoSession.updateSquad(editingSquad.id, {
+                name: formData.name,
+                slug: formData.slug,
+                description: formData.description,
+                isPublic: formData.visibility === 'public',
+                priceInCents: formData.priceInCents || undefined,
+                updatedAt: new Date().toISOString(),
+              });
+            } else {
+              demoSession.addSquad({
+                name: formData.name,
+                slug: formData.slug,
+                description: formData.description,
+                memberCount: 0,
+                isPublic: formData.visibility === 'public',
+                priceInCents: formData.priceInCents || undefined,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              });
+            }
+          }}
         />
       </div>
     );
@@ -1202,15 +1328,50 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
         onSave={async () => {
           setIsSquadModalOpen(false);
           setEditingSquad(null);
-          await fetchSquads();
-          // Update selected squad
-          const updatedSquads = await fetch(apiBasePath).then(r => r.json());
-          const updated = (updatedSquads.squads || []).find((s: Squad) => s.id === selectedSquad.id);
-          if (updated) setSelectedSquad(updated);
+          if (!isDemoMode) {
+            await fetchSquads();
+            // Update selected squad
+            const updatedSquads = await fetch(apiBasePath).then(r => r.json());
+            const updated = (updatedSquads.squads || []).find((s: Squad) => s.id === selectedSquad.id);
+            if (updated) setSelectedSquad(updated);
+          }
         }}
         apiBasePath={apiBasePath}
         coachesApiEndpoint="/api/coach/org-coaches"
         uploadEndpoint="/api/coach/org-upload-media"
+        demoMode={isDemoMode}
+        onDemoSave={(formData, isEdit) => {
+          if (isEdit && editingSquad) {
+            demoSession.updateSquad(editingSquad.id, {
+              name: formData.name,
+              slug: formData.slug,
+              description: formData.description,
+              isPublic: formData.visibility === 'public',
+              priceInCents: formData.priceInCents || undefined,
+              updatedAt: new Date().toISOString(),
+            });
+            // Update selected squad in local state for immediate UI feedback
+            if (selectedSquad?.id === editingSquad.id) {
+              setSelectedSquad({
+                ...selectedSquad,
+                name: formData.name,
+                slug: formData.slug,
+                description: formData.description,
+              });
+            }
+          } else {
+            demoSession.addSquad({
+              name: formData.name,
+              slug: formData.slug,
+              description: formData.description,
+              memberCount: 0,
+              isPublic: formData.visibility === 'public',
+              priceInCents: formData.priceInCents || undefined,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            });
+          }
+        }}
       />
       
       {/* AI Landing Page Modal */}

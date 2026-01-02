@@ -580,6 +580,17 @@ export type ProgramType = 'group' | 'individual';
 export type NewProgramEnrollmentStatus = 'upcoming' | 'active' | 'completed' | 'stopped';
 
 /**
+ * Program completion popup configuration
+ * Shown when a user finishes the program
+ */
+export interface ProgramCompletionConfig {
+  upsellProgramId?: string;      // Program to upsell (optional)
+  upsellHeadline?: string;       // Custom headline (default: "Keep the momentum going!")
+  upsellDescription?: string;    // Custom description
+  showConfetti?: boolean;        // Default: true
+}
+
+/**
  * Program feature for landing page
  */
 export interface ProgramFeature {
@@ -760,6 +771,9 @@ export interface Program {
   
   // Order bumps - additional products offered during checkout
   orderBumps?: OrderBumpConfig;
+  
+  // Completion popup settings - shown when user finishes the program
+  completionConfig?: ProgramCompletionConfig;
   
   // Metadata
   createdAt: string;

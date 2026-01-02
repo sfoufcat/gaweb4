@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUser } from '@clerk/nextjs';
 import {
@@ -189,6 +190,7 @@ const testimonialSlideVariants = {
 
 export function CoachLandingPage() {
   const { user, isLoaded } = useUser();
+  const router = useRouter();
   const [quizOpen, setQuizOpen] = useState(false);
   const [testimonialIndex, setTestimonialIndex] = useState(0);
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right'>('left');
@@ -233,6 +235,16 @@ export function CoachLandingPage() {
   }, []);
 
   const handleCTA = () => {
+    // If user has already started onboarding, take them directly to where they left off
+    if (coachOnboardingState === 'needs_profile') {
+      router.push('/coach/onboarding/profile');
+      return;
+    }
+    if (coachOnboardingState === 'needs_plan') {
+      router.push('/coach/onboarding/plans');
+      return;
+    }
+    // Otherwise, open the quiz modal for new users
     setQuizOpen(true);
   };
 
@@ -865,33 +877,64 @@ export function CoachLandingPage() {
             
             {/* Monthly/Annual Toggle */}
             <div className="flex justify-center mb-10">
-              <div className="inline-flex items-center bg-white dark:bg-[#171b22] rounded-full p-1 border border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <motion.div 
+                layout
+                transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                className="inline-flex items-center bg-white dark:bg-[#171b22] rounded-full p-1 border border-[#e1ddd8]/50 dark:border-[#262b35]/50"
+              >
                 <button
                   onClick={() => setBillingPeriod('annual')}
-                  className={`px-5 py-2.5 rounded-full font-albert text-[14px] font-medium transition-all ${
-                    billingPeriod === 'annual'
-                      ? 'bg-[#1a1a1a] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a]'
-                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                  }`}
+                  className="relative px-5 py-2.5 rounded-full font-albert text-[14px] font-medium transition-colors duration-200"
                 >
-                  Annual
+                  {billingPeriod === 'annual' && (
+                    <motion.div
+                      layoutId="billing-pill"
+                      className="absolute inset-0 bg-[#1a1a1a] dark:bg-[#f5f5f8] rounded-full"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  <span className={`relative z-10 ${
+                    billingPeriod === 'annual'
+                      ? 'text-white dark:text-[#1a1a1a]'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                  }`}>
+                    Annual
+                  </span>
                 </button>
                 <button
                   onClick={() => setBillingPeriod('monthly')}
-                  className={`px-5 py-2.5 rounded-full font-albert text-[14px] font-medium transition-all ${
-                    billingPeriod === 'monthly'
-                      ? 'bg-[#1a1a1a] dark:bg-[#f5f5f8] text-white dark:text-[#1a1a1a]'
-                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
-                  }`}
+                  className="relative px-5 py-2.5 rounded-full font-albert text-[14px] font-medium transition-colors duration-200"
                 >
-                  Monthly
-                </button>
-                {billingPeriod === 'annual' && (
-                  <span className="ml-2 mr-1 px-2.5 py-1 bg-emerald-500 text-white font-albert text-[11px] font-bold rounded-full uppercase">
-                    Save 41%
+                  {billingPeriod === 'monthly' && (
+                    <motion.div
+                      layoutId="billing-pill"
+                      className="absolute inset-0 bg-[#1a1a1a] dark:bg-[#f5f5f8] rounded-full"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  <span className={`relative z-10 ${
+                    billingPeriod === 'monthly'
+                      ? 'text-white dark:text-[#1a1a1a]'
+                      : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+                  }`}>
+                    Monthly
                   </span>
-                )}
-              </div>
+                </button>
+                <AnimatePresence mode="wait">
+                  {billingPeriod === 'annual' && (
+                    <motion.span
+                      key="save-badge"
+                      initial={{ opacity: 0, scale: 0.8, width: 0, marginLeft: 0, marginRight: 0 }}
+                      animate={{ opacity: 1, scale: 1, width: 'auto', marginLeft: 8, marginRight: 4 }}
+                      exit={{ opacity: 0, scale: 0.8, width: 0, marginLeft: 0, marginRight: 0 }}
+                      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                      className="px-2.5 py-1 bg-emerald-500 text-white font-albert text-[11px] font-bold rounded-full uppercase whitespace-nowrap overflow-hidden"
+                    >
+                      Save 41%
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </motion.div>
             </div>
             
             <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
@@ -923,18 +966,39 @@ export function CoachLandingPage() {
                   
                   {/* Price */}
                   <div className="mb-2">
-                    <span className="font-albert text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8]">
-                      ${billingPeriod === 'annual' ? plan.annualPrice : plan.monthlyPrice}
-                    </span>
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={`price-${plan.name}-${billingPeriod}`}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                        className="font-albert text-[42px] font-bold text-[#1a1a1a] dark:text-[#f5f5f8] inline-block"
+                      >
+                        ${billingPeriod === 'annual' ? plan.annualPrice : plan.monthlyPrice}
+                      </motion.span>
+                    </AnimatePresence>
                     <span className="font-sans text-[16px] text-[#5f5a55] dark:text-[#b2b6c2]">/month</span>
                   </div>
                   
                   {/* Trial info */}
                   <div className="mb-6">
                     <p className="font-sans text-[14px] font-semibold text-red-500">Free for 7 days</p>
-                    <p className="font-sans text-[12px] text-[#a7a39e] dark:text-[#7d8190]">
-                      Billed {billingPeriod === 'annual' ? 'annually' : 'monthly'} after trial
-                    </p>
+                    <AnimatePresence mode="wait">
+                      <motion.p
+                        key={`billing-${plan.name}-${billingPeriod}`}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                        className="font-sans text-[12px] text-[#a7a39e] dark:text-[#7d8190]"
+                      >
+                        {billingPeriod === 'annual' 
+                          ? `Billed as $${plan.annualPrice * 12}/year after trial`
+                          : 'Billed monthly after trial'
+                        }
+                      </motion.p>
+                    </AnimatePresence>
                   </div>
                   
                   {/* Stats row */}

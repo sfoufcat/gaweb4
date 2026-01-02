@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Funnel as FunnelIcon,
   Eye,
@@ -12,6 +12,8 @@ import {
   ChevronRight,
   AlertTriangle,
 } from 'lucide-react';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { generateDemoFunnelAnalytics } from '@/lib/demo-data';
 
 interface FunnelStepData {
   stepIndex: number;
@@ -60,6 +62,8 @@ interface FunnelAnalyticsTabProps {
 }
 
 export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: FunnelAnalyticsTabProps) {
+  const { isDemoMode } = useDemoMode();
+  
   const [funnels, setFunnels] = useState<FunnelData[]>([]);
   const [summary, setSummary] = useState<FunnelSummary>({
     totalFunnels: 0,
@@ -72,8 +76,17 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
   const [error, setError] = useState<string | null>(null);
   const [expandedFunnelId, setExpandedFunnelId] = useState<string | null>(null);
   const [period, setPeriod] = useState<number>(30);
+  
+  // Demo data (memoized)
+  const demoData = useMemo(() => generateDemoFunnelAnalytics(), []);
 
   const fetchFunnels = useCallback(async () => {
+    // Skip API call in demo mode
+    if (isDemoMode) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       setError(null);
@@ -98,11 +111,26 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
     } finally {
       setLoading(false);
     }
-  }, [apiBasePath, period]);
+  }, [apiBasePath, period, isDemoMode]);
 
   useEffect(() => {
     fetchFunnels();
   }, [fetchFunnels]);
+  
+  // Use demo data when in demo mode
+  const displayFunnels: FunnelData[] = useMemo(() => {
+    if (isDemoMode) {
+      return demoData.funnels;
+    }
+    return funnels;
+  }, [isDemoMode, demoData.funnels, funnels]);
+  
+  const displaySummary: FunnelSummary = useMemo(() => {
+    if (isDemoMode) {
+      return demoData.summary;
+    }
+    return summary;
+  }, [isDemoMode, demoData.summary, summary]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -175,6 +203,21 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
           <option value={90}>Last 90 days</option>
         </select>
       </div>
+      
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="mb-4 px-4 py-3 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-xl flex items-center gap-3">
+          <Eye className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-purple-700 dark:text-purple-300 font-albert">
+              Demo Mode Active
+            </p>
+            <p className="text-xs text-purple-600 dark:text-purple-400 font-albert">
+              Showing sample funnel analytics for demonstration purposes
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -184,7 +227,7 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Views</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {summary.totalViews.toLocaleString()}
+            {displaySummary.totalViews.toLocaleString()}
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Funnel sessions</p>
         </div>
@@ -195,7 +238,7 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Completions</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {summary.totalCompletions.toLocaleString()}
+            {displaySummary.totalCompletions.toLocaleString()}
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Conversions</p>
         </div>
@@ -206,7 +249,7 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Conversion Rate</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {summary.overallConversionRate}%
+            {displaySummary.overallConversionRate}%
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Overall</p>
         </div>
@@ -217,14 +260,14 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
             <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] font-albert">Revenue</span>
           </div>
           <div className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-            {formatCurrency(summary.totalRevenue)}
+            {formatCurrency(displaySummary.totalRevenue)}
           </div>
           <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">Period total</p>
         </div>
       </div>
 
       {/* Funnels List */}
-      {funnels.length === 0 ? (
+      {displayFunnels.length === 0 && !isDemoMode ? (
         <div className="text-center py-12 bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
           <FunnelIcon className="w-12 h-12 text-[#5f5a55] mx-auto mb-3" />
           <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-1">
@@ -236,7 +279,7 @@ export function FunnelAnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Fun
         </div>
       ) : (
         <div className="space-y-4">
-          {funnels.map((funnel, index) => (
+          {displayFunnels.map((funnel, index) => (
             <div 
               key={funnel.id}
               className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden animate-fadeIn"

@@ -16,13 +16,17 @@ interface NewProgramModalProps {
   onClose: () => void;
   onCreateFromScratch: () => void;
   onProgramCreated: (programId: string) => void;
+  demoMode?: boolean;
+  onDemoCreate?: (program: { name: string; type: 'group' | 'individual'; duration: number }) => void;
 }
 
 export function NewProgramModal({ 
   isOpen, 
   onClose, 
   onCreateFromScratch,
-  onProgramCreated 
+  onProgramCreated,
+  demoMode = false,
+  onDemoCreate,
 }: NewProgramModalProps) {
   const [view, setView] = useState<NewProgramView>('choice');
   const [selectedTemplate, setSelectedTemplate] = useState<ProgramTemplate | null>(null);

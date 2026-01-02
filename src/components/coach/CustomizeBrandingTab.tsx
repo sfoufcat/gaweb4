@@ -7,7 +7,6 @@ import { useBranding } from '@/contexts/BrandingContext';
 import { FeedSettingsToggle } from './FeedSettingsToggle';
 import { StoriesSettingsToggle } from './StoriesSettingsToggle';
 import { PublicSignupToggle } from './PublicSignupToggle';
-import { EmailPreferencesSection } from './EmailPreferencesSection';
 import { EmailTemplateEditor } from './EmailTemplateEditor';
 import { CommunitySettingsToggle } from './CommunitySettingsToggle';
 import { AlumniDiscountToggle } from './AlumniDiscountToggle';
@@ -16,8 +15,8 @@ import { DailyFocusSettings } from './DailyFocusSettings';
 import { AlignmentActivitiesSettings } from './AlignmentActivitiesSettings';
 import { GlobalPixelsSettings } from './GlobalPixelsSettings';
 import { MarketplaceSettings } from './MarketplaceSettings';
-import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus, OrgEmailDefaults, OrgSystemNotifications, MenuItemKey } from '@/types';
-import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_EMAIL_SETTINGS, DEFAULT_EMAIL_DEFAULTS, DEFAULT_SYSTEM_NOTIFICATIONS, validateSubdomain } from '@/types';
+import type { OrgBranding, OrgBrandingColors, OrgMenuTitles, OrgMenuIcons, OrgCustomDomain, CustomDomainStatus, StripeConnectStatus, OrgEmailSettings, EmailDomainStatus, OrgEmailDefaults, OrgSystemNotifications, MenuItemKey, CoachEmailPreferences } from '@/types';
+import { DEFAULT_BRANDING_COLORS, DEFAULT_APP_TITLE, DEFAULT_LOGO_URL, DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_EMAIL_SETTINGS, DEFAULT_EMAIL_DEFAULTS, DEFAULT_SYSTEM_NOTIFICATIONS, DEFAULT_COACH_EMAIL_PREFERENCES, validateSubdomain } from '@/types';
 import { IconPicker } from './IconPicker';
 import {
   DndContext,
@@ -294,6 +293,11 @@ export function CustomizeBrandingTab() {
   const [systemNotificationsLoading, setSystemNotificationsLoading] = useState(true);
   const [systemNotificationsSaving, setSystemNotificationsSaving] = useState<string | null>(null);
 
+  // Coach Email Preferences state (org-level email type toggles)
+  const [coachEmailPrefs, setCoachEmailPrefs] = useState<CoachEmailPreferences>(DEFAULT_COACH_EMAIL_PREFERENCES);
+  const [coachEmailPrefsLoading, setCoachEmailPrefsLoading] = useState(true);
+  const [coachEmailPrefsSaving, setCoachEmailPrefsSaving] = useState<string | null>(null);
+
   // Fetch current branding on mount
   // On tenant domain, branding comes from x-tenant-org-id header
   // On platform domain (without super_admin), this will return default branding
@@ -436,6 +440,54 @@ export function CustomizeBrandingTab() {
     }
   }, []);
 
+  // Fetch Coach Email Preferences (org-level email type toggles)
+  const fetchCoachEmailPrefs = useCallback(async () => {
+    try {
+      setCoachEmailPrefsLoading(true);
+      const response = await fetch('/api/coach/email-preferences');
+      if (!response.ok) {
+        console.error('Failed to fetch coach email preferences');
+        return;
+      }
+      
+      const data = await response.json();
+      setCoachEmailPrefs({ ...DEFAULT_COACH_EMAIL_PREFERENCES, ...data.emailPreferences });
+    } catch (err) {
+      console.error('Error fetching coach email preferences:', err);
+    } finally {
+      setCoachEmailPrefsLoading(false);
+    }
+  }, []);
+
+  // Handle coach email preference toggle
+  const handleCoachEmailPrefToggle = async (key: keyof CoachEmailPreferences, value: boolean) => {
+    setCoachEmailPrefsSaving(key);
+    
+    // Optimistic update
+    const previousValue = coachEmailPrefs[key];
+    setCoachEmailPrefs(prev => ({ ...prev, [key]: value }));
+    
+    try {
+      const response = await fetch('/api/coach/email-preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: value }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update');
+      }
+    } catch (err) {
+      console.error('Error updating coach email preferences:', err);
+      // Revert on error
+      setCoachEmailPrefs(prev => ({ ...prev, [key]: previousValue }));
+      setError('Failed to update email preference');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setCoachEmailPrefsSaving(null);
+    }
+  };
+
   // Handle email default toggle
   const handleEmailDefaultToggle = async (key: keyof OrgEmailDefaults, value: boolean) => {
     setEmailDefaultsSaving(key);
@@ -519,6 +571,7 @@ export function CustomizeBrandingTab() {
     fetchEmailDomain();
     fetchEmailDefaults();
     fetchSystemNotifications();
+    fetchCoachEmailPrefs();
     
     // Check URL for Stripe callback status
     const urlParams = new URLSearchParams(window.location.search);
@@ -540,7 +593,7 @@ export function CustomizeBrandingTab() {
       // User was redirected back, refresh the status
       fetchStripeConnect();
     }
-  }, [fetchBranding, fetchDomainSettings, fetchStripeConnect, fetchEmailDomain, fetchEmailDefaults]);
+  }, [fetchBranding, fetchDomainSettings, fetchStripeConnect, fetchEmailDomain, fetchEmailDefaults, fetchCoachEmailPrefs]);
   
   // Handle subdomain update
   const handleSubdomainUpdate = async () => {
@@ -2477,11 +2530,6 @@ export function CustomizeBrandingTab() {
         />
       </div>
 
-      {/* Email Notification Preferences */}
-      <div className="mt-6">
-        <EmailPreferencesSection />
-      </div>
-
       {/* Stripe Connect Section */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8]/50 dark:border-[#262b35]/50 rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-4">
@@ -2631,9 +2679,9 @@ export function CustomizeBrandingTab() {
           Members can re-enable email in their settings, but org changes always take precedence.
         </p>
         
-        {(emailDefaultsLoading || systemNotificationsLoading) ? (
+        {(emailDefaultsLoading || systemNotificationsLoading || coachEmailPrefsLoading) ? (
           <div className="space-y-1 animate-pulse">
-            {[1, 2, 3, 4, 5].map((i) => (
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
               <div key={i} className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
                 <div className="space-y-2">
                   <div className="h-4 w-32 bg-[#e1ddd8]/50 dark:bg-[#272d38]/50 rounded" />
@@ -2657,6 +2705,114 @@ export function CustomizeBrandingTab() {
               </div>
             </div>
 
+            {/* ===== EMAIL-ONLY NOTIFICATIONS (no system toggle) ===== */}
+            
+            {/* Verification Emails - Always On */}
+            <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Verification Emails</p>
+                  <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-[#e8e4df] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#9ca3af]">
+                    Always On
+                  </span>
+                </div>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Email verification codes for new signups</p>
+              </div>
+              <div className="flex items-center gap-6">
+                {/* System placeholder - empty */}
+                <div className="w-12 h-7" />
+                {/* Email - Always On indicator */}
+                <div
+                  className="w-12 h-7 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: colors.accentLight, opacity: 0.6 }}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                </div>
+              </div>
+            </div>
+
+            {/* Welcome Emails */}
+            <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Welcome Emails</p>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Sent after successful payment/signup</p>
+              </div>
+              <div className="flex items-center gap-6">
+                {/* System placeholder - empty */}
+                <div className="w-12 h-7" />
+                {/* Email Toggle */}
+                <button
+                  onClick={() => handleCoachEmailPrefToggle('welcomeEnabled', !coachEmailPrefs.welcomeEnabled)}
+                  disabled={coachEmailPrefsSaving === 'welcomeEnabled'}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${!coachEmailPrefs.welcomeEnabled ? 'bg-[#d1cec9] dark:bg-[#3d4351]' : ''}
+                    ${coachEmailPrefsSaving === 'welcomeEnabled' ? 'opacity-50' : ''}
+                  `}
+                  style={coachEmailPrefs.welcomeEnabled ? { backgroundColor: colors.accentLight } : undefined}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${coachEmailPrefs.welcomeEnabled ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+              </div>
+            </div>
+
+            {/* Abandoned Cart Emails */}
+            <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Abandoned Cart Emails</p>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Reminder sent 15 minutes after starting signup without completing</p>
+              </div>
+              <div className="flex items-center gap-6">
+                {/* System placeholder - empty */}
+                <div className="w-12 h-7" />
+                {/* Email Toggle */}
+                <button
+                  onClick={() => handleCoachEmailPrefToggle('abandonedCartEnabled', !coachEmailPrefs.abandonedCartEnabled)}
+                  disabled={coachEmailPrefsSaving === 'abandonedCartEnabled'}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${!coachEmailPrefs.abandonedCartEnabled ? 'bg-[#d1cec9] dark:bg-[#3d4351]' : ''}
+                    ${coachEmailPrefsSaving === 'abandonedCartEnabled' ? 'opacity-50' : ''}
+                  `}
+                  style={coachEmailPrefs.abandonedCartEnabled ? { backgroundColor: colors.accentLight } : undefined}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${coachEmailPrefs.abandonedCartEnabled ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+              </div>
+            </div>
+
+            {/* Payment Failed - Always On */}
+            <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Payment Failed</p>
+                  <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-[#e8e4df] dark:bg-[#262b35] text-[#5f5a55] dark:text-[#9ca3af]">
+                    Always On
+                  </span>
+                </div>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Notification when subscription payment fails (coach only)</p>
+              </div>
+              <div className="flex items-center gap-6">
+                {/* System placeholder - empty */}
+                <div className="w-12 h-7" />
+                {/* Email - Always On indicator */}
+                <div
+                  className="w-12 h-7 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: colors.accentLight, opacity: 0.6 }}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                </div>
+              </div>
+            </div>
+
+            {/* ===== SYSTEM + EMAIL NOTIFICATIONS ===== */}
+
             {/* Morning Check-in */}
             <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
               <div className="flex-1">
@@ -2670,12 +2826,10 @@ export function CustomizeBrandingTab() {
                   disabled={systemNotificationsSaving === 'morningCheckIn'}
                   className={`
                     relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
-                    ${systemNotifications.morningCheckIn 
-                      ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
-                      : 'bg-[#d1cec9] dark:bg-[#3d4351]'
-                    }
+                    ${!systemNotifications.morningCheckIn ? 'bg-[#d1cec9] dark:bg-[#3d4351]' : ''}
                     ${systemNotificationsSaving === 'morningCheckIn' ? 'opacity-50' : ''}
                   `}
+                  style={systemNotifications.morningCheckIn ? { backgroundColor: colors.accentLight } : undefined}
                 >
                   <span className={`
                     absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
@@ -2690,12 +2844,13 @@ export function CustomizeBrandingTab() {
                     relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
                     ${!systemNotifications.morningCheckIn 
                       ? 'bg-[#d1cec9]/50 dark:bg-[#3d4351]/50 cursor-not-allowed' 
-                      : emailDefaults.morningCheckIn 
-                        ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
-                        : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                      : !emailDefaults.morningCheckIn 
+                        ? 'bg-[#d1cec9] dark:bg-[#3d4351]' 
+                        : ''
                     }
                     ${emailDefaultsSaving === 'morningCheckIn' ? 'opacity-50' : ''}
                   `}
+                  style={systemNotifications.morningCheckIn && emailDefaults.morningCheckIn ? { backgroundColor: colors.accentLight } : undefined}
                 >
                   <span className={`
                     absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
@@ -2718,12 +2873,10 @@ export function CustomizeBrandingTab() {
                   disabled={systemNotificationsSaving === 'eveningCheckIn'}
                   className={`
                     relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
-                    ${systemNotifications.eveningCheckIn 
-                      ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
-                      : 'bg-[#d1cec9] dark:bg-[#3d4351]'
-                    }
+                    ${!systemNotifications.eveningCheckIn ? 'bg-[#d1cec9] dark:bg-[#3d4351]' : ''}
                     ${systemNotificationsSaving === 'eveningCheckIn' ? 'opacity-50' : ''}
                   `}
+                  style={systemNotifications.eveningCheckIn ? { backgroundColor: colors.accentLight } : undefined}
                 >
                   <span className={`
                     absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
@@ -2738,12 +2891,13 @@ export function CustomizeBrandingTab() {
                     relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
                     ${!systemNotifications.eveningCheckIn 
                       ? 'bg-[#d1cec9]/50 dark:bg-[#3d4351]/50 cursor-not-allowed' 
-                      : emailDefaults.eveningCheckIn 
-                        ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
-                        : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                      : !emailDefaults.eveningCheckIn 
+                        ? 'bg-[#d1cec9] dark:bg-[#3d4351]' 
+                        : ''
                     }
                     ${emailDefaultsSaving === 'eveningCheckIn' ? 'opacity-50' : ''}
                   `}
+                  style={systemNotifications.eveningCheckIn && emailDefaults.eveningCheckIn ? { backgroundColor: colors.accentLight } : undefined}
                 >
                   <span className={`
                     absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
@@ -2766,12 +2920,10 @@ export function CustomizeBrandingTab() {
                   disabled={systemNotificationsSaving === 'weeklyReview'}
                   className={`
                     relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
-                    ${systemNotifications.weeklyReview 
-                      ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
-                      : 'bg-[#d1cec9] dark:bg-[#3d4351]'
-                    }
+                    ${!systemNotifications.weeklyReview ? 'bg-[#d1cec9] dark:bg-[#3d4351]' : ''}
                     ${systemNotificationsSaving === 'weeklyReview' ? 'opacity-50' : ''}
                   `}
+                  style={systemNotifications.weeklyReview ? { backgroundColor: colors.accentLight } : undefined}
                 >
                   <span className={`
                     absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
@@ -2786,12 +2938,13 @@ export function CustomizeBrandingTab() {
                     relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
                     ${!systemNotifications.weeklyReview 
                       ? 'bg-[#d1cec9]/50 dark:bg-[#3d4351]/50 cursor-not-allowed' 
-                      : emailDefaults.weeklyReview 
-                        ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
-                        : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                      : !emailDefaults.weeklyReview 
+                        ? 'bg-[#d1cec9] dark:bg-[#3d4351]' 
+                        : ''
                     }
                     ${emailDefaultsSaving === 'weeklyReview' ? 'opacity-50' : ''}
                   `}
+                  style={systemNotifications.weeklyReview && emailDefaults.weeklyReview ? { backgroundColor: colors.accentLight } : undefined}
                 >
                   <span className={`
                     absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
@@ -2814,12 +2967,10 @@ export function CustomizeBrandingTab() {
                   disabled={systemNotificationsSaving === 'squadCall24h'}
                   className={`
                     relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
-                    ${systemNotifications.squadCall24h 
-                      ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
-                      : 'bg-[#d1cec9] dark:bg-[#3d4351]'
-                    }
+                    ${!systemNotifications.squadCall24h ? 'bg-[#d1cec9] dark:bg-[#3d4351]' : ''}
                     ${systemNotificationsSaving === 'squadCall24h' ? 'opacity-50' : ''}
                   `}
+                  style={systemNotifications.squadCall24h ? { backgroundColor: colors.accentLight } : undefined}
                 >
                   <span className={`
                     absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
@@ -2834,12 +2985,13 @@ export function CustomizeBrandingTab() {
                     relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
                     ${!systemNotifications.squadCall24h 
                       ? 'bg-[#d1cec9]/50 dark:bg-[#3d4351]/50 cursor-not-allowed' 
-                      : emailDefaults.squadCall24h 
-                        ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
-                        : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                      : !emailDefaults.squadCall24h 
+                        ? 'bg-[#d1cec9] dark:bg-[#3d4351]' 
+                        : ''
                     }
                     ${emailDefaultsSaving === 'squadCall24h' ? 'opacity-50' : ''}
                   `}
+                  style={systemNotifications.squadCall24h && emailDefaults.squadCall24h ? { backgroundColor: colors.accentLight } : undefined}
                 >
                   <span className={`
                     absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
@@ -2862,12 +3014,10 @@ export function CustomizeBrandingTab() {
                   disabled={systemNotificationsSaving === 'squadCall1h'}
                   className={`
                     relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
-                    ${systemNotifications.squadCall1h 
-                      ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
-                      : 'bg-[#d1cec9] dark:bg-[#3d4351]'
-                    }
+                    ${!systemNotifications.squadCall1h ? 'bg-[#d1cec9] dark:bg-[#3d4351]' : ''}
                     ${systemNotificationsSaving === 'squadCall1h' ? 'opacity-50' : ''}
                   `}
+                  style={systemNotifications.squadCall1h ? { backgroundColor: colors.accentLight } : undefined}
                 >
                   <span className={`
                     absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
@@ -2882,12 +3032,13 @@ export function CustomizeBrandingTab() {
                     relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
                     ${!systemNotifications.squadCall1h 
                       ? 'bg-[#d1cec9]/50 dark:bg-[#3d4351]/50 cursor-not-allowed' 
-                      : emailDefaults.squadCall1h 
-                        ? 'bg-[#3b5998] dark:bg-[#4a6baf]' 
-                        : 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                      : !emailDefaults.squadCall1h 
+                        ? 'bg-[#d1cec9] dark:bg-[#3d4351]' 
+                        : ''
                     }
                     ${emailDefaultsSaving === 'squadCall1h' ? 'opacity-50' : ''}
                   `}
+                  style={systemNotifications.squadCall1h && emailDefaults.squadCall1h ? { backgroundColor: colors.accentLight } : undefined}
                 >
                   <span className={`
                     absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out

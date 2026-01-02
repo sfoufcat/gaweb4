@@ -6,8 +6,10 @@ import { useAuth, useOrganization } from '@clerk/nextjs';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
 import { ClientDetailView, CustomizeBrandingTab, ChannelManagementTab, PaymentFailedBanner } from '@/components/coach';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, AlertCircle, Users } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Users, Eye, EyeOff, Lock } from 'lucide-react';
 import type { ClerkPublicMetadata, OrgRole, ProgramCohort, CoachSubscription } from '@/types';
+import { DemoModeProvider, useDemoMode } from '@/contexts/DemoModeContext';
+import { DemoSessionProvider } from '@/contexts/DemoSessionContext';
 
 // Admin components for expanded coach dashboard
 import { AdminUsersTab, type ColumnKey } from '@/components/admin/AdminUsersTab';
@@ -46,11 +48,61 @@ const VALID_TABS: CoachTab[] = ['clients', 'squads', 'programs', 'referrals', 'a
 // Uses 'programs' column instead of 'coaching' to show enrolled programs with (1:1)/(Group) prefixes
 const COACH_DASHBOARD_COLUMNS: ColumnKey[] = ['select', 'avatar', 'name', 'email', 'role', 'squad', 'programs', 'invitedBy', 'invitedAt', 'created', 'actions'];
 
-export default function CoachPage() {
+/**
+ * Demo Mode Toggle Component
+ * Shows a toggle button to enable/disable demo mode with fake client data.
+ * On demo.growthaddicts.com, shows a locked "Demo Site" badge instead.
+ */
+function DemoModeToggle() {
+  const { isDemoMode, isLocked, toggleDemoMode } = useDemoMode();
+  
+  // On demo site, show locked badge instead of toggle
+  if (isLocked) {
+    return (
+      <div
+        className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium font-albert bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 dark:from-purple-900/30 dark:to-pink-900/30 dark:text-purple-300 ring-2 ring-purple-400 dark:ring-purple-600"
+        title="You are on the demo site - all data is temporary"
+      >
+        <Lock className="w-4 h-4" />
+        <span>Demo Site</span>
+      </div>
+    );
+  }
+  
+  return (
+    <button
+      onClick={toggleDemoMode}
+      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium font-albert transition-all ${
+        isDemoMode
+          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 ring-2 ring-purple-400 dark:ring-purple-600'
+          : 'bg-[#f5f3f0] text-[#5f5a55] dark:bg-[#262b35] dark:text-[#b2b6c2] hover:bg-[#ebe7e2] dark:hover:bg-[#313746]'
+      }`}
+      title={isDemoMode ? 'Exit demo mode' : 'Enter demo mode with fake clients'}
+    >
+      {isDemoMode ? (
+        <>
+          <EyeOff className="w-4 h-4" />
+          <span className="hidden sm:inline">Exit Demo</span>
+        </>
+      ) : (
+        <>
+          <Eye className="w-4 h-4" />
+          <span className="hidden sm:inline">Demo Mode</span>
+        </>
+      )}
+    </button>
+  );
+}
+
+/**
+ * Coach Page Content (wrapped by DemoModeProvider)
+ */
+function CoachPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { sessionClaims, isLoaded } = useAuth();
   const { membership } = useOrganization();
+  const { isDemoSite } = useDemoMode();
   const [mounted, setMounted] = useState(false);
   
   // Clients tab state - selected client ID for viewing details
@@ -79,22 +131,23 @@ export default function CoachPage() {
   const shouldStartTour = searchParams.get('tour') === 'true';
   const [isTourActive, setIsTourActive] = useState(false);
 
-  // Get role and orgRole from Clerk session
+  // Get role and orgRole from Clerk session (not used on demo site)
   const publicMetadata = sessionClaims?.publicMetadata as ClerkPublicMetadata;
-  const role = publicMetadata?.role;
+  const role = isDemoSite ? 'coach' : publicMetadata?.role;  // Demo site: simulate coach role
   const metadataOrgRole = publicMetadata?.orgRole as OrgRole | undefined;
   
   // Detect org:admin from Clerk's native organization membership
   // If user is org:admin, they should be treated as super_coach regardless of metadata
   const isOrgAdmin = membership?.role === 'org:admin';
-  const orgRole: OrgRole | undefined = isOrgAdmin ? 'super_coach' : metadataOrgRole;
+  const orgRole: OrgRole | undefined = isDemoSite ? 'super_coach' : (isOrgAdmin ? 'super_coach' : metadataOrgRole);
   
-  const hasAccess = canAccessCoachDashboard(role, orgRole);
+  // On demo site, always have access
+  const hasAccess = isDemoSite || canAccessCoachDashboard(role, orgRole);
   
   // Determine access level:
-  // - Full access: global coach role, super_coach orgRole, admin, or super_admin
+  // - Full access: global coach role, super_coach orgRole, admin, or super_admin, OR demo site
   // - Limited access: orgRole === 'coach' (but not super_coach or global coach)
-  const hasFullAccess = role === 'coach' || role === 'admin' || role === 'super_admin' || orgRole === 'super_coach';
+  const hasFullAccess = isDemoSite || role === 'coach' || role === 'admin' || role === 'super_admin' || orgRole === 'super_coach';
   const isLimitedOrgCoach = !hasFullAccess && orgRole === 'coach';
 
   useEffect(() => {
@@ -124,12 +177,12 @@ export default function CoachPage() {
     }
   }, [searchParams]);
 
-  // Check authorization
+  // Check authorization (skip on demo site)
   useEffect(() => {
-    if (isLoaded && mounted && !hasAccess) {
+    if (!isDemoSite && isLoaded && mounted && !hasAccess) {
       router.push('/');
     }
-  }, [hasAccess, isLoaded, router, mounted]);
+  }, [hasAccess, isLoaded, router, mounted, isDemoSite]);
 
   // Fetch ending cohorts for banner
   const fetchEndingCohorts = useCallback(async () => {
@@ -158,11 +211,14 @@ export default function CoachPage() {
   }, []);
 
   useEffect(() => {
+    // Skip API fetches on demo site (no real data)
+    if (isDemoSite) return;
+    
     if (isLoaded && mounted && hasAccess && !isLimitedOrgCoach) {
       fetchEndingCohorts();
       fetchSubscription();
     }
-  }, [isLoaded, mounted, hasAccess, isLimitedOrgCoach, fetchEndingCohorts, fetchSubscription]);
+  }, [isLoaded, mounted, hasAccess, isLimitedOrgCoach, fetchEndingCohorts, fetchSubscription, isDemoSite]);
 
   // Handle squad conversion to community
   const handleConvertToCommunity = async (squadId: string) => {
@@ -186,8 +242,8 @@ export default function CoachPage() {
     }
   };
 
-  // Loading state
-  if (!isLoaded || !mounted) {
+  // Loading state (on demo site, don't wait for Clerk auth)
+  if ((!isDemoSite && !isLoaded) || !mounted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#faf8f6] to-[#f5f2ed] dark:from-[#05070b] dark:to-[#11141b] p-6 animate-pulse">
         {/* Header skeleton */}
@@ -287,16 +343,23 @@ export default function CoachPage() {
       <div className="px-4 sm:px-8 lg:px-16 py-6 pb-32">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert tracking-[-1px]">
-            Coach Dashboard
-          </h1>
-          <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
-            {isLimitedOrgCoach
-              ? 'View your assigned squads and coaching clients'
-              : role === 'coach' || orgRole === 'super_coach'
-                ? 'Manage your squads and 1:1 coaching clients'
-                : 'View and manage all squads and coaching clients'}
-          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2 font-albert tracking-[-1px]">
+                Coach Dashboard
+              </h1>
+              <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                {isLimitedOrgCoach
+                  ? 'View your assigned squads and coaching clients'
+                  : role === 'coach' || orgRole === 'super_coach'
+                    ? 'Manage your squads and 1:1 coaching clients'
+                    : 'View and manage all squads and coaching clients'}
+              </p>
+            </div>
+            
+            {/* Demo Mode Toggle */}
+            <DemoModeToggle />
+          </div>
         </div>
 
         {/* Ending Cohorts Banner */}
@@ -591,5 +654,24 @@ export default function CoachPage() {
         </Tabs>
       </div>
     </div>
+  );
+}
+
+/**
+ * Coach Dashboard Page
+ * Wrapped with DemoModeProvider and DemoSessionProvider for demo mode functionality.
+ * 
+ * On demo.growthaddicts.com:
+ * - Auth is bypassed (no Clerk required)
+ * - Demo mode is locked on
+ * - All data is session-isolated (each tab has its own demo data)
+ */
+export default function CoachPage() {
+  return (
+    <DemoModeProvider>
+      <DemoSessionProvider>
+        <CoachPageContent />
+      </DemoSessionProvider>
+    </DemoModeProvider>
   );
 }

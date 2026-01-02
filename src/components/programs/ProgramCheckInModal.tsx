@@ -1,10 +1,13 @@
 'use client';
 
-import { Fragment, useState, useEffect } from 'react';
+import { Fragment, useState, useEffect, useCallback, useRef } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronRight, Trophy, Sparkles, Target, MessageSquare, AlertTriangle, ArrowRight } from 'lucide-react';
+import { X, ChevronRight, Trophy, Sparkles, Target, MessageSquare, AlertTriangle, ArrowRight, Loader2, CreditCard, Plus, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import confetti from 'canvas-confetti';
+import type { ProgramCompletionConfig, Program } from '@/types';
+import Image from 'next/image';
 
 // Types for the check-in flow
 export type ProgramRating = 1 | 2 | 3 | 4 | 5;
@@ -19,15 +22,41 @@ export interface ProgramCheckInData {
   continueChoice: ContinueChoice | null;
 }
 
+// Saved payment method type
+interface SavedPaymentMethod {
+  id: string;
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+}
+
+// Upsell program info passed from parent
+export interface UpsellProgramInfo {
+  id: string;
+  name: string;
+  description: string;
+  coverImageUrl?: string;
+  priceInCents: number;
+  currency: string;
+  lengthDays: number;
+}
+
 interface ProgramCheckInModalProps {
   isOpen: boolean;
   onClose: () => void;
   onComplete: (data: ProgramCheckInData) => Promise<void>;
   programName: string;
   programDays?: number;
+  // Completion config from the program
+  completionConfig?: ProgramCompletionConfig;
+  // Upsell program details (fetched by parent)
+  upsellProgram?: UpsellProgramInfo | null;
+  // Callback when upsell purchase succeeds
+  onUpsellPurchase?: (programId: string) => Promise<void>;
 }
 
-type Step = 'congrats' | 'rating' | 'progress' | 'went_well' | 'obstacles' | 'continue';
+type Step = 'congrats' | 'upsell' | 'rating' | 'progress' | 'went_well' | 'obstacles' | 'continue';
 
 const RATING_OPTIONS: { value: ProgramRating; emoji: string; label: string }[] = [
   { value: 1, emoji: '😞', label: 'Not great' },
@@ -43,12 +72,63 @@ const PROGRESS_OPTIONS: { value: ProgressStatus; label: string; description: str
   { value: 'on_track', label: 'Yes!', description: 'Feeling confident' },
 ];
 
+// Format price helper
+function formatPrice(cents: number, currency: string = 'usd'): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency.toUpperCase(),
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(cents / 100);
+}
+
+// Fire confetti burst
+function fireConfetti() {
+  const duration = 3000;
+  const animationEnd = Date.now() + duration;
+  const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
+
+  function randomInRange(min: number, max: number) {
+    return Math.random() * (max - min) + min;
+  }
+
+  const interval = setInterval(() => {
+    const timeLeft = animationEnd - Date.now();
+
+    if (timeLeft <= 0) {
+      clearInterval(interval);
+      return;
+    }
+
+    const particleCount = 50 * (timeLeft / duration);
+    
+    // Confetti from left
+    confetti({
+      ...defaults,
+      particleCount,
+      origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+      colors: ['#f5d799', '#d4a574', '#c9a86c', '#8b7355', '#ffd700'],
+    });
+    
+    // Confetti from right
+    confetti({
+      ...defaults,
+      particleCount,
+      origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+      colors: ['#f5d799', '#d4a574', '#c9a86c', '#8b7355', '#ffd700'],
+    });
+  }, 250);
+}
+
 export function ProgramCheckInModal({
   isOpen,
   onClose,
   onComplete,
   programName,
   programDays = 30,
+  completionConfig,
+  upsellProgram,
+  onUpsellPurchase,
 }: ProgramCheckInModalProps) {
   const [currentStep, setCurrentStep] = useState<Step>('congrats');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,6 +139,31 @@ export function ProgramCheckInModal({
     obstacles: '',
     continueChoice: null,
   });
+  
+  // Confetti fired flag
+  const confettiFiredRef = useRef(false);
+  
+  // Upsell state
+  const [savedMethods, setSavedMethods] = useState<SavedPaymentMethod[]>([]);
+  const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
+  const [loadingMethods, setLoadingMethods] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
+  const [purchaseSuccess, setPurchaseSuccess] = useState(false);
+  
+  // Determine if we should show upsell step
+  const showUpsell = !!(completionConfig?.upsellProgramId && upsellProgram);
+  const showConfetti = completionConfig?.showConfetti !== false; // Default true
+  
+  // Build steps array dynamically
+  const getSteps = useCallback((): Step[] => {
+    const baseSteps: Step[] = ['congrats'];
+    if (showUpsell) {
+      baseSteps.push('upsell');
+    }
+    baseSteps.push('rating', 'progress', 'went_well', 'obstacles', 'continue');
+    return baseSteps;
+  }, [showUpsell]);
 
   // Reset state when modal opens
   useEffect(() => {
@@ -71,11 +176,46 @@ export function ProgramCheckInModal({
         obstacles: '',
         continueChoice: null,
       });
+      confettiFiredRef.current = false;
+      setPurchaseSuccess(false);
+      setPurchaseError(null);
+      setSelectedMethodId(null);
     }
   }, [isOpen]);
+  
+  // Fire confetti on congrats step
+  useEffect(() => {
+    if (isOpen && currentStep === 'congrats' && showConfetti && !confettiFiredRef.current) {
+      confettiFiredRef.current = true;
+      // Small delay to let the modal animate in
+      setTimeout(() => {
+        fireConfetti();
+      }, 300);
+    }
+  }, [isOpen, currentStep, showConfetti]);
+  
+  // Fetch saved payment methods when upsell step is shown
+  useEffect(() => {
+    if (currentStep === 'upsell' && showUpsell && savedMethods.length === 0 && !loadingMethods) {
+      setLoadingMethods(true);
+      fetch('/api/payment-methods')
+        .then(res => res.json())
+        .then(data => {
+          if (data.paymentMethods) {
+            setSavedMethods(data.paymentMethods);
+            // Auto-select first method
+            if (data.paymentMethods.length > 0) {
+              setSelectedMethodId(data.paymentMethods[0].id);
+            }
+          }
+        })
+        .catch(err => console.error('Failed to fetch payment methods:', err))
+        .finally(() => setLoadingMethods(false));
+    }
+  }, [currentStep, showUpsell, savedMethods.length, loadingMethods]);
 
   const handleNext = () => {
-    const steps: Step[] = ['congrats', 'rating', 'progress', 'went_well', 'obstacles', 'continue'];
+    const steps = getSteps();
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex < steps.length - 1) {
       setCurrentStep(steps[currentIndex + 1]);
@@ -83,10 +223,54 @@ export function ProgramCheckInModal({
   };
 
   const handleBack = () => {
-    const steps: Step[] = ['congrats', 'rating', 'progress', 'went_well', 'obstacles', 'continue'];
+    const steps = getSteps();
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(steps[currentIndex - 1]);
+    }
+  };
+  
+  const handleSkipUpsell = () => {
+    handleNext();
+  };
+  
+  const handlePurchaseUpsell = async () => {
+    if (!upsellProgram || !selectedMethodId || purchasing) return;
+    
+    setPurchasing(true);
+    setPurchaseError(null);
+    
+    try {
+      const response = await fetch('/api/programs/completion-upsell', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          programId: upsellProgram.id,
+          paymentMethodId: selectedMethodId,
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Purchase failed');
+      }
+      
+      setPurchaseSuccess(true);
+      
+      // Notify parent
+      if (onUpsellPurchase) {
+        await onUpsellPurchase(upsellProgram.id);
+      }
+      
+      // Auto-advance after success
+      setTimeout(() => {
+        handleNext();
+      }, 1500);
+    } catch (err) {
+      setPurchaseError(err instanceof Error ? err.message : 'Purchase failed');
+    } finally {
+      setPurchasing(false);
     }
   };
 
@@ -104,6 +288,8 @@ export function ProgramCheckInModal({
     switch (currentStep) {
       case 'congrats':
         return true;
+      case 'upsell':
+        return true; // Can always skip
       case 'rating':
         return data.programRating !== null;
       case 'progress':
@@ -120,11 +306,155 @@ export function ProgramCheckInModal({
   };
 
   const getStepNumber = () => {
-    const steps: Step[] = ['congrats', 'rating', 'progress', 'went_well', 'obstacles', 'continue'];
+    const steps = getSteps();
     return steps.indexOf(currentStep) + 1;
   };
 
-  const totalSteps = 6;
+  const totalSteps = getSteps().length;
+
+  const renderUpsellStep = () => {
+    if (!upsellProgram) return null;
+    
+    const headline = completionConfig?.upsellHeadline || 'Keep the momentum going!';
+    const description = completionConfig?.upsellDescription || `Continue your journey with ${upsellProgram.name}`;
+    
+    return (
+      <motion.div
+        key="upsell"
+        initial={{ opacity: 0, x: 50 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -50 }}
+        className="py-4"
+      >
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-albert font-bold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+            {headline}
+          </h2>
+          <p className="text-[#5f5a55] dark:text-[#b2b6c2] font-sans">
+            {description}
+          </p>
+        </div>
+        
+        {/* Upsell program card */}
+        <div className="rounded-2xl border border-[#e1ddd8] dark:border-[#262b35] overflow-hidden bg-[#faf8f6] dark:bg-[#11141b] mb-6">
+          {upsellProgram.coverImageUrl && (
+            <div className="relative h-32 w-full">
+              <Image
+                src={upsellProgram.coverImageUrl}
+                alt={upsellProgram.name}
+                fill
+                className="object-cover"
+              />
+            </div>
+          )}
+          <div className="p-4">
+            <h3 className="font-albert font-semibold text-lg text-[#1a1a1a] dark:text-[#f5f5f8] mb-1">
+              {upsellProgram.name}
+            </h3>
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] mb-3 line-clamp-2">
+              {upsellProgram.description}
+            </p>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[#8a857f]">
+                {upsellProgram.lengthDays} days
+              </span>
+              <span className="font-albert font-bold text-xl text-brand-accent">
+                {formatPrice(upsellProgram.priceInCents, upsellProgram.currency)}
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        {/* Payment section */}
+        {purchaseSuccess ? (
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="text-center py-6"
+          >
+            <div className="w-16 h-16 mx-auto mb-4 bg-green-500 rounded-full flex items-center justify-center">
+              <Check className="w-8 h-8 text-white" />
+            </div>
+            <p className="font-albert font-semibold text-lg text-[#1a1a1a] dark:text-[#f5f5f8]">
+              You&apos;re enrolled!
+            </p>
+            <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+              Starting your new program...
+            </p>
+          </motion.div>
+        ) : loadingMethods ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-brand-accent" />
+          </div>
+        ) : savedMethods.length > 0 ? (
+          <div className="space-y-3">
+            {/* Saved payment methods */}
+            {savedMethods.map((method) => (
+              <button
+                key={method.id}
+                onClick={() => setSelectedMethodId(method.id)}
+                className={`w-full flex items-center gap-3 p-4 rounded-xl transition-all text-left ${
+                  selectedMethodId === method.id
+                    ? 'bg-brand-accent/10 ring-2 ring-brand-accent'
+                    : 'bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] hover:border-brand-accent/50'
+                }`}
+              >
+                <CreditCard className="w-5 h-5 text-[#5f5a55]" />
+                <div className="flex-1">
+                  <span className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8] capitalize">
+                    {method.brand}
+                  </span>
+                  <span className="text-[#5f5a55] dark:text-[#b2b6c2]">
+                    {' '}•••• {method.last4}
+                  </span>
+                </div>
+                <span className="text-sm text-[#8a857f]">
+                  {method.expMonth}/{method.expYear}
+                </span>
+              </button>
+            ))}
+            
+            {purchaseError && (
+              <p className="text-sm text-red-500 text-center">{purchaseError}</p>
+            )}
+            
+            <Button
+              onClick={handlePurchaseUpsell}
+              disabled={!selectedMethodId || purchasing}
+              className="w-full bg-brand-accent hover:bg-brand-accent/90 text-white py-6 text-lg font-semibold"
+            >
+              {purchasing ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  Get Started – {formatPrice(upsellProgram.priceInCents, upsellProgram.currency)}
+                </>
+              )}
+            </Button>
+          </div>
+        ) : (
+          <div className="text-center py-4">
+            <p className="text-[#5f5a55] dark:text-[#b2b6c2] mb-4">
+              No saved payment method found
+            </p>
+            <Button
+              onClick={() => {
+                // TODO: Open payment method form or redirect
+                window.location.href = `/program/${upsellProgram.id}`;
+              }}
+              className="bg-brand-accent hover:bg-brand-accent/90 text-white"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Payment Method
+            </Button>
+          </div>
+        )}
+      </motion.div>
+    );
+  };
 
   const renderStep = () => {
     switch (currentStep) {
@@ -209,6 +539,9 @@ export function ProgramCheckInModal({
             </motion.div>
           </motion.div>
         );
+        
+      case 'upsell':
+        return renderUpsellStep();
 
       case 'rating':
         return (
@@ -453,6 +786,53 @@ export function ProgramCheckInModal({
         return null;
     }
   };
+  
+  // Render footer buttons based on current step
+  const renderFooter = () => {
+    const isFirstStep = currentStep === 'congrats';
+    const isLastStep = currentStep === 'continue';
+    const isUpsellStep = currentStep === 'upsell';
+    
+    return (
+      <div className="flex items-center justify-between px-6 pb-6">
+        {!isFirstStep ? (
+          <button
+            onClick={handleBack}
+            className="text-[#5f5a55] hover:text-[#1a1a1a] dark:hover:text-white font-albert text-sm"
+          >
+            Back
+          </button>
+        ) : (
+          <div />
+        )}
+        
+        {isUpsellStep ? (
+          <button
+            onClick={handleSkipUpsell}
+            className="text-[#5f5a55] hover:text-[#1a1a1a] dark:hover:text-white font-albert text-sm"
+          >
+            Skip
+          </button>
+        ) : isLastStep ? (
+          <Button
+            onClick={handleComplete}
+            disabled={!canProceed() || isSubmitting}
+            className="bg-brand-accent hover:bg-brand-accent/90 text-white px-8"
+          >
+            {isSubmitting ? 'Saving...' : 'Finish'}
+          </Button>
+        ) : (
+          <Button
+            onClick={handleNext}
+            disabled={!canProceed()}
+            className="bg-brand-accent hover:bg-brand-accent/90 text-white px-8"
+          >
+            Continue
+          </Button>
+        )}
+      </div>
+    );
+  };
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -470,19 +850,25 @@ export function ProgramCheckInModal({
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
+          {/* Desktop: centered, Mobile: bottom sheet */}
+          <div className="flex min-h-full items-end sm:items-center justify-center sm:p-4">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
+              enterFrom="opacity-0 translate-y-full sm:translate-y-0 sm:scale-95"
+              enterTo="opacity-100 translate-y-0 sm:scale-100"
               leave="ease-in duration-200"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
+              leaveFrom="opacity-100 translate-y-0 sm:scale-100"
+              leaveTo="opacity-0 translate-y-full sm:translate-y-0 sm:scale-95"
             >
-              <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white dark:bg-[#171b22] shadow-xl transition-all">
+              <Dialog.Panel className="w-full sm:max-w-lg transform overflow-hidden rounded-t-3xl sm:rounded-2xl bg-white dark:bg-[#171b22] shadow-xl transition-all max-h-[90vh] sm:max-h-none overflow-y-auto">
+                {/* Drag handle for mobile */}
+                <div className="sm:hidden flex justify-center pt-3 pb-1">
+                  <div className="w-10 h-1 bg-[#e1ddd8] dark:bg-[#262b35] rounded-full" />
+                </div>
+                
                 {/* Header with progress and close */}
-                <div className="flex items-center justify-between px-6 pt-5 pb-2">
+                <div className="flex items-center justify-between px-6 pt-4 sm:pt-5 pb-2">
                   <div className="flex items-center gap-2">
                     {Array.from({ length: totalSteps }).map((_, i) => (
                       <div
@@ -511,36 +897,7 @@ export function ProgramCheckInModal({
                 </div>
 
                 {/* Footer with navigation */}
-                <div className="flex items-center justify-between px-6 pb-6">
-                  {currentStep !== 'congrats' ? (
-                    <button
-                      onClick={handleBack}
-                      className="text-[#5f5a55] hover:text-[#1a1a1a] dark:hover:text-white font-albert text-sm"
-                    >
-                      Back
-                    </button>
-                  ) : (
-                    <div />
-                  )}
-                  
-                  {currentStep === 'continue' ? (
-                    <Button
-                      onClick={handleComplete}
-                      disabled={!canProceed() || isSubmitting}
-                      className="bg-brand-accent hover:bg-brand-accent/90 text-white px-8"
-                    >
-                      {isSubmitting ? 'Saving...' : 'Finish'}
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={handleNext}
-                      disabled={!canProceed()}
-                      className="bg-brand-accent hover:bg-brand-accent/90 text-white px-8"
-                    >
-                      Continue
-                    </Button>
-                  )}
-                </div>
+                {renderFooter()}
               </Dialog.Panel>
             </Transition.Child>
           </div>
@@ -549,4 +906,3 @@ export function ProgramCheckInModal({
     </Transition>
   );
 }
-

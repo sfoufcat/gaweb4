@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { 
   Users, 
@@ -13,9 +13,12 @@ import {
   ChevronDown,
   Loader2,
   Search,
+  Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ReferralWithDetails, ReferralStatus } from '@/types';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { generateDemoReferrals } from '@/lib/demo-data';
 
 interface ReferralStats {
   total: number;
@@ -34,6 +37,8 @@ interface ReferralStats {
  * - Filter by program/squad/status
  */
 export function CoachReferralsTab() {
+  const { isDemoMode } = useDemoMode();
+  
   const [referrals, setReferrals] = useState<ReferralWithDetails[]>([]);
   const [stats, setStats] = useState<ReferralStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,8 +52,17 @@ export function CoachReferralsTab() {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const limit = 20;
+  
+  // Demo data (memoized)
+  const demoData = useMemo(() => generateDemoReferrals(), []);
 
   const fetchReferrals = useCallback(async (resetOffset = false) => {
+    // Skip API call in demo mode
+    if (isDemoMode) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       setError(null);
@@ -87,11 +101,53 @@ export function CoachReferralsTab() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, offset, limit]);
+  }, [statusFilter, offset, limit, isDemoMode]);
 
   useEffect(() => {
     fetchReferrals(true);
-  }, [statusFilter]);
+  }, [statusFilter, isDemoMode]);
+  
+  // Use demo data when in demo mode
+  const displayReferrals: ReferralWithDetails[] = useMemo(() => {
+    if (isDemoMode) {
+      let filtered = demoData.referrals.map(dr => ({
+        id: dr.id,
+        referrerId: dr.referrerId,
+        referrerName: dr.referrerName,
+        referrerEmail: dr.referrerEmail,
+        referrerImageUrl: dr.referrerImageUrl,
+        referredId: dr.referredId,
+        referredName: dr.referredName,
+        referredEmail: dr.referredEmail,
+        referredImageUrl: dr.referredImageUrl,
+        programId: dr.programId,
+        programName: dr.programName,
+        squadId: dr.squadId,
+        squadName: dr.squadName,
+        status: dr.status as ReferralStatus,
+        rewardType: dr.rewardType,
+        rewardValue: dr.rewardValue,
+        createdAt: dr.createdAt,
+        completedAt: dr.completedAt,
+        rewardedAt: dr.rewardedAt,
+      }));
+      
+      // Apply status filter
+      if (statusFilter !== 'all') {
+        filtered = filtered.filter(r => r.status === statusFilter);
+      }
+      
+      return filtered;
+    }
+    return referrals;
+  }, [isDemoMode, demoData.referrals, referrals, statusFilter]);
+  
+  const displayStats: ReferralStats | null = useMemo(() => {
+    if (isDemoMode) {
+      return demoData.stats;
+    }
+    return stats;
+  }, [isDemoMode, demoData.stats, stats]);
 
   const loadMore = () => {
     setOffset(prev => prev + limit);
@@ -99,7 +155,7 @@ export function CoachReferralsTab() {
   };
 
   // Filter referrals by search query
-  const filteredReferrals = referrals.filter(r => {
+  const filteredReferrals = displayReferrals.filter(r => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -157,7 +213,7 @@ export function CoachReferralsTab() {
     }
   };
 
-  if (loading && referrals.length === 0) {
+  if (loading && displayReferrals.length === 0 && !isDemoMode) {
     return (
       <div className="space-y-4 animate-pulse">
         <div className="grid grid-cols-4 gap-4">
@@ -177,6 +233,21 @@ export function CoachReferralsTab() {
 
   return (
     <div className="space-y-6">
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="px-4 py-3 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-xl flex items-center gap-3">
+          <Eye className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-purple-700 dark:text-purple-300 font-albert">
+              Demo Mode Active
+            </p>
+            <p className="text-xs text-purple-600 dark:text-purple-400 font-albert">
+              Showing sample referral data for demonstration purposes
+            </p>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -190,7 +261,7 @@ export function CoachReferralsTab() {
       </div>
 
       {/* Stats Cards */}
-      {stats && (
+      {displayStats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4">
             <div className="flex items-center gap-3">
@@ -199,7 +270,7 @@ export function CoachReferralsTab() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  {stats.total}
+                  {displayStats.total}
                 </p>
                 <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                   Total Referrals
@@ -215,7 +286,7 @@ export function CoachReferralsTab() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  {stats.pending}
+                  {displayStats.pending}
                 </p>
                 <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                   Pending
@@ -231,7 +302,7 @@ export function CoachReferralsTab() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  {stats.rewarded}
+                  {displayStats.rewarded}
                 </p>
                 <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                   Rewards Granted
@@ -247,7 +318,7 @@ export function CoachReferralsTab() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
-                  {stats.conversionRate}%
+                  {displayStats.conversionRate}%
                 </p>
                 <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
                   Conversion Rate

@@ -88,11 +88,15 @@ const BASE_DOMAIN = 'growthaddicts.com';
 const PLATFORM_ADMIN_DOMAIN = `app.${BASE_DOMAIN}`;
 const MARKETING_DOMAIN = BASE_DOMAIN;
 
+// Demo subdomain - special handling for demo.growthaddicts.com
+const DEMO_DOMAIN = `demo.${BASE_DOMAIN}`;
+
 // Platform domains that are NOT tenant-scoped
 const PLATFORM_DOMAINS = [
   BASE_DOMAIN,                        // Marketing domain
   `www.${BASE_DOMAIN}`,              // www variant
   PLATFORM_ADMIN_DOMAIN,             // Platform admin domain
+  DEMO_DOMAIN,                        // Demo site (no auth required)
   'pro.growthaddicts.com',           // Legacy domain
   'www.pro.growthaddicts.com',       // Legacy www variant
   'growthaddicts.app',               // Legacy domain after .com migration
@@ -102,6 +106,12 @@ const PLATFORM_DOMAINS = [
 
 // Development hosts treated as platform mode
 const DEV_HOSTS = ['localhost', '127.0.0.1'];
+
+// Helper to check if hostname is demo subdomain
+function isDemoDomain(hostname: string): boolean {
+  const normalized = hostname.toLowerCase().split(':')[0];
+  return normalized === DEMO_DOMAIN || normalized === 'demo.localhost';
+}
 
 // Helper to check if hostname is platform admin domain
 function isPlatformAdminDomain(hostname: string): boolean {
@@ -536,6 +546,45 @@ export const proxy = clerkMiddleware(async (auth, request) => {
         'Access-Control-Max-Age': '86400',
       },
     });
+  }
+  
+  // ==========================================================================
+  // DEMO SITE BYPASS (demo.growthaddicts.com)
+  // ==========================================================================
+  
+  // Demo site bypasses all authentication and shows the coach dashboard
+  // with mock data. No Clerk auth required - instant access for demos.
+  if (isDemoDomain(hostname)) {
+    const requestHeaders = new Headers(request.headers);
+    
+    // Set demo mode headers
+    requestHeaders.set('x-demo-mode', 'true');
+    requestHeaders.set('x-layout-mode', 'with-sidebar');
+    
+    // For demo site, redirect root to /coach
+    if (pathname === '/') {
+      return NextResponse.redirect(new URL('/coach', request.url));
+    }
+    
+    // Allow access to coach dashboard and related routes without auth
+    const allowedDemoRoutes = [
+      '/coach',
+      '/api/coach',  // Allow coach API routes (they'll return demo data)
+      '/_next',
+      '/static',
+      '/favicon.ico',
+    ];
+    
+    const isAllowedDemoRoute = allowedDemoRoutes.some(route => pathname.startsWith(route));
+    
+    if (isAllowedDemoRoute) {
+      return NextResponse.next({
+        request: { headers: requestHeaders }
+      });
+    }
+    
+    // For any other routes on demo site, redirect to /coach
+    return NextResponse.redirect(new URL('/coach', request.url));
   }
   
   // ==========================================================================

@@ -17,6 +17,19 @@ interface ContentItem {
   title: string;
 }
 
+interface FunnelFormData {
+  name: string;
+  slug: string;
+  targetType: FunnelTargetType;
+  programId: string;
+  squadId: string;
+  contentType: FunnelContentType;
+  contentId: string;
+  description: string;
+  accessType: string;
+  isDefault: boolean;
+}
+
 interface FunnelEditorDialogProps {
   mode: 'create' | 'edit';
   funnel?: Funnel;
@@ -26,6 +39,10 @@ interface FunnelEditorDialogProps {
   initialContentType?: FunnelContentType;
   onClose: () => void;
   onSaved: () => void;
+  /** Demo mode - skip API calls and use onDemoSave instead */
+  demoMode?: boolean;
+  /** Called in demo mode instead of making API calls */
+  onDemoSave?: (data: FunnelFormData, isEdit: boolean) => void;
 }
 
 const CONTENT_TYPES: { value: FunnelContentType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -43,7 +60,9 @@ export function FunnelEditorDialog({
   squads = [],
   initialContentType,
   onClose, 
-  onSaved 
+  onSaved,
+  demoMode = false,
+  onDemoSave,
 }: FunnelEditorDialogProps) {
   const [mounted, setMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -164,6 +183,24 @@ export function FunnelEditorDialog({
       }
       if (formData.targetType === 'content' && !formData.contentId) {
         throw new Error('Please select a content item');
+      }
+      
+      // In demo mode, call the onDemoSave callback instead of making API calls
+      if (demoMode && onDemoSave) {
+        onDemoSave({
+          name: formData.name.trim(),
+          slug: formData.slug.trim(),
+          targetType: formData.targetType,
+          programId: formData.programId,
+          squadId: formData.squadId,
+          contentType: formData.contentType,
+          contentId: formData.contentId,
+          description: formData.description,
+          accessType: formData.accessType,
+          isDefault: formData.isDefault,
+        }, mode === 'edit');
+        onSaved();
+        return;
       }
 
       // Build tracking config (only include non-empty values)
