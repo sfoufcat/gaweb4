@@ -603,3 +603,4 @@ export async function syncSquadCallToCalendar(
   await createGoogleCalendarEvent(orgId, event);
 }
 
+

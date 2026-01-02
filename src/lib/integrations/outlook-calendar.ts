@@ -634,3 +634,4 @@ export async function syncSquadCallToOutlookCalendar(
   await createOutlookCalendarEvent(orgId, event);
 }
 
+

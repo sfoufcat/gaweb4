@@ -70,14 +70,14 @@ export function AnalyticsTab({ apiBasePath = '/api/coach/analytics' }: Analytics
     if (isDemoMode) {
       return demoData.communities.map(dc => ({
         squadId: dc.squadId,
-        name: dc.name,
-        memberCount: dc.memberCount,
+        squadName: dc.name,
+        totalMembers: dc.memberCount,
+        activeMembers: Math.round(dc.memberCount * (dc.activeRate / 100)),
+        activityRate: dc.activeRate,
         healthStatus: dc.healthStatus as SquadHealthStatus,
-        activeRate: dc.activeRate,
-        messageCount: dc.messageCount,
-        avgMessagesPerMember: dc.avgMessagesPerMember,
-        trend: dc.trend as 'up' | 'down' | 'stable',
-        lastActivityAt: dc.lastActivityAt,
+        activityTrend: dc.trend as 'up' | 'down' | 'stable',
+        trendPercent: dc.trend === 'up' ? 5 : dc.trend === 'down' ? -5 : 0,
+        lastActivityDate: dc.lastActivityAt ?? undefined,
       }));
     }
     return communities;

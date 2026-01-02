@@ -299,3 +299,4 @@ export function isSlackConfigured(): boolean {
   return !!(SLACK_CLIENT_ID && SLACK_CLIENT_SECRET);
 }
 
+

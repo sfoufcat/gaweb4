@@ -228,3 +228,4 @@ export async function regenerateDefaultLogo(
   return generateAndUploadDefaultLogo(organizationId, businessName);
 }
 
+
