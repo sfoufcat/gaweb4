@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { exchangeDiscordCodeForTokens } from '@/lib/integrations/discord';
-import { saveIntegration } from '@/lib/integrations/token-manager';
+import { storeIntegration } from '@/lib/integrations/token-manager';
 import { type DiscordSettings } from '@/lib/integrations/types';
 
 export async function GET(request: NextRequest) {
@@ -69,22 +69,21 @@ export async function GET(request: NextRequest) {
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
     // Save integration to Firestore
-    await saveIntegration(orgId, {
-      provider: 'discord',
-      status: 'connected',
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      tokenType: tokens.token_type,
-      expiresAt,
-      scopes: tokens.scope.split(' '),
-      accountId: tokens.guild?.id,
-      accountName: tokens.guild?.name,
-      webhookUrl: tokens.webhook?.url,
-      webhookSecret: tokens.webhook?.token,
-      syncEnabled: true,
-      settings,
-      connectedBy: userId,
-    });
+    await storeIntegration(
+      orgId,
+      'discord',
+      {
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        tokenType: tokens.token_type,
+        expiresAt: new Date(expiresAt),
+        scopes: tokens.scope.split(' '),
+        accountId: tokens.guild?.id,
+        accountName: tokens.guild?.name,
+        settings,
+      },
+      userId
+    );
 
     // Redirect back to settings with success
     return NextResponse.redirect(

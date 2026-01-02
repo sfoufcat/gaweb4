@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { exchangeGoogleSheetsCodeForTokens } from '@/lib/integrations/google-sheets';
-import { saveIntegration } from '@/lib/integrations/token-manager';
+import { storeIntegration } from '@/lib/integrations/token-manager';
 import { type GoogleSheetsSettings } from '@/lib/integrations/types';
 
 export async function GET(request: NextRequest) {
@@ -79,23 +79,24 @@ export async function GET(request: NextRequest) {
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
     // Save integration to Firestore
-    await saveIntegration(orgId, {
-      provider: 'google_sheets',
-      status: 'connected',
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      tokenType: tokens.token_type,
-      expiresAt,
-      scopes: [
-        'https://www.googleapis.com/auth/spreadsheets',
-        'https://www.googleapis.com/auth/drive.file',
-      ],
-      accountEmail: userInfo.email,
-      accountName: userInfo.name,
-      syncEnabled: true,
-      settings,
-      connectedBy: userId,
-    });
+    await storeIntegration(
+      orgId,
+      'google_sheets',
+      {
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        tokenType: tokens.token_type,
+        expiresAt: new Date(expiresAt),
+        scopes: [
+          'https://www.googleapis.com/auth/spreadsheets',
+          'https://www.googleapis.com/auth/drive.file',
+        ],
+        accountEmail: userInfo.email,
+        accountName: userInfo.name,
+        settings,
+      },
+      userId
+    );
 
     // Redirect back to settings with success
     return NextResponse.redirect(

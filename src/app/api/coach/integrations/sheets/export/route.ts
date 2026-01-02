@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { getIntegration, updateIntegration } from '@/lib/integrations/token-manager';
+import { getIntegration, updateTokens, updateSyncStatus, updateIntegrationSettings, updateIntegrationStatus } from '@/lib/integrations/token-manager';
 import {
   refreshGoogleSheetsToken,
   createSpreadsheet,
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     if (expiresAt < new Date()) {
       if (!integration.refreshToken) {
         // Token expired and no refresh token - need to reconnect
-        await updateIntegration(orgId, integration.id, { status: 'expired' });
+        await updateIntegrationStatus(orgId, integration.id, 'expired');
         return NextResponse.json(
           { error: 'Token expired, please reconnect' },
           { status: 401 }
@@ -66,9 +66,9 @@ export async function POST(request: NextRequest) {
       accessToken = newTokens.access_token;
 
       // Update stored token
-      await updateIntegration(orgId, integration.id, {
+      await updateTokens(orgId, integration.id, {
         accessToken: newTokens.access_token,
-        expiresAt: new Date(Date.now() + newTokens.expires_in * 1000).toISOString(),
+        expiresAt: new Date(Date.now() + newTokens.expires_in * 1000),
       });
     }
 
@@ -89,8 +89,9 @@ export async function POST(request: NextRequest) {
       spreadsheetUrl = result.spreadsheetUrl;
 
       // Save spreadsheet ID to settings
-      await updateIntegration(orgId, integration.id, {
-        settings: { ...settings, spreadsheetId: targetSpreadsheetId },
+      await updateIntegrationSettings(orgId, integration.id, {
+        ...settings,
+        spreadsheetId: targetSpreadsheetId,
       });
     }
 
@@ -130,10 +131,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update last sync time
-    await updateIntegration(orgId, integration.id, {
-      lastSyncAt: new Date().toISOString(),
-      lastSyncStatus: 'success',
-    });
+    await updateSyncStatus(orgId, integration.id, 'success');
 
     return NextResponse.json({
       success: true,

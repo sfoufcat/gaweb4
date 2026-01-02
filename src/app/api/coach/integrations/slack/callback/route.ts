@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { exchangeSlackCodeForTokens } from '@/lib/integrations/slack';
-import { saveIntegration } from '@/lib/integrations/token-manager';
+import { storeIntegration } from '@/lib/integrations/token-manager';
 import { type SlackSettings } from '@/lib/integrations/types';
 
 export async function GET(request: NextRequest) {
@@ -66,18 +66,19 @@ export async function GET(request: NextRequest) {
     };
 
     // Save integration to Firestore
-    await saveIntegration(orgId, {
-      provider: 'slack',
-      status: 'connected',
-      accessToken: tokens.access_token,
-      tokenType: tokens.token_type,
-      scopes: tokens.scope.split(','),
-      accountId: tokens.team.id,
-      accountName: tokens.team.name,
-      syncEnabled: true,
-      settings,
-      connectedBy: userId,
-    });
+    await storeIntegration(
+      orgId,
+      'slack',
+      {
+        accessToken: tokens.access_token,
+        tokenType: tokens.token_type,
+        scopes: tokens.scope.split(','),
+        accountId: tokens.team.id,
+        accountName: tokens.team.name,
+        settings,
+      },
+      userId
+    );
 
     // Redirect back to settings with success
     return NextResponse.redirect(

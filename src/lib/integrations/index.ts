@@ -164,22 +164,6 @@ export {
   isCalcomConfigured,
 } from './calcom';
 
-// Integration configuration check
-export function getConfiguredIntegrations(): Record<string, boolean> {
-  return {
-    google_calendar: !!(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET),
-    google_sheets: !!(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET),
-    outlook_calendar: !!(process.env.MICROSOFT_OAUTH_CLIENT_ID && process.env.MICROSOFT_OAUTH_CLIENT_SECRET),
-    notion: !!(process.env.NOTION_CLIENT_ID && process.env.NOTION_CLIENT_SECRET),
-    airtable: !!(process.env.AIRTABLE_CLIENT_ID && process.env.AIRTABLE_CLIENT_SECRET),
-    todoist: !!(process.env.TODOIST_CLIENT_ID && process.env.TODOIST_CLIENT_SECRET),
-    asana: !!(process.env.ASANA_CLIENT_ID && process.env.ASANA_CLIENT_SECRET),
-    slack: !!(process.env.SLACK_CLIENT_ID && process.env.SLACK_CLIENT_SECRET),
-    discord: true, // Uses webhook URLs, always available
-    zapier: true,  // Uses webhook URLs, always available
-    make: true,    // Uses webhook URLs, always available
-    calcom: true,  // Uses user API keys, always available
-    deepgram: !!process.env.DEEPGRAM_API_KEY,
-    assemblyai: !!process.env.ASSEMBLYAI_API_KEY,
-  };
-}
+// Integration configuration check - server-side only
+// This function checks which integrations have their OAuth credentials configured
+export { getConfiguredIntegrations } from './config';

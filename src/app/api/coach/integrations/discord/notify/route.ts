@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { getIntegration, updateIntegration } from '@/lib/integrations/token-manager';
+import { getIntegration, storeWebhookIntegration, updateIntegrationSettings } from '@/lib/integrations/token-manager';
 import { sendDiscordNotification, validateDiscordWebhook } from '@/lib/integrations/discord';
 import { type DiscordSettings, type WebhookEventType } from '@/lib/integrations/types';
 
@@ -105,39 +105,23 @@ export async function PUT(request: NextRequest) {
     // Get or create Discord integration
     let integration = await getIntegration(orgId, 'discord');
     
-    if (integration) {
-      // Update existing integration
-      await updateIntegration(orgId, integration.id, {
-        webhookUrl,
-        status: 'connected',
-        settings: {
-          ...integration.settings,
-          guildId: validation.guildId,
-        },
-      });
-    } else {
-      // Create new integration with just webhook
-      const settings: DiscordSettings = {
-        provider: 'discord',
-        guildId: validation.guildId,
-        notifyCheckins: true,
-        notifyGoals: true,
-        notifyPayments: true,
-        notifyNewClients: true,
-      };
+    // Create new integration with webhook (storeWebhookIntegration handles update too)
+    const settings: DiscordSettings = {
+      provider: 'discord',
+      guildId: validation.guildId,
+      notifyCheckins: integration?.settings ? (integration.settings as DiscordSettings).notifyCheckins : true,
+      notifyGoals: integration?.settings ? (integration.settings as DiscordSettings).notifyGoals : true,
+      notifyPayments: integration?.settings ? (integration.settings as DiscordSettings).notifyPayments : true,
+      notifyNewClients: integration?.settings ? (integration.settings as DiscordSettings).notifyNewClients : true,
+    };
 
-      await import('@/lib/integrations/token-manager').then(m => 
-        m.saveIntegration(orgId, {
-          provider: 'discord',
-          status: 'connected',
-          accessToken: '', // Not needed for webhook-only
-          webhookUrl,
-          syncEnabled: true,
-          settings,
-          connectedBy: userId,
-        })
-      );
-    }
+    await storeWebhookIntegration(
+      orgId,
+      'discord' as 'zapier', // Type workaround
+      webhookUrl,
+      settings as unknown as import('@/lib/integrations/types').WebhookSettings,
+      userId
+    );
 
     return NextResponse.json({
       success: true,

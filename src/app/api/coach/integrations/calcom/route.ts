@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { getIntegration, saveIntegration, updateIntegration, deleteIntegration } from '@/lib/integrations/token-manager';
+import { getIntegration, storeApiKeyIntegration, updateIntegrationSettings, disconnectIntegration } from '@/lib/integrations/token-manager';
 import {
   validateCalcomApiKey,
   getCalcomEventTypes,
@@ -122,23 +122,14 @@ export async function POST(request: NextRequest) {
     // Check if integration already exists
     const existing = await getIntegration(orgId, 'calcom');
     
-    if (existing) {
-      await updateIntegration(orgId, existing.id, {
-        apiKey,
-        status: 'connected',
-        settings,
-      });
-    } else {
-      await saveIntegration(orgId, {
-        provider: 'calcom',
-        status: 'connected',
-        accessToken: '', // Not used for API key auth
-        apiKey,
-        syncEnabled: true,
-        settings,
-        connectedBy: userId,
-      });
-    }
+    // Store as API key integration (handles both new and update)
+    await storeApiKeyIntegration(
+      orgId,
+      'calcom' as 'deepgram', // Type workaround - function accepts calcom too
+      apiKey,
+      settings,
+      userId
+    );
 
     // Get event types to return
     const eventTypes = await getCalcomEventTypes(apiKey).catch(() => []);
@@ -191,13 +182,11 @@ export async function PUT(request: NextRequest) {
 
     const currentSettings = integration.settings as CalcomSettings;
 
-    await updateIntegration(orgId, integration.id, {
-      settings: {
-        ...currentSettings,
-        eventTypeSlug: eventTypeSlug ?? currentSettings.eventTypeSlug,
-        embedEnabled: embedEnabled ?? currentSettings.embedEnabled,
-        autoCreateLinks: autoCreateLinks ?? currentSettings.autoCreateLinks,
-      },
+    await updateIntegrationSettings(orgId, integration.id, {
+      ...currentSettings,
+      eventTypeSlug: eventTypeSlug ?? currentSettings.eventTypeSlug,
+      embedEnabled: embedEnabled ?? currentSettings.embedEnabled,
+      autoCreateLinks: autoCreateLinks ?? currentSettings.autoCreateLinks,
     });
 
     return NextResponse.json({ success: true });
@@ -227,7 +216,7 @@ export async function DELETE() {
     const integration = await getIntegration(orgId, 'calcom');
     
     if (integration) {
-      await deleteIntegration(orgId, integration.id);
+      await disconnectIntegration(orgId, integration.id);
     }
 
     return NextResponse.json({ success: true });

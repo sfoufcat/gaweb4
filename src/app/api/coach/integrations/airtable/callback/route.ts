@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { exchangeAirtableCodeForTokens } from '@/lib/integrations/airtable';
-import { saveIntegration } from '@/lib/integrations/token-manager';
+import { storeIntegration } from '@/lib/integrations/token-manager';
 import { type AirtableSettings } from '@/lib/integrations/types';
 
 export async function GET(request: NextRequest) {
@@ -65,18 +65,19 @@ export async function GET(request: NextRequest) {
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
     // Save integration to Firestore
-    await saveIntegration(orgId, {
-      provider: 'airtable',
-      status: 'connected',
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      tokenType: tokens.token_type,
-      expiresAt,
-      scopes: tokens.scope.split(' '),
-      syncEnabled: true,
-      settings,
-      connectedBy: userId,
-    });
+    await storeIntegration(
+      orgId,
+      'airtable',
+      {
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        tokenType: tokens.token_type,
+        expiresAt: new Date(expiresAt),
+        scopes: tokens.scope.split(' '),
+        settings,
+      },
+      userId
+    );
 
     // Redirect back to settings with success
     return NextResponse.redirect(

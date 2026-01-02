@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { getIntegration, updateIntegration } from '@/lib/integrations/token-manager';
+import { getIntegration, updateTokens, updateSyncStatus, updateIntegrationSettings, updateIntegrationStatus } from '@/lib/integrations/token-manager';
 import {
   refreshAirtableToken,
   listAirtableBases,
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date(integration.expiresAt as string);
     if (expiresAt < new Date()) {
       if (!integration.refreshToken) {
-        await updateIntegration(orgId, integration.id, { status: 'expired' });
+        await updateIntegrationStatus(orgId, integration.id, 'expired');
         return NextResponse.json(
           { error: 'Token expired, please reconnect' },
           { status: 401 }
@@ -60,10 +60,10 @@ export async function POST(request: NextRequest) {
       const newTokens = await refreshAirtableToken(integration.refreshToken);
       accessToken = newTokens.access_token;
 
-      await updateIntegration(orgId, integration.id, {
+      await updateTokens(orgId, integration.id, {
         accessToken: newTokens.access_token,
         refreshToken: newTokens.refresh_token || integration.refreshToken,
-        expiresAt: new Date(Date.now() + newTokens.expires_in * 1000).toISOString(),
+        expiresAt: new Date(Date.now() + newTokens.expires_in * 1000),
       });
     }
 
@@ -91,10 +91,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update last sync time
-    await updateIntegration(orgId, integration.id, {
-      lastSyncAt: new Date().toISOString(),
-      lastSyncStatus: 'success',
-    });
+    await updateSyncStatus(orgId, integration.id, 'success');
 
     return NextResponse.json({
       success: true,
@@ -141,10 +138,10 @@ export async function GET() {
       const newTokens = await refreshAirtableToken(integration.refreshToken);
       accessToken = newTokens.access_token;
 
-      await updateIntegration(orgId, integration.id, {
+      await updateTokens(orgId, integration.id, {
         accessToken: newTokens.access_token,
         refreshToken: newTokens.refresh_token || integration.refreshToken,
-        expiresAt: new Date(Date.now() + newTokens.expires_in * 1000).toISOString(),
+        expiresAt: new Date(Date.now() + newTokens.expires_in * 1000),
       });
     }
 
