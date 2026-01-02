@@ -287,13 +287,12 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         priceInCents: dp.priceInCents,
         currency: 'USD',
         isPublished: dp.isPublished,
+        isActive: true,
         organizationId: 'demo-org',
         createdAt: dp.createdAt,
         updatedAt: dp.updatedAt,
-        enrolledCount: dp.enrolledCount,
+        totalEnrollments: dp.enrolledCount,
         activeEnrollments: dp.activeEnrollments,
-        completedEnrollments: dp.completedEnrollments,
-        totalRevenue: dp.totalRevenue,
       }));
     }
     return programs;

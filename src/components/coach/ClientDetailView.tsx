@@ -54,6 +54,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { SendDMModal, type DMRecipient } from '@/components/coach/SendDMModal';
+import { ScheduleCallModal } from '@/components/scheduling';
 import type { 
   ClientCoachingData, 
   FirebaseUser, 
@@ -1933,143 +1934,15 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
       </div>
 
       {/* Call Scheduling Modal */}
-      <AlertDialog open={showCallModal} onOpenChange={setShowCallModal}>
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <div className="flex items-center justify-between">
-              <AlertDialogTitle className="font-albert text-[20px] tracking-[-0.5px] flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-brand-accent" />
-                {coachingData?.nextCall?.datetime ? 'Edit Call' : 'Schedule Call'}
-              </AlertDialogTitle>
-              <button
-                onClick={() => setShowCallModal(false)}
-                className="p-1.5 rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] transition-colors"
-              >
-                <X className="w-5 h-5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-              </button>
-            </div>
-          </AlertDialogHeader>
-
-          <div className="space-y-5 py-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block font-albert font-medium text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">Date</label>
-                <input
-                  type="date"
-                  value={callDate}
-                  onChange={(e) => setCallDate(e.target.value)}
-                  min={minDate}
-                  className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
-                />
-              </div>
-              <div>
-                <label className="block font-albert font-medium text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">Time</label>
-                <div className="relative">
-                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                  <input
-                    type="time"
-                    value={callTime}
-                    onChange={(e) => setCallTime(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block font-albert font-medium text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">Timezone</label>
-              <select
-                value={callTimezone}
-                onChange={(e) => setCallTimezone(e.target.value)}
-                className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30 appearance-none cursor-pointer"
-              >
-                {COMMON_TIMEZONES.map((tz) => (
-                  <option key={tz.value} value={tz.value}>{tz.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-albert font-medium text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
-                <MapPin className="inline w-4 h-4 mr-1 -mt-0.5" />
-                Location
-              </label>
-              {!useCustomLocation ? (
-                <div className="space-y-2">
-                  <div className="flex flex-wrap gap-2">
-                    {LOCATION_PRESETS.map((preset) => (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => setCallLocation(preset)}
-                        className={`px-3 py-1.5 rounded-full font-albert text-[13px] transition-all ${
-                          callLocation === preset
-                            ? 'bg-brand-accent text-white'
-                            : 'bg-[#f3f1ef] dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#171b22]'
-                        }`}
-                      >
-                        {preset}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setUseCustomLocation(true)}
-                    className="text-[13px] text-brand-accent hover:underline font-albert"
-                  >
-                    + Add custom location/link
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={customLocation}
-                    onChange={(e) => setCustomLocation(e.target.value)}
-                    placeholder="e.g., https://zoom.us/j/..."
-                    className="w-full px-4 py-3 bg-white dark:bg-[#11141b] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl font-albert text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#8c8c8c] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/30 dark:focus:ring-brand-accent/30"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUseCustomLocation(false);
-                      setCustomLocation('');
-                    }}
-                    className="text-[13px] text-brand-accent hover:underline font-albert"
-                  >
-                    ← Use preset location
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <AlertDialogFooter className="gap-2 sm:gap-2 flex-col-reverse sm:flex-row">
-            {coachingData?.nextCall?.datetime && (
-              <button
-                onClick={handleDeleteCall}
-                disabled={schedulingCall}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950 rounded-full font-albert text-sm transition-colors disabled:opacity-50"
-              >
-                <Trash2 className="w-4 h-4" />
-                Remove call
-              </button>
-            )}
-            <div className="flex gap-2 w-full sm:w-auto sm:ml-auto">
-              <AlertDialogCancel disabled={schedulingCall} className="font-albert rounded-full border-[#e1ddd8] dark:border-[#262b35] flex-1 sm:flex-none">
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleScheduleCall}
-                disabled={schedulingCall || !callDate || !callTime}
-                className="font-albert rounded-full bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent dark:hover:bg-brand-accent/90 text-white flex-1 sm:flex-none"
-              >
-                {schedulingCall ? 'Saving...' : 'Save'}
-              </AlertDialogAction>
-            </div>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ScheduleCallModal
+        isOpen={showCallModal}
+        onClose={() => setShowCallModal(false)}
+        clientId={user.id}
+        clientName={user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName || 'Client'}
+        onSuccess={() => {
+          // Could refresh coaching data here if needed
+        }}
+      />
 
       {/* Add Session Modal */}
       <AlertDialog open={showSessionModal} onOpenChange={setShowSessionModal}>
