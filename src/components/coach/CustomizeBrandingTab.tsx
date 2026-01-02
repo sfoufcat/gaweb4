@@ -1149,17 +1149,34 @@ export function CustomizeBrandingTab() {
     setColors(prev => ({ ...prev, [key]: value }));
   };
 
-  // Reset to defaults
+  // Reset to defaults - only resets settings for the currently active subtab
   const handleResetToDefaults = () => {
-    setLogoUrl(DEFAULT_LOGO_URL);
-    setLogoUrlDark(null);
-    setHorizontalLogoUrl(null);
-    setHorizontalLogoUrlDark(null);
-    setAppTitle(DEFAULT_APP_TITLE);
-    setColors(DEFAULT_BRANDING_COLORS);
-    setMenuTitles(DEFAULT_MENU_TITLES);
-    setMenuIcons(DEFAULT_MENU_ICONS);
-    setMenuOrder(DEFAULT_MENU_ORDER);
+    switch (activeSubtab) {
+      case 'branding':
+        setLogoUrl(DEFAULT_LOGO_URL);
+        setLogoUrlDark(null);
+        setHorizontalLogoUrl(null);
+        setHorizontalLogoUrlDark(null);
+        setAppTitle(DEFAULT_APP_TITLE);
+        setColors(DEFAULT_BRANDING_COLORS);
+        break;
+      case 'navigation':
+        setMenuTitles(DEFAULT_MENU_TITLES);
+        setMenuIcons(DEFAULT_MENU_ICONS);
+        setMenuOrder(DEFAULT_MENU_ORDER);
+        break;
+      case 'features':
+      case 'domains':
+        // These tabs have settings managed via API or separate components
+        // No local state to reset
+        break;
+      case 'communications':
+        setEmailDefaults(DEFAULT_EMAIL_DEFAULTS);
+        setSystemNotifications(DEFAULT_SYSTEM_NOTIFICATIONS);
+        break;
+      default:
+        break;
+    }
   };
 
   // Revert changes
@@ -1787,11 +1804,6 @@ export function CustomizeBrandingTab() {
         {/* Auto-Convert to Community */}
         <div className="mt-4">
           <CommunitySettingsToggle />
-        </div>
-        
-        {/* Email Notification Preferences */}
-        <div className="mt-4">
-          <EmailPreferencesSection />
         </div>
         
         {/* Alumni Discount */}
@@ -2463,6 +2475,11 @@ export function CustomizeBrandingTab() {
           appTitle={appTitle}
           logoUrl={logoUrl || '/logo.jpg'}
         />
+      </div>
+
+      {/* Email Notification Preferences */}
+      <div className="mt-6">
+        <EmailPreferencesSection />
       </div>
 
       {/* Stripe Connect Section */}

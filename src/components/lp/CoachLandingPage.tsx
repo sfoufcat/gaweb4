@@ -139,7 +139,7 @@ const PRICING = [
     annualPrice: 176,
     description: 'For established coaching operations',
     stats: { clients: 500, programs: 50, squads: 100 },
-    features: ['Everything in Pro, plus:', 'Team roles + permissions', 'Multi-coach support', 'AI Builder / AI Helper', 'Priority support'],
+    features: ['Everything in Pro, plus:', 'Team roles + permissions', 'Multi-coach support', 'AI Builder / AI Helper'],
     cta: 'Start free trial',
     popular: false,
   },
@@ -799,10 +799,10 @@ export function CoachLandingPage() {
               <div className="overflow-x-auto">
                 {/* Header row */}
                 <div className="flex items-center border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
-                  <div className="flex-1 text-left p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2]">Feature</div>
-                  <div className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] flex items-center justify-center w-20 sm:w-24 order-2 sm:order-1">Skool</div>
-                  <div className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] flex items-center justify-center w-20 sm:w-24 order-3 sm:order-2">Circle</div>
-                  <div className="p-4 flex items-center justify-center w-20 sm:w-24 order-1 sm:order-3">
+                  <div className="flex-1 min-w-0 text-left p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2]">Feature</div>
+                  <div className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] flex items-center justify-center w-16 sm:w-24 flex-shrink-0 order-2 sm:order-1">Skool</div>
+                  <div className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] flex items-center justify-center w-16 sm:w-24 flex-shrink-0 order-3 sm:order-2">Circle</div>
+                  <div className="p-4 flex items-center justify-center w-16 sm:w-24 flex-shrink-0 order-1 sm:order-3">
                     <Image
                       src="/logo.jpg"
                       alt="GrowthAddicts"
@@ -815,22 +815,22 @@ export function CoachLandingPage() {
                 {/* Data rows */}
                 {COMPARISON.map((row, i) => (
                   <div key={i} className="flex border-b border-[#e1ddd8]/30 dark:border-[#262b35]/30 last:border-0">
-                    <div className="flex-1 p-4 font-sans text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8]">{row.feature}</div>
-                    <div className="p-4 text-center w-20 sm:w-24 order-2 sm:order-1">
+                    <div className="flex-1 min-w-0 p-4 font-sans text-[14px] text-[#1a1a1a] dark:text-[#f5f5f8]">{row.feature}</div>
+                    <div className="p-4 text-center w-16 sm:w-24 flex-shrink-0 order-2 sm:order-1">
                       {row.skool ? (
                         <Check className="w-5 h-5 text-emerald-500 mx-auto" />
                       ) : (
                         <X className="w-5 h-5 text-[#c5bfb8] dark:text-[#3d4452] mx-auto" />
                       )}
                     </div>
-                    <div className="p-4 text-center w-20 sm:w-24 order-3 sm:order-2">
+                    <div className="p-4 text-center w-16 sm:w-24 flex-shrink-0 order-3 sm:order-2">
                       {row.circle ? (
                         <Check className="w-5 h-5 text-emerald-500 mx-auto" />
                       ) : (
                         <X className="w-5 h-5 text-[#c5bfb8] dark:text-[#3d4452] mx-auto" />
                       )}
                     </div>
-                    <div className="p-4 text-center w-20 sm:w-24 bg-brand-accent/5 dark:bg-brand-accent/10 order-1 sm:order-3">
+                    <div className="p-4 text-center w-16 sm:w-24 flex-shrink-0 bg-brand-accent/5 dark:bg-brand-accent/10 order-1 sm:order-3">
                       {row.ga ? (
                         <Check className="w-5 h-5 text-brand-accent mx-auto" />
                       ) : (
@@ -841,10 +841,10 @@ export function CoachLandingPage() {
                 ))}
                 {/* Pricing row */}
                 <div className="flex bg-[#f3f1ef] dark:bg-[#1e222a]">
-                  <div className="flex-1 p-4 font-albert text-[14px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">Starting price</div>
-                  <div className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] text-center w-20 sm:w-24 order-2 sm:order-1">$99/mo</div>
-                  <div className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] text-center w-20 sm:w-24 order-3 sm:order-2">$89/mo</div>
-                  <div className="p-4 font-albert text-[16px] font-bold text-brand-accent text-center w-20 sm:w-24 bg-brand-accent/5 dark:bg-brand-accent/10 order-1 sm:order-3">$49/mo</div>
+                  <div className="flex-1 min-w-0 p-4 font-albert text-[14px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">Starting price</div>
+                  <div className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] text-center w-16 sm:w-24 flex-shrink-0 order-2 sm:order-1">$99/mo</div>
+                  <div className="p-4 font-albert text-[14px] font-semibold text-[#5f5a55] dark:text-[#b2b6c2] text-center w-16 sm:w-24 flex-shrink-0 order-3 sm:order-2">$89/mo</div>
+                  <div className="p-4 font-albert text-[16px] font-bold text-brand-accent text-center w-16 sm:w-24 flex-shrink-0 bg-brand-accent/5 dark:bg-brand-accent/10 order-1 sm:order-3">$49/mo</div>
                 </div>
               </div>
             </motion.div>
