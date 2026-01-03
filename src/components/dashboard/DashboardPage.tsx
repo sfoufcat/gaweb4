@@ -794,6 +794,46 @@ export function DashboardPage() {
     }
   }, [user, isLoaded, router, isDemoMode]);
 
+  // Determine card order based on current state - memoized to prevent layout shifts
+  // IMPORTANT: This must be called BEFORE any early returns to maintain consistent hook order
+  const cardOrder = useMemo((): CardType[] => {
+    // DEMO MODE: Show prompt, goal, and quote cards
+    if (isDemoMode) {
+      return ['prompt', 'goal', 'quote'];
+    }
+    
+    // PROGRAM CHECK-IN TAKES PRIORITY
+    // If user has pending program check-in, show it first
+    if (showProgramCheckIn) {
+      return ['program_checkin', 'goal', 'track'];
+    }
+    
+    // FIRST DAY LOGIC
+    if (isFirstDay) {
+      // First day + Morning window still open (7am-12pm): Prompt - Goal - Track
+      if (isMorningWindow() && !isMorningCheckInCompleted) {
+        return ['prompt', 'goal', 'track'];
+      }
+      // First day + Morning check-in completed: Goal - Track - Welcome
+      if (isMorningCheckInCompleted) {
+        return ['goal', 'track', 'welcome'];
+      }
+      // First day + Morning window closed + NO check-in: Goal - Welcome - Track
+      if (isMorningWindowClosed && !isMorningCheckInCompleted) {
+        return ['goal', 'welcome', 'track'];
+      }
+    }
+    
+    // NORMAL DAYS LOGIC
+    // Check-in active (morning/evening/weekly): Check-In - Goal - Track Prompt
+    if (hasActivePrompt) {
+      return ['prompt', 'goal', 'track'];
+    }
+    
+    // No check-in active: Goal - Track Prompt - Discover
+    return ['goal', 'track', 'discover'];
+  }, [isDemoMode, showProgramCheckIn, isFirstDay, isMorningWindow, isMorningCheckInCompleted, isMorningWindowClosed, hasActivePrompt]);
+
   if (!isLoaded || !mounted) {
     return null;
   }
@@ -1425,45 +1465,6 @@ export function DashboardPage() {
       </div>
     );
   };
-  
-  // Determine card order based on current state - memoized to prevent layout shifts
-  const cardOrder = useMemo((): CardType[] => {
-    // DEMO MODE: Show prompt, goal, and quote cards
-    if (isDemoMode) {
-      return ['prompt', 'goal', 'quote'];
-    }
-    
-    // PROGRAM CHECK-IN TAKES PRIORITY
-    // If user has pending program check-in, show it first
-    if (showProgramCheckIn) {
-      return ['program_checkin', 'goal', 'track'];
-    }
-    
-    // FIRST DAY LOGIC
-    if (isFirstDay) {
-      // First day + Morning window still open (7am-12pm): Prompt - Goal - Track
-      if (isMorningWindow() && !isMorningCheckInCompleted) {
-        return ['prompt', 'goal', 'track'];
-      }
-      // First day + Morning check-in completed: Goal - Track - Welcome
-      if (isMorningCheckInCompleted) {
-        return ['goal', 'track', 'welcome'];
-      }
-      // First day + Morning window closed + NO check-in: Goal - Welcome - Track
-      if (isMorningWindowClosed && !isMorningCheckInCompleted) {
-        return ['goal', 'welcome', 'track'];
-      }
-    }
-    
-    // NORMAL DAYS LOGIC
-    // Check-in active (morning/evening/weekly): Check-In - Goal - Track Prompt
-    if (hasActivePrompt) {
-      return ['prompt', 'goal', 'track'];
-    }
-    
-    // No check-in active: Goal - Track Prompt - Discover
-    return ['goal', 'track', 'discover'];
-  }, [isDemoMode, showProgramCheckIn, isFirstDay, isMorningWindow, isMorningCheckInCompleted, isMorningWindowClosed, hasActivePrompt]);
   
   // Render quote card for demo mode - redesigned for better responsiveness
   const renderQuoteCard = (isMobile: boolean): React.ReactNode => {
