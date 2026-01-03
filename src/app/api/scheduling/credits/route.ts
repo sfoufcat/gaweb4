@@ -2,7 +2,48 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
-import type { UserCallCredits, CoachCallSettings } from '@/types';
+import type { UserCallCredits, CoachCallSettings, Program, ProgramEnrollment } from '@/types';
+
+/**
+ * Helper to get monthly allowance for a user
+ * Prioritizes program-level settings over org-level settings
+ */
+async function getMonthlyAllowanceForUser(orgId: string, userId: string): Promise<number> {
+  // First, check if user has an active individual program enrollment
+  const enrollmentsSnapshot = await adminDb.collection('program_enrollments')
+    .where('userId', '==', userId)
+    .where('status', 'in', ['active', 'upcoming'])
+    .get();
+  
+  // Look for an individual program with callCreditsPerMonth set
+  for (const enrollmentDoc of enrollmentsSnapshot.docs) {
+    const enrollment = enrollmentDoc.data() as ProgramEnrollment;
+    
+    // Get the program details
+    const programDoc = await adminDb.collection('programs').doc(enrollment.programId).get();
+    if (programDoc.exists) {
+      const program = programDoc.data() as Program;
+      
+      // Check if it's an individual program with credits configured
+      if (program.type === 'individual' && 
+          program.organizationId === orgId && 
+          typeof program.callCreditsPerMonth === 'number' && 
+          program.callCreditsPerMonth > 0) {
+        return program.callCreditsPerMonth;
+      }
+    }
+  }
+  
+  // Fallback to organization-level settings
+  const orgDoc = await adminDb.collection('organizations').doc(orgId).get();
+  if (orgDoc.exists) {
+    const orgData = orgDoc.data();
+    const callSettings = orgData?.callSettings as CoachCallSettings | undefined;
+    return callSettings?.creditsIncludedMonthly || 0;
+  }
+  
+  return 0;
+}
 
 /**
  * GET /api/scheduling/credits
@@ -30,11 +71,8 @@ export async function GET() {
       .get();
 
     if (!creditsDoc.exists) {
-      // Check organization settings for monthly allowance
-      const orgDoc = await adminDb.collection('organizations').doc(orgId).get();
-      const orgData = orgDoc.data();
-      const callSettings = orgData?.callSettings as CoachCallSettings | undefined;
-      const monthlyAllowance = callSettings?.creditsIncludedMonthly || 0;
+      // Get monthly allowance from program or org settings
+      const monthlyAllowance = await getMonthlyAllowanceForUser(orgId, userId);
 
       // If there's a monthly allowance, create initial credits
       if (monthlyAllowance > 0) {
@@ -75,13 +113,18 @@ export async function GET() {
     const periodEnd = new Date(credits.billingPeriodEnd);
     
     if (now > periodEnd) {
+      // Get current monthly allowance (may have changed from program settings)
+      const currentMonthlyAllowance = await getMonthlyAllowanceForUser(orgId, userId);
+      const effectiveAllowance = currentMonthlyAllowance > 0 ? currentMonthlyAllowance : credits.monthlyAllowance;
+      
       // Reset credits for new billing period
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
       const updatedCredits: Partial<UserCallCredits> = {
-        creditsRemaining: credits.monthlyAllowance,
+        creditsRemaining: effectiveAllowance,
         creditsUsedThisMonth: 0,
+        monthlyAllowance: effectiveAllowance,
         billingPeriodStart: monthStart.toISOString(),
         billingPeriodEnd: monthEnd.toISOString(),
         lastUpdated: now.toISOString(),

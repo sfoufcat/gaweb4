@@ -735,6 +735,7 @@ export interface Program {
   clientCommunitySquadId?: string | null; // Auto-created squad ID for client community
   defaultStartDate?: string; // ISO date string - coach-set default start date (e.g., "2025-02-01")
   allowCustomStartDate?: boolean; // If true, users can pick their own start date during enrollment
+  callCreditsPerMonth?: number; // Number of coaching call credits included per month (0 = unlimited/pay-per-call)
   
   // Content
   defaultHabits?: ProgramHabitTemplate[]; // Default habits for enrolled users

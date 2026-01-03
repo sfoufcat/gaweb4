@@ -99,9 +99,14 @@ export async function GET(request: Request) {
           coach = {
             id: coachingData.coachId,
             userId: coachingData.coachId,
+            firstName: coachUser.firstName || '',
+            lastName: coachUser.lastName || '',
             name: `${coachUser.firstName || ''} ${coachUser.lastName || ''}`.trim() || 'Coach',
             email: coachUser.emailAddresses?.[0]?.emailAddress || '',
             imageUrl: coachUser.imageUrl || '',
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
           } as Coach;
         } catch (clerkError) {
           console.warn('[COACHING_DATA] Could not fetch coach from Clerk:', clerkError);

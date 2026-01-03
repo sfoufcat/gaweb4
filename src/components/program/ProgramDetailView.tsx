@@ -487,6 +487,21 @@ export function ProgramDetailView({
                   <p>Guided by: {coachingCoach?.name || program.coachName}</p>
                 </div>
 
+                {/* Call Credits Badge - when call is scheduled */}
+                {callCredits && callCredits.monthlyAllowance > 0 && (
+                  <div className="flex items-center gap-2 p-3 bg-brand-accent/10 rounded-xl">
+                    <Phone className="w-4 h-4 text-brand-accent" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                        {callCredits.creditsRemaining} of {callCredits.monthlyAllowance} calls remaining
+                      </p>
+                      <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                        Resets monthly
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Add to calendar button */}
                 <button className="w-full bg-white dark:bg-[#171b22] border border-[rgba(215,210,204,0.5)] rounded-[32px] px-4 py-4 font-bold text-[16px] text-[#2c2520] dark:text-[#f5f5f8] leading-[1.4] tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all">
                   Add to calendar
@@ -502,6 +517,21 @@ export function ProgramDetailView({
                 <p className="font-sans text-[14px] text-text-secondary dark:text-[#b2b6c2] leading-[1.5]">
                   No call scheduled yet. Request a 1:1 session with your coach.
                 </p>
+
+                {/* Call Credits Badge */}
+                {callCredits && callCredits.monthlyAllowance > 0 && (
+                  <div className="flex items-center gap-2 p-3 bg-brand-accent/10 rounded-xl">
+                    <Phone className="w-4 h-4 text-brand-accent" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                        {callCredits.creditsRemaining} of {callCredits.monthlyAllowance} calls remaining
+                      </p>
+                      <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                        Resets monthly
+                      </p>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Show call credits if available */}
                 {callCredits && callCredits.monthlyAllowance > 0 && (

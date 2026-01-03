@@ -13,7 +13,22 @@ import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { isUserOrgAdmin } from '@/lib/clerk-organizations';
 import { getStreamServerClient } from '@/lib/stream-server';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { ProgramEnrollment, Program, Squad, SquadMember } from '@/types';
+import type { ProgramEnrollment, Program, Squad, SquadMember, UserCallCredits, UnifiedEvent, ClientCoachingData } from '@/types';
+
+// Next call info structure
+interface NextCallInfo {
+  datetime: string;
+  title: string;
+  isRecurring: boolean;
+  location?: string;
+}
+
+// Credits info structure
+interface CreditsInfo {
+  creditsRemaining: number;
+  monthlyAllowance: number;
+  creditsUsedThisMonth: number;
+}
 
 interface EnrollmentWithUser extends ProgramEnrollment {
   user?: {
@@ -23,6 +38,8 @@ interface EnrollmentWithUser extends ProgramEnrollment {
     email: string;
     imageUrl: string;
   };
+  callCredits?: CreditsInfo | null;
+  nextCall?: NextCallInfo | null;
 }
 
 export async function GET(
@@ -75,31 +92,104 @@ export async function GET(
 
     const enrollmentsSnapshot = await query.get();
 
-    // Get user info for each enrollment
+    // Get user info, call credits, and next call for each enrollment
     const clerk = await clerkClient();
+    const now = new Date();
+    
     const enrollments: EnrollmentWithUser[] = await Promise.all(
       enrollmentsSnapshot.docs.map(async (doc) => {
         const enrollment = { id: doc.id, ...doc.data() } as ProgramEnrollment;
         
+        let user: EnrollmentWithUser['user'] = undefined;
+        let callCredits: CreditsInfo | null = null;
+        let nextCall: NextCallInfo | null = null;
+        
         try {
+          // Fetch Clerk user info
           const clerkUser = await clerk.users.getUser(enrollment.userId);
-          return {
-            ...enrollment,
-            user: {
-              id: clerkUser.id,
-              firstName: clerkUser.firstName || '',
-              lastName: clerkUser.lastName || '',
-              email: clerkUser.emailAddresses[0]?.emailAddress || '',
-              imageUrl: clerkUser.imageUrl || '',
-            },
+          user = {
+            id: clerkUser.id,
+            firstName: clerkUser.firstName || '',
+            lastName: clerkUser.lastName || '',
+            email: clerkUser.emailAddresses[0]?.emailAddress || '',
+            imageUrl: clerkUser.imageUrl || '',
           };
         } catch {
           // User might not exist in Clerk anymore
-          return {
-            ...enrollment,
-            user: undefined,
-          };
         }
+        
+        // Fetch call credits for this user (only for individual programs)
+        if (program.type === 'individual') {
+          try {
+            const creditsDocId = `${organizationId}_${enrollment.userId}`;
+            const creditsDoc = await adminDb.collection('user_call_credits').doc(creditsDocId).get();
+            
+            if (creditsDoc.exists) {
+              const credits = creditsDoc.data() as UserCallCredits;
+              callCredits = {
+                creditsRemaining: credits.creditsRemaining,
+                monthlyAllowance: credits.monthlyAllowance,
+                creditsUsedThisMonth: credits.creditsUsedThisMonth,
+              };
+            }
+          } catch (err) {
+            console.warn(`[ENROLLMENTS] Failed to fetch credits for user ${enrollment.userId}:`, err);
+          }
+          
+          // Fetch next scheduled call for this user
+          try {
+            // First try from coaching data
+            const coachingDocId = `${organizationId}_${enrollment.userId}`;
+            const coachingDoc = await adminDb.collection('clientCoachingData').doc(coachingDocId).get();
+            
+            if (coachingDoc.exists) {
+              const coachingData = coachingDoc.data() as ClientCoachingData;
+              if (coachingData.nextCall?.datetime) {
+                const callTime = new Date(coachingData.nextCall.datetime);
+                if (callTime > now) {
+                  nextCall = {
+                    datetime: coachingData.nextCall.datetime,
+                    title: coachingData.nextCall.title || 'Coaching Call',
+                    isRecurring: coachingData.nextCall.isRecurring || false,
+                    location: coachingData.nextCall.location,
+                  };
+                }
+              }
+            }
+            
+            // If no next call from coaching data, check unified_events
+            if (!nextCall) {
+              const eventsQuery = await adminDb.collection('unified_events')
+                .where('organizationId', '==', organizationId)
+                .where('eventType', '==', 'coaching_1on1')
+                .where('attendeeIds', 'array-contains', enrollment.userId)
+                .where('startDateTime', '>', now.toISOString())
+                .where('status', 'in', ['confirmed', 'proposed', 'pending_response'])
+                .orderBy('startDateTime', 'asc')
+                .limit(1)
+                .get();
+              
+              if (!eventsQuery.empty) {
+                const eventData = eventsQuery.docs[0].data() as UnifiedEvent;
+                nextCall = {
+                  datetime: eventData.startDateTime,
+                  title: eventData.title || 'Coaching Call',
+                  isRecurring: eventData.isRecurring || false,
+                  location: eventData.locationLabel || eventData.locationType,
+                };
+              }
+            }
+          } catch (err) {
+            console.warn(`[ENROLLMENTS] Failed to fetch next call for user ${enrollment.userId}:`, err);
+          }
+        }
+        
+        return {
+          ...enrollment,
+          user,
+          callCredits,
+          nextCall,
+        };
       })
     );
 

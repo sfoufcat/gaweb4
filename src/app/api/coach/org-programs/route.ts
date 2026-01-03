@@ -291,6 +291,9 @@ export async function POST(request: NextRequest) {
       // Individual program settings
       defaultStartDate: body.type === 'individual' && body.defaultStartDate ? body.defaultStartDate : undefined,
       allowCustomStartDate: body.type === 'individual' ? body.allowCustomStartDate !== false : undefined,
+      callCreditsPerMonth: body.type === 'individual' && typeof body.callCreditsPerMonth === 'number' && body.callCreditsPerMonth > 0 
+        ? body.callCreditsPerMonth 
+        : undefined,
       defaultHabits: defaultHabits.length > 0 ? defaultHabits : undefined,
       dailyFocusSlots: typeof body.dailyFocusSlots === 'number' && body.dailyFocusSlots >= 1 && body.dailyFocusSlots <= 4
         ? body.dailyFocusSlots

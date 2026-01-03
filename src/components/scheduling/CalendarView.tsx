@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import Image from 'next/image';
 import {
   ChevronLeft,
   ChevronRight,
@@ -17,9 +18,25 @@ import {
   Loader2,
   MoreHorizontal,
   Globe,
+  Search,
+  X,
 } from 'lucide-react';
 import { useSchedulingEvents, usePendingProposals, useSchedulingActions } from '@/hooks/useScheduling';
-import type { UnifiedEvent } from '@/types';
+import { ScheduleCallModal } from './ScheduleCallModal';
+import type { UnifiedEvent, ClientCoachingData, FirebaseUser } from '@/types';
+
+// Client type for picker
+interface CoachingClient {
+  id: string;
+  userId: string;
+  user?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    imageUrl?: string;
+  };
+}
 
 type ViewMode = 'month' | 'week' | 'day';
 
@@ -169,6 +186,153 @@ function EventCard({ event, compact = false, onRespond }: EventCardProps) {
 }
 
 /**
+ * ClientPickerModal
+ * Modal for selecting a client to schedule a call with
+ */
+function ClientPickerModal({
+  isOpen,
+  onClose,
+  onSelect,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSelect: (client: CoachingClient) => void;
+}) {
+  const [clients, setClients] = useState<CoachingClient[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    async function fetchClients() {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('/api/coaching/clients');
+        if (!response.ok) throw new Error('Failed to fetch clients');
+        const data = await response.json();
+        setClients(data.clients || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load clients');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchClients();
+  }, [isOpen]);
+
+  const filteredClients = useMemo(() => {
+    if (!searchQuery.trim()) return clients;
+    const query = searchQuery.toLowerCase();
+    return clients.filter((client) => {
+      const name = `${client.user?.firstName || ''} ${client.user?.lastName || ''}`.toLowerCase();
+      const email = (client.user?.email || '').toLowerCase();
+      return name.includes(query) || email.includes(query);
+    });
+  }, [clients, searchQuery]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div className="relative w-full max-w-md max-h-[80vh] flex flex-col bg-white dark:bg-[#171b22] rounded-2xl shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
+          <h2 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+            Select Client
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="px-6 py-3 border-b border-[#e1ddd8] dark:border-[#262b35]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#a7a39e] dark:text-[#7d8190]" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search clients..."
+              className="w-full pl-10 pr-4 py-2 bg-[#f3f1ef] dark:bg-[#1e222a] border border-transparent rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent"
+            />
+          </div>
+        </div>
+
+        {/* Client List */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 text-brand-accent animate-spin" />
+            </div>
+          ) : error ? (
+            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl text-red-600 dark:text-red-400">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <p className="text-sm">{error}</p>
+            </div>
+          ) : filteredClients.length === 0 ? (
+            <p className="text-center text-[#a7a39e] dark:text-[#7d8190] py-8">
+              {searchQuery ? 'No clients match your search' : 'No coaching clients found'}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {filteredClients.map((client) => {
+                const name = `${client.user?.firstName || ''} ${client.user?.lastName || ''}`.trim() || 'Unknown';
+                return (
+                  <button
+                    key={client.id}
+                    onClick={() => onSelect(client)}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors text-left"
+                  >
+                    {client.user?.imageUrl ? (
+                      <Image
+                        src={client.user.imageUrl}
+                        alt={name}
+                        width={40}
+                        height={40}
+                        className="rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-brand-accent/20 flex items-center justify-center">
+                        <User className="w-5 h-5 text-brand-accent" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                        {name}
+                      </p>
+                      {client.user?.email && (
+                        <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] truncate">
+                          {client.user.email}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * CalendarView
  * 
  * A full calendar view for coaches and users to see their scheduled events.
@@ -180,7 +344,25 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<UnifiedEvent | null>(null);
 
+  // Client picker and schedule modal states
+  const [showClientPicker, setShowClientPicker] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<CoachingClient | null>(null);
+
   const { respondToProposal } = useSchedulingActions();
+
+  // Handle client selection from picker
+  const handleClientSelect = useCallback((client: CoachingClient) => {
+    setSelectedClient(client);
+    setShowClientPicker(false);
+    setShowScheduleModal(true);
+  }, []);
+
+  // Handle schedule modal close
+  const handleScheduleModalClose = useCallback(() => {
+    setShowScheduleModal(false);
+    setSelectedClient(null);
+  }, []);
 
   // Calculate date range based on view mode
   const dateRange = useMemo(() => {
@@ -216,6 +398,13 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
     endDate: dateRange.endDate,
     role: mode === 'coach' ? 'host' : 'all',
   });
+
+  // Handle schedule success (defined after refetch is available)
+  const handleScheduleSuccess = useCallback(() => {
+    setShowScheduleModal(false);
+    setSelectedClient(null);
+    refetch(); // Refresh calendar events
+  }, [refetch]);
 
   // Pending proposals
   const { proposals } = usePendingProposals();
@@ -371,7 +560,18 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
           </h2>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* Schedule Call Button (coach mode only) */}
+          {mode === 'coach' && (
+            <button
+              onClick={() => setShowClientPicker(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-brand-accent text-white rounded-xl font-albert font-medium text-sm hover:bg-brand-accent/90 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Schedule Call
+            </button>
+          )}
+
           {/* View mode toggle */}
           <div className="flex p-1 bg-[#f3f1ef] dark:bg-[#1e222a] rounded-lg">
             {VIEW_MODES.map(({ value, label }) => (
@@ -499,6 +699,24 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
           <span className="text-[#5f5a55] dark:text-[#b2b6c2]">Events</span>
         </div>
       </div>
+
+      {/* Client Picker Modal */}
+      <ClientPickerModal
+        isOpen={showClientPicker}
+        onClose={() => setShowClientPicker(false)}
+        onSelect={handleClientSelect}
+      />
+
+      {/* Schedule Call Modal */}
+      {selectedClient && (
+        <ScheduleCallModal
+          isOpen={showScheduleModal}
+          onClose={handleScheduleModalClose}
+          clientId={selectedClient.userId}
+          clientName={`${selectedClient.user?.firstName || ''} ${selectedClient.user?.lastName || ''}`.trim() || 'Client'}
+          onSuccess={handleScheduleSuccess}
+        />
+      )}
     </div>
   );
 }

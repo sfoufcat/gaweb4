@@ -348,6 +348,11 @@ export async function PUT(
       if (body.allowCustomStartDate !== undefined) {
         updateData.allowCustomStartDate = body.allowCustomStartDate;
       }
+      if (body.callCreditsPerMonth !== undefined) {
+        updateData.callCreditsPerMonth = typeof body.callCreditsPerMonth === 'number' && body.callCreditsPerMonth > 0 
+          ? body.callCreditsPerMonth 
+          : FieldValue.delete();
+      }
     }
     
     // Handle assignedCoachIds for group programs

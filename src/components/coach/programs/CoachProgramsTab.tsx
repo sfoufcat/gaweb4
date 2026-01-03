@@ -7,7 +7,8 @@ import { ProgramLandingPageEditor } from './ProgramLandingPageEditor';
 import { Button } from '@/components/ui/button';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy } from 'lucide-react';
+import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone } from 'lucide-react';
+import { ScheduleCallModal } from '@/components/scheduling';
 import { AIHelperModal } from '@/components/ai';
 import type { ProgramContentDraft, LandingPageDraft, AIGenerationContext } from '@/lib/ai/types';
 import { ReferralConfigForm } from '@/components/coach/referrals';
@@ -20,6 +21,21 @@ import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useDemoSession } from '@/contexts/DemoSessionContext';
 import { generateDemoProgramsWithStats, generateDemoProgramDays, generateDemoProgramCohorts } from '@/lib/demo-data';
 
+// Next call info structure
+interface NextCallInfo {
+  datetime: string;
+  title: string;
+  isRecurring: boolean;
+  location?: string;
+}
+
+// Credits info structure
+interface CreditsInfo {
+  creditsRemaining: number;
+  monthlyAllowance: number;
+  creditsUsedThisMonth: number;
+}
+
 // Enrollment with user info
 interface EnrollmentWithUser extends ProgramEnrollment {
   user?: {
@@ -29,6 +45,8 @@ interface EnrollmentWithUser extends ProgramEnrollment {
     email: string;
     imageUrl: string;
   };
+  callCredits?: CreditsInfo | null;
+  nextCall?: NextCallInfo | null;
 }
 
 // Coach type for multi-select
@@ -80,6 +98,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   const [removingEnrollment, setRemovingEnrollment] = useState(false);
   const [togglingCommunity, setTogglingCommunity] = useState<string | null>(null); // enrollment ID being toggled
   
+  // Schedule call modal state (for enrollments)
+  const [scheduleCallEnrollment, setScheduleCallEnrollment] = useState<EnrollmentWithUser | null>(null);
+  
   // Modal states
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
   const [isNewProgramModalOpen, setIsNewProgramModalOpen] = useState(false);
@@ -123,6 +144,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     defaultStartDate: string;
     allowCustomStartDate: boolean;
     completionConfig: ProgramCompletionConfig;
+    callCreditsPerMonth: number;
   }>({
     name: '',
     type: 'group',
@@ -151,6 +173,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
       upsellHeadline: '',
       upsellDescription: '',
     },
+    callCreditsPerMonth: 0,
   });
   
   // Available coaches for selection
@@ -631,6 +654,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           upsellHeadline: program.completionConfig?.upsellHeadline || '',
           upsellDescription: program.completionConfig?.upsellDescription || '',
         },
+        callCreditsPerMonth: program.callCreditsPerMonth ?? 0,
       });
     } else {
       setEditingProgram(null);
@@ -662,6 +686,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
           upsellHeadline: '',
           upsellDescription: '',
         },
+        callCreditsPerMonth: 0,
       });
     }
     setSaveError(null);
@@ -2130,38 +2155,106 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               </div>
             ) : (
               <div className="space-y-2">
-                {programEnrollments.map((enrollment) => (
+                {programEnrollments.map((enrollment) => {
+                  // Format next call datetime
+                  const formatNextCall = (nextCall: NextCallInfo | null | undefined) => {
+                    if (!nextCall?.datetime) return null;
+                    const date = new Date(nextCall.datetime);
+                    return {
+                      date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                      time: date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+                      isRecurring: nextCall.isRecurring,
+                    };
+                  };
+                  
+                  const nextCallFormatted = formatNextCall(enrollment.nextCall);
+                  
+                  return (
                   <div 
                     key={enrollment.id}
                     className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-between gap-4">
+                      {/* User Info */}
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         {enrollment.user?.imageUrl ? (
                           <Image
                             src={enrollment.user.imageUrl}
                             alt={`${enrollment.user.firstName} ${enrollment.user.lastName}`}
                             width={40}
                             height={40}
-                            className="rounded-full object-cover"
+                            className="rounded-full object-cover flex-shrink-0"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-brand-accent/20 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-full bg-brand-accent/20 flex items-center justify-center flex-shrink-0">
                             <User className="w-5 h-5 text-brand-accent" />
                           </div>
                         )}
-                        <div>
-                          <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] font-albert truncate">
                             {enrollment.user 
                               ? `${enrollment.user.firstName} ${enrollment.user.lastName}`.trim() || 'Unknown User'
                               : 'Unknown User'}
                           </h3>
-                          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert">
+                          <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert truncate">
                             {enrollment.user?.email || enrollment.userId}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
+                      
+                      {/* Credits & Next Call - Only for individual programs */}
+                      {selectedProgram?.type === 'individual' && (
+                        <div className="flex items-center gap-4 flex-shrink-0">
+                          {/* Credits Badge */}
+                          {enrollment.callCredits && enrollment.callCredits.monthlyAllowance > 0 && (
+                            <div 
+                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand-accent/10 border border-brand-accent/20"
+                              title={`${enrollment.callCredits.creditsUsedThisMonth} used this month`}
+                            >
+                              <Phone className="w-3.5 h-3.5 text-brand-accent" />
+                              <span className="text-xs font-medium text-brand-accent">
+                                {enrollment.callCredits.creditsRemaining}/{enrollment.callCredits.monthlyAllowance}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Next Call */}
+                          <div className="text-right min-w-[100px]">
+                            {nextCallFormatted ? (
+                              <div className="flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                                <div>
+                                  <p className="text-xs font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                                    {nextCallFormatted.date}
+                                  </p>
+                                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] flex items-center gap-1">
+                                    {nextCallFormatted.time}
+                                    {nextCallFormatted.isRecurring && (
+                                      <Repeat className="w-3 h-3" title="Recurring" />
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-[#a7a39e] dark:text-[#7d8190]">No call scheduled</p>
+                            )}
+                          </div>
+                          
+                          {/* Schedule Call Button */}
+                          {(enrollment.status === 'active' || enrollment.status === 'upcoming') && (
+                            <button
+                              onClick={() => setScheduleCallEnrollment(enrollment)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-accent text-white rounded-lg text-xs font-medium hover:bg-brand-accent/90 transition-colors"
+                              title="Schedule a call"
+                            >
+                              <Calendar className="w-3.5 h-3.5" />
+                              Schedule
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-3 flex-shrink-0">
                         {/* Community Badge & Toggle - Only for individual programs with community enabled */}
                         {selectedProgram?.type === 'individual' && selectedProgram?.clientCommunitySquadId && (
                           <button
@@ -2211,7 +2304,8 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -2822,6 +2916,33 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                           </div>
                         </div>
                       </div>
+
+                      {/* Coaching Call Credits */}
+                      <div>
+                        <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert mb-2 flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-brand-accent" />
+                          Monthly Call Credits
+                        </h4>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="number"
+                            min="0"
+                            max="99"
+                            value={programFormData.callCreditsPerMonth}
+                            onChange={(e) => setProgramFormData({ 
+                              ...programFormData, 
+                              callCreditsPerMonth: Math.max(0, parseInt(e.target.value) || 0)
+                            })}
+                            className="w-20 px-3 py-2 border border-[#e1ddd8] dark:border-[#262b35] rounded-lg bg-white dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] font-albert text-center"
+                          />
+                          <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                            calls per month
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] mt-1.5">
+                          Set to 0 for unlimited or pay-per-call pricing. Clients will see their remaining credits.
+                        </p>
+                      </div>
                     )}
 
                     {/* Default Habits */}
@@ -3351,6 +3472,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               upsellHeadline: '',
               upsellDescription: '',
             },
+            callCreditsPerMonth: 0,
           });
           setIsProgramModalOpen(true);
         }}
@@ -3474,6 +3596,27 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
 
       {/* Limit Reached Modal */}
       <LimitReachedModal {...modalProps} />
+
+      {/* Schedule Call Modal for Enrollments */}
+      {scheduleCallEnrollment && (
+        <ScheduleCallModal
+          isOpen={scheduleCallEnrollment !== null}
+          onClose={() => setScheduleCallEnrollment(null)}
+          clientId={scheduleCallEnrollment.userId}
+          clientName={
+            scheduleCallEnrollment.user 
+              ? `${scheduleCallEnrollment.user.firstName} ${scheduleCallEnrollment.user.lastName}`.trim() || 'Client'
+              : 'Client'
+          }
+          onSuccess={() => {
+            setScheduleCallEnrollment(null);
+            // Refresh enrollments to update next call data
+            if (selectedProgram) {
+              fetchProgramEnrollments(selectedProgram.id);
+            }
+          }}
+        />
+      )}
 
     </>
   );
