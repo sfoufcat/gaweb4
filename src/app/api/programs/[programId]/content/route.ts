@@ -369,9 +369,23 @@ export async function GET(
     today.setHours(0, 0, 0, 0);
     const daysSinceStart = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
     const currentDayIndex = Math.max(1, daysSinceStart + 1);
-    
-    // Fetch days for today, tomorrow, and day after
-    const dayIndices = [currentDayIndex, currentDayIndex + 1, currentDayIndex + 2];
+
+    // Check if weekends should be skipped
+    const skipWeekends = program?.includeWeekends === false;
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
+    const todayIsWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+    // Calculate day indices to fetch
+    let dayIndices: number[];
+    if (skipWeekends && todayIsWeekend) {
+      // On weekend with weekends disabled: fetch Mon, Tue, Wed day indices
+      const daysUntilMonday = dayOfWeek === 0 ? 1 : 2; // Sun=1, Sat=2
+      const mondayDayIndex = currentDayIndex + daysUntilMonday;
+      dayIndices = [mondayDayIndex, mondayDayIndex + 1, mondayDayIndex + 2];
+    } else {
+      // Normal weekday logic
+      dayIndices = [currentDayIndex, currentDayIndex + 1, currentDayIndex + 2];
+    }
     const daysSnapshot = await adminDb
       .collection('program_days')
       .where('programId', '==', programId)

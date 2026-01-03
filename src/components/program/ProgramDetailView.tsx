@@ -141,16 +141,46 @@ export function ProgramDetailView({
   // Check if program hasn't started yet (pre-start state)
   const isPreStart = progress.currentDay < 1;
   
-  // Calculate which days to show - always use dynamic labels (Today, Tomorrow, weekday name)
+  // Calculate which days to show - use dynamic labels (Today, Tomorrow, weekday name)
+  // On weekends with includeWeekends=false, show Monday, Tuesday, Wednesday instead
   const threeDayFocus = useMemo(() => {
     const today = new Date();
     const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ...
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    
+
     // Base day index: either current progress day or day 1 for pre-start preview
     const baseDayIndex = isPreStart ? 1 : progress.currentDay;
-    
-    // Always use dynamic labels (Today, Tomorrow, weekday name)
+
+    // Check if we should skip weekends
+    const skipWeekends = program.includeWeekends === false;
+    const todayIsWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+    if (skipWeekends && todayIsWeekend) {
+      // On weekend with weekends disabled: show Mon, Tue, Wed
+      // Days until Monday: Sunday (0) = 1 day, Saturday (6) = 2 days
+      const daysUntilMonday = dayOfWeek === 0 ? 1 : 2;
+      const mondayDayIndex = baseDayIndex + daysUntilMonday;
+
+      return [
+        {
+          dayIndex: mondayDayIndex,
+          label: 'Monday',
+          tasks: days.find(d => d.dayIndex === mondayDayIndex)?.tasks || [],
+        },
+        {
+          dayIndex: mondayDayIndex + 1,
+          label: 'Tuesday',
+          tasks: days.find(d => d.dayIndex === mondayDayIndex + 1)?.tasks || [],
+        },
+        {
+          dayIndex: mondayDayIndex + 2,
+          label: 'Wednesday',
+          tasks: days.find(d => d.dayIndex === mondayDayIndex + 2)?.tasks || [],
+        },
+      ];
+    }
+
+    // Normal weekday logic
     return [
       {
         dayIndex: baseDayIndex,
@@ -168,7 +198,7 @@ export function ProgramDetailView({
         tasks: days.find(d => d.dayIndex === baseDayIndex + 2)?.tasks || [],
       },
     ];
-  }, [progress.currentDay, days, isPreStart]);
+  }, [progress.currentDay, days, isPreStart, program.includeWeekends]);
 
   // Check if any days have tasks
   const hasAnyTasks = threeDayFocus.some(day => day.tasks.length > 0);

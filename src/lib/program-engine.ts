@@ -33,7 +33,7 @@ import type {
 /**
  * Check if a date is a weekend (Saturday = 6, Sunday = 0)
  */
-function isWeekend(date: Date): boolean {
+export function isWeekend(date: Date): boolean {
   const day = date.getDay();
   return day === 0 || day === 6;
 }
@@ -42,7 +42,7 @@ function isWeekend(date: Date): boolean {
  * Get the next Monday from a given date
  * If the date is already a weekday, returns the same date
  */
-function getNextWeekday(date: Date): Date {
+export function getNextWeekday(date: Date): Date {
   const result = new Date(date);
   while (isWeekend(result)) {
     result.setDate(result.getDate() + 1);
