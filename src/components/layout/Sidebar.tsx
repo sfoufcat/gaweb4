@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { UserButton, useAuth } from '@clerk/nextjs';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { isAdmin, canAccessCoachDashboard, canAccessEditorSection, isSuperAdmin } from '@/lib/admin-utils-shared';
+import { isAdmin, canAccessCoachDashboard, canAccessEditorSection, isSuperAdmin, isOrgCoach, isSuperCoach } from '@/lib/admin-utils-shared';
 import type { UserRole, OrgRole, MenuItemKey } from '@/types';
 import { DEFAULT_MENU_ICONS } from '@/types';
 import { useChatUnreadCounts } from '@/hooks/useChatUnreadCounts';
@@ -256,18 +256,17 @@ export function Sidebar() {
     navItems = [...navItems, adminNavItem];
   }
 
-  // Filter nav items for mobile - hide Editor, Coach Dashboard, and Chat
+  // Filter nav items for mobile - hide Editor, Coach Dashboard, and Chat for all users
   // Chat is now accessed via ChatIconButton in the header (ChatSheet slide-up)
+  // Coach Dashboard is now accessed via the mobile top bar for tenant coaches/owners
   const mobileNavItems = navItems.filter(item => {
     // Hide Chat on mobile - accessed via ChatSheet slide-up from header
     if (item.path === '/chat') {
       return false;
     }
-    if (showAdminPanel) {
-      // Hide Coach Dashboard (/coach) and Editor (/editor) on mobile for admins
-      if (item.path === '/coach' || item.path === '/editor') {
-        return false;
-      }
+    // Hide Coach Dashboard (/coach) and Editor (/editor) on mobile for all users
+    if (item.path === '/coach' || item.path === '/editor') {
+      return false;
     }
     return true;
   });
@@ -278,8 +277,36 @@ export function Sidebar() {
   // Instagram-style collapsed sidebar when on /chat page
   const isCollapsed = pathname === '/chat' || pathname.startsWith('/chat/');
 
+  // Check if user is a tenant coach (super_coach or coach org role)
+  const showMobileCoachBar = isOrgCoach(orgRole);
+  const coachBarMessage = isSuperCoach(orgRole) 
+    ? 'You are the owner.' 
+    : 'You are a coach.';
+
   return (
     <>
+      {/* Mobile Coach/Owner Top Bar - Only for tenant coaches */}
+      {showMobileCoachBar && (
+        <Link
+          href="/coach"
+          className="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#1a1a1a] via-[#2a2520] to-[#1a1a1a] dark:from-[#0a0a0a] dark:via-[#1a1815] dark:to-[#0a0a0a] text-white shadow-md"
+        >
+          <span className="font-albert text-[13px] font-medium tracking-wide">
+            {coachBarMessage}{' '}
+            <span className="text-brand-accent">Visit dashboard</span>
+          </span>
+          <svg 
+            className="w-4 h-4 text-brand-accent" 
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor" 
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+          </svg>
+        </Link>
+      )}
+
       {/* Desktop Sidebar - Apple Liquid Glass Style */}
       {/* Uses CSS variables for branding colors when preview mode or custom branding is active */}
       {/* Collapses to icons only when on /chat (Instagram DM style) */}

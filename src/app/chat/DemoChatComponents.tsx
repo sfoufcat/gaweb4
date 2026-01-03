@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { DEMO_USER } from '@/lib/demo-utils';
 import { useDemoMode } from '@/contexts/DemoModeContext';
-import { MessageSquare, Send, Search, Phone, Video, MoreVertical, Smile, Paperclip, Check, CheckCheck } from 'lucide-react';
+import { MessageSquare, Send, Search, Phone, Video, MoreVertical, Smile, Paperclip, Check, CheckCheck, Megaphone, PartyPopper, Trophy, Users, Hash } from 'lucide-react';
 
 interface DemoMessage {
   id: string;
@@ -24,9 +24,157 @@ interface DemoConversation {
   unreadCount: number;
   isOnline: boolean;
   messages: DemoMessage[];
+  type: 'dm' | 'main';
+  icon?: React.ReactNode;
 }
 
-// Generate demo conversations
+// Generate demo main channels
+const generateDemoMainChannels = (): DemoConversation[] => {
+  const now = new Date();
+  
+  return [
+    {
+      id: 'announcements',
+      name: 'Announcements',
+      avatar: '',
+      lastMessage: '🎉 Welcome to the community! Check out our new features.',
+      lastMessageTime: new Date(now.getTime() - 2 * 60 * 60 * 1000),
+      unreadCount: 1,
+      isOnline: false,
+      type: 'main',
+      messages: [
+        {
+          id: 'ann-1',
+          senderId: 'coach-adam',
+          senderName: 'Coach Adam',
+          senderAvatar: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af',
+          text: "Hey everyone! We've just launched our new weekly reflection feature. It's designed to help you track your progress and set intentions for the week ahead. Give it a try and let me know what you think!",
+          timestamp: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+          isRead: true
+        },
+        {
+          id: 'ann-2',
+          senderId: 'coach-adam',
+          senderName: 'Coach Adam',
+          senderAvatar: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af',
+          text: "🎉 Welcome to the community! Check out our new features and don't hesitate to reach out if you have any questions.",
+          timestamp: new Date(now.getTime() - 2 * 60 * 60 * 1000),
+          isRead: false
+        }
+      ]
+    },
+    {
+      id: 'social-corner',
+      name: 'Social Corner',
+      avatar: '',
+      lastMessage: 'Anyone else doing a morning routine challenge?',
+      lastMessageTime: new Date(now.getTime() - 30 * 60 * 1000),
+      unreadCount: 3,
+      isOnline: false,
+      type: 'main',
+      messages: [
+        {
+          id: 'social-1',
+          senderId: 'member-1',
+          senderName: 'Jessica Martinez',
+          senderAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop&crop=face',
+          text: "Good morning everyone! ☀️ What's everyone working on today?",
+          timestamp: new Date(now.getTime() - 3 * 60 * 60 * 1000),
+          isRead: true
+        },
+        {
+          id: 'social-2',
+          senderId: 'member-2',
+          senderName: 'David Kim',
+          senderAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face',
+          text: "Starting a new habit tracking this week. Excited to share my progress!",
+          timestamp: new Date(now.getTime() - 2 * 60 * 60 * 1000),
+          isRead: true
+        },
+        {
+          id: 'social-3',
+          senderId: 'member-3',
+          senderName: 'Rachel Anderson',
+          senderAvatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&h=100&fit=crop&crop=face',
+          text: "Anyone else doing a morning routine challenge? I'm on day 7! 💪",
+          timestamp: new Date(now.getTime() - 30 * 60 * 1000),
+          isRead: false
+        }
+      ]
+    },
+    {
+      id: 'share-wins',
+      name: 'Share Your Wins',
+      avatar: '',
+      lastMessage: '🏆 Just completed my 30-day streak!',
+      lastMessageTime: new Date(now.getTime() - 4 * 60 * 60 * 1000),
+      unreadCount: 0,
+      isOnline: false,
+      type: 'main',
+      messages: [
+        {
+          id: 'wins-1',
+          senderId: 'member-4',
+          senderName: 'Alex Turner',
+          senderAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop&crop=face',
+          text: "🏆 Just completed my 30-day streak! Never thought I'd make it this far. Thank you all for the support!",
+          timestamp: new Date(now.getTime() - 4 * 60 * 60 * 1000),
+          isRead: true
+        },
+        {
+          id: 'wins-2',
+          senderId: 'member-5',
+          senderName: 'Sophie Chen',
+          senderAvatar: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=100&h=100&fit=crop&crop=face',
+          text: "Amazing Alex! 🎉 That's so inspiring!",
+          timestamp: new Date(now.getTime() - 3.5 * 60 * 60 * 1000),
+          isRead: true
+        }
+      ]
+    },
+    {
+      id: 'squad-growth',
+      name: 'Growth Squad',
+      avatar: '',
+      lastMessage: 'See you all at the call tomorrow!',
+      lastMessageTime: new Date(now.getTime() - 1 * 60 * 60 * 1000),
+      unreadCount: 2,
+      isOnline: false,
+      type: 'main',
+      messages: [
+        {
+          id: 'squad-1',
+          senderId: 'coach-adam',
+          senderName: 'Coach Adam',
+          senderAvatar: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af',
+          text: "Hey squad! Reminder: We have our weekly check-in tomorrow at 10am. Come prepared to share one win and one challenge.",
+          timestamp: new Date(now.getTime() - 5 * 60 * 60 * 1000),
+          isRead: true
+        },
+        {
+          id: 'squad-2',
+          senderId: 'member-6',
+          senderName: 'Marcus Johnson',
+          senderAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face',
+          text: "Looking forward to it! I have some exciting updates to share 📈",
+          timestamp: new Date(now.getTime() - 2 * 60 * 60 * 1000),
+          isRead: true
+        },
+        {
+          id: 'squad-3',
+          senderId: 'member-7',
+          senderName: 'Emily Brooks',
+          senderAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face',
+          text: "See you all at the call tomorrow! 👋",
+          timestamp: new Date(now.getTime() - 1 * 60 * 60 * 1000),
+          isRead: false
+        }
+      ]
+    }
+  ];
+};
+
+// Generate demo direct conversations
 const generateDemoConversations = (): DemoConversation[] => {
   const now = new Date();
   
@@ -39,6 +187,7 @@ const generateDemoConversations = (): DemoConversation[] => {
       lastMessageTime: new Date(now.getTime() - 15 * 60 * 1000),
       unreadCount: 2,
       isOnline: true,
+      type: 'dm',
       messages: [
         {
           id: 'msg-1-1',
@@ -95,6 +244,7 @@ const generateDemoConversations = (): DemoConversation[] => {
       lastMessageTime: new Date(now.getTime() - 3 * 60 * 60 * 1000),
       unreadCount: 0,
       isOnline: false,
+      type: 'dm',
       messages: [
         {
           id: 'msg-2-1',
@@ -124,6 +274,7 @@ const generateDemoConversations = (): DemoConversation[] => {
       lastMessageTime: new Date(now.getTime() - 24 * 60 * 60 * 1000),
       unreadCount: 0,
       isOnline: true,
+      type: 'dm',
       messages: [
         {
           id: 'msg-3-1',
@@ -144,6 +295,7 @@ const generateDemoConversations = (): DemoConversation[] => {
       lastMessageTime: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
       unreadCount: 0,
       isOnline: false,
+      type: 'dm',
       messages: [
         {
           id: 'msg-4-1',
@@ -164,6 +316,7 @@ const generateDemoConversations = (): DemoConversation[] => {
       lastMessageTime: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000),
       unreadCount: 0,
       isOnline: false,
+      type: 'dm',
       messages: [
         {
           id: 'msg-5-1',
@@ -197,12 +350,31 @@ function formatFullTime(date: Date): string {
   return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
+// Get icon for channel type
+const getChannelIcon = (conv: DemoConversation) => {
+  if (conv.id === 'announcements') {
+    return <Megaphone className="w-5 h-5 text-amber-500" />;
+  }
+  if (conv.id === 'social-corner') {
+    return <PartyPopper className="w-5 h-5 text-pink-500" />;
+  }
+  if (conv.id === 'share-wins') {
+    return <Trophy className="w-5 h-5 text-yellow-500" />;
+  }
+  if (conv.id.startsWith('squad-')) {
+    return <Users className="w-5 h-5 text-brand-accent" />;
+  }
+  return null;
+};
+
 export default function DemoChatComponents() {
-  const [conversations] = useState<DemoConversation[]>(generateDemoConversations());
-  const [selectedConversation, setSelectedConversation] = useState<DemoConversation | null>(conversations[0]);
+  const [mainChannels] = useState<DemoConversation[]>(generateDemoMainChannels());
+  const [directConversations] = useState<DemoConversation[]>(generateDemoConversations());
+  const [selectedConversation, setSelectedConversation] = useState<DemoConversation | null>(directConversations[0]);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showMobileList, setShowMobileList] = useState(true);
+  const [activeTab, setActiveTab] = useState<'main' | 'direct'>('main');
   const { openSignupModal } = useDemoMode();
 
   const handleSendMessage = () => {
@@ -213,9 +385,16 @@ export default function DemoChatComponents() {
     setMessageInput('');
   };
 
-  const filteredConversations = conversations.filter(conv => 
+  // Get conversations based on active tab
+  const currentConversations = activeTab === 'main' ? mainChannels : directConversations;
+  
+  const filteredConversations = currentConversations.filter(conv => 
     conv.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  
+  // Calculate unread counts for tabs
+  const mainUnread = mainChannels.reduce((sum, c) => sum + c.unreadCount, 0);
+  const directUnread = directConversations.reduce((sum, c) => sum + c.unreadCount, 0);
 
   return (
     <div 
@@ -237,6 +416,50 @@ export default function DemoChatComponents() {
             <h2 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">Messages</h2>
           </div>
 
+          {/* Tab Switcher */}
+          <div className="flex p-2 gap-1 border-b border-[#e1ddd8] dark:border-[#262b35]">
+            <button
+              onClick={() => setActiveTab('main')}
+              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                activeTab === 'main'
+                  ? 'bg-brand-accent text-white'
+                  : 'bg-[#f3f1ef] dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#181d28]'
+              }`}
+            >
+              <Hash className="w-4 h-4" />
+              Main
+              {mainUnread > 0 && (
+                <span className={`ml-1 min-w-[18px] h-[18px] rounded-full text-[11px] font-medium flex items-center justify-center px-1 ${
+                  activeTab === 'main' 
+                    ? 'bg-white/20 text-white' 
+                    : 'bg-brand-accent text-white'
+                }`}>
+                  {mainUnread}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('direct')}
+              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                activeTab === 'direct'
+                  ? 'bg-brand-accent text-white'
+                  : 'bg-[#f3f1ef] dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#181d28]'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              Direct
+              {directUnread > 0 && (
+                <span className={`ml-1 min-w-[18px] h-[18px] rounded-full text-[11px] font-medium flex items-center justify-center px-1 ${
+                  activeTab === 'direct' 
+                    ? 'bg-white/20 text-white' 
+                    : 'bg-brand-accent text-white'
+                }`}>
+                  {directUnread}
+                </span>
+              )}
+            </button>
+          </div>
+
           {/* Search */}
           <div className="p-3">
             <div className="relative">
@@ -253,54 +476,65 @@ export default function DemoChatComponents() {
 
           {/* Conversation list */}
           <div className="flex-1 overflow-y-auto p-2">
-            {filteredConversations.map((conv) => (
-              <button
-                key={conv.id}
-                onClick={() => {
-                  setSelectedConversation(conv);
-                  setShowMobileList(false);
-                }}
-                className={`w-full px-3 py-3 mb-1 rounded-xl transition-colors text-left ${
-                  selectedConversation?.id === conv.id
-                    ? 'bg-brand-accent/10 dark:bg-brand-accent/15'
-                    : 'hover:bg-[#f3f1ef] dark:hover:bg-[#11141b]'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  {/* Avatar with online indicator */}
-                  <div className="relative flex-shrink-0">
-                    <img
-                      src={conv.avatar}
-                      alt={conv.name}
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                    {conv.isOnline && (
-                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#faf8f6] dark:border-[#05070b]" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className="font-medium text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
-                        {conv.name}
-                      </span>
-                      <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
-                        {formatMessageTime(conv.lastMessageTime)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm text-gray-500 truncate flex-1">
-                        {conv.lastMessage}
-                      </p>
-                      {conv.unreadCount > 0 && (
-                        <span className="flex-shrink-0 w-5 h-5 bg-brand-accent rounded-full text-white text-xs font-medium flex items-center justify-center">
-                          {conv.unreadCount}
-                        </span>
+            {filteredConversations.map((conv) => {
+              const icon = getChannelIcon(conv);
+              return (
+                <button
+                  key={conv.id}
+                  onClick={() => {
+                    setSelectedConversation(conv);
+                    setShowMobileList(false);
+                  }}
+                  className={`w-full px-3 py-3 mb-1 rounded-xl transition-colors text-left ${
+                    selectedConversation?.id === conv.id
+                      ? 'bg-brand-accent/10 dark:bg-brand-accent/15'
+                      : 'hover:bg-[#f3f1ef] dark:hover:bg-[#11141b]'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Avatar or Channel Icon */}
+                    <div className="relative flex-shrink-0">
+                      {conv.type === 'main' && icon ? (
+                        <div className="w-10 h-10 rounded-full bg-[#f3f1ef] dark:bg-[#11141b] flex items-center justify-center">
+                          {icon}
+                        </div>
+                      ) : (
+                        <>
+                          <img
+                            src={conv.avatar}
+                            alt={conv.name}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                          {conv.isOnline && (
+                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#faf8f6] dark:border-[#05070b]" />
+                          )}
+                        </>
                       )}
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="font-medium text-sm text-[#1a1a1a] dark:text-[#f5f5f8] truncate">
+                          {conv.name}
+                        </span>
+                        <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
+                          {formatMessageTime(conv.lastMessageTime)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-gray-500 truncate flex-1">
+                          {conv.lastMessage}
+                        </p>
+                        {conv.unreadCount > 0 && (
+                          <span className="flex-shrink-0 w-5 h-5 bg-brand-accent rounded-full text-white text-xs font-medium flex items-center justify-center">
+                            {conv.unreadCount}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -320,37 +554,59 @@ export default function DemoChatComponents() {
                   </svg>
                 </button>
                 <div className="relative">
-                  <img
-                    src={selectedConversation.avatar}
-                    alt={selectedConversation.name}
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                  {selectedConversation.isOnline && (
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#faf8f6] dark:border-[#05070b]" />
+                  {selectedConversation.type === 'main' ? (
+                    <div className="w-10 h-10 rounded-full bg-[#f3f1ef] dark:bg-[#11141b] flex items-center justify-center">
+                      {getChannelIcon(selectedConversation)}
+                    </div>
+                  ) : (
+                    <>
+                      <img
+                        src={selectedConversation.avatar}
+                        alt={selectedConversation.name}
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                      {selectedConversation.isOnline && (
+                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#faf8f6] dark:border-[#05070b]" />
+                      )}
+                    </>
                   )}
                 </div>
                 <div>
                   <h3 className="font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
                     {selectedConversation.name}
                   </h3>
-                  <p className="text-xs text-gray-500">
-                    {selectedConversation.isOnline ? 'Online' : 'Offline'}
-                  </p>
+                  {selectedConversation.type === 'dm' && (
+                    <p className="text-xs text-gray-500">
+                      {selectedConversation.isOnline ? 'Online' : 'Offline'}
+                    </p>
+                  )}
+                  {selectedConversation.type === 'main' && (
+                    <p className="text-xs text-gray-500">
+                      {selectedConversation.id === 'announcements' && 'Important updates from Coach Adam'}
+                      {selectedConversation.id === 'social-corner' && 'Community hangout'}
+                      {selectedConversation.id === 'share-wins' && 'Celebrate your achievements'}
+                      {selectedConversation.id.startsWith('squad-') && 'Your squad channel'}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <button 
-                  onClick={() => openSignupModal()}
-                  className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] text-gray-600 dark:text-gray-400"
-                >
-                  <Phone className="w-5 h-5" />
-                </button>
-                <button 
-                  onClick={() => openSignupModal()}
-                  className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] text-gray-600 dark:text-gray-400"
-                >
-                  <Video className="w-5 h-5" />
-                </button>
+                {selectedConversation.type === 'dm' && (
+                  <>
+                    <button 
+                      onClick={() => openSignupModal()}
+                      className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] text-gray-600 dark:text-gray-400"
+                    >
+                      <Phone className="w-5 h-5" />
+                    </button>
+                    <button 
+                      onClick={() => openSignupModal()}
+                      className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] text-gray-600 dark:text-gray-400"
+                    >
+                      <Video className="w-5 h-5" />
+                    </button>
+                  </>
+                )}
                 <button className="p-2 rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#11141b] text-gray-600 dark:text-gray-400">
                   <MoreVertical className="w-5 h-5" />
                 </button>
