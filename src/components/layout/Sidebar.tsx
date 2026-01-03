@@ -505,17 +505,14 @@ export function Sidebar() {
                   />
                 )}
                 <span 
-                  className="relative z-10 flex items-center justify-center"
+                  className="relative z-10 flex items-center justify-center [&>svg]:w-6 [&>svg]:h-6"
                   style={isActive(item.path) && !isDefault ? {
                     color: colors.accentLight,
                   } : isActive(item.path) ? {
                     color: theme === 'dark' ? '#ffffff' : '#1a1a1a',
                   } : undefined}
                 >
-                  {/* Render icon with larger size */}
-                  {React.cloneElement(item.icon as React.ReactElement, { 
-                    className: 'w-6 h-6'
-                  })}
+                  {item.icon}
                   {/* Unread badge for Chat - Mobile */}
                   {item.path === '/chat' && totalUnread > 0 && (
                     <span 
