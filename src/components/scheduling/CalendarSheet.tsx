@@ -22,7 +22,7 @@ export function CalendarSheet({
   onClose,
   upcomingCount,
 }: CalendarSheetProps) {
-  const { sheetRef, handleProps } = useDragToDismiss({ onClose });
+  const { sheetRef, handleRef, handleProps } = useDragToDismiss({ onClose });
 
   // Close on escape key and lock body scroll
   useEffect(() => {
@@ -64,7 +64,7 @@ export function CalendarSheet({
         style={{ maxHeight: '85dvh' }}
       >
         {/* Grabber (drag handle) */}
-        <div {...handleProps} className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none">
+        <div ref={handleRef} {...handleProps} className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing">
           <div className="w-9 h-1 bg-gray-300 dark:bg-[#3a3f4b] rounded-full" />
         </div>
 

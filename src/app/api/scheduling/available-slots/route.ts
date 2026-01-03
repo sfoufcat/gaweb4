@@ -159,6 +159,74 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/**
+ * Convert a date + time in a specific timezone to a UTC Date object
+ */
+function createDateInTimezone(date: Date, hours: number, minutes: number, timezone: string): Date {
+  // Format the date as YYYY-MM-DD
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const dateStr = `${year}-${month}-${day}`;
+
+  // Create a datetime string in the target timezone
+  const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+
+  // Use Intl.DateTimeFormat to get the UTC offset for this timezone at this date/time
+  // Then create the correct UTC timestamp
+  const localDateTimeStr = `${dateStr}T${timeStr}`;
+
+  // Parse as if it's in the target timezone by using the timezone-aware formatter
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+
+  // Create a date object treating the time as UTC first
+  const tempDate = new Date(`${localDateTimeStr}Z`);
+
+  // Get the formatted parts in the target timezone
+  const parts = formatter.formatToParts(tempDate);
+  const getPart = (type: string) => parts.find(p => p.type === type)?.value || '0';
+
+  // Calculate the offset between UTC and the target timezone
+  const utcHour = tempDate.getUTCHours();
+  const tzHour = parseInt(getPart('hour'));
+  let offset = tzHour - utcHour;
+
+  // Handle day boundary crossings
+  if (offset > 12) offset -= 24;
+  if (offset < -12) offset += 24;
+
+  // Create the final date by subtracting the offset
+  // If timezone is UTC+2, and we want 09:00 in that timezone, we need 07:00 UTC
+  const result = new Date(`${localDateTimeStr}Z`);
+  result.setUTCHours(result.getUTCHours() - offset);
+
+  return result;
+}
+
+/**
+ * Get the day of week for a date in a specific timezone
+ */
+function getDayOfWeekInTimezone(date: Date, timezone: string): number {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    weekday: 'short',
+  });
+  const weekday = formatter.format(date);
+  const dayMap: Record<string, number> = {
+    'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6
+  };
+  return dayMap[weekday] ?? date.getDay();
+}
+
 function calculateAvailableSlots(
   rangeStart: Date,
   rangeEnd: Date,
@@ -171,23 +239,23 @@ function calculateAvailableSlots(
   const slots: AvailableSlot[] = [];
   const now = new Date();
   const minNoticeMs = availability.minNoticeHours * 60 * 60 * 1000;
+  const timezone = availability.timezone || 'America/New_York';
 
   const currentDate = new Date(rangeStart);
   currentDate.setHours(0, 0, 0, 0);
 
   while (currentDate <= rangeEnd) {
-    const dayOfWeek = currentDate.getDay();
+    // Get day of week in the coach's timezone
+    const dayOfWeek = getDayOfWeekInTimezone(currentDate, timezone);
     const daySchedule = availability.weeklySchedule[dayOfWeek] || [];
 
     for (const timeSlot of daySchedule) {
       const [startHour, startMin] = timeSlot.start.split(':').map(Number);
       const [endHour, endMin] = timeSlot.end.split(':').map(Number);
 
-      const slotStart = new Date(currentDate);
-      slotStart.setHours(startHour, startMin, 0, 0);
-
-      const slotEnd = new Date(currentDate);
-      slotEnd.setHours(endHour, endMin, 0, 0);
+      // Create slot times in the coach's timezone
+      const slotStart = createDateInTimezone(currentDate, startHour, startMin, timezone);
+      const slotEnd = createDateInTimezone(currentDate, endHour, endMin, timezone);
 
       let currentSlotStart = new Date(slotStart);
 

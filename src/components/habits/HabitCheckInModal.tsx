@@ -14,7 +14,7 @@ interface HabitCheckInModalProps {
 
 export function HabitCheckInModal({ habit, isOpen, onClose, onComplete, onSkip }: HabitCheckInModalProps) {
   const router = useRouter();
-  const { sheetRef, handleProps } = useDragToDismiss({ onClose });
+  const { sheetRef, handleRef, handleProps } = useDragToDismiss({ onClose });
   
   if (!isOpen) return null;
 
@@ -33,7 +33,7 @@ export function HabitCheckInModal({ habit, isOpen, onClose, onComplete, onSkip }
       {/* Modal Container - Bottom sheet on mobile, centered card on desktop */}
       <div ref={sheetRef} className="relative w-full max-w-[500px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-300">
         {/* Grabber - Only on mobile (drag handle) */}
-        <div {...handleProps} className="flex justify-center pt-3 pb-2 md:hidden cursor-grab active:cursor-grabbing touch-none">
+        <div ref={handleRef} {...handleProps} className="flex justify-center pt-3 pb-2 md:hidden cursor-grab active:cursor-grabbing">
           <div className="w-9 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
         </div>
         

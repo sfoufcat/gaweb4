@@ -55,7 +55,7 @@ function generateId() {
 
 export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { sheetRef, handleProps } = useDragToDismiss({ onClose });
+  const { sheetRef, handleRef, handleProps } = useDragToDismiss({ onClose });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAddOptionSheet, setShowAddOptionSheet] = useState(false);
   const [newOptionText, setNewOptionText] = useState('');
@@ -186,7 +186,7 @@ export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
         className="relative w-full lg:max-w-[500px] h-full lg:h-auto lg:max-h-[90dvh] bg-[#faf8f6] lg:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom lg:zoom-in-95 duration-300 flex flex-col overflow-hidden"
       >
         {/* Grabber - Mobile only (drag handle) */}
-        <div {...handleProps} className="flex justify-center pt-3 pb-2 lg:hidden cursor-grab active:cursor-grabbing touch-none">
+        <div ref={handleRef} {...handleProps} className="flex justify-center pt-3 pb-2 lg:hidden cursor-grab active:cursor-grabbing">
           <div className="w-9 h-1 bg-gray-300 rounded-full" />
         </div>
         

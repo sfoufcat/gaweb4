@@ -368,11 +368,12 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
       setActivityScore(data.activityScore || null);
       setCoachNotes(data.coachNotes || '');
       setStreak(data.streak || 0);
-      
-      // Determine if user has ACTIVE coaching
-      const userHasActiveCoaching = 
-        fetchedUser?.coachingStatus === 'active' || 
-        fetchedUser?.coaching === true;
+
+      // Use hasActiveCoaching from API response (includes 1:1 program enrollment check)
+      const userHasActiveCoaching = data.hasActiveCoaching ?? (
+        fetchedUser?.coachingStatus === 'active' ||
+        fetchedUser?.coaching === true
+      );
       setHasCoaching(userHasActiveCoaching);
 
       // Initialize edit states for coaching features

@@ -33,7 +33,7 @@ function CloseIcon() {
 }
 
 export function PollResultsSheet({ isOpen, onClose, poll }: PollResultsSheetProps) {
-  const { sheetRef, handleProps } = useDragToDismiss({ onClose });
+  const { sheetRef, handleRef, handleProps } = useDragToDismiss({ onClose });
 
   // Close on escape
   useEffect(() => {
@@ -111,7 +111,7 @@ export function PollResultsSheet({ isOpen, onClose, poll }: PollResultsSheetProp
         className="relative w-full lg:max-w-[500px] max-h-[90dvh] bg-[#faf8f6] rounded-t-[24px] lg:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom lg:zoom-in-95 duration-300 flex flex-col overflow-hidden outline-none"
       >
         {/* Grabber - Mobile only (drag handle) */}
-        <div {...handleProps} className="flex justify-center pt-3 pb-2 lg:hidden cursor-grab active:cursor-grabbing touch-none">
+        <div ref={handleRef} {...handleProps} className="flex justify-center pt-3 pb-2 lg:hidden cursor-grab active:cursor-grabbing">
           <div className="w-9 h-1 bg-gray-300 rounded-full" />
         </div>
         

@@ -28,7 +28,7 @@ export function NotificationSheet({
   onNotificationClick,
   onDelete,
 }: NotificationSheetProps) {
-  const { sheetRef, handleProps } = useDragToDismiss({ onClose });
+  const { sheetRef, handleRef, handleProps } = useDragToDismiss({ onClose });
   const router = useRouter();
 
   // Close on escape key and lock body scroll
@@ -97,7 +97,7 @@ export function NotificationSheet({
         style={{ maxHeight: '85dvh' }}
       >
         {/* Grabber (drag handle) */}
-        <div {...handleProps} className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none">
+        <div ref={handleRef} {...handleProps} className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing">
           <div className="w-9 h-1 bg-gray-300 rounded-full" />
         </div>
 

@@ -11,10 +11,8 @@ interface UseDragToDismissOptions {
 
 interface UseDragToDismissReturn {
   sheetRef: RefObject<HTMLDivElement | null>;
+  handleRef: RefObject<HTMLDivElement | null>;
   handleProps: {
-    onTouchStart: (e: React.TouchEvent) => void;
-    onTouchMove: (e: React.TouchEvent) => void;
-    onTouchEnd: (e: React.TouchEvent) => void;
     style: React.CSSProperties;
   };
   backdropProps: {
@@ -24,16 +22,18 @@ interface UseDragToDismissReturn {
 
 /**
  * Hook to add native-feeling swipe-to-dismiss behavior to mobile slide-up modals.
- * 
+ *
+ * Uses native event listeners with passive: false to properly prevent scroll during drag.
+ *
  * Usage:
  * ```tsx
- * const { sheetRef, handleProps, backdropProps } = useDragToDismiss({ onClose });
- * 
+ * const { sheetRef, handleRef, handleProps, backdropProps } = useDragToDismiss({ onClose });
+ *
  * return (
  *   <div className="fixed inset-0">
  *     <div className="backdrop" {...backdropProps} onClick={onClose} />
  *     <div ref={sheetRef} className="sheet">
- *       <div {...handleProps} className="grabber">
+ *       <div ref={handleRef} {...handleProps} className="grabber">
  *         <div className="grabber-bar" />
  *       </div>
  *       {children}
@@ -49,6 +49,7 @@ export function useDragToDismiss({
   disabled = false,
 }: UseDragToDismissOptions): UseDragToDismissReturn {
   const sheetRef = useRef<HTMLDivElement>(null);
+  const handleRef = useRef<HTMLDivElement>(null);
   const dragState = useRef({
     isDragging: false,
     startY: 0,
@@ -59,19 +60,25 @@ export function useDragToDismiss({
     velocity: 0,
   });
   const backdropOpacity = useRef(1);
+  const onCloseRef = useRef(onClose);
+
+  // Keep onClose ref updated
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   // Apply transform to sheet during drag
   const updateTransform = useCallback((translateY: number) => {
     if (!sheetRef.current) return;
-    
+
     // Rubber band effect when dragging up
-    const actualTranslate = translateY < 0 
+    const actualTranslate = translateY < 0
       ? translateY * 0.2 // Resistance when dragging up
       : translateY;
-    
+
     sheetRef.current.style.transform = `translateY(${actualTranslate}px)`;
     sheetRef.current.style.transition = 'none';
-    
+
     // Update backdrop opacity (fade out as sheet is dragged down)
     const maxDrag = threshold * 2;
     const opacity = Math.max(0, 1 - (translateY / maxDrag));
@@ -81,7 +88,7 @@ export function useDragToDismiss({
   // Animate sheet back to original position
   const animateBack = useCallback(() => {
     if (!sheetRef.current) return;
-    
+
     sheetRef.current.style.transform = 'translateY(0)';
     sheetRef.current.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
     backdropOpacity.current = 1;
@@ -90,82 +97,95 @@ export function useDragToDismiss({
   // Animate sheet out and close
   const animateOut = useCallback(() => {
     if (!sheetRef.current) return;
-    
+
     const sheetHeight = sheetRef.current.offsetHeight;
     sheetRef.current.style.transform = `translateY(${sheetHeight}px)`;
     sheetRef.current.style.transition = 'transform 0.2s cubic-bezier(0.32, 0.72, 0, 1)';
     backdropOpacity.current = 0;
-    
+
     // Call onClose after animation
     setTimeout(() => {
-      onClose();
+      onCloseRef.current();
       // Reset transform after close
       if (sheetRef.current) {
         sheetRef.current.style.transform = '';
         sheetRef.current.style.transition = '';
       }
     }, 200);
-  }, [onClose]);
+  }, []);
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (disabled) return;
-    
-    const touch = e.touches[0];
-    dragState.current = {
-      isDragging: true,
-      startY: touch.clientY,
-      currentY: touch.clientY,
-      startTime: Date.now(),
-      lastY: touch.clientY,
-      lastTime: Date.now(),
-      velocity: 0,
+  // Set up native event listeners with passive: false
+  useEffect(() => {
+    const handle = handleRef.current;
+    if (!handle || disabled) return;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      dragState.current = {
+        isDragging: true,
+        startY: touch.clientY,
+        currentY: touch.clientY,
+        startTime: Date.now(),
+        lastY: touch.clientY,
+        lastTime: Date.now(),
+        velocity: 0,
+      };
     };
-  }, [disabled]);
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (disabled || !dragState.current.isDragging) return;
-    
-    // Prevent native scrolling while dragging
-    if (e.cancelable) {
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!dragState.current.isDragging) return;
+
+      // Prevent native scrolling while dragging - this requires passive: false
       e.preventDefault();
-    }
-    
-    const touch = e.touches[0];
-    const deltaY = touch.clientY - dragState.current.startY;
-    const now = Date.now();
-    const timeDelta = now - dragState.current.lastTime;
-    
-    // Calculate velocity (pixels per millisecond)
-    if (timeDelta > 0) {
-      dragState.current.velocity = (touch.clientY - dragState.current.lastY) / timeDelta;
-    }
-    
-    dragState.current.currentY = touch.clientY;
-    dragState.current.lastY = touch.clientY;
-    dragState.current.lastTime = now;
-    
-    updateTransform(deltaY);
-  }, [disabled, updateTransform]);
 
-  const handleTouchEnd = useCallback(() => {
-    if (disabled || !dragState.current.isDragging) return;
-    
-    const deltaY = dragState.current.currentY - dragState.current.startY;
-    const velocity = dragState.current.velocity;
-    
-    dragState.current.isDragging = false;
-    
-    // Dismiss if:
-    // 1. Dragged past threshold, OR
-    // 2. Released with high downward velocity (fast flick)
-    const shouldDismiss = deltaY > threshold || (deltaY > 20 && velocity > velocityThreshold);
-    
-    if (shouldDismiss) {
-      animateOut();
-    } else {
-      animateBack();
-    }
-  }, [disabled, threshold, velocityThreshold, animateOut, animateBack]);
+      const touch = e.touches[0];
+      const deltaY = touch.clientY - dragState.current.startY;
+      const now = Date.now();
+      const timeDelta = now - dragState.current.lastTime;
+
+      // Calculate velocity (pixels per millisecond)
+      if (timeDelta > 0) {
+        dragState.current.velocity = (touch.clientY - dragState.current.lastY) / timeDelta;
+      }
+
+      dragState.current.currentY = touch.clientY;
+      dragState.current.lastY = touch.clientY;
+      dragState.current.lastTime = now;
+
+      updateTransform(deltaY);
+    };
+
+    const handleTouchEnd = () => {
+      if (!dragState.current.isDragging) return;
+
+      const deltaY = dragState.current.currentY - dragState.current.startY;
+      const velocity = dragState.current.velocity;
+
+      dragState.current.isDragging = false;
+
+      // Dismiss if:
+      // 1. Dragged past threshold, OR
+      // 2. Released with high downward velocity (fast flick)
+      const shouldDismiss = deltaY > threshold || (deltaY > 20 && velocity > velocityThreshold);
+
+      if (shouldDismiss) {
+        animateOut();
+      } else {
+        animateBack();
+      }
+    };
+
+    // Add event listeners with passive: false for touchmove to allow preventDefault
+    handle.addEventListener('touchstart', handleTouchStart, { passive: true });
+    handle.addEventListener('touchmove', handleTouchMove, { passive: false });
+    handle.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      handle.removeEventListener('touchstart', handleTouchStart);
+      handle.removeEventListener('touchmove', handleTouchMove);
+      handle.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [disabled, threshold, velocityThreshold, updateTransform, animateBack, animateOut]);
 
   // Reset sheet transform when component unmounts or closes
   useEffect(() => {
@@ -179,10 +199,8 @@ export function useDragToDismiss({
 
   return {
     sheetRef,
+    handleRef,
     handleProps: {
-      onTouchStart: handleTouchStart,
-      onTouchMove: handleTouchMove,
-      onTouchEnd: handleTouchEnd,
       style: { touchAction: 'none' } as React.CSSProperties,
     },
     backdropProps: {
@@ -192,5 +210,3 @@ export function useDragToDismiss({
 }
 
 export default useDragToDismiss;
-
-

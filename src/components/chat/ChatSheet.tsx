@@ -52,7 +52,7 @@ interface ChannelPreview {
  * Shows channel list first, then messages when channel selected.
  */
 export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps) {
-  const { sheetRef, handleProps } = useDragToDismiss({ onClose });
+  const { sheetRef, handleRef, handleProps } = useDragToDismiss({ onClose });
   const { client, isConnected } = useStreamChatClient();
   const [channels, setChannels] = useState<ChannelPreview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -441,7 +441,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
         style={{ height: '85dvh', maxHeight: '85dvh' }}
       >
         {/* Grabber (drag handle) */}
-        <div {...handleProps} className="flex justify-center pt-3 pb-2 flex-shrink-0 cursor-grab active:cursor-grabbing touch-none">
+        <div ref={handleRef} {...handleProps} className="flex justify-center pt-3 pb-2 flex-shrink-0 cursor-grab active:cursor-grabbing">
           <div className="w-9 h-1 bg-gray-300 dark:bg-[#272d38] rounded-full" />
         </div>
 

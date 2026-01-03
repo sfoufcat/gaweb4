@@ -14,6 +14,7 @@ import {
   Check,
   AlertCircle,
   Repeat,
+  Globe,
 } from 'lucide-react';
 import { useAvailableSlots } from '@/hooks/useAvailability';
 import { useSchedulingActions } from '@/hooks/useScheduling';
@@ -204,6 +205,15 @@ export function ScheduleCallModal({
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
+  // Format timezone for display (e.g., "America/New_York" -> "New York")
+  const formatTimezone = (tz: string) => {
+    try {
+      return tz.replace(/_/g, ' ').split('/').pop() || tz;
+    } catch {
+      return tz;
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -317,12 +327,23 @@ export function ScheduleCallModal({
           {/* Date & Time Selection */}
           <div className="border border-[#e1ddd8] dark:border-[#262b35] rounded-xl overflow-hidden">
             <div className="px-4 py-3 bg-[#f3f1ef] dark:bg-[#1e222a] border-b border-[#e1ddd8] dark:border-[#262b35]">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                  Select Date & Time
-                </span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-[#5f5a55] dark:text-[#b2b6c2]" />
+                  <span className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    Select Date & Time
+                  </span>
+                </div>
+                {timezone && (
+                  <div className="flex items-center gap-1 text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                    <Globe className="w-3 h-3" />
+                    <span>{formatTimezone(timezone)}</span>
+                  </div>
+                )}
               </div>
+              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mt-1">
+                Times shown in your availability timezone.
+              </p>
             </div>
 
             <div className="p-4 space-y-4">

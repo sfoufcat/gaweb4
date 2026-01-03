@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
@@ -6,17 +6,18 @@ import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { resolveActivity } from '@/lib/analytics/activity';
 import { isDemoRequest, demoResponse, demoNotAvailable } from '@/lib/demo-api';
 import { generateDemoClients, generateDemoUserProfile } from '@/lib/demo-data';
-import type { 
-  ClientCoachingData, 
-  UserRole, 
+import type {
+  ClientCoachingData,
+  UserRole,
   OrgRole,
-  FirebaseUser, 
+  FirebaseUser,
   Coach,
   CoachingActionItem,
   CoachingSessionHistory,
   CoachingResource,
   CoachPrivateNotes,
   ClerkPublicMetadata,
+  ProgramType,
   Task,
   Habit,
   MorningCheckIn,
@@ -85,6 +86,7 @@ interface ClientProgramEnrollment {
   id: string;
   programId: string;
   programName: string;
+  programType: ProgramType;
   status: string;
   progress: number;
   startedAt: string;
@@ -310,64 +312,64 @@ export async function GET(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Fetch user details (try org_memberships first, then users)
+    // Fetch user details from multiple sources:
+    // 1. Clerk (authoritative for name, email, imageUrl)
+    // 2. org_memberships (for org-specific data like tier, coaching status)
+    // 3. users collection (fallback for Firebase-stored data)
     let user: Partial<FirebaseUser> | null = null;
-    
-    // Get user's profile from org_memberships (multi-tenancy)
+
+    // First, try to get user profile from Clerk (authoritative source for name/email/image)
+    let clerkUser: { firstName: string | null; lastName: string | null; email: string; imageUrl: string } | null = null;
+    try {
+      const client = await clerkClient();
+      const clerkUserData = await client.users.getUser(clientId);
+      clerkUser = {
+        firstName: clerkUserData.firstName,
+        lastName: clerkUserData.lastName,
+        email: clerkUserData.emailAddresses[0]?.emailAddress || '',
+        imageUrl: clerkUserData.imageUrl || '',
+      };
+    } catch (clerkError) {
+      console.warn('[COACHING_CLIENT] Failed to fetch user from Clerk:', clerkError);
+    }
+
+    // Get org-specific data from org_memberships (multi-tenancy)
     const membershipSnapshot = await adminDb.collection('org_memberships')
       .where('userId', '==', clientId)
       .where('organizationId', '==', organizationId)
       .limit(1)
       .get();
-    
-    if (!membershipSnapshot.empty) {
-      const memberData = membershipSnapshot.docs[0].data();
+
+    // Get user data from users collection
+    const userDoc = await adminDb.collection('users').doc(clientId).get();
+    const userData = userDoc.exists ? userDoc.data() as FirebaseUser : null;
+
+    // Get org-specific membership data
+    const memberData = !membershipSnapshot.empty ? membershipSnapshot.docs[0].data() : null;
+
+    // Build user object with data from all sources (Clerk takes priority for profile fields)
+    if (clerkUser || memberData || userData) {
       user = {
         id: clientId,
-        firstName: memberData.firstName,
-        lastName: memberData.lastName,
-        email: memberData.email,
-        imageUrl: memberData.imageUrl,
-        avatarUrl: memberData.avatarUrl,
-        timezone: memberData.timezone,
-        goal: memberData.goal,
-        goalTargetDate: memberData.goalTargetDate,
-        goalProgress: memberData.goalProgress,
-        goalSetAt: memberData.goalSetAt,
-        identity: memberData.identity,
-        goalHistory: memberData.goalHistory,
-        identityHistory: memberData.identityHistory,
-        tier: memberData.tier,
-        coachingStatus: memberData.coachingStatus,
-        coaching: memberData.coaching,
+        // Profile fields: Clerk > org_memberships > users
+        firstName: clerkUser?.firstName || memberData?.firstName || userData?.firstName || '',
+        lastName: clerkUser?.lastName || memberData?.lastName || userData?.lastName || '',
+        email: clerkUser?.email || memberData?.email || userData?.email || '',
+        imageUrl: clerkUser?.imageUrl || memberData?.imageUrl || userData?.imageUrl || '',
+        avatarUrl: memberData?.avatarUrl || userData?.avatarUrl || clerkUser?.imageUrl || '',
+        // Org-specific fields: org_memberships > users
+        timezone: memberData?.timezone || userData?.timezone,
+        goal: memberData?.goal || userData?.goal,
+        goalTargetDate: memberData?.goalTargetDate || userData?.goalTargetDate,
+        goalProgress: memberData?.goalProgress || userData?.goalProgress,
+        goalSetAt: memberData?.goalSetAt || userData?.goalSetAt,
+        identity: memberData?.identity || userData?.identity,
+        goalHistory: memberData?.goalHistory || userData?.goalHistory,
+        identityHistory: memberData?.identityHistory || userData?.identityHistory,
+        tier: memberData?.tier || userData?.tier,
+        coachingStatus: memberData?.coachingStatus || userData?.coachingStatus,
+        coaching: memberData?.coaching || userData?.coaching,
       };
-    }
-    
-    // Fallback: get from users collection
-    if (!user) {
-      const userDoc = await adminDb.collection('users').doc(clientId).get();
-      if (userDoc.exists) {
-        const userData = userDoc.data() as FirebaseUser;
-        user = {
-          id: userDoc.id,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          email: userData.email,
-          imageUrl: userData.imageUrl,
-          avatarUrl: userData.avatarUrl,
-          timezone: userData.timezone,
-          goal: userData.goal,
-          goalTargetDate: userData.goalTargetDate,
-          goalProgress: userData.goalProgress,
-          goalSetAt: userData.goalSetAt,
-          identity: userData.identity,
-          goalHistory: userData.goalHistory,
-          identityHistory: userData.identityHistory,
-          tier: userData.tier,
-          coachingStatus: userData.coachingStatus,
-          coaching: userData.coaching,
-        };
-      }
     }
 
     if (!user) {
@@ -541,33 +543,47 @@ export async function GET(
       };
     });
 
-    // Process program enrollments - fetch program names
+    // Process program enrollments - fetch program names and types
     const programIds = [...new Set(programEnrollmentsSnapshot.docs.map(doc => doc.data().programId))];
-    const programMap = new Map<string, string>();
-    
+    const programMap = new Map<string, { name: string; type: ProgramType }>();
+
     if (programIds.length > 0) {
       const programDocs = await Promise.all(
         programIds.slice(0, 20).map(id => adminDb.collection('programs').doc(id).get())
       );
       for (const doc of programDocs) {
         if (doc.exists) {
-          programMap.set(doc.id, doc.data()?.name || 'Unknown Program');
+          const programData = doc.data();
+          programMap.set(doc.id, {
+            name: programData?.name || 'Unknown Program',
+            type: programData?.type || 'group',
+          });
         }
       }
     }
 
     const programEnrollments: ClientProgramEnrollment[] = programEnrollmentsSnapshot.docs.map(doc => {
       const data = doc.data();
+      const program = programMap.get(data.programId);
       return {
         id: doc.id,
         programId: data.programId,
-        programName: programMap.get(data.programId) || 'Unknown Program',
+        programName: program?.name || 'Unknown Program',
+        programType: program?.type || 'group',
         status: data.status || 'active',
         progress: data.progress || 0,
         startedAt: data.startedAt || data.createdAt,
         completedAt: data.completedAt,
       };
     });
+
+    // Determine if user has 1:1 coaching based on:
+    // 1. User's coachingStatus is 'active', OR
+    // 2. User is enrolled in an active 'individual' (1:1) program
+    const hasIndividualProgram = programEnrollments.some(
+      enrollment => enrollment.programType === 'individual' && enrollment.status === 'active'
+    );
+    const hasActiveCoaching = user.coachingStatus === 'active' || !!user.coaching || hasIndividualProgram;
 
     // Process activity score
     const activityScore: ClientActivityScore = {
@@ -612,6 +628,7 @@ export async function GET(
       data: coachingData,
       user,
       coach,
+      hasActiveCoaching,
       // Comprehensive data
       tasks,
       habits,

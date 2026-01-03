@@ -115,7 +115,7 @@ export function AlignmentSheet({
   alignment,
   summary,
 }: AlignmentSheetProps) {
-  const { sheetRef, handleProps } = useDragToDismiss({ onClose });
+  const { sheetRef, handleRef, handleProps } = useDragToDismiss({ onClose });
   const [config, setConfig] = useState<AlignmentActivityConfig>(DEFAULT_ALIGNMENT_CONFIG);
 
   // Fetch org alignment config
@@ -301,7 +301,7 @@ export function AlignmentSheet({
         className="relative w-full max-w-[500px] mx-0 md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl dark:shadow-black/50 animate-in slide-in-from-bottom md:zoom-in-95 duration-300 outline-none"
       >
         {/* Grabber - Only on mobile (drag handle) */}
-        <div {...handleProps} className="flex justify-center pt-3 pb-2 md:hidden cursor-grab active:cursor-grabbing touch-none">
+        <div ref={handleRef} {...handleProps} className="flex justify-center pt-3 pb-2 md:hidden cursor-grab active:cursor-grabbing">
           <div className="w-9 h-1 bg-gray-300 dark:bg-[#272d38] rounded-full" />
         </div>
 

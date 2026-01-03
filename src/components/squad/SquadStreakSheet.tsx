@@ -21,7 +21,7 @@ interface SquadStreakSheetProps {
 }
 
 export function SquadStreakSheet({ isOpen, onClose }: SquadStreakSheetProps) {
-  const { sheetRef, handleProps } = useDragToDismiss({ onClose });
+  const { sheetRef, handleRef, handleProps } = useDragToDismiss({ onClose });
 
   if (!isOpen) return null;
 
@@ -39,7 +39,7 @@ export function SquadStreakSheet({ isOpen, onClose }: SquadStreakSheetProps) {
         className="relative w-full max-w-[500px] mx-4 bg-white rounded-t-[24px] sm:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom duration-300"
       >
         {/* Grabber - Mobile only (drag handle) */}
-        <div {...handleProps} className="flex justify-center pt-3 pb-2 sm:hidden cursor-grab active:cursor-grabbing touch-none">
+        <div ref={handleRef} {...handleProps} className="flex justify-center pt-3 pb-2 sm:hidden cursor-grab active:cursor-grabbing">
           <div className="w-9 h-1 bg-gray-300 rounded-full" />
         </div>
 
