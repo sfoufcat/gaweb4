@@ -138,7 +138,7 @@ export function ProgramCarousel({ enrollments, isLoading, hasAvailablePrograms =
           return (
           <Link
             key={enrollment.id}
-            href={`/discover/programs/${enrollment.programId}`}
+            href={`/program?programId=${enrollment.programId}`}
             className="flex-shrink-0 w-[260px] sm:w-[280px] snap-start"
           >
             <div className="bg-white dark:bg-surface rounded-[20px] overflow-hidden hover:shadow-lg transition-all group">

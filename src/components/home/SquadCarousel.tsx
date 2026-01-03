@@ -252,7 +252,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
                     </Link>
                   )}
                   <Link
-                    href="/program?tab=squad"
+                    href={`/squad?squadId=${squad.id}`}
                     className="flex-1 py-2 px-3 bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent/90 rounded-xl flex items-center justify-center gap-1 text-white transition-all"
                   >
                     <span className="font-sans text-[12px] font-medium">View</span>

@@ -1049,10 +1049,10 @@ export function DashboardPage() {
   // Determine the prompt card content (morning/evening/weekly)
   // Redesigned for better responsiveness on small/medium screens
   const renderPromptCard = (isMobile: boolean) => {
-    // Mobile carousel: full-width snap cards
+    // Mobile carousel: full-width snap cards (h-[200px] to match goal card)
     // Desktop/Tablet grid: responsive height and padding
     const baseClasses = isMobile 
-      ? "w-[calc(100vw-32px)] flex-shrink-0 snap-center h-[180px] rounded-[24px] overflow-hidden relative"
+      ? "w-[calc(100vw-32px)] flex-shrink-0 snap-center h-[200px] rounded-[32px] overflow-hidden relative"
       : "h-[180px] lg:h-[200px] rounded-[24px] lg:rounded-[32px] overflow-hidden relative p-4 lg:p-6 hover:scale-[1.02] transition-transform cursor-pointer";
     
     if (shouldShowMorningCheckInCTA) {
@@ -1468,12 +1468,12 @@ export function DashboardPage() {
   
   // Render quote card for demo mode - redesigned for better responsiveness
   const renderQuoteCard = (isMobile: boolean): React.ReactNode => {
-    // Mobile carousel: full-width snap card
+    // Mobile carousel: full-width snap card (h-[200px] to match goal card)
     if (isMobile) {
       return (
         <div 
           key="quote-card"
-          className="w-[calc(100vw-32px)] flex-shrink-0 snap-center h-[180px] rounded-[24px] overflow-hidden relative bg-gradient-to-br from-amber-500 to-orange-600"
+          className="w-[calc(100vw-32px)] flex-shrink-0 snap-center h-[200px] rounded-[32px] overflow-hidden relative bg-gradient-to-br from-purple-500 to-violet-600"
         >
           {/* Subtle gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
@@ -1504,7 +1504,7 @@ export function DashboardPage() {
     return (
       <div 
         key="quote-card"
-        className="h-[180px] lg:h-[200px] rounded-[24px] lg:rounded-[32px] overflow-hidden relative p-4 lg:p-6 bg-gradient-to-br from-amber-500 to-orange-600"
+        className="h-[180px] lg:h-[200px] rounded-[24px] lg:rounded-[32px] overflow-hidden relative p-4 lg:p-6 bg-gradient-to-br from-purple-500 to-violet-600"
       >
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
         

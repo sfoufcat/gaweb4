@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 
 import { useState, useEffect, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useSquad } from '@/hooks/useSquad';
 import { SquadHeader } from '@/components/squad/SquadHeader';
@@ -42,6 +43,7 @@ type TabType = 'squad' | 'stats';
 
 export default function StandaloneSquadPage() {
   const { user: clerkUser, isLoaded: userLoaded } = useUser();
+  const searchParams = useSearchParams();
   const { squad: squadTitle, squadLower } = useMenuTitles();
   const { isDemoMode } = useDemoMode();
   
@@ -92,6 +94,18 @@ export default function StandaloneSquadPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Handle squadId from URL query parameter
+  useEffect(() => {
+    const squadIdFromUrl = searchParams.get('squadId');
+    if (squadIdFromUrl && standaloneSquads.length > 0) {
+      // Check if the squadId from URL is valid (exists in user's squads)
+      const validSquad = standaloneSquads.find(s => s.id === squadIdFromUrl);
+      if (validSquad) {
+        setActiveStandaloneSquadId(squadIdFromUrl);
+      }
+    }
+  }, [searchParams, standaloneSquads, setActiveStandaloneSquadId]);
 
   // Load stats when switching to stats tab
   useEffect(() => {
