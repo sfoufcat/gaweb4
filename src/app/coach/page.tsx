@@ -30,6 +30,7 @@ import { AnalyticsDashboard } from '@/components/coach/analytics';
 import { CoachSupportTab } from '@/components/coach/support';
 import { FeatureTour } from '@/components/coach/onboarding';
 import { AvailabilityEditor, CalendarView } from '@/components/scheduling';
+import { CallPricingSettings } from '@/components/coach/CallPricingSettings';
 
 /**
  * Coach Dashboard Page
@@ -53,10 +54,10 @@ const COACH_DASHBOARD_COLUMNS: ColumnKey[] = ['select', 'avatar', 'name', 'email
 
 /**
  * Scheduling Tab Component
- * Contains Calendar View and Availability Settings with sub-navigation
+ * Contains Calendar View, Availability Settings, and Call Pricing with sub-navigation
  */
 function SchedulingTab() {
-  const [activeSubTab, setActiveSubTab] = useState<'calendar' | 'availability'>('calendar');
+  const [activeSubTab, setActiveSubTab] = useState<'calendar' | 'availability' | 'pricing'>('calendar');
 
   return (
     <div className="space-y-6">
@@ -80,7 +81,17 @@ function SchedulingTab() {
               : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
           }`}
         >
-          Availability Settings
+          Availability
+        </button>
+        <button
+          onClick={() => setActiveSubTab('pricing')}
+          className={`px-4 py-2 rounded-lg font-albert font-medium text-sm transition-colors ${
+            activeSubTab === 'pricing'
+              ? 'bg-white dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] shadow-sm'
+              : 'text-[#5f5a55] dark:text-[#b2b6c2] hover:text-[#1a1a1a] dark:hover:text-[#f5f5f8]'
+          }`}
+        >
+          Call Pricing
         </button>
       </div>
 
@@ -88,8 +99,10 @@ function SchedulingTab() {
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden p-6">
         {activeSubTab === 'calendar' ? (
           <CalendarView mode="coach" />
-        ) : (
+        ) : activeSubTab === 'availability' ? (
           <AvailabilityEditor />
+        ) : (
+          <CallPricingSettings />
         )}
       </div>
     </div>
