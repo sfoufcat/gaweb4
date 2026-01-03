@@ -125,14 +125,12 @@ export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', h
         setOauthLoading(false);
       } else {
         // Normal OAuth flow with redirect
-        // On marketing domain, redirect to a page that will check for coach redirect
-        // On other domains, use the provided redirectUrl
-        const oauthRedirectUrl = isMarketingDomain ? '/?from_signin=1' : redirectUrl;
-        
+        // Always use the provided redirectUrl - it may contain flowSessionId for funnel flow
+        // The marketing domain redirect logic will be handled after sign-in
         await signIn.authenticateWithRedirect({
           strategy: provider,
           redirectUrl: '/sso-callback',
-          redirectUrlComplete: oauthRedirectUrl,
+          redirectUrlComplete: redirectUrl,
         });
       }
     } catch (err: unknown) {

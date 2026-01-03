@@ -617,6 +617,7 @@ export function SignupStep({
                   origin=""
                   redirectUrl={`/join/callback?flowSessionId=${flowSessionId}`}
                   hideOAuth={true}
+                  signInUrl={`/sign-in?redirect_url=${encodeURIComponent(`/join/callback?flowSessionId=${flowSessionId}`)}`}
                 />
               )}
             </div>
@@ -633,10 +634,13 @@ export function SignupStep({
             </motion.div>
           )}
 
-          {/* Sign in link for existing users */}
+          {/* Sign in link for existing users - preserves flowSessionId for enrollment after sign-in */}
           <p className="text-center mt-8 lg:mt-10 font-sans text-[15px] text-text-secondary">
             Already have an account?{' '}
-            <Link href="/sign-in" className="text-brand-accent hover:text-[#8a6649] font-medium">
+            <Link 
+              href={`/sign-in?redirect_url=${encodeURIComponent(`/join/callback?flowSessionId=${flowSessionId}`)}`} 
+              className="text-brand-accent hover:text-[#8a6649] font-medium"
+            >
               Sign in
             </Link>
           </p>

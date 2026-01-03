@@ -50,9 +50,10 @@ export const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(
           )}
         </div>
         {error && (
-          <p className="mt-2 text-sm text-red-600 font-sans animate-in fade-in slide-in-from-top-1">
-            {error}
-          </p>
+          <p 
+            className="mt-2 text-sm text-red-600 font-sans animate-in fade-in slide-in-from-top-1"
+            dangerouslySetInnerHTML={{ __html: error }}
+          />
         )}
       </div>
     );

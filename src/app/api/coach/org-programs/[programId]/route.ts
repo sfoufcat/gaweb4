@@ -203,6 +203,10 @@ export async function PUT(
       updateData.coachInSquads = body.coachInSquads;
     }
     
+    // Subscription settings
+    if (body.subscriptionEnabled !== undefined) updateData.subscriptionEnabled = body.subscriptionEnabled;
+    if (body.billingInterval !== undefined) updateData.billingInterval = body.billingInterval;
+    
     // Handle clientCommunityEnabled for individual programs
     if (body.clientCommunityEnabled !== undefined && currentData?.type === 'individual') {
       updateData.clientCommunityEnabled = body.clientCommunityEnabled;

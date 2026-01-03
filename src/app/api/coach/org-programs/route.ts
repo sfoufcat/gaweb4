@@ -298,6 +298,9 @@ export async function POST(request: NextRequest) {
       includeWeekends: body.includeWeekends !== false, // Default true
       isActive: body.isActive !== false,
       isPublished: body.isPublished === true,
+      // Subscription settings
+      subscriptionEnabled: body.subscriptionEnabled || false,
+      billingInterval: body.billingInterval || 'monthly',
       // Landing page content
       coachBio: body.coachBio?.trim() || undefined,
       keyOutcomes: keyOutcomes.length > 0 ? keyOutcomes : undefined,

@@ -4,9 +4,16 @@ import { adminDb } from '@/lib/firebase-admin';
 import Stripe from 'stripe';
 import type { UnifiedEvent, CoachCallSettings, UserCallCredits } from '@/types';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
-});
+let _stripe: Stripe | null = null;
+
+function getStripe(): Stripe {
+  if (!_stripe) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) throw new Error('STRIPE_SECRET_KEY not configured');
+    _stripe = new Stripe(key, { apiVersion: '2025-02-24.acacia' });
+  }
+  return _stripe;
+}
 
 /**
  * POST /api/scheduling/payment
@@ -98,7 +105,7 @@ export async function POST(request: NextRequest) {
     const userEmail = userData?.email || userData?.primaryEmail;
 
     // Create Stripe payment intent
-    const paymentIntent = await stripe.paymentIntents.create({
+    const paymentIntent = await getStripe().paymentIntents.create({
       amount: event.priceInCents,
       currency: 'usd',
       automatic_payment_methods: {
@@ -230,7 +237,7 @@ export async function PUT(request: NextRequest) {
     } else {
       // Verify payment was successful via webhook or client confirmation
       if (event.paymentIntentId) {
-        const paymentIntent = await stripe.paymentIntents.retrieve(event.paymentIntentId);
+        const paymentIntent = await getStripe().paymentIntents.retrieve(event.paymentIntentId);
         
         if (paymentIntent.status !== 'succeeded') {
           return NextResponse.json(

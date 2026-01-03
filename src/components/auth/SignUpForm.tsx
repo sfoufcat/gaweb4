@@ -13,9 +13,10 @@ interface SignUpFormProps {
   embedded?: boolean;  // Running in iframe for satellite domain
   origin?: string;     // Parent window origin for postMessage
   hideOAuth?: boolean; // Hide OAuth buttons (used when OAuth is handled by parent)
+  signInUrl?: string;  // Custom sign-in URL (e.g., with flowSessionId preserved for funnel flow)
 }
 
-export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = false, origin = '', hideOAuth = false }: SignUpFormProps) {
+export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = false, origin = '', hideOAuth = false, signInUrl }: SignUpFormProps) {
   const { signUp, isLoaded, setActive } = useSignUp();
   const router = useRouter();
   
@@ -164,7 +165,12 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
       const errorCode = clerkError.errors?.[0]?.code;
 
       if (errorCode === 'form_identifier_exists') {
-        setFieldErrors({ email: 'An account with this email already exists' });
+        // Email already exists - show helpful error with sign-in link
+        // If signInUrl is provided (e.g., from funnel flow), use it to preserve flowSessionId
+        const signInLink = signInUrl || '/sign-in';
+        setFieldErrors({ 
+          email: `An account with this email already exists. <a href="${signInLink}" class="text-brand-accent hover:underline font-medium">Sign in instead</a>` 
+        });
       } else if (errorCode === 'form_password_pwned') {
         setFieldErrors({ password: 'This password was found in a data breach. Please create a unique password with a mix of letters, numbers, and symbols.' });
       } else if (errorCode === 'form_password_length_too_short') {
