@@ -16,7 +16,8 @@ import {
   CreditCard,
   ExternalLink,
   X,
-  Shield
+  Shield,
+  Eye
 } from 'lucide-react';
 import type { CoachTier, CoachSubscription } from '@/types';
 import { 
@@ -25,6 +26,7 @@ import {
   formatLimitValue,
 } from '@/lib/coach-permissions';
 import { CoachReferralCard } from './CoachReferralCard';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 // =============================================================================
 // TYPES
@@ -193,6 +195,7 @@ function FeatureStatus({
 
 export function CoachPlanTab() {
   const router = useRouter();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   const [data, setData] = useState<SubscriptionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -200,6 +203,23 @@ export function CoachPlanTab() {
   const [showManualBillingModal, setShowManualBillingModal] = useState(false);
 
   useEffect(() => {
+    // In demo mode, use mock data instead of fetching
+    if (isDemoMode) {
+      setData({
+        subscription: null,
+        tier: 'pro' as CoachTier,
+        tierInfo: TIER_PRICING['pro'],
+        usage: {
+          clients: { current: 47, limit: 150, percent: 31 },
+          programs: { current: 3, limit: 10, percent: 30 },
+          squads: { current: 8, limit: 25, percent: 32 },
+        },
+        hasActiveSubscription: true,
+      });
+      setIsLoading(false);
+      return;
+    }
+
     const fetchSubscription = async () => {
       try {
         const response = await fetch('/api/coach/subscription');
@@ -216,7 +236,7 @@ export function CoachPlanTab() {
     };
 
     fetchSubscription();
-  }, []);
+  }, [isDemoMode]);
 
   const handleManageSubscription = async () => {
     // If manual billing (admin-assigned tier), show info modal instead of Stripe portal
@@ -286,6 +306,27 @@ export function CoachPlanTab() {
 
   return (
     <div className="space-y-6">
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="px-4 py-3 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-xl flex items-center gap-3">
+          <Eye className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-purple-700 dark:text-purple-300 font-albert">
+              Demo Mode Active
+            </p>
+            <p className="text-xs text-purple-600 dark:text-purple-400 font-albert">
+              Showing sample plan and billing data for demonstration purposes
+            </p>
+          </div>
+          <button
+            onClick={openSignupModal}
+            className="flex-shrink-0 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            Start Free Trial
+          </button>
+        </div>
+      )}
+
       {/* Current Plan Card */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
         <div className="p-6 border-b border-[#e1ddd8] dark:border-[#262b35]">
@@ -350,7 +391,7 @@ export function CoachPlanTab() {
         <div className="px-6 pb-6 flex flex-wrap gap-3">
           {tier !== 'scale' && (
             <button
-              onClick={() => router.push('/coach/plan')}
+              onClick={() => isDemoMode ? openSignupModal() : router.push('/coach/plan')}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-accent hover:bg-[#8b6847] text-white font-sans font-medium text-[14px] rounded-xl transition-colors"
             >
               <Zap className="w-4 h-4" />
@@ -359,12 +400,12 @@ export function CoachPlanTab() {
           )}
           {hasActiveSubscription && (
             <button
-              onClick={handleManageSubscription}
-              disabled={isPortalLoading}
+              onClick={() => isDemoMode ? openSignupModal() : handleManageSubscription()}
+              disabled={isPortalLoading && !isDemoMode}
               className="inline-flex items-center gap-2 px-5 py-2.5 border border-[#e1ddd8] dark:border-[#262b35] text-text-primary dark:text-[#f5f5f8] font-sans font-medium text-[14px] rounded-xl hover:bg-[#faf8f6] dark:hover:bg-[#262b35] transition-colors disabled:opacity-50"
             >
               <ExternalLink className="w-4 h-4" />
-              {isPortalLoading ? 'Opening...' : 'Manage Billing'}
+              {isPortalLoading && !isDemoMode ? 'Opening...' : 'Manage Billing'}
             </button>
           )}
         </div>
@@ -423,7 +464,7 @@ export function CoachPlanTab() {
                   Get custom domain, email whitelabeling, Stripe Connect, and advanced funnel steps.
                 </p>
                 <button
-                  onClick={() => router.push('/coach/plan')}
+                  onClick={() => isDemoMode ? openSignupModal() : router.push('/coach/plan')}
                   className="inline-flex items-center gap-1.5 text-brand-accent font-sans text-[13px] font-medium hover:underline"
                 >
                   View Plans

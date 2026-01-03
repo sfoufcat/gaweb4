@@ -167,22 +167,23 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {squad.chatChannelId && (
               <Link
                 href={`/chat?channel=${squad.chatChannelId}`}
-                className="w-11 h-11 rounded-full bg-[#f3f1ef] dark:bg-[#181d28] flex items-center justify-center hover:bg-[#e9e5e0] dark:hover:bg-[#272d38] transition-colors"
+                className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-[#f3f1ef] dark:bg-[#181d28] flex items-center justify-center hover:bg-[#e9e5e0] dark:hover:bg-[#272d38] transition-colors"
                 aria-label="Open squad chat"
               >
-                <MessageCircle className="w-5 h-5 text-text-primary" />
+                <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-text-primary" />
               </Link>
             )}
             <Link
               href={`/squad?squadId=${squad.id}`}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent/90 text-white rounded-full font-albert font-semibold text-[14px] transition-all hover:scale-[1.02]"
+              className="flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent/90 text-white rounded-full font-albert font-semibold text-[13px] sm:text-[14px] transition-all hover:scale-[1.02]"
             >
-              Go to {squadTermLower}
-              <ChevronRight className="w-4 h-4" />
+              <span className="sm:hidden">View</span>
+              <span className="hidden sm:inline">Go to {squadTermLower}</span>
+              <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </Link>
           </div>
         </div>

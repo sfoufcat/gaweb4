@@ -3,6 +3,8 @@ import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { MAX_SQUAD_MEMBERS } from '@/lib/squad-constants';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { isDemoRequest, demoResponse } from '@/lib/demo-api';
+import { getDemoSquads } from '@/lib/demo-data';
 import type { Squad, UserTrack } from '@/types';
 
 interface CoachInfo {
@@ -41,6 +43,35 @@ interface PublicSquad extends Squad {
  */
 export async function GET(req: Request) {
   try {
+    // Demo mode: return demo squads
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const demoSquads = getDemoSquads();
+      const publicSquads = demoSquads.map(s => ({
+        ...s,
+        memberCount: s.memberCount || Math.floor(Math.random() * 15) + 3,
+        memberAvatars: [
+          'https://ui-avatars.com/api/?name=Sarah+J&background=7c9885&color=fff&size=64&bold=true',
+          'https://ui-avatars.com/api/?name=Mike+W&background=6b7db3&color=fff&size=64&bold=true',
+          'https://ui-avatars.com/api/?name=Emma+D&background=b87a5e&color=fff&size=64&bold=true',
+        ],
+        coach: s.coachId ? {
+          id: s.coachId,
+          name: 'Coach Adam',
+          imageUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face',
+        } : null,
+      }));
+      
+      return demoResponse({
+        trackSquads: publicSquads.filter(s => s.trackId),
+        generalSquads: publicSquads.filter(s => !s.trackId),
+        otherTrackSquads: [],
+        premiumSquads: [],
+        standardSquads: publicSquads,
+        userTrack: null,
+      });
+    }
+
     const { userId, sessionClaims } = await auth();
     
     if (!userId) {

@@ -41,13 +41,13 @@ export function ProgramTypePills({
   const pills = [
     { 
       type: 'group' as ProgramType, 
-      label: 'Group Programs', 
+      label: 'Group', 
       icon: Users,
       count: groupCount 
     },
     { 
       type: 'individual' as ProgramType, 
-      label: '1:1 Coaching', 
+      label: 'Individual', 
       icon: User,
       count: individualCount 
     },

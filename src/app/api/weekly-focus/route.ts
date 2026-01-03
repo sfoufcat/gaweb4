@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { summarizeWeeklyFocus } from '@/lib/anthropic';
+import { isDemoRequest } from '@/lib/demo-api';
 import type { FirebaseUser } from '@/types';
 
 /**
@@ -22,6 +23,16 @@ import type { FirebaseUser } from '@/types';
  */
 export async function GET() {
   try {
+    // Check for demo mode
+    if (await isDemoRequest()) {
+      return NextResponse.json({
+        weeklyFocus: 'Complete my morning routine every day and exercise at least 4 times this week',
+        weeklyFocusSummary: 'Morning routine & exercise',
+        currentWeek: 3,
+        isAutoInitialized: false,
+      });
+    }
+    
     const { userId } = await auth();
     
     if (!userId) {

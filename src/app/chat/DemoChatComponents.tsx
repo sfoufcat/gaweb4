@@ -416,48 +416,59 @@ export default function DemoChatComponents() {
             <h2 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">Messages</h2>
           </div>
 
-          {/* Tab Switcher */}
-          <div className="flex p-2 gap-1 border-b border-[#e1ddd8] dark:border-[#262b35]">
-            <button
-              onClick={() => setActiveTab('main')}
-              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
-                activeTab === 'main'
-                  ? 'bg-brand-accent text-white'
-                  : 'bg-[#f3f1ef] dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#181d28]'
-              }`}
-            >
-              <Hash className="w-4 h-4" />
-              Main
-              {mainUnread > 0 && (
-                <span className={`ml-1 min-w-[18px] h-[18px] rounded-full text-[11px] font-medium flex items-center justify-center px-1 ${
-                  activeTab === 'main' 
-                    ? 'bg-white/20 text-white' 
-                    : 'bg-brand-accent text-white'
+          {/* Pill Selector Tabs - matches real chat */}
+          <div className="px-4 py-3">
+            <div className="bg-[#f3f1ef] dark:bg-[#11141b] rounded-[40px] p-2 flex gap-2">
+              {/* Main Tab */}
+              <button
+                type="button"
+                onClick={() => setActiveTab('main')}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-[32px] transition-all ${
+                  activeTab === 'main'
+                    ? 'bg-white dark:bg-[#171b22] shadow-[0px_4px_10px_0px_rgba(0,0,0,0.1)] dark:shadow-none'
+                    : ''
+                }`}
+              >
+                <svg className={`w-5 h-5 ${activeTab === 'main' ? 'text-[#1a1a1a] dark:text-[#f5f5f8]' : 'text-[#5f5a55] dark:text-[#7d8190]'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <span className={`font-albert text-[18px] font-semibold tracking-[-1px] ${
+                  activeTab === 'main' ? 'text-[#1a1a1a] dark:text-[#f5f5f8]' : 'text-[#5f5a55] dark:text-[#7d8190]'
                 }`}>
-                  {mainUnread}
+                  Main
                 </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('direct')}
-              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
-                activeTab === 'direct'
-                  ? 'bg-brand-accent text-white'
-                  : 'bg-[#f3f1ef] dark:bg-[#11141b] text-[#1a1a1a] dark:text-[#f5f5f8] hover:bg-[#e9e5e0] dark:hover:bg-[#181d28]'
-              }`}
-            >
-              <MessageSquare className="w-4 h-4" />
-              Direct
-              {directUnread > 0 && (
-                <span className={`ml-1 min-w-[18px] h-[18px] rounded-full text-[11px] font-medium flex items-center justify-center px-1 ${
-                  activeTab === 'direct' 
-                    ? 'bg-white/20 text-white' 
-                    : 'bg-brand-accent text-white'
+                {mainUnread > 0 && (
+                  <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-brand-accent dark:bg-brand-accent text-white text-[11px] font-albert font-semibold">
+                    {mainUnread > 9 ? '9+' : mainUnread}
+                  </span>
+                )}
+              </button>
+              
+              {/* Direct Tab */}
+              <button
+                type="button"
+                onClick={() => setActiveTab('direct')}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-[32px] transition-all ${
+                  activeTab === 'direct'
+                    ? 'bg-white dark:bg-[#171b22] shadow-[0px_4px_10px_0px_rgba(0,0,0,0.1)] dark:shadow-none'
+                    : ''
+                }`}
+              >
+                <svg className={`w-5 h-5 ${activeTab === 'direct' ? 'text-[#1a1a1a] dark:text-[#f5f5f8]' : 'text-[#5f5a55] dark:text-[#7d8190]'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                <span className={`font-albert text-[18px] font-semibold tracking-[-1px] ${
+                  activeTab === 'direct' ? 'text-[#1a1a1a] dark:text-[#f5f5f8]' : 'text-[#5f5a55] dark:text-[#7d8190]'
                 }`}>
-                  {directUnread}
+                  Direct
                 </span>
-              )}
-            </button>
+                {directUnread > 0 && (
+                  <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-brand-accent dark:bg-brand-accent text-white text-[11px] font-albert font-semibold">
+                    {directUnread > 9 ? '9+' : directUnread}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Search */}
@@ -625,9 +636,9 @@ export default function DemoChatComponents() {
                     <img
                       src={msg.senderAvatar}
                       alt={msg.senderName}
-                      className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                      className="w-8 h-8 rounded-full object-cover flex-shrink-0 self-end"
                     />
-                    <div className={`max-w-[70%] ${isOwn ? 'items-end' : 'items-start'}`}>
+                    <div className={`flex flex-col max-w-[70%] ${isOwn ? 'items-end' : 'items-start'}`}>
                       <div
                         className={`px-4 py-2.5 rounded-2xl ${
                           isOwn

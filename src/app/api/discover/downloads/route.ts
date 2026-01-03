@@ -12,10 +12,37 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { isDemoRequest, demoResponse } from '@/lib/demo-api';
+import { generateDemoDiscoverContent } from '@/lib/demo-data';
 import type { DiscoverDownload } from '@/types/discover';
 
 export async function GET() {
   try {
+    // Demo mode: return demo downloads
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const demoContent = generateDemoDiscoverContent();
+      const demoDownloads = demoContent.filter(c => c.type === 'download').map((d, i) => ({
+        id: d.id,
+        organizationId: 'demo-org',
+        title: d.title,
+        description: d.description,
+        fileUrl: '#',
+        fileType: 'pdf',
+        fileSize: 1024 * (500 + i * 200), // 500KB - 900KB
+        thumbnailUrl: d.imageUrl,
+        isPublic: true,
+        priceInCents: d.priceInCents || 0,
+        currency: d.currency || 'usd',
+        purchaseType: d.purchaseType || 'popup',
+        coachName: d.author,
+        coachImageUrl: d.authorImageUrl,
+        createdAt: d.publishedAt,
+        updatedAt: d.publishedAt,
+      }));
+      return demoResponse({ downloads: demoDownloads });
+    }
+
     // MULTI-TENANCY: Get org from tenant domain (null on platform domain)
     const organizationId = await getEffectiveOrgId();
     

@@ -12,10 +12,51 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
+import { isDemoRequest, demoResponse } from '@/lib/demo-api';
 import type { DiscoverLink } from '@/types/discover';
 
 export async function GET() {
   try {
+    // Demo mode: return demo links
+    const isDemo = await isDemoRequest();
+    if (isDemo) {
+      const demoLinks = [
+        {
+          id: 'demo-link-1',
+          organizationId: 'demo-org',
+          title: 'Recommended Reading List',
+          description: 'Curated list of must-read books for personal growth',
+          url: 'https://example.com/reading-list',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=400&h=300&fit=crop',
+          isPublic: true,
+          priceInCents: 0,
+          currency: 'usd',
+          purchaseType: 'popup' as const,
+          coachName: 'Coach Adam',
+          coachImageUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: 'demo-link-2',
+          organizationId: 'demo-org',
+          title: 'Productivity Tools Guide',
+          description: 'My favorite tools for staying organized and focused',
+          url: 'https://example.com/tools-guide',
+          thumbnailUrl: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=400&h=300&fit=crop',
+          isPublic: true,
+          priceInCents: 0,
+          currency: 'usd',
+          purchaseType: 'popup' as const,
+          coachName: 'Coach Adam',
+          coachImageUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ];
+      return demoResponse({ links: demoLinks });
+    }
+
     // MULTI-TENANCY: Get org from tenant domain (null on platform domain)
     const organizationId = await getEffectiveOrgId();
     

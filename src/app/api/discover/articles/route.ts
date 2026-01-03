@@ -23,16 +23,19 @@ export async function GET() {
         id: a.id,
         organizationId: 'demo-org',
         title: a.title,
-        description: a.description,
         content: `<p>${a.description}</p><p>This is sample article content for the demo.</p>`,
         coverImageUrl: a.imageUrl,
-        author: a.author,
+        authorName: a.author,
+        authorAvatarUrl: a.authorImageUrl,
         isPublished: a.isPublished,
         isPremium: a.isPremium,
-        readTime: a.readTime || 5,
+        readingTimeMinutes: a.readTime || 5,
         publishedAt: a.publishedAt,
         createdAt: a.publishedAt,
         updatedAt: a.publishedAt,
+        category: a.category,
+        trending: true,
+        featured: true,
       }));
       return demoResponse({ articles: demoArticles });
     }

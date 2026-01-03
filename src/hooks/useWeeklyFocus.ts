@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 interface UseWeeklyFocusReturn {
   /** User's full weekly focus text */
@@ -19,6 +20,14 @@ interface UseWeeklyFocusReturn {
   /** Refresh the weekly focus from server */
   refresh: () => Promise<void>;
 }
+
+// Demo mode mock data
+const DEMO_WEEKLY_FOCUS = {
+  weeklyFocus: 'Complete my morning routine every day and exercise at least 4 times this week',
+  weeklyFocusSummary: 'Morning routine & exercise',
+  currentWeek: 3,
+  isAutoInitialized: false,
+};
 
 /**
  * Hook for accessing user's weekly focus
@@ -39,6 +48,7 @@ interface UseWeeklyFocusReturn {
  */
 export function useWeeklyFocus(): UseWeeklyFocusReturn {
   const { user, isLoaded } = useUser();
+  const { isDemoMode } = useDemoMode();
   const [weeklyFocus, setWeeklyFocus] = useState<string | null>(null);
   const [weeklyFocusSummary, setWeeklyFocusSummary] = useState<string | null>(null);
   const [currentWeek, setCurrentWeek] = useState<number | null>(null);
@@ -47,6 +57,16 @@ export function useWeeklyFocus(): UseWeeklyFocusReturn {
   const [isAutoInitialized, setIsAutoInitialized] = useState(false);
 
   const fetchWeeklyFocus = useCallback(async () => {
+    // Demo mode: return mock data immediately
+    if (isDemoMode) {
+      setWeeklyFocus(DEMO_WEEKLY_FOCUS.weeklyFocus);
+      setWeeklyFocusSummary(DEMO_WEEKLY_FOCUS.weeklyFocusSummary);
+      setCurrentWeek(DEMO_WEEKLY_FOCUS.currentWeek);
+      setIsAutoInitialized(DEMO_WEEKLY_FOCUS.isAutoInitialized);
+      setIsLoading(false);
+      return;
+    }
+    
     if (!user) {
       setIsLoading(false);
       return;
@@ -72,9 +92,15 @@ export function useWeeklyFocus(): UseWeeklyFocusReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, isDemoMode]);
 
   useEffect(() => {
+    // Demo mode: load mock data immediately
+    if (isDemoMode) {
+      fetchWeeklyFocus();
+      return;
+    }
+    
     if (!isLoaded) return;
 
     if (!user) {
@@ -86,7 +112,7 @@ export function useWeeklyFocus(): UseWeeklyFocusReturn {
     }
 
     fetchWeeklyFocus();
-  }, [isLoaded, user, fetchWeeklyFocus]);
+  }, [isLoaded, user, isDemoMode, fetchWeeklyFocus]);
 
   const refresh = useCallback(async () => {
     setIsLoading(true);

@@ -41,6 +41,8 @@ export async function GET() {
         coachImageUrl: c.authorImageUrl,
         totalLessons: 8,
         totalDurationMinutes: 150,
+        trending: true,
+        featured: true,
         modules: [
           {
             id: 'mod-1',
