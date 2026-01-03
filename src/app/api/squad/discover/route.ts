@@ -55,16 +55,12 @@ export async function GET(req: Request) {
           'https://ui-avatars.com/api/?name=Mike+W&background=6b7db3&color=fff&size=64&bold=true',
           'https://ui-avatars.com/api/?name=Emma+D&background=b87a5e&color=fff&size=64&bold=true',
         ],
-        coach: s.coachId ? {
-          id: s.coachId,
-          name: 'Coach Adam',
-          imageUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face',
-        } : null,
+        coach: null,
       }));
       
       return demoResponse({
-        trackSquads: publicSquads.filter(s => s.trackId),
-        generalSquads: publicSquads.filter(s => !s.trackId),
+        trackSquads: [],
+        generalSquads: publicSquads,
         otherTrackSquads: [],
         premiumSquads: [],
         standardSquads: publicSquads,
