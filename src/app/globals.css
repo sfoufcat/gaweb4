@@ -903,13 +903,15 @@ div[class*="LoadingIndicator"],
   background-color: rgba(16, 21, 32, 0.9);
 }
 
-/* Mobile nav background - uses theme defaults (not customizable) */
+/* Mobile nav container - Apple Glass style (background set inline for blur compatibility) */
 .mobile-nav-branded {
-  background-color: rgba(255, 255, 255, 0.5);
+  /* Background handled inline with backdrop-blur for proper glass effect */
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  backdrop-filter: blur(40px) saturate(180%);
 }
 
 .dark .mobile-nav-branded {
-  background-color: rgba(16, 21, 32, 0.8);
+  /* Background handled inline with backdrop-blur for proper glass effect */
 }
 
 /* Branded accent colors for active states */
@@ -1042,13 +1044,13 @@ div[class*="LoadingIndicator"],
   color: var(--brand-accent-dark, #b8896a) !important;
 }
 
-/* Mobile nav active background */
+/* Mobile nav active background - subtle glass highlight (Instagram-style, no brand color) */
 .mobile-nav-active {
-  background-color: color-mix(in srgb, var(--brand-accent-light, #a07855) 15%, transparent);
+  background-color: rgba(0, 0, 0, 0.06);
 }
 
 .dark .mobile-nav-active {
-  background-color: color-mix(in srgb, var(--brand-accent-dark, #b8896a) 20%, transparent) !important;
+  background-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 /* ===========================================

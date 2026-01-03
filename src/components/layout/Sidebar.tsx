@@ -1,9 +1,9 @@
 'use client';
 
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { UserButton, useAuth } from '@clerk/nextjs';
-import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { isAdmin, canAccessCoachDashboard, canAccessEditorSection, isSuperAdmin, isOrgCoach, isSuperCoach } from '@/lib/admin-utils-shared';
 import type { UserRole, OrgRole, MenuItemKey } from '@/types';
@@ -461,22 +461,24 @@ export function Sidebar() {
         </div>
       </aside>
 
-      {/* Mobile Bottom Navigation - Apple Liquid Glass Floating Pill with Safari-like scroll behavior */}
+      {/* Mobile Bottom Navigation - Apple Glass + Instagram Simplicity */}
       <div 
         className={`
-          lg:hidden fixed bottom-0 left-0 right-0 z-40 flex justify-center px-4 pb-2 pb-safe
-          transition-all duration-300 ease-in-out origin-bottom
-          ${isCompact ? 'translate-y-[12px] scale-[0.92] opacity-90' : 'translate-y-0 scale-100 opacity-100'}
+          lg:hidden fixed bottom-0 left-0 right-0 z-40 flex justify-center px-5 pb-3 pb-safe
+          transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] origin-bottom
+          ${isCompact ? 'translate-y-[10px] scale-[0.94] opacity-95' : 'translate-y-0 scale-100 opacity-100'}
         `}
       >
-        <nav className="mobile-nav-branded relative w-full max-w-md overflow-hidden rounded-[50px] shadow-lg shadow-black/5 dark:shadow-black/20">
-          {/* Liquid Glass Background Layers */}
-          <div className="absolute inset-0 bg-white/50 dark:bg-[#101520]/80 backdrop-blur-[24px] backdrop-saturate-150" />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-white/10 dark:from-white/5 dark:to-transparent" />
-          <div className="absolute inset-[0.5px] rounded-[50px] border border-white/40 dark:border-white/10" />
+        <nav className="mobile-nav-branded relative overflow-hidden rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+          {/* Apple Glass Background - Multi-layer blur effect */}
+          <div className="absolute inset-0 bg-white/70 dark:bg-[#1c1c1e]/75 backdrop-blur-[40px] backdrop-saturate-[180%]" />
+          {/* Subtle inner glow */}
+          <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-transparent to-white/20 dark:from-white/10 dark:via-transparent dark:to-white/5" />
+          {/* Glass edge highlight */}
+          <div className="absolute inset-[0.5px] rounded-[27.5px] border border-white/50 dark:border-white/15" />
           
-          {/* Tab Bar Content */}
-          <div className="relative flex items-center justify-around px-2 py-2">
+          {/* Tab Bar Content - Icons only */}
+          <div className="relative flex items-center justify-center gap-1 px-3 py-2.5">
             {mobileNavItems.map((item) => (
               <Link 
                 key={item.path} 
@@ -484,45 +486,48 @@ export function Sidebar() {
                 onTouchStart={() => router.prefetch(item.path)}
                 data-tour={(item as { dataTour?: string }).dataTour}
                 className={`
-                  relative flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-full transition-all
-                  ${isActive(item.path) ? '' : 'text-[#5f5a55] dark:text-[#b5b0ab]'}
+                  relative flex items-center justify-center w-12 h-12 rounded-full transition-all duration-200
+                  ${isActive(item.path) 
+                    ? '' 
+                    : 'text-[#8e8e93] dark:text-[#8e8e93] active:scale-90'
+                  }
                 `}
                 style={isActive(item.path) && !isDefault ? {
                   color: colors.accentLight,
                 } : isActive(item.path) ? {
-                  color: '#a07855',
+                  color: theme === 'dark' ? '#ffffff' : '#1a1a1a',
                 } : undefined}
               >
-                {/* Active Tab Background */}
+                {/* Active Tab Background - Subtle glass pill */}
                 {isActive(item.path) && (
                   <div 
-                    className="absolute inset-0 mobile-nav-active rounded-full" 
+                    className="absolute inset-1 rounded-full bg-black/[0.06] dark:bg-white/[0.12]" 
                   />
                 )}
                 <span 
-                  className="relative z-10"
+                  className="relative z-10 flex items-center justify-center"
                   style={isActive(item.path) && !isDefault ? {
                     color: colors.accentLight,
                   } : isActive(item.path) ? {
-                    color: '#a07855',
+                    color: theme === 'dark' ? '#ffffff' : '#1a1a1a',
                   } : undefined}
                 >
-                  {item.icon}
+                  {/* Render icon with larger size */}
+                  {React.cloneElement(item.icon as React.ReactElement, { 
+                    className: 'w-6 h-6'
+                  })}
                   {/* Unread badge for Chat - Mobile */}
                   {item.path === '/chat' && totalUnread > 0 && (
                     <span 
-                      className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-albert font-semibold"
+                      className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-albert font-bold shadow-sm"
                       style={{
-                        backgroundColor: !isDefault ? currentAccentColor : (theme === 'dark' ? '#b8896a' : '#a07855'),
-                        color: currentAccentIsDark ? '#ffffff' : '#1a1a1a',
+                        backgroundColor: !isDefault ? currentAccentColor : '#ff3b30',
+                        color: '#ffffff',
                       }}
                     >
                       {totalUnread > 9 ? '9+' : totalUnread}
                     </span>
                   )}
-                </span>
-                <span className={`relative z-10 text-[10px] font-albert ${isActive(item.path) ? 'font-semibold' : 'font-medium'}`}>
-                  {item.name}
                 </span>
               </Link>
             ))}
