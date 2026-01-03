@@ -46,6 +46,14 @@ interface MembershipCheckResult {
   } | null;
 }
 
+// User info received from iframe postMessage (for custom domains)
+interface IframeUserInfo {
+  firstName: string;
+  lastName: string;
+  email: string;
+  imageUrl: string;
+}
+
 // Unified loader component
 function Loader({ branding, message }: { branding: { logoUrl: string; appTitle: string }; message: string }) {
   return (
@@ -113,6 +121,9 @@ export function SignupStep({
   
   // Auto-continue countdown for same_tenant
   const [autoCountdown, setAutoCountdown] = useState(2);
+  
+  // User info received from iframe (for custom domains where parent can't see Clerk session)
+  const [iframeUserInfo, setIframeUserInfo] = useState<IframeUserInfo | null>(null);
 
   // Determine if we're on a custom domain (satellite)
   const isCustomDomain = !hostname.includes('growthaddicts.com') && 
@@ -251,9 +262,22 @@ export function SignupStep({
 
   // Handle confirmation click - user confirms they want to join
   const handleConfirmJoin = useCallback(() => {
+    // On custom domains where user is signed in via iframe (but not on custom domain),
+    // we need to redirect them to sign in properly so the session is available
+    if (isCustomDomain && iframeUserInfo && !isSignedIn) {
+      // Redirect to sign-in with redirect back to callback
+      const subdomainBase = subdomain 
+        ? `https://${subdomain}.growthaddicts.com`
+        : 'https://growthaddicts.com';
+      const returnUrl = `https://${hostname}/join/callback?flowSessionId=${flowSessionId}`;
+      // Use sign-in OAuth flow to get them signed in on this domain
+      window.location.href = `${subdomainBase}/sign-in?redirect_url=${encodeURIComponent(returnUrl)}`;
+      return;
+    }
+    
     setHasConfirmed(true);
     linkSessionAndContinue();
-  }, [linkSessionAndContinue]);
+  }, [linkSessionAndContinue, isCustomDomain, iframeUserInfo, isSignedIn, subdomain, hostname, flowSessionId]);
 
   // Handle OAuth for regular domains
   const handleOAuth = async (provider: 'oauth_google' | 'oauth_apple') => {
@@ -318,6 +342,17 @@ export function SignupStep({
       } else if (event.data.type === 'auth-error') {
         setError(event.data.error || 'Authentication failed');
         setOauthLoading(false);
+      } else if (event.data.type === 'auth-already-signed-in') {
+        // User is already signed in (detected by iframe)
+        // On custom domains, parent can't see Clerk session, so iframe tells us
+        // Store user info and show "Continue as X" screen
+        const userInfo = event.data.userInfo as IframeUserInfo;
+        if (userInfo) {
+          setIframeUserInfo(userInfo);
+          // Set state to show confirmation screen
+          // Use 'different_tenant' to show the "Continue as X" screen with options
+          setUserState('different_tenant');
+        }
       }
     };
 
@@ -412,11 +447,18 @@ export function SignupStep({
 
   // ============================================
   // CASE 3: Different Tenant - "Continue as" or "Use different account"
+  // Also handles custom domain case where iframe detected signed-in user
   // ============================================
-  if (userState === 'different_tenant' && isSignedIn && !hasConfirmed) {
-    const displayName = user?.firstName || membershipInfo?.userInfo?.firstName || '';
-    const displayEmail = user?.primaryEmailAddress?.emailAddress || membershipInfo?.userInfo?.email || '';
-    const displayImage = user?.imageUrl || membershipInfo?.userInfo?.imageUrl || '';
+  // Show this screen if:
+  // 1. User is signed in normally (isSignedIn) and in different tenant, OR
+  // 2. User was detected as signed in via iframe postMessage (iframeUserInfo)
+  const showContinueAsScreen = (userState === 'different_tenant' && (isSignedIn || iframeUserInfo) && !hasConfirmed);
+  
+  if (showContinueAsScreen) {
+    // Use user info from: Clerk user > iframe postMessage > membership check
+    const displayName = user?.firstName || iframeUserInfo?.firstName || membershipInfo?.userInfo?.firstName || '';
+    const displayEmail = user?.primaryEmailAddress?.emailAddress || iframeUserInfo?.email || membershipInfo?.userInfo?.email || '';
+    const displayImage = user?.imageUrl || iframeUserInfo?.imageUrl || membershipInfo?.userInfo?.imageUrl || '';
     
     return (
       <div className="fixed inset-0 bg-app-bg overflow-y-auto">
