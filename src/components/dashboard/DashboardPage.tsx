@@ -40,6 +40,7 @@ import { WelcomeTour } from '@/components/coach/onboarding';
 import { RequestCallCard, CalendarButton, CalendarIconButton } from '@/components/scheduling';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { DEMO_USER } from '@/lib/demo-utils';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 /**
  * Homepage / Dashboard
@@ -51,8 +52,11 @@ export function DashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
-  const { isDemoMode } = useDemoMode();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   const [mounted, setMounted] = useState(false);
+  
+  // Large screen detection for goal card circle progress
+  const isLargeScreen = useMediaQuery('(min-width: 1024px)');
   
   // In demo mode, use mock user data
   const user = useMemo(() => {
@@ -1110,17 +1114,18 @@ export function DashboardPage() {
       ? "w-[calc(100vw-32px)] flex-shrink-0 snap-center h-[200px] rounded-[32px] overflow-hidden relative"
       : "h-[200px] rounded-[32px] overflow-hidden relative cursor-pointer hover:scale-[1.02] transition-transform";
     
+    // Use circle progress for mobile carousel OR large screens in grid
+    const useCircleProgress = isMobile || isLargeScreen;
+    
     if (userGoal) {
-      // Carousel view (isMobile=true): Horizontal layout with circular progress (has full width)
-      // Grid view (isMobile=false): Vertical layout with linear progress bar (space-efficient)
-      if (isMobile) {
-        // Carousel: Keep horizontal layout with circle
+      // Circle progress layout (mobile carousel OR large desktop screens)
+      if (useCircleProgress) {
         return (
           <Link key="goal" href="/goal" className={`${baseClasses} bg-gradient-to-br from-gray-700 to-gray-900 p-6`}>
             <div className="absolute inset-0 bg-black/55" />
             <div className="relative z-10 h-full flex items-center justify-between gap-4">
               <div className="flex-1 min-w-0">
-                <p className="font-sans text-[11px] text-white/90 leading-[1.2] mb-1.5">
+                <p className="font-sans text-[11px] text-white/90 leading-[1.2] mb-1.5 uppercase tracking-wider">
                   My goal
                 </p>
                 <p className="font-albert text-[22px] text-white leading-[1.2] tracking-[-1.2px] mb-1.5 line-clamp-2">
@@ -1145,7 +1150,7 @@ export function DashboardPage() {
         );
       }
       
-      // Grid view: Vertical layout with linear progress bar
+      // Linear progress layout (medium screens only)
       return (
         <Link key="goal" href="/goal" className={`${baseClasses} bg-gradient-to-br from-gray-700 to-gray-900 p-5`}>
           <div className="absolute inset-0 bg-black/55" />
@@ -1429,14 +1434,14 @@ export function DashboardPage() {
     return ['goal', 'track', 'discover'];
   };
   
-  // Render quote card for demo mode
+  // Render quote card for demo mode - using distinct teal gradient
   const renderQuoteCard = (isMobile: boolean): React.ReactNode => {
-    // Mobile: Redesigned cleaner layout
+    // Mobile: Redesigned cleaner layout with teal gradient for demo
     if (isMobile) {
       return (
         <div 
           key="quote-card"
-          className="w-[calc(100vw-32px)] flex-shrink-0 snap-center h-[180px] rounded-[24px] overflow-hidden relative bg-gradient-to-br from-amber-500 via-orange-500 to-orange-600"
+          className="w-[calc(100vw-32px)] flex-shrink-0 snap-center h-[180px] rounded-[24px] overflow-hidden relative bg-gradient-to-br from-teal-500 via-cyan-500 to-sky-600"
         >
           {/* Subtle texture overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
@@ -1460,11 +1465,11 @@ export function DashboardPage() {
       );
     }
     
-    // Desktop: Keep original centered design
+    // Desktop: Keep original centered design with teal gradient for demo
     return (
       <div 
         key="quote-card"
-        className="h-[200px] rounded-[32px] overflow-hidden relative p-6 flex flex-col items-center justify-center bg-gradient-to-br from-amber-500 to-orange-600"
+        className="h-[200px] rounded-[32px] overflow-hidden relative p-6 flex flex-col items-center justify-center bg-gradient-to-br from-teal-500 to-cyan-600"
       >
         <div className="absolute inset-0 bg-black/10" />
         <div className="relative z-10 text-center px-6">
@@ -1748,9 +1753,15 @@ export function DashboardPage() {
             <Link href="/habits" className="font-sans text-[12px] text-brand-accent hover:opacity-80 transition-opacity leading-[1.2]">
               All
             </Link>
-            <Link href="/habits/new" className="font-sans text-[12px] text-brand-accent hover:opacity-80 transition-opacity leading-[1.2]">
-              Add
-            </Link>
+            {isDemoMode ? (
+              <button onClick={openSignupModal} className="font-sans text-[12px] text-brand-accent hover:opacity-80 transition-opacity leading-[1.2]">
+                Add
+              </button>
+            ) : (
+              <Link href="/habits/new" className="font-sans text-[12px] text-brand-accent hover:opacity-80 transition-opacity leading-[1.2]">
+                Add
+              </Link>
+            )}
           </div>
         </div>
 
@@ -1786,12 +1797,21 @@ export function DashboardPage() {
                 <p className="font-sans text-[13px] text-text-muted leading-[1.5] mb-4">
                   In the meantime, you can add your first habit to start building momentum today.
                 </p>
-                <Link 
-                  href="/habits/new"
-                  className="inline-block px-6 py-2 bg-earth-900 dark:bg-brand-accent text-white rounded-full font-sans text-[12px] font-medium hover:scale-105 transition-all"
-                >
-                  Add your first habit
-                </Link>
+                {isDemoMode ? (
+                  <button
+                    onClick={openSignupModal}
+                    className="inline-block px-6 py-2 bg-earth-900 dark:bg-brand-accent text-white rounded-full font-sans text-[12px] font-medium hover:scale-105 transition-all"
+                  >
+                    Add your first habit
+                  </button>
+                ) : (
+                  <Link 
+                    href="/habits/new"
+                    className="inline-block px-6 py-2 bg-earth-900 dark:bg-brand-accent text-white rounded-full font-sans text-[12px] font-medium hover:scale-105 transition-all"
+                  >
+                    Add your first habit
+                  </Link>
+                )}
               </>
             ) : (
               /* Normal empty state */
@@ -1799,12 +1819,21 @@ export function DashboardPage() {
                 <p className="font-sans text-[14px] text-text-secondary mb-3">
                   No habits yet. Start building consistency!
                 </p>
-                <Link 
-                  href="/habits/new"
-                  className="inline-block px-6 py-2 bg-earth-900 dark:bg-brand-accent text-white rounded-full font-sans text-[12px] font-medium hover:scale-105 transition-all"
-                >
-                  Create your first habit
-                </Link>
+                {isDemoMode ? (
+                  <button
+                    onClick={openSignupModal}
+                    className="inline-block px-6 py-2 bg-earth-900 dark:bg-brand-accent text-white rounded-full font-sans text-[12px] font-medium hover:scale-105 transition-all"
+                  >
+                    Create your first habit
+                  </button>
+                ) : (
+                  <Link 
+                    href="/habits/new"
+                    className="inline-block px-6 py-2 bg-earth-900 dark:bg-brand-accent text-white rounded-full font-sans text-[12px] font-medium hover:scale-105 transition-all"
+                  >
+                    Create your first habit
+                  </Link>
+                )}
               </>
             )}
           </div>

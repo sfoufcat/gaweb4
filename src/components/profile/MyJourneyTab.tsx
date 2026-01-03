@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { FirebaseUser, Habit, GoalHistoryEntry } from '@/types';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 interface MyJourneyTabProps {
   user: FirebaseUser & { publicFocus?: string; publicFocusUpdatedAt?: string; goalHistory?: GoalHistoryEntry[] };
@@ -17,6 +19,16 @@ interface MyJourneyTabProps {
 }
 
 export function MyJourneyTab({ user, goal, habits = [], isOwnProfile = true }: MyJourneyTabProps) {
+  const router = useRouter();
+  const { isDemoMode, openSignupModal } = useDemoMode();
+  
+  // Handle identity click - in demo mode, open signup modal
+  const handleIdentityClick = (e: React.MouseEvent) => {
+    if (isDemoMode) {
+      e.preventDefault();
+      openSignupModal();
+    }
+  };
   // Calculate days left for goal
   const calculateDaysLeft = (targetDateStr: string) => {
     const today = new Date();
@@ -54,7 +66,8 @@ export function MyJourneyTab({ user, goal, habits = [], isOwnProfile = true }: M
           </h2>
           {isOwnProfile && (
             <Link 
-              href="/identity" 
+              href="/identity"
+              onClick={handleIdentityClick}
               className="font-sans text-xs text-accent-secondary hover:text-[#8a6649] font-medium transition-colors"
             >
               Edit
@@ -72,6 +85,7 @@ export function MyJourneyTab({ user, goal, habits = [], isOwnProfile = true }: M
             {isOwnProfile && (
               <Link
                 href="/identity"
+                onClick={handleIdentityClick}
                 className="inline-block px-6 py-3 bg-brand-accent hover:opacity-90 text-white rounded-full font-sans font-semibold text-sm hover:scale-105 transition-transform"
               >
                 Define Your Identity

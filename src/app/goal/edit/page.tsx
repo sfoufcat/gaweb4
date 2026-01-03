@@ -284,6 +284,12 @@ export default function EditGoalPage() {
   };
 
   const handleArchive = async () => {
+    // In demo mode, open the signup modal instead of archiving
+    if (isDemoMode) {
+      openSignupModal();
+      return;
+    }
+    
     if (!confirm('Are you sure you want to archive this goal?')) return;
 
     setArchiving(true);

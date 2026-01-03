@@ -125,6 +125,17 @@ export default function GoalPage() {
           progress: 65,
         });
         
+        // Varied reflection notes for demo
+        const demoNotes = [
+          'Crushed my morning routine today! Woke up at 6 AM and hit the gym before work.',
+          'Struggled a bit with motivation this morning, but pushed through and completed my workout anyway.',
+          'Best workout of the week! Energy levels were high and I added extra reps to my routine.',
+          'Took a rest day but still maintained my morning journaling habit. Feeling refreshed.',
+          'Early morning yoga session followed by a healthy breakfast. Consistency is building!',
+          'Missed the gym but went for an evening walk instead. Progress, not perfection.',
+          'Great start to the day! Meditation + workout + healthy breakfast. Feeling unstoppable.',
+        ];
+        
         // Generate demo reflections
         const demoReflections: DailyReflection[] = Array.from({ length: 7 }, (_, i) => {
           const date = new Date();
@@ -139,7 +150,7 @@ export default function GoalPage() {
             emotionalState: (['confident', 'energized', 'steady', 'neutral'] as EmotionalState[])[i % 4],
             tasksCompleted: 2 + (i % 3),
             tasksTotal: 3 + (i % 2),
-            note: 'Made great progress on my morning routine. Woke up at 6 AM and completed workout.',
+            note: demoNotes[i % demoNotes.length],
             createdAt: date.toISOString(),
             updatedAt: date.toISOString(),
           };

@@ -76,9 +76,17 @@ export function useProgramContent(programId: string | null): UseProgramContentRe
   const demoContent = useMemo(() => {
     if (!isDemoMode) return null;
     const content = generateDemoDiscoverContent();
-    // Filter content by type since generateDemoDiscoverContent returns a flat array
-    const courses = content.filter(item => item.type === 'course').slice(0, 3);
-    const articles = content.filter(item => item.type === 'article').slice(0, 3);
+    // Filter content by type and map imageUrl to coverImageUrl
+    const courses = content.filter(item => item.type === 'course').slice(0, 3).map(item => ({
+      ...item,
+      coverImageUrl: item.imageUrl,
+      thumbnailUrl: item.imageUrl,
+    }));
+    const articles = content.filter(item => item.type === 'article').slice(0, 3).map(item => ({
+      ...item,
+      coverImageUrl: item.imageUrl,
+      thumbnailUrl: item.imageUrl,
+    }));
     return {
       courses: courses as unknown as DiscoverCourse[],
       articles: articles as unknown as DiscoverArticle[],

@@ -385,9 +385,10 @@ export function CoachQuizModal({ isOpen, onClose }: CoachQuizModalProps) {
         throw new Error(data.error || 'Failed to create organization');
       }
       
-      // Redirect to coach onboarding profile page
-      router.push('/coach/onboarding/profile');
+      // Redirect to coach onboarding profile page on the main domain
+      // This ensures users leave demo mode and enter their real account
       onClose();
+      window.location.href = 'https://growthaddicts.com/coach/onboarding/profile';
     } catch (err: unknown) {
       console.error('Create org error:', err);
       const error = err as { message?: string };

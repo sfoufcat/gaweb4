@@ -10,6 +10,7 @@ import type { EnrolledProgramWithDetails } from '@/hooks/useMyPrograms';
 import { useProgramContent } from '@/hooks/useProgramContent';
 import { ArticleCard } from '@/components/discover/ArticleCard';
 import { ProgramSkeleton } from '@/components/program/ProgramSkeleton';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 /**
  * ProgramDetailView Component
@@ -42,6 +43,7 @@ export function ProgramDetailView({
   onRefresh,
 }: ProgramDetailViewProps) {
   const router = useRouter();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   const { program, progress, squad, squadMembers, enrollment } = enrolled;
   const isGroup = program.type === 'group';
   
@@ -57,6 +59,12 @@ export function ProgramDetailView({
   
   // Handle joining community
   const handleJoinCommunity = async () => {
+    // In demo mode, open signup modal instead
+    if (isDemoMode) {
+      openSignupModal();
+      return;
+    }
+    
     setIsJoiningCommunity(true);
     setJoinCommunityError(null);
     

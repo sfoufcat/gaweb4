@@ -13,6 +13,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { withDemoMode } from '@/lib/demo-api';
 import type { 
   ContentPurchase,
   ProgramEnrollment,
@@ -70,6 +71,10 @@ async function getContentDetails(
  */
 export async function GET(request: Request) {
   try {
+    // Demo mode: return demo content
+    const demoData = await withDemoMode('my-content');
+    if (demoData) return demoData;
+    
     const { userId } = await auth();
 
     if (!userId) {

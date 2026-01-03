@@ -1855,8 +1855,8 @@ export interface DemoBranding {
 
 export function generateDemoBranding(): DemoBranding {
   return {
-    logoUrl: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af',
-    appTitle: 'Growth Addicts',
+    logoUrl: '/logo.jpg',
+    appTitle: 'Coach Adam',
     colors: {
       accentLight: '#a07855',
       accentDark: '#b8896a',
@@ -2704,5 +2704,193 @@ export function generateDemoNotifications(): DemoNotification[] {
       createdAt: new Date(now.getTime() - 26 * 60 * 60 * 1000).toISOString(),
     },
   ];
+}
+
+// ============================================================================
+// MY CONTENT (User's Purchased/Enrolled Content)
+// ============================================================================
+
+export interface DemoMyContentItem {
+  id: string;
+  contentType: 'event' | 'article' | 'course' | 'download' | 'link' | 'program' | 'squad';
+  contentId: string;
+  title: string;
+  description?: string;
+  coverImageUrl?: string;
+  thumbnailUrl?: string;
+  organizationId?: string;
+  coachName?: string;
+  coachImageUrl?: string;
+  purchasedAt: string;
+  includedInProgramId?: string;
+  includedInProgramName?: string;
+}
+
+/**
+ * Generate demo "My Content" items for the user
+ * Includes a mix of programs, squads, courses, articles, and downloads
+ */
+export function generateDemoMyContent(): {
+  items: DemoMyContentItem[];
+  totalCount: number;
+  counts: {
+    programs: number;
+    squads: number;
+    courses: number;
+    articles: number;
+    events: number;
+    downloads: number;
+    links: number;
+  };
+} {
+  const items: DemoMyContentItem[] = [];
+  const coachName = 'Coach Adam';
+  const coachImageUrl = 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face';
+  
+  // Programs (2) - enrolled programs
+  items.push({
+    id: 'my-prog-1',
+    contentType: 'program',
+    contentId: 'demo-prog-1',
+    title: '30-Day Transformation',
+    description: 'Transform your life in 30 days with daily guided actions.',
+    coverImageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&h=450&fit=crop',
+    organizationId: 'demo-org',
+    coachName,
+    coachImageUrl,
+    purchasedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+  });
+  
+  items.push({
+    id: 'my-prog-2',
+    contentType: 'program',
+    contentId: 'demo-prog-3',
+    title: 'Business Growth Intensive',
+    description: 'Scale your business with proven strategies.',
+    coverImageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=450&fit=crop',
+    organizationId: 'demo-org',
+    coachName,
+    coachImageUrl,
+    purchasedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+  });
+  
+  // Squad (1) - standalone squad membership
+  items.push({
+    id: 'my-squad-1',
+    contentType: 'squad',
+    contentId: 'demo-squad-2',
+    title: 'Growth Warriors',
+    description: 'High-achievers pushing boundaries and supporting each other.',
+    coverImageUrl: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&h=450&fit=crop',
+    organizationId: 'demo-org',
+    purchasedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+  });
+  
+  // Courses (2) - purchased courses
+  items.push({
+    id: 'my-course-1',
+    contentType: 'course',
+    contentId: 'demo-discover-3',
+    title: 'Goal Setting Masterclass',
+    description: 'A comprehensive guide to setting and achieving your goals. Transform your dreams into actionable plans with proven frameworks.',
+    coverImageUrl: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=800&h=400&fit=crop',
+    organizationId: 'demo-org',
+    coachName,
+    coachImageUrl,
+    purchasedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+  });
+  
+  items.push({
+    id: 'my-course-2',
+    contentType: 'course',
+    contentId: 'demo-discover-4',
+    title: 'Productivity Fundamentals',
+    description: 'Learn to manage your time and energy effectively',
+    coverImageUrl: 'https://images.unsplash.com/photo-1483058712412-4245e9b90334?w=800&h=400&fit=crop',
+    organizationId: 'demo-org',
+    coachName,
+    coachImageUrl,
+    purchasedAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString(),
+    includedInProgramId: 'demo-prog-1',
+    includedInProgramName: '30-Day Transformation',
+  });
+  
+  // Articles (2) - purchased/accessed articles
+  items.push({
+    id: 'my-article-1',
+    contentType: 'article',
+    contentId: 'demo-discover-1',
+    title: '10 Habits of Highly Successful People',
+    description: 'Discover the daily habits that drive success',
+    coverImageUrl: 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=800&h=400&fit=crop',
+    organizationId: 'demo-org',
+    coachName,
+    coachImageUrl,
+    purchasedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+  });
+  
+  items.push({
+    id: 'my-article-2',
+    contentType: 'article',
+    contentId: 'demo-discover-2',
+    title: 'The Power of Morning Routines',
+    description: 'How to start your day with intention',
+    coverImageUrl: 'https://images.unsplash.com/photo-1484627147104-f5197bcd6651?w=800&h=400&fit=crop',
+    organizationId: 'demo-org',
+    coachName,
+    coachImageUrl,
+    purchasedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+    includedInProgramId: 'demo-prog-1',
+    includedInProgramName: '30-Day Transformation',
+  });
+  
+  // Downloads (2) - purchased downloads
+  items.push({
+    id: 'my-download-1',
+    contentType: 'download',
+    contentId: 'demo-discover-7',
+    title: 'Goal Planning Worksheet',
+    description: 'A printable worksheet to plan your goals',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=400&h=300&fit=crop',
+    organizationId: 'demo-org',
+    coachName,
+    coachImageUrl,
+    purchasedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+  });
+  
+  items.push({
+    id: 'my-download-2',
+    contentType: 'download',
+    contentId: 'demo-discover-8',
+    title: 'Weekly Review Template',
+    description: 'Track your progress with this template',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=400&h=300&fit=crop',
+    organizationId: 'demo-org',
+    coachName,
+    coachImageUrl,
+    purchasedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+    includedInProgramId: 'demo-prog-1',
+    includedInProgramName: '30-Day Transformation',
+  });
+  
+  // Sort by purchasedAt (most recent first)
+  items.sort((a, b) => new Date(b.purchasedAt).getTime() - new Date(a.purchasedAt).getTime());
+  
+  // Calculate counts by type
+  const counts = {
+    programs: items.filter(i => i.contentType === 'program').length,
+    squads: items.filter(i => i.contentType === 'squad').length,
+    courses: items.filter(i => i.contentType === 'course').length,
+    articles: items.filter(i => i.contentType === 'article').length,
+    events: items.filter(i => i.contentType === 'event').length,
+    downloads: items.filter(i => i.contentType === 'download').length,
+    links: items.filter(i => i.contentType === 'link').length,
+  };
+  
+  return {
+    items,
+    totalCount: items.length,
+    counts,
+  };
 }
 

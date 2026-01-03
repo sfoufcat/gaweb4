@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useBranding } from '@/contexts/BrandingContext';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import type { Notification } from '@/types';
 
 interface UseNotificationsReturn {
@@ -38,6 +39,7 @@ interface UseNotificationsReturn {
 export function useNotifications(): UseNotificationsReturn {
   const { user, isLoaded } = useUser();
   const { branding } = useBranding();
+  const { isDemoMode } = useDemoMode();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,7 +53,8 @@ export function useNotifications(): UseNotificationsReturn {
 
   // Fetch notifications from API (for initial load and refetch)
   const fetchNotifications = useCallback(async () => {
-    if (!user?.id) return;
+    // In demo mode, we don't need a user - the API will return demo notifications
+    if (!isDemoMode && !user?.id) return;
 
     try {
       const response = await fetch('/api/notifications?limit=30');
@@ -75,10 +78,16 @@ export function useNotifications(): UseNotificationsReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, isDemoMode]);
 
   // Set up real-time listener for notifications
   useEffect(() => {
+    // In demo mode, fetch from API (which returns demo notifications)
+    if (isDemoMode) {
+      fetchNotifications();
+      return;
+    }
+    
     if (!isLoaded || !user?.id) {
       setIsLoading(false);
       return;
@@ -149,7 +158,7 @@ export function useNotifications(): UseNotificationsReturn {
     return () => {
       unsubscribe();
     };
-  }, [user?.id, isLoaded, organizationId, fetchNotifications]);
+  }, [user?.id, isLoaded, organizationId, fetchNotifications, isDemoMode]);
 
   // Mark all notifications as read
   const markAllAsRead = useCallback(async () => {

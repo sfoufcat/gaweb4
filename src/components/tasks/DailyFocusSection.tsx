@@ -28,6 +28,7 @@ import { TaskSheetManage } from './TaskSheetManage';
 import { useTasks } from '@/hooks/useTasks';
 import { useActiveEnrollment } from '@/hooks/useActiveEnrollment';
 import { useDailyFocusLimit } from '@/hooks/useDailyFocusLimit';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import type { Task } from '@/types';
 
 // Empty drop zone component for when Daily Focus has no tasks
@@ -95,6 +96,9 @@ export function DailyFocusSection({
   
   // Get org's daily focus limit
   const { limit: focusLimit } = useDailyFocusLimit();
+  
+  // Demo mode for signup modal
+  const { isDemoMode, openSignupModal } = useDemoMode();
   
   // Determine if we should show the starter program badge
   const programBadge = hasEnrollment && enrollment?.status === 'active' && program?.name
@@ -297,6 +301,12 @@ export function DailyFocusSection({
 
   // Open edit sheet from manage sheet
   const handleEditFromManage = () => {
+    // In demo mode, open signup modal instead
+    if (isDemoMode) {
+      openSignupModal();
+      setShowManageSheet(false);
+      return;
+    }
     setEditingTask(selectedTask);
     setShowManageSheet(false);
     setShowDefineSheet(true);
@@ -304,6 +314,11 @@ export function DailyFocusSection({
 
   // Open add task sheet
   const handleAddTask = (toBacklog: boolean = false) => {
+    // In demo mode, open signup modal instead
+    if (isDemoMode) {
+      openSignupModal();
+      return;
+    }
     setEditingTask(null);
     setForceBacklog(toBacklog);
     setShowDefineSheet(true);

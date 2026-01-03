@@ -603,9 +603,9 @@ export const proxy = clerkMiddleware(async (auth, request) => {
       
       // Set demo tenant cookie so branding context gets demo-friendly values
       const demoBrandingData = {
-        logoUrl: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af',
+        logoUrl: '/logo.jpg',
         horizontalLogoUrl: null,
-        appTitle: 'Growth Addicts',
+        appTitle: 'Coach Adam',
         colors: {
           accentLight: '#a07855',
           accentDark: '#b8896a',

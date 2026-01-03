@@ -33,6 +33,7 @@ import {
   generateDemoFeedPosts,
   generateDemoUserProfile,
   generateDemoFeatureRequests,
+  generateDemoMyContent,
   getDemoSquads,
   getDemoPrograms,
 } from './demo-data';
@@ -547,6 +548,11 @@ export const demoHandlers = {
       role: 'member',
     }));
     return demoResponse({ squads: memberSquads });
+  },
+  
+  'my-content': () => {
+    const data = generateDemoMyContent();
+    return demoResponse(data);
   },
   
   'org-discover-programs': () => {

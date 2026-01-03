@@ -14,7 +14,7 @@ import DemoChatComponents from './DemoChatComponents';
 function ChatLoadingSkeleton() {
   return (
     <div 
-      className="fixed top-0 left-0 right-0 lg:left-64 flex flex-col bg-[#faf8f6] dark:bg-[#05070b] pb-[85px] lg:pb-0"
+      className="fixed top-0 left-0 right-0 lg:left-[72px] flex flex-col bg-[#faf8f6] dark:bg-[#05070b] pb-[85px] lg:pb-0"
       style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}
     >
       <div className="flex h-full overflow-hidden">

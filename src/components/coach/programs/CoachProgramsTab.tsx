@@ -283,6 +283,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
         name: dp.name,
         slug: dp.slug,
         description: dp.description,
+        coverImageUrl: dp.coverImageUrl,
         type: dp.type,
         lengthDays: dp.durationDays,
         priceInCents: dp.priceInCents,

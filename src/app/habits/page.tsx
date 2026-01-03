@@ -3,19 +3,140 @@
 // Force dynamic rendering for this page
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
 import { Sparkles, CheckCircle2 } from 'lucide-react';
 import { useHabits } from '@/hooks/useHabits';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { DEMO_USER } from '@/lib/demo-utils';
 import type { Habit, FrequencyType } from '@/types';
 
 type TabType = 'active' | 'completed';
 
+// Demo habits data
+const DEMO_HABITS: Habit[] = [
+  {
+    id: 'demo-habit-1',
+    userId: DEMO_USER.id,
+    organizationId: 'demo-org',
+    text: 'Morning Meditation',
+    frequencyType: 'daily',
+    frequencyValue: 1,
+    reminder: { time: '07:00', enabled: true },
+    targetRepetitions: 30,
+    linkedRoutine: 'Start your day with clarity',
+    progress: {
+      currentCount: 12,
+      lastCompletedDate: new Date().toISOString().split('T')[0],
+      completionDates: [new Date().toISOString().split('T')[0]],
+      skipDates: [],
+    },
+    archived: false,
+    status: 'active',
+    source: 'user',
+    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'demo-habit-2',
+    userId: DEMO_USER.id,
+    organizationId: 'demo-org',
+    text: 'Exercise',
+    frequencyType: 'daily',
+    frequencyValue: 1,
+    reminder: { time: '08:00', enabled: true },
+    targetRepetitions: 30,
+    linkedRoutine: 'Build strength and energy',
+    progress: {
+      currentCount: 8,
+      lastCompletedDate: null,
+      completionDates: [],
+      skipDates: [],
+    },
+    archived: false,
+    status: 'active',
+    source: 'user',
+    createdAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'demo-habit-3',
+    userId: DEMO_USER.id,
+    organizationId: 'demo-org',
+    text: 'Journaling',
+    frequencyType: 'daily',
+    frequencyValue: 1,
+    reminder: { time: '21:00', enabled: true },
+    targetRepetitions: 30,
+    linkedRoutine: 'Reflect and grow',
+    progress: {
+      currentCount: 5,
+      lastCompletedDate: new Date().toISOString().split('T')[0],
+      completionDates: [new Date().toISOString().split('T')[0]],
+      skipDates: [],
+    },
+    archived: false,
+    status: 'active',
+    source: 'user',
+    createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+// Completed demo habits
+const DEMO_COMPLETED_HABITS: Habit[] = [
+  {
+    id: 'demo-habit-completed-1',
+    userId: DEMO_USER.id,
+    organizationId: 'demo-org',
+    text: 'Read 30 Minutes',
+    frequencyType: 'daily',
+    frequencyValue: 1,
+    reminder: null,
+    targetRepetitions: 30,
+    linkedRoutine: 'Expand your knowledge',
+    progress: {
+      currentCount: 30,
+      lastCompletedDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      completionDates: [],
+      skipDates: [],
+    },
+    archived: false,
+    status: 'active',
+    source: 'user',
+    createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'demo-habit-completed-2',
+    userId: DEMO_USER.id,
+    organizationId: 'demo-org',
+    text: 'Drink 8 Glasses of Water',
+    frequencyType: 'daily',
+    frequencyValue: 1,
+    reminder: null,
+    targetRepetitions: 21,
+    linkedRoutine: 'Stay hydrated',
+    progress: {
+      currentCount: 21,
+      lastCompletedDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      completionDates: [],
+      skipDates: [],
+    },
+    archived: true,
+    status: 'active',
+    source: 'user',
+    createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
 export default function GrowingHabitsPage() {
   const router = useRouter();
-  const { user, isLoaded } = useUser();
+  const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
+  const { isDemoMode, openSignupModal } = useDemoMode();
   const { habits: currentHabits, isLoading: isLoadingCurrent } = useHabits();
   const [archivedHabits, setArchivedHabits] = useState<Habit[]>([]);
   const [isLoadingArchived, setIsLoadingArchived] = useState(false);
@@ -25,8 +146,42 @@ export default function GrowingHabitsPage() {
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
 
-  // Fetch archived habits when component mounts
+  // In demo mode, use mock user
+  const user = useMemo(() => {
+    if (isDemoMode) {
+      return {
+        id: DEMO_USER.id,
+        firstName: DEMO_USER.firstName,
+        lastName: DEMO_USER.lastName,
+        imageUrl: DEMO_USER.imageUrl,
+      };
+    }
+    return clerkUser;
+  }, [isDemoMode, clerkUser]);
+
+  const isLoaded = isDemoMode ? true : clerkLoaded;
+
+  // Use demo habits in demo mode
+  const habits = useMemo(() => {
+    if (isDemoMode) {
+      return DEMO_HABITS;
+    }
+    return currentHabits;
+  }, [isDemoMode, currentHabits]);
+
+  const demoArchivedHabits = useMemo(() => {
+    if (isDemoMode) {
+      return DEMO_COMPLETED_HABITS;
+    }
+    return archivedHabits;
+  }, [isDemoMode, archivedHabits]);
+
+  // Fetch archived habits when component mounts (skip in demo mode)
   useEffect(() => {
+    if (isDemoMode) {
+      return;
+    }
+    
     const fetchArchivedHabits = async () => {
       try {
         setIsLoadingArchived(true);
@@ -45,7 +200,7 @@ export default function GrowingHabitsPage() {
     if (isLoaded && user) {
       fetchArchivedHabits();
     }
-  }, [isLoaded, user]);
+  }, [isLoaded, user, isDemoMode]);
 
   // Format frequency for display
   const formatFrequency = (frequencyType: FrequencyType, frequencyValue: number[] | number): string => {
@@ -120,15 +275,20 @@ export default function GrowingHabitsPage() {
   };
 
   // Filter for display based on active tab
-  const activeHabits = currentHabits.filter(h => getHabitStatus(h) === 'active');
-  const completedHabits = currentHabits.filter(h => getHabitStatus(h) === 'completed');
-  const displayCompletedHabits = [...completedHabits, ...archivedHabits];
+  const activeHabits = habits.filter(h => getHabitStatus(h) === 'active');
+  const completedHabits = habits.filter(h => getHabitStatus(h) === 'completed');
+  const displayCompletedHabits = [...completedHabits, ...demoArchivedHabits];
   
   const displayedHabits = activeTab === 'active' ? activeHabits : displayCompletedHabits;
-  const isLoading = isLoadingCurrent || isLoadingArchived;
+  const isLoadingState = isDemoMode ? false : (isLoadingCurrent || isLoadingArchived);
 
   // Handle habit click - on all habits page, always go to edit page
   const handleHabitClick = (habit: Habit) => {
+    // In demo mode, open signup modal instead
+    if (isDemoMode) {
+      openSignupModal();
+      return;
+    }
     router.push(`/habits/${habit.id}`);
   };
 
@@ -185,7 +345,7 @@ export default function GrowingHabitsPage() {
 
   // Check if habit is archived (from archivedHabits list)
   const isArchivedHabit = (habit: Habit): boolean => {
-    return archivedHabits.some(h => h.id === habit.id);
+    return demoArchivedHabits.some(h => h.id === habit.id);
   };
 
   // Get the habit being restored
@@ -264,7 +424,7 @@ export default function GrowingHabitsPage() {
         </div>
 
         {/* Habits List */}
-        {isLoading ? (
+        {isLoadingState ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-text-primary" />
           </div>
@@ -284,12 +444,21 @@ export default function GrowingHabitsPage() {
                 : 'Completed habits will appear here'}
             </p>
             {activeTab === 'active' && (
-              <Link 
-                href="/habits/new"
-                className="inline-block px-8 py-3 bg-earth-900 dark:bg-brand-accent text-white rounded-full font-sans text-[14px] font-medium hover:scale-105 transition-all"
-              >
-                Create your first habit
-              </Link>
+              isDemoMode ? (
+                <button
+                  onClick={openSignupModal}
+                  className="inline-block px-8 py-3 bg-earth-900 dark:bg-brand-accent text-white rounded-full font-sans text-[14px] font-medium hover:scale-105 transition-all"
+                >
+                  Create your first habit
+                </button>
+              ) : (
+                <Link 
+                  href="/habits/new"
+                  className="inline-block px-8 py-3 bg-earth-900 dark:bg-brand-accent text-white rounded-full font-sans text-[14px] font-medium hover:scale-105 transition-all"
+                >
+                  Create your first habit
+                </Link>
+              )
             )}
           </div>
         ) : (
@@ -315,14 +484,16 @@ export default function GrowingHabitsPage() {
                   {/* Main content - clickable for active habits OR archived habits (restore) */}
                   <div 
                     onClick={
-                      isInCompletedTab 
-                        ? (isArchivedHabit(habit) ? () => { setRestoreHabitId(habit.id); setRestoreError(null); } : undefined)
-                        : () => handleHabitClick(habit)
+                      isDemoMode 
+                        ? openSignupModal
+                        : (isInCompletedTab 
+                            ? (isArchivedHabit(habit) ? () => { setRestoreHabitId(habit.id); setRestoreError(null); } : undefined)
+                            : () => handleHabitClick(habit))
                     }
                     className={`flex gap-3 flex-1 ${
-                      isInCompletedTab 
-                        ? (isArchivedHabit(habit) ? 'cursor-pointer hover:scale-[1.01] transition-all' : 'cursor-default')
-                        : 'cursor-pointer hover:scale-[1.01] transition-all'
+                      isDemoMode || !isInCompletedTab || isArchivedHabit(habit)
+                        ? 'cursor-pointer hover:scale-[1.01] transition-all' 
+                        : 'cursor-default'
                     }`}
                   >
                     {/* Circular Progress Chart */}
@@ -405,7 +576,7 @@ export default function GrowingHabitsPage() {
                   {/* Delete button - only show in completed tab */}
                   {isInCompletedTab && (
                     <button
-                      onClick={() => setDeleteConfirmHabitId(habit.id)}
+                      onClick={isDemoMode ? openSignupModal : () => setDeleteConfirmHabitId(habit.id)}
                       className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                       aria-label="Delete habit"
                     >
@@ -420,14 +591,25 @@ export default function GrowingHabitsPage() {
 
             {/* Add Habit Button - only show on Active tab */}
             {activeTab === 'active' && (
-              <Link
-                href="/habits/new"
-                className="bg-[#f3f1ef] dark:bg-[#171b22] rounded-[20px] p-4 flex items-center justify-center w-full text-center hover:scale-[1.01] transition-all"
-              >
-                <p className="font-albert text-[18px] font-semibold text-text-muted dark:text-[#7d8190] tracking-[-1px] leading-[1.3]">
-                  Add habit
-                </p>
-              </Link>
+              isDemoMode ? (
+                <button
+                  onClick={openSignupModal}
+                  className="bg-[#f3f1ef] dark:bg-[#171b22] rounded-[20px] p-4 flex items-center justify-center w-full text-center hover:scale-[1.01] transition-all"
+                >
+                  <p className="font-albert text-[18px] font-semibold text-text-muted dark:text-[#7d8190] tracking-[-1px] leading-[1.3]">
+                    Add habit
+                  </p>
+                </button>
+              ) : (
+                <Link
+                  href="/habits/new"
+                  className="bg-[#f3f1ef] dark:bg-[#171b22] rounded-[20px] p-4 flex items-center justify-center w-full text-center hover:scale-[1.01] transition-all"
+                >
+                  <p className="font-albert text-[18px] font-semibold text-text-muted dark:text-[#7d8190] tracking-[-1px] leading-[1.3]">
+                    Add habit
+                  </p>
+                </Link>
+              )
             )}
           </div>
         )}
