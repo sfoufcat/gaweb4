@@ -10,6 +10,7 @@ import { DEFAULT_MENU_TITLES, DEFAULT_MENU_ICONS, DEFAULT_MENU_ORDER, DEFAULT_AP
 import { getStreamServerClient } from '@/lib/stream-server';
 import { addUserToOrganization } from '@/lib/clerk-organizations';
 import type { CoachingStatus, CoachingPlan, FlowSession, Program, ProgramEnrollment, ProgramInvite, NewProgramEnrollmentStatus, CoachTier, CoachSubscriptionStatus, Squad, SquadMember } from '@/types';
+import { checkExistingEnrollment } from '@/lib/enrollment-check';
 
 // =============================================================================
 // CLERK ORG METADATA SYNC
@@ -1285,6 +1286,36 @@ async function handleFunnelPaymentSucceeded(paymentIntent: Stripe.PaymentIntent)
   }
 
   const program = programDoc.data() as Program;
+
+  // Check for existing active/upcoming enrollment in this program
+  // This prevents duplicate enrollments when webhook fires after user already enrolled via verify-payment
+  const enrollmentCheck = await checkExistingEnrollment(userId, flowSession.programId);
+  
+  if (enrollmentCheck.exists && !enrollmentCheck.allowReEnrollment) {
+    console.log(`[STRIPE_WEBHOOK] User ${userId} already enrolled in program ${flowSession.programId}, updating payment info`);
+    
+    // Update existing enrollment with payment info instead of creating duplicate
+    const existingEnrollmentId = enrollmentCheck.enrollment!.id;
+    await adminDb.collection('program_enrollments').doc(existingEnrollmentId).update({
+      stripePaymentIntentId: paymentIntent.id,
+      paidAt: new Date().toISOString(),
+      amountPaid: paymentIntent.amount || program.priceInCents || 0,
+      updatedAt: new Date().toISOString(),
+    });
+    
+    // Mark flow session as completed
+    await sessionRef.update({
+      completedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      data: {
+        ...flowSession.data,
+        stripePaymentIntentId: paymentIntent.id,
+      },
+    });
+    
+    console.log(`[STRIPE_WEBHOOK] Updated existing enrollment ${existingEnrollmentId} with payment info`);
+    return;
+  }
 
   // Handle invite if present
   let invite: ProgramInvite | null = null;

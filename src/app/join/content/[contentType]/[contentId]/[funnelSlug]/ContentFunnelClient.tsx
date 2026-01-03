@@ -31,6 +31,7 @@ import { InfoStep } from '@/components/funnel/steps/InfoStep';
 import { SuccessStep } from '@/components/funnel/steps/SuccessStep';
 import { InfluencePromptCard } from '@/components/funnel/InfluencePromptCard';
 import { FunnelPixelTracker } from '@/components/funnel/FunnelPixelTracker';
+import { AlreadyEnrolledModal, ProductType } from '@/components/AlreadyEnrolledModal';
 
 /**
  * Darken or lighten a hex color
@@ -81,6 +82,11 @@ interface ContentFunnelClientProps {
   hostname: string;
   tenantSubdomain?: string | null;
   referrerId?: string;
+  /** Existing purchase if user already owns this content */
+  existingPurchase?: {
+    id: string;
+    redirectUrl: string;
+  } | null;
 }
 
 interface FlowSessionData {
@@ -98,6 +104,7 @@ export default function ContentFunnelClient({
   hostname,
   tenantSubdomain,
   referrerId,
+  existingPurchase,
 }: ContentFunnelClientProps) {
   const router = useRouter();
   const { isSignedIn, userId, isLoaded } = useAuth();
@@ -109,6 +116,9 @@ export default function ContentFunnelClient({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
+  
+  // Already purchased modal state
+  const [showAlreadyPurchasedModal, setShowAlreadyPurchasedModal] = useState(!!existingPurchase);
 
   // Skip payment if invite is pre-paid
   const skipPayment = validatedInvite?.paymentStatus === 'pre_paid' || validatedInvite?.paymentStatus === 'free';
@@ -586,6 +596,18 @@ export default function ContentFunnelClient({
           Powered by {branding.appTitle}
         </p>
       </footer>
+
+      {/* Already Purchased Modal - shown when user already owns this content */}
+      {existingPurchase && (
+        <AlreadyEnrolledModal
+          isOpen={showAlreadyPurchasedModal}
+          onClose={() => setShowAlreadyPurchasedModal(false)}
+          productType={content.type as ProductType}
+          productName={content.title}
+          redirectUrl={existingPurchase.redirectUrl}
+          message={`You already own ${content.title}. No need to purchase again!`}
+        />
+      )}
     </div>
   );
 }

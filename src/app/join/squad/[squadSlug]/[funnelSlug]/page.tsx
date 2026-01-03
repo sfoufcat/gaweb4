@@ -9,9 +9,11 @@
 
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
+import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { resolveTenant } from '@/lib/tenant/resolveTenant';
 import { getBrandingForDomain, getBestLogoUrl } from '@/lib/server/branding';
+import { checkExistingSquadMembership, getProductRedirectUrl } from '@/lib/enrollment-check';
 import SquadFunnelClient from './SquadFunnelClient';
 import type { Funnel, FunnelStep, OrgSettings } from '@/types';
 import { mergeTrackingConfig } from '@/lib/tracking-utils';
@@ -79,6 +81,25 @@ export default async function SquadFunnelPage({ params, searchParams }: SquadFun
     organizationId: squadData.organizationId,
     isActive: squadData.isActive !== false,
   };
+
+  // Check for existing squad membership (for authenticated users)
+  let existingMembership: {
+    id: string;
+    redirectUrl: string;
+  } | null = null;
+  
+  const { userId } = await auth();
+  
+  if (userId) {
+    const membershipCheck = await checkExistingSquadMembership(userId, squad.id);
+    
+    if (membershipCheck.exists) {
+      existingMembership = {
+        id: membershipCheck.membership!.id,
+        redirectUrl: getProductRedirectUrl('squad', squad.id),
+      };
+    }
+  }
 
   // Find funnel by slug (targeting this squad)
   const funnelsSnapshot = await adminDb
@@ -216,6 +237,7 @@ export default async function SquadFunnelPage({ params, searchParams }: SquadFun
       validatedInvite={validatedInvite}
       hostname={hostname}
       referrerId={referrerId}
+      existingMembership={existingMembership}
     />
   );
 }

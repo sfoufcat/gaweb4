@@ -282,6 +282,29 @@ export async function POST(req: Request) {
       );
     }
 
+    // Extract Stripe customer IDs from session data (guest checkout stores them here)
+    // Keys are like: stripeCustomerId_acct_xxx -> customer ID on that connected account
+    const sessionStripeCustomerIds: Record<string, string> = {};
+    if (sessionData) {
+      Object.keys(sessionData).forEach(key => {
+        if (key.startsWith('stripeCustomerId_')) {
+          const accountId = key.replace('stripeCustomerId_', '');
+          const customerId = sessionData[key];
+          if (accountId && typeof customerId === 'string') {
+            sessionStripeCustomerIds[accountId] = customerId;
+          }
+        }
+      });
+    }
+
+    // Merge with existing user's Stripe customer IDs (if any)
+    const existingUserData = userDoc.exists ? userDoc.data() : null;
+    const existingStripeCustomerIds = (existingUserData?.stripeConnectedCustomerIds || {}) as Record<string, string>;
+    const mergedStripeCustomerIds = {
+      ...existingStripeCustomerIds,
+      ...sessionStripeCustomerIds, // New IDs from session override if duplicate
+    };
+
     const userUpdate: Record<string, unknown> = {
       // Basic info from Clerk
       email: clerkUser.emailAddresses[0]?.emailAddress || '',
@@ -296,6 +319,10 @@ export async function POST(req: Request) {
       currentProgramId: session.programId,
       // Flow session data (goal, identity, etc.)
       ...extractUserDataFromSession(session.data),
+      // Link Stripe customer IDs from guest checkout (critical for saved payment methods)
+      ...(Object.keys(mergedStripeCustomerIds).length > 0 && {
+        stripeConnectedCustomerIds: mergedStripeCustomerIds,
+      }),
       // Timestamps
       updatedAt: now,
     };
@@ -306,6 +333,11 @@ export async function POST(req: Request) {
     }
 
     await userRef.set(userUpdate, { merge: true });
+
+    // Log if we linked any Stripe customer IDs from guest checkout
+    if (Object.keys(sessionStripeCustomerIds).length > 0) {
+      console.log(`[FUNNEL_COMPLETE] Linked ${Object.keys(sessionStripeCustomerIds).length} Stripe customer ID(s) from guest checkout for user ${userId}`);
+    }
 
     // Update user's squad reference if assigned
     // This is done separately to properly handle premium vs standard squad fields

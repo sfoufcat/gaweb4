@@ -10,12 +10,14 @@
 
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
+import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { resolveTenant } from '@/lib/tenant/resolveTenant';
 import { getBrandingForDomain, getBestLogoUrl } from '@/lib/server/branding';
+import { checkExistingContentPurchase, getProductRedirectUrl } from '@/lib/enrollment-check';
 import ContentFunnelClient from './ContentFunnelClient';
 import FunnelDeactivated from '@/components/FunnelDeactivated';
-import type { Funnel, FunnelStep, FunnelContentType, OrgSettings, CoachSubscriptionStatus } from '@/types';
+import type { Funnel, FunnelStep, FunnelContentType, OrgSettings, CoachSubscriptionStatus, ContentPurchaseType } from '@/types';
 import { mergeTrackingConfig } from '@/lib/tracking-utils';
 
 /**
@@ -94,6 +96,27 @@ export default async function ContentFunnelPage({ params, searchParams }: Conten
   // Verify content belongs to the organization (if on tenant domain)
   if (organizationId && contentData?.organizationId !== organizationId) {
     notFound();
+  }
+
+  // Check for existing content purchase (for authenticated users)
+  let existingPurchase: {
+    id: string;
+    redirectUrl: string;
+  } | null = null;
+  
+  const { userId } = await auth();
+  
+  if (userId) {
+    // Map FunnelContentType to ContentPurchaseType
+    const purchaseType = contentType as ContentPurchaseType;
+    const purchaseCheck = await checkExistingContentPurchase(userId, purchaseType, contentId);
+    
+    if (purchaseCheck.exists) {
+      existingPurchase = {
+        id: purchaseCheck.purchase!.id,
+        redirectUrl: getProductRedirectUrl('content', contentId, purchaseType),
+      };
+    }
   }
 
   // Find funnel by contentId and slug
@@ -331,6 +354,7 @@ export default async function ContentFunnelPage({ params, searchParams }: Conten
       hostname={hostname}
       tenantSubdomain={tenantSubdomain}
       referrerId={referrerId}
+      existingPurchase={existingPurchase}
     />
   );
 }

@@ -36,6 +36,7 @@ import { InfoStep } from '@/components/funnel/steps/InfoStep';
 import { SuccessStep } from '@/components/funnel/steps/SuccessStep';
 import { InfluencePromptCard } from '@/components/funnel/InfluencePromptCard';
 import { FunnelPixelTracker } from '@/components/funnel/FunnelPixelTracker';
+import { AlreadyEnrolledModal } from '@/components/AlreadyEnrolledModal';
 
 /**
  * Darken or lighten a hex color
@@ -82,6 +83,11 @@ interface SquadFunnelClientProps {
   } | null;
   hostname: string;
   referrerId?: string;
+  /** Existing membership if user is already a member of this squad */
+  existingMembership?: {
+    id: string;
+    redirectUrl: string;
+  } | null;
 }
 
 interface FlowSessionData {
@@ -98,6 +104,7 @@ export default function SquadFunnelClient({
   validatedInvite,
   hostname,
   referrerId,
+  existingMembership,
 }: SquadFunnelClientProps) {
   const router = useRouter();
   const { isSignedIn, userId, isLoaded } = useAuth();
@@ -109,6 +116,9 @@ export default function SquadFunnelClient({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
+  
+  // Already member modal state
+  const [showAlreadyMemberModal, setShowAlreadyMemberModal] = useState(!!existingMembership);
 
   // Skip payment if invite is pre-paid
   const skipPayment = validatedInvite?.paymentStatus === 'pre_paid' || validatedInvite?.paymentStatus === 'free';
@@ -523,6 +533,18 @@ export default function SquadFunnelClient({
           </AnimatePresence>
         </div>
       </main>
+
+      {/* Already Member Modal - shown when user is already a member of this squad */}
+      {existingMembership && (
+        <AlreadyEnrolledModal
+          isOpen={showAlreadyMemberModal}
+          onClose={() => setShowAlreadyMemberModal(false)}
+          productType="squad"
+          productName={squad.name}
+          redirectUrl={existingMembership.redirectUrl}
+          message={`You are already a member of ${squad.name}. No need to join again!`}
+        />
+      )}
     </div>
   );
 }

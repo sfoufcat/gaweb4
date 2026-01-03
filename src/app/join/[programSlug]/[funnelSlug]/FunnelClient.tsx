@@ -66,6 +66,8 @@ import { InfoStep } from '@/components/funnel/steps/InfoStep';
 import { SuccessStep } from '@/components/funnel/steps/SuccessStep';
 import { InfluencePromptCard } from '@/components/funnel/InfluencePromptCard';
 import { FunnelPixelTracker } from '@/components/funnel/FunnelPixelTracker';
+import { AlreadyEnrolledModal } from '@/components/AlreadyEnrolledModal';
+import type { NewProgramEnrollmentStatus } from '@/types';
 
 interface FunnelClientProps {
   funnel: Funnel;
@@ -103,6 +105,12 @@ interface FunnelClientProps {
   hostname: string;
   tenantSubdomain?: string | null;
   referrerId?: string;
+  /** Existing enrollment if user already enrolled in this program */
+  existingEnrollment?: {
+    id: string;
+    status: NewProgramEnrollmentStatus;
+    redirectUrl: string;
+  } | null;
 }
 
 interface FlowSessionData {
@@ -120,6 +128,7 @@ export default function FunnelClient({
   hostname,
   tenantSubdomain,
   referrerId,
+  existingEnrollment,
 }: FunnelClientProps) {
   const router = useRouter();
   const { isSignedIn, userId, isLoaded } = useAuth();
@@ -131,6 +140,9 @@ export default function FunnelClient({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
+  
+  // Already enrolled modal state
+  const [showAlreadyEnrolledModal, setShowAlreadyEnrolledModal] = useState(!!existingEnrollment);
   
   // Upsell/Downsell tracking - which upsells were declined (to show their linked downsells)
   const [declinedUpsellStepIds, setDeclinedUpsellStepIds] = useState<string[]>([]);
@@ -846,6 +858,18 @@ export default function FunnelClient({
           )}
         </motion.div>
       </AnimatePresence>
+
+      {/* Already Enrolled Modal - shown when user already owns this program */}
+      {existingEnrollment && (
+        <AlreadyEnrolledModal
+          isOpen={showAlreadyEnrolledModal}
+          onClose={() => setShowAlreadyEnrolledModal(false)}
+          productType="program"
+          productName={program.name}
+          redirectUrl={existingEnrollment.redirectUrl}
+          message={`You are already enrolled in ${program.name}. No need to purchase again!`}
+        />
+      )}
     </div>
   );
 }

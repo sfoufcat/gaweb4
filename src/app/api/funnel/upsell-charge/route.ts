@@ -3,12 +3,19 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { enrollUserInProduct } from '@/lib/enrollments';
+import { 
+  checkExistingEnrollment, 
+  checkExistingSquadMembership, 
+  checkExistingContentPurchase,
+  getProductRedirectUrl,
+} from '@/lib/enrollment-check';
 import type { 
   FlowSession, 
   OrgSettings, 
   FunnelStep, 
   FunnelStepConfigUpsell,
   FunnelStepConfigDownsell,
+  ContentPurchaseType,
 } from '@/types';
 
 // Lazy initialization to avoid build-time errors
@@ -112,6 +119,42 @@ export async function POST(req: Request) {
     }
 
     const stepConfig = (step.config as { type: 'upsell' | 'downsell'; config: FunnelStepConfigUpsell | FunnelStepConfigDownsell }).config;
+
+    // Check if user already owns this product (prevent charging for something they already have)
+    // Only check for authenticated users since guest enrollment happens after this
+    const effectiveUserId = userId || session.userId;
+    
+    if (effectiveUserId && stepConfig.productId) {
+      let alreadyOwns = false;
+      let productName = stepConfig.productName || 'this product';
+      let redirectUrl = '/';
+      
+      if (stepConfig.productType === 'program') {
+        const enrollmentCheck = await checkExistingEnrollment(effectiveUserId, stepConfig.productId);
+        alreadyOwns = enrollmentCheck.exists && !enrollmentCheck.allowReEnrollment;
+        redirectUrl = getProductRedirectUrl('program', stepConfig.productId);
+      } else if (stepConfig.productType === 'squad') {
+        const membershipCheck = await checkExistingSquadMembership(effectiveUserId, stepConfig.productId);
+        alreadyOwns = membershipCheck.exists;
+        redirectUrl = getProductRedirectUrl('squad', stepConfig.productId);
+      } else if (['article', 'course', 'content'].includes(stepConfig.productType)) {
+        const contentType = (stepConfig.productType === 'content' ? 'article' : stepConfig.productType) as ContentPurchaseType;
+        const purchaseCheck = await checkExistingContentPurchase(effectiveUserId, contentType, stepConfig.productId);
+        alreadyOwns = purchaseCheck.exists;
+        redirectUrl = getProductRedirectUrl('content', stepConfig.productId, contentType);
+      }
+      
+      if (alreadyOwns) {
+        console.log(`[UPSELL_CHARGE] User ${effectiveUserId} already owns ${stepConfig.productType} ${stepConfig.productId}`);
+        return NextResponse.json({
+          error: `You already own ${productName}`,
+          alreadyOwned: true,
+          productType: stepConfig.productType,
+          productId: stepConfig.productId,
+          redirectUrl,
+        }, { status: 400 });
+      }
+    }
 
     // Get organization settings for Stripe Connect
     const orgSettingsDoc = await adminDb.collection('org_settings').doc(session.organizationId).get();

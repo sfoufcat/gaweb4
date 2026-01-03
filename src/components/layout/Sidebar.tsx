@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { UserButton, useAuth } from '@clerk/nextjs';
+import { UserButton, useAuth, useOrganizationList } from '@clerk/nextjs';
 import Image from 'next/image';
 import { isAdmin, canAccessEditorSection, isSuperAdmin, isOrgCoach } from '@/lib/admin-utils-shared';
 import type { UserRole, OrgRole, MenuItemKey } from '@/types';
@@ -77,8 +77,13 @@ export function Sidebar() {
   const { effectiveBranding } = useBranding();
   const { theme } = useTheme();
   
-  // Get organization context for tenant-specific role checking
+  // Get organization context for tenant-specific role checking (Firestore-based)
   const { organizations, isLoading: orgLoading } = useOrganization();
+  
+  // Get Clerk native organization memberships (direct from Clerk)
+  const { userMemberships, isLoaded: clerkOrgsLoaded } = useOrganizationList({
+    userMemberships: { infinite: true },
+  });
   
   // Get the appropriate accent color and foreground based on theme
   const currentAccentColor = theme === 'dark' ? colors.accentDark : colors.accentLight;
@@ -127,7 +132,7 @@ export function Sidebar() {
     ? effectiveBranding.organizationId 
     : null;
   
-  // Find user's membership in the current tenant org
+  // Find user's membership in the current tenant org (Firestore-based)
   const currentTenantMembership = useMemo(() => {
     if (!currentTenantOrgId || !organizations || organizations.length === 0) {
       return null;
@@ -135,9 +140,20 @@ export function Sidebar() {
     return organizations.find(org => org.id === currentTenantOrgId);
   }, [currentTenantOrgId, organizations]);
   
+  // Find user's Clerk membership in the current tenant org
+  const clerkTenantMembership = useMemo(() => {
+    if (!currentTenantOrgId || !userMemberships?.data) {
+      return null;
+    }
+    return userMemberships.data.find(m => m.organization.id === currentTenantOrgId);
+  }, [currentTenantOrgId, userMemberships?.data]);
+  
+  // Check if user is admin in Clerk for this tenant (org:admin = super_coach equivalent)
+  const isClerkAdmin = clerkTenantMembership?.role === 'org:admin';
+  
   // Determine coach dashboard access:
   // - On platform domain (isDefault=true): Use publicMetadata roles (legacy behavior)
-  // - On tenant domain: ONLY show if user has coach/super_coach role IN THIS TENANT
+  // - On tenant domain: Check BOTH Clerk native memberships AND Firestore memberships
   const showCoachDashboard = useMemo(() => {
     // Demo mode always shows coach dashboard
     if (isDemoSite) return true;
@@ -152,25 +168,29 @@ export function Sidebar() {
     // Super admins can always see coach dashboard (for debugging/support)
     if (role === 'super_admin') return true;
     
-    // If we found the tenant membership, check the actual role
+    // Check 1: Clerk native membership - org:admin is equivalent to super_coach
+    if (isClerkAdmin) {
+      console.log('🔍 Clerk org:admin found - granting coach dashboard access');
+      return true;
+    }
+    
+    // Check 2: Firestore membership via OrganizationContext
     if (currentTenantMembership) {
       const membershipOrgRole = currentTenantMembership.membership?.orgRole as OrgRole | undefined;
-      console.log('🔍 Checking tenant membership orgRole:', membershipOrgRole, 'isOrgCoach:', isOrgCoach(membershipOrgRole));
+      console.log('🔍 Checking Firestore membership orgRole:', membershipOrgRole, 'isOrgCoach:', isOrgCoach(membershipOrgRole));
       return isOrgCoach(membershipOrgRole);
     }
     
-    // If still loading org data, use publicMetadata.orgRole as optimistic fallback
-    // This prevents flash of "no dashboard" for actual coaches while loading
-    if (orgLoading) {
-      console.log('🔍 Still loading, using orgRole fallback:', orgRole);
-      return isOrgCoach(orgRole);
+    // Still loading? Wait - don't flash anything
+    if (orgLoading || !clerkOrgsLoaded) {
+      console.log('🔍 Still loading memberships...');
+      return false; // Don't show while loading - prevents flash
     }
     
-    // Org data loaded but no membership found in this tenant
-    // User is NOT a coach of this specific organization
-    console.log('🔍 No membership found in tenant after loading - hiding coach dashboard');
+    // Both systems loaded, no membership found - no access
+    console.log('🔍 No coach membership found in tenant');
     return false;
-  }, [isDemoSite, isDefault, role, orgRole, orgLoading, currentTenantMembership]);
+  }, [isDemoSite, isDefault, role, isClerkAdmin, currentTenantMembership, orgLoading, clerkOrgsLoaded]);
 
   // DEBUG: Log session claims and role
   useEffect(() => {
@@ -181,14 +201,18 @@ export function Sidebar() {
     console.log('publicMetadata role:', role);
     console.log('publicMetadata orgRole:', orgRole);
     console.log('isDefault (platform domain):', isDefault);
-    console.log('effectiveBranding.organizationId:', effectiveBranding.organizationId);
     console.log('currentTenantOrgId:', currentTenantOrgId);
-    console.log('organizations:', organizations);
+    console.log('-- Clerk Memberships --');
+    console.log('clerkOrgsLoaded:', clerkOrgsLoaded);
+    console.log('clerkTenantMembership:', clerkTenantMembership);
+    console.log('isClerkAdmin:', isClerkAdmin);
+    console.log('-- Firestore Memberships --');
+    console.log('orgLoading:', orgLoading);
     console.log('currentTenantMembership:', currentTenantMembership);
     console.log('currentTenantMembership?.membership?.orgRole:', currentTenantMembership?.membership?.orgRole);
-    console.log('orgLoading:', orgLoading);
+    console.log('-- Result --');
     console.log('showCoachDashboard:', showCoachDashboard);
-  }, [isLoaded, isSignedIn, userId, role, orgRole, isDefault, effectiveBranding.organizationId, currentTenantOrgId, organizations, currentTenantMembership, orgLoading, showCoachDashboard]);
+  }, [isLoaded, isSignedIn, userId, role, orgRole, isDefault, currentTenantOrgId, clerkOrgsLoaded, clerkTenantMembership, isClerkAdmin, orgLoading, currentTenantMembership, showCoachDashboard]);
 
   // Prefetch pages on mount to reduce loading time
   useEffect(() => {

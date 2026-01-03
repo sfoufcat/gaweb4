@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import type { FlowSession, Program, OrgSettings } from '@/types';
+import { checkExistingEnrollment, getProductRedirectUrl } from '@/lib/enrollment-check';
 
 // Lazy initialization to avoid build-time errors
 let _stripe: Stripe | null = null;
@@ -107,6 +108,27 @@ export async function POST(req: Request) {
           organizationId = program.organizationId;
           metadata.organizationId = program.organizationId;
         }
+      }
+    }
+
+    // Check for existing enrollment (only for authenticated users)
+    // Guest checkout is handled separately - enrollment check happens in /api/funnel/complete
+    if (userId && targetProgramId) {
+      // Get cohortId from flow session if available
+      const cohortId = session?.data?.cohortId as string | undefined;
+      
+      const enrollmentCheck = await checkExistingEnrollment(userId, targetProgramId, cohortId);
+      
+      if (enrollmentCheck.exists && !enrollmentCheck.allowReEnrollment) {
+        console.log(`[FUNNEL_PAYMENT_INTENT] User ${userId} already enrolled in program ${targetProgramId}`);
+        
+        return NextResponse.json({
+          error: enrollmentCheck.reason || 'You are already enrolled in this program',
+          alreadyEnrolled: true,
+          enrollmentId: enrollmentCheck.enrollment!.id,
+          redirectUrl: getProductRedirectUrl('program', targetProgramId),
+          programName: program?.name,
+        }, { status: 400 });
       }
     }
 

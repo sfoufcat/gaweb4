@@ -20,6 +20,7 @@ import type {
   OrgSettings,
   ClientCoachingData,
 } from '@/types';
+import { checkExistingEnrollment } from '@/lib/enrollment-check';
 
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -332,6 +333,25 @@ export async function POST(request: NextRequest) {
       if (cohortDoc.exists) {
         cohort = { id: cohortDoc.id, ...cohortDoc.data() } as ProgramCohort;
       }
+    }
+
+    // Check for existing active/upcoming enrollment in this program
+    // This prevents duplicate enrollments when user goes through checkout twice
+    const enrollmentCheck = await checkExistingEnrollment(userId, programId, cohortId);
+    
+    if (enrollmentCheck.exists && !enrollmentCheck.allowReEnrollment) {
+      console.log(`[VERIFY_PAYMENT] User ${userId} already enrolled in program ${programId}, returning existing enrollment`);
+      
+      return NextResponse.json({
+        success: true,
+        alreadyEnrolled: true,
+        enrollmentId: enrollmentCheck.enrollment!.id,
+        status: enrollmentCheck.enrollment!.status,
+        squadId: enrollmentCheck.enrollment!.squadId,
+        message: enrollmentCheck.reason || 'You are already enrolled in this program',
+        programName: program.name,
+        cohortName: cohort?.name,
+      });
     }
 
     // Get user info

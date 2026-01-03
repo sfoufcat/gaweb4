@@ -9,12 +9,14 @@
 
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
+import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { resolveTenant } from '@/lib/tenant/resolveTenant';
 import { getBrandingForDomain, getBestLogoUrl } from '@/lib/server/branding';
+import { checkExistingEnrollment, getProductRedirectUrl } from '@/lib/enrollment-check';
 import FunnelClient from './FunnelClient';
 import FunnelDeactivated from '@/components/FunnelDeactivated';
-import type { Program, Funnel, FunnelStep, OrgSettings, CoachSubscriptionStatus } from '@/types';
+import type { Program, Funnel, FunnelStep, OrgSettings, CoachSubscriptionStatus, NewProgramEnrollmentStatus } from '@/types';
 import { mergeTrackingConfig } from '@/lib/tracking-utils';
 
 /**
@@ -80,6 +82,28 @@ export default async function FunnelPage({ params, searchParams }: FunnelPagePro
 
   const programDoc = programsSnapshot.docs[0];
   const program = { id: programDoc.id, ...programDoc.data() } as Program;
+
+  // Check for existing enrollment (for authenticated users)
+  // This provides immediate feedback if user already owns the program
+  let existingEnrollment: {
+    id: string;
+    status: NewProgramEnrollmentStatus;
+    redirectUrl: string;
+  } | null = null;
+  
+  const { userId } = await auth();
+  
+  if (userId) {
+    const enrollmentCheck = await checkExistingEnrollment(userId, program.id);
+    
+    if (enrollmentCheck.exists && !enrollmentCheck.allowReEnrollment) {
+      existingEnrollment = {
+        id: enrollmentCheck.enrollment!.id,
+        status: enrollmentCheck.enrollment!.status,
+        redirectUrl: getProductRedirectUrl('program', program.id),
+      };
+    }
+  }
 
   // Find funnel by slug
   const funnelsSnapshot = await adminDb
@@ -320,6 +344,7 @@ export default async function FunnelPage({ params, searchParams }: FunnelPagePro
       hostname={hostname}
       tenantSubdomain={tenantSubdomain}
       referrerId={referrerId}
+      existingEnrollment={existingEnrollment}
     />
   );
 }

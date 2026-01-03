@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth, useOrganization as useClerkOrganization } from '@clerk/nextjs';
+import { useAuth, useOrganization as useClerkOrganization, useOrganizationList } from '@clerk/nextjs';
 import { isOrgCoach } from '@/lib/admin-utils-shared';
 import { ClientDetailView, CustomizeBrandingTab, ChannelManagementTab, PaymentFailedBanner } from '@/components/coach';
 import { DemoModeBanner } from '@/components/demo/DemoRestriction';
@@ -149,12 +149,17 @@ export default function CoachPage() {
   const { effectiveBranding } = useBranding();
   const { organizations, isLoading: orgLoading } = useOrganization();
   
+  // Get Clerk native organization memberships (direct from Clerk)
+  const { userMemberships, isLoaded: clerkOrgsLoaded } = useOrganizationList({
+    userMemberships: { infinite: true },
+  });
+  
   // Note: effectiveBranding.organizationId is 'default' on platform domain
   const currentTenantOrgId = !isDefault && effectiveBranding.organizationId !== 'default' 
     ? effectiveBranding.organizationId 
     : null;
   
-  // Find user's membership in the current tenant org
+  // Find user's membership in the current tenant org (Firestore-based)
   const currentTenantMembership = useMemo(() => {
     if (!currentTenantOrgId || !organizations || organizations.length === 0) {
       return null;
@@ -162,9 +167,20 @@ export default function CoachPage() {
     return organizations.find(org => org.id === currentTenantOrgId);
   }, [currentTenantOrgId, organizations]);
   
+  // Find user's Clerk membership in the current tenant org
+  const clerkTenantMembership = useMemo(() => {
+    if (!currentTenantOrgId || !userMemberships?.data) {
+      return null;
+    }
+    return userMemberships.data.find(m => m.organization.id === currentTenantOrgId);
+  }, [currentTenantOrgId, userMemberships?.data]);
+  
+  // Check if user is admin in Clerk for this tenant (org:admin = super_coach equivalent)
+  const isClerkAdmin = clerkTenantMembership?.role === 'org:admin';
+  
   // Determine coach dashboard access:
   // - On platform domain (isDefault=true): Use publicMetadata roles (legacy behavior)
-  // - On tenant domain: ONLY allow if user has coach/super_coach role IN THIS TENANT
+  // - On tenant domain: Check BOTH Clerk native memberships AND Firestore memberships
   const hasAccess = useMemo(() => {
     // Demo mode always has access
     if (isDemoSite) return true;
@@ -178,20 +194,25 @@ export default function CoachPage() {
     // Super admins can always access (for debugging/support)
     if (role === 'super_admin') return true;
     
-    // Check if user has coach access in this specific tenant
+    // Check 1: Clerk native membership - org:admin is equivalent to super_coach
+    if (isClerkAdmin) {
+      return true;
+    }
+    
+    // Check 2: Firestore membership via OrganizationContext
     if (currentTenantMembership) {
       const membershipOrgRole = currentTenantMembership.membership?.orgRole as OrgRole | undefined;
       return isOrgCoach(membershipOrgRole);
     }
     
-    // While loading, use publicMetadata.orgRole as optimistic fallback
-    if (orgLoading) {
-      return isOrgCoach(orgRole);
+    // Still loading? Wait - don't redirect prematurely
+    if (orgLoading || !clerkOrgsLoaded) {
+      return true; // Assume access while loading (page will re-check)
     }
     
-    // Org data loaded but no membership found - no access
+    // Both systems loaded, no membership found - no access
     return false;
-  }, [isDemoSite, isDefault, role, orgRole, orgLoading, currentTenantMembership]);
+  }, [isDemoSite, isDefault, role, isClerkAdmin, currentTenantMembership, orgLoading, clerkOrgsLoaded]);
   
   // Determine access level for this tenant:
   // - Full access: super_admin, or super_coach in THIS tenant
@@ -205,19 +226,19 @@ export default function CoachPage() {
       return role === 'coach' || role === 'admin' || orgRole === 'super_coach';
     }
     
+    // Check Clerk admin first
+    if (isClerkAdmin) {
+      return true;
+    }
+    
     // Tenant domain: check actual membership role
     if (currentTenantMembership) {
       const membershipOrgRole = currentTenantMembership.membership?.orgRole as OrgRole | undefined;
       return membershipOrgRole === 'super_coach';
     }
     
-    // While loading, use publicMetadata.orgRole as optimistic fallback
-    if (orgLoading) {
-      return orgRole === 'super_coach';
-    }
-    
     return false;
-  }, [isDemoSite, role, orgRole, orgLoading, isDefault, currentTenantMembership]);
+  }, [isDemoSite, role, orgRole, isDefault, isClerkAdmin, currentTenantMembership]);
   
   const isLimitedOrgCoach = useMemo(() => {
     if (hasFullAccess) return false;
@@ -234,13 +255,8 @@ export default function CoachPage() {
       return membershipOrgRole === 'coach';
     }
     
-    // While loading, use publicMetadata.orgRole as optimistic fallback
-    if (orgLoading) {
-      return orgRole === 'coach';
-    }
-    
     return false;
-  }, [hasFullAccess, isDemoSite, isDefault, orgRole, orgLoading, currentTenantMembership]);
+  }, [hasFullAccess, isDemoSite, isDefault, orgRole, currentTenantMembership]);
 
   useEffect(() => {
     setMounted(true);
