@@ -123,10 +123,21 @@ export async function GET(request: NextRequest) {
     // Map to track events by ID (for deduplication)
     const eventsMap = new Map<string, UnifiedEvent>();
 
-    // Get user's squad memberships for squad-based event queries
+    // Get user's squad memberships from BOTH sources:
+    // 1. User's squadIds array (may be out of sync)
+    // 2. Squad documents where user is in memberIds (authoritative)
     const userDoc = await adminDb.collection('users').doc(userId).get();
     const userData = userDoc.data();
-    const userSquadIds: string[] = userData?.squadIds || [];
+    const userSquadIdsFromDoc: string[] = userData?.squadIds || [];
+    
+    // Also query squads where user is in memberIds (handles data sync issues)
+    const squadMembershipQuery = await adminDb.collection('squads')
+      .where('memberIds', 'array-contains', userId)
+      .get();
+    const squadIdsFromMembership = squadMembershipQuery.docs.map(doc => doc.id);
+    
+    // Combine both sources (deduplicated)
+    const userSquadIds = [...new Set([...userSquadIdsFromDoc, ...squadIdsFromMembership])];
 
     // Query 1: Events with startDateTime in range (scheduling events)
     const schedulingQuery = adminDb
