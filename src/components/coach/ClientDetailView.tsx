@@ -211,6 +211,7 @@ interface ClientProgramEnrollment {
   id: string;
   programId: string;
   programName: string;
+  programType: 'individual' | 'group';
   status: string;
   progress: number;
   startedAt: string;
@@ -973,6 +974,13 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
     return programEnrollments.filter(p => p.status === 'completed' || p.status === 'cancelled');
   }, [programEnrollments]);
 
+  // Get active 1:1 (individual) program for title display
+  const activeIndividualProgram = useMemo(() => {
+    return programEnrollments.find(
+      p => p.programType === 'individual' && (p.status === 'active' || p.status === 'upcoming')
+    );
+  }, [programEnrollments]);
+
   // DM recipient for modal
   const dmRecipient: DMRecipient | null = user ? {
     userId: user.id,
@@ -1707,6 +1715,11 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
           <Users className="w-5 h-5 text-brand-accent" />
           <h3 className="font-albert text-[16px] font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] tracking-[-0.5px]">
             One-on-One Coaching
+            {activeIndividualProgram && (
+              <span className="text-[#8c8c8c] dark:text-[#7d8190] font-normal ml-1">
+                ({activeIndividualProgram.programName})
+              </span>
+            )}
           </h3>
         </div>
 

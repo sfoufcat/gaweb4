@@ -167,13 +167,18 @@ export async function POST(request: NextRequest) {
     // 5. Check for user-posted stories (24hr) for all users
     const userStoryCountsPromise = fetchUserStoryCounts(limitedUserIds, organizationId);
 
+    // 6. MULTI-TENANCY: Fetch org_memberships for goal data (org-scoped)
+    // Goals are stored in org_memberships, not users collection, to prevent cross-org leakage
+    const orgMembershipsPromise = fetchOrgMembershipsForUsers(limitedUserIds, organizationId);
+
     // Execute all queries in parallel
-    const [userDocs, eveningDocs, weeklyDocs, taskCounts, userStoryCounts] = await Promise.all([
+    const [userDocs, eveningDocs, weeklyDocs, taskCounts, userStoryCounts, orgMemberships] = await Promise.all([
       userDocsPromise,
       eveningDocsPromise,
       weeklyDocsPromise,
       taskCountsPromise,
       userStoryCountsPromise,
+      orgMembershipsPromise,
     ]);
 
     // =========================================================================
@@ -194,8 +199,10 @@ export async function POST(request: NextRequest) {
       const userData = userDoc.exists ? userDoc.data() : null;
       const eveningData = eveningDoc.exists ? eveningDoc.data() : null;
       const weeklyData = weeklyDoc.exists ? weeklyDoc.data() : null;
+      const orgMembershipData = orgMemberships.get(userId);
 
-      const hasActiveGoal = !!(userData?.goal && !userData?.goalCompleted);
+      // MULTI-TENANCY: Check goal from org_memberships, not users collection
+      const hasActiveGoal = !!(orgMembershipData?.goal && !orgMembershipData?.goalCompleted);
       const hasDayClosed = !!(eveningData?.completedAt);
       const hasWeekClosed = !!(weeklyData?.completedAt);
       const hasTasks = taskCount > 0;
@@ -364,4 +371,46 @@ async function fetchUserStoryCounts(
   );
 
   return userStoryCounts;
+}
+
+/**
+ * Fetch org_memberships for multiple users to get org-scoped goal data
+ * Returns a map of userId -> membership data (including goal fields)
+ */
+async function fetchOrgMembershipsForUsers(
+  userIds: string[],
+  organizationId: string
+): Promise<Map<string, { goal?: string; goalCompleted?: boolean }>> {
+  const memberships = new Map<string, { goal?: string; goalCompleted?: boolean }>();
+
+  // Firestore 'in' query limit is 10, so batch the queries
+  const batches: string[][] = [];
+  for (let i = 0; i < userIds.length; i += 10) {
+    batches.push(userIds.slice(i, i + 10));
+  }
+
+  await Promise.all(
+    batches.map(async (batch) => {
+      try {
+        const snapshot = await adminDb
+          .collection('org_memberships')
+          .where('userId', 'in', batch)
+          .where('organizationId', '==', organizationId)
+          .select('userId', 'goal', 'goalCompleted') // Only fetch needed fields
+          .get();
+
+        snapshot.docs.forEach(doc => {
+          const data = doc.data();
+          memberships.set(data.userId, {
+            goal: data.goal,
+            goalCompleted: data.goalCompleted,
+          });
+        });
+      } catch (err) {
+        console.error('[STORIES_BATCH] Org memberships query error:', err);
+      }
+    })
+  );
+
+  return memberships;
 }

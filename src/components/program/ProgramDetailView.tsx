@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Phone, ChevronDown, ExternalLink, Users, Loader2, Calendar, Clock, MapPin } from 'lucide-react';
+import { ArrowLeft, Phone, ChevronDown, ExternalLink, Users, Loader2, Calendar, Clock, MapPin, Target, ClipboardList, BookOpen, CheckCircle2, Circle } from 'lucide-react';
 import type { EnrolledProgramWithDetails } from '@/hooks/useMyPrograms';
 import { useProgramContent } from '@/hooks/useProgramContent';
 import { useProgramCoachingData } from '@/hooks/useProgramCoachingData';
@@ -51,6 +51,7 @@ export function ProgramDetailView({
   
   // Fetch coaching data for individual programs
   const {
+    coachingData,
     nextCall,
     chatChannelId,
     callCredits,
@@ -624,6 +625,99 @@ export function ProgramDetailView({
             }
           }}
         />
+      )}
+
+      {/* Coaching Data Sections (for 1:1 programs) - Focus, Action Items, Resources */}
+      {!isGroup && hasCoachingData && (
+        <div className="space-y-4">
+          {/* Current Focus */}
+          {coachingData?.focusAreas && coachingData.focusAreas.length > 0 && (
+            <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Target className="w-5 h-5 text-brand-accent" />
+                <h3 className="font-albert text-[16px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px]">
+                  Current Focus
+                </h3>
+              </div>
+              <ul className="space-y-2">
+                {coachingData.focusAreas.map((focus, index) => (
+                  <li key={index} className="flex items-start gap-2">
+                    <span className="text-brand-accent mt-0.5">–</span>
+                    <span className="font-sans text-[15px] text-text-secondary dark:text-[#b2b6c2]">{focus}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Action Items */}
+          {coachingData?.actionItems && coachingData.actionItems.length > 0 && (
+            <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <ClipboardList className="w-5 h-5 text-brand-accent" />
+                <h3 className="font-albert text-[16px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px]">
+                  Your Actions
+                </h3>
+              </div>
+              <ul className="space-y-3">
+                {coachingData.actionItems.map((item) => (
+                  <li key={item.id} className="flex items-start gap-3">
+                    <span className="mt-0.5 shrink-0">
+                      {item.completed ? (
+                        <CheckCircle2 className="w-5 h-5 text-brand-accent" />
+                      ) : (
+                        <Circle className="w-5 h-5 text-[#c4bfb9] dark:text-[#7d8190]" />
+                      )}
+                    </span>
+                    <span className={`font-sans text-[15px] ${
+                      item.completed
+                        ? 'text-[#8c8c8c] dark:text-[#7d8190] line-through'
+                        : 'text-text-secondary dark:text-[#b2b6c2]'
+                    }`}>
+                      {item.text}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Resources */}
+          {coachingData?.resources && coachingData.resources.length > 0 && (
+            <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <BookOpen className="w-5 h-5 text-brand-accent" />
+                <h3 className="font-albert text-[16px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-0.5px]">
+                  Resources
+                </h3>
+              </div>
+              <ul className="space-y-3">
+                {coachingData.resources.map((resource) => (
+                  <li key={resource.id}>
+                    <a
+                      href={resource.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-start gap-2 group"
+                    >
+                      <ExternalLink className="w-4 h-4 text-brand-accent mt-0.5 shrink-0" />
+                      <div>
+                        <span className="font-sans text-[15px] text-brand-accent group-hover:underline">
+                          {resource.title}
+                        </span>
+                        {resource.description && (
+                          <p className="font-sans text-[13px] text-text-muted dark:text-[#7d8190] mt-0.5">
+                            {resource.description}
+                          </p>
+                        )}
+                      </div>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Upcoming Events (for group programs) */}

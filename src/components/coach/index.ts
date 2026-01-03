@@ -1,4 +1,5 @@
 export { AlignmentActivitiesSettings } from './AlignmentActivitiesSettings';
+export { ClientDetailSlideOver } from './ClientDetailSlideOver';
 export { ClientDetailView } from './ClientDetailView';
 export { CoachingClientsTab } from './CoachingClientsTab';
 export { CoachingClientView } from './CoachingClientView';

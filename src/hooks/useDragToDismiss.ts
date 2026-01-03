@@ -120,9 +120,9 @@ export function useDragToDismiss({
     if (!handle || disabled) return;
 
     const handleTouchStart = (e: TouchEvent) => {
-      // Prevent pull-to-refresh from starting
-      e.preventDefault();
-
+      // Don't preventDefault on touchstart - iOS Safari needs the initial touch
+      // to not be prevented for subsequent touch events to work properly.
+      // We only preventDefault on touchmove to block scrolling during drag.
       const touch = e.touches[0];
       dragState.current = {
         isDragging: true,

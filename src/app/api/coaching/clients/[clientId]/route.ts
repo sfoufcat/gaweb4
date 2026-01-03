@@ -677,19 +677,79 @@ export async function PATCH(
       return NextResponse.json({ error: 'Coach access required' }, { status: 403 });
     }
 
-    // Fetch existing coaching data
-    const coachingDoc = await adminDb.collection('clientCoachingData').doc(clientId).get();
+    // MULTI-TENANCY: Get effective org ID
+    const organizationId = await getEffectiveOrgId();
 
-    if (!coachingDoc.exists) {
-      return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+    if (!organizationId) {
+      return NextResponse.json({ error: 'Organization context required' }, { status: 400 });
     }
 
-    const existingData = coachingDoc.data() as ClientCoachingData;
+    // Fetch existing coaching data (org-scoped document ID: organizationId_clientId)
+    const orgScopedDocId = `${organizationId}_${clientId}`;
+    let coachingDoc = await adminDb.collection('clientCoachingData').doc(orgScopedDocId).get();
+    let docId = orgScopedDocId;
+
+    // Legacy fallback: try clientId only
+    if (!coachingDoc.exists) {
+      coachingDoc = await adminDb.collection('clientCoachingData').doc(clientId).get();
+      if (coachingDoc.exists) {
+        docId = clientId;
+      }
+    }
+
+    // If no document exists, create one (for clients with 1:1 program enrollment)
+    let existingData: ClientCoachingData | null = null;
+    if (!coachingDoc.exists) {
+      // Check if user has an active 1:1 program enrollment
+      const programEnrollmentSnapshot = await adminDb.collection('program_enrollments')
+        .where('userId', '==', clientId)
+        .where('organizationId', '==', organizationId)
+        .where('status', 'in', ['active', 'upcoming'])
+        .get();
+
+      const hasIndividualProgram = programEnrollmentSnapshot.docs.some(doc => {
+        const data = doc.data();
+        return data.programType === 'individual';
+      });
+
+      if (!hasIndividualProgram) {
+        return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+      }
+
+      // Create new coaching data document
+      const newCoachingData: ClientCoachingData = {
+        id: orgScopedDocId,
+        userId: clientId,
+        organizationId,
+        coachId: userId,
+        coachingPlan: 'monthly',
+        startDate: new Date().toISOString().split('T')[0],
+        focusAreas: [],
+        actionItems: [],
+        nextCall: {
+          datetime: null,
+          timezone: 'America/New_York',
+          location: 'Chat',
+        },
+        sessionHistory: [],
+        resources: [],
+        privateNotes: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await adminDb.collection('clientCoachingData').doc(orgScopedDocId).set(newCoachingData);
+      existingData = newCoachingData;
+      docId = orgScopedDocId;
+    } else {
+      existingData = coachingDoc.data() as ClientCoachingData;
+    }
 
     // Verify coach has access to this client (global coach role or assigned org coach)
     const isPatchGlobalCoach = patchRole === 'coach';
     const isPatchOrgCoach = patchOrgRole === 'coach';
-    if ((isPatchGlobalCoach || isPatchOrgCoach) && existingData.coachId !== userId) {
+    // Allow access if coach is assigned OR if no coachId is set yet (new document)
+    if ((isPatchGlobalCoach || isPatchOrgCoach) && existingData.coachId && existingData.coachId !== userId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -753,8 +813,8 @@ export async function PATCH(
       }));
     }
 
-    // Update Firestore
-    await adminDb.collection('clientCoachingData').doc(clientId).update(updateData);
+    // Update Firestore using the correct document ID
+    await adminDb.collection('clientCoachingData').doc(docId).update(updateData);
 
     return NextResponse.json({ success: true, updatedAt: now });
   } catch (error) {

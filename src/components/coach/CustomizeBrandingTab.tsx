@@ -1939,7 +1939,7 @@ export function CustomizeBrandingTab() {
                 Subdomain
               </label>
               <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex items-center gap-2 flex-1 sm:max-w-md">
+                <div className="flex items-center gap-2 flex-1 sm:max-w-md overflow-visible">
                   <input
                     type="text"
                     value={newSubdomain}
@@ -1948,7 +1948,7 @@ export function CustomizeBrandingTab() {
                       setSubdomainError(null);
                     }}
                     placeholder="your-subdomain"
-                    className="flex-1 px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20 dark:focus:ring-brand-accent/20 focus:border-brand-accent dark:focus:border-brand-accent"
+                    className="flex-1 px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-brand-accent dark:ring-brand-accent/20 dark:focus:ring-brand-accent/20 focus:border-brand-accent dark:focus:border-brand-accent"
                   />
                   <span className="text-sm text-[#5f5a55] dark:text-[#b2b6c2] font-albert whitespace-nowrap">
                     .growthaddicts.com
@@ -2011,7 +2011,7 @@ export function CustomizeBrandingTab() {
                     setCustomDomainError(null);
                   }}
                   placeholder="app.yourdomain.com"
-                  className="flex-1 sm:max-w-md px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20 dark:focus:ring-brand-accent/20 focus:border-brand-accent dark:focus:border-brand-accent"
+                  className="flex-1 sm:max-w-md px-4 py-2.5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#313746] rounded-xl text-[#1a1a1a] dark:text-[#f5f5f8] font-albert placeholder:text-[#a7a39e] dark:placeholder:text-[#7d8190] focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-brand-accent dark:ring-brand-accent/20 dark:focus:ring-brand-accent/20 focus:border-brand-accent dark:focus:border-brand-accent"
                 />
                 <button
                   onClick={handleAddCustomDomain}

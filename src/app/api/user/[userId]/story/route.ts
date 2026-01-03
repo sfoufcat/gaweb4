@@ -38,8 +38,23 @@ export async function GET(
 
     const userData = userDoc.data();
 
-    // Check if user has an active goal
-    const hasActiveGoal = !!(userData?.goal && !userData?.goalCompleted);
+    // MULTI-TENANCY: Fetch goal from org_memberships, not users collection
+    // Goals are org-scoped to prevent cross-organization data leakage
+    let orgGoalData: { goal?: string; goalTargetDate?: string; goalProgress?: number; goalCompleted?: boolean } | null = null;
+    if (organizationId) {
+      const targetMembershipSnapshot = await adminDb.collection('org_memberships')
+        .where('userId', '==', targetUserId)
+        .where('organizationId', '==', organizationId)
+        .limit(1)
+        .get();
+
+      if (!targetMembershipSnapshot.empty) {
+        orgGoalData = targetMembershipSnapshot.docs[0].data();
+      }
+    }
+
+    // Check if user has an active goal (from org_memberships only)
+    const hasActiveGoal = !!(orgGoalData?.goal && !orgGoalData?.goalCompleted);
     
     // Fetch today's focus tasks
     const isOwnProfile = currentUserId === targetUserId;
@@ -170,9 +185,9 @@ export async function GET(
       hasUserPostedStories: userPostedStories.length > 0,
       goal: hasActiveGoal
         ? {
-            title: userData?.goal || '',
-            targetDate: userData?.goalTargetDate || '',
-            progress: userData?.goalProgress || 0,
+            title: orgGoalData?.goal || '',
+            targetDate: orgGoalData?.goalTargetDate || '',
+            progress: orgGoalData?.goalProgress || 0,
           }
         : null,
       tasks: tasks.map(task => {

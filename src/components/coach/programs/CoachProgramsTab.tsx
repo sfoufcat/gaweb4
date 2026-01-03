@@ -9,6 +9,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { Plus, Users, User, Calendar, DollarSign, Clock, Eye, EyeOff, Trash2, Settings, ChevronRight, UserMinus, FileText, LayoutTemplate, Globe, ExternalLink, Copy, Target, X, ListTodo, Repeat, ChevronDown, ChevronUp, Gift, Sparkles, AlertTriangle, Edit2, Trophy, Phone } from 'lucide-react';
 import { ScheduleCallModal } from '@/components/scheduling';
+import { ClientDetailSlideOver } from '@/components/coach';
 import { AIHelperModal } from '@/components/ai';
 import type { ProgramContentDraft, LandingPageDraft, AIGenerationContext } from '@/lib/ai/types';
 import { ReferralConfigForm } from '@/components/coach/referrals';
@@ -100,6 +101,9 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
   
   // Schedule call modal state (for enrollments)
   const [scheduleCallEnrollment, setScheduleCallEnrollment] = useState<EnrollmentWithUser | null>(null);
+
+  // Client detail slide-over state
+  const [selectedClient, setSelectedClient] = useState<EnrollmentWithUser | null>(null);
   
   // Modal states
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
@@ -2170,9 +2174,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                   const nextCallFormatted = formatNextCall(enrollment.nextCall);
                   
                   return (
-                  <div 
+                  <div
                     key={enrollment.id}
-                    className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4"
+                    onClick={() => setSelectedClient(enrollment)}
+                    className="bg-white dark:bg-[#171b22] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl p-4 cursor-pointer hover:border-brand-accent/50 transition-colors"
                   >
                     <div className="flex items-center justify-between gap-4">
                       {/* User Info */}
@@ -2243,7 +2248,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                           {/* Schedule Call Button */}
                           {(enrollment.status === 'active' || enrollment.status === 'upcoming') && (
                             <button
-                              onClick={() => setScheduleCallEnrollment(enrollment)}
+                              onClick={(e) => { e.stopPropagation(); setScheduleCallEnrollment(enrollment); }}
                               className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-accent text-white rounded-lg text-xs font-medium hover:bg-brand-accent/90 transition-colors"
                               title="Schedule a call"
                             >
@@ -2258,7 +2263,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                         {/* Community Badge & Toggle - Only for individual programs with community enabled */}
                         {selectedProgram?.type === 'individual' && selectedProgram?.clientCommunitySquadId && (
                           <button
-                            onClick={() => handleToggleCommunity(enrollment, !enrollment.joinedCommunity)}
+                            onClick={(e) => { e.stopPropagation(); handleToggleCommunity(enrollment, !enrollment.joinedCommunity); }}
                             disabled={togglingCommunity === enrollment.id}
                             className={`px-2 py-0.5 rounded-full text-xs flex items-center gap-1 transition-colors ${
                               enrollment.joinedCommunity
@@ -2268,10 +2273,10 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                             title={enrollment.joinedCommunity ? 'Remove from community' : 'Add to community'}
                           >
                             <Users className="w-3 h-3" />
-                            {togglingCommunity === enrollment.id 
-                              ? '...' 
-                              : enrollment.joinedCommunity 
-                                ? 'Community' 
+                            {togglingCommunity === enrollment.id
+                              ? '...'
+                              : enrollment.joinedCommunity
+                                ? 'Community'
                                 : 'Add to community'
                             }
                           </button>
@@ -2294,7 +2299,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                         </div>
                         {(enrollment.status === 'active' || enrollment.status === 'upcoming') && (
                           <button
-                            onClick={() => setRemoveConfirmEnrollment(enrollment)}
+                            onClick={(e) => { e.stopPropagation(); setRemoveConfirmEnrollment(enrollment); }}
                             className="p-2 text-[#5f5a55] hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                             title="Remove from program"
                           >
@@ -3615,6 +3620,20 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
               fetchProgramEnrollments(selectedProgram.id);
             }
           }}
+        />
+      )}
+
+      {/* Client Detail Slide-over */}
+      {selectedClient && (
+        <ClientDetailSlideOver
+          isOpen={selectedClient !== null}
+          onClose={() => setSelectedClient(null)}
+          clientId={selectedClient.userId}
+          clientName={
+            selectedClient.user
+              ? `${selectedClient.user.firstName} ${selectedClient.user.lastName}`.trim() || 'Client'
+              : 'Client'
+          }
         />
       )}
 
