@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getTenantOrgId } from '@/lib/tenant/context';
 import { notifyCallRequested } from '@/lib/scheduling-notifications';
 import type { UnifiedEvent, ProposedTime, CoachCallSettings } from '@/types';
 
@@ -16,7 +17,8 @@ import type { UnifiedEvent, ProposedTime, CoachCallSettings } from '@/types';
  */
 export async function POST(request: NextRequest) {
   try {
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
+    const orgId = await getTenantOrgId();
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
