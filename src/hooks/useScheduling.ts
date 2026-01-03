@@ -81,9 +81,13 @@ export function useSchedulingEvents(options: UseSchedulingEventsOptions): UseSch
 
 /**
  * Hook for fetching pending call proposals
+ * Returns:
+ * - proposals: events requiring user response (from others)
+ * - myRequests: user's own pending requests awaiting response
  */
 export function usePendingProposals() {
   const [proposals, setProposals] = useState<UnifiedEvent[]>([]);
+  const [myRequests, setMyRequests] = useState<UnifiedEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -103,10 +107,12 @@ export function usePendingProposals() {
 
       const data = await response.json();
       setProposals(data.events || []);
+      setMyRequests(data.myRequests || []);
     } catch (err) {
       console.error('[usePendingProposals] Error:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch proposals');
       setProposals([]);
+      setMyRequests([]);
     } finally {
       setIsLoading(false);
     }
@@ -118,6 +124,7 @@ export function usePendingProposals() {
 
   return {
     proposals,
+    myRequests,
     isLoading,
     error,
     refetch: fetchProposals,

@@ -17,6 +17,8 @@ import {
   AlertCircle,
   Loader2,
   Download,
+  Send,
+  CalendarClock,
 } from 'lucide-react';
 import { useSchedulingEvents, useSchedulingActions, usePendingProposals } from '@/hooks/useScheduling';
 import type { UnifiedEvent } from '@/types';
@@ -42,9 +44,12 @@ const EVENT_TYPE_INFO: Record<string, { label: string; icon: typeof Video; color
 interface EventItemProps {
   event: UnifiedEvent;
   onRespond?: (eventId: string, action: 'accept' | 'decline') => void;
+  onCancel?: (eventId: string) => void;
+  onCounterPropose?: (eventId: string) => void;
+  isMyRequest?: boolean; // True if this is user's own pending request
 }
 
-function EventItem({ event, onRespond }: EventItemProps) {
+function EventItem({ event, onRespond, onCancel, onCounterPropose, isMyRequest }: EventItemProps) {
   const typeInfo = EVENT_TYPE_INFO[event.eventType] || EVENT_TYPE_INFO.coaching_1on1;
   const Icon = typeInfo.icon;
 
@@ -73,7 +78,7 @@ function EventItem({ event, onRespond }: EventItemProps) {
   // Generate ICS file for calendar download
   const generateICS = () => {
     const endDateTime = event.endDateTime || new Date(startTime.getTime() + (event.durationMinutes || 60) * 60 * 1000).toISOString();
-    
+
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
@@ -122,7 +127,13 @@ function EventItem({ event, onRespond }: EventItemProps) {
                 Confirmed
               </span>
             )}
-            {needsResponse && (
+            {isMyRequest && needsResponse && (
+              <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full text-xs">
+                <Send className="w-3 h-3" />
+                Awaiting Response
+              </span>
+            )}
+            {!isMyRequest && needsResponse && (
               <span className="flex items-center gap-1 px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 rounded-full text-xs">
                 <AlertCircle className="w-3 h-3" />
                 Pending
@@ -152,7 +163,19 @@ function EventItem({ event, onRespond }: EventItemProps) {
 
           {/* Action buttons */}
           <div className="flex flex-wrap gap-2 mt-3">
-            {needsResponse && onRespond && (
+            {/* My Request actions - Cancel button */}
+            {isMyRequest && needsResponse && onCancel && (
+              <button
+                onClick={() => onCancel(event.id)}
+                className="flex items-center gap-1 px-3 py-1.5 bg-[#f3f1ef] dark:bg-[#262b35] text-red-600 dark:text-red-400 rounded-lg text-xs font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              >
+                <XCircle className="w-3 h-3" />
+                Cancel Request
+              </button>
+            )}
+
+            {/* Respond to others' proposals */}
+            {!isMyRequest && needsResponse && onRespond && (
               <>
                 <button
                   onClick={() => onRespond(event.id, 'accept')}
@@ -168,8 +191,19 @@ function EventItem({ event, onRespond }: EventItemProps) {
                   <XCircle className="w-3 h-3" />
                   Decline
                 </button>
+                {onCounterPropose && (
+                  <button
+                    onClick={() => onCounterPropose(event.id)}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-lg text-xs font-medium hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-colors"
+                  >
+                    <CalendarClock className="w-3 h-3" />
+                    Propose Different Time
+                  </button>
+                )}
               </>
             )}
+
+            {/* Confirmed event actions */}
             {isConfirmed && (
               <>
                 {event.meetingLink && (
@@ -210,7 +244,8 @@ function EventItem({ event, onRespond }: EventItemProps) {
  */
 export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const { respondToProposal, isLoading: respondLoading } = useSchedulingActions();
+  const [counterProposeEventId, setCounterProposeEventId] = useState<string | null>(null);
+  const { respondToProposal, cancelEvent, isLoading: respondLoading } = useSchedulingActions();
 
   // Calculate date range for current month view
   const dateRange = useMemo(() => {
@@ -229,8 +264,8 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
     role: 'all',
   });
 
-  // Fetch pending proposals
-  const { proposals } = usePendingProposals();
+  // Fetch pending proposals and my requests
+  const { proposals, myRequests, refetch: refetchProposals } = usePendingProposals();
 
   // Navigation
   const navigateMonth = (direction: 'prev' | 'next' | 'today') => {
@@ -249,10 +284,30 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
     try {
       await respondToProposal({ eventId, action });
       refetch();
+      refetchProposals();
     } catch (err) {
       // Error handled by hook
     }
-  }, [respondToProposal, refetch]);
+  }, [respondToProposal, refetch, refetchProposals]);
+
+  // Handle cancel request
+  const handleCancel = useCallback(async (eventId: string) => {
+    if (!confirm('Are you sure you want to cancel this call request?')) return;
+    try {
+      await respondToProposal({ eventId, action: 'decline' });
+      refetch();
+      refetchProposals();
+    } catch (err) {
+      // Error handled by hook
+    }
+  }, [respondToProposal, refetch, refetchProposals]);
+
+  // Handle counter-propose (placeholder - will implement inline UI)
+  const handleCounterPropose = useCallback((eventId: string) => {
+    setCounterProposeEventId(eventId);
+    // TODO: Implement inline counter-propose UI
+    alert('Counter-propose feature coming soon! For now, please decline and create a new request.');
+  }, []);
 
   // Group events by upcoming status
   const upcomingEvents = useMemo(() => {
@@ -333,7 +388,7 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          {/* Pending Proposals */}
+          {/* Pending Proposals - need to respond */}
           {proposals.length > 0 && (
             <div className="p-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
               <h3 className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 flex items-center gap-2">
@@ -346,6 +401,30 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
                     key={event.id}
                     event={event}
                     onRespond={handleRespond}
+                    onCounterPropose={handleCounterPropose}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* My Requests - awaiting coach response */}
+          {myRequests.length > 0 && (
+            <div className="p-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
+              <h3 className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 flex items-center gap-2">
+                <Send className="w-4 h-4 text-blue-500" />
+                My Requests ({myRequests.length})
+              </h3>
+              <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] mb-3">
+                Waiting for coach to respond
+              </p>
+              <div className="space-y-3">
+                {myRequests.map(event => (
+                  <EventItem
+                    key={event.id}
+                    event={event}
+                    onCancel={handleCancel}
+                    isMyRequest
                   />
                 ))}
               </div>

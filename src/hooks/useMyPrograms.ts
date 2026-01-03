@@ -110,9 +110,15 @@ export function useMyPrograms(): UseMyProgramsReturn {
     }
   );
 
-  const enrollments = data?.enrollments ?? [];
   const isPlatformMode = data?.isPlatformMode ?? false;
-  
+
+  // Sort enrollments: individual (1:1) programs first, then group programs
+  const enrollments = [...(data?.enrollments ?? [])].sort((a, b) => {
+    if (a.program.type === 'individual' && b.program.type !== 'individual') return -1;
+    if (a.program.type !== 'individual' && b.program.type === 'individual') return 1;
+    return 0;
+  });
+
   // Derive group and individual programs
   const groupProgram = enrollments.find(e => e.program.type === 'group') || null;
   const individualProgram = enrollments.find(e => e.program.type === 'individual') || null;

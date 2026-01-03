@@ -336,13 +336,16 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * GET /api/scheduling/events/pending
- * Get pending call proposals and requests that need response
+ * POST /api/scheduling/events
+ * Get pending call proposals and requests
+ * Returns both:
+ * - events: proposals requiring user response (from others)
+ * - myRequests: user's own pending requests awaiting response
  */
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -350,7 +353,7 @@ export async function POST(request: NextRequest) {
     // Use tenant context for org filtering (consistent with /api/events)
     const orgId = await getEffectiveOrgId();
 
-    // Get events where user needs to respond
+    // Get events where user needs to respond (proposed to them)
     const snapshot = await adminDb
       .collection('events')
       .where('schedulingStatus', 'in', ['proposed', 'counter_proposed'])
@@ -359,19 +362,25 @@ export async function POST(request: NextRequest) {
       .limit(50)
       .get();
 
-    let events = snapshot.docs.map(doc => doc.data() as UnifiedEvent);
-
-    // Filter to only events where user is NOT the proposer (they need to respond)
-    events = events.filter(e => e.proposedBy !== userId);
+    let allEvents = snapshot.docs.map(doc => doc.data() as UnifiedEvent);
 
     // Filter by organization if in org context
     if (orgId) {
-      events = events.filter(e => e.organizationId === orgId);
+      allEvents = allEvents.filter(e => e.organizationId === orgId);
     }
 
+    // Split into two groups:
+    // 1. Events where user needs to respond (not the proposer)
+    const pendingResponses = allEvents.filter(e => e.proposedBy !== userId);
+
+    // 2. Events where user IS the proposer (their own pending requests)
+    const myRequests = allEvents.filter(e => e.proposedBy === userId);
+
     return NextResponse.json({
-      events,
-      count: events.length,
+      events: pendingResponses,  // Keep backwards compatibility
+      myRequests,
+      count: pendingResponses.length,
+      myRequestsCount: myRequests.length,
     });
   } catch (error) {
     console.error('[SCHEDULING_EVENTS_PENDING] Error:', error);

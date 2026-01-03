@@ -20,6 +20,7 @@ import {
   Globe,
   Search,
   X,
+  CalendarClock,
 } from 'lucide-react';
 import { useSchedulingEvents, usePendingProposals, useSchedulingActions } from '@/hooks/useScheduling';
 import { ScheduleCallModal } from './ScheduleCallModal';
@@ -97,9 +98,10 @@ interface EventCardProps {
   event: UnifiedEvent;
   compact?: boolean;
   onRespond?: (eventId: string, action: 'accept' | 'decline') => void;
+  onCounterPropose?: (eventId: string) => void;
 }
 
-function EventCard({ event, compact = false, onRespond }: EventCardProps) {
+function EventCard({ event, compact = false, onRespond, onCounterPropose }: EventCardProps) {
   const typeColors = EVENT_TYPE_COLORS[event.eventType] || EVENT_TYPE_COLORS.coaching_1on1;
   const statusInfo = event.schedulingStatus ? STATUS_COLORS[event.schedulingStatus] : null;
   const StatusIcon = statusInfo?.icon || CheckCircle;
@@ -164,21 +166,32 @@ function EventCard({ event, compact = false, onRespond }: EventCardProps) {
 
       {/* Action buttons for pending proposals */}
       {(event.schedulingStatus === 'proposed' || event.schedulingStatus === 'counter_proposed') && onRespond && (
-        <div className="flex gap-2 mt-3">
-          <button
-            onClick={() => onRespond(event.id, 'accept')}
-            className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors"
-          >
-            <CheckCircle className="w-3 h-3" />
-            Accept
-          </button>
-          <button
-            onClick={() => onRespond(event.id, 'decline')}
-            className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-medium hover:bg-red-600 transition-colors"
-          >
-            <XCircle className="w-3 h-3" />
-            Decline
-          </button>
+        <div className="flex flex-col gap-2 mt-3">
+          <div className="flex gap-2">
+            <button
+              onClick={() => onRespond(event.id, 'accept')}
+              className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors"
+            >
+              <CheckCircle className="w-3 h-3" />
+              Accept
+            </button>
+            <button
+              onClick={() => onRespond(event.id, 'decline')}
+              className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-medium hover:bg-red-600 transition-colors"
+            >
+              <XCircle className="w-3 h-3" />
+              Decline
+            </button>
+          </div>
+          {onCounterPropose && (
+            <button
+              onClick={() => onCounterPropose(event.id)}
+              className="flex items-center justify-center gap-1 px-3 py-1.5 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-lg text-xs font-medium hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-colors"
+            >
+              <CalendarClock className="w-3 h-3" />
+              Propose Different Time
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -453,6 +466,16 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
     }
   }, [respondToProposal, refetch]);
 
+  // Handle counter-propose
+  const handleCounterPropose = useCallback((eventId: string) => {
+    // TODO: Implement inline counter-propose UI
+    // For now, show an alert with the event ID
+    const event = events.find(e => e.id === eventId) || proposals.find(e => e.id === eventId);
+    if (event) {
+      alert(`Counter-propose for: ${event.title}\n\nThis feature will allow you to suggest different times. Coming soon!`);
+    }
+  }, [events, proposals]);
+
   // Generate calendar grid for month view
   const calendarDays = useMemo(() => {
     if (viewMode !== 'month') return [];
@@ -673,6 +696,7 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
                   key={event.id}
                   event={event}
                   onRespond={handleRespond}
+                  onCounterPropose={handleCounterPropose}
                 />
               ))
             )}
