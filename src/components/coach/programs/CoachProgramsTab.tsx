@@ -2230,7 +2230,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                                   <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2] flex items-center gap-1">
                                     {nextCallFormatted.time}
                                     {nextCallFormatted.isRecurring && (
-                                      <Repeat className="w-3 h-3" title="Recurring" />
+                                      <span title="Recurring"><Repeat className="w-3 h-3" /></span>
                                     )}
                                   </p>
                                 </div>
@@ -2915,7 +2915,6 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                             </p>
                           </div>
                         </div>
-                      </div>
 
                       {/* Coaching Call Credits */}
                       <div>
@@ -2943,6 +2942,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                           Set to 0 for unlimited or pay-per-call pricing. Clients will see their remaining credits.
                         </p>
                       </div>
+                    </div>
                     )}
 
                     {/* Default Habits */}

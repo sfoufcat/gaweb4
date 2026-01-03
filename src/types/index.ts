@@ -1633,6 +1633,7 @@ export interface CoachingCallData {
   timezone: string;
   location: string; // "chat", Zoom URL, etc.
   title?: string;
+  isRecurring?: boolean;
 }
 
 // Main client coaching data model
