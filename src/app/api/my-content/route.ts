@@ -14,6 +14,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { withDemoMode } from '@/lib/demo-api';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
 import type { 
   ContentPurchase,
   ProgramEnrollment,
@@ -84,6 +85,12 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const typeFilter = searchParams.get('type') || 'all';
 
+    // MULTI-TENANCY: Get organization context from tenant domain
+    const organizationId = await getEffectiveOrgId();
+    const isPlatformMode = !organizationId;
+    
+    console.log(`[MY_CONTENT] Fetching content for user ${userId}, org: ${organizationId || 'platform'}`);
+
     const myContent: MyContentItem[] = [];
     const seenContentIds = new Set<string>();
 
@@ -97,6 +104,12 @@ export async function GET(request: Request) {
 
       for (const doc of purchasesSnapshot.docs) {
         const purchase = doc.data() as ContentPurchase;
+        
+        // MULTI-TENANCY: Filter by organization on tenant domains
+        if (!isPlatformMode && purchase.organizationId !== organizationId) {
+          continue; // Skip content from other organizations
+        }
+        
         const contentKey = `${purchase.contentType}:${purchase.contentId}`;
         
         if (seenContentIds.has(contentKey)) continue;
@@ -136,11 +149,16 @@ export async function GET(request: Request) {
           .where('userId', '==', userId)
           .get();
 
-        // Filter to valid statuses in memory
+        // Filter to valid statuses and current organization in memory
         const validStatuses = ['active', 'upcoming', 'completed'];
         const validEnrollments = enrollmentsSnapshot.docs
           .filter(doc => {
-            const status = doc.data().status;
+            const data = doc.data();
+            const status = data.status;
+            // MULTI-TENANCY: Filter by organization on tenant domains
+            if (!isPlatformMode && data.organizationId !== organizationId) {
+              return false; // Skip enrollments from other organizations
+            }
             return validStatuses.includes(status);
           })
           .sort((a, b) => {
@@ -236,6 +254,11 @@ export async function GET(request: Request) {
 
         if (squadDoc.exists) {
           const squad = squadDoc.data();
+          
+          // MULTI-TENANCY: Filter by organization on tenant domains
+          if (!isPlatformMode && squad?.organizationId !== organizationId) {
+            continue; // Skip squads from other organizations
+          }
           
           // Get membership date from squadMembers
           const memberDoc = membershipSnapshot.docs.find(d => d.data().squadId === squadId);

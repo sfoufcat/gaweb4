@@ -178,6 +178,8 @@ export async function GET(
       testimonials: squadData.testimonials || [],
       faqs: squadData.faqs || [],
       showMemberCount: squadData.showMemberCount,
+      // Organization ID for payment methods
+      organizationId: squadData.organizationId,
     };
 
     // Get organization branding

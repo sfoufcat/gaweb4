@@ -122,7 +122,10 @@ export function Sidebar() {
   // TENANT-SPECIFIC COACH ACCESS CHECK
   // On tenant domains, we need to verify the user has coach/super_coach role IN THIS SPECIFIC TENANT
   // Not just any coach role from another org stored in publicMetadata
-  const currentTenantOrgId = !isDefault ? effectiveBranding.organizationId : null;
+  // Note: effectiveBranding.organizationId is 'default' on platform domain
+  const currentTenantOrgId = !isDefault && effectiveBranding.organizationId !== 'default' 
+    ? effectiveBranding.organizationId 
+    : null;
   
   // Find user's membership in the current tenant org
   const currentTenantMembership = useMemo(() => {
@@ -149,18 +152,25 @@ export function Sidebar() {
     // Super admins can always see coach dashboard (for debugging/support)
     if (role === 'super_admin') return true;
     
-    // If org membership is still loading, don't show (prevents flash)
-    if (orgLoading) return false;
-    
-    // Check if user has coach access in this specific tenant
+    // If we found the tenant membership, check the actual role
     if (currentTenantMembership) {
       const membershipOrgRole = currentTenantMembership.membership?.orgRole as OrgRole | undefined;
+      console.log('🔍 Checking tenant membership orgRole:', membershipOrgRole, 'isOrgCoach:', isOrgCoach(membershipOrgRole));
       return isOrgCoach(membershipOrgRole);
     }
     
-    // No membership in this tenant = no coach access
+    // If still loading org data, use publicMetadata.orgRole as optimistic fallback
+    // This prevents flash of "no dashboard" for actual coaches while loading
+    if (orgLoading) {
+      console.log('🔍 Still loading, using orgRole fallback:', orgRole);
+      return isOrgCoach(orgRole);
+    }
+    
+    // Org data loaded but no membership found in this tenant
+    // User is NOT a coach of this specific organization
+    console.log('🔍 No membership found in tenant after loading - hiding coach dashboard');
     return false;
-  }, [isDemoSite, isDefault, role, orgLoading, currentTenantMembership]);
+  }, [isDemoSite, isDefault, role, orgRole, orgLoading, currentTenantMembership]);
 
   // DEBUG: Log session claims and role
   useEffect(() => {
@@ -171,15 +181,14 @@ export function Sidebar() {
     console.log('publicMetadata role:', role);
     console.log('publicMetadata orgRole:', orgRole);
     console.log('isDefault (platform domain):', isDefault);
+    console.log('effectiveBranding.organizationId:', effectiveBranding.organizationId);
     console.log('currentTenantOrgId:', currentTenantOrgId);
+    console.log('organizations:', organizations);
     console.log('currentTenantMembership:', currentTenantMembership);
+    console.log('currentTenantMembership?.membership?.orgRole:', currentTenantMembership?.membership?.orgRole);
     console.log('orgLoading:', orgLoading);
-    console.log('hasCoaching:', hasCoaching);
-    console.log('showMyCoach:', showMyCoach);
     console.log('showCoachDashboard:', showCoachDashboard);
-    console.log('showAdminPanel:', showAdminPanel);
-    console.log('showEditorPanel:', showEditorPanel);
-  }, [isLoaded, isSignedIn, userId, role, orgRole, isDefault, currentTenantOrgId, currentTenantMembership, orgLoading, hasCoaching, showMyCoach, showCoachDashboard, showAdminPanel, showEditorPanel]);
+  }, [isLoaded, isSignedIn, userId, role, orgRole, isDefault, effectiveBranding.organizationId, currentTenantOrgId, organizations, currentTenantMembership, orgLoading, showCoachDashboard]);
 
   // Prefetch pages on mount to reduce loading time
   useEffect(() => {

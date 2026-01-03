@@ -46,6 +46,7 @@ interface SquadDetailData {
     testimonials: SquadTestimonial[];
     faqs: SquadFaq[];
     showMemberCount?: boolean;
+    organizationId?: string;
   };
   memberCount?: number;
   memberAvatars?: string[];
@@ -922,6 +923,7 @@ export default function SquadDetailPage() {
         priceInCents={paymentModal.priceInCents}
         currency={paymentModal.currency}
         billingInterval={paymentModal.billingInterval}
+        organizationId={squad.organizationId}
       />
 
       {/* Success Modal */}

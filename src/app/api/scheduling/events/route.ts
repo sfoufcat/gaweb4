@@ -119,6 +119,11 @@ export async function GET(request: NextRequest) {
     // Map to track events by ID (for deduplication)
     const eventsMap = new Map<string, UnifiedEvent>();
 
+    // Get user's squad memberships for squad-based event queries
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    const userData = userDoc.data();
+    const userSquadIds: string[] = userData?.squadIds || [];
+
     // Query 1: Events with startDateTime in range (scheduling events)
     const schedulingQuery = adminDb
       .collection('events')
@@ -196,6 +201,52 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Query 4: Events for squads the user is a member of (squad calls)
+    // This ensures squad call events show up in member calendars even if they're not in attendeeIds
+    if (userSquadIds.length > 0) {
+      // Firestore 'in' query supports max 30 values, batch if needed
+      const batchSize = 30;
+      for (let i = 0; i < userSquadIds.length; i += batchSize) {
+        const batch = userSquadIds.slice(i, i + batchSize);
+        
+        const squadEventsQuery = adminDb
+          .collection('events')
+          .where('squadId', 'in', batch);
+
+        const squadEventsSnapshot = await squadEventsQuery.get();
+        
+        for (const doc of squadEventsSnapshot.docs) {
+          // Skip if already in map
+          if (eventsMap.has(doc.id)) continue;
+          
+          const event = { id: doc.id, ...doc.data() } as UnifiedEvent;
+          
+          // Compute startDateTime if not present
+          let eventStartDateTime = event.startDateTime;
+          if (!eventStartDateTime) {
+            const computed = computeStartDateTime(event);
+            if (computed) {
+              eventStartDateTime = computed;
+              event.startDateTime = computed;
+              
+              const computedEnd = computeEndDateTime(event);
+              if (computedEnd) {
+                event.endDateTime = computedEnd;
+              }
+            }
+          }
+          
+          // Check if within date range
+          if (eventStartDateTime) {
+            const eventStart = new Date(eventStartDateTime);
+            if (eventStart >= rangeStart && eventStart <= rangeEnd) {
+              eventsMap.set(doc.id, event);
+            }
+          }
+        }
+      }
+    }
+
     // Convert map to array
     let events = Array.from(eventsMap.values());
 
@@ -205,15 +256,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Filter by user participation based on role
+    // Note: For squad events, user is considered a participant if they're in the squad
     events = events.filter(e => {
       const attendeeIds = e.attendeeIds || [];
+      const isSquadMember = e.squadId && userSquadIds.includes(e.squadId);
+      
       if (roleParam === 'host') {
         return e.hostUserId === userId;
       } else if (roleParam === 'attendee') {
-        return attendeeIds.includes(userId) && e.hostUserId !== userId;
+        return (attendeeIds.includes(userId) || isSquadMember) && e.hostUserId !== userId;
       } else {
-        // 'all' - user is either host or attendee
-        return e.hostUserId === userId || attendeeIds.includes(userId);
+        // 'all' - user is either host, attendee, or squad member
+        return e.hostUserId === userId || attendeeIds.includes(userId) || isSquadMember;
       }
     });
 

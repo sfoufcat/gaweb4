@@ -212,6 +212,7 @@ export async function POST(request: NextRequest) {
       clientSecret: paymentIntent.client_secret,
       subscriptionId: subscription.id,
       connectedAccountId: stripeConnectAccountId,
+      organizationId: squad.organizationId,
       priceInCents: squad.priceInCents,
       currency: squad.currency || 'usd',
       billingInterval: squad.billingInterval || 'monthly',

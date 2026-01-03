@@ -149,7 +149,10 @@ export default function CoachPage() {
   const { effectiveBranding } = useBranding();
   const { organizations, isLoading: orgLoading } = useOrganization();
   
-  const currentTenantOrgId = !isDefault ? effectiveBranding.organizationId : null;
+  // Note: effectiveBranding.organizationId is 'default' on platform domain
+  const currentTenantOrgId = !isDefault && effectiveBranding.organizationId !== 'default' 
+    ? effectiveBranding.organizationId 
+    : null;
   
   // Find user's membership in the current tenant org
   const currentTenantMembership = useMemo(() => {
@@ -175,18 +178,20 @@ export default function CoachPage() {
     // Super admins can always access (for debugging/support)
     if (role === 'super_admin') return true;
     
-    // If org membership is still loading, treat as having access (will be rechecked)
-    if (orgLoading) return true;
-    
     // Check if user has coach access in this specific tenant
     if (currentTenantMembership) {
       const membershipOrgRole = currentTenantMembership.membership?.orgRole as OrgRole | undefined;
       return isOrgCoach(membershipOrgRole);
     }
     
-    // No membership in this tenant = no access
+    // While loading, use publicMetadata.orgRole as optimistic fallback
+    if (orgLoading) {
+      return isOrgCoach(orgRole);
+    }
+    
+    // Org data loaded but no membership found - no access
     return false;
-  }, [isDemoSite, isDefault, role, orgLoading, currentTenantMembership]);
+  }, [isDemoSite, isDefault, role, orgRole, orgLoading, currentTenantMembership]);
   
   // Determine access level for this tenant:
   // - Full access: super_admin, or super_coach in THIS tenant
@@ -206,8 +211,13 @@ export default function CoachPage() {
       return membershipOrgRole === 'super_coach';
     }
     
+    // While loading, use publicMetadata.orgRole as optimistic fallback
+    if (orgLoading) {
+      return orgRole === 'super_coach';
+    }
+    
     return false;
-  }, [isDemoSite, role, orgRole, isDefault, currentTenantMembership]);
+  }, [isDemoSite, role, orgRole, orgLoading, isDefault, currentTenantMembership]);
   
   const isLimitedOrgCoach = useMemo(() => {
     if (hasFullAccess) return false;
@@ -224,8 +234,13 @@ export default function CoachPage() {
       return membershipOrgRole === 'coach';
     }
     
+    // While loading, use publicMetadata.orgRole as optimistic fallback
+    if (orgLoading) {
+      return orgRole === 'coach';
+    }
+    
     return false;
-  }, [hasFullAccess, isDemoSite, isDefault, orgRole, currentTenantMembership]);
+  }, [hasFullAccess, isDemoSite, isDefault, orgRole, orgLoading, currentTenantMembership]);
 
   useEffect(() => {
     setMounted(true);
