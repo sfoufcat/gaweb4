@@ -24,7 +24,7 @@ const DEMO_HABITS: Habit[] = [
     text: 'Morning Meditation',
     frequencyType: 'daily',
     frequencyValue: 1,
-    reminder: { time: '07:00', enabled: true },
+    reminder: { time: '07:00' },
     targetRepetitions: 30,
     linkedRoutine: 'Start your day with clarity',
     progress: {
@@ -46,7 +46,7 @@ const DEMO_HABITS: Habit[] = [
     text: 'Exercise',
     frequencyType: 'daily',
     frequencyValue: 1,
-    reminder: { time: '08:00', enabled: true },
+    reminder: { time: '08:00' },
     targetRepetitions: 30,
     linkedRoutine: 'Build strength and energy',
     progress: {
@@ -68,7 +68,7 @@ const DEMO_HABITS: Habit[] = [
     text: 'Journaling',
     frequencyType: 'daily',
     frequencyValue: 1,
-    reminder: { time: '21:00', enabled: true },
+    reminder: { time: '21:00' },
     targetRepetitions: 30,
     linkedRoutine: 'Reflect and grow',
     progress: {

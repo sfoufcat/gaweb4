@@ -185,7 +185,7 @@ export function CoachSquadsTab({ apiBasePath = '/api/coach/org-squads' }: CoachS
         programType: ds.programType,
         isPublic: ds.isPublic,
         priceInCents: ds.priceInCents,
-        avatarUrl: ds.avatarUrl,
+        avatarUrl: ds.avatarUrl || '',
         coverImageUrl: ds.coverImageUrl,
         coachId: 'demo-coach',
       }));

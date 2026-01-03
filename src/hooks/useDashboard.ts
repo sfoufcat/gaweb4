@@ -2,6 +2,7 @@
 
 import useSWR from 'swr';
 import { useUser } from '@clerk/nextjs';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import type { Habit, MorningCheckIn, EveningCheckIn, Task, Squad, SquadMember } from '@/types';
 
 export interface ProgramEnrollmentWithDetails {
@@ -104,9 +105,11 @@ const initialData: DashboardData = {
  */
 export function useDashboard() {
   const { user, isLoaded } = useUser();
+  const { isDemoMode } = useDemoMode();
   
   const today = new Date().toISOString().split('T')[0];
-  const cacheKey = user ? `/api/dashboard?date=${today}` : null;
+  // In demo mode, always fetch data even without a user
+  const cacheKey = (user || isDemoMode) ? `/api/dashboard?date=${today}` : null;
   
   const { data, error, isLoading, mutate } = useSWR<DashboardData>(
     cacheKey,
@@ -133,7 +136,8 @@ export function useDashboard() {
   return {
     ...dashboardData,
     // Only show loading on INITIAL fetch (when no data exists)
-    isLoading: !isLoaded || (isLoading && !data),
+    // In demo mode, consider loaded once SWR starts
+    isLoading: isDemoMode ? (isLoading && !data) : (!isLoaded || (isLoading && !data)),
     error: error?.message ?? null,
     refetch: async () => { await mutate(); },
   };

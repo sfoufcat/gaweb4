@@ -233,8 +233,19 @@ export function DashboardPage() {
   // Get discover recommendation for the discover card
   const { recommendation: discoverRecommendation, isLoading: discoverLoading } = useDiscoverRecommendation();
   
+  // Track if carousel has ever loaded (to prevent skeleton flash on revalidation)
+  const hasCarouselLoadedRef = useRef(false);
+  
   // Unified loading state for card carousel - wait for all card data to prevent reordering
-  const carouselDataLoading = checkInLoading || programPromptLoading || discoverLoading;
+  // Only show skeleton on INITIAL load, not on background revalidation
+  const isInitialCarouselLoading = checkInLoading || programPromptLoading || discoverLoading;
+  
+  // Once data has loaded once, never show skeleton again
+  if (!isInitialCarouselLoading && !hasCarouselLoadedRef.current) {
+    hasCarouselLoadedRef.current = true;
+  }
+  
+  const carouselDataLoading = isInitialCarouselLoading && !hasCarouselLoadedRef.current;
   
   // Starter Program state for task sync and completion
   const { 
@@ -996,10 +1007,13 @@ export function DashboardPage() {
   type CardType = 'prompt' | 'goal' | 'discover' | 'status' | 'welcome' | 'track' | 'program_checkin' | 'quote';
   
   // Determine the prompt card content (morning/evening/weekly)
+  // Redesigned for better responsiveness on small/medium screens
   const renderPromptCard = (isMobile: boolean) => {
+    // Mobile carousel: full-width snap cards
+    // Desktop/Tablet grid: responsive height and padding
     const baseClasses = isMobile 
-      ? "w-[calc(100vw-32px)] flex-shrink-0 snap-center h-[200px] rounded-[32px] overflow-hidden relative flex flex-col justify-center items-center"
-      : "h-[200px] rounded-[32px] overflow-hidden relative p-6 flex flex-col items-center justify-center hover:scale-[1.02] transition-transform cursor-pointer";
+      ? "w-[calc(100vw-32px)] flex-shrink-0 snap-center h-[180px] rounded-[24px] overflow-hidden relative"
+      : "h-[180px] lg:h-[200px] rounded-[24px] lg:rounded-[32px] overflow-hidden relative p-4 lg:p-6 hover:scale-[1.02] transition-transform cursor-pointer";
     
     if (shouldShowMorningCheckInCTA) {
       return (
@@ -1008,12 +1022,18 @@ export function DashboardPage() {
           href="/checkin/morning/start" 
           className={`${baseClasses} bg-gradient-to-br from-emerald-500 to-teal-600`}
         >
-          <div className="absolute inset-0 bg-black/10" />
-          <div className="relative z-10 text-center">
-            <p className={`font-albert ${isMobile ? 'text-[24px]' : 'text-[28px]'} text-white leading-[1.2] tracking-[-1.3px] font-medium`}>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+          <div className={`relative z-10 h-full flex flex-col ${isMobile ? 'justify-center items-center px-5' : 'justify-center items-center'}`}>
+            {/* Sun icon for morning */}
+            <div className={`${isMobile ? 'w-10 h-10 mb-3' : 'w-8 h-8 lg:w-10 lg:h-10 mb-2 lg:mb-3'} rounded-full bg-white/20 flex items-center justify-center`}>
+              <svg className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4 lg:w-5 lg:h-5'} text-white`} fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z" />
+              </svg>
+            </div>
+            <p className={`font-albert ${isMobile ? 'text-[20px]' : 'text-[18px] lg:text-[22px]'} text-white leading-[1.2] tracking-[-0.5px] font-semibold text-center`}>
               Begin Morning Check-In
             </p>
-            <p className="font-sans text-[14px] text-white/80 leading-[1.2] mt-2">
+            <p className={`font-sans ${isMobile ? 'text-[13px]' : 'text-[12px] lg:text-[13px]'} text-white/80 leading-[1.3] mt-1.5 text-center`}>
               Start your day with intention
             </p>
           </div>
@@ -1028,12 +1048,18 @@ export function DashboardPage() {
           href="/checkin/evening/start"
           className={`${baseClasses} bg-gradient-to-br from-indigo-500 to-purple-600`}
         >
-          <div className="absolute inset-0 bg-black/10" />
-          <div className="relative z-10 text-center">
-            <p className={`font-albert ${isMobile ? 'text-[24px]' : 'text-[28px]'} text-white leading-[1.2] tracking-[-1.3px] font-medium`}>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+          <div className={`relative z-10 h-full flex flex-col ${isMobile ? 'justify-center items-center px-5' : 'justify-center items-center'}`}>
+            {/* Moon icon for evening */}
+            <div className={`${isMobile ? 'w-10 h-10 mb-3' : 'w-8 h-8 lg:w-10 lg:h-10 mb-2 lg:mb-3'} rounded-full bg-white/20 flex items-center justify-center`}>
+              <svg className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4 lg:w-5 lg:h-5'} text-white`} fill="currentColor" viewBox="0 0 24 24">
+                <path fillRule="evenodd" d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <p className={`font-albert ${isMobile ? 'text-[20px]' : 'text-[18px] lg:text-[22px]'} text-white leading-[1.2] tracking-[-0.5px] font-semibold text-center`}>
               {eveningCTAText}
             </p>
-            <p className="font-sans text-[14px] text-white/80 leading-[1.2] mt-2">
+            <p className={`font-sans ${isMobile ? 'text-[13px]' : 'text-[12px] lg:text-[13px]'} text-white/80 leading-[1.3] mt-1.5 text-center`}>
               {eveningCTASubtext}
             </p>
           </div>
@@ -1048,13 +1074,16 @@ export function DashboardPage() {
           href="/checkin/weekly/checkin"
           className={`${baseClasses} bg-gradient-to-br from-amber-500 to-orange-600`}
         >
-          <div className="absolute inset-0 bg-black/10" />
-          <div className="relative z-10 text-center">
-            <Calendar className={`${isMobile ? 'w-8 h-8' : 'w-10 h-10'} text-white mb-3 mx-auto`} />
-            <p className={`font-albert ${isMobile ? 'text-[24px]' : 'text-[28px]'} text-white leading-[1.2] tracking-[-1.3px] font-medium`}>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+          <div className={`relative z-10 h-full flex flex-col ${isMobile ? 'justify-center items-center px-5' : 'justify-center items-center'}`}>
+            {/* Calendar icon */}
+            <div className={`${isMobile ? 'w-10 h-10 mb-3' : 'w-8 h-8 lg:w-10 lg:h-10 mb-2 lg:mb-3'} rounded-full bg-white/20 flex items-center justify-center`}>
+              <Calendar className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4 lg:w-5 lg:h-5'} text-white`} />
+            </div>
+            <p className={`font-albert ${isMobile ? 'text-[20px]' : 'text-[18px] lg:text-[22px]'} text-white leading-[1.2] tracking-[-0.5px] font-semibold text-center`}>
               Start Weekly Reflection
             </p>
-            <p className="font-sans text-[14px] text-white/80 leading-[1.2] mt-2">
+            <p className={`font-sans ${isMobile ? 'text-[13px]' : 'text-[12px] lg:text-[13px]'} text-white/80 leading-[1.3] mt-1.5 text-center`}>
               Close your week with intention
             </p>
           </div>
@@ -1082,20 +1111,22 @@ export function DashboardPage() {
           className={`${baseClasses} ${gradientClass || ''}`}
           style={gradientStyle}
         >
-          <div className="absolute inset-0 bg-black/10" />
-          <div className="relative z-10 text-center">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+          <div className={`relative z-10 h-full flex flex-col ${isMobile ? 'justify-center items-center px-5' : 'justify-center items-center'}`}>
             {IconComponent ? (
-              <IconComponent className={`${isMobile ? 'w-8 h-8' : 'w-10 h-10'} text-white mb-3 mx-auto`} />
+              <div className={`${isMobile ? 'w-10 h-10 mb-3' : 'w-8 h-8 lg:w-10 lg:h-10 mb-2 lg:mb-3'} rounded-full bg-white/20 flex items-center justify-center`}>
+                <IconComponent className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4 lg:w-5 lg:h-5'} text-white`} />
+              </div>
             ) : displayConfig.icon && (
-              <span className={`${isMobile ? 'text-[28px]' : 'text-[32px]'} mb-3 block`}>
+              <span className={`${isMobile ? 'text-[24px] mb-3' : 'text-[20px] lg:text-[24px] mb-2 lg:mb-3'} block`}>
                 {displayConfig.icon}
               </span>
             )}
-            <p className={`font-albert ${isMobile ? 'text-[24px]' : 'text-[28px]'} text-white leading-[1.2] tracking-[-1.3px] font-medium`}>
+            <p className={`font-albert ${isMobile ? 'text-[20px]' : 'text-[18px] lg:text-[22px]'} text-white leading-[1.2] tracking-[-0.5px] font-semibold text-center`}>
               {displayConfig.title}
             </p>
             {displayConfig.subtitle && (
-              <p className="font-sans text-[14px] text-white/80 leading-[1.2] mt-2">
+              <p className={`font-sans ${isMobile ? 'text-[13px]' : 'text-[12px] lg:text-[13px]'} text-white/80 leading-[1.3] mt-1.5 text-center`}>
                 {displayConfig.subtitle}
               </p>
             )}
@@ -1395,8 +1426,8 @@ export function DashboardPage() {
     );
   };
   
-  // Determine card order based on current state
-  const getCardOrder = (): CardType[] => {
+  // Determine card order based on current state - memoized to prevent layout shifts
+  const cardOrder = useMemo((): CardType[] => {
     // DEMO MODE: Show prompt, goal, and quote cards
     if (isDemoMode) {
       return ['prompt', 'goal', 'quote'];
@@ -1432,32 +1463,35 @@ export function DashboardPage() {
     
     // No check-in active: Goal - Track Prompt - Discover
     return ['goal', 'track', 'discover'];
-  };
+  }, [isDemoMode, showProgramCheckIn, isFirstDay, isMorningWindow, isMorningCheckInCompleted, isMorningWindowClosed, hasActivePrompt]);
   
-  // Render quote card for demo mode - using distinct teal gradient
+  // Render quote card for demo mode - redesigned for better responsiveness
   const renderQuoteCard = (isMobile: boolean): React.ReactNode => {
-    // Mobile: Redesigned cleaner layout with teal gradient for demo
+    // Mobile carousel: full-width snap card
     if (isMobile) {
       return (
         <div 
           key="quote-card"
-          className="w-[calc(100vw-32px)] flex-shrink-0 snap-center h-[180px] rounded-[24px] overflow-hidden relative bg-gradient-to-br from-teal-500 via-cyan-500 to-sky-600"
+          className="w-[calc(100vw-32px)] flex-shrink-0 snap-center h-[180px] rounded-[24px] overflow-hidden relative bg-gradient-to-br from-amber-500 to-orange-600"
         >
-          {/* Subtle texture overlay */}
+          {/* Subtle gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+          
+          {/* Decorative thought bubble */}
+          <div className="absolute top-3 right-4 w-8 h-8 bg-white/15 rounded-full flex items-center justify-center">
+            <div className="w-5 h-5 bg-white/20 rounded-full" />
+          </div>
+          <div className="absolute top-8 right-10 w-3 h-3 bg-white/10 rounded-full" />
           
           {/* Content */}
           <div className="relative z-10 h-full flex flex-col justify-center px-5 py-4">
-            {/* Quote icon */}
-            <LucideIcons.Quote className="w-6 h-6 text-white/40 mb-2" />
-            
             {/* Quote text */}
-            <p className="font-albert text-[17px] font-medium text-white leading-[1.35] tracking-[-0.3px]">
+            <p className="font-albert text-[18px] font-medium text-white leading-[1.35] tracking-[-0.3px] italic">
               &ldquo;The only way to do great work is to love what you do.&rdquo;
             </p>
             
             {/* Author */}
-            <p className="font-albert text-[13px] text-white/70 mt-2">
+            <p className="font-albert text-[13px] text-white/70 mt-3">
               — Steve Jobs
             </p>
           </div>
@@ -1465,19 +1499,28 @@ export function DashboardPage() {
       );
     }
     
-    // Desktop: Keep original centered design with teal gradient for demo
+    // Desktop/Tablet grid: responsive height and padding, matching prompt card style
     return (
       <div 
         key="quote-card"
-        className="h-[200px] rounded-[32px] overflow-hidden relative p-6 flex flex-col items-center justify-center bg-gradient-to-br from-teal-500 to-cyan-600"
+        className="h-[180px] lg:h-[200px] rounded-[24px] lg:rounded-[32px] overflow-hidden relative p-4 lg:p-6 bg-gradient-to-br from-amber-500 to-orange-600"
       >
-        <div className="absolute inset-0 bg-black/10" />
-        <div className="relative z-10 text-center px-6">
-          <span className="text-[28px] mb-3 block">💭</span>
-          <p className="text-[18px] font-albert font-medium text-white leading-[1.4] mb-2">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+        
+        {/* Decorative thought bubble */}
+        <div className="absolute top-3 right-4 w-6 h-6 lg:w-8 lg:h-8 bg-white/15 rounded-full flex items-center justify-center">
+          <div className="w-4 h-4 lg:w-5 lg:h-5 bg-white/20 rounded-full" />
+        </div>
+        <div className="absolute top-6 lg:top-8 right-8 lg:right-10 w-2 h-2 lg:w-3 lg:h-3 bg-white/10 rounded-full" />
+        
+        <div className="relative z-10 h-full flex flex-col justify-center">
+          {/* Quote text - responsive font size */}
+          <p className="font-albert text-[16px] lg:text-[18px] font-medium text-white leading-[1.4] tracking-[-0.3px] italic">
             &ldquo;The only way to do great work is to love what you do.&rdquo;
           </p>
-          <p className="font-albert text-[14px] text-white/80">
+          
+          {/* Author */}
+          <p className="font-albert text-[12px] lg:text-[13px] text-white/70 mt-2 lg:mt-3">
             — Steve Jobs
           </p>
         </div>
@@ -1508,9 +1551,6 @@ export function DashboardPage() {
         return null;
     }
   };
-  
-  // Get the current card order
-  const cardOrder = getCardOrder();
 
   return (
     <div className="max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-16 pb-32 pt-4">
