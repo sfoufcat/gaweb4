@@ -508,6 +508,11 @@
 html {
   overflow-x: hidden;
   scrollbar-gutter: stable;
+  background-color: #faf8f6;
+}
+
+html.dark {
+  background-color: #05070b;
 }
 
 body {

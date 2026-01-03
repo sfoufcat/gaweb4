@@ -10,6 +10,7 @@ import {
   Plus,
   Trash2,
   Check,
+  CheckCircle,
   AlertCircle,
   DollarSign,
   Globe,
@@ -64,6 +65,9 @@ export function RequestCallModal({
   const [proposedSlots, setProposedSlots] = useState<ProposedTimeSlot[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
+
+  // Success state
+  const [showSuccess, setShowSuccess] = useState(false);
 
   // Date range for available slots (next 30 days)
   const dateRange = useMemo(() => {
@@ -139,13 +143,20 @@ export function RequestCallModal({
 
       await requestCall({
         proposedTimes,
-        title: `Call request with ${coachName}`,
+        // Don't send title - let API set it to "Call request from {clientName}"
         description,
         duration,
       });
 
+      // Show success message before closing
+      setShowSuccess(true);
       onSuccess?.();
-      onClose();
+
+      // Auto-close after showing success
+      setTimeout(() => {
+        setShowSuccess(false);
+        onClose();
+      }, 2000);
     } catch (err) {
       // Error is handled by the hook
     }
@@ -223,7 +234,21 @@ export function RequestCallModal({
           </button>
         </div>
 
-        {/* Content */}
+        {/* Success View */}
+        {showSuccess ? (
+          <div className="p-6 flex flex-col items-center justify-center min-h-[300px] text-center">
+            <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center mb-4">
+              <CheckCircle className="w-8 h-8 text-green-500" />
+            </div>
+            <h3 className="font-albert text-xl font-semibold text-[#1a1a1a] dark:text-[#f5f5f8] mb-2">
+              Request Sent!
+            </h3>
+            <p className="text-[#5f5a55] dark:text-[#b2b6c2]">
+              Your call request has been sent to {coachName}. You&apos;ll be notified when they respond.
+            </p>
+          </div>
+        ) : (
+        /* Content */
         <div className="p-6 space-y-6">
           {/* Price notice */}
           {isPaid && priceInCents > 0 && (
@@ -412,8 +437,10 @@ export function RequestCallModal({
             </div>
           )}
         </div>
+        )}
 
-        {/* Footer */}
+        {/* Footer - hide when showing success */}
+        {!showSuccess && (
         <div className="sticky bottom-0 flex items-center justify-end gap-3 px-6 py-4 border-t border-[#e1ddd8] dark:border-[#262b35] bg-white dark:bg-[#171b22]">
           <button
             onClick={onClose}
@@ -430,6 +457,7 @@ export function RequestCallModal({
             Send Request
           </button>
         </div>
+        )}
       </div>
     </div>
   );

@@ -254,10 +254,12 @@ export function CalendarContent({ compact = false }: CalendarContentProps) {
   }, [respondToProposal, refetch]);
 
   // Group events by upcoming status
+  // Exclude proposed/counter_proposed events as they're shown in "Pending Proposals" section
   const upcomingEvents = useMemo(() => {
     const now = new Date();
+    const pendingStatuses = ['proposed', 'counter_proposed'];
     return events
-      .filter(e => new Date(e.startDateTime) >= now)
+      .filter(e => new Date(e.startDateTime) >= now && !pendingStatuses.includes(e.schedulingStatus || ''))
       .sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime());
   }, [events]);
 

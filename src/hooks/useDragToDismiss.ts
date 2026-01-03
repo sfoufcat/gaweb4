@@ -13,7 +13,7 @@ interface UseDragToDismissReturn {
   sheetRef: RefObject<HTMLDivElement | null>;
   handleRef: RefObject<HTMLDivElement | null>;
   handleProps: {
-    style: React.CSSProperties;
+    className: string;
   };
   backdropProps: {
     style: { opacity: number };
@@ -204,7 +204,7 @@ export function useDragToDismiss({
     sheetRef,
     handleRef,
     handleProps: {
-      style: { touchAction: 'none' } as React.CSSProperties,
+      className: 'touch-none',
     },
     backdropProps: {
       style: { opacity: backdropOpacity.current },

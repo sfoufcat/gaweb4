@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
     const eventRef = adminDb.collection('events').doc();
     const eventData: UnifiedEvent = {
       id: eventRef.id,
-      title: title || `Call request from ${clientName}`,
+      title: title || clientName,
       description: description || `Call request from ${clientName}`,
       startDateTime: firstProposed.startDateTime,
       endDateTime: firstProposed.endDateTime,
