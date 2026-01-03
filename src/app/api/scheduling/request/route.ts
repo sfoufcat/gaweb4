@@ -100,10 +100,22 @@ export async function POST(request: NextRequest) {
     let coachName = 'Coach';
     let coachAvatarUrl: string | undefined;
 
-    // Find the org:admin (organization owner/super_coach)
-    const adminMembership = memberships.data.find(m => m.role === 'org:admin');
-    if (adminMembership?.publicUserData?.userId) {
-      coachId = adminMembership.publicUserData.userId;
+    // First, find member with super_coach orgRole (stored in membership publicMetadata)
+    const coachMember = memberships.data.find(m => {
+      const metadata = m.publicMetadata as { orgRole?: string } | undefined;
+      return metadata?.orgRole === 'super_coach';
+    });
+
+    if (coachMember?.publicUserData?.userId) {
+      coachId = coachMember.publicUserData.userId;
+    }
+
+    // Fallback: Find org:admin if no super_coach found
+    if (!coachId) {
+      const adminMembership = memberships.data.find(m => m.role === 'org:admin');
+      if (adminMembership?.publicUserData?.userId) {
+        coachId = adminMembership.publicUserData.userId;
+      }
     }
 
     // Fallback: Check Firestore org_memberships
