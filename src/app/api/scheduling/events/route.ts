@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
 import type { UnifiedEvent, EventType } from '@/types';
 import { isDemoRequest, demoResponse } from '@/lib/demo-api';
 import { generateDemoCalendarEvents } from '@/lib/demo-data';
@@ -81,11 +82,14 @@ export async function GET(request: NextRequest) {
       return demoResponse({ events });
     }
 
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Use tenant context for org filtering (consistent with /api/events)
+    const orgId = await getEffectiveOrgId();
 
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
@@ -317,11 +321,14 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Use tenant context for org filtering (consistent with /api/events)
+    const orgId = await getEffectiveOrgId();
 
     // Get events where user needs to respond
     const snapshot = await adminDb
