@@ -5,11 +5,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Phone, ChevronDown, ExternalLink, Users, Loader2 } from 'lucide-react';
+import { ArrowLeft, Phone, ChevronDown, ExternalLink, Users, Loader2, Calendar, Clock, MapPin } from 'lucide-react';
 import type { EnrolledProgramWithDetails } from '@/hooks/useMyPrograms';
 import { useProgramContent } from '@/hooks/useProgramContent';
+import { useProgramCoachingData } from '@/hooks/useProgramCoachingData';
 import { ArticleCard } from '@/components/discover/ArticleCard';
 import { ProgramSkeleton } from '@/components/program/ProgramSkeleton';
+import { RequestCallModal } from '@/components/scheduling';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 
 /**
@@ -47,9 +49,23 @@ export function ProgramDetailView({
   const { program, progress, squad, squadMembers, enrollment } = enrolled;
   const isGroup = program.type === 'group';
   
+  // Fetch coaching data for individual programs
+  const {
+    nextCall,
+    chatChannelId,
+    callCredits,
+    callSettings,
+    coach: coachingCoach,
+    hasCoachingData,
+    isLoading: coachingLoading,
+  } = useProgramCoachingData();
+  
   // State for joining community
   const [isJoiningCommunity, setIsJoiningCommunity] = useState(false);
   const [joinCommunityError, setJoinCommunityError] = useState<string | null>(null);
+  
+  // State for request call modal
+  const [showRequestCallModal, setShowRequestCallModal] = useState(false);
   
   // Check if community is available but not joined
   const showJoinCommunityCard = !isGroup && 
@@ -343,16 +359,25 @@ export function ProgramDetailView({
                   Next session
                 </span>
                 <span className="font-sans text-[11px] text-text-secondary dark:text-[#7d8190] leading-[16px] tracking-[0.5px]">
-                  December 4 · 4:00PM
+                  {nextCall?.datetime ? (
+                    new Date(nextCall.datetime).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })
+                  ) : (
+                    'Not scheduled'
+                  )}
                 </span>
               </div>
 
               {/* Coach Avatar */}
               <div className="w-[38px] h-[38px] rounded-full overflow-hidden bg-gray-200 dark:bg-gray-800">
-                {program.coachImageUrl ? (
+                {(coachingCoach?.imageUrl || program.coachImageUrl) ? (
                   <Image
-                    src={program.coachImageUrl}
-                    alt={program.coachName}
+                    src={coachingCoach?.imageUrl || program.coachImageUrl || ''}
+                    alt={coachingCoach?.name || program.coachName}
                     width={38}
                     height={38}
                     className="w-full h-full object-cover"
@@ -360,7 +385,7 @@ export function ProgramDetailView({
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <span className="font-albert font-semibold text-sm text-text-secondary dark:text-[#7d8190]">
-                      {program.coachName[0]}
+                      {(coachingCoach?.name || program.coachName)?.[0] || 'C'}
                     </span>
                   </div>
                 )}
@@ -369,7 +394,7 @@ export function ProgramDetailView({
               {/* Coach Info */}
               <div className="flex flex-col">
                 <span className="font-sans text-[14px] font-medium text-text-primary dark:text-[#f5f5f8] leading-[20px] tracking-[0.1px]">
-                  {program.coachName}
+                  {coachingCoach?.name || program.coachName}
                 </span>
                 <span className="font-sans text-[11px] text-text-secondary dark:text-[#7d8190] leading-[16px] tracking-[0.5px]">
                   One-on-one coach
@@ -431,30 +456,114 @@ export function ProgramDetailView({
       {!isGroup && (
         <div>
           <div className="bg-white dark:bg-[#171b22] rounded-[20px] p-4 space-y-4">
-            <h3 className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3]">
-              Next scheduled call
-            </h3>
-            
-            <div className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2] leading-[1.4] tracking-[-0.3px] space-y-2">
-              <p>December 4 · 10:00 AM EST (4:00 PM your time)</p>
-              <p>Location: Chat</p>
-              <p>Guided by: {program.coachName}</p>
-            </div>
+            {nextCall?.datetime ? (
+              <>
+                {/* Has scheduled call */}
+                <h3 className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3]">
+                  Next scheduled call
+                </h3>
+                
+                <div className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2] leading-[1.4] tracking-[-0.3px] space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    <p>
+                      {new Date(nextCall.datetime).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        month: 'long',
+                        day: 'numeric',
+                        timeZone: nextCall.timezone,
+                      })} · {new Date(nextCall.datetime).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        timeZoneName: 'short',
+                        timeZone: nextCall.timezone,
+                      })}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    <p>Location: {nextCall.location || 'Chat'}</p>
+                  </div>
+                  <p>Guided by: {coachingCoach?.name || program.coachName}</p>
+                </div>
 
-            {/* Add to calendar button */}
-            <button className="w-full bg-white dark:bg-[#171b22] border border-[rgba(215,210,204,0.5)] rounded-[32px] px-4 py-4 font-bold text-[16px] text-[#2c2520] dark:text-[#f5f5f8] leading-[1.4] tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all">
-              Add to calendar
-            </button>
+                {/* Add to calendar button */}
+                <button className="w-full bg-white dark:bg-[#171b22] border border-[rgba(215,210,204,0.5)] rounded-[32px] px-4 py-4 font-bold text-[16px] text-[#2c2520] dark:text-[#f5f5f8] leading-[1.4] tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all">
+                  Add to calendar
+                </button>
+              </>
+            ) : (
+              <>
+                {/* No call scheduled - show request option */}
+                <h3 className="font-albert text-[18px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3]">
+                  Schedule a call
+                </h3>
+                
+                <p className="font-sans text-[14px] text-text-secondary dark:text-[#b2b6c2] leading-[1.5]">
+                  No call scheduled yet. Request a 1:1 session with your coach.
+                </p>
+                
+                {/* Show call credits if available */}
+                {callCredits && callCredits.monthlyAllowance > 0 && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="w-4 h-4 text-brand-accent" />
+                    <span className="text-text-secondary dark:text-[#b2b6c2]">
+                      {callCredits.creditsRemaining} of {callCredits.monthlyAllowance} calls remaining this month
+                    </span>
+                  </div>
+                )}
+                
+                {/* Request call button */}
+                <button
+                  onClick={() => {
+                    if (isDemoMode) {
+                      openSignupModal();
+                    } else {
+                      setShowRequestCallModal(true);
+                    }
+                  }}
+                  className="w-full bg-white dark:bg-[#171b22] border border-[rgba(215,210,204,0.5)] rounded-[32px] px-4 py-4 font-bold text-[16px] text-[#2c2520] dark:text-[#f5f5f8] leading-[1.4] tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+                >
+                  <Calendar className="w-5 h-5" />
+                  Request a Call
+                </button>
+              </>
+            )}
 
             {/* Go to chat button */}
             <button
-              onClick={() => router.push('/chat')}
+              onClick={() => {
+                if (isDemoMode) {
+                  openSignupModal();
+                } else if (chatChannelId) {
+                  router.push(`/chat?channel=${chatChannelId}`);
+                } else {
+                  router.push('/chat');
+                }
+              }}
               className="w-full bg-brand-accent border border-[rgba(215,210,204,0.5)] rounded-[32px] px-4 py-4 font-bold text-[16px] text-brand-accent-foreground leading-[1.4] tracking-[-0.5px] shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] hover:scale-[1.01] active:scale-[0.99] transition-all"
             >
               Go to chat
             </button>
           </div>
         </div>
+      )}
+      
+      {/* Request Call Modal */}
+      {!isGroup && (
+        <RequestCallModal
+          isOpen={showRequestCallModal}
+          onClose={() => setShowRequestCallModal(false)}
+          coachName={coachingCoach?.name || program.coachName}
+          isPaid={callSettings?.pricingModel === 'per_call' || callSettings?.pricingModel === 'both'}
+          priceInCents={callSettings?.pricePerCallCents || 0}
+          onSuccess={() => {
+            setShowRequestCallModal(false);
+            if (onRefresh) {
+              onRefresh();
+            }
+          }}
+        />
       )}
 
       {/* Upcoming Events (for group programs) */}

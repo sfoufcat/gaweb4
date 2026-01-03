@@ -108,7 +108,7 @@ export function PollResultsSheet({ isOpen, onClose, poll }: PollResultsSheetProp
       <div
         ref={sheetRef}
         tabIndex={-1}
-        className="relative w-full lg:max-w-[500px] max-h-[90vh] bg-[#faf8f6] rounded-t-[24px] lg:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom lg:zoom-in-95 duration-300 flex flex-col overflow-hidden outline-none"
+        className="relative w-full lg:max-w-[500px] max-h-[90dvh] bg-[#faf8f6] rounded-t-[24px] lg:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom lg:zoom-in-95 duration-300 flex flex-col overflow-hidden outline-none"
       >
         {/* Grabber - Mobile only (drag handle) */}
         <div {...handleProps} className="flex justify-center pt-3 pb-2 lg:hidden cursor-grab active:cursor-grabbing touch-none">

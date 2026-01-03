@@ -86,7 +86,7 @@ export function FrequencySelector({
         >
           {/* Modal Content */}
           <div 
-            className="bg-app-bg dark:bg-[#171b22] rounded-t-[32px] md:rounded-[32px] w-full max-w-[402px] mx-auto md:max-h-[80vh] md:overflow-y-auto" 
+            className="bg-app-bg dark:bg-[#171b22] rounded-t-[32px] md:rounded-[32px] w-full max-w-[402px] mx-auto md:max-h-[80dvh] md:overflow-y-auto" 
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header with title and close button */}

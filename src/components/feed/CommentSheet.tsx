@@ -152,7 +152,7 @@ export function CommentSheet({ postId, onClose }: CommentSheetProps) {
       />
 
       {/* Sheet */}
-      <div className="fixed inset-x-0 bottom-0 md:inset-auto md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-lg bg-white dark:bg-[#13171f] rounded-t-2xl md:rounded-2xl z-50 max-h-[80vh] flex flex-col overflow-hidden shadow-xl">
+      <div className="fixed inset-x-0 bottom-0 md:inset-auto md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-lg bg-white dark:bg-[#13171f] rounded-t-2xl md:rounded-2xl z-50 max-h-[80dvh] flex flex-col overflow-hidden shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[#e8e4df] dark:border-[#262b35]">
           <h2 className="font-semibold text-[16px] text-[#1a1a1a] dark:text-[#faf8f6]">

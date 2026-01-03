@@ -1,6 +1,7 @@
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { isSuperAdmin } from '@/lib/admin-utils-shared';
 import type { ClientCoachingData, UserRole, Coach } from '@/types';
 
@@ -10,6 +11,8 @@ import type { ClientCoachingData, UserRole, Coach } from '@/types';
  * 
  * Query params:
  * - userId: (optional, super admin only) fetch data for a specific user
+ * 
+ * MULTI-TENANCY: Coaching data is stored with org-scoped IDs: ${organizationId}_${userId}
  */
 export async function GET(request: Request) {
   try {
@@ -46,8 +49,27 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Coaching subscription required' }, { status: 403 });
     }
 
-    // Fetch coaching data
-    const coachingDoc = await adminDb.collection('clientCoachingData').doc(fetchUserId).get();
+    // MULTI-TENANCY: Get organization ID from tenant context
+    const organizationId = await getEffectiveOrgId();
+    
+    if (!organizationId) {
+      // On platform domain, return empty state
+      return NextResponse.json({
+        exists: false,
+        data: null,
+        coach: null,
+        message: 'Organization context required for coaching data',
+      });
+    }
+
+    // Fetch coaching data using org-scoped document ID
+    const coachingDocId = `${organizationId}_${fetchUserId}`;
+    let coachingDoc = await adminDb.collection('clientCoachingData').doc(coachingDocId).get();
+
+    // Legacy fallback: try without org prefix (for data created before multi-tenancy)
+    if (!coachingDoc.exists) {
+      coachingDoc = await adminDb.collection('clientCoachingData').doc(fetchUserId).get();
+    }
 
     if (!coachingDoc.exists) {
       // Return empty state - coach not yet assigned
@@ -63,11 +85,27 @@ export async function GET(request: Request) {
     // Fetch coach info if assigned
     let coach: Coach | null = null;
     if (coachingData.coachId) {
+      // Try coaches collection first
       const coachDoc = await adminDb.collection('coaches').doc(coachingData.coachId).get();
       if (coachDoc.exists) {
         // Use destructuring to exclude privateNotes from coach data
         const { privateNotes: _coachNotes, ...coachData } = { id: coachDoc.id, ...coachDoc.data() } as Coach & { privateNotes?: string };
         coach = coachData as Coach;
+      } else {
+        // Fallback: Get coach info from Clerk (coaches are org members)
+        try {
+          const clerk = await clerkClient();
+          const coachUser = await clerk.users.getUser(coachingData.coachId);
+          coach = {
+            id: coachingData.coachId,
+            userId: coachingData.coachId,
+            name: `${coachUser.firstName || ''} ${coachUser.lastName || ''}`.trim() || 'Coach',
+            email: coachUser.emailAddresses?.[0]?.emailAddress || '',
+            imageUrl: coachUser.imageUrl || '',
+          } as Coach;
+        } catch (clerkError) {
+          console.warn('[COACHING_DATA] Could not fetch coach from Clerk:', clerkError);
+        }
       }
     }
 

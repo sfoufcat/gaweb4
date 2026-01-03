@@ -15,6 +15,7 @@ interface UseDragToDismissReturn {
     onTouchStart: (e: React.TouchEvent) => void;
     onTouchMove: (e: React.TouchEvent) => void;
     onTouchEnd: (e: React.TouchEvent) => void;
+    style: React.CSSProperties;
   };
   backdropProps: {
     style: { opacity: number };
@@ -124,6 +125,11 @@ export function useDragToDismiss({
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (disabled || !dragState.current.isDragging) return;
     
+    // Prevent native scrolling while dragging
+    if (e.cancelable) {
+      e.preventDefault();
+    }
+    
     const touch = e.touches[0];
     const deltaY = touch.clientY - dragState.current.startY;
     const now = Date.now();
@@ -177,6 +183,7 @@ export function useDragToDismiss({
       onTouchStart: handleTouchStart,
       onTouchMove: handleTouchMove,
       onTouchEnd: handleTouchEnd,
+      style: { touchAction: 'none' } as React.CSSProperties,
     },
     backdropProps: {
       style: { opacity: backdropOpacity.current },

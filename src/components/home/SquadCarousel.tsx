@@ -199,11 +199,10 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
             )}
             <Link
               href={`/squad?squadId=${squad.id}`}
-              className="flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent/90 text-white rounded-full font-albert font-semibold text-[13px] sm:text-[14px] transition-all hover:scale-[1.02]"
+              className="flex items-center justify-center gap-1.5 w-9 h-9 sm:w-auto sm:h-auto sm:px-4 sm:py-2.5 bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent/90 text-white rounded-full font-albert font-semibold text-[14px] transition-all hover:scale-[1.02]"
             >
-              <span className="sm:hidden">View</span>
               <span className="hidden sm:inline">Go to {squadTermLower}</span>
-              <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
         </div>

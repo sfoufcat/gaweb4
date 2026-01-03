@@ -139,6 +139,12 @@ export async function GET(request: NextRequest) {
     // Combine both sources (deduplicated)
     const userSquadIds = [...new Set([...userSquadIdsFromDoc, ...squadIdsFromMembership])];
 
+    // Also fetch squads where user is the coach (for host role filtering)
+    const coachedSquadsQuery = await adminDb.collection('squads')
+      .where('coachId', '==', userId)
+      .get();
+    const coachedSquadIds = coachedSquadsQuery.docs.map(doc => doc.id);
+
     // Query 1: Events with startDateTime in range (scheduling events)
     const schedulingQuery = adminDb
       .collection('events')
@@ -272,17 +278,20 @@ export async function GET(request: NextRequest) {
 
     // Filter by user participation based on role
     // Note: For squad events, user is considered a participant if they're in the squad
+    // Note: For coaches, include events from their coached squads even if hostUserId is null
     events = events.filter(e => {
       const attendeeIds = e.attendeeIds || [];
       const isSquadMember = e.squadId && userSquadIds.includes(e.squadId);
+      const isSquadCoach = e.squadId && coachedSquadIds.includes(e.squadId);
       
       if (roleParam === 'host') {
-        return e.hostUserId === userId;
+        // Include events where user is host OR where user is coach of the squad
+        return e.hostUserId === userId || isSquadCoach;
       } else if (roleParam === 'attendee') {
         return (attendeeIds.includes(userId) || isSquadMember) && e.hostUserId !== userId;
       } else {
-        // 'all' - user is either host, attendee, or squad member
-        return e.hostUserId === userId || attendeeIds.includes(userId) || isSquadMember;
+        // 'all' - user is either host, attendee, squad member, or squad coach
+        return e.hostUserId === userId || attendeeIds.includes(userId) || isSquadMember || isSquadCoach;
       }
     });
 

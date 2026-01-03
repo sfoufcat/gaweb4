@@ -183,7 +183,7 @@ export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
       {/* Modal Container */}
       <div
         ref={sheetRef}
-        className="relative w-full lg:max-w-[500px] h-full lg:h-auto lg:max-h-[90vh] bg-[#faf8f6] lg:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom lg:zoom-in-95 duration-300 flex flex-col overflow-hidden"
+        className="relative w-full lg:max-w-[500px] h-full lg:h-auto lg:max-h-[90dvh] bg-[#faf8f6] lg:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom lg:zoom-in-95 duration-300 flex flex-col overflow-hidden"
       >
         {/* Grabber - Mobile only (drag handle) */}
         <div {...handleProps} className="flex justify-center pt-3 pb-2 lg:hidden cursor-grab active:cursor-grabbing touch-none">

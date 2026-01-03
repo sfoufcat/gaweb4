@@ -317,7 +317,7 @@ export function AlignmentSheet({
         </button>
 
         {/* Content */}
-        <div className="px-6 pt-4 md:pt-6 pb-6 md:pb-8 flex flex-col gap-6 items-center max-h-[85vh] md:max-h-[80vh] overflow-y-auto">
+        <div className="px-6 pt-4 md:pt-6 pb-6 md:pb-8 flex flex-col gap-6 items-center max-h-[85dvh] md:max-h-[80dvh] overflow-y-auto">
           {/* Title */}
           <h2 className="font-albert font-medium text-[20px] md:text-[24px] text-text-secondary dark:text-[#b2b6c2] tracking-[-1.5px] leading-[1.3] w-full">
             Daily Alignment & Streak

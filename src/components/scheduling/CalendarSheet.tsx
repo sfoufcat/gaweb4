@@ -61,7 +61,7 @@ export function CalendarSheet({
         ref={sheetRef}
         tabIndex={-1}
         className="relative w-full max-w-[500px] mx-0 bg-white dark:bg-[#171b22] rounded-t-[24px] shadow-2xl animate-in slide-in-from-bottom duration-300 outline-none"
-        style={{ maxHeight: '85vh' }}
+        style={{ maxHeight: '85dvh' }}
       >
         {/* Grabber (drag handle) */}
         <div {...handleProps} className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none">
@@ -84,7 +84,7 @@ export function CalendarSheet({
         </div>
 
         {/* Calendar Content */}
-        <div className="overflow-y-auto pb-8" style={{ maxHeight: 'calc(85vh - 100px)' }}>
+        <div className="overflow-y-auto pb-8" style={{ maxHeight: 'calc(85dvh - 100px)' }}>
           <CalendarContent compact />
         </div>
       </div>

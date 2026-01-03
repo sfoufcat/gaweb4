@@ -94,7 +94,7 @@ export function NotificationSheet({
         ref={sheetRef}
         tabIndex={-1}
         className="relative w-full max-w-[500px] mx-0 bg-white rounded-t-[24px] shadow-2xl animate-in slide-in-from-bottom duration-300 outline-none"
-        style={{ maxHeight: '85vh' }}
+        style={{ maxHeight: '85dvh' }}
       >
         {/* Grabber (drag handle) */}
         <div {...handleProps} className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none">
@@ -109,7 +109,7 @@ export function NotificationSheet({
         </div>
 
         {/* Notifications List */}
-        <div className="overflow-y-auto overflow-hidden pb-8" style={{ maxHeight: 'calc(85vh - 80px)' }}>
+        <div className="overflow-y-auto overflow-hidden pb-8" style={{ maxHeight: 'calc(85dvh - 80px)' }}>
           {notifications.length === 0 ? (
             <div className="py-12 px-5 text-center">
               <div className="w-14 h-14 bg-[#f3f1ef] rounded-full flex items-center justify-center mx-auto mb-4">

@@ -22,6 +22,8 @@ import { CustomMessage } from '@/components/chat/CustomMessage';
 import { CustomMessageInput } from '@/components/chat/CustomMessageInput';
 import { SquadMemberStoryAvatar } from '@/components/chat/SquadMemberStoryAvatar';
 import { CallButtons } from '@/components/chat/CallButtons';
+import { RequestCallModal } from '@/components/scheduling';
+import { Calendar } from 'lucide-react';
 import type { Channel as StreamChannel, ChannelSort, ChannelFilters, ChannelOptions, StreamChat } from 'stream-chat';
 import { ANNOUNCEMENTS_CHANNEL_ID, SOCIAL_CORNER_CHANNEL_ID, SHARE_WINS_CHANNEL_ID } from '@/lib/chat-constants';
 import { useSquad } from '@/hooks/useSquad';
@@ -403,6 +405,7 @@ function EditChannelsLink() {
 function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
   const { channel } = useChatContext();
   const router = useRouter();
+  const [showRequestCallModal, setShowRequestCallModal] = useState(false);
   
   // Cast channel.data to any to access custom properties like name and image
   const channelData = channel?.data as Record<string, unknown> | undefined;
@@ -417,6 +420,9 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
   const isGlobalChannel = channelId === ANNOUNCEMENTS_CHANNEL_ID || channelId === SOCIAL_CORNER_CHANNEL_ID || channelId === SHARE_WINS_CHANNEL_ID;
   const isOrgChannel = Boolean(channelData?.isOrgChannel);
   const isSpecialChannel = isGlobalChannel || isOrgChannel;
+  
+  // Check if this is a coaching channel (ID starts with 'coaching-')
+  const isCoachingChannel = channelId?.startsWith('coaching-');
   
   // Get channel type for org channels (for icon display)
   const orgChannelType = channelData?.channelType as string | undefined;
@@ -440,6 +446,9 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
       router.push(`/profile/${otherMember.user.id}`);
     }
   };
+  
+  // Get coach name for scheduling (the other member in a coaching channel)
+  const coachName = isCoachingChannel && otherMember?.user?.name ? otherMember.user.name : 'Coach';
 
   return (
     <div className="str-chat__header-livestream bg-[#faf8f6] dark:bg-[#05070b]">
@@ -521,11 +530,36 @@ function CustomChannelHeader({ onBack }: { onBack?: () => void }) {
           </div>
         </div>
 
-        {/* Right: Call buttons (only for DM channels) */}
+        {/* Right: Schedule call button + Call buttons */}
         <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Schedule Call button for coaching channels */}
+          {isCoachingChannel && (
+            <button
+              onClick={() => setShowRequestCallModal(true)}
+              className="px-3 py-1.5 bg-brand-accent/10 text-brand-accent rounded-full text-xs font-albert font-medium hover:bg-brand-accent/20 transition-colors flex items-center gap-1.5"
+              aria-label="Schedule a call"
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Schedule</span>
+            </button>
+          )}
           <CallButtons channel={channel} />
         </div>
       </div>
+      
+      {/* Request Call Modal for coaching channels */}
+      {isCoachingChannel && (
+        <RequestCallModal
+          isOpen={showRequestCallModal}
+          onClose={() => setShowRequestCallModal(false)}
+          coachName={coachName}
+          isPaid={false}
+          priceInCents={0}
+          onSuccess={() => {
+            setShowRequestCallModal(false);
+          }}
+        />
+      )}
     </div>
   );
 }

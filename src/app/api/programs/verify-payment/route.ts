@@ -184,6 +184,25 @@ async function createCoachingRelationship(
     return;
   }
 
+  // Update Clerk user metadata to mark as coaching client
+  try {
+    const currentUser = await clerk.users.getUser(userId);
+    const existingMetadata = currentUser.publicMetadata as Record<string, unknown> || {};
+    
+    await clerk.users.updateUserMetadata(userId, {
+      publicMetadata: {
+        ...existingMetadata,
+        coaching: true,
+        coachingStatus: 'active',
+        coachId,
+      },
+    });
+    console.log(`[VERIFY_PAYMENT] Updated Clerk metadata for user ${userId} with coaching status`);
+  } catch (metadataError) {
+    console.error(`[VERIFY_PAYMENT] Failed to update Clerk metadata:`, metadataError);
+    // Continue - metadata update is not critical for enrollment
+  }
+
   let chatChannelId: string | null = null;
   try {
     const streamClient = await getStreamServerClient();
@@ -238,10 +257,63 @@ async function createCoachingRelationship(
 
   await adminDb.collection('clientCoachingData').doc(coachingDocId).set(coachingData);
 
-  await adminDb.collection('users').doc(userId).update({
-    coachId,
-    updatedAt: now,
-  });
+  // Update or create user document with coach assignment and profile info
+  const userDocRef = adminDb.collection('users').doc(userId);
+  const userDoc = await userDocRef.get();
+  
+  if (userDoc.exists) {
+    await userDocRef.update({
+      coachId,
+      coaching: true,
+      coachingStatus: 'active',
+      updatedAt: now,
+    });
+  } else {
+    // Create user document if it doesn't exist
+    await userDocRef.set({
+      id: userId,
+      firstName: clerkUser.firstName || '',
+      lastName: clerkUser.lastName || '',
+      email: clerkUser.email || '',
+      imageUrl: clerkUser.imageUrl || '',
+      coachId,
+      coaching: true,
+      coachingStatus: 'active',
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  // Also create/update org_memberships for multi-tenancy profile data
+  const membershipDocId = `${program.organizationId}_${userId}`;
+  const membershipRef = adminDb.collection('org_memberships').doc(membershipDocId);
+  const existingMembership = await membershipRef.get();
+  
+  if (existingMembership.exists) {
+    await membershipRef.update({
+      coachId,
+      coaching: true,
+      coachingStatus: 'active',
+      updatedAt: now,
+    });
+  } else {
+    await membershipRef.set({
+      id: membershipDocId,
+      userId,
+      organizationId: program.organizationId,
+      firstName: clerkUser.firstName || '',
+      lastName: clerkUser.lastName || '',
+      email: clerkUser.email || '',
+      imageUrl: clerkUser.imageUrl || '',
+      coachId,
+      coaching: true,
+      coachingStatus: 'active',
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  console.log(`[VERIFY_PAYMENT] Created coaching relationship: user ${userId} with coach ${coachId}`);
 }
 
 export async function POST(request: NextRequest) {

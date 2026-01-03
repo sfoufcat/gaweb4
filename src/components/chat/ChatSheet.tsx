@@ -438,7 +438,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
         ref={sheetRef}
         tabIndex={-1}
         className="relative w-full max-w-[500px] mx-0 bg-white dark:bg-[#171b22] rounded-t-[24px] shadow-2xl animate-in slide-in-from-bottom duration-300 outline-none flex flex-col overflow-hidden"
-        style={{ height: '85vh', maxHeight: '85vh' }}
+        style={{ height: '85dvh', maxHeight: '85dvh' }}
       >
         {/* Grabber (drag handle) */}
         <div {...handleProps} className="flex justify-center pt-3 pb-2 flex-shrink-0 cursor-grab active:cursor-grabbing touch-none">
