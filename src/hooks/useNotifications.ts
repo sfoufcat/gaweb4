@@ -13,8 +13,13 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useBranding } from '@/contexts/BrandingContext';
-import { useDemoMode } from '@/contexts/DemoModeContext';
 import type { Notification } from '@/types';
+
+// Check if we're on demo site (doesn't use hooks, safe for use in hook body)
+function isDemoSite(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.location.hostname === 'demo.growthaddicts.com';
+}
 
 interface UseNotificationsReturn {
   notifications: Notification[];
@@ -39,11 +44,13 @@ interface UseNotificationsReturn {
 export function useNotifications(): UseNotificationsReturn {
   const { user, isLoaded } = useUser();
   const { branding } = useBranding();
-  const { isDemoMode } = useDemoMode();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Check if on demo site (plain function, no hooks)
+  const isDemo = isDemoSite();
 
   // Get organization ID from branding context (set by tenant domain middleware)
   // This ensures we use the correct org on tenant domains, not user's Clerk metadata
@@ -54,7 +61,7 @@ export function useNotifications(): UseNotificationsReturn {
   // Fetch notifications from API (for initial load and refetch)
   const fetchNotifications = useCallback(async () => {
     // In demo mode, we don't need a user - the API will return demo notifications
-    if (!isDemoMode && !user?.id) return;
+    if (!isDemo && !user?.id) return;
 
     try {
       const response = await fetch('/api/notifications?limit=30');
@@ -78,12 +85,12 @@ export function useNotifications(): UseNotificationsReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id, isDemoMode]);
+  }, [user?.id, isDemo]);
 
   // Set up real-time listener for notifications
   useEffect(() => {
     // In demo mode, fetch from API (which returns demo notifications)
-    if (isDemoMode) {
+    if (isDemo) {
       fetchNotifications();
       return;
     }
@@ -158,7 +165,7 @@ export function useNotifications(): UseNotificationsReturn {
     return () => {
       unsubscribe();
     };
-  }, [user?.id, isLoaded, organizationId, fetchNotifications, isDemoMode]);
+  }, [user?.id, isLoaded, organizationId, fetchNotifications, isDemo]);
 
   // Mark all notifications as read
   const markAllAsRead = useCallback(async () => {
