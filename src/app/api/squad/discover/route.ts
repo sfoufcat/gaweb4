@@ -49,7 +49,7 @@ export async function GET(req: Request) {
       const demoSquads = getDemoSquads();
       const publicSquads = demoSquads.map(s => ({
         ...s,
-        memberCount: s.memberCount || Math.floor(Math.random() * 15) + 3,
+        memberCount: Math.floor(Math.random() * 15) + 3,
         memberAvatars: [
           'https://ui-avatars.com/api/?name=Sarah+J&background=7c9885&color=fff&size=64&bold=true',
           'https://ui-avatars.com/api/?name=Mike+W&background=6b7db3&color=fff&size=64&bold=true',
