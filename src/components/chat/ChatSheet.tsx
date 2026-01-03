@@ -719,7 +719,7 @@ const DEMO_MESSAGES = [
 function DemoChatSheetContent({ onClose }: { onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<'main' | 'direct'>('main');
   const [selectedConversation, setSelectedConversation] = useState<typeof DEMO_CONVERSATIONS[0] | null>(null);
-  const [showSignupModal, setShowSignupModal] = useState(false);
+  const { openSignupModal } = useDemoMode();
 
   const mainConversations = DEMO_CONVERSATIONS.filter(c => c.type !== 'dm');
   const directConversations = DEMO_CONVERSATIONS.filter(c => c.type === 'dm');
@@ -735,7 +735,7 @@ function DemoChatSheetContent({ onClose }: { onClose: () => void }) {
   };
 
   const handleSendMessage = () => {
-    setShowSignupModal(true);
+    openSignupModal();
   };
 
   // Message view
@@ -798,37 +798,6 @@ function DemoChatSheetContent({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        {/* Demo signup modal */}
-        {showSignupModal && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/50" onClick={() => setShowSignupModal(false)} />
-            <div className="relative bg-white dark:bg-[#171b22] rounded-2xl p-6 max-w-sm w-full shadow-xl">
-              <button
-                onClick={() => setShowSignupModal(false)}
-                className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-[#f3f1ef] dark:hover:bg-[#272d38]"
-              >
-                <X className="w-5 h-5 text-text-muted" />
-              </button>
-              <div className="text-center">
-                <div className="w-12 h-12 bg-brand-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <MessageCircle className="w-6 h-6 text-brand-accent" />
-                </div>
-                <h3 className="font-albert text-lg font-semibold text-text-primary mb-2">
-                  Sending messages is disabled
-                </h3>
-                <p className="text-sm text-text-secondary mb-4">
-                  This is a demo preview. Sign up to message your coach and connect with the community.
-                </p>
-                <a
-                  href="https://growthaddicts.com"
-                  className="inline-block w-full py-2.5 px-4 bg-brand-accent text-white rounded-lg font-medium hover:opacity-90 transition-opacity"
-                >
-                  Get Started
-                </a>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     );
   }

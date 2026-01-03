@@ -212,7 +212,7 @@ export function StoriesRow({
     e.stopPropagation(); // Prevent parent button click
     // In demo mode, show signup modal instead
     if (isDemoMode) {
-      setShowDemoModal(true);
+      openSignupModal();
       return;
     }
     onCreateStory?.();
