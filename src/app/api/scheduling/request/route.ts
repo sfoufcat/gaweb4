@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { notifyCallRequested } from '@/lib/scheduling-notifications';
 import type { UnifiedEvent, ProposedTime, CoachCallSettings } from '@/types';
@@ -90,28 +90,34 @@ export async function POST(request: NextRequest) {
       : clientData?.name || 'Client';
     const clientAvatarUrl = clientData?.imageUrl || clientData?.avatarUrl;
 
-    // Find the coach for this organization
-    // First, try to get from the org's coach user
-    // For simplicity, we'll get the org creator or a super_coach
-    const membershipsQuery = await adminDb
-      .collection('org_memberships')
-      .where('organizationId', '==', orgId)
-      .where('orgRole', 'in', ['super_coach', 'coach'])
-      .limit(1)
-      .get();
+    // Find the coach for this organization using Clerk API
+    const client = await clerkClient();
+    const memberships = await client.organizations.getOrganizationMembershipList({
+      organizationId: orgId,
+    });
 
     let coachId: string | null = null;
     let coachName = 'Coach';
     let coachAvatarUrl: string | undefined;
 
-    if (!membershipsQuery.empty) {
-      const membership = membershipsQuery.docs[0].data();
-      coachId = membership.userId;
+    // Find the org:admin (organization owner/super_coach)
+    const adminMembership = memberships.data.find(m => m.role === 'org:admin');
+    if (adminMembership?.publicUserData?.userId) {
+      coachId = adminMembership.publicUserData.userId;
     }
 
-    // If no membership found, try getting from organization creator
-    if (!coachId && orgData?.creatorId) {
-      coachId = orgData.creatorId;
+    // Fallback: Check Firestore org_memberships
+    if (!coachId) {
+      const membershipSnapshot = await adminDb
+        .collection('org_memberships')
+        .where('organizationId', '==', orgId)
+        .where('orgRole', 'in', ['super_coach', 'coach'])
+        .limit(1)
+        .get();
+
+      if (!membershipSnapshot.empty) {
+        coachId = membershipSnapshot.docs[0].data().userId;
+      }
     }
 
     if (!coachId) {
@@ -121,7 +127,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get coach info
+    // Get coach info from users collection
     const coachDoc = await adminDb.collection('users').doc(coachId).get();
     if (coachDoc.exists) {
       const coachData = coachDoc.data();

@@ -514,8 +514,8 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   overflow-x: hidden;
   /* Safe area padding for iOS Safari edge-to-edge display */
+  /* Only top padding - bottom safe area should show content behind Safari's translucent bar */
   padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* Dark mode skeleton / loading state styles */

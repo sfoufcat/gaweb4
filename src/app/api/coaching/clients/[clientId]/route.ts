@@ -357,15 +357,15 @@ export async function GET(
         email: clerkUser?.email || memberData?.email || userData?.email || '',
         imageUrl: clerkUser?.imageUrl || memberData?.imageUrl || userData?.imageUrl || '',
         avatarUrl: memberData?.avatarUrl || userData?.avatarUrl || clerkUser?.imageUrl || '',
-        // Org-specific fields: org_memberships > users
+        // Org-specific fields: org_memberships ONLY (no fallback to users collection for org-scoped data)
         timezone: memberData?.timezone || userData?.timezone,
-        goal: memberData?.goal || userData?.goal,
-        goalTargetDate: memberData?.goalTargetDate || userData?.goalTargetDate,
-        goalProgress: memberData?.goalProgress || userData?.goalProgress,
-        goalSetAt: memberData?.goalSetAt || userData?.goalSetAt,
-        identity: memberData?.identity || userData?.identity,
-        goalHistory: memberData?.goalHistory || userData?.goalHistory,
-        identityHistory: memberData?.identityHistory || userData?.identityHistory,
+        goal: memberData?.goal,  // Org-scoped: don't show goals from other orgs
+        goalTargetDate: memberData?.goalTargetDate,
+        goalProgress: memberData?.goalProgress,
+        goalSetAt: memberData?.goalSetAt,
+        identity: memberData?.identity,  // Org-scoped: don't show identity from other orgs
+        goalHistory: memberData?.goalHistory,
+        identityHistory: memberData?.identityHistory,
         tier: memberData?.tier || userData?.tier,
         coachingStatus: memberData?.coachingStatus || userData?.coachingStatus,
         coaching: memberData?.coaching || userData?.coaching,
@@ -579,9 +579,10 @@ export async function GET(
 
     // Determine if user has 1:1 coaching based on:
     // 1. User's coachingStatus is 'active', OR
-    // 2. User is enrolled in an active 'individual' (1:1) program
+    // 2. User is enrolled in an active or upcoming 'individual' (1:1) program
     const hasIndividualProgram = programEnrollments.some(
-      enrollment => enrollment.programType === 'individual' && enrollment.status === 'active'
+      enrollment => enrollment.programType === 'individual' &&
+        (enrollment.status === 'active' || enrollment.status === 'upcoming')
     );
     const hasActiveCoaching = user.coachingStatus === 'active' || !!user.coaching || hasIndividualProgram;
 

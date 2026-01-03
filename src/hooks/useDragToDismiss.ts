@@ -120,6 +120,9 @@ export function useDragToDismiss({
     if (!handle || disabled) return;
 
     const handleTouchStart = (e: TouchEvent) => {
+      // Prevent pull-to-refresh from starting
+      e.preventDefault();
+
       const touch = e.touches[0];
       dragState.current = {
         isDragging: true,
@@ -175,8 +178,8 @@ export function useDragToDismiss({
       }
     };
 
-    // Add event listeners with passive: false for touchmove to allow preventDefault
-    handle.addEventListener('touchstart', handleTouchStart, { passive: true });
+    // Add event listeners with passive: false to allow preventDefault
+    handle.addEventListener('touchstart', handleTouchStart, { passive: false });
     handle.addEventListener('touchmove', handleTouchMove, { passive: false });
     handle.addEventListener('touchend', handleTouchEnd, { passive: true });
 

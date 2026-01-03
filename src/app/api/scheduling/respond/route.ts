@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { notifyCallAccepted, notifyCallDeclined, notifyCallCounterProposed } from '@/lib/scheduling-notifications';
 import { createEvent, isNylasConfigured } from '@/lib/nylas';
-import type { UnifiedEvent, ProposedTime, SchedulingStatus, EventScheduledJob, EventJobType, CoachAvailability, NylasGrant } from '@/types';
+import type { UnifiedEvent, ProposedTime, SchedulingStatus, EventScheduledJob, EventJobType, CoachAvailability, NylasGrant, ClientCoachingData } from '@/types';
 
 /**
  * POST /api/scheduling/respond
@@ -132,6 +132,22 @@ export async function POST(request: NextRequest) {
           } as UnifiedEvent);
         } catch (syncErr) {
           console.error('[SCHEDULING_RESPOND] Failed to sync to Nylas:', syncErr);
+          // Don't fail the request if sync fails
+        }
+      }
+
+      // Sync confirmed 1-on-1 coaching calls to clientCoachingData.nextCall
+      // This ensures the /my-coach page shows the upcoming call
+      if (event.eventType === 'coaching_1on1' && event.organizationId) {
+        try {
+          await syncToClientCoachingData({
+            ...event,
+            ...updateData,
+            startDateTime: selectedTime.startDateTime,
+            endDateTime: selectedTime.endDateTime,
+          } as UnifiedEvent);
+        } catch (syncErr) {
+          console.error('[SCHEDULING_RESPOND] Failed to sync to clientCoachingData:', syncErr);
           // Don't fail the request if sync fails
         }
       }
@@ -374,5 +390,66 @@ async function syncEventToNylas(eventId: string, event: UnifiedEvent) {
   });
 
   console.log(`[SCHEDULING_RESPOND] Synced event ${eventId} to Nylas: ${result.id}`);
+}
+
+/**
+ * Sync a confirmed coaching call to clientCoachingData.nextCall
+ * This keeps the legacy /my-coach page in sync with the new scheduling system
+ */
+async function syncToClientCoachingData(event: UnifiedEvent) {
+  if (!event.organizationId || event.eventType !== 'coaching_1on1') {
+    return;
+  }
+
+  // Find the client (attendee who is not the host)
+  const clientUserId = event.attendeeIds.find(id => id !== event.hostUserId);
+  if (!clientUserId) {
+    console.log('[SCHEDULING_RESPOND] No client found in attendees, skipping clientCoachingData sync');
+    return;
+  }
+
+  // Document ID format for clientCoachingData: ${organizationId}_${userId}
+  const coachingDocId = `${event.organizationId}_${clientUserId}`;
+  const coachingRef = adminDb.collection('clientCoachingData').doc(coachingDocId);
+  const coachingDoc = await coachingRef.get();
+
+  // Only update if the document exists (coach has set up coaching for this client)
+  if (!coachingDoc.exists) {
+    // Try legacy format without org prefix
+    const legacyRef = adminDb.collection('clientCoachingData').doc(clientUserId);
+    const legacyDoc = await legacyRef.get();
+
+    if (!legacyDoc.exists) {
+      console.log(`[SCHEDULING_RESPOND] No clientCoachingData found for ${clientUserId}, skipping sync`);
+      return;
+    }
+
+    // Update legacy document
+    await legacyRef.update({
+      nextCall: {
+        datetime: event.startDateTime,
+        timezone: event.timezone || 'America/New_York',
+        location: event.meetingLink || event.locationLabel || 'Video Call',
+        title: event.title,
+      },
+      updatedAt: new Date().toISOString(),
+    });
+
+    console.log(`[SCHEDULING_RESPOND] Synced to legacy clientCoachingData for ${clientUserId}`);
+    return;
+  }
+
+  // Update the coaching data with the next call info
+  await coachingRef.update({
+    nextCall: {
+      datetime: event.startDateTime,
+      timezone: event.timezone || 'America/New_York',
+      location: event.meetingLink || event.locationLabel || 'Video Call',
+      title: event.title,
+    },
+    updatedAt: new Date().toISOString(),
+  });
+
+  console.log(`[SCHEDULING_RESPOND] Synced to clientCoachingData for ${coachingDocId}`);
 }
 
