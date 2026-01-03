@@ -363,7 +363,6 @@ export async function POST(req: Request) {
     // These purchases were made before signup, so enrollment was deferred
     const pendingEnrollments: { type: string; productId: string; productType: string; enrollmentId?: string }[] = [];
     
-    const sessionData = session.data || {};
     const purchasedUpsells = (sessionData.purchasedUpsells || []) as Array<{
       stepId: string;
       productId: string;
