@@ -99,7 +99,6 @@ export async function POST(request: NextRequest) {
       .collection('org_memberships')
       .where('organizationId', '==', orgId)
       .where('orgRole', 'in', ['super_coach', 'coach'])
-      .where('isActive', '==', true)
       .limit(1)
       .get();
 
@@ -119,7 +118,27 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Final fallback: Check user publicMetadata for orgRole
     if (!coachId) {
+      const client = await clerkClient();
+      const memberships = await client.organizations.getOrganizationMembershipList({
+        organizationId: orgId,
+      });
+
+      for (const membership of memberships.data) {
+        if (membership.publicUserData?.userId) {
+          const user = await client.users.getUser(membership.publicUserData.userId);
+          const userMeta = user.publicMetadata as { orgRole?: string } | undefined;
+          if (userMeta?.orgRole === 'super_coach' || userMeta?.orgRole === 'coach') {
+            coachId = membership.publicUserData.userId;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!coachId) {
+      console.error('[SCHEDULING_REQUEST] No coach found for org:', orgId);
       return NextResponse.json(
         { error: 'No coach found for this organization' },
         { status: 404 }
