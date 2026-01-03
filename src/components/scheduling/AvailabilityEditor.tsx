@@ -19,8 +19,8 @@ import type { WeeklySchedule, TimeSlot, BlockedSlot, CoachAvailability } from '@
 
 // Demo mock availability data
 const DEMO_AVAILABILITY: CoachAvailability = {
-  coachId: 'demo-coach',
-  organizationId: 'demo-org',
+  coachUserId: 'demo-coach',
+  odId: 'demo-org',
   weeklySchedule: {
     0: [], // Sunday - unavailable
     1: [{ start: '09:00', end: '12:00' }, { start: '13:00', end: '17:00' }], // Monday
@@ -43,6 +43,8 @@ const DEMO_AVAILABILITY: CoachAvailability = {
   timezone: 'America/New_York',
   advanceBookingDays: 30,
   minNoticeHours: 24,
+  syncExternalBusy: false,
+  pushEventsToCalendar: false,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };
