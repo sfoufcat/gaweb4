@@ -178,7 +178,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
               </Link>
             )}
             <Link
-              href="/program?tab=squad"
+              href={`/squad?squadId=${squad.id}`}
               className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-accent hover:bg-brand-accent/90 dark:hover:bg-brand-accent/90 text-white rounded-full font-albert font-semibold text-[14px] transition-all hover:scale-[1.02]"
             >
               Go to {squadTermLower}
