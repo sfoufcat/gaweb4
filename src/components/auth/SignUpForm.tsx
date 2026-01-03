@@ -31,12 +31,13 @@ export function SignUpForm({ redirectUrl = '/onboarding/welcome', embedded = fal
   }, []);
 
   // Helper to handle successful auth
-  // In embedded mode: send postMessage to parent
+  // In embedded mode: send postMessage to parent with redirectUrl
   // Otherwise: redirect normally
   const handleAuthSuccess = () => {
     if (embedded && origin) {
-      // Notify parent window of successful auth
-      window.parent.postMessage({ type: 'auth-success' }, origin);
+      // Notify parent window of successful auth with redirectUrl
+      // Parent can use this to redirect to the correct page (e.g., funnel callback with flowSessionId)
+      window.parent.postMessage({ type: 'auth-success', redirectUrl }, origin);
     } else {
       handleRedirect(redirectUrl);
     }

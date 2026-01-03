@@ -9,6 +9,7 @@ import { Suspense, useEffect } from 'react';
  * 
  * Used by satellite domains to embed sign-in in an iframe.
  * Accepts ?origin=https://example.com to send postMessage to parent window.
+ * Accepts ?redirectUrl=/path to pass back to parent for redirect after auth.
  * 
  * This page is minimal - no background, no header, just the form.
  * OAuth buttons are hidden since they're handled by the parent page.
@@ -16,6 +17,9 @@ import { Suspense, useEffect } from 'react';
 function EmbeddedSignInContent() {
   const searchParams = useSearchParams();
   const origin = searchParams.get('origin') || '';
+  // Get redirectUrl from query params - this is passed from SatelliteSignIn
+  // so we can include it in the postMessage to parent
+  const redirectUrl = searchParams.get('redirectUrl') || '/';
   
   // Make body transparent for iframe embedding
   useEffect(() => {
@@ -30,7 +34,7 @@ function EmbeddedSignInContent() {
       <SignInForm 
         embedded={true}
         origin={origin}
-        redirectUrl="/"
+        redirectUrl={redirectUrl}
         hideOAuth={true}
       />
     </div>

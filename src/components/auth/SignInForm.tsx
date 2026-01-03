@@ -41,13 +41,14 @@ export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', h
   }, [router]);
 
   // Helper to handle successful auth
-  // In embedded mode: send postMessage to parent
+  // In embedded mode: send postMessage to parent with redirectUrl
   // On marketing domain: call API to determine redirect URL (for coaches)
   // Otherwise: redirect normally
   const handleAuthSuccess = useCallback(async () => {
     if (embedded && origin) {
-      // Notify parent window of successful auth
-      window.parent.postMessage({ type: 'auth-success' }, origin);
+      // Notify parent window of successful auth with redirectUrl
+      // Parent can use this to redirect to the correct page (e.g., funnel callback with flowSessionId)
+      window.parent.postMessage({ type: 'auth-success', redirectUrl }, origin);
       return;
     }
     

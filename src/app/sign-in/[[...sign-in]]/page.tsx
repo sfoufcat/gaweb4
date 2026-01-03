@@ -73,6 +73,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         customDomain={domainWithoutPort}
         logoUrl={logoUrl}
         appTitle={appTitle}
+        redirectUrl={redirectUrl}
       />
     );
   }
