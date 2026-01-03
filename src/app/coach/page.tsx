@@ -1,15 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth, useOrganization } from '@clerk/nextjs';
-import { canAccessCoachDashboard } from '@/lib/admin-utils-shared';
+import { useAuth, useOrganization as useClerkOrganization } from '@clerk/nextjs';
+import { isOrgCoach } from '@/lib/admin-utils-shared';
 import { ClientDetailView, CustomizeBrandingTab, ChannelManagementTab, PaymentFailedBanner } from '@/components/coach';
 import { DemoModeBanner } from '@/components/demo/DemoRestriction';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, AlertCircle, Users } from 'lucide-react';
 import type { ClerkPublicMetadata, OrgRole, ProgramCohort, CoachSubscription } from '@/types';
 import { useDemoMode } from '@/contexts/DemoModeContext';
+import { useOrganization } from '@/contexts/OrganizationContext';
+import { useBranding, useBrandingValues } from '@/contexts/BrandingContext';
 
 // Admin components for expanded coach dashboard
 import { AdminUsersTab, type ColumnKey } from '@/components/admin/AdminUsersTab';
@@ -101,7 +103,7 @@ export default function CoachPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { sessionClaims, isLoaded } = useAuth();
-  const { membership } = useOrganization();
+  const { membership: clerkMembership } = useClerkOrganization();
   const { isDemoSite } = useDemoMode();
   const [mounted, setMounted] = useState(false);
   
@@ -138,17 +140,92 @@ export default function CoachPage() {
   
   // Detect org:admin from Clerk's native organization membership
   // If user is org:admin, they should be treated as super_coach regardless of metadata
-  const isOrgAdmin = membership?.role === 'org:admin';
+  const isOrgAdmin = clerkMembership?.role === 'org:admin';
   const orgRole: OrgRole | undefined = isDemoSite ? 'super_coach' : (isOrgAdmin ? 'super_coach' : metadataOrgRole);
   
-  // On demo site, always have access
-  const hasAccess = isDemoSite || canAccessCoachDashboard(role, orgRole);
+  // TENANT-SPECIFIC ACCESS CHECK
+  // Get tenant org ID and user's organizations from context
+  const { isDefault } = useBrandingValues();
+  const { effectiveBranding } = useBranding();
+  const { organizations, isLoading: orgLoading } = useOrganization();
   
-  // Determine access level:
-  // - Full access: global coach role, super_coach orgRole, admin, or super_admin, OR demo site
-  // - Limited access: orgRole === 'coach' (but not super_coach or global coach)
-  const hasFullAccess = isDemoSite || role === 'coach' || role === 'admin' || role === 'super_admin' || orgRole === 'super_coach';
-  const isLimitedOrgCoach = !hasFullAccess && orgRole === 'coach';
+  const currentTenantOrgId = !isDefault ? effectiveBranding.organizationId : null;
+  
+  // Find user's membership in the current tenant org
+  const currentTenantMembership = useMemo(() => {
+    if (!currentTenantOrgId || !organizations || organizations.length === 0) {
+      return null;
+    }
+    return organizations.find(org => org.id === currentTenantOrgId);
+  }, [currentTenantOrgId, organizations]);
+  
+  // Determine coach dashboard access:
+  // - On platform domain (isDefault=true): Use publicMetadata roles (legacy behavior)
+  // - On tenant domain: ONLY allow if user has coach/super_coach role IN THIS TENANT
+  const hasAccess = useMemo(() => {
+    // Demo mode always has access
+    if (isDemoSite) return true;
+    
+    // Platform domain: use publicMetadata roles (admin, super_admin, global coach)
+    if (isDefault) {
+      return role === 'coach' || role === 'admin' || role === 'super_admin';
+    }
+    
+    // Tenant domain: check actual membership in THIS tenant
+    // Super admins can always access (for debugging/support)
+    if (role === 'super_admin') return true;
+    
+    // If org membership is still loading, treat as having access (will be rechecked)
+    if (orgLoading) return true;
+    
+    // Check if user has coach access in this specific tenant
+    if (currentTenantMembership) {
+      const membershipOrgRole = currentTenantMembership.membership?.orgRole as OrgRole | undefined;
+      return isOrgCoach(membershipOrgRole);
+    }
+    
+    // No membership in this tenant = no access
+    return false;
+  }, [isDemoSite, isDefault, role, orgLoading, currentTenantMembership]);
+  
+  // Determine access level for this tenant:
+  // - Full access: super_admin, or super_coach in THIS tenant
+  // - Limited access: coach in THIS tenant (but not super_coach)
+  const hasFullAccess = useMemo(() => {
+    if (isDemoSite) return true;
+    if (role === 'super_admin') return true;
+    
+    if (isDefault) {
+      // Platform domain: use publicMetadata roles
+      return role === 'coach' || role === 'admin' || orgRole === 'super_coach';
+    }
+    
+    // Tenant domain: check actual membership role
+    if (currentTenantMembership) {
+      const membershipOrgRole = currentTenantMembership.membership?.orgRole as OrgRole | undefined;
+      return membershipOrgRole === 'super_coach';
+    }
+    
+    return false;
+  }, [isDemoSite, role, orgRole, isDefault, currentTenantMembership]);
+  
+  const isLimitedOrgCoach = useMemo(() => {
+    if (hasFullAccess) return false;
+    if (isDemoSite) return false;
+    
+    if (isDefault) {
+      // Platform domain: use publicMetadata
+      return orgRole === 'coach';
+    }
+    
+    // Tenant domain: check actual membership role
+    if (currentTenantMembership) {
+      const membershipOrgRole = currentTenantMembership.membership?.orgRole as OrgRole | undefined;
+      return membershipOrgRole === 'coach';
+    }
+    
+    return false;
+  }, [hasFullAccess, isDemoSite, isDefault, orgRole, currentTenantMembership]);
 
   useEffect(() => {
     setMounted(true);

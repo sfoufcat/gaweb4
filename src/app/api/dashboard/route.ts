@@ -274,12 +274,21 @@ export async function GET(request: Request) {
       ? orgMembershipSnapshot.docs[0].data() 
       : null;
     
-    const userData = baseUserData ? {
-      ...baseUserData,
-      ...(orgMembershipData && {
-        goal: orgMembershipData.goal,
-        goalStartDate: orgMembershipData.goalStartDate,
-        goalTargetDate: orgMembershipData.goalTargetDate,
+    // MULTI-TENANCY: Exclude goal fields from baseUserData to prevent cross-org leakage
+    // Goal data should ONLY come from org_memberships for the current organization
+    let safeBaseUserData = baseUserData;
+    if (baseUserData) {
+      const { goal: _g, goalStartDate: _gs, goalTargetDate: _gt, goalProgress: _gp, goalSetAt: _gsa, goalCompleted: _gc, goalCompletedAt: _gca, goalIsAISuggested: _gai, ...rest } = baseUserData;
+      safeBaseUserData = rest;
+    }
+    
+    const userData = safeBaseUserData ? {
+      ...safeBaseUserData,
+      // Only include org-scoped data when we have org context
+      ...(organizationId && orgMembershipData && {
+        goal: orgMembershipData.goal || null,
+        goalStartDate: orgMembershipData.goalStartDate || null,
+        goalTargetDate: orgMembershipData.goalTargetDate || null,
         identity: orgMembershipData.identity,
         bio: orgMembershipData.bio,
         onboardingStatus: orgMembershipData.onboardingStatus,

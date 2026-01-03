@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { X, Plus, Trash2, GripVertical, ImageIcon, Video, Youtube, PlayCircle, Monitor, Code, Sparkles, Lock } from 'lucide-react';
+import { X, Plus, Trash2, GripVertical, ImageIcon, Video, Youtube, PlayCircle, Monitor, Code, Sparkles, Lock, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import type { FunnelStep, FunnelStepType, FunnelQuestionOption, InfluencePromptConfig, FunnelStepTrackingConfig, MetaPixelEvent, CoachTier } from '@/types';
 import { nanoid } from 'nanoid';
@@ -1854,9 +1854,13 @@ function UpsellDownsellConfigForm({
   type,
 }: UpsellDownsellConfigEditorProps & { type: 'upsell' | 'downsell' }): React.JSX.Element {
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
-  const [products, setProducts] = useState<Array<{ id: string; name: string; imageUrl?: string; priceInCents: number }>>([]);
+  const [products, setProducts] = useState<Array<{ id: string; name: string; imageUrl?: string; priceInCents: number; type?: string }>>([]);
   const [initialFetchDone, setInitialFetchDone] = useState(false);
   const [isCreatingPrice, setIsCreatingPrice] = useState(false);
+  
+  // Cohort selection state (for group programs)
+  const [cohorts, setCohorts] = useState<Array<{ id: string; name: string; startDate: string; status: string }>>([]);
+  const [isLoadingCohorts, setIsLoadingCohorts] = useState(false);
   
   // Create strongly typed local config to prevent 'unknown' type inference issues
   interface UpsellConfig {
@@ -1878,6 +1882,9 @@ function UpsellDownsellConfigForm({
     stripeCouponId?: string;
     currency?: string;
     linkedDownsellStepId?: string;
+    // Cohort selection for group programs
+    cohortSelectionMode?: 'next_available' | 'specific';
+    cohortId?: string;
   }
   
   const typedConfig: UpsellConfig = {
@@ -1899,6 +1906,8 @@ function UpsellDownsellConfigForm({
     stripeCouponId: config.stripeCouponId as string | undefined,
     currency: config.currency as string | undefined,
     linkedDownsellStepId: config.linkedDownsellStepId as string | undefined,
+    cohortSelectionMode: (config.cohortSelectionMode as 'next_available' | 'specific') || 'next_available',
+    cohortId: config.cohortId as string | undefined,
   };
   
   const { productType, discountType, originalPriceInCents, discountValue } = typedConfig;
@@ -1935,11 +1944,12 @@ function UpsellDownsellConfigForm({
           let items: Array<{ id: string; name: string; imageUrl?: string; priceInCents: number }> = [];
           
           if (productType === 'program') {
-            items = data.programs?.map((p: { id: string; name: string; coverImageUrl?: string; priceInCents?: number }) => ({
+            items = data.programs?.map((p: { id: string; name: string; coverImageUrl?: string; priceInCents?: number; type?: string }) => ({
               id: p.id,
               name: p.name,
               imageUrl: p.coverImageUrl,
               priceInCents: p.priceInCents || 0,
+              type: p.type, // 'group' or 'individual'
             })) || [];
           } else if (productType === 'squad') {
             items = data.squads?.map((s: { id: string; name: string; coverImageUrl?: string; avatarUrl?: string; priceInCents?: number }) => ({
@@ -1994,11 +2004,12 @@ function UpsellDownsellConfigForm({
           const response = await fetch(endpoint);
           if (response.ok) {
             const data = await response.json();
-            const items = data.programs?.map((p: { id: string; name: string; coverImageUrl?: string; priceInCents?: number }) => ({
+            const items = data.programs?.map((p: { id: string; name: string; coverImageUrl?: string; priceInCents?: number; type?: string }) => ({
               id: p.id,
               name: p.name,
               imageUrl: p.coverImageUrl,
               priceInCents: p.priceInCents || 0,
+              type: p.type,
             }));
             setProducts(items || []);
           }
@@ -2012,6 +2023,49 @@ function UpsellDownsellConfigForm({
       fetchInitialProducts();
     }
   }, [initialFetchDone, products.length]);
+  
+  // Fetch cohorts when a group program is selected
+  React.useEffect(() => {
+    if (productType !== 'program' || !typedConfig.productId) {
+      setCohorts([]);
+      return;
+    }
+    
+    // Check if the selected program is a group program
+    const selectedProduct = products.find(p => p.id === typedConfig.productId);
+    if (selectedProduct?.type !== 'group') {
+      setCohorts([]);
+      return;
+    }
+    
+    const fetchCohorts = async () => {
+      setIsLoadingCohorts(true);
+      try {
+        const response = await fetch(`/api/coach/org-programs/${typedConfig.productId}/cohorts?includeSquads=false`);
+        if (response.ok) {
+          const data = await response.json();
+          // Filter to only show upcoming or active cohorts with enrollment open
+          const validCohorts = (data.cohorts || [])
+            .filter((c: { status: string; enrollmentOpen: boolean; startDate: string }) => 
+              (c.status === 'upcoming' || c.status === 'active') && c.enrollmentOpen
+            )
+            .map((c: { id: string; name: string; startDate: string; status: string }) => ({
+              id: c.id,
+              name: c.name,
+              startDate: c.startDate,
+              status: c.status,
+            }));
+          setCohorts(validCohorts);
+        }
+      } catch (err) {
+        console.error('Failed to fetch cohorts:', err);
+      } finally {
+        setIsLoadingCohorts(false);
+      }
+    };
+    
+    fetchCohorts();
+  }, [productType, typedConfig.productId, products]);
   
   // Auto-populate product details when product is selected
   const handleProductChange = (productId: string) => {
@@ -2129,12 +2183,109 @@ function UpsellDownsellConfigForm({
               {products.map((product) => (
                 <SelectItem key={product.id} value={product.id}>
                   {product.name} (${(product.priceInCents / 100).toFixed(2)})
+                  {product.type === 'group' && ' [Group]'}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         )}
       </div>
+      
+      {/* Cohort Selection - Only for group programs */}
+      {productType === 'program' && typedConfig.productId && products.find(p => p.id === typedConfig.productId)?.type === 'group' && (
+        <div className="p-4 bg-[#f9f8f6] dark:bg-[#11141b] rounded-xl space-y-4 border border-[#e1ddd8] dark:border-[#262b35]">
+          <h4 className="font-medium text-text-primary dark:text-[#f5f5f8]">Cohort Selection</h4>
+          <p className="text-xs text-text-muted dark:text-[#b2b6c2]">
+            This is a group program. Choose which cohort users will be enrolled in.
+          </p>
+          
+          {/* Cohort Selection Mode */}
+          <div className="space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="radio"
+                name="cohortSelectionMode"
+                value="next_available"
+                checked={typedConfig.cohortSelectionMode === 'next_available'}
+                onChange={() => onChange({ ...config, cohortSelectionMode: 'next_available', cohortId: undefined })}
+                className="w-4 h-4 accent-brand-accent"
+              />
+              <div>
+                <span className="text-sm text-text-primary dark:text-[#f5f5f8]">Next available cohort</span>
+                <p className="text-xs text-text-muted dark:text-[#b2b6c2]">
+                  Auto-enroll in the next cohort with a future start date
+                </p>
+              </div>
+            </label>
+            
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="radio"
+                name="cohortSelectionMode"
+                value="specific"
+                checked={typedConfig.cohortSelectionMode === 'specific'}
+                onChange={() => onChange({ ...config, cohortSelectionMode: 'specific' })}
+                className="w-4 h-4 accent-brand-accent"
+              />
+              <div>
+                <span className="text-sm text-text-primary dark:text-[#f5f5f8]">Specific cohort</span>
+                <p className="text-xs text-text-muted dark:text-[#b2b6c2]">
+                  Choose a specific cohort for users to join
+                </p>
+              </div>
+            </label>
+          </div>
+          
+          {/* Cohort Dropdown - only shown when 'specific' is selected */}
+          {typedConfig.cohortSelectionMode === 'specific' && (
+            <div className="mt-3">
+              {isLoadingCohorts ? (
+                <div className="text-text-secondary text-sm">Loading cohorts...</div>
+              ) : cohorts.length === 0 ? (
+                <div className="text-amber-600 dark:text-amber-400 text-sm p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                  No available cohorts found. Create a cohort with enrollment open first.
+                </div>
+              ) : (
+                <Select
+                  value={typedConfig.cohortId || ''}
+                  onValueChange={(value) => onChange({ ...config, cohortId: value })}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a cohort" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cohorts.map((cohort) => {
+                      const startDate = new Date(cohort.startDate);
+                      const isPast = startDate < new Date();
+                      return (
+                        <SelectItem key={cohort.id} value={cohort.id}>
+                          {cohort.name} - {startDate.toLocaleDateString()}
+                          {isPast && ' (Started)'}
+                          {cohort.status === 'upcoming' && ' (Upcoming)'}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              )}
+              
+              {/* Warning if selected cohort has already started */}
+              {typedConfig.cohortId && cohorts.find(c => c.id === typedConfig.cohortId) && (
+                (() => {
+                  const selectedCohort = cohorts.find(c => c.id === typedConfig.cohortId);
+                  const isPast = selectedCohort && new Date(selectedCohort.startDate) < new Date();
+                  return isPast ? (
+                    <div className="mt-2 text-amber-600 dark:text-amber-400 text-xs p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                      This cohort has already started. Users may miss content.
+                    </div>
+                  ) : null;
+                })()
+              )}
+            </div>
+          )}
+        </div>
+      )}
       
       {/* Headline */}
       <div>

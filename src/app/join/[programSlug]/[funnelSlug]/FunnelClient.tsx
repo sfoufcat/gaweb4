@@ -137,6 +137,9 @@ export default function FunnelClient({
   
   // Cache for fetched upsell/downsell product prices (productId -> priceInCents)
   const [productPrices, setProductPrices] = useState<Record<string, number>>({});
+  
+  // Track which upsell/downsell steps have invalid cohorts (should be skipped)
+  const [invalidCohortStepIds, setInvalidCohortStepIds] = useState<string[]>([]);
 
   // Skip payment if invite is pre-paid
   const skipPayment = validatedInvite?.paymentStatus === 'pre_paid' || validatedInvite?.paymentStatus === 'free';
@@ -270,6 +273,62 @@ export default function FunnelClient({
     fetchProductPrice();
   }, [currentStepIndex, steps, productPrices]);
 
+  // Validate cohort for upsell/downsell steps with program products
+  useEffect(() => {
+    async function validateCohorts() {
+      const stepsToValidate = steps.filter(step => 
+        (step.type === 'upsell' || step.type === 'downsell') &&
+        !invalidCohortStepIds.includes(step.id)
+      );
+
+      for (const step of stepsToValidate) {
+        const stepConfig = step.config as FunnelStepConfig;
+        const config = stepConfig.config as FunnelStepConfigUpsell | FunnelStepConfigDownsell;
+        
+        // Only validate program products (group programs have cohorts)
+        if (config.productType !== 'program') continue;
+        
+        // Check if cohort selection mode is 'specific' with a cohort ID
+        const cohortSelectionMode = (config as FunnelStepConfigUpsell).cohortSelectionMode || 'next_available';
+        const cohortId = (config as FunnelStepConfigUpsell).cohortId;
+        
+        if (cohortSelectionMode === 'specific' && cohortId) {
+          // Validate that the specific cohort exists and hasn't passed
+          try {
+            const response = await fetch(`/api/funnel/validate-cohort?cohortId=${cohortId}`);
+            if (response.ok) {
+              const data = await response.json();
+              if (!data.valid) {
+                // Cohort is invalid (expired or not found) - mark step to skip
+                setInvalidCohortStepIds(prev => [...prev, step.id]);
+                console.log(`[FunnelClient] Skipping step ${step.id} - cohort ${cohortId} is invalid: ${data.reason}`);
+              }
+            }
+          } catch (err) {
+            console.error(`[FunnelClient] Failed to validate cohort for step ${step.id}:`, err);
+          }
+        } else if (cohortSelectionMode === 'next_available') {
+          // Check if there's any valid upcoming cohort for this program
+          try {
+            const response = await fetch(`/api/funnel/validate-cohort?programId=${config.productId}&mode=next_available`);
+            if (response.ok) {
+              const data = await response.json();
+              if (!data.valid) {
+                // No valid cohorts available - mark step to skip
+                setInvalidCohortStepIds(prev => [...prev, step.id]);
+                console.log(`[FunnelClient] Skipping step ${step.id} - no valid cohorts for program ${config.productId}`);
+              }
+            }
+          } catch (err) {
+            console.error(`[FunnelClient] Failed to validate cohorts for step ${step.id}:`, err);
+          }
+        }
+      }
+    }
+
+    validateCohorts();
+  }, [steps, invalidCohortStepIds]);
+
   // Update session on server
   const updateSession = useCallback(async (updates: {
     currentStepIndex?: number;
@@ -317,6 +376,13 @@ export default function FunnelClient({
       
       // Skip payment step if pre-paid
       if (nextStep.type === 'payment' && skipPayment) {
+        nextIndex++;
+        continue;
+      }
+      
+      // Skip upsell/downsell steps with invalid cohorts
+      if ((nextStep.type === 'upsell' || nextStep.type === 'downsell') && invalidCohortStepIds.includes(nextStep.id)) {
+        console.log(`[FunnelClient] Skipping step ${nextStep.id} due to invalid cohort`);
         nextIndex++;
         continue;
       }

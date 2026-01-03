@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
+import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { 
   Plus, 
   GripVertical, 
@@ -25,7 +25,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 // Note: Lock is still used in the Add Step modal for tier-gated steps
-import type { FunnelStep, FunnelStepType, CoachTier, Funnel, Program, Squad, InfluencePromptConfig } from '@/types';
+import type { FunnelStep, FunnelStepType, CoachTier, Funnel, Program, Squad, InfluencePromptConfig, FunnelStepConfig, FunnelStepConfigUpsell, FunnelStepConfigDownsell } from '@/types';
 import { StepConfigEditor } from './StepConfigEditor';
 import { canUseFunnelStep, TIER_PRICING } from '@/lib/coach-permissions';
 import { DeleteConfirmationModal } from '@/components/feed/ConfirmationModal';
@@ -138,96 +138,6 @@ const ADDABLE_STEP_TYPES: FunnelStepType[] = ['question', 'explainer', 'landing_
 const MAX_UPSELLS = 2;
 const MAX_DOWNSELLS = 2;
 
-// Draggable step row component with its own drag controls
-interface DraggableStepRowProps {
-  step: FunnelStep;
-  onEdit: (step: FunnelStep) => void;
-  onDelete: (stepId: string, stepType: FunnelStepType) => void;
-}
-
-function DraggableStepRow({ step, onEdit, onDelete }: DraggableStepRowProps) {
-  const controls = useDragControls();
-  const typeInfo = STEP_TYPE_INFO[step.type];
-  const Icon = typeInfo?.icon || Info;
-  const isRequired = FIXED_STEP_TYPES.includes(step.type);
-  const isSignupStep = step.type === 'signup';
-
-  return (
-    <Reorder.Item 
-      value={step} 
-      dragListener={false} 
-      dragControls={controls}
-      className="list-none"
-    >
-      <div className="p-4 bg-white hover:bg-[#faf8f6] transition-colors">
-        <div className="flex items-center gap-4">
-          {/* Drag handle - activates drag on pointer down */}
-          <div 
-            className="cursor-grab active:cursor-grabbing touch-none"
-            onPointerDown={(e) => controls.start(e)}
-          >
-            <GripVertical className="w-5 h-5 text-text-muted" />
-          </div>
-
-          {/* Step icon */}
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${typeInfo?.color || 'bg-gray-100 text-gray-600'}`}>
-            <Icon className="w-5 h-5" />
-          </div>
-
-          {/* Step info */}
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <p className="font-medium text-text-primary">
-                {step.name || typeInfo?.label || step.type}
-              </p>
-              {isRequired && (
-                <span className="px-1.5 py-0.5 text-[10px] font-medium bg-[#f5f3f0] text-text-muted rounded">
-                  Required
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-1.5">
-              <p className="text-sm text-text-secondary">
-                {step.name ? typeInfo?.label : typeInfo?.description}
-              </p>
-              {/* Info tooltip for signup step */}
-              {isSignupStep && (
-                <div className="relative group/tooltip">
-                  <Info className="w-3.5 h-3.5 text-text-muted cursor-help" />
-                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-2 bg-[#2c2520] text-white text-xs rounded-lg whitespace-nowrap opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-50 shadow-lg">
-                    Existing users will sign in, new users will create an account.
-                    <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-[#2c2520]" />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onEdit(step)}
-              className="p-2 hover:bg-[#e1ddd8] rounded-lg transition-colors"
-              title="Edit configuration"
-            >
-              <Pencil className="w-4 h-4 text-text-secondary" />
-            </button>
-            {!isRequired && (
-              <button
-                onClick={() => onDelete(step.id, step.type)}
-                className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                title="Delete step"
-              >
-                <Trash2 className="w-4 h-4 text-red-500" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </Reorder.Item>
-  );
-}
-
 export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) {
   const [steps, setSteps] = useState<FunnelStep[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -255,6 +165,9 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
   
   // Stripe Connect status for payment step guard
   const { isConnected: stripeConnected, isLoading: stripeLoading } = useStripeConnectStatus();
+  
+  // Track steps with invalid cohorts (expired or unavailable)
+  const [invalidCohortStepIds, setInvalidCohortStepIds] = useState<string[]>([]);
 
   useEffect(() => {
     setMounted(true);
@@ -380,6 +293,57 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
     fetchFunnelMetadata();
     fetchSteps();
   }, [fetchFunnelMetadata, fetchSteps]);
+
+  // Validate cohorts for upsell/downsell steps
+  useEffect(() => {
+    async function validateCohorts() {
+      const upsellDownsellSteps = steps.filter(step => 
+        step.type === 'upsell' || step.type === 'downsell'
+      );
+
+      if (upsellDownsellSteps.length === 0) {
+        setInvalidCohortStepIds([]);
+        return;
+      }
+
+      const invalidIds: string[] = [];
+
+      for (const step of upsellDownsellSteps) {
+        const stepConfig = step.config as FunnelStepConfig;
+        const config = stepConfig.config as FunnelStepConfigUpsell | FunnelStepConfigDownsell;
+        
+        // Only validate program products
+        if (config.productType !== 'program') continue;
+        
+        const cohortSelectionMode = (config as FunnelStepConfigUpsell).cohortSelectionMode || 'next_available';
+        const cohortId = (config as FunnelStepConfigUpsell).cohortId;
+        
+        try {
+          let response: Response;
+          if (cohortSelectionMode === 'specific' && cohortId) {
+            response = await fetch(`/api/funnel/validate-cohort?cohortId=${cohortId}`);
+          } else {
+            response = await fetch(`/api/funnel/validate-cohort?programId=${config.productId}&mode=next_available`);
+          }
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (!data.valid) {
+              invalidIds.push(step.id);
+            }
+          }
+        } catch (err) {
+          console.error(`[FunnelStepsEditor] Failed to validate cohort for step ${step.id}:`, err);
+        }
+      }
+
+      setInvalidCohortStepIds(invalidIds);
+    }
+
+    if (!isLoading && steps.length > 0) {
+      validateCohorts();
+    }
+  }, [steps, isLoading]);
 
   // Ensure required steps exist after initial load
   useEffect(() => {
@@ -563,6 +527,92 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
     }
   };
 
+  const renderStepRow = (step: FunnelStep) => {
+    const typeInfo = STEP_TYPE_INFO[step.type];
+    const Icon = typeInfo?.icon || Info;
+    const isRequired = FIXED_STEP_TYPES.includes(step.type);
+    const isSignupStep = step.type === 'signup';
+    const hasInvalidCohort = invalidCohortStepIds.includes(step.id);
+
+    return (
+      <div className="p-4 bg-white hover:bg-[#faf8f6] transition-colors cursor-grab active:cursor-grabbing">
+        <div className="flex items-center gap-4">
+          {/* Drag handle - visual indicator */}
+          <div className="touch-none">
+            <GripVertical className="w-5 h-5 text-text-muted" />
+          </div>
+
+          {/* Step icon */}
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${typeInfo?.color || 'bg-gray-100 text-gray-600'}`}>
+            <Icon className="w-5 h-5" />
+          </div>
+
+          {/* Step info */}
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-text-primary">
+                {step.name || typeInfo?.label || step.type}
+              </p>
+              {isRequired && (
+                <span className="px-1.5 py-0.5 text-[10px] font-medium bg-[#f5f3f0] text-text-muted rounded">
+                  Required
+                </span>
+              )}
+              {/* Warning badge for invalid cohorts */}
+              {hasInvalidCohort && (
+                <div className="relative group/cohort-warning">
+                  <span className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-700 rounded">
+                    <AlertTriangle className="w-3 h-3" />
+                    Cohort Issue
+                  </span>
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-2 bg-[#2c2520] text-white text-xs rounded-lg w-48 opacity-0 invisible group-hover/cohort-warning:opacity-100 group-hover/cohort-warning:visible transition-all duration-200 z-50 shadow-lg">
+                    The selected cohort has expired or no valid cohorts are available. This step will be skipped in the funnel.
+                    <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-[#2c2520]" />
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm text-text-secondary">
+                {step.name ? typeInfo?.label : typeInfo?.description}
+              </p>
+              {/* Info tooltip for signup step */}
+              {isSignupStep && (
+                <div className="relative group/tooltip">
+                  <Info className="w-3.5 h-3.5 text-text-muted cursor-help" />
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-2 bg-[#2c2520] text-white text-xs rounded-lg whitespace-nowrap opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-50 shadow-lg">
+                    Existing users will sign in, new users will create an account.
+                    <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-[#2c2520]" />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setEditingStep(step)}
+              className="p-2 hover:bg-[#e1ddd8] rounded-lg transition-colors"
+              title="Edit configuration"
+            >
+              <Pencil className="w-4 h-4 text-text-secondary" />
+            </button>
+            {!isRequired && (
+              <button
+                onClick={() => handleDeleteStep(step.id, step.type)}
+                className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                title="Delete step"
+              >
+                <Trash2 className="w-4 h-4 text-red-500" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-2 animate-pulse">
@@ -622,12 +672,9 @@ export function FunnelStepsEditor({ funnelId, onBack }: FunnelStepsEditorProps) 
         ) : (
           <Reorder.Group axis="y" values={sortableSteps} onReorder={handleReorder} className="divide-y divide-[#e1ddd8]">
             {sortableSteps.map((step) => (
-              <DraggableStepRow
-                key={step.id}
-                step={step}
-                onEdit={setEditingStep}
-                onDelete={handleDeleteStep}
-              />
+              <Reorder.Item key={step.id} value={step}>
+                {renderStepRow(step)}
+              </Reorder.Item>
             ))}
           </Reorder.Group>
         )}

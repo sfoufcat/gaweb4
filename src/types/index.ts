@@ -2941,6 +2941,13 @@ export interface FunnelStepConfigLandingPage {
 export type UpsellProductType = 'program' | 'squad' | 'course' | 'article' | 'content';
 
 /**
+ * Cohort selection mode for upsell/downsell program offers
+ * - 'next_available': Auto-select the next cohort with a future start date
+ * - 'specific': Use a specific cohort selected by the coach
+ */
+export type CohortSelectionMode = 'next_available' | 'specific';
+
+/**
  * Upsell step configuration - one-click offer shown after payment
  */
 export interface FunnelStepConfigUpsell {
@@ -2961,6 +2968,9 @@ export interface FunnelStepConfigUpsell {
   ctaText: string;                      // "Add to Order"
   declineText: string;                  // "No thanks, skip this"
   linkedDownsellStepId?: string;        // Which downsell shows if declined
+  // Cohort selection for group programs
+  cohortSelectionMode?: CohortSelectionMode; // Default: 'next_available'
+  cohortId?: string;                    // Specific cohort ID (when mode is 'specific')
 }
 
 /**
@@ -2983,6 +2993,9 @@ export interface FunnelStepConfigDownsell {
   stripeCouponId?: string;
   ctaText: string;
   declineText: string;
+  // Cohort selection for group programs
+  cohortSelectionMode?: CohortSelectionMode; // Default: 'next_available'
+  cohortId?: string;                    // Specific cohort ID (when mode is 'specific')
 }
 
 // ============================================================================

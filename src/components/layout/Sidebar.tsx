@@ -1,17 +1,18 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { UserButton, useAuth } from '@clerk/nextjs';
 import Image from 'next/image';
-import { isAdmin, canAccessCoachDashboard, canAccessEditorSection, isSuperAdmin } from '@/lib/admin-utils-shared';
+import { isAdmin, canAccessEditorSection, isSuperAdmin, isOrgCoach } from '@/lib/admin-utils-shared';
 import type { UserRole, OrgRole, MenuItemKey } from '@/types';
 import { DEFAULT_MENU_ICONS } from '@/types';
 import { useChatUnreadCounts } from '@/hooks/useChatUnreadCounts';
-import { useBrandingValues, useFeedEnabled, useEmptyStateBehaviors } from '@/contexts/BrandingContext';
+import { useBranding, useBrandingValues, useFeedEnabled, useEmptyStateBehaviors } from '@/contexts/BrandingContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useDemoMode } from '@/contexts/DemoModeContext';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { OrganizationSwitcher } from './OrganizationSwitcher';
 import { useMyPrograms } from '@/hooks/useMyPrograms';
 import { useSquad } from '@/hooks/useSquad';
@@ -73,7 +74,11 @@ export function Sidebar() {
   const { totalUnread } = useChatUnreadCounts();
   const { scrollDirection, isAtTop } = useScrollDirection();
   const { logoUrl, horizontalLogoUrl, logoUrlDark, horizontalLogoUrlDark, appTitle, colors, menuTitles, menuIcons, menuOrder, isDefault, accentLightIsDark, accentDarkIsDark } = useBrandingValues();
+  const { effectiveBranding } = useBranding();
   const { theme } = useTheme();
+  
+  // Get organization context for tenant-specific role checking
+  const { organizations, isLoading: orgLoading } = useOrganization();
   
   // Get the appropriate accent color and foreground based on theme
   const currentAccentColor = theme === 'dark' ? colors.accentDark : colors.accentLight;
@@ -110,10 +115,52 @@ export function Sidebar() {
   // Check both new coachingStatus and legacy coaching flag for backward compatibility
   const hasCoaching = publicMetadata?.coachingStatus === 'active' || publicMetadata?.coaching === true;
   const showAdminPanel = isAdmin(role);
-  const showCoachDashboard = canAccessCoachDashboard(role, orgRole);
   const showEditorPanel = canAccessEditorSection(role);
   // Hide "My Coach" menu in demo mode - it's for coaching subscribers only
   const showMyCoach = !isDemoSite && (hasCoaching || isSuperAdmin(role));
+  
+  // TENANT-SPECIFIC COACH ACCESS CHECK
+  // On tenant domains, we need to verify the user has coach/super_coach role IN THIS SPECIFIC TENANT
+  // Not just any coach role from another org stored in publicMetadata
+  const currentTenantOrgId = !isDefault ? effectiveBranding.organizationId : null;
+  
+  // Find user's membership in the current tenant org
+  const currentTenantMembership = useMemo(() => {
+    if (!currentTenantOrgId || !organizations || organizations.length === 0) {
+      return null;
+    }
+    return organizations.find(org => org.id === currentTenantOrgId);
+  }, [currentTenantOrgId, organizations]);
+  
+  // Determine coach dashboard access:
+  // - On platform domain (isDefault=true): Use publicMetadata roles (legacy behavior)
+  // - On tenant domain: ONLY show if user has coach/super_coach role IN THIS TENANT
+  const showCoachDashboard = useMemo(() => {
+    // Demo mode always shows coach dashboard
+    if (isDemoSite) return true;
+    
+    // Platform domain: use publicMetadata roles (admin, super_admin, global coach)
+    if (isDefault) {
+      // On platform domain, show for global coaches/admins
+      return role === 'coach' || role === 'admin' || role === 'super_admin';
+    }
+    
+    // Tenant domain: check actual membership in THIS tenant
+    // Super admins can always see coach dashboard (for debugging/support)
+    if (role === 'super_admin') return true;
+    
+    // If org membership is still loading, don't show (prevents flash)
+    if (orgLoading) return false;
+    
+    // Check if user has coach access in this specific tenant
+    if (currentTenantMembership) {
+      const membershipOrgRole = currentTenantMembership.membership?.orgRole as OrgRole | undefined;
+      return isOrgCoach(membershipOrgRole);
+    }
+    
+    // No membership in this tenant = no coach access
+    return false;
+  }, [isDemoSite, isDefault, role, orgLoading, currentTenantMembership]);
 
   // DEBUG: Log session claims and role
   useEffect(() => {
@@ -121,16 +168,18 @@ export function Sidebar() {
     console.log('isLoaded:', isLoaded);
     console.log('isSignedIn:', isSignedIn);
     console.log('userId:', userId);
-    console.log('sessionClaims:', sessionClaims);
-    console.log('publicMetadata:', sessionClaims?.publicMetadata);
-    console.log('role:', role);
-    console.log('orgRole:', orgRole);
+    console.log('publicMetadata role:', role);
+    console.log('publicMetadata orgRole:', orgRole);
+    console.log('isDefault (platform domain):', isDefault);
+    console.log('currentTenantOrgId:', currentTenantOrgId);
+    console.log('currentTenantMembership:', currentTenantMembership);
+    console.log('orgLoading:', orgLoading);
     console.log('hasCoaching:', hasCoaching);
     console.log('showMyCoach:', showMyCoach);
     console.log('showCoachDashboard:', showCoachDashboard);
     console.log('showAdminPanel:', showAdminPanel);
     console.log('showEditorPanel:', showEditorPanel);
-  }, [isLoaded, isSignedIn, userId, sessionClaims, role, orgRole, hasCoaching, showMyCoach, showCoachDashboard, showAdminPanel, showEditorPanel]);
+  }, [isLoaded, isSignedIn, userId, role, orgRole, isDefault, currentTenantOrgId, currentTenantMembership, orgLoading, hasCoaching, showMyCoach, showCoachDashboard, showAdminPanel, showEditorPanel]);
 
   // Prefetch pages on mount to reduce loading time
   useEffect(() => {
@@ -273,7 +322,13 @@ export function Sidebar() {
   });
 
   // Only show sidebar if NOT in onboarding
-  if (pathname.startsWith('/onboarding')) return null;
+  if (pathname.startsWith('/onboarding')) {
+    console.log('[Sidebar] Hiding: onboarding path');
+    return null;
+  }
+
+  // Debug logging
+  console.log('[Sidebar] Rendering for:', { pathname, userId, isSignedIn, isLoaded, navItemsCount: navItems.length });
 
   // Instagram-style collapsed sidebar when on /chat page
   const isCollapsed = pathname === '/chat' || pathname.startsWith('/chat/');

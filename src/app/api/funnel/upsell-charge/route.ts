@@ -328,6 +328,17 @@ export async function POST(req: Request) {
       const clerk = await clerkClient();
       const clerkUser = await clerk.users.getUser(effectiveUserId);
       
+      // Extract cohort settings from step config
+      const cohortSelectionMode = (stepConfig as FunnelStepConfigUpsell).cohortSelectionMode || 'next_available';
+      const configCohortId = (stepConfig as FunnelStepConfigUpsell).cohortId;
+      
+      // Determine cohortId to use for enrollment
+      let cohortIdForEnrollment: string | undefined;
+      if (stepConfig.productType === 'program' && cohortSelectionMode === 'specific' && configCohortId) {
+        cohortIdForEnrollment = configCohortId;
+      }
+      // For 'next_available' mode, enrollUserInProduct will auto-select the next cohort
+      
       const enrollmentResult = await enrollUserInProduct(
         effectiveUserId,
         stepConfig.productType,
@@ -341,6 +352,7 @@ export async function POST(req: Request) {
         {
           stripePaymentIntentId: paymentIntent.id,
           amountPaid: priceInCents,
+          cohortId: cohortIdForEnrollment,
         }
       );
 

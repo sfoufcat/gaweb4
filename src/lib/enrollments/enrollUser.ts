@@ -121,24 +121,54 @@ async function enrollInProgram(
   let squadId = options?.squadId || null;
   
   if (program.type === 'group' && !cohortId) {
-    // Find active cohort with enrollment open
+    // Find the best available cohort:
+    // 1. Enrollment must be open
+    // 2. Status must be upcoming or active
+    // 3. End date must be in the future (if set)
+    // 4. Prefer cohorts with future start dates over already-started ones
     const cohortsSnapshot = await adminDb
       .collection('program_cohorts')
       .where('programId', '==', programId)
       .where('enrollmentOpen', '==', true)
       .where('status', 'in', ['upcoming', 'active'])
       .orderBy('startDate', 'asc')
-      .limit(1)
+      .limit(10) // Get a few to filter by end date
       .get();
 
-    if (!cohortsSnapshot.empty) {
-      const cohort = cohortsSnapshot.docs[0];
-      cohortId = cohort.id;
+    const now = new Date();
+    let selectedCohort: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+
+    // First pass: try to find an upcoming cohort (start date in future)
+    for (const doc of cohortsSnapshot.docs) {
+      const cohort = doc.data() as ProgramCohort;
+      
+      // Skip if cohort has ended
+      if (cohort.endDate && new Date(cohort.endDate) < now) {
+        continue;
+      }
+
+      // Prefer upcoming cohorts (start date in future)
+      if (cohort.status === 'upcoming' && new Date(cohort.startDate) > now) {
+        selectedCohort = doc;
+        break;
+      }
+
+      // Fall back to active cohort if no upcoming found
+      if (!selectedCohort && cohort.status === 'active') {
+        selectedCohort = doc;
+      }
+    }
+
+    if (selectedCohort) {
+      cohortId = selectedCohort.id;
+      console.log(`[enrollUser] Selected cohort ${cohortId} for program ${programId}`);
 
       // Update cohort enrollment count
-      await cohort.ref.update({
+      await selectedCohort.ref.update({
         currentEnrollment: FieldValue.increment(1),
       });
+    } else {
+      console.warn(`[enrollUser] No valid cohort found for group program ${programId}`);
     }
   }
 

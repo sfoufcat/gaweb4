@@ -37,9 +37,11 @@ import type { ReferralConfig } from '@/types';
 interface SquadTabContentProps {
   programId?: string;
   squadId?: string;
+  /** Program type - used to show appropriate messaging when no squad exists */
+  programType?: 'group' | 'individual';
 }
 
-export function SquadTabContent({ programId, squadId }: SquadTabContentProps) {
+export function SquadTabContent({ programId, squadId, programType }: SquadTabContentProps) {
   const router = useRouter();
   const { user } = useUser();
   const { squad: squadTitle, squadLower } = useMenuTitles();
@@ -116,6 +118,15 @@ export function SquadTabContent({ programId, squadId }: SquadTabContentProps) {
 
   // Empty state - squad not available yet
   if (!squad) {
+    // Different messaging based on program type
+    const isIndividualProgram = programType === 'individual';
+    const title = isIndividualProgram 
+      ? 'Community not available yet' 
+      : `${squadTitle} not available yet`;
+    const description = isIndividualProgram
+      ? 'The community space is being set up. Check back soon!'
+      : `Your ${squadLower} will be created once your program starts. Check back soon!`;
+    
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4">
         <div className="w-24 h-24 rounded-full bg-[#f3f1ef] dark:bg-[#171b22] flex items-center justify-center mb-6">
@@ -135,11 +146,11 @@ export function SquadTabContent({ programId, squadId }: SquadTabContentProps) {
         </div>
 
         <h2 className="font-albert text-[24px] font-semibold text-text-primary dark:text-[#f5f5f8] tracking-[-1px] leading-[1.3] text-center mb-3">
-          {squadTitle} not available yet
+          {title}
         </h2>
 
         <p className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2] leading-[1.5] text-center max-w-sm">
-          Your {squadLower} will be created once your program starts. Check back soon!
+          {description}
         </p>
       </div>
     );

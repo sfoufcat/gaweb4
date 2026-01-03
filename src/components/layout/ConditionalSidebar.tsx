@@ -1,7 +1,32 @@
 'use client';
 
 import { usePathname, useSearchParams } from 'next/navigation';
+import { useEffect, Component, ReactNode } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
+
+// Error boundary to catch sidebar rendering errors
+class SidebarErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('[SidebarErrorBoundary] Sidebar rendering error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      console.error('[SidebarErrorBoundary] Error caught:', this.state.error?.message);
+      return null; // Don't crash the page, just hide sidebar
+    }
+    return this.props.children;
+  }
+}
 
 interface ConditionalSidebarProps {
   layoutMode?: string;
@@ -23,10 +48,26 @@ export function ConditionalSidebar({ layoutMode }: ConditionalSidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
+  // Debug logging for sidebar visibility issues
+  useEffect(() => {
+    console.log('[ConditionalSidebar] Debug:', {
+      layoutMode,
+      pathname,
+      hostname: typeof window !== 'undefined' ? window.location.hostname : 'ssr',
+    });
+  }, [layoutMode, pathname]);
+  
   // SSR-based check: If middleware determined this is fullscreen mode, don't render sidebar
   // This prevents flash on marketing domain and other fullscreen pages
+  // Default to showing sidebar if layoutMode is undefined (defensive)
   if (layoutMode === 'fullscreen') {
+    console.log('[ConditionalSidebar] Hiding: layoutMode is fullscreen');
     return null;
+  }
+  
+  // If layoutMode is undefined or unexpected, log it but still show sidebar
+  if (!layoutMode || (layoutMode !== 'with-sidebar' && layoutMode !== 'fullscreen')) {
+    console.warn('[ConditionalSidebar] Unexpected layoutMode:', layoutMode, '- defaulting to show sidebar');
   }
   
   // Hide sidebar on onboarding pages
@@ -70,9 +111,28 @@ export function ConditionalSidebar({ layoutMode }: ConditionalSidebarProps) {
   const shouldHideSidebar = isOnboardingPage || isStartPage || isCheckInPage || isJoinPage || isSignInPage || isProfileEditOnboarding || isPremiumUpgradeForm || isCoachingForm || isInvitePage || isMarketplacePage || isCoachOnboarding || isCoachWelcome;
   
   if (shouldHideSidebar) {
+    console.log('[ConditionalSidebar] Hiding due to pathname:', {
+      isOnboardingPage,
+      isStartPage,
+      isCheckInPage,
+      isJoinPage,
+      isSignInPage,
+      isProfileEditOnboarding,
+      isPremiumUpgradeForm,
+      isCoachingForm,
+      isInvitePage,
+      isMarketplacePage,
+      isCoachOnboarding,
+      isCoachWelcome,
+    });
     return null;
   }
   
-  return <Sidebar />;
+  console.log('[ConditionalSidebar] Rendering Sidebar');
+  return (
+    <SidebarErrorBoundary>
+      <Sidebar />
+    </SidebarErrorBoundary>
+  );
 }
 

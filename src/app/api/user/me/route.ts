@@ -53,11 +53,12 @@ export async function GET() {
       }
     }
 
-    // Extract goal data - prioritize org_memberships, fallback to users collection
+    // Extract goal data - ONLY from org_memberships for multi-tenant isolation
+    // Goals are org-scoped and should never leak from legacy users collection
     let activeGoal = null;
     
-    // First check org_memberships for org-scoped goal
-    if (orgMembershipData?.goal && orgMembershipData?.goalTargetDate) {
+    // Only return goal if we have org context AND org_memberships has goal data
+    if (organizationId && orgMembershipData?.goal && orgMembershipData?.goalTargetDate) {
       const progressPercentage = (orgMembershipData.goalProgress as number) ?? 0;
       activeGoal = {
         goal: orgMembershipData.goal,
@@ -66,29 +67,24 @@ export async function GET() {
           percentage: progressPercentage,
         },
       };
-    } 
-    // Fallback to legacy users collection goal
-    else if (userData.goal && userData.goalTargetDate) {
-      const progressPercentage = userData.goalProgress ?? 0;
-      activeGoal = {
-        goal: userData.goal,
-        targetDate: userData.goalTargetDate,
-        progress: {
-          percentage: progressPercentage,
-        },
-      };
     }
+    // Note: No fallback to userData.goal - this would leak goals across organizations
 
-    // Merge user data with org-specific data (org data overrides base user data)
+    // Merge user data with org-specific data
+    // IMPORTANT: Goal fields should ONLY come from org_memberships for multi-tenant isolation
+    // We explicitly exclude goal fields from userData to prevent cross-org leakage
+    const { goal: _legacyGoal, goalTargetDate: _legacyTargetDate, goalProgress: _legacyProgress, goalSetAt: _legacySetAt, goalCompleted: _legacyCompleted, goalCompletedAt: _legacyCompletedAt, goalIsAISuggested: _legacyAISuggested, ...safeUserData } = userData;
+    
     const mergedUserData = {
-      ...userData,
-      ...(orgMembershipData && {
-        // Org-specific profile fields
+      ...safeUserData,
+      // Only include org-scoped goal data if we have org context
+      ...(organizationId && orgMembershipData && {
+        // Org-specific profile fields (no fallback to userData for goals)
         bio: orgMembershipData.bio || userData.bio,
         identity: orgMembershipData.identity || userData.identity,
-        goal: orgMembershipData.goal || userData.goal,
-        goalTargetDate: orgMembershipData.goalTargetDate || userData.goalTargetDate,
-        goalProgress: orgMembershipData.goalProgress ?? userData.goalProgress,
+        goal: orgMembershipData.goal || null,
+        goalTargetDate: orgMembershipData.goalTargetDate || null,
+        goalProgress: orgMembershipData.goalProgress ?? null,
         weeklyFocus: orgMembershipData.weeklyFocus,
         onboardingStatus: orgMembershipData.onboardingStatus || userData.onboardingStatus,
         hasCompletedOnboarding: orgMembershipData.hasCompletedOnboarding ?? userData.hasCompletedOnboarding,

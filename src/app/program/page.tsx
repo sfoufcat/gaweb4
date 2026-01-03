@@ -283,6 +283,7 @@ export default function ProgramHubPage() {
                   <SquadTabContent 
                     programId={selectedProgram.program.id}
                     squadId={programSquadId || undefined}
+                    programType={selectedProgram.program.type as 'group' | 'individual'}
                   />
                 </motion.div>
               )}
@@ -366,6 +367,7 @@ export default function ProgramHubPage() {
               <SquadTabContent 
                 programId={selectedProgram.program.id}
                 squadId={programSquadId || undefined}
+                programType={selectedProgram.program.type as 'group' | 'individual'}
               />
             </motion.div>
           )}
@@ -424,6 +426,7 @@ export default function ProgramHubPage() {
             <SquadTabContent 
               programId={singleProgram.program.id}
               squadId={singleProgramSquadId || undefined}
+              programType={singleProgram.program.type as 'group' | 'individual'}
             />
           </motion.div>
         )}

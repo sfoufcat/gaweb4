@@ -19,16 +19,29 @@ interface CurrentOrgMembership {
   joinedAt: string;
 }
 
+/**
+ * Organization with membership info
+ * Used to check user's role in each org they belong to
+ */
+interface OrganizationWithMembership {
+  id: string;
+  name: string;
+  isPrimary: boolean;
+  membership?: {
+    id: string;
+    orgRole: OrgRole;
+    tier: string;
+    track: string | null;
+    joinedAt: string;
+  };
+}
+
 interface OrganizationContextValue {
   // Current org membership (for the active organization)
   currentMembership: CurrentOrgMembership | null;
   
-  // All user's organizations
-  organizations: Array<{
-    id: string;
-    name: string;
-    isPrimary: boolean;
-  }>;
+  // All user's organizations with membership data
+  organizations: OrganizationWithMembership[];
   
   // Current organization ID
   organizationId: string | null;
@@ -63,7 +76,7 @@ export function OrganizationProvider({
   const { isLoaded, isSignedIn, userId } = useAuth();
   
   const [currentMembership, setCurrentMembership] = useState<CurrentOrgMembership | null>(null);
-  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string; isPrimary: boolean }>>([]);
+  const [organizations, setOrganizations] = useState<OrganizationWithMembership[]>([]);
   const [organizationId, setOrganizationId] = useState<string | null>(initialOrganizationId || null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,10 +99,29 @@ export function OrganizationProvider({
       }
       
       const orgsData = await orgsResponse.json();
-      setOrganizations(orgsData.organizations.map((org: { id: string; name: string; isPrimary: boolean }) => ({
+      // Store organizations with their membership data for role checking
+      setOrganizations(orgsData.organizations.map((org: { 
+        id: string; 
+        name: string; 
+        isPrimary: boolean;
+        membership?: {
+          id: string;
+          orgRole: string;
+          tier: string;
+          track: string | null;
+          joinedAt: string;
+        };
+      }) => ({
         id: org.id,
         name: org.name,
         isPrimary: org.isPrimary,
+        membership: org.membership ? {
+          id: org.membership.id,
+          orgRole: org.membership.orgRole as OrgRole,
+          tier: org.membership.tier,
+          track: org.membership.track,
+          joinedAt: org.membership.joinedAt,
+        } : undefined,
       })));
       
       // Find the current/primary org

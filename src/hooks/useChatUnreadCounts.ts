@@ -12,6 +12,12 @@ interface UnreadCounts {
 // Global channels that should always be watched
 const GLOBAL_CHANNEL_IDS = [ANNOUNCEMENTS_CHANNEL_ID, SOCIAL_CORNER_CHANNEL_ID, SHARE_WINS_CHANNEL_ID];
 
+interface OrgFilterData {
+  orgChannelIds: Set<string>;
+  userSquadChannelIds: Set<string>;
+  isPlatformMode: boolean;
+}
+
 /**
  * Hook to track chat unread counts across different channel types
  * 
@@ -32,6 +38,69 @@ export function useChatUnreadCounts() {
   });
   const [hasInitialized, setHasInitialized] = useState(false);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Org-specific channel filtering data
+  const [orgFilterData, setOrgFilterData] = useState<OrgFilterData>({
+    orgChannelIds: new Set(),
+    userSquadChannelIds: new Set(),
+    isPlatformMode: false,
+  });
+  const orgFilterFetched = useRef(false);
+  
+  // Fetch org-specific channel filter data
+  useEffect(() => {
+    if (orgFilterFetched.current) return;
+    orgFilterFetched.current = true;
+    
+    const fetchOrgFilterData = async () => {
+      try {
+        // Fetch org channels
+        const orgRes = await fetch('/api/user/org-channels');
+        const orgData = orgRes.ok ? await orgRes.json() : null;
+        
+        // Fetch user squads
+        const squadRes = await fetch('/api/squad/me');
+        const squadData = squadRes.ok ? await squadRes.json() : null;
+        
+        const orgChannelIds = new Set<string>();
+        const userSquadChannelIds = new Set<string>();
+        
+        if (orgData?.channels) {
+          for (const ch of orgData.channels) {
+            if (ch.streamChannelId) {
+              orgChannelIds.add(ch.streamChannelId);
+            }
+          }
+        }
+        
+        if (squadData) {
+          if (squadData.premiumSquad?.chatChannelId) {
+            userSquadChannelIds.add(squadData.premiumSquad.chatChannelId);
+          }
+          if (squadData.standardSquad?.chatChannelId) {
+            userSquadChannelIds.add(squadData.standardSquad.chatChannelId);
+          }
+          if (squadData.squads) {
+            for (const s of squadData.squads) {
+              if (s.chatChannelId) {
+                userSquadChannelIds.add(s.chatChannelId);
+              }
+            }
+          }
+        }
+        
+        setOrgFilterData({
+          orgChannelIds,
+          userSquadChannelIds,
+          isPlatformMode: orgData?.isPlatformMode || false,
+        });
+      } catch (err) {
+        console.warn('Failed to fetch org filter data:', err);
+      }
+    };
+    
+    fetchOrgFilterData();
+  }, []);
 
   // Calculate unread counts from channels
   const calculateCounts = useCallback(() => {
@@ -41,22 +110,52 @@ export function useChatUnreadCounts() {
     let mainUnread = 0;
     let directUnread = 0;
 
+    const { orgChannelIds, userSquadChannelIds, isPlatformMode } = orgFilterData;
+
     // Get all channels the user is a member of
     const channels = Object.values(client.activeChannels);
     
     for (const channel of channels) {
+      const channelId = channel.id;
+      
+      // MULTI-TENANCY: Filter out channels from other organizations
+      if (!isPlatformMode && channelId) {
+        // Filter squad channels - only count ones in user's current org
+        if (channelId.startsWith('squad-')) {
+          if (userSquadChannelIds.size > 0 && !userSquadChannelIds.has(channelId)) {
+            continue; // Skip squad channels from other orgs
+          }
+        }
+        
+        // Filter org channels - only count current org
+        if (channelId.startsWith('org-')) {
+          if (orgChannelIds.size > 0 && !orgChannelIds.has(channelId)) {
+            continue; // Skip org channels from other orgs
+          }
+        }
+        
+        // Legacy global channel IDs
+        if (channelId === ANNOUNCEMENTS_CHANNEL_ID || 
+            channelId === SOCIAL_CORNER_CHANNEL_ID || 
+            channelId === SHARE_WINS_CHANNEL_ID) {
+          if (orgChannelIds.size > 0 && !orgChannelIds.has(channelId)) {
+            continue;
+          }
+        }
+      }
+      
       const unread = channel.countUnread();
       if (unread > 0) {
         totalUnread += unread;
         
-        const channelId = channel.id;
         // Check if it's a "main" channel (squad, coaching, announcements, social corner, share wins)
         if (
           channelId === ANNOUNCEMENTS_CHANNEL_ID ||
           channelId === SOCIAL_CORNER_CHANNEL_ID ||
           channelId === SHARE_WINS_CHANNEL_ID ||
           channelId?.startsWith('squad-') ||
-          channelId?.startsWith('coaching-')
+          channelId?.startsWith('coaching-') ||
+          channelId?.startsWith('org-')
         ) {
           mainUnread += unread;
         } else {
@@ -67,7 +166,7 @@ export function useChatUnreadCounts() {
     }
 
     setCounts({ totalUnread, mainUnread, directUnread });
-  }, [client]);
+  }, [client, orgFilterData]);
 
   // Initialize and query channels when client is connected
   useEffect(() => {

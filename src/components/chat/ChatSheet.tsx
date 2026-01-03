@@ -74,10 +74,16 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     hasActiveIndividualEnrollment: boolean;
     imageUrl: string | null;
   } | null>(null);
+  
+  // Org-specific channels (for filtering out cross-org channels)
+  const [orgChannelIds, setOrgChannelIds] = useState<Set<string>>(new Set());
+  const [userSquadChannelIds, setUserSquadChannelIds] = useState<Set<string>>(new Set());
+  const [isPlatformMode, setIsPlatformMode] = useState(false);
 
-  // Fetch coaching promo data
+  // Fetch coaching promo data and org channels for filtering
   useEffect(() => {
     if (isOpen) {
+      // Fetch coaching promo
       fetch('/api/user/org-coaching-promo')
         .then(res => res.ok ? res.json() : null)
         .then(data => {
@@ -89,6 +95,56 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
               hasActiveIndividualEnrollment: data.hasActiveIndividualEnrollment || false,
               imageUrl: data.promo?.imageUrl || null,
             });
+          }
+        })
+        .catch(() => {
+          // Silently fail
+        });
+      
+      // Fetch org channels for filtering
+      fetch('/api/user/org-channels')
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data) {
+            setIsPlatformMode(data.isPlatformMode || false);
+            // Build set of allowed org channel IDs
+            const channelIds = new Set<string>();
+            if (data.channels) {
+              for (const ch of data.channels) {
+                if (ch.streamChannelId) {
+                  channelIds.add(ch.streamChannelId);
+                }
+              }
+            }
+            setOrgChannelIds(channelIds);
+          }
+        })
+        .catch(() => {
+          // Silently fail - will show all channels
+        });
+      
+      // Fetch user's squads for filtering squad channels
+      fetch('/api/squad/me')
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data) {
+            const squadChannelIds = new Set<string>();
+            // Collect all squad chat channel IDs
+            if (data.premiumSquad?.chatChannelId) {
+              squadChannelIds.add(data.premiumSquad.chatChannelId);
+            }
+            if (data.standardSquad?.chatChannelId) {
+              squadChannelIds.add(data.standardSquad.chatChannelId);
+            }
+            // Also check squads array for standalone squads
+            if (data.squads) {
+              for (const s of data.squads) {
+                if (s.chatChannelId) {
+                  squadChannelIds.add(s.chatChannelId);
+                }
+              }
+            }
+            setUserSquadChannelIds(squadChannelIds);
           }
         })
         .catch(() => {
@@ -150,27 +206,65 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
             members: { $in: [client.userID!] },
           },
           { last_message_at: -1 },
-          { limit: 30, watch: true }
+          { limit: 50, watch: true }
         );
 
-        const previews: ChannelPreview[] = channelResponse.map((channel) => {
+        const previews: ChannelPreview[] = [];
+        
+        for (const channel of channelResponse) {
           const channelData = channel.data as Record<string, unknown>;
           const channelId = channel.id || '';
+          
+          // MULTI-TENANCY: Filter out channels from other organizations
+          // Skip filtering if in platform mode (show all channels)
+          if (!isPlatformMode) {
+            // Filter squad channels - only show ones in user's current org
+            if (channelId.startsWith('squad-')) {
+              if (!userSquadChannelIds.has(channelId)) {
+                continue; // Skip squad channels from other orgs
+              }
+            }
+            
+            // Filter org channels (like announcements, social corner) - only show current org
+            // These have format: org-{orgId}-{type} or legacy format
+            if (channelId.startsWith('org-')) {
+              if (!orgChannelIds.has(channelId)) {
+                continue; // Skip org channels from other orgs
+              }
+            }
+            
+            // Legacy global channel IDs (announcements, social-corner, share-wins)
+            // These are now replaced by org-specific channels, but skip them unless in orgChannelIds
+            if (channelId === ANNOUNCEMENTS_CHANNEL_ID || 
+                channelId === SOCIAL_CORNER_CHANNEL_ID || 
+                channelId === SHARE_WINS_CHANNEL_ID) {
+              // Only show if they're in the current org's channel list (for backward compat)
+              if (orgChannelIds.size > 0 && !orgChannelIds.has(channelId)) {
+                continue;
+              }
+            }
+            
+            // Coaching channels - keep them (they're per-user so should be fine)
+            // DMs - keep them (person-to-person, not org-specific)
+          }
           
           // Determine channel type and name
           let type: ChannelPreview['type'] = 'dm';
           let name = (channelData?.name as string) || '';
           let image = channelData?.image as string | undefined;
           
-          if (channelId === ANNOUNCEMENTS_CHANNEL_ID) {
+          if (channelId === ANNOUNCEMENTS_CHANNEL_ID || channelId.includes('-announcements')) {
             type = 'global';
             name = name || 'Announcements';
-          } else if (channelId === SOCIAL_CORNER_CHANNEL_ID) {
+          } else if (channelId === SOCIAL_CORNER_CHANNEL_ID || channelId.includes('-social')) {
             type = 'global';
             name = name || 'Social Corner';
-          } else if (channelId === SHARE_WINS_CHANNEL_ID) {
+          } else if (channelId === SHARE_WINS_CHANNEL_ID || channelId.includes('-wins')) {
             type = 'global';
             name = name || 'Share Wins';
+          } else if (channelId.startsWith('org-')) {
+            type = 'global';
+            // Use the channel name from data
           } else if (channelId.startsWith('squad-')) {
             type = 'squad';
             name = name || 'Squad Chat';
@@ -191,7 +285,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
           const messages = channel.state.messages;
           const lastMsg = messages[messages.length - 1];
           
-          return {
+          previews.push({
             id: channelId,
             name,
             image,
@@ -200,8 +294,8 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
             unread: channel.countUnread(),
             type,
             channel,
-          };
-        });
+          });
+        }
 
         setChannels(previews);
       } catch (err) {
@@ -212,7 +306,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     };
 
     fetchChannels();
-  }, [isOpen, client, isConnected]);
+  }, [isOpen, client, isConnected, isPlatformMode, orgChannelIds, userSquadChannelIds]);
 
   // Handle channel click - show messages with animation
   const handleChannelClick = useCallback((channel: StreamChannel) => {

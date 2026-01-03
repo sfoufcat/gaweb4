@@ -1,11 +1,14 @@
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getEffectiveOrgId } from '@/lib/tenant/context';
 import type { FirebaseUser } from '@/types';
 
 /**
  * GET /api/user/[userId]
  * Fetches another user's profile data (public information only)
+ * 
+ * MULTI-TENANCY: Goal data is fetched from org_memberships, not users collection
  */
 export async function GET(
   request: Request,
@@ -18,9 +21,12 @@ export async function GET(
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
+    // MULTI-TENANCY: Get org context for goal scoping
+    const organizationId = await getEffectiveOrgId();
+
     const { userId: targetUserId } = await params;
 
-    // Fetch user data from Firebase using Admin SDK
+    // Fetch user data from Firebase using Admin SDK (profile info only)
     const userRef = adminDb.collection('users').doc(targetUserId);
     const userDoc = await userRef.get();
 
@@ -44,25 +50,49 @@ export async function GET(
       console.error('Failed to fetch Clerk user data:', err);
     }
 
-    // Extract goal data
+    // MULTI-TENANCY: Extract org-scoped data from org_memberships only
+    // Goals, identity, bio are org-scoped to prevent cross-organization data leakage
     let activeGoal = null;
-    if (userData.goal && userData.goalTargetDate) {
-      const today = new Date();
-      const targetDate = new Date(userData.goalTargetDate);
-      const startDate = new Date(userData.goalSetAt || userData.createdAt);
+    let orgGoalHistory = null;
+    let orgIdentity = userData.identity;
+    let orgBio = userData.bio;
+    
+    if (organizationId) {
+      const membershipSnapshot = await adminDb.collection('org_memberships')
+        .where('userId', '==', targetUserId)
+        .where('organizationId', '==', organizationId)
+        .limit(1)
+        .get();
       
-      const totalDays = Math.ceil((targetDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-      const daysPassed = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-      const progressPercentage = totalDays > 0 ? Math.min(Math.round((daysPassed / totalDays) * 100), 100) : 0;
+      if (!membershipSnapshot.empty) {
+        const memberData = membershipSnapshot.docs[0].data();
+        
+        // Extract goal data
+        if (memberData?.goal && memberData?.goalTargetDate) {
+          const today = new Date();
+          const targetDate = new Date(memberData.goalTargetDate);
+          const startDate = new Date(memberData.goalSetAt || memberData.createdAt || userData.createdAt);
+          
+          const totalDays = Math.ceil((targetDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+          const daysPassed = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+          const progressPercentage = totalDays > 0 ? Math.min(Math.round((daysPassed / totalDays) * 100), 100) : 0;
 
-      activeGoal = {
-        goal: userData.goal,
-        targetDate: userData.goalTargetDate,
-        progress: {
-          percentage: progressPercentage,
-        },
-      };
+          activeGoal = {
+            goal: memberData.goal,
+            targetDate: memberData.goalTargetDate,
+            progress: {
+              percentage: memberData.goalProgress ?? progressPercentage,
+            },
+          };
+        }
+        
+        // Extract other org-scoped data
+        orgGoalHistory = memberData?.goalHistory || null;
+        orgIdentity = memberData?.identity || userData.identity;
+        orgBio = memberData?.bio || userData.bio;
+      }
     }
+    // Note: No fallback to userData.goal - this would leak goals across organizations
 
     // Return public profile data (exclude sensitive information)
     // Use Clerk image as fallback if Firebase doesn't have one
@@ -78,9 +108,9 @@ export async function GET(
       location: userData.location,
       profession: userData.profession,
       company: userData.company,
-      bio: userData.bio,
+      bio: orgBio,
       interests: userData.interests,
-      identity: userData.identity,
+      identity: orgIdentity,
       instagramHandle: userData.instagramHandle,
       linkedinHandle: userData.linkedinHandle,
       twitterHandle: userData.twitterHandle,
@@ -93,8 +123,8 @@ export async function GET(
       // Weekly reflection public focus
       publicFocus: userData.publicFocus,
       publicFocusUpdatedAt: userData.publicFocusUpdatedAt,
-      // Goal history for accomplished goals
-      goalHistory: userData.goalHistory,
+      // Goal history for accomplished goals - org-scoped
+      goalHistory: orgGoalHistory,
     };
 
     return NextResponse.json({
