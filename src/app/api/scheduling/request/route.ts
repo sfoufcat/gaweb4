@@ -90,45 +90,32 @@ export async function POST(request: NextRequest) {
       : clientData?.name || 'Client';
     const clientAvatarUrl = clientData?.imageUrl || clientData?.avatarUrl;
 
-    // Find the coach for this organization using Clerk API
-    const client = await clerkClient();
-    const memberships = await client.organizations.getOrganizationMembershipList({
-      organizationId: orgId,
-    });
-
     let coachId: string | null = null;
     let coachName = 'Coach';
     let coachAvatarUrl: string | undefined;
 
-    // First, find member with super_coach orgRole (stored in membership publicMetadata)
-    const coachMember = memberships.data.find(m => {
-      const metadata = m.publicMetadata as { orgRole?: string } | undefined;
-      return metadata?.orgRole === 'super_coach';
-    });
+    // Check Firestore org_memberships first (most reliable source for orgRole)
+    const membershipSnapshot = await adminDb
+      .collection('org_memberships')
+      .where('organizationId', '==', orgId)
+      .where('orgRole', 'in', ['super_coach', 'coach'])
+      .where('isActive', '==', true)
+      .limit(1)
+      .get();
 
-    if (coachMember?.publicUserData?.userId) {
-      coachId = coachMember.publicUserData.userId;
+    if (!membershipSnapshot.empty) {
+      coachId = membershipSnapshot.docs[0].data().userId;
     }
 
-    // Fallback: Find org:admin if no super_coach found
+    // Fallback: Check Clerk org:admin role
     if (!coachId) {
+      const client = await clerkClient();
+      const memberships = await client.organizations.getOrganizationMembershipList({
+        organizationId: orgId,
+      });
       const adminMembership = memberships.data.find(m => m.role === 'org:admin');
       if (adminMembership?.publicUserData?.userId) {
         coachId = adminMembership.publicUserData.userId;
-      }
-    }
-
-    // Fallback: Check Firestore org_memberships
-    if (!coachId) {
-      const membershipSnapshot = await adminDb
-        .collection('org_memberships')
-        .where('organizationId', '==', orgId)
-        .where('orgRole', 'in', ['super_coach', 'coach'])
-        .limit(1)
-        .get();
-
-      if (!membershipSnapshot.empty) {
-        coachId = membershipSnapshot.docs[0].data().userId;
       }
     }
 
