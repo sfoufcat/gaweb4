@@ -49,6 +49,7 @@ export async function GET(req: Request) {
       const demoSquads = getDemoSquads();
       const publicSquads = demoSquads.map(s => ({
         ...s,
+        avatarUrl: s.coverImageUrl, // Map coverImageUrl to avatarUrl for SquadCard component
         memberCount: Math.floor(Math.random() * 15) + 3,
         memberAvatars: [
           'https://ui-avatars.com/api/?name=Sarah+J&background=7c9885&color=fff&size=64&bold=true',

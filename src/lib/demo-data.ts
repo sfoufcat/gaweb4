@@ -2025,8 +2025,8 @@ export function generateDemoDiscoverContent(): DemoDiscoverItem[] {
   const items: DemoDiscoverItem[] = [];
   
   const contentTemplates = [
-    { type: 'article' as const, title: '10 Habits of Highly Successful People', description: 'Discover the daily habits that drive success', readTime: 8, category: 'Mindset' },
-    { type: 'article' as const, title: 'The Power of Morning Routines', description: 'How to start your day with intention', readTime: 5, category: 'Productivity' },
+    { type: 'article' as const, title: '10 Habits of Highly Successful People', description: 'Discover the daily habits that drive success', readTime: 8, category: 'habits' },
+    { type: 'article' as const, title: 'The Power of Morning Routines', description: 'How to start your day with intention', readTime: 5, category: 'productivity' },
     { 
       type: 'course' as const, 
       title: 'Goal Setting Masterclass', 
@@ -2035,7 +2035,7 @@ export function generateDemoDiscoverContent(): DemoDiscoverItem[] {
       isPremium: true, 
       priceInCents: 4900,
       currency: 'usd',
-      category: 'Personal Growth',
+      category: 'success',
       level: 'All Levels',
       purchaseType: 'popup' as const,
       keyOutcomes: [
@@ -2059,7 +2059,7 @@ export function generateDemoDiscoverContent(): DemoDiscoverItem[] {
         { question: 'Is there a guarantee?', answer: 'Yes! If you\'re not satisfied within 30 days, we\'ll give you a full refund.' },
       ],
     },
-    { type: 'course' as const, title: 'Productivity Fundamentals', description: 'Learn to manage your time and energy effectively', category: 'Productivity', level: 'Beginner' },
+    { type: 'course' as const, title: 'Productivity Fundamentals', description: 'Learn to manage your time and energy effectively', category: 'productivity', level: 'Beginner' },
     { type: 'event' as const, title: 'Live Q&A: Ask Me Anything', description: 'Join us for a live coaching session' },
     { type: 'event' as const, title: 'Monthly Mastermind', description: 'Connect with fellow members and share wins' },
     { type: 'download' as const, title: 'Goal Planning Worksheet', description: 'A printable worksheet to plan your goals' },

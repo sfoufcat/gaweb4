@@ -103,6 +103,31 @@
 @tailwind utilities;
 
 @layer utilities {
+  /* Safe Area Insets for iOS Safari edge-to-edge display */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pl-safe {
+    padding-left: env(safe-area-inset-left);
+  }
+  .pr-safe {
+    padding-right: env(safe-area-inset-right);
+  }
+  .mt-safe {
+    margin-top: env(safe-area-inset-top);
+  }
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom);
+  }
+  
+  /* Min-height variants for full-screen layouts */
+  .min-h-screen-safe {
+    min-height: calc(100vh + env(safe-area-inset-top) + env(safe-area-inset-bottom));
+  }
+  
   /* Hide scrollbar utility */
   .scrollbar-hide {
     -ms-overflow-style: none;
@@ -488,6 +513,8 @@ html {
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   overflow-x: hidden;
+  /* Safe area padding for iOS Safari edge-to-edge display */
+  padding-top: env(safe-area-inset-top);
 }
 
 /* Dark mode skeleton / loading state styles */

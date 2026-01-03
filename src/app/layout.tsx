@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Albert_Sans } from "next/font/google";
 import { Suspense } from "react";
 import { headers } from "next/headers";
@@ -46,6 +46,17 @@ const albertSans = Albert_Sans({
 function getBestLogoUrl(branding: { logoUrl: string | null; horizontalLogoUrl: string | null }): string {
   return branding.logoUrl || branding.horizontalLogoUrl || DEFAULT_LOGO_URL;
 }
+
+/**
+ * Viewport configuration for Safari edge-to-edge display
+ * viewport-fit=cover enables safe area insets for iOS Safari
+ */
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: 'cover',
+};
 
 /**
  * Generate dynamic metadata based on domain branding
