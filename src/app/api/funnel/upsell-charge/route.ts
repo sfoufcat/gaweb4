@@ -245,7 +245,6 @@ export async function POST(req: Request) {
     };
     
     // Add userId if available
-    const effectiveUserId = userId || session.userId;
     if (effectiveUserId) {
       metadata.userId = effectiveUserId;
     }
