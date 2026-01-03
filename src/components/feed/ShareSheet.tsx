@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 import { ShareToChatModal } from './ShareToChatModal';
+import { useDragToDismiss } from '@/hooks/useDragToDismiss';
 
 interface ShareSheetProps {
   postId: string;
@@ -13,6 +14,7 @@ export function ShareSheet({ postId, onClose }: ShareSheetProps) {
   const { colors, isDefault } = useBrandingValues();
   const [copied, setCopied] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
+  const { sheetRef, handleProps } = useDragToDismiss({ onClose });
 
   const accentColor = colors.accentLight || 'var(--brand-accent-light)';
   const postUrl = typeof window !== 'undefined' 
@@ -81,9 +83,9 @@ export function ShareSheet({ postId, onClose }: ShareSheetProps) {
       />
 
       {/* Sheet - Bottom sheet on mobile, centered popup on desktop */}
-      <div className="relative w-full md:max-w-[400px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-modal-slide-up md:animate-modal-zoom-in safe-area-inset-bottom">
-        {/* Handle - Mobile only */}
-        <div className="flex justify-center pt-3 pb-2 md:hidden">
+      <div ref={sheetRef} className="relative w-full md:max-w-[400px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-modal-slide-up md:animate-modal-zoom-in safe-area-inset-bottom">
+        {/* Handle - Mobile only (drag handle) */}
+        <div {...handleProps} className="flex justify-center pt-3 pb-2 md:hidden cursor-grab active:cursor-grabbing touch-none">
           <div className="w-9 h-1 bg-gray-300 dark:bg-[#262b35] rounded-full" />
         </div>
 

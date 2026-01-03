@@ -1284,9 +1284,14 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
     }
   };
 
-  const formatPrice = (cents: number) => {
+  const formatPrice = (cents: number, subscriptionEnabled?: boolean, billingInterval?: 'monthly' | 'quarterly' | 'yearly') => {
     if (cents === 0) return 'Free';
-    return `$${(cents / 100).toFixed(2)}`;
+    const price = `$${(cents / 100).toFixed(2)}`;
+    if (subscriptionEnabled && billingInterval) {
+      const intervalSuffix = billingInterval === 'monthly' ? '/mo' : billingInterval === 'quarterly' ? '/qtr' : '/yr';
+      return `${price}${intervalSuffix}`;
+    }
+    return price;
   };
 
   if (loading) {
@@ -1552,7 +1557,7 @@ export function CoachProgramsTab({ apiBasePath = '/api/coach/org-programs' }: Co
                     </span>
                     <span className="flex items-center gap-1">
                       <DollarSign className="w-3 h-3" />
-                      {formatPrice(program.priceInCents)}
+                      {formatPrice(program.priceInCents, program.subscriptionEnabled, program.billingInterval)}
                     </span>
                     {program.type === 'group' && (
                       <span className="flex items-center gap-1">

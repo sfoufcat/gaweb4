@@ -485,6 +485,7 @@ function SocialProofFields({
           folder="programs"
           type="image"
           label="Avatar"
+          uploadEndpoint="/api/coach/org-upload-media"
         />
       </div>
     </div>
@@ -571,6 +572,7 @@ function AuthorityFields({
           folder="programs"
           type="image"
           label="Logo"
+          uploadEndpoint="/api/coach/org-upload-media"
         />
       </div>
     </div>

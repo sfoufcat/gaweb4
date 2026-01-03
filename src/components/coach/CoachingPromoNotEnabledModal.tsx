@@ -181,7 +181,9 @@ export function CoachingPromoNotEnabledModal({
                       {program.name}
                     </p>
                     <p className="font-sans text-[12px] text-text-secondary dark:text-[#b2b6c2]">
-                      {program.priceInCents === 0 ? 'Free' : `$${(program.priceInCents / 100).toFixed(0)}`}
+                      {program.priceInCents === 0 
+                        ? 'Free' 
+                        : `$${(program.priceInCents / 100).toFixed(0)}${program.subscriptionEnabled && program.billingInterval ? (program.billingInterval === 'monthly' ? '/mo' : program.billingInterval === 'quarterly' ? '/qtr' : '/yr') : ''}`}
                       {program.lengthDays ? ` · ${program.lengthDays} days` : ''}
                     </p>
                   </div>

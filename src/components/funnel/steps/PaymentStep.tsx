@@ -9,7 +9,7 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, CreditCard, Check, ArrowLeft, Plus, CircleCheck, Shield, Loader2 } from 'lucide-react';
+import { Lock, CreditCard, Check, ArrowLeft, Plus, CircleCheck, Shield, Loader2, Repeat } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@clerk/nextjs';
 import type { FunnelStepConfigPayment } from '@/types';
@@ -54,10 +54,36 @@ interface PaymentStepProps {
     priceInCents: number;
     currency: string;
     stripePriceId?: string;
+    subscriptionEnabled?: boolean;
+    billingInterval?: 'monthly' | 'quarterly' | 'yearly';
   };
   skipPayment: boolean;
   isFirstStep: boolean;
   organizationId?: string;
+}
+
+/**
+ * Get interval label for display (e.g., "/month")
+ */
+function getIntervalLabel(interval?: 'monthly' | 'quarterly' | 'yearly'): string {
+  switch (interval) {
+    case 'monthly': return '/mo';
+    case 'quarterly': return '/qtr';
+    case 'yearly': return '/yr';
+    default: return '/mo';
+  }
+}
+
+/**
+ * Get billing display name (e.g., "Monthly")
+ */
+function getBillingDisplayName(interval?: 'monthly' | 'quarterly' | 'yearly'): string {
+  switch (interval) {
+    case 'monthly': return 'Monthly';
+    case 'quarterly': return 'Quarterly';
+    case 'yearly': return 'Yearly';
+    default: return 'Monthly';
+  }
 }
 
 /**
@@ -74,6 +100,8 @@ function SavedCardsForFunnel({
   currency,
   programName,
   features,
+  subscriptionEnabled,
+  billingInterval,
 }: {
   savedMethods: SavedPaymentMethod[];
   selectedMethodId: string | null;
@@ -85,6 +113,8 @@ function SavedCardsForFunnel({
   currency: string;
   programName: string;
   features?: string[];
+  subscriptionEnabled?: boolean;
+  billingInterval?: 'monthly' | 'quarterly' | 'yearly';
 }) {
   const formatPrice = (cents: number, curr: string) => {
     return new Intl.NumberFormat('en-US', {
@@ -93,6 +123,8 @@ function SavedCardsForFunnel({
     }).format(cents / 100);
   };
 
+  const isRecurring = subscriptionEnabled && billingInterval;
+
   return (
     <div className="space-y-6">
       {/* Plan summary */}
@@ -100,17 +132,34 @@ function SavedCardsForFunnel({
         <div className="flex justify-between items-center mb-4">
           <div>
             <h3 className="font-medium text-text-primary">{programName}</h3>
-            <p className="text-sm text-text-secondary">Full access</p>
+            <p className="text-sm text-text-secondary flex items-center gap-1.5">
+              {isRecurring && <Repeat className="w-3.5 h-3.5" />}
+              {isRecurring ? 'Subscription' : 'Full access'}
+            </p>
           </div>
           <div className="text-right">
             <p className="font-albert text-2xl font-semibold text-text-primary">
-              {formatPrice(priceInCents, currency)}
+              {formatPrice(priceInCents, currency)}{isRecurring && getIntervalLabel(billingInterval)}
             </p>
           </div>
         </div>
 
+        {/* Subscription info box for recurring */}
+        {isRecurring && (
+          <div className="border-t border-[#e1ddd8] pt-4 mb-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-text-secondary">Billing</span>
+              <span className="text-text-primary font-medium">{getBillingDisplayName(billingInterval)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-text-primary font-medium">Due today</span>
+              <span className="text-text-primary font-semibold">{formatPrice(priceInCents, currency)}</span>
+            </div>
+          </div>
+        )}
+
         {features && features.length > 0 && (
-          <div className="border-t border-[#e1ddd8] pt-4 space-y-2">
+          <div className={`${isRecurring ? '' : 'border-t border-[#e1ddd8] pt-4 '}space-y-2`}>
             {features.map((feature, i) => (
               <div key={i} className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-brand-accent" />
@@ -198,7 +247,10 @@ function SavedCardsForFunnel({
         ) : (
           <>
             <Lock className="w-4 h-4" />
-            Pay {formatPrice(priceInCents, currency)}
+            {isRecurring 
+              ? `Subscribe ${formatPrice(priceInCents, currency)}${getIntervalLabel(billingInterval)}`
+              : `Pay ${formatPrice(priceInCents, currency)}`
+            }
           </>
         )}
       </button>
@@ -206,27 +258,34 @@ function SavedCardsForFunnel({
       {/* Security note */}
       <p className="text-center text-xs text-text-muted">
         <Shield className="w-3 h-3 inline mr-1" />
-        Your saved payment info is securely stored by Stripe
+        {isRecurring 
+          ? 'Secure subscription powered by Stripe. Cancel anytime.'
+          : 'Your saved payment info is securely stored by Stripe'
+        }
       </p>
     </div>
   );
 }
 
 interface PaymentFormProps {
-  onSuccess: (paymentIntentId: string) => void;
+  onSuccess: (paymentIntentId: string, paymentMethodId?: string) => void;
   programName: string;
   priceInCents: number;
   currency: string;
   features?: string[];
   organizationId?: string;
+  subscriptionEnabled?: boolean;
+  billingInterval?: 'monthly' | 'quarterly' | 'yearly';
 }
 
-function PaymentForm({ onSuccess, programName, priceInCents, currency, features, organizationId }: PaymentFormProps) {
+function PaymentForm({ onSuccess, programName, priceInCents, currency, features, organizationId, subscriptionEnabled, billingInterval }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveCard, setSaveCard] = useState(true); // Auto-checked
+
+  const isRecurring = subscriptionEnabled && billingInterval;
 
   const formatPrice = (cents: number, curr: string) => {
     return new Intl.NumberFormat('en-US', {
@@ -257,15 +316,20 @@ function PaymentForm({ onSuccess, programName, priceInCents, currency, features,
       setError(submitError.message || 'Payment failed. Please try again.');
       setIsProcessing(false);
     } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+      // Extract payment method ID for upsells (it's a string ID, not the full object)
+      const paymentMethodId = typeof paymentIntent.payment_method === 'string' 
+        ? paymentIntent.payment_method 
+        : paymentIntent.payment_method?.toString();
+      
       // If user chose not to save card, delete it after successful payment
-      if (!saveCard && organizationId && paymentIntent.payment_method) {
+      if (!saveCard && organizationId && paymentMethodId) {
         try {
           await fetch('/api/payment-methods', {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               organizationId,
-              paymentMethodId: paymentIntent.payment_method,
+              paymentMethodId,
             }),
           });
         } catch (err) {
@@ -273,7 +337,7 @@ function PaymentForm({ onSuccess, programName, priceInCents, currency, features,
           console.error('Failed to remove saved card:', err);
         }
       }
-      onSuccess(paymentIntent.id);
+      onSuccess(paymentIntent.id, paymentMethodId);
     }
   };
 
@@ -284,17 +348,34 @@ function PaymentForm({ onSuccess, programName, priceInCents, currency, features,
         <div className="flex justify-between items-center mb-4">
           <div>
             <h3 className="font-medium text-text-primary">{programName}</h3>
-            <p className="text-sm text-text-secondary">Full access</p>
+            <p className="text-sm text-text-secondary flex items-center gap-1.5">
+              {isRecurring && <Repeat className="w-3.5 h-3.5" />}
+              {isRecurring ? 'Subscription' : 'Full access'}
+            </p>
           </div>
           <div className="text-right">
             <p className="font-albert text-2xl font-semibold text-text-primary">
-              {formatPrice(priceInCents, currency)}
+              {formatPrice(priceInCents, currency)}{isRecurring && getIntervalLabel(billingInterval)}
             </p>
           </div>
         </div>
 
+        {/* Subscription info box for recurring */}
+        {isRecurring && (
+          <div className="border-t border-[#e1ddd8] pt-4 mb-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-text-secondary">Billing</span>
+              <span className="text-text-primary font-medium">{getBillingDisplayName(billingInterval)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-text-primary font-medium">Due today</span>
+              <span className="text-text-primary font-semibold">{formatPrice(priceInCents, currency)}</span>
+            </div>
+          </div>
+        )}
+
         {features && features.length > 0 && (
-          <div className="border-t border-[#e1ddd8] pt-4 space-y-2">
+          <div className={`${isRecurring ? '' : 'border-t border-[#e1ddd8] pt-4 '}space-y-2`}>
             {features.map((feature, i) => (
               <div key={i} className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-brand-accent" />
@@ -376,7 +457,10 @@ function PaymentForm({ onSuccess, programName, priceInCents, currency, features,
         ) : (
           <>
             <Lock className="w-4 h-4" />
-            Pay {formatPrice(priceInCents, currency)}
+            {isRecurring 
+              ? `Subscribe ${formatPrice(priceInCents, currency)}${getIntervalLabel(billingInterval)}`
+              : `Pay ${formatPrice(priceInCents, currency)}`
+            }
           </>
         )}
       </button>
@@ -384,7 +468,10 @@ function PaymentForm({ onSuccess, programName, priceInCents, currency, features,
       {/* Security note */}
       <p className="text-center text-xs text-text-muted">
         <Lock className="w-3 h-3 inline mr-1" />
-        Secured by Stripe. Your payment info is never stored on our servers.
+        {isRecurring 
+          ? 'Secure subscription powered by Stripe. Cancel anytime.'
+          : 'Secured by Stripe. Your payment info is never stored on our servers.'
+        }
       </p>
     </form>
   );
@@ -574,7 +661,31 @@ export function PaymentStep({
     createPaymentIntent();
   };
 
-  const handlePaymentSuccess = (paymentIntentId: string, accountId?: string | null) => {
+  const handlePaymentSuccess = async (
+    paymentIntentId: string, 
+    accountId?: string | null,
+    paymentMethodId?: string
+  ) => {
+    // Store payment method ID in flow session for upsells (new card payments)
+    // Note: saved card payments already store this via charge-saved-method API
+    if (paymentMethodId && data.flowSessionId) {
+      try {
+        await fetch(`/api/funnel/session/${data.flowSessionId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            data: {
+              stripePaymentMethodId: paymentMethodId,
+              stripeConnectAccountId: accountId || connectedAccountId,
+            },
+          }),
+        });
+      } catch (err) {
+        // Log but don't block - upsells will fail gracefully with clear error
+        console.error('Failed to store payment method for upsells:', err);
+      }
+    }
+
     onComplete({
       stripePaymentIntentId: paymentIntentId,
       paidAmount: priceInCents,
@@ -695,6 +806,8 @@ export function PaymentStep({
             currency={currency}
             programName={program.name}
             features={config.features}
+            subscriptionEnabled={program.subscriptionEnabled}
+            billingInterval={program.billingInterval}
           />
         </motion.div>
       </div>
@@ -765,12 +878,16 @@ export function PaymentStep({
             }}
           >
             <PaymentForm
-              onSuccess={(paymentIntentId) => handlePaymentSuccess(paymentIntentId)}
+              onSuccess={(paymentIntentId, paymentMethodId) => 
+                handlePaymentSuccess(paymentIntentId, connectedAccountId, paymentMethodId)
+              }
               programName={program.name}
               priceInCents={priceInCents}
               currency={currency}
               features={config.features}
               organizationId={organizationId}
+              subscriptionEnabled={program.subscriptionEnabled}
+              billingInterval={program.billingInterval}
             />
           </Elements>
         </motion.div>

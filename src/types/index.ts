@@ -2919,6 +2919,8 @@ export interface FunnelStepConfigLandingPage {
   programDescription?: string;
   programImageUrl?: string;
   priceInCents?: number;
+  subscriptionEnabled?: boolean;
+  billingInterval?: 'monthly' | 'quarterly' | 'yearly';
   durationDays?: number;
   enrolledCount?: number;
   programType?: 'individual' | 'group';
@@ -3036,6 +3038,7 @@ export interface InfluenceScarcity {
   remainingSpots?: number;    // e.g., 7
   showProgressBar?: boolean;  // Show visual fill indicator
   customText?: string;        // e.g., "Only {remaining} spots left!"
+  memberAvatars?: string[];   // Real user avatar URLs to display (if available)
 }
 
 /**

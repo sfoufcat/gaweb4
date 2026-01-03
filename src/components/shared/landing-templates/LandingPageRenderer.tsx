@@ -27,6 +27,8 @@ export interface LandingPageRendererProps {
   onCTA?: () => void;
   // Program display props
   priceInCents?: number;
+  subscriptionEnabled?: boolean;
+  billingInterval?: 'monthly' | 'quarterly' | 'yearly';
   durationDays?: number;
   enrolledCount?: number;
   programType?: 'individual' | 'group';

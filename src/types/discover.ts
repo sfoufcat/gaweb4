@@ -262,6 +262,8 @@ export type DiscoverProgram = {
   lengthDays: number;
   priceInCents: number;
   currency?: string;
+  subscriptionEnabled?: boolean;
+  billingInterval?: 'monthly' | 'quarterly' | 'yearly';
   coverImageUrl?: string;
   coachId?: string;
   organizationId?: string;

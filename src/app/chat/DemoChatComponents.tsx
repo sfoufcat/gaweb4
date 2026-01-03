@@ -631,12 +631,12 @@ export default function DemoChatComponents() {
                 return (
                   <div
                     key={msg.id}
-                    className={`flex items-end gap-2 ${isOwn ? 'flex-row-reverse' : ''}`}
+                    className={`flex items-start gap-2 ${isOwn ? 'flex-row-reverse' : ''}`}
                   >
                     <img
                       src={msg.senderAvatar}
                       alt={msg.senderName}
-                      className="w-8 h-8 rounded-full object-cover flex-shrink-0 self-end"
+                      className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-0.5"
                     />
                     <div className={`flex flex-col max-w-[70%] ${isOwn ? 'items-end' : 'items-start'}`}>
                       <div

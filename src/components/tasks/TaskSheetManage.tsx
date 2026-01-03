@@ -2,6 +2,7 @@
 
 import type { Task } from '@/types';
 import { Pencil, Trash2 } from 'lucide-react';
+import { useDragToDismiss } from '@/hooks/useDragToDismiss';
 
 interface TaskSheetManageProps {
   isOpen: boolean;
@@ -22,6 +23,8 @@ export function TaskSheetManage({
   onDelete,
   task,
 }: TaskSheetManageProps) {
+  const { sheetRef, handleProps } = useDragToDismiss({ onClose });
+
   if (!isOpen) return null;
 
   const isCompleted = task.status === 'completed';
@@ -55,9 +58,9 @@ export function TaskSheetManage({
       />
 
       {/* Modal Container - Bottom sheet on mobile, centered card on desktop */}
-      <div className="relative w-full max-w-[500px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-300">
-        {/* Grabber - Only on mobile */}
-        <div className="flex justify-center pt-3 pb-2 md:hidden">
+      <div ref={sheetRef} className="relative w-full max-w-[500px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-300">
+        {/* Grabber - Only on mobile (drag handle) */}
+        <div {...handleProps} className="flex justify-center pt-3 pb-2 md:hidden cursor-grab active:cursor-grabbing touch-none">
           <div className="w-9 h-1 bg-gray-300 dark:bg-[#262b35] rounded-full" />
         </div>
 

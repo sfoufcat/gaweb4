@@ -125,6 +125,26 @@ export async function POST(req: Request) {
       );
     }
 
+    // Fetch the actual product price from the database (instead of using static config)
+    // This ensures the upsell always charges the current price, not a stale cached value
+    let priceInCents = stepConfig.finalPriceInCents;
+    
+    if (stepConfig.productType === 'program' && stepConfig.productId) {
+      try {
+        const programDoc = await adminDb.collection('programs').doc(stepConfig.productId).get();
+        if (programDoc.exists) {
+          const programData = programDoc.data();
+          if (programData?.priceInCents !== undefined) {
+            priceInCents = programData.priceInCents;
+            console.log(`[UPSELL_CHARGE] Using real program price: ${priceInCents} cents (config had: ${stepConfig.finalPriceInCents})`);
+          }
+        }
+      } catch (err) {
+        // Log but continue with config price as fallback
+        console.warn('[UPSELL_CHARGE] Failed to fetch program price, using config value:', err);
+      }
+    }
+
     // Get customer ID - different paths for authenticated vs guest
     let customerId: string | undefined;
 
@@ -168,7 +188,6 @@ export async function POST(req: Request) {
 
     // Calculate platform fee
     const platformFeePercent = orgSettings?.platformFeePercent ?? 1;
-    const priceInCents = stepConfig.finalPriceInCents;
     const applicationFeeAmount = Math.round(priceInCents * (platformFeePercent / 100));
 
     // Build metadata

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import type { Task } from '@/types';
+import { useDragToDismiss } from '@/hooks/useDragToDismiss';
 
 interface TaskSheetDefineProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export function TaskSheetDefine({
   onDelete,
   task,
 }: TaskSheetDefineProps) {
+  const { sheetRef, handleProps } = useDragToDismiss({ onClose });
   const [title, setTitle] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -77,9 +79,9 @@ export function TaskSheetDefine({
       />
 
       {/* Modal Container - Bottom sheet on mobile, centered card on desktop */}
-      <div className="relative w-full max-w-[500px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-300">
-        {/* Grabber - Only on mobile */}
-        <div className="flex justify-center pt-3 pb-2 md:hidden">
+      <div ref={sheetRef} className="relative w-full max-w-[500px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-300">
+        {/* Grabber - Only on mobile (drag handle) */}
+        <div {...handleProps} className="flex justify-center pt-3 pb-2 md:hidden cursor-grab active:cursor-grabbing touch-none">
           <div className="w-9 h-1 bg-gray-300 dark:bg-[#262b35] rounded-full" />
         </div>
 

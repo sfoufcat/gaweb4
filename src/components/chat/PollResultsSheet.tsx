@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import type { ChatPollState } from '@/types/poll';
+import { useDragToDismiss } from '@/hooks/useDragToDismiss';
 
 /**
  * PollResultsSheet Component
@@ -32,7 +33,7 @@ function CloseIcon() {
 }
 
 export function PollResultsSheet({ isOpen, onClose, poll }: PollResultsSheetProps) {
-  const sheetRef = useRef<HTMLDivElement>(null);
+  const { sheetRef, handleProps } = useDragToDismiss({ onClose });
 
   // Close on escape
   useEffect(() => {
@@ -109,8 +110,13 @@ export function PollResultsSheet({ isOpen, onClose, poll }: PollResultsSheetProp
         tabIndex={-1}
         className="relative w-full lg:max-w-[500px] max-h-[90vh] bg-[#faf8f6] rounded-t-[24px] lg:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom lg:zoom-in-95 duration-300 flex flex-col overflow-hidden outline-none"
       >
+        {/* Grabber - Mobile only (drag handle) */}
+        <div {...handleProps} className="flex justify-center pt-3 pb-2 lg:hidden cursor-grab active:cursor-grabbing touch-none">
+          <div className="w-9 h-1 bg-gray-300 rounded-full" />
+        </div>
+        
         {/* Header */}
-        <div className="px-4 pt-5 pb-6 flex-shrink-0">
+        <div className="px-4 pt-2 lg:pt-5 pb-6 flex-shrink-0">
           <button
             onClick={onClose}
             className="w-6 h-6 flex items-center justify-center text-[#1a1a1a] hover:opacity-70 transition-opacity"

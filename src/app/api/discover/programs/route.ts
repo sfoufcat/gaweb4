@@ -51,6 +51,8 @@ export async function GET(request: NextRequest) {
         type: p.type,
         lengthDays: p.durationDays,
         priceInCents: p.priceInCents,
+        subscriptionEnabled: p.subscriptionEnabled,
+        billingInterval: p.billingInterval,
         isPublished: p.isPublished,
         isActive: true,
         coachName: 'Coach Adam',

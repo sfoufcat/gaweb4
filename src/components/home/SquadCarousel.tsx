@@ -2,9 +2,12 @@
 
 import { useRef, useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Users, ChevronRight, MessageCircle, Plus } from 'lucide-react';
 import type { Squad, SquadMember } from '@/types';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { ChatSheet } from '@/components/chat/ChatSheet';
 
 interface SquadData {
   squad: Squad | null;
@@ -26,6 +29,22 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [canScroll, setCanScroll] = useState(false);
+  const router = useRouter();
+  
+  // Mobile chat sheet state
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const [chatSheetOpen, setChatSheetOpen] = useState(false);
+  const [selectedChatChannelId, setSelectedChatChannelId] = useState<string | null>(null);
+  
+  // Handle chat button click - open sheet on mobile, navigate on desktop
+  const handleChatClick = useCallback((chatChannelId: string) => {
+    if (isMobile) {
+      setSelectedChatChannelId(chatChannelId);
+      setChatSheetOpen(true);
+    } else {
+      router.push(`/chat?channel=${chatChannelId}`);
+    }
+  }, [isMobile, router]);
   
   // Build list of squads that exist
   const squads = [
@@ -133,6 +152,7 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
     if (!squad) return null;
     
     return (
+      <>
       <div className="bg-white dark:bg-surface rounded-[20px] p-5">
         <div className="flex items-center gap-4">
           {/* Squad Avatar */}
@@ -169,13 +189,13 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
           {/* Actions */}
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {squad.chatChannelId && (
-              <Link
-                href={`/chat?channel=${squad.chatChannelId}`}
+              <button
+                onClick={() => handleChatClick(squad.chatChannelId!)}
                 className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-[#f3f1ef] dark:bg-[#181d28] flex items-center justify-center hover:bg-[#e9e5e0] dark:hover:bg-[#272d38] transition-colors"
                 aria-label="Open squad chat"
               >
                 <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-text-primary" />
-              </Link>
+              </button>
             )}
             <Link
               href={`/squad?squadId=${squad.id}`}
@@ -188,11 +208,20 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
           </div>
         </div>
       </div>
+      
+      {/* Mobile Chat Sheet */}
+      <ChatSheet
+        isOpen={chatSheetOpen}
+        onClose={() => setChatSheetOpen(false)}
+        initialChannelId={selectedChatChannelId}
+      />
+      </>
     );
   }
 
   // Multiple squads - show carousel
   return (
+    <>
     <div className="relative">
       <div 
         ref={scrollRef}
@@ -244,13 +273,13 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
                 {/* Actions */}
                 <div className="flex items-center gap-2">
                   {squad.chatChannelId && (
-                    <Link
-                      href={`/chat?channel=${squad.chatChannelId}`}
+                    <button
+                      onClick={() => handleChatClick(squad.chatChannelId!)}
                       className="flex-1 py-2 px-3 bg-[#f3f1ef] dark:bg-[#181d28] rounded-xl flex items-center justify-center gap-1.5 hover:bg-[#e9e5e0] dark:hover:bg-[#272d38] transition-colors"
                     >
                       <MessageCircle className="w-4 h-4 text-text-primary" />
                       <span className="font-sans text-[12px] text-text-primary">Chat</span>
-                    </Link>
+                    </button>
                   )}
                   <Link
                     href={`/squad?squadId=${squad.id}`}
@@ -318,6 +347,14 @@ export function SquadCarousel({ premiumSquad, standardSquad, isLoading, squadTit
       </div>
       )}
     </div>
+    
+    {/* Mobile Chat Sheet */}
+    <ChatSheet
+      isOpen={chatSheetOpen}
+      onClose={() => setChatSheetOpen(false)}
+      initialChannelId={selectedChatChannelId}
+    />
+    </>
   );
 }
 

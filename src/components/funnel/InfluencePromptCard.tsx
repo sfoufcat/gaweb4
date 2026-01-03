@@ -396,6 +396,18 @@ function UrgencyContent({
 // SCARCITY CONTENT
 // ============================================================================
 
+// Diverse fake avatar URLs for social proof fallback (Unsplash)
+const FAKE_AVATARS = [
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80', // Woman 1
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80', // Man 1
+  'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80', // Woman 2
+  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&q=80', // Man 2
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80', // Woman 3
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80', // Man 3
+  'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&q=80', // Woman 4
+  'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&q=80', // Man 4
+];
+
 function ScarcityContent({ 
   scarcity, 
   accentColor 
@@ -408,6 +420,13 @@ function ScarcityContent({
   const filledPercent = Math.round(((total - remaining) / total) * 100);
   const displayText = scarcity.customText?.replace('{remaining}', String(remaining)) 
     ?? `Only ${remaining} spots remaining`;
+  
+  // Use real avatars if available, otherwise fallback to fake avatars
+  const joinedCount = total - remaining;
+  const displayCount = Math.min(5, joinedCount);
+  const avatarsToShow = scarcity.memberAvatars?.length 
+    ? scarcity.memberAvatars.slice(0, displayCount)
+    : FAKE_AVATARS.slice(0, displayCount);
 
   return (
     <div className="space-y-4">
@@ -447,31 +466,36 @@ function ScarcityContent({
         </div>
       )}
 
-      {/* People icons showing scarcity */}
+      {/* People avatars showing social proof */}
       <div className="flex items-center gap-2">
         <div className="flex -space-x-2">
-          {Array.from({ length: Math.min(5, total - remaining) }).map((_, i) => (
+          {avatarsToShow.map((avatarUrl, i) => (
             <div
               key={i}
-              className="w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-xs font-medium shadow-sm"
-              style={{ 
-                background: `linear-gradient(135deg, ${accentColor}, color-mix(in srgb, ${accentColor} 60%, black))`,
-                color: 'white',
-              }}
+              className="w-8 h-8 rounded-full border-2 border-white overflow-hidden shadow-sm"
+              style={{ zIndex: displayCount - i }}
             >
-              <Users className="w-3.5 h-3.5" />
+              <Image
+                src={avatarUrl}
+                alt={`Member ${i + 1}`}
+                width={32}
+                height={32}
+                className="w-full h-full object-cover"
+                unoptimized
+              />
             </div>
           ))}
-          {total - remaining > 5 && (
+          {joinedCount > 5 && (
             <div
-              className="w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-xs font-medium bg-gray-100 text-text-secondary shadow-sm"
+              className="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-xs font-semibold bg-gray-100 text-text-secondary shadow-sm"
+              style={{ zIndex: 0 }}
             >
-              +{total - remaining - 5}
+              +{joinedCount - 5}
             </div>
           )}
         </div>
         <span className="text-sm text-text-secondary font-albert">
-          {total - remaining} people already joined
+          {joinedCount} people already joined
         </span>
       </div>
     </div>

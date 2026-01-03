@@ -9,6 +9,7 @@ import { useCoachingData } from '@/hooks/useCoachingData';
 import { useCoachSquads } from '@/hooks/useCoachSquads';
 import { ANNOUNCEMENTS_CHANNEL_ID, SOCIAL_CORNER_CHANNEL_ID, SHARE_WINS_CHANNEL_ID } from '@/lib/chat-constants';
 import type { Channel } from 'stream-chat';
+import { useDragToDismiss } from '@/hooks/useDragToDismiss';
 
 // Post data interface for the attachment
 interface PostData {
@@ -39,6 +40,7 @@ interface ShareToChatModalProps {
 export function ShareToChatModal({ postId, postUrl, onClose, onSuccess }: ShareToChatModalProps) {
   const { client } = useStreamChatClient();
   const { colors, isDefault } = useBrandingValues();
+  const { sheetRef, handleProps } = useDragToDismiss({ onClose });
   
   // Get squad and coaching info to find relevant channels
   const { squad, premiumSquad, standardSquad } = useSquad();
@@ -338,9 +340,9 @@ export function ShareToChatModal({ postId, postUrl, onClose, onSuccess }: ShareT
       />
 
       {/* Modal - Bottom sheet on mobile, centered popup on desktop */}
-      <div className="relative w-full md:max-w-[440px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-300 max-h-[80vh] flex flex-col overflow-hidden safe-area-inset-bottom">
-        {/* Handle - Mobile only */}
-        <div className="flex justify-center pt-3 pb-2 md:hidden">
+      <div ref={sheetRef} className="relative w-full md:max-w-[440px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-300 max-h-[80vh] flex flex-col overflow-hidden safe-area-inset-bottom">
+        {/* Handle - Mobile only (drag handle) */}
+        <div {...handleProps} className="flex justify-center pt-3 pb-2 md:hidden cursor-grab active:cursor-grabbing touch-none">
           <div className="w-9 h-1 bg-gray-300 dark:bg-[#262b35] rounded-full" />
         </div>
 

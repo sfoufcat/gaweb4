@@ -27,6 +27,8 @@ export interface LandingTemplateProps {
   onCTA?: () => void;
   // Program display props
   priceInCents?: number;
+  subscriptionEnabled?: boolean;
+  billingInterval?: 'monthly' | 'quarterly' | 'yearly';
   durationDays?: number;
   enrolledCount?: number;
   programType?: 'individual' | 'group';
@@ -148,6 +150,8 @@ export function ClassicTemplate({
   showPrice = true,
   onCTA,
   priceInCents = 0,
+  subscriptionEnabled,
+  billingInterval,
   durationDays = 30,
   enrolledCount = 0,
   programType = 'individual',
@@ -162,7 +166,12 @@ export function ClassicTemplate({
 
   const formatPrice = (cents: number) => {
     if (cents === 0) return 'Free';
-    return `$${(cents / 100).toFixed(2)}`;
+    const price = `$${(cents / 100).toFixed(2)}`;
+    if (subscriptionEnabled && billingInterval) {
+      const intervalSuffix = billingInterval === 'monthly' ? '/mo' : billingInterval === 'quarterly' ? '/qtr' : '/yr';
+      return `${price}${intervalSuffix}`;
+    }
+    return price;
   };
 
   return (
@@ -419,7 +428,9 @@ export function ClassicTemplate({
                     </div>
                     {priceInCents > 0 && (
                       <p className="font-albert text-[13px] text-text-secondary dark:text-[#b2b6c2] mt-1">
-                        one-time payment
+                        {subscriptionEnabled && billingInterval 
+                          ? `billed ${billingInterval}` 
+                          : 'one-time payment'}
                       </p>
                     )}
                   </div>

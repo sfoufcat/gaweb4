@@ -16,6 +16,11 @@ interface DownsellStepProps {
   stepId: string;
   onAccept: (data: { accepted: true; enrollmentId: string; productId: string; productType: string }) => void;
   onDecline: (data: { accepted: false }) => void;
+  // Optional real product price from database (overrides static config price)
+  productPrice?: {
+    priceInCents: number;
+    currency?: string;
+  };
 }
 
 function formatPrice(cents: number): string {
@@ -45,14 +50,19 @@ export function DownsellStep({
   stepId,
   onAccept,
   onDecline,
+  productPrice,
 }: DownsellStepProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const hasDiscount = config.discountType !== 'none' && config.originalPriceInCents !== config.finalPriceInCents;
+  // Use real product price if available, otherwise fall back to config price
+  const basePrice = productPrice?.priceInCents ?? config.originalPriceInCents;
+  const finalPrice = productPrice?.priceInCents ?? config.finalPriceInCents;
+
+  const hasDiscount = config.discountType !== 'none' && basePrice !== finalPrice;
   const discountLabel = getDiscountLabel(
-    config.originalPriceInCents,
-    config.finalPriceInCents,
+    basePrice,
+    finalPrice,
     config.discountType,
     config.discountValue
   );
@@ -189,7 +199,7 @@ export function DownsellStep({
         {hasDiscount && (
           <div className="flex items-center justify-center gap-3 mb-2">
             <span className="text-text-tertiary line-through text-xl">
-              {formatPrice(config.originalPriceInCents)}
+              {formatPrice(basePrice)}
             </span>
             {discountLabel && (
               <span 
@@ -206,7 +216,7 @@ export function DownsellStep({
         )}
         <div className="flex items-baseline justify-center gap-1">
           <span className="text-4xl font-bold text-text-primary">
-            {formatPrice(config.finalPriceInCents)}
+            {formatPrice(finalPrice)}
           </span>
           {config.isRecurring && (
             <span className="text-text-secondary">
@@ -256,7 +266,7 @@ export function DownsellStep({
           ) : (
             <>
               <span>{config.ctaText || 'Yes, I Want This Deal!'}</span>
-              <span className="opacity-80">({formatPrice(config.finalPriceInCents)})</span>
+              <span className="opacity-80">({formatPrice(finalPrice)})</span>
             </>
           )}
         </button>

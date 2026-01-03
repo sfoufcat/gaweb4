@@ -13,6 +13,8 @@ interface ProgramCardProgram {
   lengthDays: number;
   priceInCents: number;
   currency?: string;
+  subscriptionEnabled?: boolean;
+  billingInterval?: 'monthly' | 'quarterly' | 'yearly';
   coachName?: string;
   coachImageUrl?: string;
   nextCohort?: {
@@ -34,9 +36,14 @@ interface ProgramCardProps {
 }
 
 export function ProgramCard({ program, variant = 'default', fullWidth = true }: ProgramCardProps) {
-  const formatPrice = (cents: number) => {
+  const formatPrice = (cents: number, subscriptionEnabled?: boolean, billingInterval?: 'monthly' | 'quarterly' | 'yearly') => {
     if (cents === 0) return 'Free';
-    return `$${(cents / 100).toFixed(0)}`;
+    const price = `$${(cents / 100).toFixed(0)}`;
+    if (subscriptionEnabled && billingInterval) {
+      const intervalSuffix = billingInterval === 'monthly' ? '/mo' : billingInterval === 'quarterly' ? '/qtr' : '/yr';
+      return `${price}${intervalSuffix}`;
+    }
+    return price;
   };
 
   const formatDate = (dateStr: string) => {
@@ -110,7 +117,7 @@ export function ProgramCard({ program, variant = 'default', fullWidth = true }: 
           {/* Price badge */}
           <div className="absolute bottom-2 right-2">
             <span className="px-2 py-1 bg-white/90 dark:bg-[#171b22]/90 text-[#1a1a1a] dark:text-[#f5f5f8] text-sm font-semibold rounded-full backdrop-blur-sm">
-              {formatPrice(program.priceInCents)}
+              {formatPrice(program.priceInCents, program.subscriptionEnabled, program.billingInterval)}
             </span>
           </div>
         </div>

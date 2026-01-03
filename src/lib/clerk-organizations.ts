@@ -301,6 +301,10 @@ export async function updateOrganization(
  * Add a user to an organization as a member
  * This makes them an actual Clerk Organization member (not just metadata)
  * 
+ * IMPORTANT: This function sets both organizationId (legacy) AND primaryOrganizationId
+ * in the user's publicMetadata. The middleware checks all of these fields to verify
+ * org membership, so both must be set for proper access control.
+ * 
  * @param userId - The Clerk user ID to add
  * @param organizationId - The organization ID to add them to
  * @param role - The role to assign (default: 'org:member')
@@ -321,33 +325,38 @@ export async function addUserToOrganization(
     
     if (existing) {
       console.log(`[CLERK_ORGS] User ${userId} is already a member of org ${organizationId}`);
-      return;
+      // Still update metadata in case it's out of sync
+      // This can happen if user was added via Clerk dashboard but metadata wasn't updated
+    } else {
+      // Add as organization member
+      await client.organizations.createOrganizationMembership({
+        organizationId,
+        userId,
+        role,
+      });
+      console.log(`[CLERK_ORGS] Added user ${userId} to org ${organizationId} as ${role}`);
     }
-    
-    // Add as organization member
-    await client.organizations.createOrganizationMembership({
-      organizationId,
-      userId,
-      role,
-    });
-    
-    console.log(`[CLERK_ORGS] Added user ${userId} to org ${organizationId} as ${role}`);
 
-    // Also set in publicMetadata for backward compatibility
-    // Set default orgRole to 'member' for new org members
+    // Update publicMetadata with BOTH organizationId AND primaryOrganizationId
+    // The middleware checks multiple fields for membership verification:
+    // - Clerk's native orgId (from session)
+    // - primaryOrganizationId (new multi-org field)
+    // - organizationId (legacy field)
+    // Setting both ensures backward compatibility and proper access control
     const user = await client.users.getUser(userId);
     const currentMetadata = user.publicMetadata as ClerkPublicMetadataWithOrg;
     
     await client.users.updateUserMetadata(userId, {
       publicMetadata: {
         ...currentMetadata,
-        organizationId,
-        // Only set orgRole if not already set (preserve existing role)
+        primaryOrganizationId: organizationId, // New multi-org field (middleware checks this)
+        organizationId,                         // Legacy field (kept for backward compatibility)
+        // Only set orgRole if not already set (preserve existing role like super_coach)
         orgRole: currentMetadata?.orgRole || 'member',
       },
     });
 
-    console.log(`[CLERK_ORGS] Updated user ${userId} publicMetadata with organizationId and orgRole`);
+    console.log(`[CLERK_ORGS] Updated user ${userId} publicMetadata with primaryOrganizationId and organizationId`);
   } catch (error) {
     console.error(`[CLERK_ORGS] Error adding user ${userId} to org ${organizationId}:`, error);
     throw error;

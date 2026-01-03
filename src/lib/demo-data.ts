@@ -614,6 +614,8 @@ export interface DemoProgramWithStats {
   type: 'group' | 'individual';
   durationDays: number;
   priceInCents: number;
+  subscriptionEnabled?: boolean;
+  billingInterval?: 'monthly' | 'quarterly' | 'yearly';
   isPublished: boolean;
   enrolledCount: number;
   activeEnrollments: number;
@@ -729,6 +731,8 @@ export function generateDemoProgramsWithStats(): DemoProgramWithStats[] {
     const enrolled = 15 + Math.floor(random() * 50);
     const completed = Math.floor(enrolled * (0.3 + random() * 0.4));
     const active = enrolled - completed - Math.floor(random() * 5);
+    // Some programs have recurring subscriptions
+    const isSubscription = i === 2; // Business Growth Intensive is recurring
     
     return {
       id: `demo-prog-${i + 1}`,
@@ -739,6 +743,8 @@ export function generateDemoProgramsWithStats(): DemoProgramWithStats[] {
       type: random() < 0.7 ? 'group' : 'individual',
       durationDays: prog.durationDays,
       priceInCents: prog.priceInCents,
+      subscriptionEnabled: isSubscription,
+      billingInterval: isSubscription ? 'monthly' : undefined,
       isPublished: true,
       enrolledCount: enrolled,
       activeEnrollments: active > 0 ? active : 0,

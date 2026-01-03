@@ -1567,7 +1567,7 @@ export function DashboardPage() {
       <div className="space-y-3 mb-6">
         <div className="flex items-center justify-between">
           {/* User Profile - Avatar opens story, text links to profile */}
-          <div data-tour="profile-header" className="bg-[#f3f1ef] dark:bg-[#181d28] rounded-[40px] p-1 flex items-center gap-2 sm:gap-3 pr-2 sm:pr-4 max-w-[65%] sm:max-w-none">
+          <div data-tour="profile-header" className="bg-[#f3f1ef] dark:bg-[#181d28] rounded-[40px] p-1 flex items-center gap-2 sm:gap-3 pr-3 sm:pr-4 max-w-[72%] sm:max-w-none">
             {/* Story Avatar - Opens story player when clicked */}
             <StoryAvatar
               user={{
@@ -1594,10 +1594,10 @@ export function DashboardPage() {
             />
             {/* Profile Link */}
             <Link href="/profile" className="text-left hover:opacity-80 transition-opacity min-w-0">
-              <p className="font-albert text-[14px] sm:text-[18px] font-semibold text-text-primary leading-[1.3] tracking-[-1px] truncate">
+              <p className="font-albert text-[16px] sm:text-[18px] font-semibold text-text-primary leading-[1.3] tracking-[-1px] truncate">
                 Hi {user.firstName},
               </p>
-              <p className="font-albert text-[14px] sm:text-[18px] font-normal text-text-primary leading-[1.3] tracking-[-1px] truncate">
+              <p className="font-albert text-[16px] sm:text-[18px] font-normal text-text-primary leading-[1.3] tracking-[-1px] truncate">
                 {greeting}!
               </p>
             </Link>

@@ -864,6 +864,7 @@ function AnalyzingConfigEditor({ config, onChange }: { config: Record<string, un
                     folder="programs"
                     type="image"
                     label="Avatar"
+                    uploadEndpoint="/api/coach/org-upload-media"
                   />
                 </div>
               </div>
@@ -1004,6 +1005,7 @@ function ExplainerConfigEditor({ config, onChange }: { config: Record<string, un
             folder="programs"
             type="image"
             label="Image"
+            uploadEndpoint="/api/coach/org-upload-media"
           />
         );
       
@@ -1015,6 +1017,7 @@ function ExplainerConfigEditor({ config, onChange }: { config: Record<string, un
             folder="programs"
             type="video"
             label="Video"
+            uploadEndpoint="/api/coach/org-upload-media"
           />
         );
       

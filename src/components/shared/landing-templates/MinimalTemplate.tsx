@@ -41,6 +41,8 @@ export function MinimalTemplate({
   showPrice = true,
   onCTA,
   priceInCents = 0,
+  subscriptionEnabled,
+  billingInterval,
   durationDays = 30,
   enrolledCount = 0,
   programType = 'individual',
@@ -54,7 +56,12 @@ export function MinimalTemplate({
 
   const formatPrice = (cents: number) => {
     if (cents === 0) return 'Free';
-    return `$${(cents / 100).toFixed(2)}`;
+    const price = `$${(cents / 100).toFixed(2)}`;
+    if (subscriptionEnabled && billingInterval) {
+      const intervalSuffix = billingInterval === 'monthly' ? '/mo' : billingInterval === 'quarterly' ? '/qtr' : '/yr';
+      return `${price}${intervalSuffix}`;
+    }
+    return price;
   };
 
   return (
@@ -137,7 +144,7 @@ export function MinimalTemplate({
                   {formatPrice(priceInCents)}
                 </p>
                 <p className="text-xs uppercase tracking-widest text-[#5f5a55] dark:text-[#7d8190] mt-1">
-                  one-time
+                  {subscriptionEnabled && billingInterval ? billingInterval : 'one-time'}
                 </p>
               </div>
             )}

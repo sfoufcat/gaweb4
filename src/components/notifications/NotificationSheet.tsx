@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell } from 'lucide-react';
 import { SwipeableNotificationItem } from './SwipeableNotificationItem';
 import type { Notification } from '@/types';
+import { useDragToDismiss } from '@/hooks/useDragToDismiss';
 
 interface NotificationSheetProps {
   isOpen: boolean;
@@ -27,7 +28,7 @@ export function NotificationSheet({
   onNotificationClick,
   onDelete,
 }: NotificationSheetProps) {
-  const sheetRef = useRef<HTMLDivElement>(null);
+  const { sheetRef, handleProps } = useDragToDismiss({ onClose });
   const router = useRouter();
 
   // Close on escape key and lock body scroll
@@ -95,8 +96,8 @@ export function NotificationSheet({
         className="relative w-full max-w-[500px] mx-0 bg-white rounded-t-[24px] shadow-2xl animate-in slide-in-from-bottom duration-300 outline-none"
         style={{ maxHeight: '85vh' }}
       >
-        {/* Grabber */}
-        <div className="flex justify-center pt-3 pb-2">
+        {/* Grabber (drag handle) */}
+        <div {...handleProps} className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none">
           <div className="w-9 h-1 bg-gray-300 rounded-full" />
         </div>
 

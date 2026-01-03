@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
+import { useDragToDismiss } from '@/hooks/useDragToDismiss';
 
 /**
  * AttachmentMenu Component
@@ -62,6 +63,7 @@ export function AttachmentMenu({
   onPollClick,
   anchorRef,
 }: AttachmentMenuProps) {
+  const { sheetRef, handleProps } = useDragToDismiss({ onClose });
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close on escape key
@@ -117,11 +119,11 @@ export function AttachmentMenu({
 
         {/* Bottom Sheet */}
         <div
-          ref={menuRef}
+          ref={sheetRef}
           className="relative w-full bg-white dark:bg-[#171b22] rounded-t-[20px] shadow-2xl animate-in slide-in-from-bottom duration-200"
         >
-          {/* Grabber */}
-          <div className="flex justify-center pt-2 pb-4">
+          {/* Grabber (drag handle) */}
+          <div {...handleProps} className="flex justify-center pt-2 pb-4 cursor-grab active:cursor-grabbing touch-none">
             <div className="w-9 h-[5px] bg-[rgba(30,30,47,0.4)] dark:bg-[#313746] rounded-[2.5px]" />
           </div>
 

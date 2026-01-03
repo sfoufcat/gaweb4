@@ -301,6 +301,8 @@ export default async function FunnelPage({ params, searchParams }: FunnelPagePro
         priceInCents: program.priceInCents,
         currency: program.currency,
         stripePriceId: program.stripePriceId,
+        subscriptionEnabled: program.subscriptionEnabled,
+        billingInterval: program.billingInterval,
         coachName,
         coachImageUrl,
       }}

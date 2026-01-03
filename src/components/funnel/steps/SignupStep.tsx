@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth, useClerk, useSignUp, useUser } from '@clerk/nextjs';
+import { useAuth, useClerk, useSignUp, useUser, useSession } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -98,6 +98,7 @@ export function SignupStep({
   const { user } = useUser();
   const { signOut } = useClerk();
   const { signUp } = useSignUp();
+  const { session } = useSession();
   const [mounted, setMounted] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -201,12 +202,14 @@ export function SignupStep({
   }, [userState, hasConfirmed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Link session and continue to next step
+  // This also enrolls the user in the organization (critical for existing users signing in)
   const linkSessionAndContinue = useCallback(async () => {
     if (isLinking) return;
     setIsLinking(true);
     
     try {
       // Link the flow session to this user
+      // The API now also enrolls the user in the organization and updates Clerk metadata
       const response = await fetch('/api/funnel/link-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -218,14 +221,33 @@ export function SignupStep({
         throw new Error(errorData.error || 'Failed to link session');
       }
 
+      const data = await response.json();
+      
+      // If user was enrolled in an organization, refresh the session to get updated claims
+      // This is critical for the middleware to recognize the user as a member
+      if (data.enrolledInOrg && session) {
+        try {
+          // Touch the session to refresh claims with the new organization membership
+          // This ensures the middleware will see the updated primaryOrganizationId
+          await session.touch();
+          console.log('[SignupStep] Session refreshed after org enrollment');
+          
+          // Small delay to allow session propagation
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (refreshErr) {
+          // Non-fatal - continue anyway, the user will be enrolled
+          console.warn('[SignupStep] Failed to refresh session (non-fatal):', refreshErr);
+        }
+      }
+
       // Continue to next step only if linking succeeded
-      onComplete({ userId });
+      onComplete({ userId, enrolledInOrg: data.enrolledInOrg });
     } catch (err) {
       console.error('Failed to link session:', err);
       setError(err instanceof Error ? err.message : 'Failed to link your account. Please try again.');
       setIsLinking(false);
     }
-  }, [isLinking, flowSessionId, onComplete, userId]);
+  }, [isLinking, flowSessionId, onComplete, userId, session]);
 
   // Handle confirmation click - user confirms they want to join
   const handleConfirmJoin = useCallback(() => {

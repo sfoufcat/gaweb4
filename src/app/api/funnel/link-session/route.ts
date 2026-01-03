@@ -1,14 +1,100 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
-import type { FlowSession } from '@/types';
+import { addUserToOrganization } from '@/lib/clerk-organizations';
+import type { FlowSession, OrgMembership, OrgSettings } from '@/types';
+
+/**
+ * Get organization settings, with defaults if not found
+ */
+async function getOrgSettings(organizationId: string): Promise<OrgSettings> {
+  const doc = await adminDb.collection('org_settings').doc(organizationId).get();
+  
+  if (doc.exists) {
+    return doc.data() as OrgSettings;
+  }
+  
+  // Return default settings
+  const now = new Date().toISOString();
+  return {
+    id: organizationId,
+    organizationId,
+    billingMode: 'platform',
+    allowExternalBilling: true,
+    defaultTier: 'standard',
+    defaultTrack: null,
+    stripeConnectAccountId: null,
+    stripeConnectStatus: 'not_connected',
+    platformFeePercent: 1,
+    requireApproval: false,
+    autoJoinSquadId: null,
+    welcomeMessage: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/**
+ * Create an org_membership for a user if it doesn't exist
+ */
+async function ensureOrgMembership(
+  userId: string,
+  organizationId: string,
+  settings: OrgSettings
+): Promise<OrgMembership | null> {
+  // Check if membership already exists
+  const existingSnapshot = await adminDb
+    .collection('org_memberships')
+    .where('userId', '==', userId)
+    .where('organizationId', '==', organizationId)
+    .limit(1)
+    .get();
+  
+  if (!existingSnapshot.empty) {
+    return existingSnapshot.docs[0].data() as OrgMembership;
+  }
+  
+  const now = new Date().toISOString();
+  
+  const membership: OrgMembership = {
+    id: '', // Will be set after creation
+    userId,
+    organizationId,
+    orgRole: 'member',
+    tier: settings.defaultTier,
+    track: settings.defaultTrack,
+    squadId: settings.autoJoinSquadId,
+    premiumSquadId: null,
+    accessSource: 'funnel',
+    accessExpiresAt: null,
+    inviteCodeUsed: null,
+    isActive: true,
+    joinedAt: now,
+    createdAt: now,
+    updatedAt: now,
+  };
+  
+  const docRef = await adminDb.collection('org_memberships').add(membership);
+  membership.id = docRef.id;
+  
+  // Update with ID
+  await docRef.update({ id: docRef.id });
+  
+  console.log(`[FUNNEL_LINK_SESSION] Created org_membership ${docRef.id} for user ${userId} in org ${organizationId}`);
+  
+  return membership;
+}
 
 /**
  * POST /api/funnel/link-session
- * Link a userId to a flow session after signup
+ * Link a userId to a flow session after signup/signin
  * 
- * This is called after signup (especially from iframe on custom domains)
- * to associate the newly created user with their ongoing flow session.
+ * This is called after signup or signin (especially from iframe on custom domains)
+ * to associate the user with their ongoing flow session.
+ * 
+ * IMPORTANT: This also enrolls the user in the organization associated with the funnel.
+ * This is critical for existing users who sign in (instead of sign up) during a funnel flow,
+ * as they need org membership to access the tenant domain.
  * 
  * Body:
  * - flowSessionId: string (required)
@@ -74,23 +160,64 @@ export async function POST(req: Request) {
     }
 
     // Check if already linked to this user (idempotent)
-    if (session.userId === userId) {
-      return NextResponse.json({
-        success: true,
-        alreadyLinked: true,
-        session,
+    const alreadyLinked = session.userId === userId;
+    
+    if (!alreadyLinked) {
+      // Link the session to the user
+      const now = new Date().toISOString();
+      await sessionRef.update({
+        userId,
+        linkedAt: now,
+        updatedAt: now,
       });
+      console.log(`[FUNNEL_LINK_SESSION] Linked flow session ${flowSessionId} to user ${userId}`);
     }
 
-    // Link the session to the user
-    const now = new Date().toISOString();
-    await sessionRef.update({
-      userId,
-      linkedAt: now,
-      updatedAt: now,
-    });
-
-    console.log(`[FUNNEL_LINK_SESSION] Linked flow session ${flowSessionId} to user ${userId}`);
+    // ==========================================================================
+    // ENROLL USER IN ORGANIZATION (Critical for existing users signing in)
+    // ==========================================================================
+    // 
+    // When an existing user signs in during a funnel flow (instead of signing up),
+    // they need to be added to the organization to pass middleware access checks.
+    // Without this, the middleware blocks them with "Access Denied".
+    //
+    let enrolledInOrg = false;
+    let membershipCreated = false;
+    
+    if (session.organizationId) {
+      try {
+        // 1. Add user to Clerk organization (also updates publicMetadata)
+        await addUserToOrganization(userId, session.organizationId, 'org:member');
+        enrolledInOrg = true;
+        console.log(`[FUNNEL_LINK_SESSION] Added user ${userId} to Clerk org ${session.organizationId}`);
+        
+        // 2. Also update primaryOrganizationId in user metadata for multi-org support
+        const client = await clerkClient();
+        const user = await client.users.getUser(userId);
+        const currentMetadata = user.publicMetadata as Record<string, unknown>;
+        
+        // Only update if not already set to this org
+        if (currentMetadata?.primaryOrganizationId !== session.organizationId) {
+          await client.users.updateUserMetadata(userId, {
+            publicMetadata: {
+              ...currentMetadata,
+              primaryOrganizationId: session.organizationId,
+            },
+          });
+          console.log(`[FUNNEL_LINK_SESSION] Updated user ${userId} primaryOrganizationId to ${session.organizationId}`);
+        }
+        
+        // 3. Create org_membership entry in Firebase (if not exists)
+        const settings = await getOrgSettings(session.organizationId);
+        const membership = await ensureOrgMembership(userId, session.organizationId, settings);
+        membershipCreated = !!membership;
+        
+      } catch (orgError) {
+        // Log but don't fail the link-session - the funnel can still continue
+        // The /api/funnel/complete will also try to add them to the org
+        console.error(`[FUNNEL_LINK_SESSION] Failed to enroll user in org (non-fatal):`, orgError);
+      }
+    }
 
     // Return updated session
     const updatedDoc = await sessionRef.get();
@@ -98,7 +225,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      alreadyLinked: false,
+      alreadyLinked,
+      enrolledInOrg,
+      membershipCreated,
+      organizationId: session.organizationId,
       session: updatedSession,
     });
   } catch (error) {

@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { Calendar } from 'lucide-react';
 import { CalendarContent } from './CalendarContent';
+import { useDragToDismiss } from '@/hooks/useDragToDismiss';
 
 interface CalendarSheetProps {
   isOpen: boolean;
@@ -21,7 +22,7 @@ export function CalendarSheet({
   onClose,
   upcomingCount,
 }: CalendarSheetProps) {
-  const sheetRef = useRef<HTMLDivElement>(null);
+  const { sheetRef, handleProps } = useDragToDismiss({ onClose });
 
   // Close on escape key and lock body scroll
   useEffect(() => {
@@ -62,8 +63,8 @@ export function CalendarSheet({
         className="relative w-full max-w-[500px] mx-0 bg-white dark:bg-[#171b22] rounded-t-[24px] shadow-2xl animate-in slide-in-from-bottom duration-300 outline-none"
         style={{ maxHeight: '85vh' }}
       >
-        {/* Grabber */}
-        <div className="flex justify-center pt-3 pb-2">
+        {/* Grabber (drag handle) */}
+        <div {...handleProps} className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none">
           <div className="w-9 h-1 bg-gray-300 dark:bg-[#3a3f4b] rounded-full" />
         </div>
 

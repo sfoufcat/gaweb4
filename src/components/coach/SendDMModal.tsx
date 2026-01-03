@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { X, Send, MessageCircle, Users, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useBrandingValues } from '@/contexts/BrandingContext';
+import { useDragToDismiss } from '@/hooks/useDragToDismiss';
 
 export interface DMRecipient {
   userId: string;
@@ -36,6 +37,7 @@ interface SendResult {
 export function SendDMModal({ recipients, onClose, onSuccess }: SendDMModalProps) {
   const { colors } = useBrandingValues();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { sheetRef, handleProps } = useDragToDismiss({ onClose });
   
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -144,9 +146,9 @@ export function SendDMModal({ recipients, onClose, onSuccess }: SendDMModalProps
       />
 
       {/* Modal */}
-      <div className="relative w-full md:max-w-[500px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-300 max-h-[85vh] flex flex-col overflow-hidden safe-area-inset-bottom">
-        {/* Handle - Mobile only */}
-        <div className="flex justify-center pt-3 pb-2 md:hidden">
+      <div ref={sheetRef} className="relative w-full md:max-w-[500px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-300 max-h-[85vh] flex flex-col overflow-hidden safe-area-inset-bottom">
+        {/* Handle - Mobile only (drag handle) */}
+        <div {...handleProps} className="flex justify-center pt-3 pb-2 md:hidden cursor-grab active:cursor-grabbing touch-none">
           <div className="w-9 h-1 bg-gray-300 dark:bg-[#262b35] rounded-full" />
         </div>
 

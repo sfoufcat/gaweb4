@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { MessageCircle, ChevronRight, ChevronLeft, Users, Megaphone, PartyPopper, Trophy, X } from 'lucide-react';
 import { useStreamChatClient } from '@/contexts/StreamChatContext';
 import { ANNOUNCEMENTS_CHANNEL_ID, SOCIAL_CORNER_CHANNEL_ID, SHARE_WINS_CHANNEL_ID } from '@/lib/chat-constants';
@@ -21,6 +21,7 @@ import { useCoachingPromo } from '@/contexts/BrandingContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { generateAvatarUrl } from '@/lib/demo-data';
+import { useDragToDismiss } from '@/hooks/useDragToDismiss';
 
 // Import Stream Chat CSS
 import 'stream-chat-react/dist/css/v2/index.css';
@@ -51,7 +52,7 @@ interface ChannelPreview {
  * Shows channel list first, then messages when channel selected.
  */
 export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps) {
-  const sheetRef = useRef<HTMLDivElement>(null);
+  const { sheetRef, handleProps } = useDragToDismiss({ onClose });
   const { client, isConnected } = useStreamChatClient();
   const [channels, setChannels] = useState<ChannelPreview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -345,8 +346,8 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
         className="relative w-full max-w-[500px] mx-0 bg-white dark:bg-[#171b22] rounded-t-[24px] shadow-2xl animate-in slide-in-from-bottom duration-300 outline-none flex flex-col overflow-hidden"
         style={{ height: '85vh', maxHeight: '85vh' }}
       >
-        {/* Grabber */}
-        <div className="flex justify-center pt-3 pb-2 flex-shrink-0">
+        {/* Grabber (drag handle) */}
+        <div {...handleProps} className="flex justify-center pt-3 pb-2 flex-shrink-0 cursor-grab active:cursor-grabbing touch-none">
           <div className="w-9 h-1 bg-gray-300 dark:bg-[#272d38] rounded-full" />
         </div>
 

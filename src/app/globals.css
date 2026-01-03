@@ -515,6 +515,7 @@ body {
   overflow-x: hidden;
   /* Safe area padding for iOS Safari edge-to-edge display */
   padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* Dark mode skeleton / loading state styles */

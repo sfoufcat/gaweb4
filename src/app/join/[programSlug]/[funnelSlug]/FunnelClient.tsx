@@ -81,6 +81,8 @@ interface FunnelClientProps {
     priceInCents: number;
     currency: string;
     stripePriceId?: string;
+    subscriptionEnabled?: boolean;
+    billingInterval?: 'monthly' | 'quarterly' | 'yearly';
     coachName?: string;
     coachImageUrl?: string;
   };
@@ -132,6 +134,9 @@ export default function FunnelClient({
   
   // Upsell/Downsell tracking - which upsells were declined (to show their linked downsells)
   const [declinedUpsellStepIds, setDeclinedUpsellStepIds] = useState<string[]>([]);
+  
+  // Cache for fetched upsell/downsell product prices (productId -> priceInCents)
+  const [productPrices, setProductPrices] = useState<Record<string, number>>({});
 
   // Skip payment if invite is pre-paid
   const skipPayment = validatedInvite?.paymentStatus === 'pre_paid' || validatedInvite?.paymentStatus === 'free';
@@ -228,6 +233,42 @@ export default function FunnelClient({
 
     linkSession();
   }, [isLoaded, isSignedIn, userId, sessionId]);
+
+  // Fetch product price when we reach an upsell/downsell step
+  useEffect(() => {
+    const currentStep = steps[currentStepIndex];
+    if (!currentStep || (currentStep.type !== 'upsell' && currentStep.type !== 'downsell')) {
+      return;
+    }
+
+    const stepConfig = currentStep.config as FunnelStepConfig;
+    const config = stepConfig.config as FunnelStepConfigUpsell | FunnelStepConfigDownsell;
+    const productId = config.productId;
+    const productType = config.productType;
+
+    // Skip if already fetched or if not a program type
+    if (productPrices[productId] !== undefined || productType !== 'program') {
+      return;
+    }
+
+    // Fetch the real program price from the database
+    async function fetchProductPrice() {
+      try {
+        const response = await fetch(`/api/programs/${productId}/price`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.priceInCents !== undefined) {
+            setProductPrices(prev => ({ ...prev, [productId]: data.priceInCents }));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch product price:', err);
+        // Fall back to config price (already displayed)
+      }
+    }
+
+    fetchProductPrice();
+  }, [currentStepIndex, steps, productPrices]);
 
   // Update session on server
   const updateSession = useCallback(async (updates: {
@@ -484,12 +525,15 @@ export default function FunnelClient({
         );
       }
       
-      case 'upsell':
+      case 'upsell': {
+        const upsellConfig = stepConfig.config as FunnelStepConfigUpsell;
+        const upsellProductPrice = productPrices[upsellConfig.productId];
         return (
           <UpsellStep
-            config={stepConfig.config as FunnelStepConfigUpsell}
+            config={upsellConfig}
             flowSessionId={sessionId || ''}
             stepId={currentStep.id}
+            productPrice={upsellProductPrice !== undefined ? { priceInCents: upsellProductPrice } : undefined}
             onAccept={(result) => {
               // User accepted the upsell - continue to next step
               handleStepComplete({
@@ -499,7 +543,6 @@ export default function FunnelClient({
             }}
             onDecline={() => {
               // User declined - track it and potentially show linked downsell
-              const upsellConfig = stepConfig.config as FunnelStepConfigUpsell;
               setDeclinedUpsellStepIds(prev => [...prev, currentStep.id]);
               
               // Check if there's a linked downsell
@@ -519,15 +562,19 @@ export default function FunnelClient({
             }}
           />
         );
+      }
       
-      case 'downsell':
+      case 'downsell': {
         // Only show downsell if its linked upsell was declined
         // (this is handled by the flow logic, but we double-check here)
+        const downsellConfig = stepConfig.config as FunnelStepConfigDownsell;
+        const downsellProductPrice = productPrices[downsellConfig.productId];
         return (
           <DownsellStep
-            config={stepConfig.config as FunnelStepConfigDownsell}
+            config={downsellConfig}
             flowSessionId={sessionId || ''}
             stepId={currentStep.id}
+            productPrice={downsellProductPrice !== undefined ? { priceInCents: downsellProductPrice } : undefined}
             onAccept={(result) => {
               handleStepComplete({
                 [`downsell_${currentStep.id}_accepted`]: true,
@@ -541,6 +588,7 @@ export default function FunnelClient({
             }}
           />
         );
+      }
       
       case 'info':
         // Legacy support: treat 'info' as 'explainer' with defaults

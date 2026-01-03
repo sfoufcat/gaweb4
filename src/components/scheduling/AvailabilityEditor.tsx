@@ -11,9 +11,41 @@ import {
   CheckCircle2,
   Loader2,
   Globe,
+  Eye,
 } from 'lucide-react';
 import { useAvailability } from '@/hooks/useAvailability';
-import type { WeeklySchedule, TimeSlot, BlockedSlot } from '@/types';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import type { WeeklySchedule, TimeSlot, BlockedSlot, CoachAvailability } from '@/types';
+
+// Demo mock availability data
+const DEMO_AVAILABILITY: CoachAvailability = {
+  coachId: 'demo-coach',
+  organizationId: 'demo-org',
+  weeklySchedule: {
+    0: [], // Sunday - unavailable
+    1: [{ start: '09:00', end: '12:00' }, { start: '13:00', end: '17:00' }], // Monday
+    2: [{ start: '09:00', end: '12:00' }, { start: '13:00', end: '17:00' }], // Tuesday
+    3: [{ start: '09:00', end: '12:00' }, { start: '13:00', end: '17:00' }], // Wednesday
+    4: [{ start: '09:00', end: '12:00' }, { start: '13:00', end: '17:00' }], // Thursday
+    5: [{ start: '09:00', end: '12:00' }], // Friday - morning only
+    6: [], // Saturday - unavailable
+  },
+  blockedSlots: [
+    {
+      id: 'demo-blocked-1',
+      start: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Next week
+      end: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000).toISOString(), // 4 hours later
+      reason: 'Team meeting',
+    },
+  ],
+  defaultDuration: 30,
+  bufferBetweenCalls: 15,
+  timezone: 'America/New_York',
+  advanceBookingDays: 30,
+  minNoticeHours: 24,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
 
 const DAYS_OF_WEEK = [
   { value: 0, label: 'Sunday', short: 'Sun' },
@@ -209,14 +241,18 @@ function BlockedSlotCard({ slot, onRemove }: BlockedSlotCardProps) {
  * block specific times, and configure scheduling settings.
  */
 export function AvailabilityEditor() {
-  const { 
-    availability, 
-    isLoading, 
-    error, 
-    updateAvailability, 
-    addBlockedSlot, 
-    removeBlockedSlot 
-  } = useAvailability();
+  const { isDemoMode, openSignupModal } = useDemoMode();
+  
+  // Use real hook only when not in demo mode
+  const realAvailability = useAvailability();
+  
+  // In demo mode, use mock data
+  const availability = isDemoMode ? DEMO_AVAILABILITY : realAvailability.availability;
+  const isLoading = isDemoMode ? false : realAvailability.isLoading;
+  const error = isDemoMode ? null : realAvailability.error;
+  const updateAvailability = realAvailability.updateAvailability;
+  const addBlockedSlot = realAvailability.addBlockedSlot;
+  const removeBlockedSlot = realAvailability.removeBlockedSlot;
 
   const [localSchedule, setLocalSchedule] = useState<WeeklySchedule | null>(null);
   const [localSettings, setLocalSettings] = useState<{
@@ -268,6 +304,12 @@ export function AvailabilityEditor() {
   }, []);
 
   const handleSaveSchedule = async () => {
+    // In demo mode, open signup modal instead of saving
+    if (isDemoMode) {
+      openSignupModal();
+      return;
+    }
+    
     if (!localSchedule || !localSettings) return;
 
     try {
@@ -290,6 +332,12 @@ export function AvailabilityEditor() {
   };
 
   const handleAddBlockedSlot = async () => {
+    // In demo mode, open signup modal instead of adding
+    if (isDemoMode) {
+      openSignupModal();
+      return;
+    }
+    
     if (!newBlockedStart || !newBlockedEnd) return;
 
     try {
@@ -308,6 +356,15 @@ export function AvailabilityEditor() {
     } finally {
       setAddingBlocked(false);
     }
+  };
+  
+  // Handler for removing blocked slot in demo mode
+  const handleRemoveBlockedSlot = (slotId: string) => {
+    if (isDemoMode) {
+      openSignupModal();
+      return;
+    }
+    removeBlockedSlot(slotId);
   };
 
   if (isLoading) {
@@ -329,6 +386,27 @@ export function AvailabilityEditor() {
 
   return (
     <div className="space-y-8">
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="px-4 py-3 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-xl flex items-center gap-3">
+          <Eye className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-purple-700 dark:text-purple-300 font-albert">
+              Demo Mode Active
+            </p>
+            <p className="text-xs text-purple-600 dark:text-purple-400 font-albert">
+              Showing sample availability settings for demonstration purposes
+            </p>
+          </div>
+          <button
+            onClick={openSignupModal}
+            className="flex-shrink-0 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            Start Free Trial
+          </button>
+        </div>
+      )}
+
       {/* Weekly Schedule Section */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
@@ -555,7 +633,7 @@ export function AvailabilityEditor() {
                 <BlockedSlotCard
                   key={slot.id}
                   slot={slot}
-                  onRemove={() => removeBlockedSlot(slot.id)}
+                  onRemove={() => handleRemoveBlockedSlot(slot.id)}
                 />
               ))}
             </div>

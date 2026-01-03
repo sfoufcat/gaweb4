@@ -52,6 +52,8 @@ export function LandingPageStep({
       onCTA={handleCTA}
       // Program display props
       priceInCents={config.priceInCents}
+      subscriptionEnabled={config.subscriptionEnabled}
+      billingInterval={config.billingInterval}
       durationDays={config.durationDays}
       enrolledCount={config.enrolledCount}
       programType={config.programType}

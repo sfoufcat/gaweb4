@@ -16,6 +16,11 @@ interface UpsellStepProps {
   stepId: string;
   onAccept: (data: { accepted: true; enrollmentId: string; productId: string; productType: string }) => void;
   onDecline: (data: { accepted: false }) => void;
+  // Optional real product price from database (overrides static config price)
+  productPrice?: {
+    priceInCents: number;
+    currency?: string;
+  };
 }
 
 function formatPrice(cents: number): string {
@@ -45,14 +50,22 @@ export function UpsellStep({
   stepId,
   onAccept,
   onDecline,
+  productPrice,
 }: UpsellStepProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const hasDiscount = config.discountType !== 'none' && config.originalPriceInCents !== config.finalPriceInCents;
+  // Use real product price if available, otherwise fall back to config price
+  // When productPrice is provided, we use it as the base price and apply any discounts
+  const basePrice = productPrice?.priceInCents ?? config.originalPriceInCents;
+  const finalPrice = productPrice?.priceInCents ?? config.finalPriceInCents;
+  
+  // Recalculate discount based on actual prices
+  // If productPrice is provided, check if there's still a discount configured
+  const hasDiscount = config.discountType !== 'none' && basePrice !== finalPrice;
   const discountLabel = getDiscountLabel(
-    config.originalPriceInCents,
-    config.finalPriceInCents,
+    basePrice,
+    finalPrice,
     config.discountType,
     config.discountValue
   );
@@ -185,7 +198,7 @@ export function UpsellStep({
         {hasDiscount && (
           <div className="flex items-center justify-center gap-3 mb-2">
             <span className="text-text-tertiary line-through text-xl">
-              {formatPrice(config.originalPriceInCents)}
+              {formatPrice(basePrice)}
             </span>
             {discountLabel && (
               <span 
@@ -202,7 +215,7 @@ export function UpsellStep({
         )}
         <div className="flex items-baseline justify-center gap-1">
           <span className="text-4xl font-bold text-text-primary">
-            {formatPrice(config.finalPriceInCents)}
+            {formatPrice(finalPrice)}
           </span>
           {config.isRecurring && (
             <span className="text-text-secondary">
@@ -247,7 +260,7 @@ export function UpsellStep({
           ) : (
             <>
               <span>{config.ctaText || 'Add to Order'}</span>
-              <span className="opacity-80">({formatPrice(config.finalPriceInCents)})</span>
+              <span className="opacity-80">({formatPrice(finalPrice)})</span>
             </>
           )}
         </button>

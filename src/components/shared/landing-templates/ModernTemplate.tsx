@@ -66,6 +66,8 @@ export function ModernTemplate({
   showPrice = true,
   onCTA,
   priceInCents = 0,
+  subscriptionEnabled,
+  billingInterval,
   durationDays = 30,
   enrolledCount = 0,
   programType = 'individual',
@@ -80,7 +82,12 @@ export function ModernTemplate({
 
   const formatPrice = (cents: number) => {
     if (cents === 0) return 'Free';
-    return `$${(cents / 100).toFixed(2)}`;
+    const price = `$${(cents / 100).toFixed(2)}`;
+    if (subscriptionEnabled && billingInterval) {
+      const intervalSuffix = billingInterval === 'monthly' ? '/mo' : billingInterval === 'quarterly' ? '/qtr' : '/yr';
+      return `${price}${intervalSuffix}`;
+    }
+    return price;
   };
 
   return (
@@ -204,7 +211,11 @@ export function ModernTemplate({
                         <div className="text-5xl font-black text-white mb-2">
                           {formatPrice(priceInCents)}
                         </div>
-                        <p className="text-white/70 text-sm">one-time investment</p>
+                        <p className="text-white/70 text-sm">
+                          {subscriptionEnabled && billingInterval 
+                            ? `billed ${billingInterval}` 
+                            : 'one-time investment'}
+                        </p>
                       </>
                     )}
                     <div className="mt-6 pt-6 border-t border-white/20">
@@ -537,7 +548,11 @@ export function ModernTemplate({
                       <div className="text-4xl font-black text-white mb-1">
                         {formatPrice(priceInCents)}
                       </div>
-                      <p className="text-white/80 text-sm">one-time payment</p>
+                      <p className="text-white/80 text-sm">
+                        {subscriptionEnabled && billingInterval 
+                          ? `billed ${billingInterval}` 
+                          : 'one-time payment'}
+                      </p>
                     </>
                   )}
                 </div>
