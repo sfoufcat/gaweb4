@@ -256,6 +256,126 @@ export async function POST(req: Request) {
       ? `${program.name} - Program enrollment`
       : 'Program enrollment';
 
+    const logUser = userId ? `user ${userId}` : `guest session ${flowSessionId}`;
+
+    // ========================================
+    // CHECK FOR RECURRING/SUBSCRIPTION PROGRAM
+    // ========================================
+    if (program?.subscriptionEnabled && program.billingInterval) {
+      // For subscription programs, we need a Stripe Price ID
+      // First check if one exists, otherwise create one dynamically
+      let stripePriceId = program.stripePriceId;
+      
+      if (!stripePriceId) {
+        // Create or get a Stripe Product for this program
+        let stripeProductId = program.stripeProductId;
+        
+        if (!stripeProductId) {
+          // Create a new product on the connected account
+          const product = await getStripe().products.create(
+            {
+              name: program.name,
+              description: program.description || `${program.name} - ${program.lengthDays} day program`,
+              metadata: {
+                programId: targetProgramId!,
+                organizationId,
+              },
+            },
+            { stripeAccount: stripeConnectAccountId }
+          );
+          stripeProductId = product.id;
+          
+          // Save the product ID back to the program
+          await adminDb.collection('programs').doc(targetProgramId!).update({
+            stripeProductId,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+        
+        // Determine the billing interval for Stripe
+        const intervalMap: Record<string, Stripe.PriceCreateParams.Recurring.Interval> = {
+          'monthly': 'month',
+          'quarterly': 'month', // 3 months
+          'yearly': 'year',
+        };
+        const interval = intervalMap[program.billingInterval] || 'month';
+        const intervalCount = program.billingInterval === 'quarterly' ? 3 : 1;
+        
+        // Create a recurring price on the connected account
+        const price = await getStripe().prices.create(
+          {
+            product: stripeProductId,
+            unit_amount: priceInCents,
+            currency: currency.toLowerCase(),
+            recurring: {
+              interval,
+              interval_count: intervalCount,
+            },
+            metadata: {
+              programId: targetProgramId!,
+              organizationId,
+            },
+          },
+          { stripeAccount: stripeConnectAccountId }
+        );
+        stripePriceId = price.id;
+        
+        // Save the price ID back to the program
+        await adminDb.collection('programs').doc(targetProgramId!).update({
+          stripePriceId,
+          updatedAt: new Date().toISOString(),
+        });
+        
+        console.log(`[FUNNEL_PAYMENT_INTENT] Created Stripe product ${stripeProductId} and price ${stripePriceId} for program ${targetProgramId}`);
+      }
+      
+      // Create a subscription with incomplete status (requires payment confirmation)
+      const subscriptionParams: Stripe.SubscriptionCreateParams = {
+        customer: customerId!,
+        items: [{ price: stripePriceId }],
+        payment_behavior: 'default_incomplete', // Creates invoice requiring confirmation
+        payment_settings: {
+          save_default_payment_method: 'on_subscription',
+        },
+        expand: ['latest_invoice.payment_intent'],
+        application_fee_percent: platformFeePercent,
+        metadata: {
+          ...metadata,
+          type: 'funnel_subscription',
+        },
+      };
+      
+      const subscription = await getStripe().subscriptions.create(
+        subscriptionParams,
+        { stripeAccount: stripeConnectAccountId }
+      );
+      
+      // Get the client secret from the subscription's latest invoice
+      const invoice = subscription.latest_invoice as Stripe.Invoice;
+      const paymentIntent = invoice.payment_intent as Stripe.PaymentIntent;
+      
+      if (!paymentIntent?.client_secret) {
+        console.error('[FUNNEL_PAYMENT_INTENT] Subscription created but no payment intent client secret');
+        return NextResponse.json(
+          { error: 'Failed to create subscription payment' },
+          { status: 500 }
+        );
+      }
+      
+      console.log(`[FUNNEL_PAYMENT_INTENT] Created subscription ${subscription.id} for ${logUser} on connected account ${stripeConnectAccountId} (fee: ${platformFeePercent}%)`);
+      
+      return NextResponse.json({
+        clientSecret: paymentIntent.client_secret,
+        subscriptionId: subscription.id,
+        paymentIntentId: paymentIntent.id,
+        connectedAccountId: stripeConnectAccountId,
+        isSubscription: true,
+      });
+    }
+
+    // ========================================
+    // ONE-TIME PAYMENT FLOW
+    // ========================================
     // Create payment intent on the Connected account with application fee
     // Using setup_future_usage: 'off_session' to save the payment method for future use (upsells)
     const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
@@ -282,13 +402,13 @@ export async function POST(req: Request) {
       { stripeAccount: stripeConnectAccountId }
     );
 
-    const logUser = userId ? `user ${userId}` : `guest session ${flowSessionId}`;
     console.log(`[FUNNEL_PAYMENT_INTENT] Created payment intent ${paymentIntent.id} for ${logUser} on connected account ${stripeConnectAccountId} (fee: ${applicationFeeAmount})`);
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
       connectedAccountId: stripeConnectAccountId,
+      isSubscription: false,
     });
   } catch (error) {
     console.error('[FUNNEL_PAYMENT_INTENT_ERROR]', error);

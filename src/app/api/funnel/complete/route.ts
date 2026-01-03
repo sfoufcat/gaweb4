@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { flowSessionId, stripePaymentIntentId, stripeCheckoutSessionId } = body;
+    const { flowSessionId, stripePaymentIntentId, stripeCheckoutSessionId, stripeSubscriptionId } = body;
 
     if (!flowSessionId) {
       return NextResponse.json(
@@ -230,6 +230,11 @@ export async function POST(req: Request) {
 
     // Create program enrollment
     const now = new Date().toISOString();
+    
+    // Get subscriptionId from request body or from session data (stored during payment)
+    const sessionData = session.data || {};
+    const finalSubscriptionId = stripeSubscriptionId || sessionData.stripeSubscriptionId;
+    
     const enrollmentData: Omit<ProgramEnrollment, 'id'> = {
       userId,
       programId: session.programId,
@@ -245,6 +250,11 @@ export async function POST(req: Request) {
       // Only add optional payment fields if they have values
       ...(stripePaymentIntentId && { stripePaymentIntentId, paidAt: now }),
       ...(stripeCheckoutSessionId && { stripeCheckoutSessionId }),
+      // Subscription fields for recurring programs
+      ...(finalSubscriptionId && { 
+        subscriptionId: finalSubscriptionId,
+        subscriptionStatus: 'active' as const,
+      }),
     };
 
     const enrollmentRef = await adminDb.collection('program_enrollments').add(enrollmentData);

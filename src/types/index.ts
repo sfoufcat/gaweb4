@@ -1967,8 +1967,9 @@ export type AIResponse = SuggestTasksResponse | HelpCompleteTaskResponse | Track
  * - coach_billing: Coach handles billing (Stripe Connect)
  * - manual: Coach manually grants access (external billing)
  * - invite_code: User redeemed an invite code
+ * - funnel: User gained access through a funnel link
  */
-export type OrgAccessSource = 'platform_billing' | 'coach_billing' | 'manual' | 'invite_code';
+export type OrgAccessSource = 'platform_billing' | 'coach_billing' | 'manual' | 'invite_code' | 'funnel';
 
 /**
  * Organization billing mode

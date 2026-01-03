@@ -492,6 +492,7 @@ export function PaymentStep({
   const { isSignedIn, isLoaded: authLoaded } = useAuth();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [connectedAccountId, setConnectedAccountId] = useState<string | null>(null);
+  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -603,9 +604,15 @@ export function PaymentStep({
         throw new Error(errorData.error || 'Failed to create payment');
       }
 
-      const { clientSecret: secret, connectedAccountId: accountId } = await response.json();
+      const result = await response.json();
+      const { clientSecret: secret, connectedAccountId: accountId, subscriptionId: subId } = result;
       setClientSecret(secret);
       setConnectedAccountId(accountId);
+      
+      // Store subscription ID if this is a recurring payment
+      if (subId) {
+        setSubscriptionId(subId);
+      }
       
       // Load Stripe with the connected account
       // For Stripe Connect, we need to pass stripeAccount option
@@ -647,7 +654,7 @@ export function PaymentStep({
         throw new Error(result.error || 'Payment failed');
       }
 
-      handlePaymentSuccess(result.paymentIntentId, result.connectedAccountId);
+      handlePaymentSuccess(result.paymentIntentId, result.connectedAccountId, undefined, result.subscriptionId);
     } catch (err) {
       console.error('Saved method payment error:', err);
       setError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
@@ -664,7 +671,8 @@ export function PaymentStep({
   const handlePaymentSuccess = async (
     paymentIntentId: string, 
     accountId?: string | null,
-    paymentMethodId?: string
+    paymentMethodId?: string,
+    subId?: string | null
   ) => {
     // Store payment method ID in flow session for upsells (new card payments)
     // Note: saved card payments already store this via charge-saved-method API
@@ -677,6 +685,7 @@ export function PaymentStep({
             data: {
               stripePaymentMethodId: paymentMethodId,
               stripeConnectAccountId: accountId || connectedAccountId,
+              ...(subId && { stripeSubscriptionId: subId }),
             },
           }),
         });
@@ -686,10 +695,14 @@ export function PaymentStep({
       }
     }
 
+    // Use the subscription ID passed directly or fall back to state
+    const finalSubscriptionId = subId || subscriptionId;
+
     onComplete({
       stripePaymentIntentId: paymentIntentId,
       paidAmount: priceInCents,
       connectedAccountId: accountId || connectedAccountId,
+      ...(finalSubscriptionId && { stripeSubscriptionId: finalSubscriptionId }),
     });
   };
 

@@ -144,6 +144,142 @@ export async function POST(request: NextRequest) {
       ? `${program.name} - Program enrollment (saved card)`
       : 'Program enrollment (saved card)';
 
+    // ========================================
+    // CHECK FOR RECURRING/SUBSCRIPTION PROGRAM
+    // ========================================
+    if (program?.subscriptionEnabled && program.billingInterval) {
+      // For subscription programs, we need a Stripe Price ID
+      let stripePriceId = program.stripePriceId;
+      
+      if (!stripePriceId) {
+        // Create or get a Stripe Product for this program
+        let stripeProductId = program.stripeProductId;
+        
+        if (!stripeProductId) {
+          // Create a new product on the connected account
+          const product = await stripe.products.create(
+            {
+              name: program.name,
+              description: program.description || `${program.name} - ${program.lengthDays} day program`,
+              metadata: {
+                programId: targetProgramId!,
+                organizationId,
+              },
+            },
+            { stripeAccount: stripeConnectAccountId }
+          );
+          stripeProductId = product.id;
+          
+          // Save the product ID back to the program
+          await adminDb.collection('programs').doc(targetProgramId!).update({
+            stripeProductId,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+        
+        // Determine the billing interval for Stripe
+        const intervalMap: Record<string, Stripe.PriceCreateParams.Recurring.Interval> = {
+          'monthly': 'month',
+          'quarterly': 'month', // 3 months
+          'yearly': 'year',
+        };
+        const interval = intervalMap[program.billingInterval] || 'month';
+        const intervalCount = program.billingInterval === 'quarterly' ? 3 : 1;
+        
+        // Create a recurring price on the connected account
+        const price = await stripe.prices.create(
+          {
+            product: stripeProductId,
+            unit_amount: priceInCents,
+            currency: currency.toLowerCase(),
+            recurring: {
+              interval,
+              interval_count: intervalCount,
+            },
+            metadata: {
+              programId: targetProgramId!,
+              organizationId,
+            },
+          },
+          { stripeAccount: stripeConnectAccountId }
+        );
+        stripePriceId = price.id;
+        
+        // Save the price ID back to the program
+        await adminDb.collection('programs').doc(targetProgramId!).update({
+          stripePriceId,
+          updatedAt: new Date().toISOString(),
+        });
+        
+        console.log(`[FUNNEL_CHARGE_SAVED] Created Stripe product ${stripeProductId} and price ${stripePriceId} for program ${targetProgramId}`);
+      }
+      
+      try {
+        // Create a subscription with the saved payment method
+        const subscription = await stripe.subscriptions.create(
+          {
+            customer: customerId,
+            items: [{ price: stripePriceId }],
+            default_payment_method: paymentMethodId,
+            application_fee_percent: platformFeePercent,
+            expand: ['latest_invoice.payment_intent'],
+            metadata: {
+              ...metadata,
+              type: 'funnel_subscription_saved_method',
+            },
+          },
+          { stripeAccount: stripeConnectAccountId }
+        );
+        
+        // Get the payment intent from the subscription's latest invoice
+        const invoice = subscription.latest_invoice as Stripe.Invoice;
+        const paymentIntent = invoice.payment_intent as Stripe.PaymentIntent;
+        
+        // Store payment method ID in flow session for upsells
+        if (flowSessionId) {
+          const sessionDoc = await adminDb.collection('flow_sessions').doc(flowSessionId).get();
+          if (sessionDoc.exists) {
+            const session = sessionDoc.data() as FlowSession;
+            await sessionDoc.ref.update({
+              data: {
+                ...(session.data || {}),
+                stripePaymentMethodId: paymentMethodId,
+                stripeConnectAccountId: stripeConnectAccountId,
+                stripeSubscriptionId: subscription.id,
+              },
+              updatedAt: new Date().toISOString(),
+            });
+          }
+        }
+        
+        console.log(
+          `[FUNNEL_CHARGE_SAVED] Created subscription ${subscription.id} for user ${userId} on connected account ${stripeConnectAccountId}`
+        );
+        
+        return NextResponse.json({
+          success: true,
+          subscriptionId: subscription.id,
+          paymentIntentId: paymentIntent?.id,
+          connectedAccountId: stripeConnectAccountId,
+          isSubscription: true,
+        });
+      } catch (stripeError) {
+        console.error('[FUNNEL_CHARGE_SAVED] Stripe subscription error:', stripeError);
+        
+        if (stripeError instanceof Stripe.errors.StripeCardError) {
+          return NextResponse.json(
+            { error: 'Payment failed: ' + stripeError.message },
+            { status: 400 }
+          );
+        }
+        
+        throw stripeError;
+      }
+    }
+
+    // ========================================
+    // ONE-TIME PAYMENT FLOW
+    // ========================================
     // Create and confirm payment intent immediately with the saved payment method
     let paymentIntent: Stripe.PaymentIntent;
     
@@ -212,6 +348,7 @@ export async function POST(request: NextRequest) {
       success: true,
       paymentIntentId: paymentIntent.id,
       connectedAccountId: stripeConnectAccountId,
+      isSubscription: false,
     });
   } catch (error) {
     console.error('[FUNNEL_CHARGE_SAVED] Error:', error);

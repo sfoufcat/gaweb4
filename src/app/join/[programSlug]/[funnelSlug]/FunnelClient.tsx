@@ -410,6 +410,7 @@ export default function FunnelClient({
           flowSessionId: sessionId,
           stripePaymentIntentId: finalData.stripePaymentIntentId,
           stripeCheckoutSessionId: finalData.stripeCheckoutSessionId,
+          stripeSubscriptionId: finalData.stripeSubscriptionId,
         }),
       });
 
