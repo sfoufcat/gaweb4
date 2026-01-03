@@ -166,9 +166,9 @@ export function SatelliteSignIn({ subdomain, customDomain, logoUrl, appTitle, re
 
             {/* Auth Container */}
             <div className="w-full max-w-lg mx-auto">
-              <div className="bg-white/80 backdrop-blur-sm border border-[#e1ddd8]/60 rounded-3xl p-8 shadow-lg">
+              <div className="bg-white/80 dark:bg-surface/80 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-border-subtle/60 rounded-3xl p-8 shadow-lg">
                 {/* Current user card */}
-                <div className="bg-[#f5f3f0] rounded-2xl p-4 mb-6">
+                <div className="bg-[#f5f3f0] dark:bg-surface-elevated rounded-2xl p-4 mb-6">
                   <div className="flex items-center gap-4">
                     {displayImage ? (
                       <Image
@@ -209,7 +209,7 @@ export function SatelliteSignIn({ subdomain, customDomain, logoUrl, appTitle, re
                   <button
                     onClick={handleSignOut}
                     disabled={signingOut}
-                    className="w-full py-3 px-6 rounded-full font-sans font-medium text-text-secondary hover:text-text-primary transition-colors border border-[#e1ddd8] disabled:opacity-50"
+                    className="w-full py-3 px-6 rounded-full font-sans font-medium text-text-secondary hover:text-text-primary transition-colors border border-[#e1ddd8] dark:border-border-subtle disabled:opacity-50"
                   >
                     {signingOut ? 'Signing out...' : 'Use a different account'}
                   </button>
@@ -247,7 +247,7 @@ export function SatelliteSignIn({ subdomain, customDomain, logoUrl, appTitle, re
 
           {/* Auth Container */}
           <div className="w-full max-w-lg mx-auto">
-            <div className="bg-white/80 backdrop-blur-sm border border-[#e1ddd8]/60 rounded-3xl p-8 shadow-lg">
+            <div className="bg-white/80 dark:bg-surface/80 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-border-subtle/60 rounded-3xl p-8 shadow-lg">
               {/* OAuth Button - on parent page, uses redirect flow */}
               <div className="space-y-3">
                 <OAuthButton
@@ -260,9 +260,9 @@ export function SatelliteSignIn({ subdomain, customDomain, logoUrl, appTitle, re
 
               {/* Divider */}
               <div className="flex items-center gap-4 my-8">
-                <div className="flex-1 h-px bg-[#e1ddd8]" />
+                <div className="flex-1 h-px bg-[#e1ddd8] dark:bg-border-subtle" />
                 <span className="font-sans text-sm text-text-secondary">or</span>
-                <div className="flex-1 h-px bg-[#e1ddd8]" />
+                <div className="flex-1 h-px bg-[#e1ddd8] dark:bg-border-subtle" />
               </div>
 
               {/* Email/Password Form in iframe */}

@@ -23,8 +23,8 @@ export const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(
             ref={ref}
             type={isPassword && showPassword ? 'text' : type}
             className={`
-              w-full bg-white border border-[#e1ddd8] rounded-2xl py-4 px-5
-              font-sans text-base text-text-primary placeholder:text-[#a7a39e]
+              w-full bg-white dark:bg-surface-elevated border border-[#e1ddd8] dark:border-border-subtle rounded-2xl py-4 px-5
+              font-sans text-base text-text-primary placeholder:text-[#a7a39e] dark:placeholder:text-text-secondary
               focus:outline-none focus:border-brand-accent focus:ring-2 focus:ring-brand-accent dark:ring-brand-accent/20
               transition-all duration-200
               disabled:opacity-50 disabled:cursor-not-allowed

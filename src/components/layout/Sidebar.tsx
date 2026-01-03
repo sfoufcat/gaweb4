@@ -527,12 +527,13 @@ export function Sidebar() {
         className={`
           lg:hidden fixed bottom-0 left-0 right-0 z-40 flex justify-center px-5 pb-3 pb-safe
           transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] origin-bottom
+          pointer-events-none
           ${isCompact ? 'translate-y-[10px] scale-[0.94] opacity-95' : 'translate-y-0 scale-100 opacity-100'}
         `}
       >
-        <nav className="mobile-nav-branded relative overflow-hidden rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+        <nav className="mobile-nav-branded pointer-events-auto relative overflow-hidden rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
           {/* Apple Glass Background - Multi-layer blur effect */}
-          <div className="absolute inset-0 bg-white/70 dark:bg-[#1c1c1e]/75 backdrop-blur-[40px] backdrop-saturate-[180%]" />
+          <div className="absolute inset-0 bg-[#faf8f6]/85 dark:bg-[#05070b]/85 backdrop-blur-[40px] backdrop-saturate-[180%]" />
           {/* Subtle inner glow */}
           <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-transparent to-white/20 dark:from-white/10 dark:via-transparent dark:to-white/5" />
           {/* Glass edge highlight */}

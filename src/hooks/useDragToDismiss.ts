@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useCallback, useEffect, RefObject } from 'react';
+import React, { useRef, useCallback, useEffect, RefObject } from 'react';
 
 interface UseDragToDismissOptions {
   onClose: () => void;
@@ -14,6 +14,7 @@ interface UseDragToDismissReturn {
   handleRef: RefObject<HTMLDivElement | null>;
   handleProps: {
     className: string;
+    style: React.CSSProperties;
   };
   backdropProps: {
     style: { opacity: number };
@@ -204,7 +205,8 @@ export function useDragToDismiss({
     sheetRef,
     handleRef,
     handleProps: {
-      className: 'touch-none',
+      className: 'touch-none select-none cursor-grab active:cursor-grabbing',
+      style: { WebkitUserSelect: 'none', WebkitTouchCallout: 'none' },
     },
     backdropProps: {
       style: { opacity: backdropOpacity.current },

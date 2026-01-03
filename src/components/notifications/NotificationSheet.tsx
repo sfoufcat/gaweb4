@@ -97,7 +97,7 @@ export function NotificationSheet({
         style={{ maxHeight: '85dvh' }}
       >
         {/* Grabber (drag handle) */}
-        <div ref={handleRef} {...handleProps} className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing">
+        <div ref={handleRef} {...handleProps} className="flex justify-center pt-3 pb-2 touch-none select-none cursor-grab active:cursor-grabbing">
           <div className="w-9 h-1 bg-gray-300 rounded-full" />
         </div>
 

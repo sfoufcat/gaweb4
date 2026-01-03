@@ -338,7 +338,7 @@ export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', h
   if (verifying) {
     return (
       <div className="w-full max-w-lg mx-auto">
-        <div className="bg-white/80 backdrop-blur-sm border border-[#e1ddd8]/60 rounded-3xl p-8 shadow-lg">
+        <div className="bg-white/80 dark:bg-surface/80 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-border-subtle/60 rounded-3xl p-8 shadow-lg">
           <div className="text-center mb-6">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-brand-accent/10 flex items-center justify-center">
               <svg className="w-8 h-8 text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -410,7 +410,7 @@ export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', h
   if (showForgotPassword) {
     return (
       <div className="w-full max-w-lg mx-auto">
-        <div className="bg-white/80 backdrop-blur-sm border border-[#e1ddd8]/60 rounded-3xl p-8 shadow-lg">
+        <div className="bg-white/80 dark:bg-surface/80 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-border-subtle/60 rounded-3xl p-8 shadow-lg">
           {resetSent ? (
             <>
               <div className="text-center mb-6">
@@ -507,7 +507,7 @@ export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', h
   return (
     <div className={embedded ? "w-full" : "w-full max-w-lg mx-auto"}>
       {/* Card wrapper - only when NOT embedded (iframe parent already has card) */}
-      <div className={embedded ? "" : "bg-white/80 backdrop-blur-sm border border-[#e1ddd8]/60 rounded-3xl p-8 shadow-lg"}>
+      <div className={embedded ? "" : "bg-white/80 dark:bg-surface/80 backdrop-blur-sm border border-[#e1ddd8]/60 dark:border-border-subtle/60 rounded-3xl p-8 shadow-lg"}>
         {/* OAuth Buttons - hidden when parent handles OAuth */}
         {!hideOAuth && (
           <>
@@ -522,9 +522,9 @@ export function SignInForm({ redirectUrl = '/', embedded = false, origin = '', h
 
             {/* Divider */}
             <div className="flex items-center gap-4 my-8">
-              <div className="flex-1 h-px bg-[#e1ddd8]" />
+              <div className="flex-1 h-px bg-[#e1ddd8] dark:bg-border-subtle" />
               <span className="font-sans text-sm text-text-secondary">or</span>
-              <div className="flex-1 h-px bg-[#e1ddd8]" />
+              <div className="flex-1 h-px bg-[#e1ddd8] dark:bg-border-subtle" />
             </div>
           </>
         )}

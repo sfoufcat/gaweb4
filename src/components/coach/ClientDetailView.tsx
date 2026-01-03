@@ -529,7 +529,9 @@ export function ClientDetailView({ clientId, onBack }: ClientDetailViewProps) {
       openSignupModal();
       return;
     }
-    if (!coachingData || !hasCoaching) return;
+    // Allow saving if user has active coaching (hasCoaching), even if coachingData document doesn't exist yet
+    // The PATCH API will create the document if needed for users with 1:1 program enrollment
+    if (!hasCoaching) return;
 
     try {
       setSaving(true);

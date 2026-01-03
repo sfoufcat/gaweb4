@@ -342,7 +342,7 @@ export function ShareToChatModal({ postId, postUrl, onClose, onSuccess }: ShareT
       {/* Modal - Bottom sheet on mobile, centered popup on desktop */}
       <div ref={sheetRef} className="relative w-full md:max-w-[440px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-300 max-h-[80dvh] flex flex-col overflow-hidden safe-area-inset-bottom">
         {/* Handle - Mobile only (drag handle) */}
-        <div ref={handleRef} {...handleProps} className="flex justify-center pt-3 pb-2 md:hidden cursor-grab active:cursor-grabbing">
+        <div ref={handleRef} {...handleProps} className="flex justify-center pt-3 pb-2 md:hidden touch-none select-none cursor-grab active:cursor-grabbing">
           <div className="w-9 h-1 bg-gray-300 dark:bg-[#262b35] rounded-full" />
         </div>
 

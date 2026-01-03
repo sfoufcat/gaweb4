@@ -123,7 +123,7 @@ export function AttachmentMenu({
           className="relative w-full bg-white dark:bg-[#171b22] rounded-t-[20px] shadow-2xl animate-in slide-in-from-bottom duration-200"
         >
           {/* Grabber (drag handle) */}
-          <div ref={handleRef} {...handleProps} className="flex justify-center pt-2 pb-4 cursor-grab active:cursor-grabbing">
+          <div ref={handleRef} {...handleProps} className="flex justify-center pt-2 pb-4 touch-none select-none cursor-grab active:cursor-grabbing">
             <div className="w-9 h-[5px] bg-[rgba(30,30,47,0.4)] dark:bg-[#313746] rounded-[2.5px]" />
           </div>
 

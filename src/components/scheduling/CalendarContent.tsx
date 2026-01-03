@@ -35,7 +35,7 @@ const EVENT_TYPE_INFO: Record<string, { label: string; icon: typeof Video; color
 
 interface EventItemProps {
   event: UnifiedEvent;
-  onRespond?: (eventId: string, action: 'accept' | 'decline') => void;
+  onRespond?: (eventId: string, action: 'accept' | 'decline', selectedTimeId?: string) => void;
 }
 
 function EventItem({ event, onRespond }: EventItemProps) {
@@ -44,6 +44,12 @@ function EventItem({ event, onRespond }: EventItemProps) {
 
   const startTime = new Date(event.startDateTime);
   const endTime = event.endDateTime ? new Date(event.endDateTime) : null;
+
+  // Get pending proposed times
+  const pendingProposedTimes = event.proposedTimes?.filter(t => t.status === 'pending') || [];
+
+  // Strip "Call request with" prefix from title for cleaner display
+  const displayTitle = event.title?.replace(/^Call request with\s*/i, '') || event.title;
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', {
@@ -59,6 +65,12 @@ function EventItem({ event, onRespond }: EventItemProps) {
       month: 'short',
       day: 'numeric',
     });
+  };
+
+  const formatProposedTime = (time: { startDateTime: string; endDateTime: string }) => {
+    const start = new Date(time.startDateTime);
+    const end = new Date(time.endDateTime);
+    return `${formatDate(start)} at ${formatTime(start)} - ${formatTime(end)}`;
   };
 
   const needsResponse = event.schedulingStatus === 'proposed' || event.schedulingStatus === 'counter_proposed';
@@ -104,7 +116,7 @@ function EventItem({ event, onRespond }: EventItemProps) {
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] line-clamp-1">
-                {event.title}
+                {displayTitle}
               </p>
               <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
                 {typeInfo.label}
@@ -145,22 +157,50 @@ function EventItem({ event, onRespond }: EventItemProps) {
           </div>
 
           {/* Action buttons */}
-          <div className="flex flex-wrap gap-2 mt-3">
+          <div className="flex flex-col gap-2 mt-3">
             {needsResponse && onRespond && (
               <>
-                <button
-                  onClick={() => onRespond(event.id, 'accept')}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors"
-                >
-                  <CheckCircle className="w-3 h-3" />
-                  Accept
-                </button>
+                {/* Show proposed times with individual Accept buttons */}
+                {pendingProposedTimes.length > 0 ? (
+                  <>
+                    <p className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2]">
+                      {pendingProposedTimes.length} proposed time{pendingProposedTimes.length > 1 ? 's' : ''}:
+                    </p>
+                    {pendingProposedTimes.map((time) => (
+                      <div
+                        key={time.id}
+                        className="flex items-center justify-between p-2 bg-[#f9f8f7] dark:bg-[#262b35] rounded-lg"
+                      >
+                        <div className="flex items-center gap-2 text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                          <Calendar className="w-3 h-3" />
+                          <span>{formatProposedTime(time)}</span>
+                        </div>
+                        <button
+                          onClick={() => onRespond(event.id, 'accept', time.id)}
+                          className="flex items-center gap-1 px-2 py-1 bg-green-500 text-white rounded text-xs font-medium hover:bg-green-600 transition-colors"
+                        >
+                          <CheckCircle className="w-3 h-3" />
+                          Accept
+                        </button>
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  /* Fallback if no proposed times - use first time slot */
+                  <button
+                    onClick={() => onRespond(event.id, 'accept', event.proposedTimes?.[0]?.id)}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors"
+                  >
+                    <CheckCircle className="w-3 h-3" />
+                    Accept
+                  </button>
+                )}
                 <button
                   onClick={() => onRespond(event.id, 'decline')}
                   className="flex items-center gap-1 px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-medium hover:bg-red-600 transition-colors"
                 >
                   <XCircle className="w-3 h-3" />
-                  Decline
+                  Decline All
                 </button>
               </>
             )}
@@ -244,9 +284,9 @@ export function CalendarContent({ compact = false }: CalendarContentProps) {
   };
 
   // Handle respond to proposal
-  const handleRespond = useCallback(async (eventId: string, action: 'accept' | 'decline') => {
+  const handleRespond = useCallback(async (eventId: string, action: 'accept' | 'decline', selectedTimeId?: string) => {
     try {
-      await respondToProposal({ eventId, action });
+      await respondToProposal({ eventId, action, selectedTimeId });
       refetch();
     } catch (err) {
       // Error handled by hook

@@ -63,6 +63,9 @@ function EventItem({ event, onRespond, onCancel, onCounterPropose, isMyRequest }
   const pendingProposedTimes = event.proposedTimes?.filter(t => t.status === 'pending') || [];
   const hasMultipleOptions = pendingProposedTimes.length > 1;
 
+  // Strip "Call request with" prefix from title for cleaner display
+  const displayTitle = event.title?.replace(/^Call request with\s*/i, '') || event.title;
+
   // Handle accepting a specific time
   const handleAccept = async (timeId: string) => {
     setIsAccepting(true);
@@ -135,7 +138,7 @@ function EventItem({ event, onRespond, onCancel, onCounterPropose, isMyRequest }
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] line-clamp-1">
-                {event.title}
+                {displayTitle}
               </p>
               <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
                 {typeInfo.label}
