@@ -852,6 +852,7 @@ function getDefaultConfigForType(type: FunnelStepType): unknown {
       };
     case 'upsell':
       return {
+        productType: 'program',
         headline: 'Wait! Special One-Time Offer',
         description: 'Get exclusive access to additional content and resources.',
         ctaText: 'Add to Order',
@@ -861,6 +862,7 @@ function getDefaultConfigForType(type: FunnelStepType): unknown {
       };
     case 'downsell':
       return {
+        productType: 'program',
         headline: 'Before You Go...',
         description: 'Here\'s a special offer just for you.',
         ctaText: 'Yes, I Want This Deal!',

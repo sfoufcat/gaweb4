@@ -153,8 +153,9 @@ export function DownsellStep({
       return;
     }
 
-    // Only fetch for program type products
-    if (config.productType !== 'program' || !config.productId) {
+    // Only fetch for program type products (treat undefined as 'program' - the default)
+    const effectiveProductType = config.productType || 'program';
+    if (effectiveProductType !== 'program' || !config.productId) {
       return;
     }
 
