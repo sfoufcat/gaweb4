@@ -1575,9 +1575,32 @@ function ChatContent({
               </>
             )}
 
-            {/* Coaching Chat - Only show when user has coaching and coach is assigned */}
+            {/* Coaching Chat - Show if user has coaching channel (legacy or program-based) */}
+            {/* Priority: Program coaching (from individual program enrollment) takes precedence */}
             {/* Don't show on platform domain - coaching is tenant-specific */}
-            {!isPlatformMode && hasCoaching && coachingChannelId && (
+            {!isPlatformMode && programCoachingChannelId && (
+              <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                <SpecialChannelItem
+                  avatarUrl={programCoachInfo?.imageUrl || coach?.imageUrl}
+                  icon={
+                    <svg className="w-6 h-6 text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  }
+                  name={programCoachInfo?.name || coach?.name || 'My Coach'}
+                  description="1:1 coaching chat"
+                  onClick={() => handleChannelSelect(programCoachingChannelId)}
+                  isActive={activeChannel?.id === programCoachingChannelId}
+                  isPinned={true}
+                  unreadCount={programCoachingUnread}
+                  lastMessageTime={programCoachingLastMessage}
+                />
+              </div>
+            )}
+
+            {/* Legacy Coaching Chat - Only show if there's NO program coaching and user has legacy coaching */}
+            {/* This handles users with manual coaching assignment that predates program enrollment */}
+            {!isPlatformMode && !programCoachingChannelId && hasCoaching && coachingChannelId && (
               <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
                 <SpecialChannelItem
                   avatarUrl={coach?.imageUrl}
@@ -1593,29 +1616,6 @@ function ChatContent({
                   isPinned={true}
                   unreadCount={coachingUnread}
                   lastMessageTime={coachingLastMessage}
-                />
-              </div>
-            )}
-
-            {/* Program-based Coaching Chat - Shows for users enrolled in individual programs */}
-            {/* Independent of legacy hasCoaching flag - works via ClientCoachingData */}
-            {/* Only show if not already showing legacy coaching chat to avoid duplicates */}
-            {!isPlatformMode && !hasCoaching && programCoachingChannelId && (
-              <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
-                <SpecialChannelItem
-                  avatarUrl={programCoachInfo?.imageUrl}
-                  icon={
-                    <svg className="w-6 h-6 text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  }
-                  name={programCoachInfo?.name || 'My Coach'}
-                  description="1:1 coaching chat"
-                  onClick={() => handleChannelSelect(programCoachingChannelId)}
-                  isActive={activeChannel?.id === programCoachingChannelId}
-                  isPinned={true}
-                  unreadCount={programCoachingUnread}
-                  lastMessageTime={programCoachingLastMessage}
                 />
               </div>
             )}
