@@ -9,4 +9,7 @@ export { CalendarIconButton } from './CalendarIconButton';
 export { CalendarContent } from './CalendarContent';
 export { CalendarPanel } from './CalendarPanel';
 export { CalendarSheet } from './CalendarSheet';
+export { EventDetailPopup } from './EventDetailPopup';
+export { CounterProposeModal } from './CounterProposeModal';
+export { CalendarSyncSection } from './CalendarSyncSection';
 

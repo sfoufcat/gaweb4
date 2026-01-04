@@ -38,21 +38,22 @@ interface ProgramDetailViewProps {
   onRefresh?: () => void;
 }
 
-export function ProgramDetailView({ 
-  program: enrolled, 
+export function ProgramDetailView({
+  program: enrolled,
   onBack,
   showBackButton = true,
   onRefresh,
 }: ProgramDetailViewProps) {
   const router = useRouter();
   const { isDemoMode, openSignupModal } = useDemoMode();
-  const { program, progress, squad, squadMembers, enrollment } = enrolled;
+  const { program, progress, squad, squadMembers, enrollment, nextCall: prefetchedNextCall } = enrolled;
   const isGroup = program.type === 'group';
-  
-  // Fetch coaching data for individual programs
+
+  // Fetch additional coaching data for individual programs (credits, settings, etc.)
+  // Note: nextCall is pre-fetched via useMyPrograms to avoid UI flash
   const {
     coachingData,
-    nextCall,
+    nextCall: hookNextCall,
     chatChannelId,
     callCredits,
     callSettings,
@@ -60,6 +61,9 @@ export function ProgramDetailView({
     hasCoachingData,
     isLoading: coachingLoading,
   } = useProgramCoachingData();
+
+  // Use pre-fetched nextCall (immediate, no flash) or fall back to hook data
+  const nextCall = prefetchedNextCall || hookNextCall;
   
   // State for joining community
   const [isJoiningCommunity, setIsJoiningCommunity] = useState(false);

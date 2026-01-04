@@ -18,11 +18,12 @@ import { adminDb } from '@/lib/firebase-admin';
 import { getEffectiveOrgId } from '@/lib/tenant/context';
 import { isDemoRequest, demoResponse } from '@/lib/demo-api';
 import { generateDemoUserProfile, generateDemoProgramSquadMembers } from '@/lib/demo-data';
-import type { 
-  Program, 
-  ProgramEnrollment, 
+import type {
+  Program,
+  ProgramEnrollment,
   ProgramCohort,
   Squad,
+  ClientCoachingData,
 } from '@/types';
 
 // Minimal member info for avatar display
@@ -31,6 +32,14 @@ interface SquadMemberPreview {
   firstName: string;
   lastName: string;
   imageUrl: string;
+}
+
+// Next call info for 1:1 programs (pre-fetched to avoid flash)
+interface NextCallInfo {
+  datetime: string | null;
+  timezone: string;
+  location: string;
+  title?: string;
 }
 
 interface EnrolledProgramWithDetails {
@@ -47,6 +56,42 @@ interface EnrolledProgramWithDetails {
     totalDays: number;
     percentage: number;
   };
+  // For individual programs: pre-fetched next call to avoid UI flash
+  nextCall?: NextCallInfo | null;
+}
+
+/**
+ * Fetch next call info from clientCoachingData for individual programs
+ */
+async function fetchNextCallForUser(
+  userId: string,
+  organizationId: string
+): Promise<NextCallInfo | null> {
+  try {
+    // ClientCoachingData doc ID format: ${organizationId}_${userId}
+    const coachingDocId = `${organizationId}_${userId}`;
+    const coachingDoc = await adminDb.collection('clientCoachingData').doc(coachingDocId).get();
+
+    if (!coachingDoc.exists) {
+      return null;
+    }
+
+    const coachingData = coachingDoc.data() as ClientCoachingData;
+
+    if (!coachingData.nextCall?.datetime) {
+      return null;
+    }
+
+    return {
+      datetime: coachingData.nextCall.datetime,
+      timezone: coachingData.nextCall.timezone || 'America/New_York',
+      location: coachingData.nextCall.location || 'Chat',
+      title: coachingData.nextCall.title,
+    };
+  } catch (err) {
+    console.error('[MY_PROGRAMS] Error fetching next call:', err);
+    return null;
+  }
 }
 
 /**
@@ -139,6 +184,13 @@ export async function GET() {
             totalDays: prog.totalDays,
             percentage: prog.progress,
           },
+          // Demo next call for individual programs (3 days from now at 2pm)
+          nextCall: !isGroupProgram ? {
+            datetime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000).toISOString(),
+            timezone: 'America/New_York',
+            location: 'Video Call',
+            title: 'Coaching Session',
+          } : null,
         };
       });
       
@@ -271,13 +323,19 @@ export async function GET() {
       }
 
       // Calculate progress
-      const currentDay = enrollment.status === 'upcoming' 
-        ? 0 
+      const currentDay = enrollment.status === 'upcoming'
+        ? 0
         : calculateCurrentDayIndex(enrollment.startedAt, program.lengthDays);
-      
+
       const percentage = enrollment.status === 'upcoming'
         ? 0
         : Math.round((currentDay / program.lengthDays) * 100);
+
+      // For individual programs, fetch next call data to avoid UI flash
+      let nextCall: NextCallInfo | null = null;
+      if (program.type === 'individual' && organizationId) {
+        nextCall = await fetchNextCallForUser(userId, organizationId);
+      }
 
       enrolledPrograms.push({
         enrollment,
@@ -294,6 +352,7 @@ export async function GET() {
           totalDays: program.lengthDays,
           percentage,
         },
+        nextCall,
       });
     }
 

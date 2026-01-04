@@ -18,6 +18,14 @@ export interface SquadMemberPreview {
   imageUrl: string;
 }
 
+// Next call info for 1:1 programs (pre-fetched from API)
+export interface NextCallInfo {
+  datetime: string | null;
+  timezone: string;
+  location: string;
+  title?: string;
+}
+
 /**
  * Enrolled program with full details for display
  */
@@ -35,6 +43,8 @@ export interface EnrolledProgramWithDetails {
     totalDays: number;
     percentage: number;
   };
+  // For individual programs: pre-fetched next call to avoid UI flash
+  nextCall?: NextCallInfo | null;
 }
 
 interface MyProgramsResponse {

@@ -124,15 +124,19 @@ export function SatelliteSignIn({ subdomain, customDomain, logoUrl, appTitle, re
   // Show loading while Clerk loads
   if (!isLoaded) {
     return (
-      <div className="fixed inset-0 bg-app-bg flex items-center justify-center">
-        <div className="text-center">
-          <div className="relative mb-4 mx-auto w-fit">
-            <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
-            <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-[#a07855] animate-spin" />
+      <>
+        {/* Fixed background - extends behind iOS Safari toolbar */}
+        <div className="fixed inset-0 bg-app-bg -z-10" />
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="relative mb-4 mx-auto w-fit">
+              <div className="w-12 h-12 rounded-full border-2 border-[#e1ddd8]" />
+              <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-transparent border-t-[#a07855] animate-spin" />
+            </div>
+            <p className="text-text-secondary">Loading...</p>
           </div>
-          <p className="text-text-secondary">Loading...</p>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -143,14 +147,16 @@ export function SatelliteSignIn({ subdomain, customDomain, logoUrl, appTitle, re
     const displayImage = user.imageUrl;
 
     return (
-      <div className="fixed inset-0 bg-app-bg overflow-y-auto">
-        <div className="min-h-full flex flex-col items-center justify-center px-4 py-8 lg:py-16">
+      <>
+        {/* Fixed background - extends behind iOS Safari toolbar */}
+        <div className="fixed inset-0 bg-app-bg -z-10" />
+        <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 lg:py-16">
           <div className="w-full max-w-xl mx-auto">
             {/* Header with Coach Branding */}
             <div className="text-center mb-10 lg:mb-12">
-              <Image 
-                src={logoUrl} 
-                alt={appTitle} 
+              <Image
+                src={logoUrl}
+                alt={appTitle}
                 width={80}
                 height={80}
                 className="w-16 h-16 lg:w-20 lg:h-20 rounded-full mx-auto mb-6 shadow-lg"
@@ -205,7 +211,7 @@ export function SatelliteSignIn({ subdomain, customDomain, logoUrl, appTitle, re
                   >
                     Continue as {displayName}
                   </button>
-                  
+
                   <button
                     onClick={handleSignOut}
                     disabled={signingOut}
@@ -218,14 +224,16 @@ export function SatelliteSignIn({ subdomain, customDomain, logoUrl, appTitle, re
             </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
   // Default: Show sign-in form
   return (
-    <div className="fixed inset-0 bg-app-bg overflow-y-auto">
-      <div className="min-h-full flex flex-col items-center justify-center px-4 py-8 lg:py-16">
+    <>
+      {/* Fixed background - extends behind iOS Safari toolbar */}
+      <div className="fixed inset-0 bg-app-bg -z-10" />
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 lg:py-16">
         <div className="w-full max-w-xl mx-auto">
           {/* Header with Coach Branding */}
           <div className="text-center mb-10 lg:mb-12">
@@ -288,6 +296,6 @@ export function SatelliteSignIn({ subdomain, customDomain, logoUrl, appTitle, re
           </p>
         </div>
       </div>
-    </div>
+    </>
   );
 }

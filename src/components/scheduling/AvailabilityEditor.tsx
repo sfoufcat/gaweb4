@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAvailability } from '@/hooks/useAvailability';
 import { useDemoMode } from '@/contexts/DemoModeContext';
+import { CalendarSyncSection } from './CalendarSyncSection';
 import type { WeeklySchedule, TimeSlot, BlockedSlot, CoachAvailability } from '@/types';
 
 // Demo mock availability data
@@ -408,6 +409,9 @@ export function AvailabilityEditor() {
           </button>
         </div>
       )}
+
+      {/* Calendar Sync Section - Only show in non-demo mode */}
+      {!isDemoMode && <CalendarSyncSection />}
 
       {/* Weekly Schedule Section */}
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden">

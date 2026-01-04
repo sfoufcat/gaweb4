@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import { useSchedulingEvents, usePendingProposals, useSchedulingActions } from '@/hooks/useScheduling';
 import { ScheduleCallModal } from './ScheduleCallModal';
+import { EventDetailPopup } from './EventDetailPopup';
+import { CounterProposeModal } from './CounterProposeModal';
 import type { UnifiedEvent, ClientCoachingData, FirebaseUser } from '@/types';
 
 // Client type for picker
@@ -84,6 +86,13 @@ const EVENT_TYPE_COLORS: Record<string, { bg: string; border: string; text: stri
   },
 };
 
+// Colors for pending proposals (override event type colors)
+const PENDING_COLORS = {
+  bg: 'bg-red-100 dark:bg-red-900/20',
+  border: 'border-red-300 dark:border-red-700',
+  text: 'text-red-700 dark:text-red-300',
+};
+
 // Scheduling status colors
 const STATUS_COLORS: Record<string, { bg: string; text: string; icon: typeof CheckCircle }> = {
   confirmed: { bg: 'bg-green-100', text: 'text-green-700', icon: CheckCircle },
@@ -97,12 +106,17 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; icon: typeof Che
 interface EventCardProps {
   event: UnifiedEvent;
   compact?: boolean;
+  onClick?: (e: React.MouseEvent) => void;
   onRespond?: (eventId: string, action: 'accept' | 'decline', selectedTimeId?: string) => void;
   onCounterPropose?: (eventId: string) => void;
 }
 
-function EventCard({ event, compact = false, onRespond, onCounterPropose }: EventCardProps) {
-  const typeColors = EVENT_TYPE_COLORS[event.eventType] || EVENT_TYPE_COLORS.coaching_1on1;
+function EventCard({ event, compact = false, onClick, onRespond, onCounterPropose }: EventCardProps) {
+  // Check if this is a pending proposal
+  const isPending = event.schedulingStatus === 'proposed' || event.schedulingStatus === 'counter_proposed';
+
+  // Use pending colors for pending events, otherwise use event type colors
+  const typeColors = isPending ? PENDING_COLORS : (EVENT_TYPE_COLORS[event.eventType] || EVENT_TYPE_COLORS.coaching_1on1);
   const statusInfo = event.schedulingStatus ? STATUS_COLORS[event.schedulingStatus] : null;
   const StatusIcon = statusInfo?.icon || CheckCircle;
 
@@ -131,12 +145,18 @@ function EventCard({ event, compact = false, onRespond, onCounterPropose }: Even
   };
 
   if (compact) {
+    // For pending proposals, show "Pending - Name" format
+    const compactLabel = isPending
+      ? `Pending - ${displayTitle}`
+      : `${formatTime(startTime)} ${displayTitle}`;
+
     return (
       <div
-        className={`px-2 py-1 rounded text-xs font-albert truncate ${typeColors.bg} ${typeColors.border} border ${typeColors.text}`}
-        title={displayTitle}
+        className={`px-2 py-1 rounded text-xs font-albert truncate ${typeColors.bg} ${typeColors.border} border ${typeColors.text} ${onClick ? 'cursor-pointer hover:opacity-80' : ''}`}
+        title={compactLabel}
+        onClick={onClick}
       >
-        {formatTime(startTime)} {displayTitle}
+        {compactLabel}
       </div>
     );
   }
@@ -394,7 +414,16 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+  // Event detail popup states
   const [selectedEvent, setSelectedEvent] = useState<UnifiedEvent | null>(null);
+  const [popupPosition, setPopupPosition] = useState<{ x: number; y: number } | null>(null);
+  const [isRespondLoading, setIsRespondLoading] = useState(false);
+
+  // Counter-propose modal states
+  const [counterProposeEvent, setCounterProposeEvent] = useState<UnifiedEvent | null>(null);
+  const [isCounterProposing, setIsCounterProposing] = useState(false);
+  const [counterProposeError, setCounterProposeError] = useState<string | null>(null);
 
   // Client picker and schedule modal states
   const [showClientPicker, setShowClientPicker] = useState(false);
@@ -459,20 +488,41 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
   }, [refetch]);
 
   // Pending proposals
-  const { proposals } = usePendingProposals();
+  const { proposals, refetch: refetchProposals } = usePendingProposals();
 
-  // Group events by date
+  // Merge events with proposals for grid display
+  const allEventsForGrid = useMemo(() => {
+    // Combine regular events with proposals
+    // Use a Set to avoid duplicates (in case proposals overlap with events)
+    const eventIds = new Set(events.map(e => e.id));
+    const uniqueProposals = proposals.filter(p => !eventIds.has(p.id));
+    return [...events, ...uniqueProposals];
+  }, [events, proposals]);
+
+  // Group all events (including proposals) by date
   const eventsByDate = useMemo(() => {
     const grouped: Record<string, UnifiedEvent[]> = {};
-    for (const event of events) {
+    for (const event of allEventsForGrid) {
       const dateKey = new Date(event.startDateTime).toISOString().split('T')[0];
       if (!grouped[dateKey]) {
         grouped[dateKey] = [];
       }
       grouped[dateKey].push(event);
     }
+    // Sort events within each day - pending first, then by time
+    for (const dateKey in grouped) {
+      grouped[dateKey].sort((a, b) => {
+        const aIsPending = a.schedulingStatus === 'proposed' || a.schedulingStatus === 'counter_proposed';
+        const bIsPending = b.schedulingStatus === 'proposed' || b.schedulingStatus === 'counter_proposed';
+        // Pending events first
+        if (aIsPending && !bIsPending) return -1;
+        if (!aIsPending && bIsPending) return 1;
+        // Then by time
+        return new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime();
+      });
+    }
     return grouped;
-  }, [events]);
+  }, [allEventsForGrid]);
 
   // Navigation
   const navigate = useCallback((direction: 'prev' | 'next' | 'today') => {
@@ -495,25 +545,67 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
     setCurrentDate(newDate);
   }, [currentDate, viewMode]);
 
+  // Handle event click - show detail popup
+  const handleEventClick = useCallback((event: UnifiedEvent, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedEvent(event);
+    // Get position for desktop popup
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setPopupPosition({ x: rect.left, y: rect.bottom + 8 });
+  }, []);
+
   // Handle respond to proposal
   const handleRespond = useCallback(async (eventId: string, action: 'accept' | 'decline', selectedTimeId?: string) => {
+    setIsRespondLoading(true);
     try {
       await respondToProposal({ eventId, action, selectedTimeId });
+      setSelectedEvent(null);
       refetch();
+      refetchProposals();
     } catch (err) {
       // Error handled by hook
+    } finally {
+      setIsRespondLoading(false);
     }
-  }, [respondToProposal, refetch]);
+  }, [respondToProposal, refetch, refetchProposals]);
 
-  // Handle counter-propose
+  // Handle counter-propose - open modal
   const handleCounterPropose = useCallback((eventId: string) => {
-    // TODO: Implement inline counter-propose UI
-    // For now, show an alert with the event ID
-    const event = events.find(e => e.id === eventId) || proposals.find(e => e.id === eventId);
+    const event = allEventsForGrid.find(e => e.id === eventId) || proposals.find(e => e.id === eventId);
     if (event) {
-      alert(`Counter-propose for: ${event.title}\n\nThis feature will allow you to suggest different times. Coming soon!`);
+      setSelectedEvent(null); // Close detail popup
+      setCounterProposeEvent(event);
+      setCounterProposeError(null);
     }
-  }, [events, proposals]);
+  }, [allEventsForGrid, proposals]);
+
+  // Handle counter-propose submission
+  const handleCounterProposeSubmit = useCallback(async (
+    proposedTimes: Array<{ startDateTime: string; endDateTime: string }>,
+    message?: string
+  ) => {
+    if (!counterProposeEvent) return;
+
+    setIsCounterProposing(true);
+    setCounterProposeError(null);
+
+    try {
+      await respondToProposal({
+        eventId: counterProposeEvent.id,
+        action: 'counter',
+        counterTimes: proposedTimes,
+        message,
+      });
+      setCounterProposeEvent(null);
+      refetch();
+      refetchProposals();
+    } catch (err) {
+      setCounterProposeError(err instanceof Error ? err.message : 'Failed to submit counter-proposal');
+      throw err;
+    } finally {
+      setIsCounterProposing(false);
+    }
+  }, [counterProposeEvent, respondToProposal, refetch, refetchProposals]);
 
   // Generate calendar grid for month view
   const calendarDays = useMemo(() => {
@@ -708,6 +800,7 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
                         key={event.id}
                         event={event}
                         compact
+                        onClick={(e) => handleEventClick(event, e)}
                       />
                     ))}
                     {dayEvents.length > 3 && (
@@ -778,6 +871,31 @@ export function CalendarView({ mode = 'coach', onScheduleClick }: CalendarViewPr
           clientId={selectedClient.userId}
           clientName={`${selectedClient.user?.firstName || ''} ${selectedClient.user?.lastName || ''}`.trim() || 'Client'}
           onSuccess={handleScheduleSuccess}
+        />
+      )}
+
+      {/* Event Detail Popup */}
+      {selectedEvent && (
+        <EventDetailPopup
+          event={selectedEvent}
+          isOpen={!!selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+          onRespond={handleRespond}
+          onCounterPropose={handleCounterPropose}
+          isLoading={isRespondLoading}
+          position={popupPosition || undefined}
+        />
+      )}
+
+      {/* Counter-Propose Modal */}
+      {counterProposeEvent && (
+        <CounterProposeModal
+          isOpen={!!counterProposeEvent}
+          onClose={() => setCounterProposeEvent(null)}
+          event={counterProposeEvent}
+          onSubmit={handleCounterProposeSubmit}
+          isLoading={isCounterProposing}
+          error={counterProposeError}
         />
       )}
     </div>

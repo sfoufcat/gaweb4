@@ -85,8 +85,11 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   const appTitle = branding.appTitle;
 
   return (
-    <div className="fixed inset-0 bg-app-bg overflow-y-auto">
-      <div className="min-h-full flex flex-col items-center justify-center px-4 py-8 lg:py-16">
+    <>
+      {/* Fixed background - extends behind iOS Safari toolbar */}
+      <div className="fixed inset-0 bg-app-bg -z-10" />
+      {/* Normal flow content - scrolls naturally with document */}
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 lg:py-16">
         <div className="w-full max-w-xl mx-auto">
           {/* Header */}
           <div className="text-center mb-10 lg:mb-12">
@@ -119,6 +122,6 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           </p>
         </div>
       </div>
-    </div>
+    </>
   );
 }
