@@ -218,105 +218,105 @@ function EventItem({ event, onRespond, onCancel, onReschedule }: EventItemProps)
             )}
           </div>
 
-          {/* Action buttons for non-confirmed states */}
-          {needsResponse && onRespond && (
-            <div className="flex flex-col gap-3 mt-4">
-              {/* Error state */}
-              {acceptError && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-2xl animate-in fade-in duration-300">
-                  <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                  <p className="text-sm text-red-600 dark:text-red-400">{acceptError}</p>
-                </div>
-              )}
+        </div>
+      </div>
 
-              {/* Success state */}
-              {isSuccess && acceptedTimeId ? (
-                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                  <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800/30 rounded-2xl shadow-sm">
-                    <div className="p-2 bg-green-500 rounded-full animate-in zoom-in duration-300">
-                      <CheckCircle className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-base font-semibold text-green-700 dark:text-green-300">
-                        Call Confirmed!
-                      </p>
-                      <p className="text-sm text-green-600 dark:text-green-400 mt-0.5">
-                        {formatProposedTime(pendingProposedTimes.find(t => t.id === acceptedTimeId) || pendingProposedTimes[0])}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : !isSuccess && (
-                <>
-                  {/* Show proposed times with individual Accept buttons */}
-                  {pendingProposedTimes.length > 0 ? (
-                    <>
-                      <p className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2]">
-                        {pendingProposedTimes.length} proposed time{pendingProposedTimes.length > 1 ? 's' : ''}:
-                      </p>
-                      <div className="space-y-2">
-                        {pendingProposedTimes.map((time, index) => (
-                          <div
-                            key={time.id}
-                            className="group flex items-center justify-between p-4 bg-gradient-to-r from-[#f9f8f7] to-[#f5f4f2] dark:from-[#262b35] dark:to-[#2a303b] rounded-2xl border border-[#e1ddd8] dark:border-[#363c49] transition-all duration-300 hover:shadow-md hover:scale-[1.01] hover:border-brand-accent/30 animate-in fade-in slide-in-from-left-2"
-                            style={{ animationDelay: `${index * 100}ms` }}
-                          >
-                            <div className="flex items-center gap-3 text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
-                              <div className="p-2 bg-white dark:bg-[#1e222a] rounded-xl shadow-sm">
-                                <Calendar className="w-4 h-4 text-brand-accent" />
-                              </div>
-                              <span className="font-medium">{formatProposedTime(time)}</span>
-                            </div>
-                            <button
-                              onClick={() => handleAccept(time.id)}
-                              disabled={isAccepting}
-                              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md"
-                            >
-                              {isAccepting && acceptedTimeId === time.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <CheckCircle className="w-4 h-4" />
-                              )}
-                              Accept
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    /* Fallback if no proposed times - use first time slot */
-                    <button
-                      onClick={() => handleAccept(event.proposedTimes?.[0]?.id || '')}
-                      disabled={isAccepting}
-                      className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isAccepting ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <CheckCircle className="w-4 h-4" />
-                      )}
-                      Accept
-                    </button>
-                  )}
-                  <button
-                    onClick={handleDecline}
-                    disabled={isAccepting}
-                    className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-red-600 hover:to-rose-600 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isAccepting && !acceptedTimeId ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <XCircle className="w-4 h-4" />
-                    )}
-                    Decline All
-                  </button>
-                </>
-              )}
+      {/* Proposed times section - OUTSIDE flex container for full width */}
+      {needsResponse && onRespond && (
+        <div className="mt-4 space-y-3">
+          {/* Error state */}
+          {acceptError && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-2xl animate-in fade-in duration-300">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+              <p className="text-sm text-red-600 dark:text-red-400">{acceptError}</p>
             </div>
           )}
 
+          {/* Success state */}
+          {isSuccess && acceptedTimeId ? (
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800/30 rounded-2xl shadow-sm">
+                <div className="p-2 bg-green-500 rounded-full animate-in zoom-in duration-300">
+                  <CheckCircle className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-base font-semibold text-green-700 dark:text-green-300">
+                    Call Confirmed!
+                  </p>
+                  <p className="text-sm text-green-600 dark:text-green-400 mt-0.5">
+                    {formatProposedTime(pendingProposedTimes.find(t => t.id === acceptedTimeId) || pendingProposedTimes[0])}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : !isSuccess && (
+            <>
+              {/* Show proposed times with individual Accept buttons */}
+              {pendingProposedTimes.length > 0 ? (
+                <>
+                  <p className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2]">
+                    {pendingProposedTimes.length} proposed time{pendingProposedTimes.length > 1 ? 's' : ''}:
+                  </p>
+                  <div className="space-y-2">
+                    {pendingProposedTimes.map((time, index) => (
+                      <div
+                        key={time.id}
+                        className="group flex items-center justify-between p-4 bg-gradient-to-r from-[#f9f8f7] to-[#f5f4f2] dark:from-[#262b35] dark:to-[#2a303b] rounded-2xl border border-[#e1ddd8] dark:border-[#363c49] transition-all duration-300 hover:shadow-md hover:scale-[1.01] hover:border-brand-accent/30 animate-in fade-in slide-in-from-left-2"
+                        style={{ animationDelay: `${index * 100}ms` }}
+                      >
+                        <div className="flex items-center gap-3 text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                          <div className="p-2 bg-white dark:bg-[#1e222a] rounded-xl shadow-sm">
+                            <Calendar className="w-4 h-4 text-brand-accent" />
+                          </div>
+                          <span className="font-medium">{formatProposedTime(time)}</span>
+                        </div>
+                        <button
+                          onClick={() => handleAccept(time.id)}
+                          disabled={isAccepting}
+                          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md"
+                        >
+                          {isAccepting && acceptedTimeId === time.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <CheckCircle className="w-4 h-4" />
+                          )}
+                          Accept
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                /* Fallback if no proposed times - use first time slot */
+                <button
+                  onClick={() => handleAccept(event.proposedTimes?.[0]?.id || '')}
+                  disabled={isAccepting}
+                  className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isAccepting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle className="w-4 h-4" />
+                  )}
+                  Accept
+                </button>
+              )}
+              <button
+                onClick={handleDecline}
+                disabled={isAccepting}
+                className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-red-600 hover:to-rose-600 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isAccepting && !acceptedTimeId ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <XCircle className="w-4 h-4" />
+                )}
+                Decline All
+              </button>
+            </>
+          )}
         </div>
-      </div>
+      )}
 
       {/* Confirmed event actions - OUTSIDE flex container for full width */}
       {isConfirmed && (
