@@ -93,6 +93,7 @@ export default async function SignupPage() {
   // Check if this is a custom domain (satellite)
   const domainWithoutPort = hostname.split(':')[0];
   const isSatellite = Boolean(domainWithoutPort && 
+    !domainWithoutPort.includes('coachful') &&
     !domainWithoutPort.includes('growthaddicts') && 
     !domainWithoutPort.includes('localhost') &&
     !domainWithoutPort.includes('127.0.0.1'));

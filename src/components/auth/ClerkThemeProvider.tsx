@@ -132,10 +132,11 @@ export function ClerkThemeProvider({
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
   
-  // Detect satellite domain (custom domains that aren't coachful.co/app or localhost)
+  // Detect satellite domain (custom domains that aren't coachful.co or localhost)
   const domainWithoutPort = hostname.split(':')[0];
   const isSatellite = Boolean(
     domainWithoutPort && 
+    !domainWithoutPort.includes('coachful') &&
     !domainWithoutPort.includes('growthaddicts') && 
     !domainWithoutPort.includes('localhost') &&
     !domainWithoutPort.includes('127.0.0.1')

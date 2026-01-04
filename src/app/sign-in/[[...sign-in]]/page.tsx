@@ -42,6 +42,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   // Check if this is a satellite domain (custom domain, not coachful.co/app)
   const domainWithoutPort = hostname.split(':')[0];
   const isSatellite = domainWithoutPort && 
+    !domainWithoutPort.includes('coachful') &&
     !domainWithoutPort.includes('growthaddicts') && 
     !domainWithoutPort.includes('localhost') &&
     !domainWithoutPort.includes('127.0.0.1');
