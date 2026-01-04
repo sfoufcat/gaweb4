@@ -16,9 +16,9 @@ export function ConditionalMain({ children }: { children: ReactNode }) {
     <>
       {/* Fixed background - extends behind iOS Safari toolbar for seamless appearance */}
       <div className="fixed inset-0 bg-app-bg dark:bg-[#05070b] -z-10" />
-      {/* min-h-screen ensures content fills viewport (matches CoachLandingPage pattern for iOS Safari) */}
+      {/* relative + min-h-screen ensures content fills viewport and stacks above fixed bg (matches CoachLandingPage) */}
       {/* pb-24 clears the fixed mobile nav bar, lg:pb-0 removes it on desktop */}
-      <main className="min-h-screen pb-24 lg:pb-0">
+      <main className="relative min-h-screen pb-24 lg:pb-0">
         {children}
       </main>
     </>
