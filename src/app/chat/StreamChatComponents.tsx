@@ -1071,31 +1071,41 @@ function ChatContent({
   // Watch global channels to ensure we get updates/counts even if not in active list
   useEffect(() => {
     if (!client) return;
-    
+
     const watchGlobalChannels = async () => {
       const channelsToWatch = [ANNOUNCEMENTS_CHANNEL_ID, SOCIAL_CORNER_CHANNEL_ID, SHARE_WINS_CHANNEL_ID];
-      if (squadChannelId) channelsToWatch.push(squadChannelId);
+
+      // Add ALL user squad channels (not just legacy squadChannelId)
+      for (const channelId of allUserSquadChannelIds) {
+        if (!channelsToWatch.includes(channelId)) {
+          channelsToWatch.push(channelId);
+        }
+      }
+      // Legacy fallback
+      if (squadChannelId && !channelsToWatch.includes(squadChannelId)) {
+        channelsToWatch.push(squadChannelId);
+      }
       if (coachingChannelId) channelsToWatch.push(coachingChannelId);
-      
+
       // Add program-based coaching channel (independent of legacy coachingChannelId)
       if (programCoachingChannelId && !channelsToWatch.includes(programCoachingChannelId)) {
         channelsToWatch.push(programCoachingChannelId);
       }
-      
+
       // Add all coach squad channels
       for (const coachSquad of coachSquads) {
         if (coachSquad.chatChannelId && !channelsToWatch.includes(coachSquad.chatChannelId)) {
           channelsToWatch.push(coachSquad.chatChannelId);
         }
       }
-      
+
       // Add org channels
       for (const orgChannel of orgChannels) {
         if (orgChannel.streamChannelId && !channelsToWatch.includes(orgChannel.streamChannelId)) {
           channelsToWatch.push(orgChannel.streamChannelId);
         }
       }
-      
+
       for (const channelId of channelsToWatch) {
         try {
           const channel = client.channel('messaging', channelId);
@@ -1107,9 +1117,9 @@ function ChatContent({
       }
       calculateUnreadCounts();
     };
-    
+
     watchGlobalChannels();
-  }, [client, squadChannelId, coachingChannelId, programCoachingChannelId, coachSquads, orgChannels, calculateUnreadCounts]);
+  }, [client, squadChannelId, coachingChannelId, programCoachingChannelId, coachSquads, orgChannels, calculateUnreadCounts, allUserSquadChannelIds]);
   
   // Listen for message events to update unread counts
   useEffect(() => {

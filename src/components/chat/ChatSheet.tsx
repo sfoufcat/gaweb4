@@ -144,9 +144,6 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                 }
               }
             }
-            // DEBUG: Log what channel IDs we collected
-            console.log('[ChatSheet] Squad channel IDs from /api/squad/me:', Array.from(squadChannelIds));
-            console.log('[ChatSheet] Raw squads data:', data.squads?.map((s: { squad?: { name?: string; chatChannelId?: string } }) => ({ name: s.squad?.name, chatChannelId: s.squad?.chatChannelId })));
             setUserSquadChannelIds(squadChannelIds);
           }
           setSquadChannelsLoaded(true);
@@ -208,14 +205,6 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
           { limit: 50, watch: true }
         );
 
-        // DEBUG: Log all channels returned by Stream Chat
-        const allChannelIds = channelResponse.map(c => c.id);
-        const squadChannels = allChannelIds.filter(id => id?.startsWith('squad-'));
-        console.log('[ChatSheet] Stream Chat returned channels:', allChannelIds);
-        console.log('[ChatSheet] Squad channels from Stream:', squadChannels);
-        console.log('[ChatSheet] userSquadChannelIds Set:', Array.from(userSquadChannelIds));
-        console.log('[ChatSheet] squadChannelsLoaded:', squadChannelsLoaded);
-
         const previews: ChannelPreview[] = [];
 
         for (const channel of channelResponse) {
@@ -268,7 +257,6 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
             if (type === 'squad') {
               // Only filter once squad data has loaded (prevents race condition)
               if (squadChannelsLoaded && !userSquadChannelIds.has(channelId)) {
-                console.log('[ChatSheet] Filtering out squad channel:', channelId, '(not in current org squads)');
                 continue; // Skip squad channels from other orgs
               }
             }
