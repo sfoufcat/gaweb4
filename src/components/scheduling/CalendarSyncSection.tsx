@@ -10,7 +10,7 @@ import {
   AlertCircle,
   RefreshCw,
 } from 'lucide-react';
-import { useNylasGrant } from '@/hooks/useNylasGrant';
+import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 
 // Google Calendar icon as inline SVG
 function GoogleCalendarIcon({ className }: { className?: string }) {
@@ -50,38 +50,47 @@ interface CalendarSyncSectionProps {
 /**
  * CalendarSyncSection
  *
- * UI for connecting/disconnecting external calendar via Nylas.
- * Shows connection status, sync settings, and allows OAuth connection.
+ * UI for connecting/disconnecting external calendar (Google or Microsoft).
+ * Shows connection status and allows OAuth connection.
  */
 export function CalendarSyncSection({ onSettingsChange }: CalendarSyncSectionProps) {
   const {
-    grant,
-    syncSettings,
+    integration,
     isLoading,
     error,
-    isConfigured,
-    connect,
+    isGoogleConfigured,
+    isMicrosoftConfigured,
+    connectGoogle,
+    connectMicrosoft,
     disconnect,
-    updateSyncSettings,
     refetch,
-  } = useNylasGrant();
+  } = useCalendarIntegration();
 
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [isConnecting, setIsConnecting] = useState<'google' | 'microsoft' | null>(null);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const handleConnect = async (provider: 'google' | 'microsoft') => {
+  const handleConnectGoogle = async () => {
     try {
-      setIsConnecting(true);
+      setIsConnecting('google');
       setLocalError(null);
-      // Nylas will determine the provider based on the OAuth flow
-      // The loginHint can be used to pre-fill email
-      await connect();
+      await connectGoogle();
     } catch (err) {
-      setLocalError(err instanceof Error ? err.message : 'Failed to connect calendar');
+      setLocalError(err instanceof Error ? err.message : 'Failed to connect Google Calendar');
     } finally {
-      setIsConnecting(false);
+      setIsConnecting(null);
+    }
+  };
+
+  const handleConnectMicrosoft = async () => {
+    try {
+      setIsConnecting('microsoft');
+      setLocalError(null);
+      await connectMicrosoft();
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : 'Failed to connect Outlook');
+    } finally {
+      setIsConnecting(null);
     }
   };
 
@@ -98,25 +107,8 @@ export function CalendarSyncSection({ onSettingsChange }: CalendarSyncSectionPro
     }
   };
 
-  const handleToggleSetting = async (setting: 'syncExternalBusy' | 'pushEventsToCalendar') => {
-    if (!syncSettings) return;
-
-    try {
-      setIsSavingSettings(true);
-      setLocalError(null);
-      await updateSyncSettings({
-        [setting]: !syncSettings[setting],
-      });
-      onSettingsChange?.();
-    } catch (err) {
-      setLocalError(err instanceof Error ? err.message : 'Failed to update settings');
-    } finally {
-      setIsSavingSettings(false);
-    }
-  };
-
-  // Not configured state (Nylas not set up on backend)
-  if (!isConfigured) {
+  // Not configured state (neither Google nor Microsoft set up)
+  if (!isGoogleConfigured && !isMicrosoftConfigured) {
     return (
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
@@ -170,7 +162,10 @@ export function CalendarSyncSection({ onSettingsChange }: CalendarSyncSectionPro
   }
 
   // Connected state
-  if (grant && syncSettings) {
+  if (integration?.connected) {
+    const providerName = integration.provider === 'google_calendar' ? 'Google Calendar' : 'Outlook';
+    const ProviderIcon = integration.provider === 'google_calendar' ? GoogleCalendarIcon : OutlookIcon;
+
     return (
       <div className="bg-white/60 dark:bg-[#171b22]/60 backdrop-blur-xl border border-[#e1ddd8] dark:border-[#262b35]/50 rounded-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
@@ -184,7 +179,7 @@ export function CalendarSyncSection({ onSettingsChange }: CalendarSyncSectionPro
                   Calendar Connected
                 </h3>
                 <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                  {syncSettings.connectedCalendarName || grant.calendarName || 'Your calendar is synced'}
+                  {integration.accountEmail || integration.calendarName || providerName}
                 </p>
               </div>
             </div>
@@ -207,51 +202,31 @@ export function CalendarSyncSection({ onSettingsChange }: CalendarSyncSectionPro
             </div>
           )}
 
-          {/* Sync Settings Toggles */}
-          <div className="space-y-3">
-            {/* Sync External Busy Times */}
-            <label className="flex items-center justify-between p-4 bg-[#f9f8f7] dark:bg-[#1e222a] rounded-xl cursor-pointer hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors">
-              <div className="flex-1 mr-4">
-                <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                  Sync busy times from calendar
-                </p>
+          {/* Connected Info */}
+          <div className="flex items-center gap-3 p-4 bg-[#f9f8f7] dark:bg-[#1e222a] rounded-xl">
+            <ProviderIcon className="w-8 h-8" />
+            <div>
+              <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
+                {providerName}
+              </p>
+              {integration.accountEmail && (
                 <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                  Block scheduling slots when you have events in your external calendar
+                  {integration.accountEmail}
                 </p>
-              </div>
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  checked={syncSettings.syncExternalBusy}
-                  onChange={() => handleToggleSetting('syncExternalBusy')}
-                  disabled={isSavingSettings}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-[#d1cdc8] dark:bg-[#3d4555] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-accent rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-accent"></div>
-              </div>
-            </label>
+              )}
+            </div>
+          </div>
 
-            {/* Push Events to Calendar */}
-            <label className="flex items-center justify-between p-4 bg-[#f9f8f7] dark:bg-[#1e222a] rounded-xl cursor-pointer hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors">
-              <div className="flex-1 mr-4">
-                <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8]">
-                  Add calls to my calendar
-                </p>
-                <p className="text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-                  Automatically add confirmed coaching calls to your external calendar
-                </p>
-              </div>
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  checked={syncSettings.pushEventsToCalendar}
-                  onChange={() => handleToggleSetting('pushEventsToCalendar')}
-                  disabled={isSavingSettings}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-[#d1cdc8] dark:bg-[#3d4555] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-accent rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-accent"></div>
-              </div>
-            </label>
+          {/* Features Info */}
+          <div className="space-y-2">
+            <div className="flex items-start gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+              <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+              <span>Your busy times are synced to block scheduling slots</span>
+            </div>
+            <div className="flex items-start gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+              <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+              <span>Coaching calls are added to your calendar automatically</span>
+            </div>
           </div>
 
           {/* Disconnect Button */}
@@ -320,31 +295,35 @@ export function CalendarSyncSection({ onSettingsChange }: CalendarSyncSectionPro
 
         {/* Connect Buttons */}
         <div className="flex flex-col sm:flex-row gap-3">
-          <button
-            onClick={() => handleConnect('google')}
-            disabled={isConnecting}
-            className="flex-1 flex items-center justify-center gap-3 px-6 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#f9f8f7] dark:hover:bg-[#262b35] rounded-xl font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] transition-colors disabled:opacity-50"
-          >
-            {isConnecting ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <GoogleCalendarIcon className="w-5 h-5" />
-            )}
-            Connect Google Calendar
-          </button>
+          {isGoogleConfigured && (
+            <button
+              onClick={handleConnectGoogle}
+              disabled={isConnecting !== null}
+              className="flex-1 flex items-center justify-center gap-3 px-6 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#f9f8f7] dark:hover:bg-[#262b35] rounded-xl font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] transition-colors disabled:opacity-50"
+            >
+              {isConnecting === 'google' ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <GoogleCalendarIcon className="w-5 h-5" />
+              )}
+              Connect Google Calendar
+            </button>
+          )}
 
-          <button
-            onClick={() => handleConnect('microsoft')}
-            disabled={isConnecting}
-            className="flex-1 flex items-center justify-center gap-3 px-6 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#f9f8f7] dark:hover:bg-[#262b35] rounded-xl font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] transition-colors disabled:opacity-50"
-          >
-            {isConnecting ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <OutlookIcon className="w-5 h-5" />
-            )}
-            Connect Outlook
-          </button>
+          {isMicrosoftConfigured && (
+            <button
+              onClick={handleConnectMicrosoft}
+              disabled={isConnecting !== null}
+              className="flex-1 flex items-center justify-center gap-3 px-6 py-3 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] hover:bg-[#f9f8f7] dark:hover:bg-[#262b35] rounded-xl font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] transition-colors disabled:opacity-50"
+            >
+              {isConnecting === 'microsoft' ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <OutlookIcon className="w-5 h-5" />
+              )}
+              Connect Outlook
+            </button>
+          )}
         </div>
 
         <p className="mt-4 text-xs text-center text-[#a7a39e] dark:text-[#7d8190]">

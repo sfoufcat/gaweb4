@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { notifyCallAccepted, notifyCallDeclined, notifyCallCounterProposed } from '@/lib/scheduling-notifications';
-import { createEvent, isNylasConfigured } from '@/lib/nylas';
-import type { UnifiedEvent, ProposedTime, SchedulingStatus, EventScheduledJob, EventJobType, CoachAvailability, NylasGrant, ClientCoachingData } from '@/types';
+import { getIntegration } from '@/lib/integrations/token-manager';
+import { createGoogleCalendarEvent } from '@/lib/integrations/google-calendar';
+import { createOutlookCalendarEvent } from '@/lib/integrations/outlook-calendar';
+import type { UnifiedEvent, ProposedTime, SchedulingStatus, EventScheduledJob, EventJobType, CoachAvailability, ClientCoachingData } from '@/types';
 
 /**
  * POST /api/scheduling/respond
@@ -126,12 +128,12 @@ export async function POST(request: NextRequest) {
       // Sync to external calendar if enabled
       if (event.organizationId) {
         try {
-          await syncEventToNylas(eventRef.id, {
+          await syncEventToCalendar(eventRef.id, {
             ...event,
             ...updateData,
           } as UnifiedEvent);
         } catch (syncErr) {
-          console.error('[SCHEDULING_RESPOND] Failed to sync to Nylas:', syncErr);
+          console.error('[SCHEDULING_RESPOND] Failed to sync to external calendar:', syncErr);
           // Don't fail the request if sync fails
         }
       }
@@ -287,17 +289,11 @@ async function createReminderJobs(eventId: string, event: UnifiedEvent) {
 }
 
 /**
- * Sync a confirmed event to the coach's external calendar via Nylas
+ * Sync a confirmed event to the coach's external calendar (Google or Microsoft)
  */
-async function syncEventToNylas(eventId: string, event: UnifiedEvent) {
-  // Check if Nylas is configured
-  if (!isNylasConfigured) {
-    console.log('[SCHEDULING_RESPOND] Nylas not configured, skipping sync');
-    return;
-  }
-
+async function syncEventToCalendar(eventId: string, event: UnifiedEvent) {
   if (!event.organizationId) {
-    console.log('[SCHEDULING_RESPOND] No organization ID, skipping Nylas sync');
+    console.log('[SCHEDULING_RESPOND] No organization ID, skipping calendar sync');
     return;
   }
 
@@ -308,47 +304,29 @@ async function syncEventToNylas(eventId: string, event: UnifiedEvent) {
     .get();
 
   if (!availabilityDoc.exists) {
-    console.log('[SCHEDULING_RESPOND] No availability settings, skipping Nylas sync');
+    console.log('[SCHEDULING_RESPOND] No availability settings, skipping calendar sync');
     return;
   }
 
   const availability = availabilityDoc.data() as CoachAvailability;
 
   // Check if calendar sync is enabled
-  if (!availability.pushEventsToCalendar || !availability.nylasGrantId) {
+  if (!availability.pushEventsToCalendar) {
     console.log('[SCHEDULING_RESPOND] Calendar sync not enabled, skipping');
     return;
   }
 
-  // Get the Nylas grant for the coach
-  // Grant is stored per org+user, we need to find it by grant ID
-  const grantsQuery = await adminDb
-    .collection('nylas_grants')
-    .where('grantId', '==', availability.nylasGrantId)
-    .where('isActive', '==', true)
-    .limit(1)
-    .get();
+  // Try Google Calendar first
+  const googleIntegration = await getIntegration(event.organizationId, 'google_calendar');
+  const outlookIntegration = await getIntegration(event.organizationId, 'outlook_calendar');
 
-  if (grantsQuery.empty) {
-    console.log('[SCHEDULING_RESPOND] No active Nylas grant found');
+  if (!googleIntegration?.status?.includes('connected') && !outlookIntegration?.status?.includes('connected')) {
+    console.log('[SCHEDULING_RESPOND] No calendar connected, skipping sync');
     return;
   }
-
-  const grant = grantsQuery.docs[0].data() as NylasGrant;
-
-  if (!grant.calendarId) {
-    console.log('[SCHEDULING_RESPOND] No calendar ID in grant');
-    return;
-  }
-
-  // Convert event times to Unix timestamps
-  const startTime = Math.floor(new Date(event.startDateTime).getTime() / 1000);
-  const endTime = event.endDateTime
-    ? Math.floor(new Date(event.endDateTime).getTime() / 1000)
-    : startTime + (event.durationMinutes || 60) * 60;
 
   // Get participant emails
-  const participantEmails: Array<{ email: string; name?: string }> = [];
+  const attendees: Array<{ email: string; name?: string }> = [];
   for (const attendeeId of event.attendeeIds) {
     if (attendeeId !== event.hostUserId) {
       const userDoc = await adminDb.collection('users').doc(attendeeId).get();
@@ -359,37 +337,57 @@ async function syncEventToNylas(eventId: string, event: UnifiedEvent) {
           ? `${userData.firstName} ${userData.lastName}`
           : userData?.name;
         if (email) {
-          participantEmails.push({ email, name });
+          attendees.push({ email, name });
         }
       }
     }
   }
 
-  // Create the event in Nylas
-  const result = await createEvent(
-    grant.grantId,
-    grant.calendarId,
-    {
-      title: event.title,
-      description: event.description,
-      location: event.meetingLink || event.locationLabel,
-      startTime,
-      endTime,
-      participants: participantEmails,
-    }
-  );
+  // Calculate end time if not provided
+  const endDateTime = event.endDateTime ||
+    new Date(new Date(event.startDateTime).getTime() + (event.durationMinutes || 60) * 60 * 1000).toISOString();
 
-  // Update the event with Nylas sync info
-  await adminDb.collection('events').doc(eventId).update({
-    nylasEventId: result.id,
-    syncedToNylas: true,
-    nylasCalendarId: grant.calendarId,
-    // If Nylas auto-created a conference link, use it
-    ...(result.conferenceUrl && !event.meetingLink ? { meetingLink: result.conferenceUrl } : {}),
-    updatedAt: new Date().toISOString(),
-  });
+  // Build the internal event for calendar sync
+  const internalEvent = {
+    id: eventId,
+    type: 'coaching_session' as const,
+    title: event.title,
+    description: event.description,
+    location: event.meetingLink || event.locationLabel,
+    startDateTime: event.startDateTime,
+    endDateTime,
+    timezone: event.timezone,
+    attendees,
+  };
 
-  console.log(`[SCHEDULING_RESPOND] Synced event ${eventId} to Nylas: ${result.id}`);
+  // Sync to the connected calendar
+  let result: { success: boolean; externalEventId?: string; error?: string };
+  let provider: 'google' | 'outlook';
+
+  if (googleIntegration?.status === 'connected') {
+    provider = 'google';
+    result = await createGoogleCalendarEvent(event.organizationId, internalEvent);
+  } else if (outlookIntegration?.status === 'connected') {
+    provider = 'outlook';
+    result = await createOutlookCalendarEvent(event.organizationId, internalEvent);
+  } else {
+    console.log('[SCHEDULING_RESPOND] No active calendar integration found');
+    return;
+  }
+
+  if (result.success && result.externalEventId) {
+    // Update the event with calendar sync info
+    await adminDb.collection('events').doc(eventId).update({
+      externalCalendarEventId: result.externalEventId,
+      externalCalendarProvider: provider === 'google' ? 'google_calendar' : 'outlook_calendar',
+      syncedToExternalCalendar: true,
+      updatedAt: new Date().toISOString(),
+    });
+
+    console.log(`[SCHEDULING_RESPOND] Synced event ${eventId} to ${provider} calendar: ${result.externalEventId}`);
+  } else {
+    console.error(`[SCHEDULING_RESPOND] Failed to sync event to ${provider} calendar:`, result.error);
+  }
 }
 
 /**

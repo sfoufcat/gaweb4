@@ -6,17 +6,18 @@ import { ReactNode } from 'react';
  * ConditionalMain
  *
  * Main content wrapper that provides consistent layout.
- * The sidebar padding is now handled via CSS :has() selector in globals.css
- * to avoid hydration mismatch and layout shift issues.
- *
- * Background colors come from html/body elements in layout.tsx,
- * which extend behind iOS Safari toolbar via viewport-fit: cover.
+ * Uses same iOS Safari pattern as CoachLandingPage:
+ * - Fixed background div extends behind Safari toolbar
+ * - Content has `relative` to create stacking context above the -z-10 bg
  */
 export function ConditionalMain({ children }: { children: ReactNode }) {
   return (
-    <main className="min-h-dvh pb-24 lg:pb-0">
-      {children}
-    </main>
+    <>
+      <div className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] -z-10" />
+      <main className="relative min-h-dvh pb-24 lg:pb-0">
+        {children}
+      </main>
+    </>
   );
 }
 

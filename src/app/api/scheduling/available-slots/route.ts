@@ -172,10 +172,11 @@ export async function GET(request: NextRequest) {
 
     // Get external calendar busy times if enabled
     let externalBusyTimes: Array<{ start: string; end: string }> = [];
-    if (availability.syncExternalBusy && availability.nylasGrantId) {
+    if (availability.syncExternalBusy) {
       try {
+        // Use the new unified calendar busy-times endpoint (supports Google and Microsoft)
         const busyResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/nylas/busy-times?startDate=${rangeStart.toISOString()}&endDate=${rangeEnd.toISOString()}`,
+          `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/calendar/busy-times?startDate=${rangeStart.toISOString()}&endDate=${rangeEnd.toISOString()}`,
           {
             headers: {
               'Content-Type': 'application/json',

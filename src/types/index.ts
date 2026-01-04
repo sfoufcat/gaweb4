@@ -4761,8 +4761,9 @@ export interface CoachAvailability {
   advanceBookingDays: number;       // How far in advance clients can book (default 30)
   minNoticeHours: number;           // Minimum hours notice for booking (default 24)
   
-  // Nylas integration
-  nylasGrantId?: string;            // Nylas grant ID for this coach
+  // Calendar integration
+  /** @deprecated Use direct calendar integration in organizations/{orgId}/integrations instead */
+  nylasGrantId?: string;            // Legacy Nylas grant ID (deprecated)
   connectedCalendarId?: string;     // Which calendar is synced
   connectedCalendarName?: string;   // Display name of connected calendar
   syncExternalBusy: boolean;        // Block times from external calendar
@@ -4800,6 +4801,10 @@ export interface CoachCallSettings {
 /**
  * NylasGrant - Stores Nylas OAuth grant information
  * Stored in Firestore 'nylas_grants/{odId}_{userId}'
+ *
+ * @deprecated Nylas integration has been replaced with direct Google/Microsoft OAuth.
+ * Calendar integrations are now stored in organizations/{orgId}/integrations.
+ * This type is kept only for backward compatibility during migration.
  */
 export interface NylasGrant {
   id: string;                       // Format: `${odId}_${userId}`
