@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
     let clientName: string | undefined;
     let clientAvatarUrl: string | undefined;
 
-    if (body.eventType === 'coaching_1on1' && body.attendeeIds?.length > 0) {
+    if (body.eventType === 'coaching_1on1' && body.attendeeIds?.length > 0 && body.attendeeIds[0]) {
       // The client is the attendee (not the host/coach)
       clientUserId = body.attendeeIds[0];
       const clientDoc = await adminDb.collection('users').doc(clientUserId).get();
