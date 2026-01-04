@@ -71,6 +71,12 @@ export async function GET(request: NextRequest) {
       .doc(orgId)
       .get();
 
+    console.log('[AVAILABLE_SLOTS] orgId:', orgId);
+    console.log('[AVAILABLE_SLOTS] Document exists:', availabilityDoc.exists);
+    if (availabilityDoc.exists) {
+      console.log('[AVAILABLE_SLOTS] Document data:', JSON.stringify(availabilityDoc.data(), null, 2));
+    }
+
     let availability: CoachAvailability;
     if (!availabilityDoc.exists) {
       // Use defaults
@@ -150,6 +156,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    console.log('[AVAILABLE_SLOTS] weeklySchedule:', JSON.stringify(availability.weeklySchedule, null, 2));
+    console.log('[AVAILABLE_SLOTS] timezone:', availability.timezone);
+    console.log('[AVAILABLE_SLOTS] minNoticeHours:', availability.minNoticeHours);
+    console.log('[AVAILABLE_SLOTS] blockedSlots count:', availability.blockedSlots?.length || 0);
+    console.log('[AVAILABLE_SLOTS] existingEvents count:', existingEvents.length);
+    console.log('[AVAILABLE_SLOTS] Date range:', startDate, 'to', endDate);
+
     // Calculate available slots
     const availableSlots = calculateAvailableSlots(
       rangeStart,
@@ -160,6 +173,11 @@ export async function GET(request: NextRequest) {
       buffer,
       externalBusyTimes
     );
+
+    console.log('[AVAILABLE_SLOTS] Generated slots count:', availableSlots.length);
+    if (availableSlots.length > 0) {
+      console.log('[AVAILABLE_SLOTS] First slot:', availableSlots[0]);
+    }
 
     return NextResponse.json({
       slots: availableSlots,
@@ -254,17 +272,29 @@ function calculateAvailableSlots(
   const minNoticeMs = availability.minNoticeHours * 60 * 60 * 1000;
   const timezone = availability.timezone || 'America/New_York';
 
+  console.log('[CALC_SLOTS] now:', now.toISOString());
+  console.log('[CALC_SLOTS] minNoticeMs:', minNoticeMs, '(', availability.minNoticeHours, 'hours)');
+  console.log('[CALC_SLOTS] Earliest allowed slot:', new Date(now.getTime() + minNoticeMs).toISOString());
+
   // Work with date strings (YYYY-MM-DD) to avoid timezone confusion
   // The client sends dates like "2026-01-04" which represent the date they see
   const startDateStr = rangeStart.toISOString().split('T')[0];
   const endDateStr = rangeEnd.toISOString().split('T')[0];
 
+  console.log('[CALC_SLOTS] Date range strings:', startDateStr, 'to', endDateStr);
+
   let currentDateStr = startDateStr;
+  let daysProcessed = 0;
 
   while (compareDateStrings(currentDateStr, endDateStr) <= 0) {
     // Get day of week directly from the date string (avoids timezone confusion)
     const dayOfWeek = getDayOfWeekFromDateString(currentDateStr);
     const daySchedule = availability.weeklySchedule[dayOfWeek] || [];
+
+    if (daysProcessed < 3) {
+      console.log(`[CALC_SLOTS] Day ${currentDateStr} (dayOfWeek=${dayOfWeek}):`, daySchedule.length, 'time slots');
+    }
+    daysProcessed++;
 
     for (const timeSlot of daySchedule) {
       const [startHour, startMin] = timeSlot.start.split(':').map(Number);
@@ -274,12 +304,23 @@ function calculateAvailableSlots(
       const slotStart = createDateInTimezone(currentDateStr, startHour, startMin, timezone);
       const slotEnd = createDateInTimezone(currentDateStr, endHour, endMin, timezone);
 
+      if (daysProcessed <= 3) {
+        console.log(`[CALC_SLOTS] TimeSlot ${timeSlot.start}-${timeSlot.end} -> UTC: ${slotStart.toISOString()} to ${slotEnd.toISOString()}`);
+      }
+
       let currentSlotStart = new Date(slotStart);
+      let slotAttempts = 0;
 
       while (currentSlotStart.getTime() + duration * 60 * 1000 <= slotEnd.getTime()) {
         const currentSlotEnd = new Date(currentSlotStart.getTime() + duration * 60 * 1000);
+        slotAttempts++;
 
-        if (currentSlotStart.getTime() > now.getTime() + minNoticeMs) {
+        const passesMinNotice = currentSlotStart.getTime() > now.getTime() + minNoticeMs;
+        if (daysProcessed <= 3 && slotAttempts <= 2) {
+          console.log(`[CALC_SLOTS] Slot attempt: ${currentSlotStart.toISOString()}, passesMinNotice: ${passesMinNotice}`);
+        }
+
+        if (passesMinNotice) {
           const isBlocked = availability.blockedSlots.some(blocked => {
             const blockedStart = new Date(blocked.start);
             const blockedEnd = new Date(blocked.end);

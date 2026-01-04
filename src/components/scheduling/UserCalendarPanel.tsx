@@ -339,67 +339,69 @@ function EventItem({ event, onRespond, onCancel, onReschedule, onCounterPropose,
             </div>
           )}
 
-          {/* Action buttons */}
-          <div className="flex flex-wrap gap-2 mt-3">
-            {/* My Request actions - Cancel button */}
-            {isMyRequest && needsResponse && onCancel && (
-              <button
-                onClick={() => onCancel(event.id)}
-                className="flex items-center gap-1 px-3 py-1.5 bg-[#f3f1ef] dark:bg-[#262b35] text-red-600 dark:text-red-400 rounded-lg text-xs font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-              >
-                <XCircle className="w-3 h-3" />
-                Cancel Request
-              </button>
-            )}
+          {/* Action buttons for non-confirmed states */}
+          {!isConfirmed && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {/* My Request actions - Cancel button */}
+              {isMyRequest && needsResponse && onCancel && (
+                <button
+                  onClick={() => onCancel(event.id)}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-[#f3f1ef] dark:bg-[#262b35] text-red-600 dark:text-red-400 rounded-lg text-xs font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
+                  <XCircle className="w-3 h-3" />
+                  Cancel Request
+                </button>
+              )}
 
-            {/* Counter-propose button for responding to others' proposals */}
-            {!isMyRequest && needsResponse && !isSuccess && !isAccepting && onCounterPropose && (
-              <button
-                onClick={() => onCounterPropose(event.id)}
-                className="flex items-center gap-2 px-4 py-2 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl text-sm font-medium hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-all duration-200 hover:shadow-sm"
-              >
-                <CalendarClock className="w-4 h-4" />
-                Propose Different Time
-              </button>
-            )}
+              {/* Counter-propose button for responding to others' proposals */}
+              {!isMyRequest && needsResponse && !isSuccess && !isAccepting && onCounterPropose && (
+                <button
+                  onClick={() => onCounterPropose(event.id)}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl text-sm font-medium hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-all duration-200 hover:shadow-sm"
+                >
+                  <CalendarClock className="w-4 h-4" />
+                  Propose Different Time
+                </button>
+              )}
+            </div>
+          )}
 
-            {/* Confirmed event actions */}
-            {isConfirmed && (
-              <div className="w-full space-y-2">
-                {event.meetingLink && (
-                  <a
-                    href={event.meetingLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-brand-accent to-brand-accent/90 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:opacity-90 active:scale-95 transition-all duration-200"
+          {/* Confirmed event actions - full width outside flex container */}
+          {isConfirmed && (
+            <div className="mt-3 space-y-2">
+              {event.meetingLink && (
+                <a
+                  href={event.meetingLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-brand-accent to-brand-accent/90 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:opacity-90 active:scale-95 transition-all duration-200"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Join Call
+                </a>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                {onReschedule && (
+                  <button
+                    onClick={() => onReschedule(event)}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl text-sm font-medium hover:bg-[#e8e4df] dark:hover:bg-[#313746] hover:shadow-sm active:scale-95 transition-all duration-200"
                   >
-                    <ExternalLink className="w-4 h-4" />
-                    Join Call
-                  </a>
+                    <RefreshCw className="w-4 h-4" />
+                    Reschedule
+                  </button>
                 )}
-                <div className="grid grid-cols-2 gap-2">
-                  {onReschedule && (
-                    <button
-                      onClick={() => onReschedule(event)}
-                      className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl text-sm font-medium hover:bg-[#e8e4df] dark:hover:bg-[#313746] hover:shadow-sm active:scale-95 transition-all duration-200"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                      Reschedule
-                    </button>
-                  )}
-                  {onCancel && (
-                    <button
-                      onClick={() => setShowCancelConfirm(true)}
-                      className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-red-600 dark:text-red-400 rounded-xl text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 hover:shadow-sm active:scale-95 transition-all duration-200"
-                    >
-                      <XCircle className="w-4 h-4" />
-                      Cancel
-                    </button>
-                  )}
-                </div>
+                {onCancel && (
+                  <button
+                    onClick={() => setShowCancelConfirm(true)}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-red-600 dark:text-red-400 rounded-xl text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 hover:shadow-sm active:scale-95 transition-all duration-200"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    Cancel
+                  </button>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Cancel confirmation dialog - outside flex container for full width */}
           {showCancelConfirm && (
