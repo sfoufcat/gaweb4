@@ -173,6 +173,22 @@ export async function POST(request: NextRequest) {
       : 'Unknown';
     const hostAvatarUrl = userData?.profileImageUrl || userData?.imageUrl || undefined;
 
+    // For 1:1 coaching calls, fetch client info from attendeeIds
+    let clientUserId: string | undefined;
+    let clientName: string | undefined;
+    let clientAvatarUrl: string | undefined;
+
+    if (body.eventType === 'coaching_1on1' && body.attendeeIds?.length > 0) {
+      // The client is the attendee (not the host/coach)
+      clientUserId = body.attendeeIds[0];
+      const clientDoc = await adminDb.collection('users').doc(clientUserId).get();
+      if (clientDoc.exists) {
+        const clientData = clientDoc.data();
+        clientName = `${clientData?.firstName || ''} ${clientData?.lastName || ''}`.trim() || 'Client';
+        clientAvatarUrl = clientData?.profileImageUrl || clientData?.imageUrl || undefined;
+      }
+    }
+
     // Determine if user is a coach
     const role = (sessionClaims?.publicMetadata as { role?: string })?.role;
     const isCoachLed = role === 'coach' || role === 'super_admin' || role === 'admin';
@@ -243,7 +259,12 @@ export async function POST(request: NextRequest) {
       hostName: body.hostName || hostName,
       hostAvatarUrl: body.hostAvatarUrl || hostAvatarUrl,
       isCoachLed: body.isCoachLed ?? isCoachLed,
-      
+
+      // Client info for 1:1 coaching calls
+      clientUserId: body.clientUserId || clientUserId,
+      clientName: body.clientName || clientName,
+      clientAvatarUrl: body.clientAvatarUrl || clientAvatarUrl,
+
       attendeeIds: body.attendeeIds || [],
       maxAttendees: body.maxAttendees || undefined,
       

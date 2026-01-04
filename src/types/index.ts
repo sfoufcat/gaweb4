@@ -4094,7 +4094,14 @@ export interface UnifiedEvent {
   hostName: string;
   hostAvatarUrl?: string;
   isCoachLed: boolean;        // Coach-managed vs. peer-organized
-  
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CLIENT (for 1:1 coaching calls)
+  // ═══════════════════════════════════════════════════════════════════════════
+  clientUserId?: string;      // The client in a 1:1 coaching relationship
+  clientName?: string;        // Client's display name
+  clientAvatarUrl?: string;   // Client's profile image
+
   // ═══════════════════════════════════════════════════════════════════════════
   // PARTICIPANTS
   // ═══════════════════════════════════════════════════════════════════════════
@@ -4212,9 +4219,11 @@ export interface EventScheduledJob {
   // For 1-on-1 coaching
   hostUserId?: string;
   hostName?: string;
+  hostAvatarUrl?: string;
   clientUserId?: string;
   clientName?: string;
-  
+  clientAvatarUrl?: string;
+
   // Execution state
   executed: boolean;
   executedAt?: string;

@@ -20,6 +20,7 @@ import {
   Send,
   RefreshCw,
 } from 'lucide-react';
+import { useUser } from '@clerk/nextjs';
 import { useSchedulingEvents, useSchedulingActions, usePendingProposals } from '@/hooks/useScheduling';
 import { RescheduleCallModal } from './RescheduleCallModal';
 import { CounterProposeModal } from './CounterProposeModal';
@@ -76,6 +77,7 @@ const EVENT_TYPE_INFO: Record<string, { label: string; icon: typeof Video; color
 
 interface EventItemProps {
   event: UnifiedEvent;
+  currentUserId?: string;
   onRespond?: (eventId: string, action: 'accept' | 'decline', selectedTimeId?: string) => Promise<boolean>;
   onCancel?: (eventId: string, reason?: string) => void;
   onReschedule?: (event: UnifiedEvent) => void;
@@ -84,7 +86,7 @@ interface EventItemProps {
   hideDate?: boolean;
 }
 
-function EventItem({ event, onRespond, onCancel, onReschedule, onCounterPropose, isMyRequest, hideDate }: EventItemProps) {
+function EventItem({ event, currentUserId, onRespond, onCancel, onReschedule, onCounterPropose, isMyRequest, hideDate }: EventItemProps) {
   const [acceptedTimeId, setAcceptedTimeId] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -200,9 +202,24 @@ function EventItem({ event, onRespond, onCancel, onReschedule, onCounterPropose,
   };
 
   // Get avatar URL and initials for display
-  const avatarUrl = event.hostAvatarUrl;
-  const initials = displayTitle
-    ? displayTitle.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+  // For 1:1 coaching calls, show the "other person" (coach sees client, client sees coach)
+  const isCoaching1on1 = event.eventType === 'coaching_1on1';
+  const isViewerHost = isCoaching1on1 && currentUserId === event.hostUserId;
+  const avatarUrl = isCoaching1on1
+    ? (isViewerHost ? event.clientAvatarUrl : event.hostAvatarUrl)
+    : event.hostAvatarUrl;
+
+  // For 1:1 calls, show the other person's name in display title
+  let finalDisplayTitle = displayTitle;
+  if (isCoaching1on1) {
+    const otherPersonName = isViewerHost
+      ? (event.clientName || displayTitle)
+      : (event.hostName || displayTitle);
+    finalDisplayTitle = otherPersonName;
+  }
+
+  const initials = finalDisplayTitle
+    ? finalDisplayTitle.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
     : 'U';
 
   return (
@@ -212,7 +229,7 @@ function EventItem({ event, onRespond, onCancel, onReschedule, onCounterPropose,
         {avatarUrl ? (
           <img
             src={avatarUrl}
-            alt={displayTitle}
+            alt={finalDisplayTitle}
             className="w-11 h-11 rounded-xl object-cover shadow-sm"
           />
         ) : (
@@ -228,7 +245,7 @@ function EventItem({ event, onRespond, onCancel, onReschedule, onCounterPropose,
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] line-clamp-1">
-                {displayTitle}
+                {finalDisplayTitle}
               </p>
               <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
                 {typeInfo.label}
@@ -562,6 +579,8 @@ function EventItem({ event, onRespond, onCancel, onReschedule, onCounterPropose,
  * - Pending proposals to respond to
  */
 export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
+  const { user } = useUser();
+  const currentUserId = user?.id;
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [counterProposeEvent, setCounterProposeEvent] = useState<UnifiedEvent | null>(null);
   const [rescheduleEvent, setRescheduleEvent] = useState<UnifiedEvent | null>(null);
@@ -801,6 +820,7 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
                   <EventItem
                     key={event.id}
                     event={event}
+                    currentUserId={currentUserId}
                     onRespond={handleRespond}
                     onCounterPropose={handleCounterPropose}
                   />

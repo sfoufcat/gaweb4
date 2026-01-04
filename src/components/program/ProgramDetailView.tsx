@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Phone, ChevronDown, ExternalLink, Users, Loader2, Calendar, Clock, MapPin, Target, StickyNote, BookOpen } from 'lucide-react';
+import { useUser } from '@clerk/nextjs';
 import type { EnrolledProgramWithDetails } from '@/hooks/useMyPrograms';
 import { useProgramContent } from '@/hooks/useProgramContent';
 import { useProgramCoachingData } from '@/hooks/useProgramCoachingData';
@@ -45,6 +46,7 @@ export function ProgramDetailView({
   onRefresh,
 }: ProgramDetailViewProps) {
   const router = useRouter();
+  const { user } = useUser();
   const { isDemoMode, openSignupModal } = useDemoMode();
   const {
     program,
@@ -72,7 +74,19 @@ export function ProgramDetailView({
 
   // Use pre-fetched data (immediate, no flash) or fall back to hook data
   const nextCall = prefetchedNextCall || hookNextCall;
-  const chatChannelId = prefetchedCoachingData?.chatChannelId || hookChatChannelId;
+  const storedChatChannelId = prefetchedCoachingData?.chatChannelId || hookChatChannelId;
+  
+  // For 1:1 programs: compute fallback coaching channel ID if not stored
+  // Channel format: coaching-{userId}-{coachId}
+  const fallbackCoachingChannelId = useMemo(() => {
+    if (!isGroup && user?.id && coachingCoach?.id) {
+      return `coaching-${user.id}-${coachingCoach.id}`;
+    }
+    return null;
+  }, [isGroup, user?.id, coachingCoach?.id]);
+  
+  // Use stored channel ID or fallback to computed one
+  const chatChannelId = storedChatChannelId || fallbackCoachingChannelId;
 
   // Merge coaching data: prefer pre-fetched, fall back to hook data
   const coachingData = prefetchedCoachingData

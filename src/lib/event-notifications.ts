@@ -100,7 +100,10 @@ export async function scheduleEventJobs(event: UnifiedEvent): Promise<void> {
       ...(event.eventType === 'coaching_1on1' && {
         hostUserId: event.hostUserId,
         hostName: event.hostName,
-        clientUserId: event.attendeeIds[0],
+        hostAvatarUrl: event.hostAvatarUrl,
+        clientUserId: event.clientUserId || event.attendeeIds[0],
+        clientName: event.clientName,
+        clientAvatarUrl: event.clientAvatarUrl,
       }),
       
       executed: false,
@@ -290,9 +293,11 @@ function getNotificationType(jobType: EventJobType, eventType: string): Notifica
 function getActionRoute(job: EventScheduledJob): string {
   switch (job.eventType) {
     case 'squad_call':
-      return '/squad';
+      // Navigate to program page if squad belongs to a program, otherwise /squad
+      return job.programId ? '/program' : '/squad';
     case 'coaching_1on1':
-      return '/my-coach';
+      // Navigate to the individual (1:1) program page
+      return job.programId ? `/program?programId=${job.programId}` : '/program';
     default:
       return `/discover/events/${job.eventId}`;
   }
@@ -326,7 +331,17 @@ async function sendEventNotification({
 
   let title: string;
   let body: string;
-  const eventTitle = job.eventTitle;
+
+  // For 1:1 coaching calls, show the "other person's" name
+  // Coach sees client name, client sees coach name
+  let eventTitle = job.eventTitle;
+  if (job.eventType === 'coaching_1on1') {
+    const isUserTheHost = userId === job.hostUserId;
+    const otherPersonName = isUserTheHost
+      ? (job.clientName || 'Client')
+      : (job.hostName || 'Coach');
+    eventTitle = `1:1 Call with ${otherPersonName}`;
+  }
 
   switch (job.jobType) {
     case 'notification_24h':
