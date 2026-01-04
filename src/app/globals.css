@@ -546,8 +546,8 @@ html.dark::before {
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   overflow-x: hidden;
-  /* NO padding - let content extend edge-to-edge behind Safari toolbar */
-  /* Individual components handle safe area insets as needed */
+  position: relative;
+  z-index: 0;
 }
 
 /* Dark mode skeleton / loading state styles */
