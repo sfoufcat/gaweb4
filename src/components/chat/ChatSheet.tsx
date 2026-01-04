@@ -264,33 +264,15 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
           // Skip filtering if in platform mode (show all channels)
           if (!isPlatformMode) {
             // Filter squad channels - only show ones in user's current org
-            // Only filter if squad channel data has loaded (prevents race condition)
+            // userSquadChannelIds comes from /api/squad/me which already filters by org
             if (type === 'squad') {
-              // Strict filtering: must be in userSquadChannelIds
-              // Exception: If this is the auto-selected channel (from button click), always allow it
-              const isAutoSelected = initialChannelId === channelId;
-              
-              if (squadChannelsLoaded && !userSquadChannelIds.has(channelId) && !isAutoSelected) {
-                // Double check: if channel has organizationId in metadata, check that
-                const channelOrgId = channelData?.organizationId as string;
-                // If channel has org ID and it doesn't match current context -> filter out
-                // If it HAS org ID and it MATCHES -> allow it (even if not in squad list)
-                // If it DOESN'T have org ID -> we rely on userSquadChannelIds (safe default)
-                
-                // For now, to fix the "missing squad" issue, we'll log but ALLOW if the user is a member
-                // and we can't prove it's from another org.
-                // But to be safe against cross-tenant, we should ideally verify.
-                // Given the user report, we'll relax this to allow if user is member.
-                
-                // console.log('[ChatSheet] FILTERING OUT squad channel:', channelId, '(not in userSquadChannelIds)');
-                // continue; 
-                
-                // RELAXED FILTER: If we are a member (which we are, to get here), allow it.
-                // This assumes Stream membership is the source of truth for access.
-                // To prevent cross-org leakage, we trust that enrollments manage Stream membership correctly.
+              // Only filter once squad data has loaded (prevents race condition)
+              if (squadChannelsLoaded && !userSquadChannelIds.has(channelId)) {
+                console.log('[ChatSheet] Filtering out squad channel:', channelId, '(not in current org squads)');
+                continue; // Skip squad channels from other orgs
               }
             }
-            
+
             // Filter org channels (like announcements, social corner) - only show current org
             // These have format: org-{orgId}-{type} or legacy format
             if (channelId.startsWith('org-')) {
@@ -298,18 +280,18 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                 continue; // Skip org channels from other orgs
               }
             }
-            
+
             // Legacy global channel IDs (announcements, social-corner, share-wins)
             // These are now replaced by org-specific channels, but skip them unless in orgChannelIds
-            if (channelId === ANNOUNCEMENTS_CHANNEL_ID || 
-                channelId === SOCIAL_CORNER_CHANNEL_ID || 
+            if (channelId === ANNOUNCEMENTS_CHANNEL_ID ||
+                channelId === SOCIAL_CORNER_CHANNEL_ID ||
                 channelId === SHARE_WINS_CHANNEL_ID) {
               // Only show if they're in the current org's channel list (for backward compat)
               if (orgChannelIds.size > 0 && !orgChannelIds.has(channelId)) {
                 continue;
               }
             }
-            
+
             // Coaching channels - keep them (they're per-user so should be fine)
             // DMs - keep them (person-to-person, not org-specific)
           }

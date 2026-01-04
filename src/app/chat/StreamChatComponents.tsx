@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import { useState, useEffect, useCallback, createContext, useContext, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -777,17 +777,28 @@ function ChatContent({
   const [coachingLastMessage, setCoachingLastMessage] = useState<Date | null>(null);
   
   // Get user's squad(s) for pinned squad chat (for regular users)
-  // Supports dual squad membership - users can have both a premium and standard squad
-  const { 
-    squad, 
-    premiumSquad, 
-    standardSquad, 
+  // Supports multi-squad membership - users can be in multiple squads
+  const {
+    squad,
+    squads,  // All squads user is in
+    premiumSquad,
+    standardSquad,
     hasBothSquads,
-    isLoading: isSquadLoading 
+    isLoading: isSquadLoading
   } = useSquad();
   const squadChannelId = squad?.chatChannelId;
   const premiumSquadChannelId = premiumSquad?.chatChannelId;
   const standardSquadChannelId = standardSquad?.chatChannelId;
+  // Build set of ALL user squad channel IDs (not just premium/standard)
+  const allUserSquadChannelIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const s of squads) {
+      if (s.chatChannelId) {
+        ids.add(s.chatChannelId);
+      }
+    }
+    return ids;
+  }, [squads]);
   
   // Get all squads a coach manages (for coaches with multiple squads)
   const { squads: coachSquads, isLoading: isCoachSquadsLoading, isCoach } = useCoachSquads();
@@ -921,8 +932,9 @@ function ChatContent({
         .map(s => s.chatChannelId!)
     );
     
-    // Build set of user's own squad channel IDs
-    const userSquadChannelIds = new Set<string>();
+    // Build set of user's own squad channel IDs (from ALL squads, not just premium/standard)
+    const userSquadChannelIds = new Set<string>(allUserSquadChannelIds);
+    // Also add legacy fields for backward compatibility
     if (premiumSquadChannelId) userSquadChannelIds.add(premiumSquadChannelId);
     if (standardSquadChannelId) userSquadChannelIds.add(standardSquadChannelId);
     if (squadChannelId) userSquadChannelIds.add(squadChannelId);
@@ -1054,7 +1066,7 @@ function ChatContent({
     setOrphanCoachingChannels(orphanCoaching);
     setOrgChannelUnreads(orgChannelUnreadMap);
     setOrgChannelLastMessages(orgChannelLastMessageMap);
-  }, [client, coachSquads, squadChannelId, premiumSquadChannelId, standardSquadChannelId, coachingChannelId, programCoachingChannelId, orgChannels]);
+  }, [client, coachSquads, squadChannelId, premiumSquadChannelId, standardSquadChannelId, coachingChannelId, programCoachingChannelId, orgChannels, allUserSquadChannelIds]);
 
   // Watch global channels to ensure we get updates/counts even if not in active list
   useEffect(() => {
