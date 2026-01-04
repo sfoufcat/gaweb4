@@ -868,6 +868,7 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
                             <EventItem
                               key={event.id}
                               event={event}
+                              currentUserId={currentUserId}
                               onRespond={handleRespond}
                               onCancel={isMyRequest ? handleCancelRequest : handleCancelConfirmed}
                               onReschedule={handleReschedule}
@@ -896,7 +897,7 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
                     <DateSeparator date={new Date(dateKey + 'T00:00:00')} />
                     <div className="space-y-3">
                       {dateEvents.map(event => (
-                        <EventItem key={event.id} event={event} hideDate />
+                        <EventItem key={event.id} event={event} currentUserId={currentUserId} hideDate />
                       ))}
                     </div>
                   </div>

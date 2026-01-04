@@ -166,8 +166,23 @@ async function getUserById(userId: string): Promise<FirebaseUser | null> {
 
 /**
  * Get all squad members for a squad.
+ * Optionally verifies the squad belongs to the specified organization.
  */
-async function getSquadMembers(squadId: string): Promise<string[]> {
+async function getSquadMembers(squadId: string, organizationId?: string): Promise<string[]> {
+  // Verify squad belongs to the specified organization if provided
+  if (organizationId) {
+    const squadDoc = await adminDb.collection('squads').doc(squadId).get();
+    if (!squadDoc.exists) {
+      console.warn(`[EVENT_JOBS] Squad ${squadId} not found`);
+      return [];
+    }
+    const squadOrgId = squadDoc.data()?.organizationId;
+    if (squadOrgId && squadOrgId !== organizationId) {
+      console.warn(`[EVENT_JOBS] Squad ${squadId} (org: ${squadOrgId}) does not belong to event org ${organizationId}`);
+      return [];
+    }
+  }
+
   const membersSnapshot = await adminDb
     .collection('squadMembers')
     .where('squadId', '==', squadId)
@@ -186,7 +201,8 @@ async function getEventTargetUserIds(job: EventScheduledJob): Promise<string[]> 
   switch (event.participantModel) {
     case 'squad_members':
       if (!event.squadId) return [];
-      return getSquadMembers(event.squadId);
+      // Pass organizationId to verify squad belongs to the event's org
+      return getSquadMembers(event.squadId, event.organizationId);
     
     case 'invite_only':
       // For 1-on-1 coaching, notify the client
