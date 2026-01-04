@@ -20,6 +20,7 @@ import { CustomMessageInput } from '@/components/chat/CustomMessageInput';
 import { useCoachingPromo } from '@/contexts/BrandingContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useDemoMode } from '@/contexts/DemoModeContext';
+import { useSquad } from '@/hooks/useSquad';
 import { generateAvatarUrl } from '@/lib/demo-data';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 
@@ -69,16 +70,32 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
   const [promoData, setPromoData] = useState<{
     isEnabled: boolean;
     destinationUrl: string | null;
-    hasCoaching: boolean;
     hasActiveIndividualEnrollment: boolean;
+    coachingChatChannelId: string | null;
+    coachInfo: { name: string; imageUrl: string } | null;
     imageUrl: string | null;
   } | null>(null);
   
   // Org-specific channels (for filtering out cross-org channels)
   const [orgChannelIds, setOrgChannelIds] = useState<Set<string>>(new Set());
-  const [userSquadChannelIds, setUserSquadChannelIds] = useState<Set<string>>(new Set());
-  const [squadChannelsLoaded, setSquadChannelsLoaded] = useState(false);
   const [isPlatformMode, setIsPlatformMode] = useState(false);
+
+  // Use squad data from context (already loaded at app startup - instant!)
+  const { squads, isLoading: isSquadLoading } = useSquad();
+
+  // Build userSquadChannelIds from context data (memoized)
+  const userSquadChannelIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const squad of squads) {
+      if (squad.chatChannelId) {
+        ids.add(squad.chatChannelId);
+      }
+    }
+    return ids;
+  }, [squads]);
+
+  // Squad channels are "loaded" when context is done loading
+  const squadChannelsLoaded = !isSquadLoading;
 
   // Fetch coaching promo data and org channels for filtering
   useEffect(() => {
@@ -91,8 +108,9 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
             setPromoData({
               isEnabled: data.isEnabled || false,
               destinationUrl: data.destinationUrl || null,
-              hasCoaching: data.hasCoaching || false,
               hasActiveIndividualEnrollment: data.hasActiveIndividualEnrollment || false,
+              coachingChatChannelId: data.coachingChatChannelId || null,
+              coachInfo: data.coachInfo || null,
               imageUrl: data.promo?.imageUrl || null,
             });
           }
@@ -122,36 +140,8 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
         .catch(() => {
           // Silently fail - will show all channels
         });
-      
-      // Fetch user's squads for filtering squad channels
-      fetch('/api/squad/me')
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data) {
-            const squadChannelIds = new Set<string>();
-            // Collect all squad chat channel IDs
-            if (data.premiumSquad?.chatChannelId) {
-              squadChannelIds.add(data.premiumSquad.chatChannelId);
-            }
-            if (data.standardSquad?.chatChannelId) {
-              squadChannelIds.add(data.standardSquad.chatChannelId);
-            }
-            // Also check squads array for standalone squads
-            if (data.squads) {
-              for (const s of data.squads) {
-                if (s.squad?.chatChannelId) {
-                  squadChannelIds.add(s.squad.chatChannelId);
-                }
-              }
-            }
-            setUserSquadChannelIds(squadChannelIds);
-          }
-          setSquadChannelsLoaded(true);
-        })
-        .catch(() => {
-          // Silently fail but mark as loaded
-          setSquadChannelsLoaded(true);
-        });
+
+      // Squad data is now loaded from context (useSquad) - no fetch needed!
     }
   }, [isOpen]);
 
@@ -182,7 +172,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
       setView('list');
       setSelectedChannel(null);
       setIsAnimating(false);
-      setSquadChannelsLoaded(false);
+      // Squad data is from context now - no state to reset
     }
   }, [isOpen]);
 
@@ -420,11 +410,12 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
   // Check if announcements channel (read-only)
   const isAnnouncementsChannel = selectedChannel?.id === ANNOUNCEMENTS_CHANNEL_ID;
 
-  // Show coach promo if: visible, enabled, user doesn't have coaching, and not in individual program
-  const showCoachPromo = coachingPromo.isVisible && 
-    promoData?.isEnabled && 
-    !promoData?.hasCoaching && 
-    !promoData?.hasActiveIndividualEnrollment;
+  // Show coach promo if: visible, enabled, user doesn't already have coaching
+  // User has coaching if: enrolled in individual program OR has a coaching chat channel
+  const hasCoaching = promoData?.hasActiveIndividualEnrollment || !!promoData?.coachingChatChannelId;
+  const showCoachPromo = coachingPromo.isVisible &&
+    promoData?.isEnabled &&
+    !hasCoaching;
 
   return (
     <Drawer
