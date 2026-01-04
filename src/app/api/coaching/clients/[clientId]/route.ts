@@ -707,10 +707,19 @@ export async function PATCH(
         .where('status', 'in', ['active', 'upcoming'])
         .get();
 
-      const hasIndividualProgram = programEnrollmentSnapshot.docs.some(doc => {
-        const data = doc.data();
-        return data.programType === 'individual';
-      });
+      // Check if any enrollment is for an individual program by fetching program details
+      let hasIndividualProgram = false;
+      for (const enrollmentDoc of programEnrollmentSnapshot.docs) {
+        const enrollment = enrollmentDoc.data();
+        const programDoc = await adminDb.collection('programs').doc(enrollment.programId).get();
+        if (programDoc.exists) {
+          const program = programDoc.data();
+          if (program?.type === 'individual') {
+            hasIndividualProgram = true;
+            break;
+          }
+        }
+      }
 
       if (!hasIndividualProgram) {
         return NextResponse.json({ error: 'Client not found' }, { status: 404 });

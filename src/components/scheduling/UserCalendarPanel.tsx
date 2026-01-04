@@ -43,7 +43,7 @@ const EVENT_TYPE_INFO: Record<string, { label: string; icon: typeof Video; color
 
 interface EventItemProps {
   event: UnifiedEvent;
-  onRespond?: (eventId: string, action: 'accept' | 'decline', selectedTimeId?: string) => void;
+  onRespond?: (eventId: string, action: 'accept' | 'decline', selectedTimeId?: string) => Promise<boolean>;
   onCancel?: (eventId: string) => void;
   onCounterPropose?: (eventId: string) => void;
   isMyRequest?: boolean; // True if this is user's own pending request
@@ -52,6 +52,8 @@ interface EventItemProps {
 function EventItem({ event, onRespond, onCancel, onCounterPropose, isMyRequest }: EventItemProps) {
   const [acceptedTimeId, setAcceptedTimeId] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const typeInfo = EVENT_TYPE_INFO[event.eventType] || EVENT_TYPE_INFO.coaching_1on1;
   const Icon = typeInfo.icon;
@@ -61,16 +63,48 @@ function EventItem({ event, onRespond, onCancel, onCounterPropose, isMyRequest }
 
   // Get pending proposed times (not declined)
   const pendingProposedTimes = event.proposedTimes?.filter(t => t.status === 'pending') || [];
-  const hasMultipleOptions = pendingProposedTimes.length > 1;
 
   // Strip "Call request with" prefix from title for cleaner display
   const displayTitle = event.title?.replace(/^Call request with\s*/i, '') || event.title;
 
   // Handle accepting a specific time
   const handleAccept = async (timeId: string) => {
+    if (!onRespond) return;
+
     setIsAccepting(true);
     setAcceptedTimeId(timeId);
-    onRespond?.(event.id, 'accept', timeId);
+    setAcceptError(null);
+
+    try {
+      const success = await onRespond(event.id, 'accept', timeId);
+      if (success) {
+        setIsSuccess(true);
+      } else {
+        setAcceptError('Failed to accept. Please try again.');
+        setAcceptedTimeId(null);
+      }
+    } catch (err) {
+      setAcceptError('Failed to accept. Please try again.');
+      setAcceptedTimeId(null);
+    } finally {
+      setIsAccepting(false);
+    }
+  };
+
+  // Handle declining all times
+  const handleDecline = async () => {
+    if (!onRespond) return;
+
+    setIsAccepting(true);
+    setAcceptError(null);
+
+    try {
+      await onRespond(event.id, 'decline');
+    } catch (err) {
+      setAcceptError('Failed to decline. Please try again.');
+    } finally {
+      setIsAccepting(false);
+    }
   };
 
   const formatTime = (date: Date) => {
@@ -129,10 +163,10 @@ function EventItem({ event, onRespond, onCancel, onCounterPropose, isMyRequest }
   };
 
   return (
-    <div className="p-4 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-xl">
-      <div className="flex items-start gap-3">
-        <div className={`p-2 rounded-lg bg-[#f3f1ef] dark:bg-[#262b35] ${typeInfo.color}`}>
-          <Icon className="w-4 h-4" />
+    <div className="p-5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
+      <div className="flex items-start gap-4">
+        <div className={`p-3 rounded-xl bg-gradient-to-br from-[#f3f1ef] to-[#ebe8e4] dark:from-[#262b35] dark:to-[#2a303c] ${typeInfo.color} shadow-sm`}>
+          <Icon className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
@@ -166,73 +200,88 @@ function EventItem({ event, onRespond, onCancel, onCounterPropose, isMyRequest }
 
           {/* Show proposed times when there are multiple options to choose from */}
           {!isMyRequest && needsResponse && pendingProposedTimes.length > 0 ? (
-            <div className="mt-3 space-y-2">
+            <div className="mt-4 space-y-3">
+              {/* Error state */}
+              {acceptError && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-2xl animate-in fade-in shake duration-300">
+                  <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                  <p className="text-sm text-red-600 dark:text-red-400">{acceptError}</p>
+                </div>
+              )}
+
               {/* Success state after accepting */}
-              {isAccepting && acceptedTimeId ? (
-                <div className="space-y-2 animate-in fade-in duration-300">
-                  <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/30 rounded-lg">
-                    <CheckCircle className="w-5 h-5 text-green-500 animate-in zoom-in duration-200" />
+              {isSuccess && acceptedTimeId ? (
+                <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                  <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800/30 rounded-2xl shadow-sm">
+                    <div className="p-2 bg-green-500 rounded-full animate-in zoom-in duration-300">
+                      <CheckCircle className="w-5 h-5 text-white" />
+                    </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-green-700 dark:text-green-300">
+                      <p className="text-base font-semibold text-green-700 dark:text-green-300">
                         Call Confirmed!
                       </p>
-                      <p className="text-xs text-green-600 dark:text-green-400">
+                      <p className="text-sm text-green-600 dark:text-green-400 mt-0.5">
                         {formatProposedTime(pendingProposedTimes.find(t => t.id === acceptedTimeId) || pendingProposedTimes[0])}
                       </p>
                     </div>
                   </div>
-                  {/* Show declined times */}
-                  {pendingProposedTimes.filter(t => t.id !== acceptedTimeId).length > 0 && (
-                    <div className="space-y-1.5 opacity-50">
-                      <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">Other times declined:</p>
-                      {pendingProposedTimes.filter(t => t.id !== acceptedTimeId).map((time) => (
-                        <div
-                          key={time.id}
-                          className="flex items-center gap-2 p-2 bg-[#f9f8f7] dark:bg-[#262b35] rounded-lg line-through animate-in fade-in slide-in-from-top-1 duration-300"
-                        >
-                          <XCircle className="w-3.5 h-3.5 text-red-400" />
-                          <span className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">{formatProposedTime(time)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
-              ) : (
+              ) : !isSuccess && (
                 <>
-                  <p className="text-xs font-medium text-[#5f5a55] dark:text-[#b2b6c2]">
-                    {pendingProposedTimes.length} proposed time{pendingProposedTimes.length > 1 ? 's' : ''} - select one to accept:
+                  <p className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2]">
+                    {pendingProposedTimes.length} proposed time{pendingProposedTimes.length > 1 ? 's' : ''}:
                   </p>
-                  {pendingProposedTimes.map((time, index) => (
-                    <div
-                      key={time.id}
-                      className="flex items-center justify-between p-3 bg-[#f9f8f7] dark:bg-[#262b35] rounded-lg transition-all duration-200 hover:bg-[#f3f1ef] dark:hover:bg-[#313746]"
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <div className="flex items-center gap-2 text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
-                        <Calendar className="w-3.5 h-3.5 text-[#5f5a55] dark:text-[#b2b6c2]" />
-                        <span>{formatProposedTime(time)}</span>
+                  <div className="space-y-2">
+                    {pendingProposedTimes.map((time, index) => (
+                      <div
+                        key={time.id}
+                        className="group flex items-center justify-between p-4 bg-gradient-to-r from-[#f9f8f7] to-[#f5f4f2] dark:from-[#262b35] dark:to-[#2a303b] rounded-2xl border border-[#e1ddd8] dark:border-[#363c49] transition-all duration-300 hover:shadow-md hover:scale-[1.01] hover:border-brand-accent/30 animate-in fade-in slide-in-from-left-2"
+                        style={{ animationDelay: `${index * 100}ms` }}
+                      >
+                        <div className="flex items-center gap-3 text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                          <div className="p-2 bg-white dark:bg-[#1e222a] rounded-xl shadow-sm">
+                            <Calendar className="w-4 h-4 text-brand-accent" />
+                          </div>
+                          <span className="font-medium">{formatProposedTime(time)}</span>
+                        </div>
+                        {onRespond && (
+                          <button
+                            onClick={() => handleAccept(time.id)}
+                            disabled={isAccepting}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md"
+                          >
+                            {isAccepting && acceptedTimeId === time.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <CheckCircle className="w-4 h-4" />
+                            )}
+                            Accept
+                          </button>
+                        )}
                       </div>
-                      {onRespond && (
-                        <button
-                          onClick={() => handleAccept(time.id)}
-                          disabled={isAccepting}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isAccepting ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <CheckCircle className="w-3 h-3" />
-                          )}
-                          Accept
-                        </button>
+                    ))}
+                  </div>
+
+                  {/* Decline All Button */}
+                  {onRespond && (
+                    <button
+                      onClick={handleDecline}
+                      disabled={isAccepting}
+                      className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-red-600 hover:to-rose-600 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                    >
+                      {isAccepting && !acceptedTimeId ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <XCircle className="w-4 h-4" />
                       )}
-                    </div>
-                  ))}
+                      Decline All
+                    </button>
+                  )}
                 </>
               )}
-              {event.locationLabel && !isAccepting && (
-                <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-2">
-                  <MapPin className="w-3.5 h-3.5" />
+              {event.locationLabel && !isSuccess && (
+                <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2] mt-3 pl-1">
+                  <MapPin className="w-4 h-4" />
                   <span>{event.locationLabel}</span>
                 </div>
               )}
@@ -287,26 +336,15 @@ function EventItem({ event, onRespond, onCancel, onCounterPropose, isMyRequest }
               </button>
             )}
 
-            {/* Respond to others' proposals - decline and counter buttons only (accept is per-time above) */}
-            {!isMyRequest && needsResponse && onRespond && !isAccepting && (
-              <>
-                <button
-                  onClick={() => onRespond(event.id, 'decline')}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-medium hover:bg-red-600 transition-colors"
-                >
-                  <XCircle className="w-3 h-3" />
-                  Decline All
-                </button>
-                {onCounterPropose && (
-                  <button
-                    onClick={() => onCounterPropose(event.id)}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-lg text-xs font-medium hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-colors"
-                  >
-                    <CalendarClock className="w-3 h-3" />
-                    Propose Different Time
-                  </button>
-                )}
-              </>
+            {/* Counter-propose button for responding to others' proposals */}
+            {!isMyRequest && needsResponse && !isSuccess && !isAccepting && onCounterPropose && (
+              <button
+                onClick={() => onCounterPropose(event.id)}
+                className="flex items-center gap-2 px-4 py-2 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl text-sm font-medium hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-all duration-200 hover:shadow-sm"
+              >
+                <CalendarClock className="w-4 h-4" />
+                Propose Different Time
+              </button>
             )}
 
             {/* Confirmed event actions */}
@@ -317,17 +355,17 @@ function EventItem({ event, onRespond, onCancel, onCounterPropose, isMyRequest }
                     href={event.meetingLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 px-3 py-1.5 bg-brand-accent text-white rounded-lg text-xs font-medium hover:bg-brand-accent/90 transition-colors"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-brand-accent to-brand-accent/90 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:opacity-90 active:scale-95 transition-all duration-200"
                   >
-                    <ExternalLink className="w-3 h-3" />
+                    <ExternalLink className="w-4 h-4" />
                     Join Call
                   </a>
                 )}
                 <button
                   onClick={generateICS}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-lg text-xs font-medium hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-colors"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl text-sm font-medium hover:bg-[#e8e4df] dark:hover:bg-[#313746] hover:shadow-sm active:scale-95 transition-all duration-200"
                 >
-                  <Download className="w-3 h-3" />
+                  <Download className="w-4 h-4" />
                   Add to Calendar
                 </button>
               </>
@@ -385,14 +423,18 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
     setCurrentMonth(newDate);
   };
 
-  // Handle respond to proposal
-  const handleRespond = useCallback(async (eventId: string, action: 'accept' | 'decline', selectedTimeId?: string) => {
+  // Handle respond to proposal - returns true on success, false on failure
+  const handleRespond = useCallback(async (eventId: string, action: 'accept' | 'decline', selectedTimeId?: string): Promise<boolean> => {
     try {
       await respondToProposal({ eventId, action, selectedTimeId });
-      refetch();
-      refetchProposals();
+      // Small delay to let the UI show success state before refetching
+      setTimeout(() => {
+        refetch();
+        refetchProposals();
+      }, 1500);
+      return true;
     } catch (err) {
-      // Error handled by hook
+      return false;
     }
   }, [respondToProposal, refetch, refetchProposals]);
 
@@ -496,11 +538,20 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
         <div className="flex-1 overflow-y-auto">
           {/* Pending Proposals - need to respond */}
           {proposals.length > 0 && (
-            <div className="p-4 border-b border-[#e1ddd8] dark:border-[#262b35]">
-              <h3 className="font-albert font-medium text-[#1a1a1a] dark:text-[#f5f5f8] mb-3 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-yellow-500" />
-                Pending Responses ({proposals.length})
-              </h3>
+            <div className="p-5 border-b border-[#e1ddd8] dark:border-[#262b35] bg-gradient-to-b from-amber-50/50 to-transparent dark:from-amber-900/10 dark:to-transparent">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-xl shadow-md">
+                  <AlertCircle className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-albert font-semibold text-[#1a1a1a] dark:text-[#f5f5f8]">
+                    Pending Responses
+                  </h3>
+                  <p className="text-xs text-[#5f5a55] dark:text-[#b2b6c2]">
+                    {proposals.length} call{proposals.length > 1 ? 's' : ''} waiting for your response
+                  </p>
+                </div>
+              </div>
               <div className="space-y-3">
                 {proposals.map(event => (
                   <EventItem
