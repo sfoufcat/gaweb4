@@ -144,6 +144,9 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
                 }
               }
             }
+            // DEBUG: Log what channel IDs we collected
+            console.log('[ChatSheet] Squad channel IDs from /api/squad/me:', Array.from(squadChannelIds));
+            console.log('[ChatSheet] Raw squads data:', data.squads?.map((s: { squad?: { name?: string; chatChannelId?: string } }) => ({ name: s.squad?.name, chatChannelId: s.squad?.chatChannelId })));
             setUserSquadChannelIds(squadChannelIds);
           }
           setSquadChannelsLoaded(true);
@@ -205,12 +208,20 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
           { limit: 50, watch: true }
         );
 
+        // DEBUG: Log all channels returned by Stream Chat
+        const allChannelIds = channelResponse.map(c => c.id);
+        const squadChannels = allChannelIds.filter(id => id?.startsWith('squad-'));
+        console.log('[ChatSheet] Stream Chat returned channels:', allChannelIds);
+        console.log('[ChatSheet] Squad channels from Stream:', squadChannels);
+        console.log('[ChatSheet] userSquadChannelIds Set:', Array.from(userSquadChannelIds));
+        console.log('[ChatSheet] squadChannelsLoaded:', squadChannelsLoaded);
+
         const previews: ChannelPreview[] = [];
-        
+
         for (const channel of channelResponse) {
           const channelData = channel.data as Record<string, unknown>;
           const channelId = channel.id || '';
-          
+
           // MULTI-TENANCY: Filter out channels from other organizations
           // Skip filtering if in platform mode (show all channels)
           if (!isPlatformMode) {
@@ -218,6 +229,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
             // Only filter if squad channel data has loaded (prevents race condition)
             if (channelId.startsWith('squad-')) {
               if (squadChannelsLoaded && !userSquadChannelIds.has(channelId)) {
+                console.log('[ChatSheet] FILTERING OUT squad channel:', channelId, '(not in userSquadChannelIds)');
                 continue; // Skip squad channels from other orgs
               }
             }

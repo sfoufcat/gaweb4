@@ -111,6 +111,8 @@ export async function PATCH(req: Request) {
       'weeklyReview',
       'squadCall24h',
       'squadCall1h',
+      'coachingCall24h',
+      'coachingCall1h',
     ];
 
     const updates: Partial<EmailPreferences> = {};

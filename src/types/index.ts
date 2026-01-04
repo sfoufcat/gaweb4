@@ -1494,8 +1494,10 @@ export interface EmailPreferences {
   morningCheckIn: boolean;
   eveningCheckIn: boolean;
   weeklyReview: boolean;
-  squadCall24h: boolean;
-  squadCall1h: boolean;
+  squadCall24h: boolean;       // Community calls (squads)
+  squadCall1h: boolean;        // Community calls (squads)
+  coachingCall24h: boolean;    // 1:1 coaching calls
+  coachingCall1h: boolean;     // 1:1 coaching calls
 }
 
 // Organization-level email notification defaults (coaches can configure these)
@@ -1509,6 +1511,8 @@ export const DEFAULT_EMAIL_DEFAULTS: EmailPreferences = {
   weeklyReview: true,
   squadCall24h: true,
   squadCall1h: true,
+  coachingCall24h: true,
+  coachingCall1h: true,
 };
 
 // Organization-level system notification settings (controls whether in-app notifications are sent at all)
@@ -1522,6 +1526,8 @@ export const DEFAULT_SYSTEM_NOTIFICATIONS: OrgSystemNotifications = {
   weeklyReview: true,
   squadCall24h: true,
   squadCall1h: true,
+  coachingCall24h: true,
+  coachingCall1h: true,
 };
 
 export interface NotificationPreferences {

@@ -2960,11 +2960,11 @@ export function CustomizeBrandingTab() {
               </div>
             </div>
 
-            {/* Squad Call 24h */}
+            {/* Community Call 24h */}
             <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
               <div className="flex-1">
-                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Cohort call (24h before)</p>
-                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Reminder 24 hours before scheduled calls</p>
+                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Community call (24h before)</p>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Reminder 24 hours before scheduled community calls</p>
               </div>
               <div className="flex items-center gap-6">
                 {/* System Toggle */}
@@ -3007,11 +3007,11 @@ export function CustomizeBrandingTab() {
               </div>
             </div>
 
-            {/* Squad Call 1h */}
-            <div className="flex items-center justify-between py-4">
+            {/* Community Call 1h */}
+            <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
               <div className="flex-1">
-                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Cohort call (1h before)</p>
-                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Reminder 1 hour before scheduled calls</p>
+                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">Community call (1h before)</p>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Reminder 1 hour before scheduled community calls</p>
               </div>
               <div className="flex items-center gap-6">
                 {/* System Toggle */}
@@ -3049,6 +3049,100 @@ export function CustomizeBrandingTab() {
                   <span className={`
                     absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
                     ${!systemNotifications.squadCall1h ? 'left-1 opacity-50' : emailDefaults.squadCall1h ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+              </div>
+            </div>
+
+            {/* 1:1 Coaching Call 24h */}
+            <div className="flex items-center justify-between py-4 border-b border-[#e1ddd8]/50 dark:border-[#262b35]/50">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">1:1 call (24h before)</p>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Reminder 24 hours before scheduled 1:1 coaching calls</p>
+              </div>
+              <div className="flex items-center gap-6">
+                {/* System Toggle */}
+                <button
+                  onClick={() => handleSystemNotificationToggle('coachingCall24h', !systemNotifications.coachingCall24h)}
+                  disabled={systemNotificationsSaving === 'coachingCall24h'}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${!systemNotifications.coachingCall24h ? 'bg-[#d1cec9] dark:bg-[#3d4351]' : ''}
+                    ${systemNotificationsSaving === 'coachingCall24h' ? 'opacity-50' : ''}
+                  `}
+                  style={systemNotifications.coachingCall24h ? { backgroundColor: colors.accentLight } : undefined}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${systemNotifications.coachingCall24h ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+                {/* Email Toggle */}
+                <button
+                  onClick={() => handleEmailDefaultToggle('coachingCall24h', !emailDefaults.coachingCall24h)}
+                  disabled={emailDefaultsSaving === 'coachingCall24h' || !systemNotifications.coachingCall24h}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${!systemNotifications.coachingCall24h
+                      ? 'bg-[#d1cec9]/50 dark:bg-[#3d4351]/50 cursor-not-allowed'
+                      : !emailDefaults.coachingCall24h
+                        ? 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                        : ''
+                    }
+                    ${emailDefaultsSaving === 'coachingCall24h' ? 'opacity-50' : ''}
+                  `}
+                  style={systemNotifications.coachingCall24h && emailDefaults.coachingCall24h ? { backgroundColor: colors.accentLight } : undefined}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${!systemNotifications.coachingCall24h ? 'left-1 opacity-50' : emailDefaults.coachingCall24h ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+              </div>
+            </div>
+
+            {/* 1:1 Coaching Call 1h */}
+            <div className="flex items-center justify-between py-4">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-[#1a1a1a] dark:text-[#f5f5f8] font-albert">1:1 call (1h before)</p>
+                <p className="text-xs text-[#a7a39e] dark:text-[#7d8190] font-albert mt-0.5">Reminder 1 hour before scheduled 1:1 coaching calls</p>
+              </div>
+              <div className="flex items-center gap-6">
+                {/* System Toggle */}
+                <button
+                  onClick={() => handleSystemNotificationToggle('coachingCall1h', !systemNotifications.coachingCall1h)}
+                  disabled={systemNotificationsSaving === 'coachingCall1h'}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${!systemNotifications.coachingCall1h ? 'bg-[#d1cec9] dark:bg-[#3d4351]' : ''}
+                    ${systemNotificationsSaving === 'coachingCall1h' ? 'opacity-50' : ''}
+                  `}
+                  style={systemNotifications.coachingCall1h ? { backgroundColor: colors.accentLight } : undefined}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${systemNotifications.coachingCall1h ? 'left-6' : 'left-1'}
+                  `} />
+                </button>
+                {/* Email Toggle */}
+                <button
+                  onClick={() => handleEmailDefaultToggle('coachingCall1h', !emailDefaults.coachingCall1h)}
+                  disabled={emailDefaultsSaving === 'coachingCall1h' || !systemNotifications.coachingCall1h}
+                  className={`
+                    relative w-12 h-7 rounded-full transition-colors duration-200 ease-in-out
+                    ${!systemNotifications.coachingCall1h
+                      ? 'bg-[#d1cec9]/50 dark:bg-[#3d4351]/50 cursor-not-allowed'
+                      : !emailDefaults.coachingCall1h
+                        ? 'bg-[#d1cec9] dark:bg-[#3d4351]'
+                        : ''
+                    }
+                    ${emailDefaultsSaving === 'coachingCall1h' ? 'opacity-50' : ''}
+                  `}
+                  style={systemNotifications.coachingCall1h && emailDefaults.coachingCall1h ? { backgroundColor: colors.accentLight } : undefined}
+                >
+                  <span className={`
+                    absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out
+                    ${!systemNotifications.coachingCall1h ? 'left-1 opacity-50' : emailDefaults.coachingCall1h ? 'left-6' : 'left-1'}
                   `} />
                 </button>
               </div>

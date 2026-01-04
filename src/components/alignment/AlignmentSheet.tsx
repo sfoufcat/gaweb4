@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { UserAlignment, UserAlignmentSummary, AlignmentActivityConfig, AlignmentActivityKey, CompletionThreshold } from '@/types';
 import { DEFAULT_ALIGNMENT_CONFIG } from '@/types';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 // Fire icon SVG component
 function FireIcon({ size = 24, className = '' }: { size?: number; className?: string }) {
@@ -116,6 +117,15 @@ export function AlignmentSheet({
   summary,
 }: AlignmentSheetProps) {
   const [config, setConfig] = useState<AlignmentActivityConfig>(DEFAULT_ALIGNMENT_CONFIG);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile vs desktop
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Fetch org alignment config
   useEffect(() => {
@@ -276,75 +286,80 @@ export function AlignmentSheet({
     );
   };
 
-  return (
-    <Drawer
-      open={isOpen}
-      onOpenChange={(open) => !open && onClose()}
-      shouldScaleBackground={false}
-    >
-      <DrawerContent className="max-w-[500px] mx-auto">
-        {/* Close button - Desktop only */}
-        <button
-          onClick={onClose}
-          className="hidden md:block absolute top-4 right-4 text-text-muted dark:text-[#7d8190] hover:text-text-primary dark:hover:text-[#f5f5f8] transition-colors z-10"
-          aria-label="Close"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+  // Shared content component
+  const SheetContent = () => (
+    <div className="px-6 pt-4 pb-6 flex flex-col gap-6 items-center max-h-[85dvh] overflow-y-auto">
+      {/* Title */}
+      <h2 className="font-albert font-medium text-[20px] md:text-[24px] text-text-secondary dark:text-[#b2b6c2] tracking-[-1.5px] leading-[1.3] w-full">
+        Daily Alignment & Streak
+      </h2>
 
-        {/* Content */}
-        <div className="px-6 pt-4 md:pt-6 pb-6 md:pb-8 flex flex-col gap-6 items-center max-h-[85dvh] md:max-h-[80dvh] overflow-y-auto">
-          {/* Title */}
-          <h2 className="font-albert font-medium text-[20px] md:text-[24px] text-text-secondary dark:text-[#b2b6c2] tracking-[-1.5px] leading-[1.3] w-full">
-            Daily Alignment & Streak
-          </h2>
+      {/* Gauge */}
+      <GaugeLarge />
 
-          {/* Gauge */}
-          <GaugeLarge />
+      {/* Message & Checklist */}
+      <div className="w-full flex flex-col gap-5">
+        {/* Status Message */}
+        <p className="font-albert font-medium text-[20px] md:text-[24px] text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3] text-center whitespace-pre-line">
+          {getMessage()}
+        </p>
 
-          {/* Message & Checklist */}
-          <div className="w-full flex flex-col gap-5">
-            {/* Status Message */}
-            <p className="font-albert font-medium text-[20px] md:text-[24px] text-text-primary dark:text-[#f5f5f8] tracking-[-1.5px] leading-[1.3] text-center whitespace-pre-line">
-              {getMessage()}
-            </p>
-
-            {/* Checklist */}
-            <div className="flex flex-col gap-1">
-              {alignmentItems.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 h-[22px]"
-                >
-                  {/* Checkbox */}
-                  <div className="w-4 h-4 border border-[#e1ddd8] dark:border-[#262b35] rounded-[4px] flex items-center justify-center flex-shrink-0">
-                    {item.completed && (
-                      <div className="w-2 h-2 bg-accent-secondary dark:bg-brand-accent rounded-[2px]" />
-                    )}
-                  </div>
-                  {/* Label */}
-                  <span className="font-geist text-[14px] md:text-[16px] text-text-primary dark:text-[#f5f5f8] tracking-[-0.3px] leading-[1.2]">
-                    {item.label}
-                  </span>
-                </div>
-              ))}
+        {/* Checklist */}
+        <div className="flex flex-col gap-1">
+          {alignmentItems.map((item, index) => (
+            <div
+              key={index}
+              className="flex items-center gap-2 h-[22px]"
+            >
+              {/* Checkbox */}
+              <div className="w-4 h-4 border border-[#e1ddd8] dark:border-[#262b35] rounded-[4px] flex items-center justify-center flex-shrink-0">
+                {item.completed && (
+                  <div className="w-2 h-2 bg-accent-secondary dark:bg-brand-accent rounded-[2px]" />
+                )}
+              </div>
+              {/* Label */}
+              <span className="font-geist text-[14px] md:text-[16px] text-text-primary dark:text-[#f5f5f8] tracking-[-0.3px] leading-[1.2]">
+                {item.label}
+              </span>
             </div>
-
-            {/* Explanatory Text */}
-            <div className="font-geist text-[14px] md:text-[16px] text-text-primary dark:text-[#b2b6c2] tracking-[-0.3px] leading-[1.4]">
-              <p className="mb-2">
-                Your Alignment Compass shows how well you&apos;re following your growth routine today.
-              </p>
-              <p>
-                The number in the center shows how many days in a row you&apos;ve stayed aligned.
-              </p>
-            </div>
-          </div>
+          ))}
         </div>
-      </DrawerContent>
-    </Drawer>
+
+        {/* Explanatory Text */}
+        <div className="font-geist text-[14px] md:text-[16px] text-text-primary dark:text-[#b2b6c2] tracking-[-0.3px] leading-[1.4]">
+          <p className="mb-2">
+            Your Alignment Compass shows how well you&apos;re following your growth routine today.
+          </p>
+          <p>
+            The number in the center shows how many days in a row you&apos;ve stayed aligned.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Mobile: Bottom Drawer
+  if (isMobile) {
+    return (
+      <Drawer
+        open={isOpen}
+        onOpenChange={(open) => !open && onClose()}
+        shouldScaleBackground={false}
+      >
+        <DrawerContent className="max-w-[500px] mx-auto">
+          <SheetContent />
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  // Desktop: Centered Dialog
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-[420px] p-0 gap-0">
+        <SheetContent />
+      </DialogContent>
+    </Dialog>
   );
 }
 

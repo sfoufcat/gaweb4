@@ -375,19 +375,29 @@ async function sendEventEmail({
   // Check user's email preferences
   const emailPrefs = user.emailPreferences;
   if (emailPrefs) {
-    // For squad calls and coaching calls, use squadCall preferences
-    if (job.eventType === 'squad_call' || job.eventType === 'coaching_1on1') {
+    // For community/squad calls
+    if (job.eventType === 'squad_call') {
       if (job.jobType === 'email_24h' && emailPrefs.squadCall24h === false) {
-        console.log(`[EVENT_EMAIL] Skipping ${job.jobType} - user ${userId} has disabled 24h call emails`);
+        console.log(`[EVENT_EMAIL] Skipping ${job.jobType} - user ${userId} has disabled 24h community call emails`);
         return;
       }
       if (job.jobType === 'email_1h' && emailPrefs.squadCall1h === false) {
-        console.log(`[EVENT_EMAIL] Skipping ${job.jobType} - user ${userId} has disabled 1h call emails`);
+        console.log(`[EVENT_EMAIL] Skipping ${job.jobType} - user ${userId} has disabled 1h community call emails`);
         return;
       }
     }
-    // Other event types use the same preferences as squad calls for now
-    // TODO: Add separate event email preferences if needed
+
+    // For 1:1 coaching calls - use separate preferences
+    if (job.eventType === 'coaching_1on1') {
+      if (job.jobType === 'email_24h' && emailPrefs.coachingCall24h === false) {
+        console.log(`[EVENT_EMAIL] Skipping ${job.jobType} - user ${userId} has disabled 24h 1:1 call emails`);
+        return;
+      }
+      if (job.jobType === 'email_1h' && emailPrefs.coachingCall1h === false) {
+        console.log(`[EVENT_EMAIL] Skipping ${job.jobType} - user ${userId} has disabled 1h 1:1 call emails`);
+        return;
+      }
+    }
   }
 
   // Get tenant branding

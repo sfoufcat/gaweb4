@@ -4,7 +4,6 @@ import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { useClerk } from '@clerk/nextjs';
 import type { EmailPreferences } from '@/types';
-import { useMenuTitles } from '@/contexts/BrandingContext';
 
 interface SettingsDrawerProps {
   isOpen: boolean;
@@ -19,6 +18,8 @@ const DEFAULT_EMAIL_PREFERENCES: EmailPreferences = {
   weeklyReview: true,
   squadCall24h: true,
   squadCall1h: true,
+  coachingCall24h: true,
+  coachingCall1h: true,
 };
 
 export function SettingsDrawer({ 
@@ -27,7 +28,6 @@ export function SettingsDrawer({
   initialEmailPreferences 
 }: SettingsDrawerProps) {
   const { openUserProfile } = useClerk();
-  const { squad: squadTitle } = useMenuTitles();
   
   const [emailPreferences, setEmailPreferences] = useState<EmailPreferences>(
     initialEmailPreferences || DEFAULT_EMAIL_PREFERENCES
@@ -234,8 +234,10 @@ export function SettingsDrawer({
                           <PreferenceRow label="Morning check-in" prefKey="morningCheckIn" />
                           <PreferenceRow label="Evening check-in" prefKey="eveningCheckIn" />
                           <PreferenceRow label="Weekly review" prefKey="weeklyReview" />
-                          <PreferenceRow label={`${squadTitle} call (24h before)`} prefKey="squadCall24h" />
-                          <PreferenceRow label={`${squadTitle} call (1h before)`} prefKey="squadCall1h" />
+                          <PreferenceRow label="Community call (24h before)" prefKey="squadCall24h" />
+                          <PreferenceRow label="Community call (1h before)" prefKey="squadCall1h" />
+                          <PreferenceRow label="1:1 call (24h before)" prefKey="coachingCall24h" />
+                          <PreferenceRow label="1:1 call (1h before)" prefKey="coachingCall1h" />
                         </div>
                       </div>
 

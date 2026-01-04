@@ -100,6 +100,8 @@ export async function POST(request: Request) {
       'weeklyReview',
       'squadCall24h',
       'squadCall1h',
+      'coachingCall24h',
+      'coachingCall1h',
     ];
 
     const updates: Partial<Record<string, boolean>> = {};
