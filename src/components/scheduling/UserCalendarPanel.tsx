@@ -18,11 +18,11 @@ import {
   Loader2,
   Download,
   Send,
-  CalendarClock,
   RefreshCw,
 } from 'lucide-react';
 import { useSchedulingEvents, useSchedulingActions, usePendingProposals } from '@/hooks/useScheduling';
 import { RescheduleCallModal } from './RescheduleCallModal';
+import { CounterProposeModal } from './CounterProposeModal';
 import type { UnifiedEvent } from '@/types';
 
 interface UserCalendarPanelProps {
@@ -199,12 +199,31 @@ function EventItem({ event, onRespond, onCancel, onReschedule, onCounterPropose,
     URL.revokeObjectURL(url);
   };
 
+  // Get avatar URL and initials for display
+  const avatarUrl = event.hostAvatarUrl;
+  const initials = displayTitle
+    ? displayTitle.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+    : 'U';
+
   return (
     <div className="p-5 bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
       <div className="flex items-start gap-4">
-        <div className={`p-3 rounded-xl bg-gradient-to-br from-[#f3f1ef] to-[#ebe8e4] dark:from-[#262b35] dark:to-[#2a303c] ${typeInfo.color} shadow-sm`}>
-          <Icon className="w-5 h-5" />
-        </div>
+        {/* Avatar or fallback icon */}
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={displayTitle}
+            className="w-11 h-11 rounded-xl object-cover shadow-sm"
+          />
+        ) : (
+          <div className={`w-11 h-11 rounded-xl bg-gradient-to-br from-[#f3f1ef] to-[#ebe8e4] dark:from-[#262b35] dark:to-[#2a303c] flex items-center justify-center shadow-sm`}>
+            {event.eventType === 'coaching_1on1' ? (
+              <span className="text-sm font-semibold text-[#5f5a55] dark:text-[#b2b6c2]">{initials}</span>
+            ) : (
+              <Icon className={`w-5 h-5 ${typeInfo.color}`} />
+            )}
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div>
@@ -332,65 +351,118 @@ function EventItem({ event, onRespond, onCancel, onReschedule, onCounterPropose,
             </div>
           ) : !isSuccess && (
             <>
-              <p className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2]">
-                {pendingProposedTimes.length} proposed time{pendingProposedTimes.length > 1 ? 's' : ''}:
-              </p>
-              <div className="space-y-2">
-                {pendingProposedTimes.map((time, index) => (
-                  <div
-                    key={time.id}
-                    className="group p-4 bg-gradient-to-r from-[#f9f8f7] to-[#f5f4f2] dark:from-[#262b35] dark:to-[#2a303b] rounded-2xl border border-[#e1ddd8] dark:border-[#363c49] transition-all duration-300 hover:shadow-md hover:border-brand-accent/30 animate-in fade-in slide-in-from-left-2"
-                    style={{ animationDelay: `${index * 100}ms` }}
-                  >
+              {/* SINGLE proposed time - side-by-side Decline/Accept */}
+              {pendingProposedTimes.length === 1 && onRespond && (
+                <>
+                  <div className="p-4 bg-gradient-to-r from-[#f9f8f7] to-[#f5f4f2] dark:from-[#262b35] dark:to-[#2a303b] rounded-2xl border border-[#e1ddd8] dark:border-[#363c49]">
                     <div className="flex items-center gap-3 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] mb-3">
                       <div className="p-2 bg-white dark:bg-[#1e222a] rounded-xl shadow-sm">
                         <Calendar className="w-4 h-4 text-brand-accent" />
                       </div>
-                      <span className="font-medium">{formatProposedTime(time)}</span>
+                      <span className="font-medium">{formatProposedTime(pendingProposedTimes[0])}</span>
                     </div>
-                    {onRespond && (
+                    <div className="grid grid-cols-2 gap-2">
                       <button
-                        onClick={() => handleAccept(time.id)}
+                        onClick={handleDecline}
                         disabled={isAccepting}
-                        className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md"
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-red-600 hover:to-rose-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isAccepting && acceptedTimeId === time.id ? (
+                        {isAccepting && !acceptedTimeId ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <XCircle className="w-4 h-4" />
+                        )}
+                        Decline
+                      </button>
+                      <button
+                        onClick={() => handleAccept(pendingProposedTimes[0].id)}
+                        disabled={isAccepting}
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isAccepting && acceptedTimeId === pendingProposedTimes[0].id ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
                           <CheckCircle className="w-4 h-4" />
                         )}
                         Accept
                       </button>
-                    )}
+                    </div>
                   </div>
-                ))}
-              </div>
-
-              {/* Decline All Button */}
-              {onRespond && (
-                <button
-                  onClick={handleDecline}
-                  disabled={isAccepting}
-                  className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-red-600 hover:to-rose-600 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-                >
-                  {isAccepting && !acceptedTimeId ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <XCircle className="w-4 h-4" />
+                  {/* Counter-propose link for single time */}
+                  {onCounterPropose && (
+                    <button
+                      onClick={() => onCounterPropose(event.id)}
+                      className="w-full text-center text-sm text-brand-accent hover:underline py-1"
+                    >
+                      Suggest different time →
+                    </button>
                   )}
-                  Decline All
-                </button>
+                </>
               )}
 
-              {/* Counter-propose button */}
-              {onCounterPropose && (
-                <button
-                  onClick={() => onCounterPropose(event.id)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl text-sm font-medium hover:bg-[#e8e4df] dark:hover:bg-[#313746] transition-all duration-200 hover:shadow-sm"
-                >
-                  <CalendarClock className="w-4 h-4" />
-                  Propose Different Time
-                </button>
+              {/* MULTIPLE proposed times - individual Accept buttons + Decline All */}
+              {pendingProposedTimes.length > 1 && (
+                <>
+                  <p className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2]">
+                    {pendingProposedTimes.length} proposed times:
+                  </p>
+                  <div className="space-y-2">
+                    {pendingProposedTimes.map((time, index) => (
+                      <div
+                        key={time.id}
+                        className="group p-4 bg-gradient-to-r from-[#f9f8f7] to-[#f5f4f2] dark:from-[#262b35] dark:to-[#2a303b] rounded-2xl border border-[#e1ddd8] dark:border-[#363c49] transition-all duration-300 hover:shadow-md hover:border-brand-accent/30 animate-in fade-in slide-in-from-left-2"
+                        style={{ animationDelay: `${index * 100}ms` }}
+                      >
+                        <div className="flex items-center gap-3 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] mb-3">
+                          <div className="p-2 bg-white dark:bg-[#1e222a] rounded-xl shadow-sm">
+                            <Calendar className="w-4 h-4 text-brand-accent" />
+                          </div>
+                          <span className="font-medium">{formatProposedTime(time)}</span>
+                        </div>
+                        {onRespond && (
+                          <button
+                            onClick={() => handleAccept(time.id)}
+                            disabled={isAccepting}
+                            className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md"
+                          >
+                            {isAccepting && acceptedTimeId === time.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <CheckCircle className="w-4 h-4" />
+                            )}
+                            Accept
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Decline All Button */}
+                  {onRespond && (
+                    <button
+                      onClick={handleDecline}
+                      disabled={isAccepting}
+                      className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-red-600 hover:to-rose-600 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                    >
+                      {isAccepting && !acceptedTimeId ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <XCircle className="w-4 h-4" />
+                      )}
+                      Decline All
+                    </button>
+                  )}
+
+                  {/* Counter-propose link for multiple times */}
+                  {onCounterPropose && (
+                    <button
+                      onClick={() => onCounterPropose(event.id)}
+                      className="w-full text-center text-sm text-brand-accent hover:underline py-1"
+                    >
+                      Suggest different time →
+                    </button>
+                  )}
+                </>
               )}
             </>
           )}
@@ -491,8 +563,10 @@ function EventItem({ event, onRespond, onCancel, onReschedule, onCounterPropose,
  */
 export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [counterProposeEventId, setCounterProposeEventId] = useState<string | null>(null);
+  const [counterProposeEvent, setCounterProposeEvent] = useState<UnifiedEvent | null>(null);
   const [rescheduleEvent, setRescheduleEvent] = useState<UnifiedEvent | null>(null);
+  const [isCounterProposing, setIsCounterProposing] = useState(false);
+  const [counterProposeError, setCounterProposeError] = useState<string | null>(null);
   const { respondToProposal, cancelEvent, isLoading: respondLoading } = useSchedulingActions();
 
   // Calculate date range for current month view
@@ -577,12 +651,43 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
     refetchProposals();
   }, [refetch, refetchProposals]);
 
-  // Handle counter-propose (placeholder - will implement inline UI)
+  // Handle counter-propose - open modal to suggest different times
   const handleCounterPropose = useCallback((eventId: string) => {
-    setCounterProposeEventId(eventId);
-    // TODO: Implement inline counter-propose UI
-    alert('Counter-propose feature coming soon! For now, please decline and create a new request.');
-  }, []);
+    // Find the event from proposals or myRequests
+    const event = proposals.find(e => e.id === eventId) || myRequests.find(e => e.id === eventId);
+    if (event) {
+      setCounterProposeEvent(event);
+      setCounterProposeError(null);
+    }
+  }, [proposals, myRequests]);
+
+  // Handle counter-propose submission
+  const handleCounterProposeSubmit = useCallback(async (
+    proposedTimes: Array<{ startDateTime: string; endDateTime: string }>,
+    message?: string
+  ) => {
+    if (!counterProposeEvent) return;
+
+    setIsCounterProposing(true);
+    setCounterProposeError(null);
+
+    try {
+      await respondToProposal({
+        eventId: counterProposeEvent.id,
+        action: 'counter',
+        counterTimes: proposedTimes,
+        message,
+      });
+      setCounterProposeEvent(null);
+      refetch();
+      refetchProposals();
+    } catch (err) {
+      setCounterProposeError(err instanceof Error ? err.message : 'Failed to submit counter-proposal');
+      throw err;
+    } finally {
+      setIsCounterProposing(false);
+    }
+  }, [counterProposeEvent, respondToProposal, refetch, refetchProposals]);
 
   // Create a set of myRequest IDs for quick lookup
   const myRequestIds = useMemo(() => new Set(myRequests.map(r => r.id)), [myRequests]);
@@ -789,6 +894,18 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
           onClose={() => setRescheduleEvent(null)}
           event={rescheduleEvent}
           onSuccess={handleRescheduleSuccess}
+        />
+      )}
+
+      {/* Counter-Propose Modal */}
+      {counterProposeEvent && (
+        <CounterProposeModal
+          isOpen={!!counterProposeEvent}
+          onClose={() => setCounterProposeEvent(null)}
+          event={counterProposeEvent}
+          onSubmit={handleCounterProposeSubmit}
+          isLoading={isCounterProposing}
+          error={counterProposeError}
         />
       )}
     </>

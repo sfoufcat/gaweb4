@@ -2,8 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { headers } from 'next/headers';
 import { adminDb } from '@/lib/firebase-admin';
-import type { CoachAvailability, UnifiedEvent } from '@/types';
+import type { CoachAvailability, UnifiedEvent, Squad, StandardSquadCall } from '@/types';
 import type { ClerkPublicMetadata } from '@/lib/admin-utils-clerk';
+
+// Minimal event structure needed for conflict checking
+interface BlockingEvent {
+  startDateTime: string;
+  endDateTime?: string;
+  durationMinutes?: number;
+}
 
 interface AvailableSlot {
   start: string;
@@ -154,7 +161,14 @@ export async function GET(request: NextRequest) {
       .where('status', 'in', ['confirmed', 'pending_response', 'proposed'])
       .get();
 
-    const existingEvents = eventsSnapshot.docs.map(doc => doc.data() as UnifiedEvent);
+    const existingEvents: BlockingEvent[] = eventsSnapshot.docs.map(doc => doc.data() as UnifiedEvent);
+
+    // Also fetch legacy squad calls that should block availability
+    // These are stored outside the events collection but still need to block 1-on-1 booking
+    const squadBlockingEvents = await fetchSquadBlockingEvents(organizationId, rangeStart, rangeEnd);
+    existingEvents.push(...squadBlockingEvents);
+
+    console.log('[AVAILABLE_SLOTS] Squad blocking events count:', squadBlockingEvents.length);
 
     // Get external calendar busy times if enabled
     let externalBusyTimes: Array<{ start: string; end: string }> = [];
@@ -283,7 +297,7 @@ function calculateAvailableSlots(
   rangeStart: Date,
   rangeEnd: Date,
   availability: CoachAvailability,
-  existingEvents: UnifiedEvent[],
+  existingEvents: BlockingEvent[],
   duration: number,
   buffer: number,
   externalBusyTimes: Array<{ start: string; end: string }> = []
@@ -400,4 +414,90 @@ function calculateAvailableSlots(
   }
 
   return slots;
+}
+
+/**
+ * Fetch squad-related events that should block availability
+ * This includes:
+ * 1. Legacy coach-scheduled squad calls (stored on squad document as nextCallDateTime)
+ * 2. Confirmed peer-led squad calls (stored in standardSquadCalls collection)
+ */
+async function fetchSquadBlockingEvents(
+  organizationId: string,
+  rangeStart: Date,
+  rangeEnd: Date
+): Promise<BlockingEvent[]> {
+  const blockingEvents: BlockingEvent[] = [];
+
+  try {
+    // 1. Find all squads belonging to this organization
+    const squadsSnapshot = await adminDb
+      .collection('squads')
+      .where('organizationId', '==', organizationId)
+      .get();
+
+    if (squadsSnapshot.empty) {
+      return blockingEvents;
+    }
+
+    const squadIds: string[] = [];
+
+    // 2. Check each squad for legacy nextCallDateTime field
+    for (const squadDoc of squadsSnapshot.docs) {
+      const squad = squadDoc.data() as Squad;
+      squadIds.push(squadDoc.id);
+
+      if (squad.nextCallDateTime) {
+        const callDateTime = new Date(squad.nextCallDateTime);
+
+        // Only include if within the date range
+        if (callDateTime >= rangeStart && callDateTime <= rangeEnd) {
+          blockingEvents.push({
+            startDateTime: squad.nextCallDateTime,
+            // Default to 60 minutes for squad calls
+            durationMinutes: 60,
+          });
+          console.log('[SQUAD_BLOCKING] Found legacy squad call:', squad.nextCallDateTime, 'for squad:', squadDoc.id);
+        }
+      }
+    }
+
+    // 3. Query confirmed peer-led squad calls (standardSquadCalls collection)
+    if (squadIds.length > 0) {
+      // Firestore 'in' queries are limited to 30 items, so we may need to batch
+      const batchSize = 30;
+      for (let i = 0; i < squadIds.length; i += batchSize) {
+        const batchSquadIds = squadIds.slice(i, i + batchSize);
+
+        const standardCallsSnapshot = await adminDb
+          .collection('standardSquadCalls')
+          .where('squadId', 'in', batchSquadIds)
+          .where('status', '==', 'confirmed')
+          .get();
+
+        for (const callDoc of standardCallsSnapshot.docs) {
+          const call = callDoc.data() as StandardSquadCall;
+
+          if (call.startDateTimeUtc) {
+            const callDateTime = new Date(call.startDateTimeUtc);
+
+            // Only include if within the date range
+            if (callDateTime >= rangeStart && callDateTime <= rangeEnd) {
+              blockingEvents.push({
+                startDateTime: call.startDateTimeUtc,
+                // Default to 60 minutes for squad calls
+                durationMinutes: 60,
+              });
+              console.log('[SQUAD_BLOCKING] Found peer-led squad call:', call.startDateTimeUtc, 'for squad:', call.squadId);
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('[SQUAD_BLOCKING] Error fetching squad blocking events:', error);
+    // Don't fail the whole request, just return what we have
+  }
+
+  return blockingEvents;
 }

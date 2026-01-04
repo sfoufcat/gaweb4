@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useOrganization as useClerkOrganization, useOrganizationList } from '@clerk/nextjs';
 import { isOrgCoach } from '@/lib/admin-utils-shared';
 import { ClientDetailView, CustomizeBrandingTab, ChannelManagementTab, PaymentFailedBanner } from '@/components/coach';
-import { DemoModeBanner } from '@/components/demo/DemoRestriction';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, AlertCircle, Users } from 'lucide-react';
 import type { ClerkPublicMetadata, OrgRole, ProgramCohort, CoachSubscription } from '@/types';
@@ -445,9 +444,6 @@ export default function CoachPage() {
 
   return (
     <div className="min-h-screen">
-      {/* Demo Mode Banner - shown on demo.coachful.co */}
-      {isDemoSite && <DemoModeBanner />}
-      
       {/* Feature Tour Overlay */}
       <FeatureTour
         isActive={isTourActive}
