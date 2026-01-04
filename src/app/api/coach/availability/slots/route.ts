@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireCoachWithOrg } from '@/lib/admin-utils-clerk';
-import type { CoachAvailability, UnifiedEvent, TimeSlot } from '@/types';
+import { getCalendarBusyTimes } from '@/lib/calendar-busy-times';
+import type { CoachAvailability, UnifiedEvent } from '@/types';
 
 interface AvailableSlot {
   start: string;  // ISO datetime
@@ -111,19 +112,13 @@ export async function GET(request: NextRequest) {
     let externalBusyTimes: Array<{ start: string; end: string }> = [];
     if (availability.syncExternalBusy) {
       try {
-        // Use the new unified calendar busy-times endpoint (supports Google and Microsoft)
-        const busyResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/calendar/busy-times?startDate=${rangeStart.toISOString()}&endDate=${rangeEnd.toISOString()}`,
-          {
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
+        // Call the shared function directly (no HTTP overhead, no auth issues)
+        const busyData = await getCalendarBusyTimes(
+          organizationId,
+          rangeStart.toISOString(),
+          rangeEnd.toISOString()
         );
-        if (busyResponse.ok) {
-          const busyData = await busyResponse.json();
-          externalBusyTimes = busyData.busyTimes || [];
-        }
+        externalBusyTimes = busyData.busyTimes || [];
       } catch (err) {
         console.warn('[AVAILABILITY_SLOTS] Failed to fetch external busy times:', err);
         // Continue without external busy times

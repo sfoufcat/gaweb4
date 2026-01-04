@@ -12,12 +12,10 @@ import { ReactNode } from 'react';
  */
 export function ConditionalMain({ children }: { children: ReactNode }) {
   return (
-    <>
+    <main className="relative z-0 min-h-dvh pb-24 lg:pb-0">
       <div className="fixed inset-0 bg-[#faf8f6] dark:bg-[#05070b] -z-10" />
-      <main className="relative min-h-dvh pb-24 lg:pb-0">
-        {children}
-      </main>
-    </>
+      {children}
+    </main>
   );
 }
 

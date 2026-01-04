@@ -810,6 +810,10 @@ function ChatContent({
   // Track unread counts and last messages for all coach squads
   const [coachSquadUnreads, setCoachSquadUnreads] = useState<Record<string, number>>({});
   const [coachSquadLastMessages, setCoachSquadLastMessages] = useState<Record<string, Date | null>>({});
+
+  // Track unread counts and last messages for ALL user squads (not just premium/standard)
+  const [userSquadUnreads, setUserSquadUnreads] = useState<Record<string, number>>({});
+  const [userSquadLastMessages, setUserSquadLastMessages] = useState<Record<string, Date | null>>({});
   
   // Track orphan channels (channels with unreads that aren't shown in the normal list)
   const [orphanSquadChannels, setOrphanSquadChannels] = useState<StreamChannel[]>([]);
@@ -915,7 +919,11 @@ function ChatContent({
     // Track coach squad unreads and last messages by channel ID
     const coachSquadUnreadMap: Record<string, number> = {};
     const coachSquadLastMessageMap: Record<string, Date | null> = {};
-    
+
+    // Track ALL user squad unreads and last messages by channel ID
+    const userSquadUnreadMap: Record<string, number> = {};
+    const userSquadLastMessageMap: Record<string, Date | null> = {};
+
     // Track orphan channels (channels with unreads not shown in normal list)
     const orphanSquads: StreamChannel[] = [];
     const orphanCoaching: StreamChannel[] = [];
@@ -968,6 +976,10 @@ function ChatContent({
         if (channelId === standardSquadChannelId) {
           standardSquadTime = new Date(lastMessageAt);
         }
+        // Track for ALL user squads
+        if (channelId && userSquadChannelIds.has(channelId)) {
+          userSquadLastMessageMap[channelId] = new Date(lastMessageAt);
+        }
         // Track for coach squads specifically
         if (channelId && coachSquadChannelIds.has(channelId)) {
           coachSquadLastMessageMap[channelId] = new Date(lastMessageAt);
@@ -1008,6 +1020,10 @@ function ChatContent({
           }
           if (channelId === standardSquadChannelId) {
             standardSquadCount = unread;
+          }
+          // Track for ALL user squads
+          if (channelId && userSquadChannelIds.has(channelId)) {
+            userSquadUnreadMap[channelId] = unread;
           }
           // Track for coach squads specifically
           if (channelId && coachSquadChannelIds.has(channelId)) {
@@ -1062,6 +1078,8 @@ function ChatContent({
     setCoachingLastMessage(coachingTime);
     setCoachSquadUnreads(coachSquadUnreadMap);
     setCoachSquadLastMessages(coachSquadLastMessageMap);
+    setUserSquadUnreads(userSquadUnreadMap);
+    setUserSquadLastMessages(userSquadLastMessageMap);
     setOrphanSquadChannels(orphanSquads);
     setOrphanCoachingChannels(orphanCoaching);
     setOrgChannelUnreads(orgChannelUnreadMap);
@@ -1382,67 +1400,39 @@ function ChatContent({
               </div>
             )}
             
-            {/* Regular User: Premium Squad Chat (shown first if exists) */}
-            {!isCoach && !isPlatformMode && !isSquadLoading && premiumSquadChannelId && (
-              <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
-                <SpecialChannelItem
-                  avatarUrl={premiumSquad?.avatarUrl}
-                  icon={
-                    <svg className="w-6 h-6 text-[#FF6B6B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
-                    </svg>
-                  }
-                  name={premiumSquad?.name || `Premium ${squadTitle}`}
-                  description={`Premium ${squadLower} chat`}
-                  onClick={() => handleChannelSelect(premiumSquadChannelId)}
-                  isActive={activeChannel?.id === premiumSquadChannelId}
-                  isPinned={true}
-                  unreadCount={premiumSquadUnread}
-                  lastMessageTime={premiumSquadLastMessage}
-                />
-              </div>
-            )}
-            
-            {/* Regular User: Standard Squad Chat */}
-            {!isCoach && !isPlatformMode && !isSquadLoading && standardSquadChannelId && (
-              <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
-                <SpecialChannelItem
-                  avatarUrl={standardSquad?.avatarUrl}
-                  icon={
-                    <svg className="w-6 h-6 text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  }
-                  name={standardSquad?.name || mySquadTitle}
-                  description={hasBothSquads ? `Standard ${squadLower} chat` : `${squadTitle} chat`}
-                  onClick={() => handleChannelSelect(standardSquadChannelId)}
-                  isActive={activeChannel?.id === standardSquadChannelId}
-                  isPinned={true}
-                  unreadCount={standardSquadUnread}
-                  lastMessageTime={standardSquadLastMessage}
-                />
-              </div>
-            )}
-            
-            {/* Fallback: Legacy squad channel (for users not yet migrated to dual fields) */}
-            {!isCoach && !isPlatformMode && !isSquadLoading && squadChannelId && !premiumSquadChannelId && !standardSquadChannelId && (
-              <div className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
-                <SpecialChannelItem
-                  avatarUrl={squad?.avatarUrl}
-                  icon={
-                    <svg className="w-6 h-6 text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  }
-                  name={squad?.name || mySquadTitle}
-                  description={`${squadTitle} chat`}
-                  onClick={() => handleChannelSelect(squadChannelId)}
-                  isActive={activeChannel?.id === squadChannelId}
-                  isPinned={true}
-                  unreadCount={squadUnread}
-                  lastMessageTime={squadLastMessage}
-                />
-              </div>
+            {/* Regular User: ALL Squad Chats - Iterate through all squads */}
+            {!isCoach && !isPlatformMode && !isSquadLoading && squads.length > 0 && (
+              <>
+                {squads.map((userSquad) => {
+                  if (!userSquad.chatChannelId) return null;
+                  const isPremium = userSquad.hasCoach === true;
+                  return (
+                    <div key={userSquad.id} className="p-2 border-b border-[#e1ddd8] dark:border-[#262b35]">
+                      <SpecialChannelItem
+                        avatarUrl={userSquad.avatarUrl}
+                        icon={
+                          isPremium ? (
+                            <svg className="w-6 h-6 text-[#FF6B6B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-6 h-6 text-brand-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                          )
+                        }
+                        name={userSquad.name || mySquadTitle}
+                        description={`${squadTitle} chat${isPremium ? ' • Premium' : ''}`}
+                        onClick={() => handleChannelSelect(userSquad.chatChannelId!)}
+                        isActive={activeChannel?.id === userSquad.chatChannelId}
+                        isPinned={true}
+                        unreadCount={userSquadUnreads[userSquad.chatChannelId] || 0}
+                        lastMessageTime={userSquadLastMessages[userSquad.chatChannelId] || null}
+                      />
+                    </div>
+                  );
+                })}
+              </>
             )}
 
             {/* Orphan Squad Channels - Previous squads with unread messages */}
