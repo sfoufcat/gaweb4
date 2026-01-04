@@ -101,6 +101,20 @@ export async function GET(request: NextRequest) {
       availability = availabilityDoc.data() as CoachAvailability;
     }
 
+    // Ensure weeklySchedule is valid, use defaults if not
+    if (!availability.weeklySchedule || typeof availability.weeklySchedule !== 'object' ||
+        Object.keys(availability.weeklySchedule).length === 0) {
+      availability.weeklySchedule = {
+        0: [],
+        1: [{ start: '09:00', end: '17:00' }],
+        2: [{ start: '09:00', end: '17:00' }],
+        3: [{ start: '09:00', end: '17:00' }],
+        4: [{ start: '09:00', end: '17:00' }],
+        5: [{ start: '09:00', end: '17:00' }],
+        6: [],
+      };
+    }
+
     const duration = durationParam ? parseInt(durationParam) : availability.defaultDuration;
     const buffer = availability.bufferBetweenCalls;
 
@@ -163,44 +177,26 @@ export async function GET(request: NextRequest) {
  * Convert a date string (YYYY-MM-DD) + time in a specific timezone to a UTC Date object
  */
 function createDateInTimezone(dateStr: string, hours: number, minutes: number, timezone: string): Date {
-  // Create a datetime string in the target timezone
+  // Format the datetime string
   const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
   const localDateTimeStr = `${dateStr}T${timeStr}`;
 
-  // Parse as if it's in the target timezone by using the timezone-aware formatter
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
+  // Parse the date as if it were in the local environment first
+  const naiveDate = new Date(localDateTimeStr);
 
-  // Create a date object treating the time as UTC first
-  const tempDate = new Date(`${localDateTimeStr}Z`);
+  // Get what the same instant looks like in UTC vs target timezone
+  const utcString = naiveDate.toLocaleString('en-US', { timeZone: 'UTC' });
+  const tzString = naiveDate.toLocaleString('en-US', { timeZone: timezone });
 
-  // Get the formatted parts in the target timezone
-  const parts = formatter.formatToParts(tempDate);
-  const getPart = (type: string) => parts.find(p => p.type === type)?.value || '0';
+  // Parse both strings back to dates to calculate offset
+  const utcDate = new Date(utcString);
+  const tzDate = new Date(tzString);
 
-  // Calculate the offset between UTC and the target timezone
-  const utcHour = tempDate.getUTCHours();
-  const tzHour = parseInt(getPart('hour'));
-  let offset = tzHour - utcHour;
+  // The offset is the difference between how the date appears in UTC vs the target timezone
+  const offsetMs = utcDate.getTime() - tzDate.getTime();
 
-  // Handle day boundary crossings
-  if (offset > 12) offset -= 24;
-  if (offset < -12) offset += 24;
-
-  // Create the final date by subtracting the offset
-  // If timezone is UTC+2, and we want 09:00 in that timezone, we need 07:00 UTC
-  const result = new Date(`${localDateTimeStr}Z`);
-  result.setUTCHours(result.getUTCHours() - offset);
-
-  return result;
+  // Apply offset to get the correct UTC time for the target timezone
+  return new Date(naiveDate.getTime() + offsetMs);
 }
 
 /**

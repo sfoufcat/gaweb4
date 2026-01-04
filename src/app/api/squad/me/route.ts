@@ -142,7 +142,7 @@ async function fetchSquadData(
     // Stats values - null when includeStats=false (loading state)
     streak: squadStats?.squadStreak ?? null,
     avgAlignment: squadStats?.avgAlignment ?? null,
-    chatChannelId: squadData?.chatChannelId || null,
+    chatChannelId: squadData?.chatChannelId || `squad-${squadDoc.id}`,
     // Program association (null = standalone squad, not attached to any program)
     programId: squadData?.programId || null,
     cohortId: squadData?.cohortId || null,

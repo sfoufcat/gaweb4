@@ -1,5 +1,6 @@
 import { adminDb } from '@/lib/firebase-admin';
-import type { UnifiedEvent, SchedulingNotificationType } from '@/types';
+import { sendTenantEmail, getAppTitleForEmail, getLogoUrlForEmail, APP_BASE_URL } from '@/lib/email-sender';
+import type { UnifiedEvent, SchedulingNotificationType, FirebaseUser } from '@/types';
 
 interface NotificationPayload {
   userId: string;
@@ -32,17 +33,148 @@ async function createNotification(payload: NotificationPayload) {
 }
 
 /**
- * Get user's name for notifications
+ * Get user info for notifications
+ */
+async function getUserInfo(userId: string): Promise<{ name: string; firstName: string; email: string | null; organizationId: string | null }> {
+  const userDoc = await adminDb.collection('users').doc(userId).get();
+  if (!userDoc.exists) return { name: 'Someone', firstName: 'there', email: null, organizationId: null };
+
+  const userData = userDoc.data() as FirebaseUser | undefined;
+  const name = userData?.firstName && userData?.lastName
+    ? `${userData.firstName} ${userData.lastName}`
+    : userData?.name || userData?.firstName || 'Someone';
+
+  return {
+    name,
+    firstName: userData?.firstName || 'there',
+    email: userData?.email || null,
+    organizationId: userData?.primaryOrganizationId || null,
+  };
+}
+
+/**
+ * Get user's name for notifications (wrapper for backward compatibility)
  */
 async function getUserName(userId: string): Promise<string> {
-  const userDoc = await adminDb.collection('users').doc(userId).get();
-  if (!userDoc.exists) return 'Someone';
-  
-  const userData = userDoc.data();
-  if (userData?.firstName && userData?.lastName) {
-    return `${userData.firstName} ${userData.lastName}`;
+  const { name } = await getUserInfo(userId);
+  return name;
+}
+
+/**
+ * Generate scheduling email HTML template
+ */
+function generateSchedulingEmailHtml(options: {
+  logoUrl: string;
+  teamName: string;
+  firstName: string;
+  headline: string;
+  body: string;
+  ctaUrl?: string;
+  ctaLabel?: string;
+  eventDetails?: {
+    title: string;
+    date: string;
+    meetingLink?: string;
+  };
+}): string {
+  const { logoUrl, teamName, firstName, headline, body, ctaUrl, ctaLabel, eventDetails } = options;
+  const year = new Date().getFullYear();
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #2c2520; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="${logoUrl}" alt="${teamName}" style="width: 60px; height: 60px; border-radius: 12px;">
+  </div>
+
+  <p style="font-size: 18px; margin-bottom: 20px;">Hi ${firstName},</p>
+
+  <p style="font-size: 16px; font-weight: 600; margin-bottom: 15px;">${headline}</p>
+
+  <p style="margin-bottom: 20px;">${body}</p>
+
+  ${eventDetails ? `
+  <div style="background-color: #f9f8f7; border: 1px solid #e1ddd8; border-radius: 12px; padding: 20px; margin: 20px 0;">
+    <p style="margin: 0 0 8px 0; font-weight: 600; color: #1a1a1a;">${eventDetails.title}</p>
+    <p style="margin: 0; color: #5f5a55;">📅 ${eventDetails.date}</p>
+    ${eventDetails.meetingLink ? `<p style="margin: 8px 0 0 0;"><a href="${eventDetails.meetingLink}" style="color: #2563eb;">Join meeting</a></p>` : ''}
+  </div>
+  ` : ''}
+
+  ${ctaUrl && ctaLabel ? `
+  <div style="text-align: center; margin: 30px 0;">
+    <a href="${ctaUrl}" style="display: inline-block; background: linear-gradient(135deg, #2c2520 0%, #3d342d 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 32px; font-weight: bold; font-size: 16px;">
+      ${ctaLabel}
+    </a>
+  </div>
+  ` : ''}
+
+  <p style="margin-bottom: 10px;">Best,</p>
+  <p style="color: #666;">The ${teamName} Team</p>
+
+  <hr style="border: none; border-top: 1px solid #e1ddd8; margin: 30px 0;">
+
+  <p style="font-size: 12px; color: #999; text-align: center;">
+    © ${year} ${teamName}. All rights reserved.
+  </p>
+</body>
+</html>`;
+}
+
+/**
+ * Send scheduling email to a user
+ */
+async function sendSchedulingEmail(options: {
+  recipientId: string;
+  subject: string;
+  headline: string;
+  body: string;
+  ctaUrl?: string;
+  ctaLabel?: string;
+  eventDetails?: {
+    title: string;
+    date: string;
+    meetingLink?: string;
+  };
+}) {
+  const { recipientId, subject, headline, body, ctaUrl, ctaLabel, eventDetails } = options;
+
+  const recipientInfo = await getUserInfo(recipientId);
+  if (!recipientInfo.email) {
+    console.warn('[SCHEDULING_NOTIFICATIONS] No email for user:', recipientId);
+    return;
   }
-  return userData?.name || userData?.firstName || 'Someone';
+
+  const organizationId = recipientInfo.organizationId;
+  const teamName = await getAppTitleForEmail(organizationId);
+  const logoUrl = await getLogoUrlForEmail(organizationId);
+
+  const html = generateSchedulingEmailHtml({
+    logoUrl,
+    teamName,
+    firstName: recipientInfo.firstName,
+    headline,
+    body,
+    ctaUrl,
+    ctaLabel,
+    eventDetails,
+  });
+
+  try {
+    await sendTenantEmail({
+      to: recipientInfo.email,
+      subject,
+      html,
+      organizationId,
+    });
+    console.log('[SCHEDULING_NOTIFICATIONS] Email sent to:', recipientInfo.email);
+  } catch (error) {
+    console.error('[SCHEDULING_NOTIFICATIONS] Failed to send email:', error);
+  }
 }
 
 /**
@@ -62,6 +194,7 @@ function formatEventDate(dateString: string, timezone?: string): string {
 
 /**
  * Send notification when a coach proposes a call
+ * Sends email only (no notification panel) - event appears in My Calendar
  */
 export async function notifyCallProposed(
   event: UnifiedEvent,
@@ -70,22 +203,24 @@ export async function notifyCallProposed(
   const coachName = event.hostName || await getUserName(event.hostUserId);
   const eventDate = formatEventDate(event.startDateTime, event.timezone);
 
-  await createNotification({
-    userId: clientId,
-    type: 'call_proposed',
-    title: 'New Call Proposal',
-    body: `${coachName} proposed a call on ${eventDate}`,
-    data: {
-      eventId: event.id,
-      eventType: event.eventType,
-      coachName,
+  // Send email notification
+  await sendSchedulingEmail({
+    recipientId: clientId,
+    subject: `New Call Proposal from ${coachName}`,
+    headline: 'New Call Proposal',
+    body: `${coachName} has proposed a call with you. Please review the proposed times and accept or suggest alternatives.`,
+    ctaUrl: `${APP_BASE_URL}/my-coach`,
+    ctaLabel: 'View Proposal',
+    eventDetails: {
+      title: event.title,
+      date: eventDate,
     },
-    actionUrl: '/my-coach', // Or wherever the user can respond
   });
 }
 
 /**
  * Send notification when a client requests a call
+ * Sends email only (no notification panel) - event appears in My Calendar
  */
 export async function notifyCallRequested(
   event: UnifiedEvent,
@@ -95,18 +230,18 @@ export async function notifyCallRequested(
   const clientName = clientId ? await getUserName(clientId) : 'A client';
   const eventDate = formatEventDate(event.startDateTime, event.timezone);
 
-  await createNotification({
-    userId: coachId,
-    type: 'call_requested',
-    title: 'New Call Request',
-    body: `${clientName} requested a call around ${eventDate}`,
-    data: {
-      eventId: event.id,
-      eventType: event.eventType,
-      clientName,
-      clientId: clientId || '',
+  // Send email notification to coach
+  await sendSchedulingEmail({
+    recipientId: coachId,
+    subject: `New Call Request from ${clientName}`,
+    headline: 'New Call Request',
+    body: `${clientName} has requested a call with you. Please review the proposed times and accept or suggest alternatives.`,
+    ctaUrl: `${APP_BASE_URL}/my-coach`,
+    ctaLabel: 'View Request',
+    eventDetails: {
+      title: event.title,
+      date: eventDate,
     },
-    actionUrl: `/coach?tab=clients`, // Coach dashboard clients tab
   });
 }
 
@@ -199,6 +334,7 @@ export async function notifyCallCounterProposed(
 
 /**
  * Send notification when a call is cancelled
+ * Sends both notification panel entry AND email
  */
 export async function notifyCallCancelled(
   event: UnifiedEvent,
@@ -211,6 +347,7 @@ export async function notifyCallCancelled(
   // Notify all other participants
   for (const attendeeId of event.attendeeIds) {
     if (attendeeId !== cancelledBy) {
+      // Create notification in panel
       await createNotification({
         userId: attendeeId,
         type: 'call_cancelled',
@@ -221,6 +358,20 @@ export async function notifyCallCancelled(
           eventType: event.eventType,
         },
         actionUrl: '/my-coach',
+      });
+
+      // Send email notification
+      await sendSchedulingEmail({
+        recipientId: attendeeId,
+        subject: 'Call Cancelled',
+        headline: 'Your Call Has Been Cancelled',
+        body: `${cancellerName} has cancelled your scheduled call.${reason ? ` Reason: ${reason}` : ''}`,
+        ctaUrl: `${APP_BASE_URL}/my-coach`,
+        ctaLabel: 'View Calendar',
+        eventDetails: {
+          title: event.title,
+          date: eventDate,
+        },
       });
     }
   }
@@ -276,6 +427,7 @@ export async function notifyResponseDeadlineApproaching(
 
 /**
  * Send notification when a call is rescheduled
+ * Sends email only (no notification panel) - event appears in My Calendar as pending proposal
  */
 export async function notifyCallRescheduled(
   event: UnifiedEvent,
@@ -285,20 +437,20 @@ export async function notifyCallRescheduled(
   const reschedulerName = await getUserName(rescheduledBy);
   const eventDate = formatEventDate(event.startDateTime, event.timezone);
 
-  // Notify all other participants
+  // Send email to all other participants (no notification panel - shows in calendar)
   for (const attendeeId of event.attendeeIds) {
     if (attendeeId !== rescheduledBy) {
-      await createNotification({
-        userId: attendeeId,
-        type: 'call_rescheduled',
-        title: 'Call Rescheduled',
-        body: `${reschedulerName} requested to reschedule the call to ${eventDate}${reason ? `: ${reason}` : ''}`,
-        data: {
-          eventId: event.id,
-          eventType: event.eventType,
-          rescheduledFromId: event.rescheduledFromId || '',
+      await sendSchedulingEmail({
+        recipientId: attendeeId,
+        subject: `Call Reschedule Request from ${reschedulerName}`,
+        headline: 'Call Reschedule Request',
+        body: `${reschedulerName} has requested to reschedule your call.${reason ? ` Reason: ${reason}` : ''} Please review the new proposed times.`,
+        ctaUrl: `${APP_BASE_URL}/my-coach`,
+        ctaLabel: 'View New Times',
+        eventDetails: {
+          title: event.title,
+          date: eventDate,
         },
-        actionUrl: '/my-coach',
       });
     }
   }

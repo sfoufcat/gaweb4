@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Phone, ChevronDown, ExternalLink, Users, Loader2, Calendar, Clock, MapPin, Target, StickyNote, BookOpen, CheckCircle2, Dot, Sparkles } from 'lucide-react';
+import { ArrowLeft, Phone, ChevronDown, ExternalLink, Users, Loader2, Calendar, Clock, MapPin, Target, StickyNote, BookOpen } from 'lucide-react';
 import type { EnrolledProgramWithDetails } from '@/hooks/useMyPrograms';
 import { useProgramContent } from '@/hooks/useProgramContent';
 import { useProgramCoachingData } from '@/hooks/useProgramCoachingData';
@@ -641,8 +641,8 @@ export function ProgramDetailView({
               </div>
               <ul className="space-y-2">
                 {coachingData.focusAreas.map((focus, index) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <Sparkles className="w-4 h-4 text-brand-accent mt-0.5 shrink-0" />
+                  <li key={index} className="flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-brand-accent shrink-0" />
                     <span className="font-sans text-[15px] text-text-secondary dark:text-[#b2b6c2]">{focus}</span>
                   </li>
                 ))}
@@ -659,10 +659,10 @@ export function ProgramDetailView({
                   Notes
                 </h3>
               </div>
-              <ul className="space-y-3">
+              <ul className="space-y-2">
                 {coachingData.actionItems.map((item) => (
-                  <li key={item.id} className="flex items-start gap-2">
-                    <Dot className="w-5 h-5 text-brand-accent shrink-0 -ml-1" />
+                  <li key={item.id} className="flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-brand-accent shrink-0" />
                     <span className="font-sans text-[15px] text-text-secondary dark:text-[#b2b6c2]">
                       {item.text}
                     </span>
@@ -999,14 +999,6 @@ export function ProgramDetailView({
       )}
 
 
-      {/* No content message - only if completely empty */}
-      {!contentLoading && !hasContent && !hasAnyTasks && (
-        <div className="text-center py-8">
-          <p className="font-sans text-[16px] text-text-secondary dark:text-[#b2b6c2]">
-            No program content available yet.
-          </p>
-        </div>
-      )}
     </div>
   );
 }

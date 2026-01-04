@@ -192,12 +192,23 @@ function EventItem({ event, onRespond, onCancel, onReschedule }: EventItemProps)
               <Calendar className="w-3.5 h-3.5" />
               <span>{formatDate(startTime)}</span>
             </div>
-            <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-              <Clock className="w-3.5 h-3.5" />
-              <span>
-                {formatTime(startTime)}
-                {endTime && ` - ${formatTime(endTime)}`}
-              </span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                <Clock className="w-3.5 h-3.5" />
+                <span>
+                  {formatTime(startTime)}
+                  {endTime && ` - ${formatTime(endTime)}`}
+                </span>
+              </div>
+              {isConfirmed && (
+                <button
+                  onClick={generateICS}
+                  className="p-1.5 text-[#5f5a55] hover:text-[#1a1a1a] dark:text-[#b2b6c2] dark:hover:text-[#f5f5f8] hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] rounded-lg transition-colors"
+                  title="Add to Calendar"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+              )}
             </div>
             {event.locationLabel && (
               <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
@@ -317,13 +328,6 @@ function EventItem({ event, onRespond, onCancel, onReschedule }: EventItemProps)
                     Join Call
                   </a>
                 )}
-                <button
-                  onClick={generateICS}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl text-sm font-medium hover:bg-[#e8e4df] dark:hover:bg-[#313746] hover:shadow-sm active:scale-95 transition-all duration-200"
-                >
-                  <Download className="w-4 h-4" />
-                  Add to Calendar
-                </button>
                 {onReschedule && (
                   <button
                     onClick={() => onReschedule(event)}
@@ -344,44 +348,44 @@ function EventItem({ event, onRespond, onCancel, onReschedule }: EventItemProps)
                 )}
               </div>
             )}
-
-            {/* Cancel confirmation dialog */}
-            {showCancelConfirm && (
-              <div className="w-full mt-3 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl">
-                <p className="text-sm font-medium text-red-700 dark:text-red-300 mb-3">
-                  Are you sure you want to cancel this call?
-                </p>
-                <textarea
-                  value={cancelReason}
-                  onChange={(e) => setCancelReason(e.target.value)}
-                  placeholder="Reason for cancellation (optional)"
-                  rows={2}
-                  className="w-full px-3 py-2 text-sm bg-white dark:bg-[#1e222a] border border-red-200 dark:border-red-800/30 rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-red-500 resize-none mb-3"
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setShowCancelConfirm(false);
-                      setCancelReason('');
-                    }}
-                    className="flex-1 px-4 py-2 text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
-                  >
-                    Keep Call
-                  </button>
-                  <button
-                    onClick={() => {
-                      onCancel?.(event.id, cancelReason || undefined);
-                      setShowCancelConfirm(false);
-                      setCancelReason('');
-                    }}
-                    className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
-                  >
-                    Cancel Call
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
+
+          {/* Cancel confirmation dialog - outside action buttons for full width */}
+          {showCancelConfirm && (
+            <div className="mt-3 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl">
+              <p className="text-sm font-medium text-red-700 dark:text-red-300 mb-3">
+                Are you sure you want to cancel this call?
+              </p>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Reason for cancellation (optional)"
+                rows={2}
+                className="w-full px-3 py-2 text-sm bg-white dark:bg-[#1e222a] border border-red-200 dark:border-red-800/30 rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-red-500 resize-none mb-3"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowCancelConfirm(false);
+                    setCancelReason('');
+                  }}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+                >
+                  Keep Call
+                </button>
+                <button
+                  onClick={() => {
+                    onCancel?.(event.id, cancelReason || undefined);
+                    setShowCancelConfirm(false);
+                    setCancelReason('');
+                  }}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
+                >
+                  Cancel Call
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
