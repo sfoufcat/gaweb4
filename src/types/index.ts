@@ -2413,7 +2413,7 @@ export const DEFAULT_BRANDING_COLORS: OrgBrandingColors = {
 };
 
 export const DEFAULT_APP_TITLE = 'Coachful';
-export const DEFAULT_LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af';
+export const DEFAULT_LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=78f383ba-0074-4375-985c-f623e8c90d70';
 
 export const DEFAULT_MENU_TITLES: OrgMenuTitles = {
   home: 'Home',

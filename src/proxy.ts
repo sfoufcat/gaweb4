@@ -603,7 +603,7 @@ export const proxy = clerkMiddleware(async (auth, request) => {
       
       // Set demo tenant cookie so branding context gets demo-friendly values
       const demoBrandingData = {
-        logoUrl: '/logo.jpg',
+        logoUrl: '/logo.png',
         horizontalLogoUrl: null,
         appTitle: 'Coach Adam',
         colors: {

@@ -118,7 +118,7 @@ export function EmailTemplateEditor({ isVerified, appTitle, logoUrl }: EmailTemp
     firstName: 'John',
     appTitle: appTitle || 'Coachful',
     teamName: appTitle || 'Coachful',
-    logoUrl: logoUrl || '/logo.jpg',
+    logoUrl: logoUrl || '/logo.png',
     ctaUrl: 'https://example.com/action',
     year: new Date().getFullYear().toString(),
   };

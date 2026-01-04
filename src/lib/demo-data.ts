@@ -1861,7 +1861,7 @@ export interface DemoBranding {
 
 export function generateDemoBranding(): DemoBranding {
   return {
-    logoUrl: '/logo.jpg',
+    logoUrl: '/logo.png',
     appTitle: 'Coach Adam',
     colors: {
       accentLight: '#a07855',

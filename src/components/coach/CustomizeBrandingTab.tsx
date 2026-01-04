@@ -2532,7 +2532,7 @@ export function CustomizeBrandingTab() {
         <EmailTemplateEditor
           isVerified={emailSettings?.status === 'verified'}
           appTitle={appTitle}
-          logoUrl={logoUrl || '/logo.jpg'}
+          logoUrl={logoUrl || '/logo.png'}
         />
       </div>
 

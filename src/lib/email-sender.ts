@@ -430,7 +430,7 @@ export async function sendEmailToUser(
  * Get the platform's logo URL, or tenant's logo if whitelabeled
  */
 export async function getLogoUrlForEmail(organizationId: string | null): Promise<string> {
-  const defaultLogo = `${APP_BASE_URL}/logo.jpg`;
+  const defaultLogo = `${APP_BASE_URL}/logo.png`;
   
   if (!organizationId) return defaultLogo;
   

@@ -29,7 +29,7 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
     subject: '{{firstName}}, about those {{quizClientCount}} clients...',
     htmlContent: `
 <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <img src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af" alt="Coachful" style="width: 48px; height: 48px; border-radius: 12px; margin-bottom: 24px;">
+  <img src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=78f383ba-0074-4375-985c-f623e8c90d70" alt="Coachful" style="width: 48px; height: 48px; border-radius: 12px; margin-bottom: 24px;">
   
   <h1 style="font-size: 24px; color: #1a1a1a; margin-bottom: 16px;">Hey {{firstName}},</h1>
   
@@ -64,7 +64,7 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
     subject: 'Still struggling with {{quizFrustrations}}?',
     htmlContent: `
 <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <img src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af" alt="Coachful" style="width: 48px; height: 48px; border-radius: 12px; margin-bottom: 24px;">
+  <img src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=78f383ba-0074-4375-985c-f623e8c90d70" alt="Coachful" style="width: 48px; height: 48px; border-radius: 12px; margin-bottom: 24px;">
   
   <h1 style="font-size: 24px; color: #1a1a1a; margin-bottom: 16px;">{{firstName}}, let me be direct:</h1>
   
@@ -105,7 +105,7 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
     subject: 'Last email about your {{quizClientCount}} clients',
     htmlContent: `
 <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <img src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af" alt="Coachful" style="width: 48px; height: 48px; border-radius: 12px; margin-bottom: 24px;">
+  <img src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=78f383ba-0074-4375-985c-f623e8c90d70" alt="Coachful" style="width: 48px; height: 48px; border-radius: 12px; margin-bottom: 24px;">
   
   <h1 style="font-size: 24px; color: #1a1a1a; margin-bottom: 16px;">{{firstName}}, this is my last email</h1>
   
@@ -150,7 +150,7 @@ const DEFAULT_TEMPLATES: Omit<AutomatedEmailTemplate, 'id' | 'createdAt' | 'upda
     subject: 'How\'s Coachful working for your {{quizClientCount}} clients?',
     htmlContent: `
 <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <img src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af" alt="Coachful" style="width: 48px; height: 48px; border-radius: 12px; margin-bottom: 24px;">
+  <img src="https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=78f383ba-0074-4375-985c-f623e8c90d70" alt="Coachful" style="width: 48px; height: 48px; border-radius: 12px; margin-bottom: 24px;">
   
   <h1 style="font-size: 24px; color: #1a1a1a; margin-bottom: 16px;">Hey {{firstName}}!</h1>
   

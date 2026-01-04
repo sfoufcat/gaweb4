@@ -47,7 +47,7 @@ const generateDemoMainChannels = (): DemoConversation[] => {
           id: 'ann-1',
           senderId: 'coach-adam',
           senderName: 'Coach Adam',
-          senderAvatar: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af',
+          senderAvatar: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=78f383ba-0074-4375-985c-f623e8c90d70',
           text: "Hey everyone! We've just launched our new weekly reflection feature. It's designed to help you track your progress and set intentions for the week ahead. Give it a try and let me know what you think!",
           timestamp: new Date(now.getTime() - 24 * 60 * 60 * 1000),
           isRead: true
@@ -56,7 +56,7 @@ const generateDemoMainChannels = (): DemoConversation[] => {
           id: 'ann-2',
           senderId: 'coach-adam',
           senderName: 'Coach Adam',
-          senderAvatar: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af',
+          senderAvatar: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=78f383ba-0074-4375-985c-f623e8c90d70',
           text: "🎉 Welcome to the community! Check out our new features and don't hesitate to reach out if you have any questions.",
           timestamp: new Date(now.getTime() - 2 * 60 * 60 * 1000),
           isRead: false
@@ -146,7 +146,7 @@ const generateDemoMainChannels = (): DemoConversation[] => {
           id: 'squad-1',
           senderId: 'coach-adam',
           senderName: 'Coach Adam',
-          senderAvatar: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=686f3c16-47d2-4a2e-aef3-fa2d87e050af',
+          senderAvatar: 'https://firebasestorage.googleapis.com/v0/b/gawebdev2-3191a.firebasestorage.app/o/assets%2FLogo.png?alt=media&token=78f383ba-0074-4375-985c-f623e8c90d70',
           text: "Hey squad! Reminder: We have our weekly check-in tomorrow at 10am. Come prepared to share one win and one challenge.",
           timestamp: new Date(now.getTime() - 5 * 60 * 60 * 1000),
           isRead: true
