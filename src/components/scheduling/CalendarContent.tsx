@@ -27,6 +27,37 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
+// Group events by date (YYYY-MM-DD)
+function groupEventsByDate(events: UnifiedEvent[]): Map<string, UnifiedEvent[]> {
+  const grouped = new Map<string, UnifiedEvent[]>();
+  for (const event of events) {
+    const dateKey = new Date(event.startDateTime).toISOString().split('T')[0];
+    if (!grouped.has(dateKey)) {
+      grouped.set(dateKey, []);
+    }
+    grouped.get(dateKey)!.push(event);
+  }
+  return grouped;
+}
+
+// Date separator with lines on both sides
+function DateSeparator({ date }: { date: Date }) {
+  const formatted = date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  });
+  return (
+    <div className="flex items-center gap-3 py-3">
+      <div className="flex-1 h-px bg-[#e1ddd8] dark:bg-[#262b35]" />
+      <span className="text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] whitespace-nowrap">
+        {formatted}
+      </span>
+      <div className="flex-1 h-px bg-[#e1ddd8] dark:bg-[#262b35]" />
+    </div>
+  );
+}
+
 // Event type labels and icons
 const EVENT_TYPE_INFO: Record<string, { label: string; icon: typeof Video; color: string }> = {
   coaching_1on1: { label: '1-on-1 Call', icon: User, color: 'text-brand-accent' },
@@ -40,9 +71,10 @@ interface EventItemProps {
   onRespond?: (eventId: string, action: 'accept' | 'decline', selectedTimeId?: string) => Promise<boolean>;
   onCancel?: (eventId: string, reason?: string) => void;
   onReschedule?: (event: UnifiedEvent) => void;
+  hideDate?: boolean;
 }
 
-function EventItem({ event, onRespond, onCancel, onReschedule }: EventItemProps) {
+function EventItem({ event, onRespond, onCancel, onReschedule, hideDate }: EventItemProps) {
   const [acceptedTimeId, setAcceptedTimeId] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState<string | null>(null);
@@ -188,10 +220,12 @@ function EventItem({ event, onRespond, onCancel, onReschedule }: EventItemProps)
           </div>
 
           <div className="mt-2 space-y-1">
-            <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
-              <Calendar className="w-3.5 h-3.5" />
-              <span>{formatDate(startTime)}</span>
-            </div>
+            {!hideDate && (
+              <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
+                <Calendar className="w-3.5 h-3.5" />
+                <span>{formatDate(startTime)}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm text-[#5f5a55] dark:text-[#b2b6c2]">
                 <Clock className="w-3.5 h-3.5" />
@@ -261,10 +295,10 @@ function EventItem({ event, onRespond, onCancel, onReschedule }: EventItemProps)
                     {pendingProposedTimes.map((time, index) => (
                       <div
                         key={time.id}
-                        className="group flex items-center justify-between p-4 bg-gradient-to-r from-[#f9f8f7] to-[#f5f4f2] dark:from-[#262b35] dark:to-[#2a303b] rounded-2xl border border-[#e1ddd8] dark:border-[#363c49] transition-all duration-300 hover:shadow-md hover:scale-[1.01] hover:border-brand-accent/30 animate-in fade-in slide-in-from-left-2"
+                        className="group p-4 bg-gradient-to-r from-[#f9f8f7] to-[#f5f4f2] dark:from-[#262b35] dark:to-[#2a303b] rounded-2xl border border-[#e1ddd8] dark:border-[#363c49] transition-all duration-300 hover:shadow-md hover:border-brand-accent/30 animate-in fade-in slide-in-from-left-2"
                         style={{ animationDelay: `${index * 100}ms` }}
                       >
-                        <div className="flex items-center gap-3 text-sm text-[#1a1a1a] dark:text-[#f5f5f8]">
+                        <div className="flex items-center gap-3 text-sm text-[#1a1a1a] dark:text-[#f5f5f8] mb-3">
                           <div className="p-2 bg-white dark:bg-[#1e222a] rounded-xl shadow-sm">
                             <Calendar className="w-4 h-4 text-brand-accent" />
                           </div>
@@ -273,7 +307,7 @@ function EventItem({ event, onRespond, onCancel, onReschedule }: EventItemProps)
                         <button
                           onClick={() => handleAccept(time.id)}
                           disabled={isAccepting}
-                          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md"
+                          className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl text-sm font-semibold shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-600 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md"
                         >
                           {isAccepting && acceptedTimeId === time.id ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -596,15 +630,23 @@ export function CalendarContent({ compact = false }: CalendarContentProps) {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {upcomingEvents.map(event => (
-                  <EventItem
-                    key={event.id}
-                    event={event}
-                    onRespond={handleRespond}
-                    onCancel={handleCancel}
-                    onReschedule={handleReschedule}
-                  />
+              <div>
+                {Array.from(groupEventsByDate(upcomingEvents)).map(([dateKey, dateEvents]) => (
+                  <div key={dateKey}>
+                    <DateSeparator date={new Date(dateKey + 'T00:00:00')} />
+                    <div className="space-y-3">
+                      {dateEvents.map(event => (
+                        <EventItem
+                          key={event.id}
+                          event={event}
+                          onRespond={handleRespond}
+                          onCancel={handleCancel}
+                          onReschedule={handleReschedule}
+                          hideDate
+                        />
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
@@ -617,9 +659,16 @@ export function CalendarContent({ compact = false }: CalendarContentProps) {
             <h3 className="font-albert font-medium text-[#5f5a55] dark:text-[#b2b6c2] mb-3">
               Past Events
             </h3>
-            <div className="space-y-3 opacity-60">
-              {pastEvents.slice(0, 5).map(event => (
-                <EventItem key={event.id} event={event} />
+            <div className="opacity-60">
+              {Array.from(groupEventsByDate(pastEvents.slice(0, 5))).map(([dateKey, dateEvents]) => (
+                <div key={dateKey}>
+                  <DateSeparator date={new Date(dateKey + 'T00:00:00')} />
+                  <div className="space-y-3">
+                    {dateEvents.map(event => (
+                      <EventItem key={event.id} event={event} hideDate />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
