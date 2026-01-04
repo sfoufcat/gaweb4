@@ -4062,6 +4062,8 @@ export interface UnifiedEvent {
   proposedTimes?: ProposedTime[];   // Alternative times offered by either party
   respondBy?: string;               // ISO deadline for response
   schedulingNotes?: string;         // Optional notes with the proposal
+  rescheduledFromId?: string;       // Link to original event if this is a reschedule
+  cancellationReason?: string;      // Reason provided when cancelling
   
   // ═══════════════════════════════════════════════════════════════════════════
   // PRICING (for paid coaching calls)

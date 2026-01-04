@@ -274,3 +274,33 @@ export async function notifyResponseDeadlineApproaching(
   });
 }
 
+/**
+ * Send notification when a call is rescheduled
+ */
+export async function notifyCallRescheduled(
+  event: UnifiedEvent,
+  rescheduledBy: string,
+  reason?: string
+) {
+  const reschedulerName = await getUserName(rescheduledBy);
+  const eventDate = formatEventDate(event.startDateTime, event.timezone);
+
+  // Notify all other participants
+  for (const attendeeId of event.attendeeIds) {
+    if (attendeeId !== rescheduledBy) {
+      await createNotification({
+        userId: attendeeId,
+        type: 'call_rescheduled',
+        title: 'Call Rescheduled',
+        body: `${reschedulerName} requested to reschedule the call to ${eventDate}${reason ? `: ${reason}` : ''}`,
+        data: {
+          eventId: event.id,
+          eventType: event.eventType,
+          rescheduledFromId: event.rescheduledFromId || '',
+        },
+        actionUrl: '/my-coach',
+      });
+    }
+  }
+}
+

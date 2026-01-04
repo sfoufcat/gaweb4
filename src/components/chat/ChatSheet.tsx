@@ -139,8 +139,8 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
             // Also check squads array for standalone squads
             if (data.squads) {
               for (const s of data.squads) {
-                if (s.chatChannelId) {
-                  squadChannelIds.add(s.chatChannelId);
+                if (s.squad?.chatChannelId) {
+                  squadChannelIds.add(s.squad.chatChannelId);
                 }
               }
             }

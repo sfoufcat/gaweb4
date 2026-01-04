@@ -169,11 +169,18 @@ interface RespondOptions {
   message?: string;
 }
 
+interface RescheduleOptions {
+  eventId: string;
+  proposedTimes: Array<{ startDateTime: string; endDateTime: string }>;
+  reason?: string;
+}
+
 interface UseSchedulingActionsReturn {
   proposeCall: (options: ProposeCallOptions) => Promise<UnifiedEvent>;
   requestCall: (options: RequestCallOptions) => Promise<UnifiedEvent>;
   respondToProposal: (options: RespondOptions) => Promise<UnifiedEvent>;
   cancelEvent: (eventId: string, reason?: string) => Promise<void>;
+  rescheduleEvent: (options: RescheduleOptions) => Promise<UnifiedEvent>;
   isLoading: boolean;
   error: string | null;
 }
@@ -290,11 +297,39 @@ export function useSchedulingActions(): UseSchedulingActionsReturn {
     }
   }, []);
 
+  const rescheduleEvent = useCallback(async (options: RescheduleOptions): Promise<UnifiedEvent> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const response = await fetch('/api/scheduling/reschedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(options),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to reschedule event');
+      }
+
+      const data = await response.json();
+      return data.newEvent;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to reschedule';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   return {
     proposeCall,
     requestCall,
     respondToProposal,
     cancelEvent,
+    rescheduleEvent,
     isLoading,
     error,
   };

@@ -19,8 +19,10 @@ import {
   Download,
   Send,
   CalendarClock,
+  RefreshCw,
 } from 'lucide-react';
 import { useSchedulingEvents, useSchedulingActions, usePendingProposals } from '@/hooks/useScheduling';
+import { RescheduleCallModal } from './RescheduleCallModal';
 import type { UnifiedEvent } from '@/types';
 
 interface UserCalendarPanelProps {
@@ -44,14 +46,17 @@ const EVENT_TYPE_INFO: Record<string, { label: string; icon: typeof Video; color
 interface EventItemProps {
   event: UnifiedEvent;
   onRespond?: (eventId: string, action: 'accept' | 'decline', selectedTimeId?: string) => Promise<boolean>;
-  onCancel?: (eventId: string) => void;
+  onCancel?: (eventId: string, reason?: string) => void;
+  onReschedule?: (event: UnifiedEvent) => void;
   onCounterPropose?: (eventId: string) => void;
   isMyRequest?: boolean; // True if this is user's own pending request
 }
 
-function EventItem({ event, onRespond, onCancel, onCounterPropose, isMyRequest }: EventItemProps) {
+function EventItem({ event, onRespond, onCancel, onReschedule, onCounterPropose, isMyRequest }: EventItemProps) {
   const [acceptedTimeId, setAcceptedTimeId] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -368,7 +373,62 @@ function EventItem({ event, onRespond, onCancel, onCounterPropose, isMyRequest }
                   <Download className="w-4 h-4" />
                   Add to Calendar
                 </button>
+                {onReschedule && (
+                  <button
+                    onClick={() => onReschedule(event)}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-[#1a1a1a] dark:text-[#f5f5f8] rounded-xl text-sm font-medium hover:bg-[#e8e4df] dark:hover:bg-[#313746] hover:shadow-sm active:scale-95 transition-all duration-200"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Reschedule
+                  </button>
+                )}
+                {onCancel && (
+                  <button
+                    onClick={() => setShowCancelConfirm(true)}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-[#f3f1ef] dark:bg-[#262b35] text-red-600 dark:text-red-400 rounded-xl text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 hover:shadow-sm active:scale-95 transition-all duration-200"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    Cancel
+                  </button>
+                )}
               </>
+            )}
+
+            {/* Cancel confirmation dialog */}
+            {showCancelConfirm && (
+              <div className="w-full mt-3 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl">
+                <p className="text-sm font-medium text-red-700 dark:text-red-300 mb-3">
+                  Are you sure you want to cancel this call?
+                </p>
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="Reason for cancellation (optional)"
+                  rows={2}
+                  className="w-full px-3 py-2 text-sm bg-white dark:bg-[#1e222a] border border-red-200 dark:border-red-800/30 rounded-lg text-[#1a1a1a] dark:text-[#f5f5f8] placeholder:text-[#a7a39e] focus:outline-none focus:ring-2 focus:ring-red-500 resize-none mb-3"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setShowCancelConfirm(false);
+                      setCancelReason('');
+                    }}
+                    className="flex-1 px-4 py-2 text-sm font-medium text-[#5f5a55] dark:text-[#b2b6c2] bg-white dark:bg-[#1e222a] border border-[#e1ddd8] dark:border-[#262b35] rounded-lg hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors"
+                  >
+                    Keep Call
+                  </button>
+                  <button
+                    onClick={() => {
+                      onCancel?.(event.id, cancelReason || undefined);
+                      setShowCancelConfirm(false);
+                      setCancelReason('');
+                    }}
+                    className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
+                  >
+                    Cancel Call
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -389,6 +449,7 @@ function EventItem({ event, onRespond, onCancel, onCounterPropose, isMyRequest }
 export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [counterProposeEventId, setCounterProposeEventId] = useState<string | null>(null);
+  const [rescheduleEvent, setRescheduleEvent] = useState<UnifiedEvent | null>(null);
   const { respondToProposal, cancelEvent, isLoading: respondLoading } = useSchedulingActions();
 
   // Calculate date range for current month view
@@ -438,17 +499,40 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
     }
   }, [respondToProposal, refetch, refetchProposals]);
 
-  // Handle cancel request
-  const handleCancel = useCallback(async (eventId: string) => {
+  // Handle cancel request (for pending requests)
+  const handleCancelRequest = useCallback(async (eventId: string) => {
     if (!confirm('Are you sure you want to cancel this call request?')) return;
     try {
       await respondToProposal({ eventId, action: 'decline' });
       refetch();
       refetchProposals();
-    } catch (err) {
+    } catch {
       // Error handled by hook
     }
   }, [respondToProposal, refetch, refetchProposals]);
+
+  // Handle cancel confirmed event
+  const handleCancelConfirmed = useCallback(async (eventId: string, reason?: string) => {
+    try {
+      await cancelEvent(eventId, reason);
+      refetch();
+      refetchProposals();
+    } catch {
+      // Error handled by hook
+    }
+  }, [cancelEvent, refetch, refetchProposals]);
+
+  // Handle reschedule
+  const handleReschedule = useCallback((event: UnifiedEvent) => {
+    setRescheduleEvent(event);
+  }, []);
+
+  // Handle reschedule success
+  const handleRescheduleSuccess = useCallback(() => {
+    setRescheduleEvent(null);
+    refetch();
+    refetchProposals();
+  }, [refetch, refetchProposals]);
 
   // Handle counter-propose (placeholder - will implement inline UI)
   const handleCounterPropose = useCallback((eventId: string) => {
@@ -580,7 +664,7 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
                   <EventItem
                     key={event.id}
                     event={event}
-                    onCancel={handleCancel}
+                    onCancel={handleCancelRequest}
                     isMyRequest
                   />
                 ))}
@@ -622,6 +706,8 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
                       key={event.id}
                       event={event}
                       onRespond={handleRespond}
+                      onCancel={handleCancelConfirmed}
+                      onReschedule={handleReschedule}
                     />
                   ))}
                 </div>
@@ -644,6 +730,16 @@ export function UserCalendarPanel({ isOpen, onClose }: UserCalendarPanelProps) {
           )}
         </div>
       </div>
+
+      {/* Reschedule Modal */}
+      {rescheduleEvent && (
+        <RescheduleCallModal
+          isOpen={!!rescheduleEvent}
+          onClose={() => setRescheduleEvent(null)}
+          event={rescheduleEvent}
+          onSuccess={handleRescheduleSuccess}
+        />
+      )}
     </>
   );
 }
