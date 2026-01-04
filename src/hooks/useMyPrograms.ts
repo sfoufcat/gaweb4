@@ -26,6 +26,14 @@ export interface NextCallInfo {
   title?: string;
 }
 
+// Coaching data for 1:1 programs (pre-fetched from API)
+export interface CoachingDataPreview {
+  focusAreas: string[];
+  actionItems: Array<{ id: string; text: string; completed?: boolean }>;
+  resources: Array<{ id: string; title: string; url: string; description?: string }>;
+  chatChannelId?: string;
+}
+
 /**
  * Enrolled program with full details for display
  */
@@ -43,8 +51,9 @@ export interface EnrolledProgramWithDetails {
     totalDays: number;
     percentage: number;
   };
-  // For individual programs: pre-fetched next call to avoid UI flash
+  // For individual programs: pre-fetched to avoid UI flash
   nextCall?: NextCallInfo | null;
+  coachingData?: CoachingDataPreview | null;
 }
 
 interface MyProgramsResponse {

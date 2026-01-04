@@ -46,24 +46,43 @@ export function ProgramDetailView({
 }: ProgramDetailViewProps) {
   const router = useRouter();
   const { isDemoMode, openSignupModal } = useDemoMode();
-  const { program, progress, squad, squadMembers, enrollment, nextCall: prefetchedNextCall } = enrolled;
+  const {
+    program,
+    progress,
+    squad,
+    squadMembers,
+    enrollment,
+    nextCall: prefetchedNextCall,
+    coachingData: prefetchedCoachingData,
+  } = enrolled;
   const isGroup = program.type === 'group';
 
   // Fetch additional coaching data for individual programs (credits, settings, etc.)
-  // Note: nextCall is pre-fetched via useMyPrograms to avoid UI flash
+  // Note: nextCall and coachingData are pre-fetched via useMyPrograms to avoid UI flash
   const {
-    coachingData,
+    coachingData: hookCoachingData,
     nextCall: hookNextCall,
-    chatChannelId,
+    chatChannelId: hookChatChannelId,
     callCredits,
     callSettings,
     coach: coachingCoach,
-    hasCoachingData,
+    hasCoachingData: hookHasCoachingData,
     isLoading: coachingLoading,
   } = useProgramCoachingData();
 
-  // Use pre-fetched nextCall (immediate, no flash) or fall back to hook data
+  // Use pre-fetched data (immediate, no flash) or fall back to hook data
   const nextCall = prefetchedNextCall || hookNextCall;
+  const chatChannelId = prefetchedCoachingData?.chatChannelId || hookChatChannelId;
+
+  // Merge coaching data: prefer pre-fetched, fall back to hook data
+  const coachingData = prefetchedCoachingData
+    ? {
+        focusAreas: prefetchedCoachingData.focusAreas,
+        actionItems: prefetchedCoachingData.actionItems,
+        resources: prefetchedCoachingData.resources,
+      }
+    : hookCoachingData;
+  const hasCoachingData = !!(prefetchedCoachingData || hookHasCoachingData);
   
   // State for joining community
   const [isJoiningCommunity, setIsJoiningCommunity] = useState(false);

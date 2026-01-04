@@ -77,6 +77,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
   // Org-specific channels (for filtering out cross-org channels)
   const [orgChannelIds, setOrgChannelIds] = useState<Set<string>>(new Set());
   const [userSquadChannelIds, setUserSquadChannelIds] = useState<Set<string>>(new Set());
+  const [squadChannelsLoaded, setSquadChannelsLoaded] = useState(false);
   const [isPlatformMode, setIsPlatformMode] = useState(false);
 
   // Fetch coaching promo data and org channels for filtering
@@ -145,9 +146,11 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
             }
             setUserSquadChannelIds(squadChannelIds);
           }
+          setSquadChannelsLoaded(true);
         })
         .catch(() => {
-          // Silently fail
+          // Silently fail but mark as loaded
+          setSquadChannelsLoaded(true);
         });
     }
   }, [isOpen]);
@@ -179,6 +182,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
       setView('list');
       setSelectedChannel(null);
       setIsAnimating(false);
+      setSquadChannelsLoaded(false);
     }
   }, [isOpen]);
 
@@ -211,8 +215,9 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
           // Skip filtering if in platform mode (show all channels)
           if (!isPlatformMode) {
             // Filter squad channels - only show ones in user's current org
+            // Only filter if squad channel data has loaded (prevents race condition)
             if (channelId.startsWith('squad-')) {
-              if (!userSquadChannelIds.has(channelId)) {
+              if (squadChannelsLoaded && !userSquadChannelIds.has(channelId)) {
                 continue; // Skip squad channels from other orgs
               }
             }
@@ -298,7 +303,7 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     };
 
     fetchChannels();
-  }, [isOpen, client, isConnected, isPlatformMode, orgChannelIds, userSquadChannelIds]);
+  }, [isOpen, client, isConnected, isPlatformMode, orgChannelIds, userSquadChannelIds, squadChannelsLoaded]);
 
   // Handle channel click - show messages with animation
   const handleChannelClick = useCallback((channel: StreamChannel) => {

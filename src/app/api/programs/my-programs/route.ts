@@ -42,6 +42,14 @@ interface NextCallInfo {
   title?: string;
 }
 
+// Coaching data for 1:1 programs (pre-fetched to avoid flash)
+interface CoachingDataPreview {
+  focusAreas: string[];
+  actionItems: Array<{ id: string; text: string; completed?: boolean }>;
+  resources: Array<{ id: string; title: string; url: string; description?: string }>;
+  chatChannelId?: string;
+}
+
 interface EnrolledProgramWithDetails {
   enrollment: ProgramEnrollment;
   program: Program & {
@@ -56,41 +64,61 @@ interface EnrolledProgramWithDetails {
     totalDays: number;
     percentage: number;
   };
-  // For individual programs: pre-fetched next call to avoid UI flash
+  // For individual programs: pre-fetched to avoid UI flash
   nextCall?: NextCallInfo | null;
+  coachingData?: CoachingDataPreview | null;
 }
 
 /**
- * Fetch next call info from clientCoachingData for individual programs
+ * Fetch coaching data from clientCoachingData for individual programs
+ * Returns nextCall and coachingData (focusAreas, actionItems, resources)
  */
-async function fetchNextCallForUser(
+async function fetchCoachingDataForUser(
   userId: string,
   organizationId: string
-): Promise<NextCallInfo | null> {
+): Promise<{ nextCall: NextCallInfo | null; coachingData: CoachingDataPreview | null }> {
   try {
     // ClientCoachingData doc ID format: ${organizationId}_${userId}
     const coachingDocId = `${organizationId}_${userId}`;
     const coachingDoc = await adminDb.collection('clientCoachingData').doc(coachingDocId).get();
 
     if (!coachingDoc.exists) {
-      return null;
+      return { nextCall: null, coachingData: null };
     }
 
-    const coachingData = coachingDoc.data() as ClientCoachingData;
+    const data = coachingDoc.data() as ClientCoachingData;
 
-    if (!coachingData.nextCall?.datetime) {
-      return null;
-    }
+    // Extract nextCall
+    const nextCall: NextCallInfo | null = data.nextCall?.datetime
+      ? {
+          datetime: data.nextCall.datetime,
+          timezone: data.nextCall.timezone || 'America/New_York',
+          location: data.nextCall.location || 'Chat',
+          title: data.nextCall.title,
+        }
+      : null;
 
-    return {
-      datetime: coachingData.nextCall.datetime,
-      timezone: coachingData.nextCall.timezone || 'America/New_York',
-      location: coachingData.nextCall.location || 'Chat',
-      title: coachingData.nextCall.title,
+    // Extract coaching data preview (excluding private notes)
+    const coachingData: CoachingDataPreview = {
+      focusAreas: data.focusAreas || [],
+      actionItems: (data.actionItems || []).map(item => ({
+        id: item.id,
+        text: item.text,
+        completed: item.completed,
+      })),
+      resources: (data.resources || []).map(res => ({
+        id: res.id,
+        title: res.title,
+        url: res.url,
+        description: res.description,
+      })),
+      chatChannelId: data.chatChannelId,
     };
+
+    return { nextCall, coachingData };
   } catch (err) {
-    console.error('[MY_PROGRAMS] Error fetching next call:', err);
-    return null;
+    console.error('[MY_PROGRAMS] Error fetching coaching data:', err);
+    return { nextCall: null, coachingData: null };
   }
 }
 
@@ -190,6 +218,18 @@ export async function GET() {
             timezone: 'America/New_York',
             location: 'Video Call',
             title: 'Coaching Session',
+          } : null,
+          // Demo coaching data for individual programs
+          coachingData: !isGroupProgram ? {
+            focusAreas: ['Building consistent morning routines', 'Improving focus during deep work sessions'],
+            actionItems: [
+              { id: 'demo-1', text: 'Complete the weekly reflection exercise', completed: false },
+              { id: 'demo-2', text: 'Track sleep schedule for 7 days', completed: true },
+            ],
+            resources: [
+              { id: 'demo-res-1', title: 'Atomic Habits Summary', url: 'https://example.com/atomic-habits', description: 'Key takeaways from our discussion' },
+            ],
+            chatChannelId: 'demo-coaching-chat',
           } : null,
         };
       });
@@ -331,10 +371,13 @@ export async function GET() {
         ? 0
         : Math.round((currentDay / program.lengthDays) * 100);
 
-      // For individual programs, fetch next call data to avoid UI flash
+      // For individual programs, fetch coaching data to avoid UI flash
       let nextCall: NextCallInfo | null = null;
+      let coachingData: CoachingDataPreview | null = null;
       if (program.type === 'individual' && organizationId) {
-        nextCall = await fetchNextCallForUser(userId, organizationId);
+        const coachingResult = await fetchCoachingDataForUser(userId, organizationId);
+        nextCall = coachingResult.nextCall;
+        coachingData = coachingResult.coachingData;
       }
 
       enrolledPrograms.push({
@@ -353,6 +396,7 @@ export async function GET() {
           percentage,
         },
         nextCall,
+        coachingData,
       });
     }
 
