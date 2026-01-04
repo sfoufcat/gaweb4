@@ -9,6 +9,18 @@ const nextConfig: NextConfig = {
   // Set the root directory for file tracing
   outputFileTracingRoot: __dirname,
   
+  // Clerk proxy rewrite - allows all subdomains to use single proxy URL
+  // Instead of needing clerk.{subdomain}.coachful.co DNS for each subdomain,
+  // all Clerk requests go through coachful.co/__clerk/
+  async rewrites() {
+    return [
+      {
+        source: '/__clerk/:path*',
+        destination: 'https://frontend-api.clerk.services/:path*',
+      },
+    ];
+  },
+
   // CORS headers for API routes (needed for tenant/custom domains)
   async headers() {
     return [
