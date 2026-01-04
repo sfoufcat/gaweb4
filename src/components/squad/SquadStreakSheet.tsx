@@ -13,7 +13,7 @@
  * Matches Figma Squad Streak bottom sheet design.
  */
 
-import { useDragToDismiss } from '@/hooks/useDragToDismiss';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 
 interface SquadStreakSheetProps {
   isOpen: boolean;
@@ -21,28 +21,13 @@ interface SquadStreakSheetProps {
 }
 
 export function SquadStreakSheet({ isOpen, onClose }: SquadStreakSheetProps) {
-  const { sheetRef, handleRef, handleProps } = useDragToDismiss({ onClose });
-
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-      {/* Overlay */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Bottom Sheet / Modal */}
-      <div 
-        ref={sheetRef}
-        className="relative w-full max-w-[500px] mx-4 bg-white rounded-t-[24px] sm:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom duration-300"
-      >
-        {/* Grabber - Mobile only (drag handle) */}
-        <div ref={handleRef} {...handleProps} className="flex justify-center pt-4 pb-3 sm:hidden touch-none select-none cursor-grab active:cursor-grabbing">
-          <div className="w-9 h-1 bg-gray-300 rounded-full" />
-        </div>
-
+    <Drawer
+      open={isOpen}
+      onOpenChange={(open) => !open && onClose()}
+      shouldScaleBackground={false}
+    >
+      <DrawerContent className="max-w-[500px] mx-auto">
         {/* Close button - Desktop only */}
         <button
           onClick={onClose}
@@ -75,8 +60,8 @@ export function SquadStreakSheet({ isOpen, onClose }: SquadStreakSheetProps) {
         <div className="h-8 w-full flex justify-center sm:hidden">
           <div className="w-36 h-1.5 bg-gray-900 rounded-full opacity-20" />
         </div>
-      </div>
-    </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 

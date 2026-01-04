@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { X, Send, MessageCircle, Users, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useBrandingValues } from '@/contexts/BrandingContext';
-import { useDragToDismiss } from '@/hooks/useDragToDismiss';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 
 export interface DMRecipient {
   userId: string;
@@ -37,8 +37,7 @@ interface SendResult {
 export function SendDMModal({ recipients, onClose, onSuccess }: SendDMModalProps) {
   const { colors } = useBrandingValues();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { sheetRef, handleRef, handleProps } = useDragToDismiss({ onClose });
-  
+
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [progress, setProgress] = useState({ sent: 0, total: 0 });
@@ -138,20 +137,12 @@ export function SendDMModal({ recipients, onClose, onSuccess }: SendDMModalProps
   const failedCount = results.filter(r => !r.success).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center" onKeyDown={handleKeyDown}>
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div ref={sheetRef} className="relative w-full md:max-w-[500px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-300 max-h-[85dvh] flex flex-col overflow-hidden safe-area-inset-bottom">
-        {/* Handle - Mobile only (drag handle) */}
-        <div ref={handleRef} {...handleProps} className="flex justify-center pt-4 pb-3 md:hidden touch-none select-none cursor-grab active:cursor-grabbing">
-          <div className="w-9 h-1 bg-gray-300 dark:bg-[#262b35] rounded-full" />
-        </div>
-
+    <Drawer
+      open={true}
+      onOpenChange={(open) => !open && onClose()}
+      shouldScaleBackground={false}
+    >
+      <DrawerContent className="md:max-w-[500px] mx-auto max-h-[85dvh] flex flex-col overflow-hidden" onKeyDown={handleKeyDown}>
         {/* Header */}
         <div className="px-6 pt-2 md:pt-6 pb-4 border-b border-[#e8e4df] dark:border-[#262b35] flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -373,8 +364,8 @@ export function SendDMModal({ recipients, onClose, onSuccess }: SendDMModalProps
             </button>
           )}
         </div>
-      </div>
-    </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 

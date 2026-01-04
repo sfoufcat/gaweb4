@@ -9,7 +9,7 @@ import { useCoachingData } from '@/hooks/useCoachingData';
 import { useCoachSquads } from '@/hooks/useCoachSquads';
 import { ANNOUNCEMENTS_CHANNEL_ID, SOCIAL_CORNER_CHANNEL_ID, SHARE_WINS_CHANNEL_ID } from '@/lib/chat-constants';
 import type { Channel } from 'stream-chat';
-import { useDragToDismiss } from '@/hooks/useDragToDismiss';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 
 // Post data interface for the attachment
 interface PostData {
@@ -39,9 +39,8 @@ interface ShareToChatModalProps {
  */
 export function ShareToChatModal({ postId, postUrl, onClose, onSuccess }: ShareToChatModalProps) {
   const { client } = useStreamChatClient();
-  const { colors, isDefault } = useBrandingValues();
-  const { sheetRef, handleRef, handleProps } = useDragToDismiss({ onClose });
-  
+  const { colors } = useBrandingValues();
+
   // Get squad and coaching info to find relevant channels
   const { squad, premiumSquad, standardSquad } = useSquad();
   const { coachingData } = useCoachingData();
@@ -332,20 +331,12 @@ export function ShareToChatModal({ postId, postUrl, onClose, onSuccess }: ShareT
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal - Bottom sheet on mobile, centered popup on desktop */}
-      <div ref={sheetRef} className="relative w-full md:max-w-[440px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-300 max-h-[80dvh] flex flex-col overflow-hidden safe-area-inset-bottom">
-        {/* Handle - Mobile only (drag handle) */}
-        <div ref={handleRef} {...handleProps} className="flex justify-center pt-4 pb-3 md:hidden touch-none select-none cursor-grab active:cursor-grabbing">
-          <div className="w-9 h-1 bg-gray-300 dark:bg-[#262b35] rounded-full" />
-        </div>
-
+    <Drawer
+      open={true}
+      onOpenChange={(open) => !open && onClose()}
+      shouldScaleBackground={false}
+    >
+      <DrawerContent className="md:max-w-[440px] mx-auto max-h-[80dvh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="px-6 pt-2 md:pt-6 pb-4 border-b border-[#e8e4df] dark:border-[#262b35] flex items-center justify-between">
           <h2 className="font-semibold text-[18px] text-[#1a1a1a] dark:text-[#faf8f6]">
@@ -518,8 +509,8 @@ export function ShareToChatModal({ postId, postUrl, onClose, onSuccess }: ShareT
             )}
           </button>
         </div>
-      </div>
-    </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 

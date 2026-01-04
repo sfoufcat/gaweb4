@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Bell } from 'lucide-react';
 import { SwipeableNotificationItem } from './SwipeableNotificationItem';
 import type { Notification } from '@/types';
-import { useDragToDismiss } from '@/hooks/useDragToDismiss';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 
 interface NotificationSheetProps {
   isOpen: boolean;
@@ -28,7 +28,6 @@ export function NotificationSheet({
   onNotificationClick,
   onDelete,
 }: NotificationSheetProps) {
-  const { sheetRef, handleRef, handleProps } = useDragToDismiss({ onClose });
   const router = useRouter();
 
   // Close on escape key and lock body scroll
@@ -45,13 +44,6 @@ export function NotificationSheet({
       document.body.style.overflow = '';
     };
   }, [isOpen, onClose]);
-
-  // Focus trap
-  useEffect(() => {
-    if (isOpen && sheetRef.current) {
-      sheetRef.current.focus();
-    }
-  }, [isOpen]);
 
   // Handle notification click
   const handleNotificationClick = (notification: Notification) => {
@@ -79,28 +71,13 @@ export function NotificationSheet({
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
-      {/* Overlay */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Sheet */}
-      <div 
-        ref={sheetRef}
-        tabIndex={-1}
-        className="relative w-full max-w-[500px] mx-0 bg-white rounded-t-[24px] shadow-2xl animate-in slide-in-from-bottom duration-300 outline-none"
-        style={{ maxHeight: '85dvh' }}
-      >
-        {/* Grabber (drag handle) */}
-        <div ref={handleRef} {...handleProps} className="flex justify-center pt-4 pb-3 touch-none select-none cursor-grab active:cursor-grabbing">
-          <div className="w-9 h-1 bg-gray-300 rounded-full" />
-        </div>
-
+    <Drawer
+      open={isOpen}
+      onOpenChange={(open) => !open && onClose()}
+      shouldScaleBackground={false}
+    >
+      <DrawerContent className="max-w-[500px] mx-auto max-h-[85dvh]">
         {/* Header */}
         <div className="px-5 pb-3">
           <h2 className="font-albert text-[20px] font-semibold text-text-primary tracking-[-0.5px]">
@@ -138,8 +115,8 @@ export function NotificationSheet({
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 

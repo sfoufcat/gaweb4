@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { format, addDays } from 'date-fns';
 import type { PollFormData } from '@/types/poll';
-import { useDragToDismiss } from '@/hooks/useDragToDismiss';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 
 /**
  * PollComposer Component
@@ -54,8 +54,6 @@ function generateId() {
 }
 
 export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { sheetRef, handleRef, handleProps } = useDragToDismiss({ onClose });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAddOptionSheet, setShowAddOptionSheet] = useState(false);
   const [newOptionText, setNewOptionText] = useState('');
@@ -89,7 +87,7 @@ export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
   const isValid = question.trim().length > 0 && 
     options.filter(o => o.text.trim().length > 0).length >= 2;
 
-  // Close on escape
+  // Close on escape (nested sheet has priority)
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -102,11 +100,9 @@ export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
     };
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden';
     }
     return () => {
       document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = '';
     };
   }, [isOpen, onClose, showAddOptionSheet]);
 
@@ -170,26 +166,13 @@ export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center">
-      {/* Overlay */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal Container */}
-      <div
-        ref={sheetRef}
-        className="relative w-full lg:max-w-[500px] h-full lg:h-auto lg:max-h-[90dvh] bg-[#faf8f6] lg:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom lg:zoom-in-95 duration-300 flex flex-col overflow-hidden"
-      >
-        {/* Grabber - Mobile only (drag handle) */}
-        <div ref={handleRef} {...handleProps} className="flex justify-center pt-4 pb-3 lg:hidden touch-none select-none cursor-grab active:cursor-grabbing">
-          <div className="w-9 h-1 bg-gray-300 rounded-full" />
-        </div>
-        
+    <Drawer
+      open={isOpen}
+      onOpenChange={(open) => !open && onClose()}
+      shouldScaleBackground={false}
+    >
+      <DrawerContent className="lg:max-w-[500px] mx-auto max-h-[90dvh] flex flex-col overflow-hidden bg-[#faf8f6]">
         {/* Header */}
         <div className="px-4 pt-2 lg:pt-5 pb-6 flex-shrink-0">
           <button
@@ -374,68 +357,53 @@ export function PollComposer({ isOpen, onClose, onSubmit }: PollComposerProps) {
             {isSubmitting ? 'Creating...' : 'Send'}
           </button>
         </div>
-      </div>
+      </DrawerContent>
 
       {/* Add Option Mini Sheet */}
-      {showAddOptionSheet && (
-        <div className="fixed inset-0 z-[60] flex items-end lg:items-center justify-center">
-          {/* Overlay */}
-          <div
-            className="absolute inset-0 bg-black/20 backdrop-blur-[6px]"
-            onClick={() => setShowAddOptionSheet(false)}
-          />
+      <Drawer
+        open={showAddOptionSheet}
+        onOpenChange={(open) => !open && setShowAddOptionSheet(false)}
+        shouldScaleBackground={false}
+      >
+        <DrawerContent className="lg:max-w-[400px] mx-auto bg-white">
+          {/* Content */}
+          <div className="px-4 pt-5 lg:pt-6 pb-6 space-y-8">
+            <h2 className="font-albert text-[36px] font-normal text-[#1a1a1a] tracking-[-2px] leading-[1.2]">
+              Add an option
+            </h2>
 
-          {/* Sheet */}
-          <div className="relative w-full lg:max-w-[400px] bg-white rounded-t-[20px] lg:rounded-[20px] shadow-2xl animate-in slide-in-from-bottom lg:zoom-in-95 duration-200">
-            {/* Grabber - Mobile only */}
-            <div className="flex justify-center pt-2 pb-4 lg:hidden">
-              <div className="w-9 h-[5px] bg-[rgba(30,30,47,0.4)] rounded-[2.5px]" />
-            </div>
-
-            {/* Content */}
-            <div className="px-4 pt-5 lg:pt-6 pb-6 space-y-8">
-              <h2 className="font-albert text-[36px] font-normal text-[#1a1a1a] tracking-[-2px] leading-[1.2]">
-                Add an option
-              </h2>
-              
-              <input
-                type="text"
-                value={newOptionText}
-                onChange={(e) => setNewOptionText(e.target.value)}
-                placeholder="Option title"
-                autoFocus
-                className="w-full font-geist text-[24px] text-[#1a1a1a] placeholder-[#a7a39e] tracking-[-0.5px] leading-[1.2] bg-transparent border-none outline-none"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newOptionText.trim()) {
-                    handleAddOption();
-                  }
-                }}
-              />
-            </div>
-
-            {/* Add Button */}
-            <div className="px-6 pt-6 pb-10">
-              <button
-                onClick={handleAddOption}
-                disabled={!newOptionText.trim()}
-                className={`w-full py-4 rounded-[32px] font-geist font-bold text-[16px] tracking-[-0.5px] transition-all shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] ${
-                  newOptionText.trim()
-                    ? 'bg-[#2c2520] text-white hover:bg-[#1a1a1a]'
-                    : 'bg-[#e1ddd8] text-[#a7a39e] cursor-not-allowed'
-                }`}
-              >
-                Add
-              </button>
-            </div>
-
-            {/* Home Indicator - Mobile */}
-            <div className="h-8 w-full flex justify-center lg:hidden">
-              <div className="w-36 h-[5px] bg-[#1a1a1a] rounded-[100px]" />
-            </div>
+            <input
+              type="text"
+              value={newOptionText}
+              onChange={(e) => setNewOptionText(e.target.value)}
+              placeholder="Option title"
+              autoFocus
+              className="w-full font-geist text-[24px] text-[#1a1a1a] placeholder-[#a7a39e] tracking-[-0.5px] leading-[1.2] bg-transparent border-none outline-none"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newOptionText.trim()) {
+                  handleAddOption();
+                }
+              }}
+            />
           </div>
-        </div>
-      )}
-    </div>
+
+          {/* Add Button */}
+          <div className="px-6 pt-6 pb-10">
+            <button
+              onClick={handleAddOption}
+              disabled={!newOptionText.trim()}
+              className={`w-full py-4 rounded-[32px] font-geist font-bold text-[16px] tracking-[-0.5px] transition-all shadow-[0px_5px_15px_0px_rgba(0,0,0,0.2)] ${
+                newOptionText.trim()
+                  ? 'bg-[#2c2520] text-white hover:bg-[#1a1a1a]'
+                  : 'bg-[#e1ddd8] text-[#a7a39e] cursor-not-allowed'
+              }`}
+            >
+              Add
+            </button>
+          </div>
+        </DrawerContent>
+      </Drawer>
+    </Drawer>
   );
 }
 

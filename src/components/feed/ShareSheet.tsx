@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useBrandingValues } from '@/contexts/BrandingContext';
 import { ShareToChatModal } from './ShareToChatModal';
-import { useDragToDismiss } from '@/hooks/useDragToDismiss';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 
 interface ShareSheetProps {
   postId: string;
@@ -11,10 +11,9 @@ interface ShareSheetProps {
 }
 
 export function ShareSheet({ postId, onClose }: ShareSheetProps) {
-  const { colors, isDefault } = useBrandingValues();
+  const { colors } = useBrandingValues();
   const [copied, setCopied] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
-  const { sheetRef, handleRef, handleProps } = useDragToDismiss({ onClose });
 
   const accentColor = colors.accentLight || 'var(--brand-accent-light)';
   const postUrl = typeof window !== 'undefined' 
@@ -75,20 +74,12 @@ export function ShareSheet({ postId, onClose }: ShareSheetProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-backdrop-fade-in"
-        onClick={onClose}
-      />
-
-      {/* Sheet - Bottom sheet on mobile, centered popup on desktop */}
-      <div ref={sheetRef} className="relative w-full md:max-w-[400px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-modal-slide-up md:animate-modal-zoom-in safe-area-inset-bottom">
-        {/* Handle - Mobile only (drag handle) */}
-        <div ref={handleRef} {...handleProps} className="flex justify-center pt-4 pb-3 md:hidden touch-none select-none cursor-grab active:cursor-grabbing">
-          <div className="w-9 h-1 bg-gray-300 dark:bg-[#262b35] rounded-full" />
-        </div>
-
+    <Drawer
+      open={true}
+      onOpenChange={(open) => !open && onClose()}
+      shouldScaleBackground={false}
+    >
+      <DrawerContent className="md:max-w-[400px] mx-auto">
         {/* Close button - Desktop only */}
         <button
           onClick={onClose}
@@ -196,8 +187,8 @@ export function ShareSheet({ postId, onClose }: ShareSheetProps) {
             Cancel
           </button>
         </div>
-      </div>
-    </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 

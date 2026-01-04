@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import type { ChatPollState } from '@/types/poll';
-import { useDragToDismiss } from '@/hooks/useDragToDismiss';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 
 /**
  * PollResultsSheet Component
@@ -33,30 +33,6 @@ function CloseIcon() {
 }
 
 export function PollResultsSheet({ isOpen, onClose, poll }: PollResultsSheetProps) {
-  const { sheetRef, handleRef, handleProps } = useDragToDismiss({ onClose });
-
-  // Close on escape
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden';
-    }
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = '';
-    };
-  }, [isOpen, onClose]);
-
-  // Focus trap
-  useEffect(() => {
-    if (isOpen && sheetRef.current) {
-      sheetRef.current.focus();
-    }
-  }, [isOpen]);
-
   // Group votes by option
   const votesByOption = useMemo(() => {
     if (!poll) return {};
@@ -94,27 +70,15 @@ export function PollResultsSheet({ isOpen, onClose, poll }: PollResultsSheetProp
     return poll.votesByOption[optionId] || 0;
   };
 
-  if (!isOpen || !poll) return null;
+  if (!poll) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center">
-      {/* Overlay */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal Container */}
-      <div
-        ref={sheetRef}
-        tabIndex={-1}
-        className="relative w-full lg:max-w-[500px] max-h-[90dvh] bg-[#faf8f6] rounded-t-[24px] lg:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom lg:zoom-in-95 duration-300 flex flex-col overflow-hidden outline-none"
-      >
-        {/* Grabber - Mobile only (drag handle) */}
-        <div ref={handleRef} {...handleProps} className="flex justify-center pt-4 pb-3 lg:hidden touch-none select-none cursor-grab active:cursor-grabbing">
-          <div className="w-9 h-1 bg-gray-300 rounded-full" />
-        </div>
-        
+    <Drawer
+      open={isOpen}
+      onOpenChange={(open) => !open && onClose()}
+      shouldScaleBackground={false}
+    >
+      <DrawerContent className="lg:max-w-[500px] mx-auto max-h-[90dvh] flex flex-col overflow-hidden bg-[#faf8f6]">
         {/* Header */}
         <div className="px-4 pt-2 lg:pt-5 pb-6 flex-shrink-0">
           <button
@@ -215,8 +179,8 @@ export function PollResultsSheet({ isOpen, onClose, poll }: PollResultsSheetProp
         <div className="h-8 w-full flex justify-center lg:hidden flex-shrink-0">
           <div className="w-36 h-[5px] bg-[#1a1a1a] rounded-[100px] opacity-20" />
         </div>
-      </div>
-    </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 

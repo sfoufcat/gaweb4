@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { UserAlignment, UserAlignmentSummary, AlignmentActivityConfig, AlignmentActivityKey, CompletionThreshold } from '@/types';
 import { DEFAULT_ALIGNMENT_CONFIG } from '@/types';
-import { useDragToDismiss } from '@/hooks/useDragToDismiss';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 
 // Fire icon SVG component
 function FireIcon({ size = 24, className = '' }: { size?: number; className?: string }) {
@@ -115,7 +115,6 @@ export function AlignmentSheet({
   alignment,
   summary,
 }: AlignmentSheetProps) {
-  const { sheetRef, handleRef, handleProps } = useDragToDismiss({ onClose });
   const [config, setConfig] = useState<AlignmentActivityConfig>(DEFAULT_ALIGNMENT_CONFIG);
 
   // Fetch org alignment config
@@ -153,13 +152,6 @@ export function AlignmentSheet({
       document.body.style.overflow = '';
     };
   }, [isOpen, onClose]);
-
-  // Focus trap
-  useEffect(() => {
-    if (isOpen && sheetRef.current) {
-      sheetRef.current.focus();
-    }
-  }, [isOpen]);
 
   const streak = summary?.currentStreak ?? 0;
   const score = alignment?.alignmentScore ?? 0;
@@ -284,27 +276,13 @@ export function AlignmentSheet({
     );
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center">
-      {/* Overlay */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal Container - Bottom sheet on mobile, centered card on desktop */}
-      <div 
-        ref={sheetRef}
-        tabIndex={-1}
-        className="relative w-full max-w-[500px] mx-0 md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl dark:shadow-black/50 animate-in slide-in-from-bottom md:zoom-in-95 duration-300 outline-none"
-      >
-        {/* Grabber - Only on mobile (drag handle) */}
-        <div ref={handleRef} {...handleProps} className="flex justify-center pt-4 pb-3 md:hidden touch-none select-none cursor-grab active:cursor-grabbing">
-          <div className="w-9 h-1 bg-gray-300 dark:bg-[#272d38] rounded-full" />
-        </div>
-
+    <Drawer
+      open={isOpen}
+      onOpenChange={(open) => !open && onClose()}
+      shouldScaleBackground={false}
+    >
+      <DrawerContent className="max-w-[500px] mx-auto">
         {/* Close button - Desktop only */}
         <button
           onClick={onClose}
@@ -365,9 +343,8 @@ export function AlignmentSheet({
             </div>
           </div>
         </div>
-
-      </div>
-    </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 

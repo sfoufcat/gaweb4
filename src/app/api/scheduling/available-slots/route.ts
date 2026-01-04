@@ -177,26 +177,38 @@ export async function GET(request: NextRequest) {
  * Convert a date string (YYYY-MM-DD) + time in a specific timezone to a UTC Date object
  */
 function createDateInTimezone(dateStr: string, hours: number, minutes: number, timezone: string): Date {
-  // Format the datetime string
-  const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
-  const localDateTimeStr = `${dateStr}T${timeStr}`;
+  // Parse the date string components
+  const [year, month, day] = dateStr.split('-').map(Number);
 
-  // Parse the date as if it were in the local environment first
-  const naiveDate = new Date(localDateTimeStr);
+  // Create a reference point in UTC (same date/time but interpreted as UTC)
+  const utcReference = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
 
-  // Get what the same instant looks like in UTC vs target timezone
-  const utcString = naiveDate.toLocaleString('en-US', { timeZone: 'UTC' });
-  const tzString = naiveDate.toLocaleString('en-US', { timeZone: timezone });
+  // Use Intl.DateTimeFormat to see what this UTC time looks like in the target timezone
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: 'numeric',
+    minute: 'numeric',
+    day: 'numeric',
+    hour12: false,
+  });
 
-  // Parse both strings back to dates to calculate offset
-  const utcDate = new Date(utcString);
-  const tzDate = new Date(tzString);
+  const parts = formatter.formatToParts(utcReference);
+  const tzHour = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
+  const tzMinute = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
+  const tzDay = parseInt(parts.find(p => p.type === 'day')?.value || '0');
 
-  // The offset is the difference between how the date appears in UTC vs the target timezone
-  const offsetMs = utcDate.getTime() - tzDate.getTime();
+  // Calculate the timezone offset in minutes
+  // Example: if utcReference is 09:00 UTC and tzHour shows 04:00 (New York),
+  // the offset is -5 hours (-300 minutes)
+  let offsetMinutes = (tzHour * 60 + tzMinute) - (hours * 60 + minutes);
 
-  // Apply offset to get the correct UTC time for the target timezone
-  return new Date(naiveDate.getTime() + offsetMs);
+  // Handle day boundary (e.g., if UTC time is on different day than target timezone)
+  if (tzDay > day) offsetMinutes += 24 * 60;
+  if (tzDay < day) offsetMinutes -= 24 * 60;
+
+  // Adjust to get the correct UTC time
+  // To show hours:minutes in the target timezone, we shift by -offset
+  return new Date(utcReference.getTime() - offsetMinutes * 60 * 1000);
 }
 
 /**

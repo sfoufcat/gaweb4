@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { type Habit } from '@/types';
-import { useDragToDismiss } from '@/hooks/useDragToDismiss';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 
 interface HabitCheckInModalProps {
   habit: Habit;
@@ -14,29 +14,18 @@ interface HabitCheckInModalProps {
 
 export function HabitCheckInModal({ habit, isOpen, onClose, onComplete, onSkip }: HabitCheckInModalProps) {
   const router = useRouter();
-  const { sheetRef, handleRef, handleProps } = useDragToDismiss({ onClose });
-  
-  if (!isOpen) return null;
 
   const handleEdit = () => {
     router.push(`/habits/${habit.id}`);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center">
-      {/* Overlay */}
-      <div 
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      
-      {/* Modal Container - Bottom sheet on mobile, centered card on desktop */}
-      <div ref={sheetRef} className="relative w-full max-w-[500px] md:mx-4 bg-white dark:bg-[#171b22] rounded-t-[24px] md:rounded-[24px] shadow-2xl animate-in slide-in-from-bottom md:zoom-in-95 duration-300">
-        {/* Grabber - Only on mobile (drag handle) */}
-        <div ref={handleRef} {...handleProps} className="flex justify-center pt-4 pb-3 md:hidden touch-none select-none cursor-grab active:cursor-grabbing">
-          <div className="w-9 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
-        </div>
-        
+    <Drawer
+      open={isOpen}
+      onOpenChange={(open) => !open && onClose()}
+      shouldScaleBackground={false}
+    >
+      <DrawerContent className="max-w-[500px] mx-auto">
         {/* Close button - Desktop only */}
         <button
           onClick={onClose}
@@ -47,7 +36,7 @@ export function HabitCheckInModal({ habit, isOpen, onClose, onComplete, onSkip }
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
-        
+
         {/* Content */}
         <div className="px-6 pt-5 md:pt-8 pb-6 space-y-4">
           <p className="font-albert text-[20px] md:text-[24px] font-medium text-text-secondary tracking-[-1.5px] leading-[1.3]">
@@ -56,13 +45,13 @@ export function HabitCheckInModal({ habit, isOpen, onClose, onComplete, onSkip }
           <p className="font-albert text-[28px] md:text-[36px] text-text-primary tracking-[-2px] leading-[1.2]">
             Did you crush it today?
           </p>
-          
+
           {/* Habit Card */}
           <div className="bg-[#f3f1ef] dark:bg-[#1a1f28] rounded-[20px] p-4 flex items-center justify-between">
             <p className="font-albert text-[16px] md:text-[18px] font-semibold tracking-[-1px] text-text-primary">
               {habit.text}
             </p>
-            <button 
+            <button
               onClick={handleEdit}
               className="text-text-secondary hover:text-text-primary transition-colors"
               aria-label="Edit habit"
@@ -73,7 +62,7 @@ export function HabitCheckInModal({ habit, isOpen, onClose, onComplete, onSkip }
             </button>
           </div>
         </div>
-        
+
         {/* Actions */}
         <div className="flex gap-3 px-6 pb-6 md:pb-8 pt-2">
           <button
@@ -89,8 +78,8 @@ export function HabitCheckInModal({ habit, isOpen, onClose, onComplete, onSkip }
             I did it!
           </button>
         </div>
-      </div>
-    </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 

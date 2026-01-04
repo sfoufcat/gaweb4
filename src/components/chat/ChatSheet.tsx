@@ -21,7 +21,7 @@ import { useCoachingPromo } from '@/contexts/BrandingContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { generateAvatarUrl } from '@/lib/demo-data';
-import { useDragToDismiss } from '@/hooks/useDragToDismiss';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 
 // Import Stream Chat CSS
 import 'stream-chat-react/dist/css/v2/index.css';
@@ -52,7 +52,6 @@ interface ChannelPreview {
  * Shows channel list first, then messages when channel selected.
  */
 export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps) {
-  const { sheetRef, handleRef, handleProps } = useDragToDismiss({ onClose });
   const { client, isConnected } = useStreamChatClient();
   const [channels, setChannels] = useState<ChannelPreview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -173,13 +172,6 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
       document.body.style.overflow = '';
     };
   }, [isOpen, onClose, view]);
-
-  // Focus trap
-  useEffect(() => {
-    if (isOpen && sheetRef.current) {
-      sheetRef.current.focus();
-    }
-  }, [isOpen]);
 
   // Reset view when sheet closes
   useEffect(() => {
@@ -423,28 +415,13 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
     !promoData?.hasCoaching && 
     !promoData?.hasActiveIndividualEnrollment;
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
-      {/* Overlay */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
-        onClick={view === 'list' ? onClose : undefined}
-      />
-
-      {/* Sheet - 85% height for home visibility */}
-      <div 
-        ref={sheetRef}
-        tabIndex={-1}
-        className="relative w-full max-w-[500px] mx-0 bg-white dark:bg-[#171b22] rounded-t-[24px] shadow-2xl animate-in slide-in-from-bottom duration-300 outline-none flex flex-col overflow-hidden"
-        style={{ height: '85dvh', maxHeight: '85dvh' }}
-      >
-        {/* Grabber (drag handle) */}
-        <div ref={handleRef} {...handleProps} className="flex justify-center pt-4 pb-3 flex-shrink-0 touch-none select-none cursor-grab active:cursor-grabbing">
-          <div className="w-9 h-1 bg-gray-300 dark:bg-[#272d38] rounded-full" />
-        </div>
-
+    <Drawer
+      open={isOpen}
+      onOpenChange={(open) => !open && onClose()}
+      shouldScaleBackground={false}
+    >
+      <DrawerContent className="h-[85dvh] max-h-[85dvh] max-w-[500px] mx-auto flex flex-col overflow-hidden">
         {isDemoMode ? (
           // Demo mode: show mock chat interface
           <DemoChatSheetContent onClose={onClose} />
@@ -680,8 +657,8 @@ export function ChatSheet({ isOpen, onClose, initialChannelId }: ChatSheetProps)
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
-import { useDragToDismiss } from '@/hooks/useDragToDismiss';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 
 /**
  * AttachmentMenu Component
@@ -63,7 +63,6 @@ export function AttachmentMenu({
   onPollClick,
   anchorRef,
 }: AttachmentMenuProps) {
-  const { sheetRef, handleRef, handleProps } = useDragToDismiss({ onClose });
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close on escape key
@@ -109,52 +108,43 @@ export function AttachmentMenu({
 
   return (
     <>
-      {/* Mobile: Bottom Sheet */}
-      <div className="lg:hidden fixed inset-0 z-50 flex items-end justify-center">
-        {/* Overlay */}
-        <div
-          className="absolute inset-0 bg-black/20 backdrop-blur-[6px]"
-          onClick={onClose}
-        />
-
-        {/* Bottom Sheet */}
-        <div
-          ref={sheetRef}
-          className="relative w-full bg-white dark:bg-[#171b22] rounded-t-[20px] shadow-2xl animate-in slide-in-from-bottom duration-200"
+      {/* Mobile: Bottom Sheet using vaul Drawer */}
+      <div className="lg:hidden">
+        <Drawer
+          open={isOpen}
+          onOpenChange={(open) => !open && onClose()}
+          shouldScaleBackground={false}
         >
-          {/* Grabber (drag handle) */}
-          <div ref={handleRef} {...handleProps} className="flex justify-center pt-4 pb-3 touch-none select-none cursor-grab active:cursor-grabbing">
-            <div className="w-9 h-[5px] bg-[rgba(30,30,47,0.4)] dark:bg-[#313746] rounded-[2.5px]" />
-          </div>
+          <DrawerContent>
+            {/* Menu Items */}
+            <div className="flex items-start justify-start gap-3 px-4 pb-6 overflow-x-auto">
+              {menuItems.map((item) => (
+                <button
+                  key={item.label}
+                  onClick={() => {
+                    item.onClick();
+                    onClose();
+                  }}
+                  className="flex flex-col items-center gap-1.5 min-w-[80px]"
+                >
+                  {/* Icon Container */}
+                  <div className="w-[60px] h-[60px] rounded-[20px] bg-white dark:bg-[#1e222a] border border-[rgba(215,210,204,0.5)] dark:border-[#262b35] flex items-center justify-center hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors">
+                    {item.icon}
+                  </div>
+                  {/* Label */}
+                  <span className="font-albert text-[14px] text-[#000000] dark:text-[#f5f5f8] capitalize tracking-[-1px] leading-none">
+                    {item.label}
+                  </span>
+                </button>
+              ))}
+            </div>
 
-          {/* Menu Items */}
-          <div className="flex items-start justify-start gap-3 px-4 pb-6 overflow-x-auto">
-            {menuItems.map((item) => (
-              <button
-                key={item.label}
-                onClick={() => {
-                  item.onClick();
-                  onClose();
-                }}
-                className="flex flex-col items-center gap-1.5 min-w-[80px]"
-              >
-                {/* Icon Container */}
-                <div className="w-[60px] h-[60px] rounded-[20px] bg-white dark:bg-[#1e222a] border border-[rgba(215,210,204,0.5)] dark:border-[#262b35] flex items-center justify-center hover:bg-[#f3f1ef] dark:hover:bg-[#262b35] transition-colors">
-                  {item.icon}
-                </div>
-                {/* Label */}
-                <span className="font-albert text-[14px] text-[#000000] dark:text-[#f5f5f8] capitalize tracking-[-1px] leading-none">
-                  {item.label}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          {/* Home Indicator Spacer */}
-          <div className="h-8 w-full flex justify-center">
-            <div className="w-36 h-[5px] bg-[#1a1a1a] dark:bg-[#f5f5f8] rounded-[100px]" />
-          </div>
-        </div>
+            {/* Home Indicator Spacer */}
+            <div className="h-8 w-full flex justify-center">
+              <div className="w-36 h-[5px] bg-[#1a1a1a] dark:bg-[#f5f5f8] rounded-[100px]" />
+            </div>
+          </DrawerContent>
+        </Drawer>
       </div>
 
       {/* Desktop: Popover anchored to button */}
